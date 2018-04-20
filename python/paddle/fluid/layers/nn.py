@@ -60,6 +60,7 @@ __all__ = [
     'edit_distance',
     'l2_normalize',
     'matmul',
+    'topk',
     'warpctc',
     'sequence_reshape',
     'transpose',
@@ -77,6 +78,7 @@ __all__ = [
     'lod_reset',
     'lrn',
     'pad',
+    'label_smooth',
 ]
 
 
@@ -87,6 +89,7 @@ def fc(input,
        bias_attr=None,
        use_mkldnn=False,
        act=None,
+       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -133,6 +136,7 @@ def fc(input,
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
+        is_test(bool): A flag indicating whether execution is in test phase.
         use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
             library is installed. Default: False
         name (str, default None): The name of this layer.
@@ -176,8 +180,11 @@ def fc(input,
             inputs={"Input": input,
                     "W": w},
             outputs={"Out": tmp},
-            attrs={"use_mkldnn": use_mkldnn,
-                   "bias_attr": bias_attr})
+            attrs={
+                "use_mkldnn": use_mkldnn,
+                "is_test": is_test,
+                "bias_attr": bias_attr
+            })
         return helper.append_activation(tmp)
     else:
         for input_var, param_attr in helper.iter_inputs_and_params():
@@ -218,6 +225,7 @@ def fc(input,
 def embedding(input,
               size,
               is_sparse=False,
+              is_distributed=False,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
@@ -268,8 +276,11 @@ def embedding(input,
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
-        attrs={'is_sparse': is_sparse,
-               'padding_idx': padding_idx})
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'padding_idx': padding_idx
+        })
     return tmp
 
 
@@ -1516,7 +1527,8 @@ def batch_norm(input,
                in_place=False,
                name=None,
                moving_mean_name=None,
-               moving_variance_name=None):
+               moving_variance_name=None,
+               do_model_average_for_mean_and_var=False):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -1547,7 +1559,10 @@ def batch_norm(input,
 
     mean = helper.create_parameter(
         attr=ParamAttr(
-            name=moving_mean_name, initializer=Constant(0.0), trainable=False),
+            name=moving_mean_name,
+            initializer=Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
         dtype=input.dtype)
     mean.stop_gradient = True
@@ -1556,7 +1571,8 @@ def batch_norm(input,
         attr=ParamAttr(
             name=moving_variance_name,
             initializer=Constant(1.0),
-            trainable=False),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
         dtype=input.dtype)
     variance.stop_gradient = True
@@ -2561,6 +2577,53 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
+def topk(input, k):
+    """
+    This operator is used to find values and indices of the k largest entries
+    for the last dimension.
+
+    If the input is a vector (rank=1), finds the k largest entries in the vector
+    and outputs their values and indices as vectors. Thus values[j] is the j-th
+    largest entry in input, and its index is indices[j].
+
+    If the input is a Tensor with higher rank, this operator computes the top k
+    entries along the last dimension.
+
+    Args:
+        input(Variable): The input variable which can be a vector or Tensor with
+            higher rank.
+        k(int): An integer value to specify the top k largest elements.
+
+    Returns:
+        values(Variable): The k largest elements along each last dimensional
+            slice.
+        indices(Variable): The indices of values within the last dimension of
+            input.
+
+    Examples:
+        .. code-block:: python
+
+            top5_values, top5_indices = layers.topk(input, k=5)
+    """
+    shape = input.shape
+    if k < 1 and k >= shape[-1]:
+        raise ValueError("k must be greater than 0 and less than %d." %
+                         (shape[-1]))
+
+    helper = LayerHelper("top_k", **locals())
+    values = helper.create_tmp_variable(dtype=input.dtype)
+    indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs={"k": k})
+    values.stop_gradient = True
+    indices.stop_gradient = True
+    return values, indices
+
+
 def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
@@ -2702,15 +2765,7 @@ def ctc_greedy_decoder(input, blank, name=None):
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
-    # top 1 op
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="top_k",
-        inputs={"X": [input]},
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]},
-        attrs={"k": 1})
+    _, topk_indices = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_tmp_variable(dtype="int64")
@@ -3374,14 +3429,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     Here are some examples to explain it.
 
     1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [6, 8], the reshape operator will transform x into a 2-D tensor with 
+    is [6, 8], the reshape operator will transform x into a 2-D tensor with
     shape [6, 8] and leaving x's data unchanged.
 
     2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
     specified is [2, 3, -1, 2], the reshape operator will transform x into a
     4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
-    case, one dimension of the target shape is set to -1, the value of this 
-    dimension is inferred from the total element number of x and remaining 
+    case, one dimension of the target shape is set to -1, the value of this
+    dimension is inferred from the total element number of x and remaining
     dimensions.
 
     3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
@@ -3615,7 +3670,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 def pad(x, paddings, pad_value=0., name=None):
     """
     Pads a tensor with a constant value given by :attr:`pad_value`, and the
-    padded width is specified by :attr:`paddings`. 
+    padded width is specified by :attr:`paddings`.
 
     Specifically, the number of values padded before the contents of :attr:`x`
     in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
@@ -3643,7 +3698,7 @@ def pad(x, paddings, pad_value=0., name=None):
         x (Variable): The input tensor variable.
         paddings (list): A list of integers. Its elements specify the padded
                          width before and after for each dimension in turn.
-                         The length of :attr:paddings must be 
+                         The length of :attr:paddings must be
                          :math:`rank(x) \\times 2`.
         pad_value (float): The constant value used to pad.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -3669,3 +3724,68 @@ def pad(x, paddings, pad_value=0., name=None):
         attrs={'paddings': paddings,
                'pad_value': float(pad_value)})
     return out
+
+
+def label_smooth(label,
+                 prior_dist=None,
+                 epsilon=0.1,
+                 dtype="float32",
+                 name=None):
+    """
+    Label smoothing is a mechanism to regularize the classifier layer and is
+    called label-smoothing regularization (LSR). 
+    
+    Label smoothing is proposed to encourage the model to be less confident,
+    since optimizing the log-likelihood of the correct label directly may
+    cause overfitting and reduce the ability of the model to adapt. Label
+    smoothing replaces the ground-truth label :math:`y` with the weighted sum
+    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
+    i.e.
+
+    .. math::
+
+        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
+
+    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
+    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
+    uniform distribution is used for :math:`\mu`.
+
+    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
+
+    Args:
+        label(Variable): The input variable containing the label data. The
+                          label data should use one-hot representation.
+        prior_dist(Variable): The prior distribution to be used to smooth
+                              labels. If not provided, an uniform distribution
+                              is used. The shape of :attr:`prior_dist` should
+                              be :math:`(1, class\_num)`. 
+        epsilon(float): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, 
+                                                  float_64, int etc.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The tensor variable containing the smoothed labels.
+
+    Examples:
+        .. code-block:: python
+
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            smooth_label = layers.label_smooth(
+                label=one_hot_label, epsilon=0.1, dtype="float32")
+    """
+    if epsilon > 1. or epsilon < 0.:
+        raise ValueError("The value of epsilon must be between 0 and 1.")
+    helper = LayerHelper("label_smooth", **locals())
+    label.stop_gradient = True
+    smooth_label = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="label_smooth",
+        inputs={"X": label,
+                "PriorDist": prior_dist} if prior_dist else {"X": label},
+        outputs={"Out": smooth_label},
+        attrs={"epsilon": float(epsilon)})
+    return smooth_label

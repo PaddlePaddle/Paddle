@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <iostream>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -22,7 +24,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -34,9 +35,9 @@ class TopkKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
     // FIXME: only deal with matrix(2d tensor).
-    auto* input = ctx.Input<LoDTensor>("X");
-    auto* output = ctx.Output<LoDTensor>("Out");
-    auto* indices = ctx.Output<LoDTensor>("Indices");
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* indices = ctx.Output<Tensor>("Indices");
     // k is determined by Attr
     const size_t k = static_cast<int>(ctx.Attr<int>("k"));
 

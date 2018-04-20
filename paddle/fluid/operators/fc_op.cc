@@ -98,5 +98,6 @@ FCOpMaker::FCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(fc, paddle::operators::FCOp, paddle::operators::FCOpMaker, fc_grad,
-            paddle::operators::FCOpGrad);
+REGISTER_OPERATOR(fc, paddle::operators::FCOp, paddle::operators::FCOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(fc_grad, paddle::operators::FCOpGrad);

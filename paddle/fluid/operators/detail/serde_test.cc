@@ -84,7 +84,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(&scope, &ctx);
+  operators::detail::VariableResponse resp(false, &scope, &ctx);
   EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
@@ -107,7 +107,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (int i = 0; i < tensor_numel; ++i) {
     EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
-  for (int64_t i = 0; i < rows2->size(); ++i) {
+  for (size_t i = 0; i < rows2->size(); ++i) {
     EXPECT_EQ(rows_data2[i], i);
   }
   EXPECT_EQ(slr2->height(), 1000);
@@ -171,7 +171,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(&scope, &ctx);
+  operators::detail::VariableResponse resp(false, &scope, &ctx);
   if (from_type == 0) {
     EXPECT_EQ(resp.Parse(msg), 0);
   } else {

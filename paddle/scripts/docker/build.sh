@@ -198,7 +198,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -207,8 +207,14 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
-    ADD go/cmd/pserver/pserver /usr/bin/
-    ADD go/cmd/master/master /usr/bin/
+EOF
+    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
+        cat >> /paddle/build/Dockerfile <<EOF
+        ADD go/cmd/pserver/pserver /usr/bin/
+        ADD go/cmd/master/master /usr/bin/
+EOF
+    fi
+    cat >> /paddle/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
@@ -231,7 +237,7 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
-        make inference_lib_dist
+        make -j `nproc` inference_lib_dist
     fi
 }
 

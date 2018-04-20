@@ -33,13 +33,6 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       running_ops_(0),
       allow_op_delay_(allow_op_delay) {}
 
-void ThreadedSSAGraphExecutor::RunDelayedOps(
-    const std::unordered_set<OpHandleBase *> &delayed_ops) {
-  for (auto op : delayed_ops) {
-    op->Run(use_event_);
-  }
-}
-
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
@@ -51,8 +44,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   // together since we currently cannot overlap computation and memcpy streams.
   // Should revisit it if overlapping is available.
   std::unordered_set<OpHandleBase *> delayed_ops;
-  std::unordered_set<OpHandleBase *> blocked_by_delayed_ops;
-  std::unordered_set<VarHandleBase *> delayed_vars;
 
   auto InsertPendingVar = [&pending_vars, &ready_vars](VarHandleBase &var) {
     pending_vars.insert(&var);
@@ -62,14 +53,14 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   };
 
   auto InsertPendingOp = [&pending_ops](OpHandleBase &op_instance) {
-    pending_ops.insert({&op_instance, op_instance.inputs_.size()});
+    pending_ops.insert({&op_instance, op_instance.Inputs().size()});
   };
 
   // Transform SSAGraph to pending_ops & pending_vars
   for (auto &var_map : graph_->vars_) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        InsertPendingVar(version_pair.second);
+        InsertPendingVar(*version_pair);
       }
     }
   }
@@ -78,7 +69,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   }
 
   for (auto &op : graph_->ops_) {
-    if (op->inputs_.empty()) {  // Special case, Op has no input.
+    if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
       InsertPendingOp(*op);
@@ -95,7 +86,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     for (auto &var_map : graph_->vars_) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(&it->second.rbegin()->second);
+        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
       }
     }
   }
@@ -108,7 +99,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     fetch_ops.emplace_back(op);
 
     for (auto &p : places_) {
-      op->dev_ctxes_[p] = fetch_ctxs_.Get(p);
+      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
     }
 
     for (auto *var : vars) {
@@ -122,30 +113,26 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     InsertPendingOp(*op);
   }
 
-  auto run_all_ready_ops = [&] {
-    for (auto *op : ready_ops) {
-      if (op->IsMultiDeviceTransfer() && allow_op_delay_) {
-        delayed_ops.insert(op);
-        delayed_vars.insert(op->outputs_.begin(), op->outputs_.end());
-        ready_vars.Extend(op->outputs_);
-        continue;
-      }
+  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
+    for (auto *op : set) {
       running_ops_++;
       RunOp(&ready_vars, op);
     }
-    ready_ops.clear();
+    set.clear();
   };
 
-  // Create local scopes.
-  for (auto &scope : local_scopes_) {
-    auto &local_scope = scope->NewScope();
-    *scope->Var("@TMP_SCOPE@")->GetMutable<Scope *>() = &local_scope;
-  }
-
   // Step 3. Execution
-  while (!pending_vars.empty() || !ready_ops.empty() || !delayed_ops.empty()) {
+  while (!pending_vars.empty()) {
     // 1. Run All Ready ops
-    run_all_ready_ops();
+    // Keep loop until all vars are ready.
+    //
+    // NOTE: DelayedOps have a lower priority. It will be scheduled after all
+    // ready_ops have been performed.
+    if (ready_ops.empty() && allow_op_delay_) {
+      run_all_ops(delayed_ops);
+    } else {
+      run_all_ops(ready_ops);
+    }
 
     // 2. Find ready variable
     bool timeout;
@@ -166,57 +153,20 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         auto &deps = pending_ops[op];
         --deps;
         if (deps == 0) {
-          if (delayed_vars.find(ready_var) != delayed_vars.end()) {
-            blocked_by_delayed_ops.insert(op);
+          if (op->IsMultiDeviceTransfer() && allow_op_delay_) {
+            delayed_ops.insert(op);
           } else {
             ready_ops.insert(op);
           }
         }
       }
     }
-    // When there are no other ops to schedule, schedule buffered delayed
-    // ops and unblock other ops.
-    if (ready_ops.empty() && !delayed_ops.empty() && running_ops_ == 0) {
-      RunDelayedOps(delayed_ops);
-      delayed_ops.clear();
-      for (auto *op : blocked_by_delayed_ops) {
-        ready_ops.insert(op);
-      }
-      blocked_by_delayed_ops.clear();
-    }
-    // Keep loop until all vars are ready.
   }
   PADDLE_ENFORCE(ready_ops.empty());
-  PADDLE_ENFORCE(delayed_ops.empty());
-  PADDLE_ENFORCE(blocked_by_delayed_ops.empty());
-  ++computation_count_;
-
-  auto sync_computation = [&] {
-    computation_count_ = 0;
-    // Wait All computational streams
-    for (auto p : this->places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
-    }
-    for (auto &scope : local_scopes_) {
-      scope->DropKids();
-    }
-  };
 
   // Wait FetchOps.
   if (!fetch_ops.empty()) {
     fetch_ops.clear();
-    sync_computation();
-  }
-
-  if (computation_count_ == max_async_computation) {
-    sync_computation();
-  }
-
-  // NOTE: the temp scope can be dropped lazily if needed.
-  // Drop tmp scopes;
-  for (auto &scope : local_scopes_) {
-    auto &kid = *scope->Var("@TMP_SCOPE@")->GetMutable<Scope *>();
-    kid = nullptr;
   }
 
   return fetch_data;
@@ -226,10 +176,12 @@ void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      VLOG(10) << op->Name() << " : " << op->DebugString();
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       op->Run(use_event_);
+      VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
-      ready_var_q->Extend(op->outputs_);
+      ready_var_q->Extend(op->Outputs());
+      VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
