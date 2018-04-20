@@ -70,9 +70,10 @@ void ListenAndServOp::Stop() {
   server_thread_->join();
 }
 
-void ListenAndServOp::RunSyncUpdate(
-    framework::Executor *executor, framework::ProgramDesc *program,
-    framework::Scope *recv_scope, framework::BlockDesc *prefetch_block) const {
+void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
+                                  framework::ProgramDesc *program,
+                                  framework::Scope *recv_scope,
+                                  framework::BlockDesc *prefetch_block) const {
   auto fan_in = Attr<int>("Fanin");
 
   size_t num_blocks = program->Size();
@@ -201,7 +202,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   sleep(5);
   // Write to a file of server selected port for python use.
   SavePort(rpc_service_);
-  RunSyncUpdate(&executor, program, &recv_scope, prefetch_block);
+  RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
 }
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
