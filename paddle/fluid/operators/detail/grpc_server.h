@@ -59,8 +59,6 @@ class AsyncGRPCServer final {
 
   void SetProgram(framework::ProgramDesc *program) { program_ = program; }
 
-  void SetPrefetchBlkdId(int blkid) { prefetch_blk_id_ = blkid; }
-
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
   void SetPrefetchPreparedCtx(framework::ExecutorPrepareContext *prepared) {
@@ -114,7 +112,6 @@ class AsyncGRPCServer final {
   std::unique_ptr<std::thread> t_get_;
   std::unique_ptr<std::thread> t_prefetch_;
 
-  int prefetch_blk_id_;
   framework::ExecutorPrepareContext *prefetch_ctx_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;

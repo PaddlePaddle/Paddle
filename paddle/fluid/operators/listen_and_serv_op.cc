@@ -70,17 +70,6 @@ void ListenAndServOp::Stop() {
   server_thread_->join();
 }
 
-void ListenAndServOp::PreparePrefetchCtx(
-    framework::Executor *executor, framework::BlockDesc *prefetch_block,
-    framework::ProgramDesc *program) const {
-  VLOG(3) << "prefetch block id is " << prefetch_block->ID();
-  rpc_service_->SetExecutor(executor);
-  auto prefetch_prepared = executor->Prepare(*program, prefetch_block->ID());
-  rpc_service_->SetPrefetchBlkdId(prefetch_block->ID());
-  rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
-  prefetch_prepared.release();
-}
-
 void ListenAndServOp::RunSyncUpdate(
     framework::Executor *executor, framework::ProgramDesc *program,
     framework::Scope *recv_scope, framework::BlockDesc *prefetch_block) const {
@@ -198,7 +187,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->SetScope(&recv_scope);
   rpc_service_->SetDevCtx(&dev_ctx);
   rpc_service_->SetProgram(program);
-  PreparePrefetchCtx(&executor, prefetch_block, program);
+  rpc_service_->SetExecutor(&executor);
+
+  // prepare for prefetch
+  VLOG(3) << "prefetch block id is " << prefetch_block->ID();
+  auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
+  rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
+  prefetch_prepared.release();
+
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
