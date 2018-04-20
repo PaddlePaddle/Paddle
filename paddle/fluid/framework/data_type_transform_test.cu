@@ -32,10 +32,10 @@ TEST(DataTypeTransform, GPUTransform) {
       paddle::framework::DataLayout::kAnyLayout,
       paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp64 =
-      paddle::framework::OpKernelType(proto::VarType::FP64, gpu_place,
-                                      paddle::framework::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp64 = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::FP64, gpu_place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
 
   auto kernel_int32 = paddle::framework::OpKernelType(
       paddle::framework::proto::VarType::INT32, gpu_place,
@@ -172,7 +172,7 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<float16>();
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(ptr[i].x,
                 static_cast<paddle::platform::float16>(in_data_float[i]).x);
@@ -192,7 +192,7 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<float16>();
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(ptr[i].x,
                 static_cast<paddle::platform::float16>(in_data_double[i]).x);
@@ -232,7 +232,7 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<float16>();
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(ptr[i].x,
                 static_cast<paddle::platform::float16>(in_data_int64[i]).x);
