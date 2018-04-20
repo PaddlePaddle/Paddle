@@ -24,6 +24,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static void split(const std::string &str, char sep,
+                  std::vector<std::string> *pieces) {
+  pieces->clear();
+  if (str.empty()) {
+    return;
+  }
+  size_t pos = 0;
+  size_t next = str.find(sep, pos);
+  while (next != std::string::npos) {
+    pieces->push_back(str.substr(pos, next - pos));
+    pos = next + 1;
+    next = str.find(sep, pos);
+  }
+  if (!str.substr(pos).empty()) {
+    pieces->push_back(str.substr(pos));
+  }
+}
+
 void RunServer(std::shared_ptr<detail::SyncGRPCServer> service) {
   service->RunAsyncUpdate();
   VLOG(4) << "RunServer thread end";
@@ -74,7 +92,7 @@ void AsyncListenAndServOp::RunImpl(const framework::Scope &scope,
   auto grad_map_str = Attr<std::vector<std::string>>("grad_map");
   for (auto &grad_and_id : grad_map_str) {
     std::vector<std::string> pieces;
-    paddle::str::split(grad_and_id, ' ', &pieces);
+    split(grad_and_id, ' ', &pieces);
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
     PADDLE_ENFORCE_EQ(grad_to_id.count(pieces[0]), 0);
     int block_id = std::stoi(pieces[1]);
