@@ -278,7 +278,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+
+  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, sync_mode));
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);
