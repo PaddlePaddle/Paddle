@@ -67,7 +67,7 @@ class AsyncGRPCServer final {
     prefetch_ctx_ = prepared;
   }
 
-  int GetSelectedPort() { return selected_port_; }
+  int GetSelectedPort() const { return selected_port_; }
 
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
