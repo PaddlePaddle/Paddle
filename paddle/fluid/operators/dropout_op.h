@@ -24,7 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class CPUDropoutKernel : public framework::OpKernel<T> {
@@ -60,8 +60,8 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      auto X = EigenVector<T>::Flatten(*x);
-      auto Y = EigenVector<T>::Flatten(*y);
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
       Y.device(place) = X * (1.0f - dropout_prob);
@@ -81,9 +81,9 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
 
-    auto M = EigenVector<T>::Flatten(*mask);
-    auto dX = EigenVector<T>::Flatten(*grad_x);
-    auto dY = EigenVector<T>::Flatten(*grad_y);
+    auto M = EigenMatrix<T>::Reshape(*mask, 1);
+    auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
+    auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
 
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
