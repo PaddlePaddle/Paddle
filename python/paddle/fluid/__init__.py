@@ -37,6 +37,7 @@ from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
+from inference_transpiler import InferenceTranspiler
 import clip
 from memory_optimization_transpiler import memory_optimize, release_memory
 import profiler
@@ -66,6 +67,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'clip',
     'SimpleDistributeTranspiler',
     'DistributeTranspiler',
+    'InferenceTranspiler',
     'memory_optimize',
     'release_memory',
     'profiler',
