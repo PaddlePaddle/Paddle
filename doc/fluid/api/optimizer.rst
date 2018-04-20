@@ -47,10 +47,51 @@ DecayedAdagrad
     :members:
     :noindex:
 
+SGDOptimizer
+------------
+
+..  autoclass:: paddle.fluid.optimizer.SGDOptimizer
+    :members:
+    :noindex:
+
+MomentumOptimizer
+-----------------
+
+..  autoclass:: paddle.fluid.optimizer.MomentumOptimizer
+    :members:
+    :noindex:
+
+AdagradOptimizer
+----------------
+
+..  autoclass:: paddle.fluid.optimizer.AdagradOptimizer
+    :members:
+    :noindex:
+
+AdamOptimizer
+-------------
+
+..  autoclass:: paddle.fluid.optimizer.AdamOptimizer
+    :members:
+    :noindex:
+
+AdamaxOptimizer
+---------------
+
+..  autoclass:: paddle.fluid.optimizer.AdamaxOptimizer
+    :members:
+    :noindex:
+
+DecayedAdagradOptimizer
+-----------------------
+
+..  autoclass:: paddle.fluid.optimizer.DecayedAdagradOptimizer
+    :members:
+    :noindex:
+
 Adadelta
 --------------
 
 ..  autoclass:: paddle.fluid.optimizer.AdadeltaOptimizer
     :members:
     :noindex:
-

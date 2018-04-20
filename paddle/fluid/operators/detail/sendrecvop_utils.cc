@@ -186,7 +186,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
                                framework::Variable** var) {
-  operators::detail::VariableResponse resp(scope, &ctx);
+  operators::detail::VariableResponse resp(false, scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
 }

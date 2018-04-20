@@ -29,6 +29,7 @@ struct TestReduceOpHandle {
   bool use_gpu_;
   Scope g_scope_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> param_scopes_;
   std::unique_ptr<OpHandleBase> op_handle_;
   std::vector<std::unique_ptr<VarHandleBase>> vars_;
   std::vector<p::Place> gpu_list_;
@@ -82,19 +83,18 @@ struct TestReduceOpHandle {
     }
   }
 
-  void InitReduceOp(size_t input_scope_idx) {
+  void InitReduceOp(size_t out_scope_idx) {
+    // init scope
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope &local_scope = local_scopes_.back()->NewScope();
       *local_scopes_.back()
            ->Var(details::kLocalExecScopeName)
            ->GetMutable<Scope *>() = &local_scope;
-      local_scope.Var("out");
+      local_scope.Var("input");
+      param_scopes_.emplace_back(&local_scope);
     }
-    local_scopes_[input_scope_idx]
-        ->Var(details::kLocalExecScopeName)
-        ->Get<Scope *>()
-        ->Var("input");
+    param_scopes_[out_scope_idx]->Var("out");
 
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
@@ -112,6 +112,7 @@ struct TestReduceOpHandle {
 #endif
     }
 
+    // init op handle
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       if (!use_gpu_) {
@@ -132,7 +133,7 @@ struct TestReduceOpHandle {
 
     // add output
     auto *out_var_handle =
-        new VarHandle(2, input_scope_idx, "out", gpu_list_[input_scope_idx]);
+        new VarHandle(2, out_scope_idx, "out", gpu_list_[out_scope_idx]);
     vars_.emplace_back(out_var_handle);
     op_handle_->AddOutput(out_var_handle);
 
@@ -154,10 +155,8 @@ struct TestReduceOpHandle {
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
-      auto in_var = local_scopes_[input_scope_idx]
-                        ->Var(details::kLocalExecScopeName)
-                        ->Get<Scope *>()
-                        ->Var("input");
+      auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
+      PADDLE_ENFORCE_NOT_NULL(in_var);
       auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -170,16 +169,11 @@ struct TestReduceOpHandle {
       value->Resize(kDims);
     }
 
-    auto out_var = local_scopes_[output_scope_idx]
-                       ->Var(details::kLocalExecScopeName)
-                       ->Get<Scope *>()
-                       ->Var("out");
+    auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
+    PADDLE_ENFORCE_NOT_NULL(out_var);
     auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
 
-    auto in_var = local_scopes_[output_scope_idx]
-                      ->Var(details::kLocalExecScopeName)
-                      ->Get<Scope *>()
-                      ->Var("input");
+    auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
     auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
 
     out_selected_rows->mutable_value()->ShareDataWith(
@@ -217,10 +211,8 @@ struct TestReduceOpHandle {
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
-      auto in_var = local_scopes_[input_scope_idx]
-                        ->Var(details::kLocalExecScopeName)
-                        ->Get<Scope *>()
-                        ->Var("input");
+      auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
+      PADDLE_ENFORCE_NOT_NULL(in_var);
       auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);
@@ -229,16 +221,11 @@ struct TestReduceOpHandle {
           send_vector, *(ctxs_[input_scope_idx]), in_lod_tensor);
     }
 
-    auto out_var = local_scopes_[output_scope_idx]
-                       ->Var(details::kLocalExecScopeName)
-                       ->Get<Scope *>()
-                       ->Var("out");
+    auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
+    PADDLE_ENFORCE_NOT_NULL(out_var);
     auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
 
-    auto in_var = local_scopes_[output_scope_idx]
-                      ->Var(details::kLocalExecScopeName)
-                      ->Get<Scope *>()
-                      ->Var("input");
+    auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
     auto in_lodtensor = in_var->Get<f::LoDTensor>();
 
     out_lodtensor->ShareDataWith(in_lodtensor);
@@ -263,34 +250,34 @@ struct TestReduceOpHandle {
 
 TEST(ReduceTester, TestCPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;
-  size_t input_scope_idx = 0;
+  size_t out_scope_idx = 0;
   test_op.InitCtxOnGpu(false);
-  test_op.InitReduceOp(input_scope_idx);
-  test_op.TestReduceSelectedRows(input_scope_idx);
+  test_op.InitReduceOp(out_scope_idx);
+  test_op.TestReduceSelectedRows(out_scope_idx);
 }
 TEST(ReduceTester, TestCPUReduceTestLodTensor) {
   TestReduceOpHandle test_op;
-  size_t input_scope_idx = 0;
+  size_t out_scope_idx = 0;
   test_op.InitCtxOnGpu(false);
-  test_op.InitReduceOp(input_scope_idx);
-  test_op.TestReduceLodTensors(input_scope_idx);
+  test_op.InitReduceOp(out_scope_idx);
+  test_op.TestReduceLodTensors(out_scope_idx);
 }
 #ifdef PADDLE_WITH_CUDA
 
 TEST(ReduceTester, TestGPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;
-  size_t input_scope_idx = 0;
+  size_t out_scope_idx = 0;
   test_op.InitCtxOnGpu(true);
-  test_op.InitReduceOp(input_scope_idx);
-  test_op.TestReduceSelectedRows(input_scope_idx);
+  test_op.InitReduceOp(out_scope_idx);
+  test_op.TestReduceSelectedRows(out_scope_idx);
 }
 
 TEST(ReduceTester, TestGPUReduceTestLodTensor) {
   TestReduceOpHandle test_op;
-  size_t input_scope_idx = 0;
+  size_t out_scope_idx = 0;
   test_op.InitCtxOnGpu(true);
-  test_op.InitReduceOp(input_scope_idx);
-  test_op.TestReduceLodTensors(input_scope_idx);
+  test_op.InitReduceOp(out_scope_idx);
+  test_op.TestReduceLodTensors(out_scope_idx);
 }
 #endif
 

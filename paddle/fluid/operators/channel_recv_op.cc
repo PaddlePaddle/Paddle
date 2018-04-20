@@ -29,11 +29,11 @@ namespace paddle {
 namespace operators {
 
 void SetReceiveStatus(const platform::Place &dev_place,
-                      framework::Variable &status_var, bool status) {
+                      framework::Variable *status_var, bool status) {
   auto cpu = platform::CPUPlace();
   auto status_tensor =
-      status_var.GetMutable<framework::LoDTensor>()->mutable_data<bool>({1},
-                                                                        cpu);
+      status_var->GetMutable<framework::LoDTensor>()->mutable_data<bool>({1},
+                                                                         cpu);
   status_tensor[0] = status;
 }
 
@@ -66,7 +66,7 @@ class ChannelRecvOp : public framework::OperatorBase {
     bool ok = concurrency::ChannelReceive(ch, output_var);
 
     // Set the status output of the `ChannelReceive` call.
-    SetReceiveStatus(dev_place, *scope.FindVar(Output(Status)), ok);
+    SetReceiveStatus(dev_place, scope.FindVar(Output(Status)), ok);
   }
 };
 

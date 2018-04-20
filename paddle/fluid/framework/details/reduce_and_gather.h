@@ -24,23 +24,23 @@ namespace framework {
 namespace details {
 
 struct ReduceLoDTensor {
-  const std::vector<LoDTensor> &src_tensors_;
+  const std::vector<const LoDTensor *> &src_tensors_;
   LoDTensor &dst_tensor_;
 
-  ReduceLoDTensor(const std::vector<LoDTensor> &src, LoDTensor *dst)
+  ReduceLoDTensor(const std::vector<const LoDTensor *> &src, LoDTensor *dst)
       : src_tensors_(src), dst_tensor_(*dst) {}
 
   template <typename T>
   void operator()() const {
     PADDLE_ENFORCE(!src_tensors_.empty());
-    auto &t0 = src_tensors_[0];
+    auto &t0 = *src_tensors_[0];
     PADDLE_ENFORCE_NE(t0.numel(), 0);
     dst_tensor_.Resize(t0.dims());
     T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
     std::copy(t0.data<T>(), t0.data<T>() + t0.numel(), dst);
 
     for (size_t i = 1; i < src_tensors_.size(); ++i) {
-      auto &t = src_tensors_[i];
+      auto &t = *src_tensors_[i];
       PADDLE_ENFORCE_EQ(t.dims(), t0.dims());
       PADDLE_ENFORCE_EQ(t.type(), t0.type());
       std::transform(t.data<T>(), t.data<T>() + t.numel(), dst, dst,

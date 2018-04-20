@@ -39,13 +39,12 @@ struct BroadcastOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+  void WaitInputVarGenerated(const VarHandle &in_var);
 
  private:
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
-  void WaitInputVarGenerated(const VarHandle &in_var);
 };
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

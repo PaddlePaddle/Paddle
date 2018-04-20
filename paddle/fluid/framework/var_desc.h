@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <string>
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/framework.pb.h"

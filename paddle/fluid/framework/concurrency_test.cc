@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -40,10 +40,10 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-LoDTensor *CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
-                          T value) {
+LoDTensor *CreateVariable(Scope *scope, const p::CPUPlace &place,
+                          std::string name, T value) {
   // Create LoDTensor<int> of dim [1]
-  auto var = scope.Var(name);
+  auto var = scope->Var(name);
   auto tensor = var->GetMutable<LoDTensor>();
   tensor->Resize({1});
   T *expect = tensor->mutable_data<T>(place);
@@ -77,9 +77,9 @@ void AddCase(ProgramDesc *program, Scope *scope, p::CPUPlace *place,
   BlockDesc *caseBlock = program->AppendBlock(*casesBlock);
   func(caseBlock, scope);
 
-  CreateVariable(*scope, *place, caseCondName, false);
-  CreateVariable(*scope, *place, caseCondXVarName, caseId);
-  CreateVariable(*scope, *place, caseVarName, caseId);
+  CreateVariable(scope, *place, caseCondName, false);
+  CreateVariable(scope, *place, caseCondXVarName, caseId);
+  CreateVariable(scope, *place, caseVarName, caseId);
 
   scope->Var("step_scope");
 
@@ -96,21 +96,21 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place, ProgramDesc *program,
                         std::string quitChanName) {
   BlockDesc *whileBlock = program->AppendBlock(*parentBlock);
 
-  CreateVariable(*scope, *place, "whileExitCond", true);
-  CreateVariable(*scope, *place, "caseToExecute", -1);
-  CreateVariable(*scope, *place, "case1var", 0);
+  CreateVariable(scope, *place, "whileExitCond", true);
+  CreateVariable(scope, *place, "caseToExecute", -1);
+  CreateVariable(scope, *place, "case1var", 0);
 
-  CreateVariable(*scope, *place, "xtemp", 0);
+  CreateVariable(scope, *place, "xtemp", 0);
 
   // TODO(thuan): Need to create fibXToSend, since channel send moves the actual
   // data,
   // which causes the data to be no longer accessible to do the fib calculation
   // TODO(abhinav): Change channel send to do a copy instead of a move!
-  CreateVariable(*scope, *place, "fibXToSend", 0);
+  CreateVariable(scope, *place, "fibXToSend", 0);
 
-  CreateVariable(*scope, *place, "fibX", 0);
-  CreateVariable(*scope, *place, "fibY", 1);
-  CreateVariable(*scope, *place, "quitVar", 0);
+  CreateVariable(scope, *place, "fibX", 0);
+  CreateVariable(scope, *place, "fibY", 1);
+  CreateVariable(scope, *place, "quitVar", 0);
 
   BlockDesc *casesBlock = program->AppendBlock(*whileBlock);
   std::function<void(BlockDesc * caseBlock)> f = [](BlockDesc *caseBlock) {};
@@ -138,7 +138,7 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place, ProgramDesc *program,
     // Exit the while loop after we receive from quit channel.
     // We assign a false to "whileExitCond" variable, which will
     // break out of while_op loop
-    CreateVariable(*scope, *place, "whileFalse", false);
+    CreateVariable(scope, *place, "whileFalse", false);
     AddOp("assign", {{"X", {"whileFalse"}}}, {{"Out", {"whileExitCond"}}}, {},
           caseBlock);
   };
@@ -174,9 +174,9 @@ TEST(Concurrency, Go_Op) {
 
   // Create Variables, x0 will be put into channel,
   // result will be pulled from channel
-  CreateVariable(scope, place, "Status", false);
-  CreateVariable(scope, place, "x0", 99);
-  CreateVariable(scope, place, "result", 0);
+  CreateVariable(&scope, place, "Status", false);
+  CreateVariable(&scope, place, "x0", 99);
+  CreateVariable(&scope, place, "result", 0);
 
   framework::Executor executor(place);
   ProgramDesc program;
@@ -226,9 +226,9 @@ TEST(Concurrency, Select) {
   // Initialize scope variables
   p::CPUDeviceContext ctx(place);
 
-  CreateVariable(scope, place, "Status", false);
-  CreateVariable(scope, place, "result", 0);
-  CreateVariable(scope, place, "currentXFib", 0);
+  CreateVariable(&scope, place, "Status", false);
+  CreateVariable(&scope, place, "result", 0);
+  CreateVariable(&scope, place, "currentXFib", 0);
 
   framework::Executor executor(place);
   ProgramDesc program;
@@ -246,7 +246,7 @@ TEST(Concurrency, Select) {
         {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}}, block);
 
   // Create Go Op routine, which loops 10 times over fibonacci sequence
-  CreateVariable(scope, place, "xReceiveVar", 0);
+  CreateVariable(&scope, place, "xReceiveVar", 0);
 
   BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
   for (int i = 0; i < 10; ++i) {
@@ -264,7 +264,7 @@ TEST(Concurrency, Select) {
           goOpBlock);
   }
 
-  CreateVariable(scope, place, "quitSignal", 0);
+  CreateVariable(&scope, place, "quitSignal", 0);
   AddOp("channel_send", {{"Channel", {quitChanName}}, {"X", {"quitSignal"}}},
         {{"Status", {"Status"}}}, {}, goOpBlock);
 

@@ -47,11 +47,11 @@ void ReduceOpHandle::RunImpl() {
 
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx_)->FindVar(in_0_handle->name_);
-  auto pre_place = in_0_handle->place_;
+  PADDLE_ENFORCE_NOT_NULL(pre_in_var);
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated(in_var_handles);
-
+  auto pre_place = in_0_handle->place_;
   std::vector<platform::Place> in_places;
   auto pre_in_tensor = VariableVisitor::GetMutableTensor(pre_in_var);
   for (auto *in_handle : in_var_handles) {
@@ -62,52 +62,45 @@ void ReduceOpHandle::RunImpl() {
 
     auto in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
-    auto in_tensor = VariableVisitor::GetMutableTensor(in_var);
+    PADDLE_ENFORCE_NOT_NULL(in_var);
 
+    auto in_tensor = VariableVisitor::GetMutableTensor(in_var);
     PADDLE_ENFORCE_EQ(in_tensor.type(), pre_in_tensor.type(),
                       "The type of input is not consistent.");
   }
 
   auto out_var =
       var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
+  PADDLE_ENFORCE_NOT_NULL(out_var);
 
   if (pre_in_var->IsType<framework::SelectedRows>()) {
-    std::vector<const SelectedRows *> in_selected_rows;
-    for (auto *in_handle : in_var_handles) {
-      auto &in_sr = var_scopes.at(in_handle->scope_idx_)
-                        ->FindVar(in_handle->name_)
-                        ->Get<framework::SelectedRows>();
-      in_selected_rows.emplace_back(&in_sr);
-    }
-    auto trg = out_var->GetMutable<framework::SelectedRows>();
-    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_,
-                       out_var_handle->place_, trg);
-  } else {
-    auto pre_in = pre_in_var->Get<framework::LoDTensor>();
-    std::vector<LoDTensor> lod_tensors;
-    for (auto *in_handle : in_var_handles) {
-      lod_tensors.emplace_back(var_scopes.at(in_handle->scope_idx_)
-                                   ->FindVar(in_handle->name_)
-                                   ->Get<framework::LoDTensor>());
-    }
+    std::vector<const SelectedRows *> in_selected_rows =
+        GetInputValues<SelectedRows>(in_var_handles, var_scopes);
 
-    auto trg = out_var->GetMutable<framework::LoDTensor>();
-    trg->set_lod(pre_in.lod());
-    trg->Resize(pre_in.dims());
-    trg->mutable_data(out_var_handle->place_, pre_in.type());
+    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_,
+                       out_var_handle->place_,
+                       out_var->GetMutable<framework::SelectedRows>());
+  } else {
+    std::vector<const LoDTensor *> lod_tensors =
+        GetInputValues<LoDTensor>(in_var_handles, var_scopes);
 
     if (paddle::platform::is_cpu_place(pre_place)) {
-      ReduceLoDTensor func(lod_tensors, trg);
-      VisitDataType(ToDataType(lod_tensors[0].type()), func);
+      ReduceLoDTensor func(lod_tensors,
+                           out_var->GetMutable<framework::LoDTensor>());
+      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
     } else if (paddle::platform::is_gpu_place(pre_place)) {
 #ifdef PADDLE_WITH_CUDA
+      auto pre_in = pre_in_var->Get<framework::LoDTensor>();
+      VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
+      VariableVisitor::GetMutableTensor(out_var).mutable_data(
+          out_var_handle->place_, pre_in.type());
+
       auto out_p = out_var_handle->place_;
       int root = boost::get<platform::CUDAPlace>(out_p).device;
-      VLOG(2) << "is_gpu_place " << root << " " << out_var_handle->name_;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
-        auto &lod_tensor = lod_tensors[i];
+        auto &lod_tensor = *lod_tensors[i];
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
@@ -117,11 +110,12 @@ void ReduceOpHandle::RunImpl() {
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
         if (root == dev_id) {
-          recvbuffer = trg->mutable_data(out_var_handle->place_);
+          recvbuffer =
+              out_var->GetMutable<framework::LoDTensor>()->mutable_data(
+                  out_var_handle->place_);
         }
 
         int type = platform::ToNCCLDataType(lod_tensor.type());
-        VLOG(2) << p << " " << dev_id << " " << lod_tensor.numel();
         all_reduce_calls.emplace_back([=] {
           PADDLE_ENFORCE(platform::dynload::ncclReduce(
               buffer, recvbuffer, static_cast<size_t>(lod_tensor.numel()),
@@ -142,6 +136,20 @@ void ReduceOpHandle::RunImpl() {
       PADDLE_THROW("Place should be CPUPlace or CUDAPlace.");
     }
   }
+}
+
+template <typename T>
+std::vector<const T *> ReduceOpHandle::GetInputValues(
+    const std::vector<VarHandle *> &in_var_handles,
+    const std::vector<const Scope *> &var_scopes) const {
+  std::vector<const T *> in_selected_rows;
+  for (auto *in_handle : in_var_handles) {
+    auto &in_sr = var_scopes.at(in_handle->scope_idx_)
+                      ->FindVar(in_handle->name_)
+                      ->Get<T>();
+    in_selected_rows.emplace_back(&in_sr);
+  }
+  return in_selected_rows;
 }
 
 void ReduceOpHandle::WaitInputVarGenerated(

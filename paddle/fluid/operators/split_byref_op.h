@@ -33,7 +33,7 @@ class SplitByrefOpKernel : public framework::OpKernel<T> {
       // NOTE: no need to call mutable_data here to allocate memory.
       auto* out = outs[i];
       VLOG(3) << "spliting by ref: " << row_offset << " " << out->dims()[0];
-      *out = std::move(in->Slice(row_offset, row_offset + out->dims()[0]));
+      *out = in->Slice(row_offset, row_offset + out->dims()[0]);
       row_offset += out->dims()[0];
     }
   }

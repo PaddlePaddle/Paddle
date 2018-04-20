@@ -44,13 +44,8 @@ void BroadcastOpHandle::RunImpl() {
   // &in_place;
   WaitInputVarGenerated(*in_var_handle);
 
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
-
-  auto *in_var =
-      var_scopes.at(in_var_handle->scope_idx_)->FindVar(in_var_handle->name_);
+  auto *in_var = local_scopes_.at(in_var_handle->scope_idx_)
+                     ->FindVar(in_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(in_var);
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
@@ -60,7 +55,7 @@ void BroadcastOpHandle::RunImpl() {
     }
 
     auto &out_p = out->place_;
-    auto *out_var = var_scopes.at(out->scope_idx_)->FindVar(out->name_);
+    auto *out_var = local_scopes_.at(out->scope_idx_)->FindVar(out->name_);
 
     PADDLE_ENFORCE_EQ(out_p.which(), in_var_handle->place_.which(),
                       "Places must be all on CPU or all on CUDA.");
