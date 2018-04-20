@@ -43,21 +43,21 @@ void NCCLAllReduceOpHandle::RunImpl() {
     int dtype = -1;
     size_t numel = 0;
 
-    std::vector<LoDTensor> lod_tensors;
+    std::vector<const LoDTensor *> lod_tensors;
 
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       auto *s = local_scopes_[i];
       auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
       auto &lod_tensor = local_scope.FindVar(var_name)->Get<LoDTensor>();
-      lod_tensors.emplace_back(lod_tensor);
+      lod_tensors.emplace_back(&lod_tensor);
     }
 
-    if (platform::is_gpu_place(lod_tensors[0].place())) {
+    if (platform::is_gpu_place(lod_tensors[0]->place())) {
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &p = places_[i];
-        auto &lod_tensor = lod_tensors[i];
+        auto &lod_tensor = *lod_tensors[i];
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
 
         if (dtype == -1) {
@@ -93,7 +93,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
-      VisitDataType(ToDataType(lod_tensors[0].type()), func);
+      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &scope =
