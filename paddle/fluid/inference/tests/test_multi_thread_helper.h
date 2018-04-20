@@ -27,6 +27,9 @@ void ThreadedRunInference(
     const int thread_id,
     const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
     const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
+  CHECK_GT(cpu_feeds.size(), static_cast<size_t>(0));
+  CHECK_GT(cpu_fetchs.size(), static_cast<size_t>(0));
+
   auto copy_program = std::unique_ptr<paddle::framework::ProgramDesc>(
       new paddle::framework::ProgramDesc(*inference_program));
 
@@ -41,6 +44,8 @@ void ThreadedRunInference(
       copy_program->GetFeedTargetNames();
   const std::vector<std::string>& fetch_target_names =
       copy_program->GetFetchTargetNames();
+  CHECK_EQ(cpu_feeds.size(), feed_target_names.size());
+  CHECK_EQ(cpu_fetchs.size(), fetch_target_names.size());
 
   // 4. Prepare inputs: set up maps for feed targets
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
@@ -66,6 +71,10 @@ void TestMultiThreadInference(
     const std::vector<std::vector<paddle::framework::LoDTensor*>>& cpu_feeds,
     const std::vector<std::vector<paddle::framework::LoDTensor*>>& cpu_fetchs,
     const int num_threads) {
+  CHECK_GT(num_threads, 0);
+  CHECK_EQ(num_threads, static_cast<int>(cpu_feeds.size()));
+  CHECK_EQ(num_threads, static_cast<int>(cpu_fetchs.size()));
+
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
