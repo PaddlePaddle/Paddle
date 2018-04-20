@@ -234,7 +234,10 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
-                    True, loss_name=loss.name, allow_op_delay=allow_op_delay)
+                    True,
+                    loss_name=loss.name,
+                    allow_op_delay=allow_op_delay,
+                    use_nccl_allreduce=False)
             else:
                 exe = fluid.Executor(place=place)
 
@@ -565,6 +568,7 @@ hidden_dim = 512
 depth = 8
 mix_hidden_lr = 1e-3
 embedding_name = 'emb'
+is_sparse = False
 
 
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
@@ -572,17 +576,22 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     # 8 features
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
+        is_sparse=is_sparse,
         size=[pred_dict_len, word_dim],
         dtype='float32',
         param_attr='vemb')
 
     mark_embedding = fluid.layers.embedding(
-        input=mark, size=[mark_dict_len, mark_dim], dtype='float32')
+        input=mark,
+        is_sparse=is_sparse,
+        size=[mark_dict_len, mark_dim],
+        dtype='float32')
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
         fluid.layers.embedding(
             size=[word_dict_len, word_dim],
+            is_sparse=is_sparse,
             input=x,
             param_attr=fluid.ParamAttr(
                 name=embedding_name, trainable=False)) for x in word_input
