@@ -39,6 +39,7 @@ struct GatherOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
 
  private:
   const std::vector<Scope *> &local_scopes_;
