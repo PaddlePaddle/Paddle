@@ -1,5 +1,5 @@
 file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
-file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/ *.py)
+file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/*.py)
 set(PY_FILES paddle/__init__.py
   ${UTILS_PY_FILES}
   ${FLUID_PY_FILES})
@@ -7,7 +7,7 @@ set(PY_FILES paddle/__init__.py
 if(NOT WITH_FLUID_ONLY)
   file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
   file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
-  file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/ *.py)
+  file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/*.py)
   set(PY_FILES ${PY_FILES}
     ${TRAINER_PY_FILES}
     ${HELPERS_PY_FILES}
@@ -46,22 +46,22 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
-
-add_custom_command(OUTPUT ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so
-        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so
+set(FLUID_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so)
+add_custom_command(OUTPUT ${FLUID_CORE}
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
         DEPENDS paddle_pybind)
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so)
+add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE})
 
 
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND touch stub.cc
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle
+    COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/paddle/py_paddle ${PADDLE_BINARY_DIR}/python/
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+    DEPENDS gen_proto_py copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp ${MKL_DEPENDS})
 if(NOT WITH_FLUID_ONLY)

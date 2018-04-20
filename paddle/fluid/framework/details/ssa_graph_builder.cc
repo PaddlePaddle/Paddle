@@ -54,13 +54,8 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   auto &var_holder = var_holders[each_var_name];
   VarHandle *var = nullptr;
   if (var_holder.empty()) {
-    var_holder.emplace_back(new VarHandle);
-    auto &init_var = var_holder[0];
-    init_var->place_ = place;
-    init_var->name_ = each_var_name;
-    init_var->generated_op_ = nullptr;
-    init_var->version_ = 0;
-    var = init_var.get();
+    var = new VarHandle(0, place_offset, each_var_name, place);
+    var_holder.emplace_back(var);
   } else {
     var = var_holder.rbegin()->get();
   }
@@ -73,12 +68,9 @@ void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
                                      size_t place_offset) {
   auto &vars = graph->vars_[place_offset][each_var_name];
   size_t version = vars.size();
-  vars.emplace_back(new VarHandle());
-  auto &var = vars.back();
-  var->version_ = version;
-  var->name_ = each_var_name;
-  var->place_ = place;
-  op_handle->AddOutput(var.get());
+  auto var = new VarHandle(version, place_offset, each_var_name, place);
+  vars.emplace_back(var);
+  op_handle->AddOutput(var);
 }
 
 template <typename Callback>
@@ -125,12 +117,12 @@ void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;
-    for (auto in : op->inputs_) {
+    for (auto in : op->Inputs()) {
       std::string var_name = "var_" + std::to_string(vars[in]);
       sout << var_name << " -> " << op_name << std::endl;
     }
 
-    for (auto out : op->outputs_) {
+    for (auto out : op->Outputs()) {
       std::string var_name = "var_" + std::to_string(vars[out]);
       sout << op_name << " -> " << var_name << std::endl;
     }
@@ -141,7 +133,7 @@ void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
 
 void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
   for (auto &op : graph->ops_) {
-    if (!op->outputs_.empty()) {
+    if (!op->Outputs().empty()) {
       continue;
     }
     auto *dummy_leaf = new DummyVarHandle();

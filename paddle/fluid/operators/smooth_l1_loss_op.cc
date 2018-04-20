@@ -132,8 +132,9 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
-            smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
+REGISTER_OPERATOR(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,
     ops::SmoothL1LossKernel<paddle::platform::CPUDeviceContext, float>);

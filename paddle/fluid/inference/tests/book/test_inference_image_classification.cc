@@ -32,7 +32,7 @@ TEST(inference, image_classification) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  const bool is_combined = true;
+  const bool is_combined = false;
   std::vector<std::vector<int64_t>> feed_target_shapes =
       GetFeedTargetShapes(dirname, is_combined);
 
@@ -46,16 +46,15 @@ TEST(inference, image_classification) {
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
-// paddle::framework::LoDTensor output1;
-// std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
-// cpu_fetchs1.push_back(&output1);
+  paddle::framework::LoDTensor output1;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+  cpu_fetchs1.push_back(&output1);
 
-// // Run inference on CPU
-// LOG(INFO) << "--- CPU Runs: ---";
-// TestInference<paddle::platform::CPUPlace, false>(dirname, cpu_feeds,
-//                                                  cpu_fetchs1, FLAGS_repeat,
-//                                                  is_combined);
-// LOG(INFO) << output1.dims();
+  // Run inference on CPU
+  LOG(INFO) << "--- CPU Runs: ---";
+  TestInference<paddle::platform::CPUPlace, false, true>(
+      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
+  LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::LoDTensor output2;
@@ -64,10 +63,10 @@ TEST(inference, image_classification) {
 
   // Run inference on CUDA GPU
   LOG(INFO) << "--- GPU Runs: ---";
-  TestInference<paddle::platform::CUDAPlace, true>(
+  TestInference<paddle::platform::CUDAPlace, false, true>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat, is_combined);
   LOG(INFO) << output2.dims();
 
-// CheckError<float>(output1, output2);
+  CheckError<float>(output1, output2);
 #endif
 }

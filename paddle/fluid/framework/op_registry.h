@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <string>
+#include <tuple>
 #include <type_traits>
 #include <typeinfo>
 #include <unordered_map>
@@ -140,36 +142,6 @@ class OpKernelRegistrar : public Registrar {
     __op_registrar_##op_type##__.Touch();                              \
     return 0;                                                          \
   }
-
-/**
- * Macro to register Operator. When the input is duplicable, you should
- * use REGISTER_OP_EX with drop_empty_grad=false instead.
- */
-#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type, \
-                    grad_op_class)                                   \
-  REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,    \
-                 grad_op_class, true)
-
-// When an argument is duplicable, we need to use this version.
-// Perhaps we can omit DropEmptyIG template parameter and
-// only have one version of REGISTER_OP.
-#define REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,       \
-                       grad_op_class, drop_empty_grad)                        \
-  REGISTER_OPERATOR(grad_op_type, grad_op_class);                             \
-  class _GradOpDescMaker_##grad_op_type##_                                    \
-      : public ::paddle::framework::DefaultGradOpDescMaker<drop_empty_grad> { \
-    using ::paddle::framework::DefaultGradOpDescMaker<                        \
-        drop_empty_grad>::DefaultGradOpDescMaker;                             \
-                                                                              \
-   protected:                                                                 \
-    virtual std::string GradOpType() const { return #grad_op_type; }          \
-  };                                                                          \
-  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_,    \
-                    op_maker_class);
-
-#define REGISTER_OP_WITH_KERNEL(op_type, ...)                         \
-  REGISTER_OPERATOR(op_type, ::paddle::framework::OperatorWithKernel, \
-                    ##__VA_ARGS__)
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
   REGISTER_OPERATOR(op_type, op_class, op_maker_class)
