@@ -101,8 +101,9 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(maxout, ops::MaxOutOp, ops::MaxOutOpMaker, maxout_grad,
-            ops::MaxOutOpGrad);
+REGISTER_OPERATOR(maxout, ops::MaxOutOp, ops::MaxOutOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);
 REGISTER_OP_CPU_KERNEL(
     maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
