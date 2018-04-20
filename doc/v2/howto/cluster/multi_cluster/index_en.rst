@@ -1,7 +1,7 @@
 Use different clusters
 ======================
 
-The user's cluster environment is not the same. To facilitate everyone's deployment, we provide a variety of cluster deployment methods to facilitate the submission of cluster training tasks. The following will be introduced:
+The user's cluster environment is not the same. To facilitate everyone's deployment, we provide a variety of cluster deployment methods to facilitate the submission of cluster training tasks, which will be introduced as follows:
 
 `Kubernetes <http://kubernetes.io>`_ is a scheduling framework of Google open source container cluster, supporting a complete cluster solution for large-scale cluster production environment. The following guidelines show PaddlePaddle's support for Kubernetes:
 
