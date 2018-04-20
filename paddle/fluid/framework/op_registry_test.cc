@@ -203,8 +203,7 @@ class CosineOpComplete : public paddle::framework::CosineOp {
 
 TEST(OperatorRegistrar, Test) {
   paddle::framework::OperatorRegistrar<
-      paddle::framework::CosineOpComplete,
-      paddle::framework::CosineOpProtoAndCheckerMaker>
+      CosineOpComplete, paddle::framework::CosineOpProtoAndCheckerMaker>
       reg("cos");
 }
 
