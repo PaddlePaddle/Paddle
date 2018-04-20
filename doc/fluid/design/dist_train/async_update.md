@@ -12,17 +12,15 @@ to update the parameters.
 1. The Trainer would wait for the PS finished the optimize stage, and GET the parameters from PS,
 so all the Trainers would get the same parameters.
 
-In the synchronously distributed training, there should be a **barrier** which used to wait
-all the trainer processes synchronise the parameters and then continue to the next epoch.
-The performance of an asynchronously distributed training job depends on the slowest node. For example,
-if there were hundreds or thousands of training nodes in a Job and one or more training nodes were much 
-slower then the others, all the training nodes need to wait for the slowest node to synchronise the
-parameters from PS nodes, so the performance would be very poor because of the slowest node.
-In the *asynchronous* distributed training, there is no **barrier** to synchronise the parameters,
-the optimizing stage is independently on each trainer process, this would achieve scaling and better
-throughput in a job. In this design doc, we will introduce how to implement the **asynchronous** 
-distributed training base on PaddlePaddle Fluid.
+In Synchronous Distributed Training, there is a **barrier** on each PS to wait until all trainers processes
+have completed running current mini-batch. After that, all trainers can continue to run the next
+mini-batch. So, we can find that the overall performance of Synchronous Distributed Training depends 
+on the slowest node.
 
+In Asynchronous Distributed Training, we don't need to wait for a global mini-bach, the optimizer on
+the PS will run immediately when the gradient is uploaded to the PS from one trainer. This mode would
+train such models that achieve scaling, better throughput. In this design doc, we will introduce how to 
+implement the Asynchronous Distributed Training base on PaddlePaddle Fluid.
 
 ## Design
 
