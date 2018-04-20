@@ -199,9 +199,10 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
   }  // while(true)
 }
 
-void ListenAndServOp::RunAsyncUpdate(
-    framework::Executor *executor, framework::ProgramDesc *program,
-    framework::Scope *recv_scope, framework::BlockDesc *prefetch_block) const {
+void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
+                                   framework::ProgramDesc *program,
+                                   framework::Scope *recv_scope,
+                                   framework::BlockDesc *prefetch_block) const {
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
@@ -305,7 +306,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
   } else {
-    RunAsyncUpdate(&executor, program, &recv_scope, prefetch_block);
+    RunAsyncLoop(&executor, program, &recv_scope, prefetch_block);
   }
 }
 

@@ -46,10 +46,10 @@ class ListenAndServOp : public framework::OperatorBase {
                    framework::Scope* recv_scope,
                    framework::BlockDesc* prefetch_block) const;
 
-  void RunAsyncUpdate(framework::Executor* executor,
-                      framework::ProgramDesc* program,
-                      framework::Scope* recv_scope,
-                      framework::BlockDesc* prefetch_block) const;
+  void RunAsyncLoop(framework::Executor* executor,
+                    framework::ProgramDesc* program,
+                    framework::Scope* recv_scope,
+                    framework::BlockDesc* prefetch_block) const;
 
   void Stop() override;
 
