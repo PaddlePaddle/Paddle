@@ -13,95 +13,72 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
+#include "paddle/fluid/framework/details/container_cast.h"
+#include "paddle/fluid/framework/details/variable_visitor.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
-Tensor *GetTensorFromVar(Variable *in_var) {
-  if (in_var->IsType<LoDTensor>()) {
-    return in_var->GetMutable<LoDTensor>();
-  } else if (in_var->IsType<SelectedRows>()) {
-    return in_var->GetMutable<SelectedRows>()->mutable_value();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-  return nullptr;
-}
-
 BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
     : local_scopes_(local_scopes), places_(places) {}
 
 void BroadcastOpHandle::RunImpl() {
-  // the input may have dummy var.
-  std::vector<VarHandle *> in_var_handle;
-  for (auto *in : inputs_) {
-    auto *out_handle = dynamic_cast<VarHandle *>(in);
-    if (out_handle) {
-      in_var_handle.push_back(out_handle);
-    }
-  }
-  PADDLE_ENFORCE_EQ(in_var_handle.size(), 1,
-                    "The number of input should be one.");
+  // the input and output may have dummy var.
+  VarHandle *in_var_handle;
 
-  // the output may have dummy var.
-  std::vector<VarHandle *> out_var_handles;
-  for (auto *out : outputs_) {
-    auto *out_handle = dynamic_cast<VarHandle *>(out);
-    if (out_handle) {
-      out_var_handles.push_back(out_handle);
-    }
+  {
+    auto in_var_handles = DynamicCast<VarHandle>(inputs_);
+    PADDLE_ENFORCE_EQ(in_var_handles.size(), 1,
+                      "The number of input should be one.");
+    in_var_handle = in_var_handles[0];
   }
+
+  auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
   PADDLE_ENFORCE_EQ(
       out_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
 
-  // Wait input done, this Wait is asynchronous operation
-  auto &in_place = in_var_handle[0]->place_;
-  if (in_var_handle[0]->generated_op_) {
-    for (auto *out : out_var_handles) {
-      auto &out_p = out->place_;
-      in_var_handle[0]->generated_op_->Wait(dev_ctxes_[out_p]);
-    }
-  }
+  // Wait input done, this Wait is asynchronous operation platform::Place
+  // &in_place;
+  WaitInputVarGenerated(*in_var_handle);
 
-  //
-  auto in_scope_idx = in_var_handle[0]->scope_idx_;
-  auto in_var =
-      local_scopes_.at(in_scope_idx)->FindVar(in_var_handle[0]->name_);
-  Tensor *in_tensor = GetTensorFromVar(in_var);
+  auto *in_var = local_scopes_.at(in_var_handle->scope_idx_)
+                     ->FindVar(in_var_handle->name_);
+  PADDLE_ENFORCE_NOT_NULL(in_var);
+  Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
   for (auto *out : out_var_handles) {
-    auto &out_p = out->place_;
-    auto out_var = local_scopes_.at(out->scope_idx_)->FindVar(out->name_);
-
-    PADDLE_ENFORCE_EQ(out_p.which(), in_place.which(),
-                      "Places must be all on CPU or all on CUDA.");
-
-    if (in_var->IsType<framework::SelectedRows>()) {
-      auto &in_sr = in_var->Get<framework::SelectedRows>();
-      auto out_sr = out_var->GetMutable<framework::SelectedRows>();
-      if (&in_sr == out_sr) continue;
-      out_sr->set_height(in_sr.height());
-      out_sr->set_rows(in_sr.rows());
-      out_sr->mutable_value()->Resize(in_sr.value().dims());
-      out_sr->mutable_value()->mutable_data(out_p, in_sr.value().type());
-    } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto in_lod = in_var->Get<framework::LoDTensor>();
-      auto out_lod = out_var->GetMutable<framework::LoDTensor>();
-      if (&in_lod == out_lod) continue;
-      out_lod->set_lod(in_lod.lod());
-      out_lod->Resize(in_lod.dims());
-      out_lod->mutable_data(out_p, in_lod.type());
-    } else {
-      PADDLE_THROW("Var should be LoDTensor or SelectedRows.");
+    if (*out == *in_var_handle) {
+      continue;
     }
 
-    Tensor *out_tensor = GetTensorFromVar(out_var);
-    paddle::framework::TensorCopy(*in_tensor, out_p, *(dev_ctxes_[in_place]),
-                                  out_tensor);
+    auto &out_p = out->place_;
+    auto *out_var = local_scopes_.at(out->scope_idx_)->FindVar(out->name_);
+
+    PADDLE_ENFORCE_EQ(out_p.which(), in_var_handle->place_.which(),
+                      "Places must be all on CPU or all on CUDA.");
+
+    VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
+    VariableVisitor::GetMutableTensor(out_var)
+        .Resize(in_tensor.dims())
+        .mutable_data(out_p, in_tensor.type());
+
+    auto dev_ctx = dev_ctxes_[out_p];
+    RunAndRecordEvent(out_p, [in_tensor, out_var, dev_ctx, out_p] {
+      paddle::framework::TensorCopy(
+          in_tensor, out_p, *(dev_ctx),
+          &VariableVisitor::GetMutableTensor(out_var));
+    });
+  }
+}
+
+void BroadcastOpHandle::WaitInputVarGenerated(const VarHandle &in_var) {
+  if (in_var.generated_op_) {
+    for (auto &pair : dev_ctxes_) {
+      in_var.generated_op_->Wait(pair.second);
+    }
   }
 }
 
