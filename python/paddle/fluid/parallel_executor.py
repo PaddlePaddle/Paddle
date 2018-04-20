@@ -28,6 +28,7 @@ class ParallelExecutor(object):
                  loss_name=None,
                  main_program=None,
                  num_threads=None,
+                 num_threads_per_dev=1,
                  allow_op_delay=False,
                  use_nccl_allreduce=True,
                  share_vars_from=None):
@@ -88,7 +89,7 @@ class ParallelExecutor(object):
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places)
+                num_threads = len(self._places) * num_threads_per_dev
             else:
                 num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())

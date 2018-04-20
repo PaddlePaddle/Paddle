@@ -24,6 +24,7 @@ BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
     : local_scopes_(local_scopes), places_(places) {}
 
 void BroadcastOpHandle::RunImpl() {
+  if (places_.size() == 1) return;
   // the input and output may have dummy var.
   VarHandle *in_var_handle;
 
