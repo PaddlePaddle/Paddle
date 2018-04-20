@@ -22,7 +22,7 @@ namespace framework = paddle::framework;
 void do_sum(framework::ThreadPool* pool, std::atomic<int>* sum, int cnt) {
   std::vector<std::future<void>> fs;
   for (int i = 0; i < cnt; ++i) {
-    fs.push_back(framework::Async([&sum]() { sum->fetch_add(1); }));
+    fs.push_back(framework::Async([sum]() { sum->fetch_add(1); }));
   }
 }
 
