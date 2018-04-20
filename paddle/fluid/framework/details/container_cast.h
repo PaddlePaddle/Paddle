@@ -14,37 +14,27 @@
 
 #pragma once
 
-#include <map>
-#include <string>
+#include <type_traits>
 #include <vector>
-
-#include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct BroadcastOpHandle : public OpHandleBase {
- public:
-  BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places);
+template <typename ResultType, typename ElemType>
+std::vector<ResultType*> DynamicCast(const std::vector<ElemType*>& container) {
+  static_assert(std::is_base_of<ElemType, ResultType>::value,
+                "ElementType must be a base class of ResultType");
+  std::vector<ResultType*> res;
+  for (auto* ptr : container) {
+    auto* derived = dynamic_cast<ResultType*>(ptr);
+    if (derived) {
+      res.emplace_back(derived);
+    }
+  }
+  return res;
+}
 
-  std::string Name() const override;
-
-  bool IsMultiDeviceTransfer() override { return false; };
-
- protected:
-  void RunImpl() override;
-  void WaitInputVarGenerated(const VarHandle &in_var);
-
- private:
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
-};
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
