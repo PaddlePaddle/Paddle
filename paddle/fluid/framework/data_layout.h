@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <cctype>
 #include <ostream>
+#include <string>
 
 #include "paddle/fluid/platform/enforce.h"
 

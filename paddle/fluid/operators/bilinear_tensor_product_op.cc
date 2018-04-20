@@ -155,9 +155,9 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_tensor_product, ops::BilinearTensorProductOp,
                   ops::BilinearTensorProductOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(bilinear_tensor_product_grad,
-                  ops::BilinearTensorProductOpGrad)
+                  ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product,
     ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext, float>,
