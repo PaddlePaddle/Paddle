@@ -36,18 +36,33 @@ class ParallelExecutor {
   explicit ParallelExecutor(size_t num_threads, bool use_event,
                             const std::vector<platform::Place>& places,
                             const std::unordered_set<std::string>& params,
-                            const ProgramDesc& startup_program,
+                            const std::unordered_set<std::string>& bcast_vars,
                             const ProgramDesc& main_program,
                             const std::string& loss_var_name, Scope* scope,
+                            const std::vector<Scope*>& local_scopes,
                             bool allow_op_delay);
 
+  ~ParallelExecutor();
+
+  std::vector<Scope*>& GetLocalScopes();
+
+  /**
+   * Feed tensors to local scopes. The size of tensors should be equal to the
+   * size of local scopes.
+   */
+  void FeedTensorsIntoLocalScopes(
+      const std::vector<std::unordered_map<std::string, LoDTensor>>& tensors);
+
+  void FeedAndSplitTensorIntoLocalScopes(
+      const std::unordered_map<std::string, LoDTensor>& tensors);
+
   void Run(const std::vector<std::string>& fetch_tensors,
-           const std::string& fetched_var_name = "fetched_var");
+           const std::string& fetched_var_name);
+
+  void BCastParamsToGPUs(const std::unordered_set<std::string>& vars) const;
 
  private:
   ParallelExecutorPrivate* member_;
-
-  void BCastParamsToGPUs(const ProgramDesc& startup_program) const;
 };
 
 }  // namespace framework

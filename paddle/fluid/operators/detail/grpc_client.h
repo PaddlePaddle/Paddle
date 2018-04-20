@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <grpc++/grpc++.h>
-#include <grpc/support/log.h>
 #include <time.h>
-#include <chrono>
+
+#include <chrono>  // NOLINT
 #include <ctime>
 #include <functional>
 #include <iostream>
@@ -25,11 +24,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include <grpc++/generic/generic_stub.h>
-#include <grpc++/grpc++.h>
-#include <grpc++/support/byte_buffer.h>
-#include <grpc++/support/slice.h>
-
+#include "grpc++/generic/generic_stub.h"
+#include "grpc++/grpc++.h"
+#include "grpc++/support/byte_buffer.h"
+#include "grpc++/support/slice.h"
+#include "grpc/support/log.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"

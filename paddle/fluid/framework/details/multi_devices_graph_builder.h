@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -42,6 +45,10 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
  private:
+  void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
+                         const platform::Place &p, const size_t &i) const;
+
+ private:
   std::string loss_var_name_;
   const std::vector<platform::Place> &places_;
   const std::vector<Scope *> &local_scopes_;
@@ -50,6 +57,20 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
+
+  bool IsScaleLossOp(const OpDesc &op) const;
+
+  void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
+
+  void CreateComputationalOps(SSAGraph *result, const OpDesc &op) const;
+
+  void CreateScaleLossGradOp(SSAGraph *result) const;
+
+  bool IsParameterGradientOnce(
+      const std::string &og,
+      std::unordered_set<std::string> *og_has_been_broadcast) const;
+
+  void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
 };
 }  // namespace details
 }  // namespace framework

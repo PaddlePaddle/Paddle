@@ -22,7 +22,9 @@ FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
 
 void FileReader::ReadNext(std::vector<LoDTensor> *out) {
   ReadNextImpl(out);
-  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
+  if (out->empty()) {
+    return;
+  }
   for (size_t i = 0; i < dims_.size(); ++i) {
     auto &actual = out->at(i).dims();
     auto &expect = dims_[i];

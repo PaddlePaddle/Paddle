@@ -124,7 +124,7 @@ def test(word_idx):
         re.compile("aclImdb/test/neg/.*\.txt$"), word_idx)
 
 
-def word_dict():
+def word_dict(cutoff=150):
     """
     Build a word dictionary from the corpus.
 
@@ -132,7 +132,7 @@ def word_dict():
     :rtype: dict
     """
     return build_dict(
-        re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
+        re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), cutoff)
 
 
 def fetch():

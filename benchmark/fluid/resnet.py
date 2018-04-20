@@ -87,15 +87,6 @@ def parse_args():
     return args
 
 
-def print_arguments(args):
-    vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
-                                vars(args)['device'] == 'GPU')
-    print('-----------  Configuration Arguments -----------')
-    for arg, value in sorted(vars(args).iteritems()):
-        print('%s: %s' % (arg, value))
-    print('------------------------------------------------')
-
-
 def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
     conv1 = fluid.layers.conv2d(
         input=input,
@@ -279,32 +270,31 @@ def run_benchmark(model, args):
                       'label': label},
                 fetch_list=[avg_cost, batch_acc, batch_size_tensor])
             iters += 1
-            num_samples += label[0]
+            num_samples += len(label)
             accuracy.add(value=acc, weight=weight)
             train_losses.append(loss)
             train_accs.append(acc)
             print("Pass: %d, Iter: %d, Loss: %f, Accuracy: %f" %
                   (pass_id, iters, loss, acc))
-        pass_train_acc = accuracy.eval()
+        print("Pass: %d, Loss: %f, Train Accuray: %f\n" %
+              (pass_id, np.mean(train_losses), np.mean(train_accs)))
+        train_elapsed = time.time() - start_time
+        examples_per_sec = num_samples / train_elapsed
+        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+              (num_samples, train_elapsed, examples_per_sec))
         # evaluation
         if args.with_test:
             pass_test_acc = test(exe)
-        train_elapsed = time.time() - start_time
-        print("Pass: %d, Loss: %f, Train Accuray: %f\n" %
-              (pass_id, np.mean(train_losses), np.mean(train_accs)))
+        exit(0)
 
-        examples_per_sec = num_samples / train_elapsed
 
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-
-    if args.use_cprof:
-        pr.disable()
-        s = StringIO.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
+def print_arguments(args):
+    vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
+                                vars(args)['device'] == 'GPU')
+    print('----------- resnet Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s: %s' % (arg, value))
+    print('------------------------------------------------')
 
 
 if __name__ == '__main__':

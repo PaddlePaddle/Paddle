@@ -16,3 +16,4 @@
   block.md
   scope.md
   executor.md
+  parallel_executor.md

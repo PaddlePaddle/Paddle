@@ -15,11 +15,15 @@
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/details/send_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #endif
+
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -51,112 +55,60 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   }
 }
 
+void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
+                                                const OpDesc &op,
+                                                const platform::Place &p,
+                                                const size_t &i) const {
+  auto *op_handle = result->ops_.back().get();
+  op_handle->SetDeviceContext(p,
+                              platform::DeviceContextPool::Instance().Get(p));
+
+  auto var_names = op.InputArgumentNames();
+
+  for (auto &each_var_name : var_names) {
+    VarHandle *var = CreateOrGetLatestVarHandle(result, each_var_name, p, i);
+    op_handle->AddInput(var);
+  }
+
+  var_names = op.OutputArgumentNames();
+
+  for (auto &each_var_name : var_names) {
+    CreateOpOutput(result, op_handle, each_var_name, p, i);
+  }
+}
+
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
   auto graph = new SSAGraph();
   SSAGraph &result = *graph;
   std::unordered_set<std::string> og_has_been_broadcast;
-  result.vars_.resize(places_.size());
+
+  // We cannot invoke resize. It is a bug of GCC 4.8
+  result.vars_ = std::vector<
+      std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
+      places_.size());
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
-    bool change_forward = false;
-    if (!is_forwarding) {
-      // FIXME(yy): Do not hard code like this
-      if (op->OutputArgumentNames().size() == 1 &&
-          op->OutputArgumentNames()[0] == GradVarName(loss_var_name_)) {
-        continue;  // Drop fill 1. for backward coeff;
-      }
-    }
-
-    for (size_t i = 0; i < places_.size(); ++i) {
-      auto &p = places_[i];
-      auto *s = local_scopes_[i];
-
-      result.ops_.emplace_back(new ComputationOpHandle(*op, s, p));
-      auto *op_handle = result.ops_.back().get();
-      op_handle->dev_ctxes_[p] = const_cast<platform::DeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(p));
-
-      auto var_names = op->InputArgumentNames();
-
-      for (auto &each_var_name : var_names) {
-        VarHandle *var =
-            CreateOrGetLatestVarHandle(&result, each_var_name, p, i);
-        op_handle->AddInput(var);
-      }
-      var_names = op->OutputArgumentNames();
-
-      for (auto &each_var_name : var_names) {
-        CreateOpOutput(&result, op_handle, each_var_name, p, i);
-      }
-
-      if (is_forwarding) {
-        if (var_names.size() == 1 && var_names[0] == loss_var_name_) {
-// Insert ScaleCost OpHandle
-#ifdef PADDLE_WITH_CUDA
-          auto *communication_dev_ctx = nccl_ctxs_->DevCtx(p);
-#else
-          auto *communication_dev_ctx =
-              platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-#endif
-
-          op_handle = new ScaleLossGradOpHandle(local_scopes_.size(), s, p,
-                                                communication_dev_ctx);
-          result.ops_.emplace_back(op_handle);
-
-          // FIXME: Currently ScaleLossGradOp only use device_count as scale
-          // factor. So it does not depend on any other operators.
-          // VarHandle *loss = GetVarHandle(loss_var_name, place);
-          // loss->pending_ops_.emplace_back(op_handle);
-          // op_handle->inputs_.emplace_back(loss);
-
-          CreateOpOutput(&result, op_handle, GradVarName(loss_var_name_), p, i);
-          change_forward = true;
-        }
-      }
-    }
-
-    if (change_forward) {
+    if (op->Type() == "send") {
+      // append send op if program is distributed trainer main program.
+      // always use the first device
+      CreateSendOp(&result, *op);
+    } else if (IsScaleLossOp(*op)) {
+      CreateScaleLossGradOp(&result);
       is_forwarding = false;
-    }
-
-    if (!is_forwarding) {
-      auto var_names = op->OutputArgumentNames();
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once. But there are no
-      // other cases, for example, we need to adjust the gradient according to
-      // the input when we get the gradient, which is not considered at present.
-      for (auto &og : var_names) {
-        if (grad_names_.count(og) != 0 &&
-            og_has_been_broadcast.count(og) == 0) {  // is param grad
-                                                     // Insert NCCL AllReduce Op
-          og_has_been_broadcast.insert(og);
-#ifdef PADDLE_WITH_CUDA
-          result.ops_.emplace_back(
-              new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
-          auto *op_handle = result.ops_.back().get();
-
-          for (size_t i = 0; i < places_.size(); ++i) {
-            auto &p = places_[i];
-            auto &vars = result.vars_[i][og];
-
-            if (vars.empty()) {  // This device has no data. continue.
-              continue;
-            }
-            auto *prev_grad = &vars[vars.size() - 1];
-            op_handle->AddInput(prev_grad);
-
-            auto &var = vars[vars.size()];
-            var.place_ = p;
-            var.name_ = og;
-            var.version_ = vars.size() - 1;
-
-            op_handle->AddOutput(&var);
+    } else {
+      CreateComputationalOps(&result, *op);
+      if (!is_forwarding) {
+        // Currently, we assume that once gradient is generated, it can be
+        // broadcast, and each gradient is only broadcast once. But there are no
+        // other cases, for example, we need to adjust the gradient according to
+        // the input when we get the gradient, which is not considered at
+        // present.
+        for (auto &og : op->OutputArgumentNames()) {
+          if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
+            InsertNCCLAllReduceOp(&result, og);
           }
-#else
-          PADDLE_ENFORCE("Not implemented");
-#endif
         }
       }
     }
@@ -168,6 +120,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    */
   PolishGraphToSupportDataHazards(&result);
 
+  /*
+   * Only variables should be the leaves of graph.
+   */
+  AddOutputToLeafOps(&result);
+
   if (VLOG_IS_ON(10)) {
     std::ostringstream sout;
     PrintGraphviz(*graph, sout);
@@ -175,7 +132,95 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   }
 
   return std::unique_ptr<SSAGraph>(graph);
-}  // namespace details
+}
+
+void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
+    SSAGraph *result, const std::string &og) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
+  auto *op_handle = result->ops_.back().get();
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    auto &vars = result->vars_[i][og];
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
+    op_handle->AddInput(prev_grad.get());
+
+    auto var = new VarHandle(vars.size() - 1, i, og, p);
+    vars.emplace_back(var);
+    op_handle->AddOutput(var);
+  }
+#else
+  PADDLE_ENFORCE("Not implemented");
+#endif
+}
+
+bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
+    const std::string &og,
+    std::unordered_set<std::string> *og_has_been_broadcast) const {
+  bool is_pg_once =
+      grad_names_.count(og) != 0 && og_has_been_broadcast->count(og) == 0;
+  if (is_pg_once) {
+    // Insert NCCL AllReduce Op
+    og_has_been_broadcast->insert(og);
+  }
+  return is_pg_once;
+}
+
+void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
+  for (size_t i = 0; i < places_.size(); ++i) {
+// Insert ScaleCost OpHandle
+#ifdef PADDLE_WITH_CUDA
+    auto *communication_dev_ctx = nccl_ctxs_->DevCtx(places_[i]);
+#else
+    auto *communication_dev_ctx =
+        platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
+#endif
+
+    auto *op_handle =
+        new ScaleLossGradOpHandle(local_scopes_.size(), local_scopes_[i],
+                                  places_[i], communication_dev_ctx);
+    result->ops_.emplace_back(op_handle);
+
+    // FIXME: Currently ScaleLossGradOp only use device_count as scale
+    // factor. So it does not depend on any other operators.
+    // VarHandle *loss = GetVarHandle(loss_var_name, place);
+    // loss->pending_ops_.emplace_back(op_handle);
+    // op_handle->inputs_.emplace_back(loss);
+
+    CreateOpOutput(result, op_handle, GradVarName(loss_var_name_), places_[i],
+                   i);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
+                                                     const OpDesc &op) const {
+  for (size_t scope_idx = 0; scope_idx < places_.size(); ++scope_idx) {
+    auto p = places_[scope_idx];
+    auto s = local_scopes_[scope_idx];
+    result->ops_.emplace_back(new ComputationOpHandle(op, s, p));
+    CreateOpHandleIOs(result, op, p, scope_idx);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
+                                           const OpDesc &op) const {
+  auto &p = places_[0];
+  auto *s = local_scopes_[0];
+  // FIXME(wuyi): send op always copy from GPU 0
+  result->ops_.emplace_back(new SendOpHandle(op, s, p));
+  // Create inputs for output on original place and no ssa output
+  // is created for send op.
+  CreateOpHandleIOs(result, op, p, 0);
+}
+
+bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
+  // FIXME(yy): Do not hard code like this
+  return op.OutputArgumentNames().size() == 1 &&
+         op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unpool_op.h"
+#include <string>
+#include <vector>
 namespace paddle {
 namespace operators {
 
@@ -130,8 +132,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool_grad,
-            ops::UnpoolOpGrad);
+REGISTER_OPERATOR(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
     unpool, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnpoolKernel<paddle::platform::CPUDeviceContext, double>);

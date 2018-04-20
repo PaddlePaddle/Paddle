@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+
 #include <sys/time.h>
-#include <thread>
+#include <thread>  // NOLINT
+
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -28,11 +30,9 @@ namespace detail {
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg) {
+                           ::grpc::ByteBuffer* msg,
+                           const std::string& out_name) {
   using VarMsg = sendrecv::VariableMessage;
-  sendrecv::VariableMessage request;
-  std::string header;
-  request.AppendToString(&header);
   // When using GPU, need to free the copied CPU buffer
   // when the ByteBuffer destroies
   // TODO(typhoonzero): add unref here, if we have dependent
@@ -42,7 +42,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   void* buf = malloc(1024);
   void* payload = nullptr;
   size_t payload_size;
-  ProtoEncodeHelper e((char*)buf, 1024);
+  ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
   e.WriteString(VarMsg::kVarnameFieldNumber, name);
   if (var->IsType<framework::LoDTensor>()) {
     e.WriteUint64(VarMsg::kTypeFieldNumber, 0);
@@ -50,6 +50,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
   }
 
+  if (!out_name.empty()) {
+    e.WriteString(VarMsg::kOutVarnameFieldNumber, out_name);
+  }
   switch (framework::ToVarType(var->Type())) {
     case framework::proto::VarType_Type_LOD_TENSOR: {
       auto tensor = var->Get<framework::LoDTensor>();
@@ -79,7 +82,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size = tensor.memory_size();
+        auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
         payload = memory::Alloc(cpu, copy_size);
 
         memory::Copy(cpu, payload,
@@ -96,7 +99,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       } else {
         payload = tensor.data<void>();
       }
-      payload_size = tensor.memory_size();
+      payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     case framework::proto::VarType_Type_SELECTED_ROWS: {
@@ -115,7 +118,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size = tensor->memory_size();
+        auto copy_size =
+            tensor->numel() * framework::SizeOfType(tensor->type());
         payload = memory::Alloc(cpu, copy_size);
         memory::Copy(cpu, payload,
                      boost::get<platform::CUDAPlace>(tensor->place()),
@@ -130,7 +134,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       } else {
         payload = slr->mutable_value()->data<void>();
       }
-      payload_size = tensor->memory_size();
+      payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     default:
@@ -152,7 +156,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       framework::proto::VarType_Type_SELECTED_ROWS) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
 
-    ProtoEncodeHelper e2((char*)buf, 128);
+    ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
     // NOTE: rows is of type int64_t
     size_t rows_memory_size =
         slr->rows().size() * framework::SizeOfType(typeid(int64_t));
@@ -181,10 +185,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable*& var) {
-  operators::detail::VariableResponse resp(scope, &ctx);
+                               framework::Variable** var) {
+  operators::detail::VariableResponse resp(false, scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
-  var = resp.GetVar();
+  *var = resp.GetVar();
 }
 
 }  // namespace detail

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_client.h"
 
+#include <sys/time.h>
+
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
@@ -33,7 +35,8 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
 
-  framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, this] {
+  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
+                      this] {
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -54,7 +57,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
     call->StartCall();
-    call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
 
   req_count_++;
@@ -63,10 +66,9 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     // const sendrecv::VariableMessage& ret_msg) {
                      const ::grpc::ByteBuffer& ret_msg) {
-  framework::Variable* outvar = NULL;
-  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, outvar);
+  framework::Variable* outvar = nullptr;
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
 }
 
 template <typename T>
@@ -88,7 +90,8 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
 
-  framework::Async([var_name_val, ep_val, p_scope, p_ctx, time_out, ch, this] {
+  framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, ch,
+                      this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -110,7 +113,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
     call->StartCall();
-    call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
 
   req_count_++;
@@ -131,12 +134,12 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
 
-  framework::Async([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                    time_out, ch, this] {
+  framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
+                      time_out, ch, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req);
+    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
 
     // var handle
     VarHandle var_h;
@@ -170,7 +173,7 @@ void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
 
@@ -182,7 +185,7 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
 
@@ -195,7 +198,7 @@ bool RPCClient::Wait() {
   std::vector<std::future<void>> waits(req_count_);
 
   for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::Async([i, &a, this] { a[i] = Proceed(); });
+    waits[i] = framework::AsyncIO([i, &a, this] { a[i] = Proceed(); });
   }
 
   for (int i = 0; i < req_count_; i++) {

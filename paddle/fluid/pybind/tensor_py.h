@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <Python.h>
 #include <string>
+#include <tuple>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -21,12 +24,8 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
-namespace py = pybind11;
-
 namespace paddle {
-
 namespace pybind {
-
 namespace details {
 
 template <bool less, size_t I, typename... ARGS>
@@ -34,16 +33,16 @@ struct CastToPyBufferImpl;
 
 template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<false, I, ARGS...> {
-  py::buffer_info operator()(framework::Tensor &tensor) {
+  pybind11::buffer_info operator()(const framework::Tensor &tensor) {
     PADDLE_THROW("This type of tensor cannot be expose to Python");
-    return py::buffer_info();
+    return pybind11::buffer_info();
   }
 };
 
 template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
-  py::buffer_info operator()(framework::Tensor &tensor) {
+  pybind11::buffer_info operator()(const framework::Tensor &tensor) {
     if (std::type_index(typeid(CUR_TYPE)) == tensor.type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
@@ -82,15 +81,15 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 
       if (std::type_index(typeid(CUR_TYPE)) ==
           std::type_index(typeid(platform::float16))) {
-        return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
-                               "e", /* np.dtype('e') == np.float16 */
-                               (size_t)framework::arity(dst_tensor.dims()),
-                               dims_outside, strides);
+        return pybind11::buffer_info(
+            dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+            "e", /* np.dtype('e') == np.float16 */
+            (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
       } else {
-        return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
-                               py::format_descriptor<CUR_TYPE>::format(),
-                               (size_t)framework::arity(dst_tensor.dims()),
-                               dims_outside, strides);
+        return pybind11::buffer_info(
+            dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+            pybind11::format_descriptor<CUR_TYPE>::format(),
+            (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
       }
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
@@ -101,7 +100,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 
 }  // namespace details
 
-inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
+inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
   auto buffer_info =
       details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
                                   platform::float16>()(tensor);
@@ -109,7 +108,7 @@ inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
 }
 
 template <typename T>
-T TensorGetElement(framework::Tensor &self, size_t offset) {
+T TensorGetElement(const framework::Tensor &self, size_t offset) {
   if (platform::is_cpu_place(self.place())) {
     return self.data<T>()[offset];
   } else {
@@ -121,85 +120,100 @@ T TensorGetElement(framework::Tensor &self, size_t offset) {
 
 // TODO(dzhwinter) : fix the redundent Tensor allocate and free
 template <typename T>
-void TensorSetElement(framework::Tensor &self, size_t offset, T elem) {
-  if (platform::is_gpu_place(self.place())) {
+void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
+  if (platform::is_gpu_place(self->place())) {
     std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopy(self, platform::CPUPlace(), dst.get());
+    framework::TensorCopy(*self, platform::CPUPlace(), dst.get());
     dst->data<T>()[offset] = elem;
-    framework::TensorCopy(*dst.get(), self.place(), &self);
+    framework::TensorCopy(*dst.get(), self->place(), self);
 
-  } else if (platform::is_cpu_place(self.place())) {
-    self.data<T>()[offset] = elem;
+  } else if (platform::is_cpu_place(self->place())) {
+    self->data<T>()[offset] = elem;
   }
 }
 
 template <typename T>
 void PyCPUTensorSetFromArray(
-    framework::Tensor &self,
-    py::array_t<T, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::CPUPlace &place) {
+    framework::Tensor *self,
+    pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    paddle::platform::CPUPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
-  self.Resize(framework::make_ddim(dims));
-  auto *dst = self.mutable_data<T>(place);
+  self->Resize(framework::make_ddim(dims));
+  auto *dst = self->mutable_data<T>(place);
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCPUTensorSetFromArray(
-    framework::Tensor &self,
-    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::CPUPlace &place) {
+    framework::Tensor *self,
+    pybind11::array_t<uint16_t,
+                      pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    paddle::platform::CPUPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
-  self.Resize(framework::make_ddim(dims));
-  auto *dst = self.mutable_data<platform::float16>(place);
+  self->Resize(framework::make_ddim(dims));
+  auto *dst = self->mutable_data<platform::float16>(place);
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
 void PyCUDATensorSetFromArray(
-    framework::Tensor &self,
-    py::array_t<T, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::CUDAPlace &place) {
+    framework::Tensor *self,
+    pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    paddle::platform::CUDAPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
-  self.Resize(framework::make_ddim(dims));
-  auto *dst = self.mutable_data<T>(place);
+  self->Resize(framework::make_ddim(dims));
+  auto *dst = self->mutable_data<T>(place);
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto dev_ctx =
       static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
+  // NOTE: For safety, here wait the copy complete.
+  // It because the CPU array.data() could be destroyed after this method.
+  // If we make this method async, it could be copied data from a memory buffer
+  // that has been freed.
+  dev_ctx->Wait();
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCUDATensorSetFromArray(
-    framework::Tensor &self,
-    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::CUDAPlace &place) {
+    framework::Tensor *self,
+    pybind11::array_t<uint16_t,
+                      pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    paddle::platform::CUDAPlace place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
-  self.Resize(framework::make_ddim(dims));
-  auto *dst = self.mutable_data<platform::float16>(place);
+  self->Resize(framework::make_ddim(dims));
+  auto *dst = self->mutable_data<platform::float16>(place);
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto dev_ctx =
@@ -207,6 +221,48 @@ void PyCUDATensorSetFromArray(
   paddle::platform::GpuMemcpyAsync(dst, array.data(),
                                    sizeof(uint16_t) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
+  // NOTE: For safety, here wait the copy complete.
+  // It because the CPU array.data() could be destroyed after this method.
+  // If we make this method async, it could be copied data from a memory buffer
+  // that has been freed.
+  dev_ctx->Wait();
+}
+
+template <typename T>
+void PyCUDAPinnedTensorSetFromArray(
+    framework::Tensor *self,
+    pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    const paddle::platform::CUDAPinnedPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+
+  self->Resize(framework::make_ddim(dims));
+  auto *dst = self->mutable_data<T>(place);
+  std::memcpy(dst, array.data(), sizeof(T) * array.size());
+}
+
+template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
+void PyCUDAPinnedTensorSetFromArray(
+    framework::Tensor *self,
+    pybind11::array_t<uint16_t,
+                      pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    const paddle::platform::CUDAPinnedPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+
+  self->Resize(framework::make_ddim(dims));
+  auto *dst = self->mutable_data<platform::float16>(place);
+  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 #endif
 

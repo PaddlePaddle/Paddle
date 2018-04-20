@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -296,8 +298,10 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(conv2d_transpose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
-            conv2d_transpose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
+                  ops::Conv2DTransposeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
@@ -309,8 +313,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
 
-REGISTER_OP(conv3d_transpose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
-            conv3d_transpose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
+                  ops::Conv3DTransposeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose,

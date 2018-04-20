@@ -35,7 +35,19 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDims(const Scope& scope, const std::string& name) {
+proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
+  if (var->IsType<framework::LoDTensor>()) {
+    return framework::ToDataType(var->Get<framework::LoDTensor>().type());
+  } else if (var->IsType<framework::SelectedRows>()) {
+    return framework::ToDataType(
+        var->Get<framework::SelectedRows>().value().type());
+  } else {
+    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+  }
+}
+
+static DDim GetDims(const Scope& scope, const std::string& name,
+                    bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
@@ -44,7 +56,11 @@ static DDim GetDims(const Scope& scope, const std::string& name) {
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+    if (get_actual_dim) {
+      return var->Get<SelectedRows>().value().dims();
+    } else {
+      return var->Get<SelectedRows>().GetCompleteDims();
+    }
   } else {
     return DDim({-1});
   }
@@ -118,7 +134,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
-        ss << "[" << GetDims(*scope, input.second[i]) << "]";
+        ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
@@ -138,7 +154,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
-        ss << "[" << GetDims(*scope, output.second[i]) << "]";
+        ss << "[" << GetDims(*scope, output.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {

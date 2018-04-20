@@ -18,55 +18,14 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-/**
- * @brief    load the DSO of CUBLAS
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetCublasDsoHandle(void** dso_handle);
-
-/**
- * @brief    load the DSO of CUDNN
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetCUDNNDsoHandle(void** dso_handle);
-
-void GetCUPTIDsoHandle(void** dso_handle);
-
-/**
- * @brief    load the DSO of CURAND
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetCurandDsoHandle(void** dso_handle);
-
-/**
- * @brief    load the DSO of warp-ctc
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetWarpCTCDsoHandle(void** dso_handle);
-
-/**
- * @brief    load the DSO of lapack
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetLapackDsoHandle(void** dso_handle);
-
-/**
- * @brief    load the DSO of NVIDIA nccl
- *
- * @param    **dso_handle   dso handler
- *
- */
-void GetNCCLDsoHandle(void** dso_handle);
+void* GetCublasDsoHandle();
+void* GetCUDNNDsoHandle();
+void* GetCUPTIDsoHandle();
+void* GetCurandDsoHandle();
+void* GetWarpCTCDsoHandle();
+void* GetLapackDsoHandle();
+void* GetNCCLDsoHandle();
+void* GetTensorRtDsoHandle();
 
 }  // namespace dynload
 }  // namespace platform

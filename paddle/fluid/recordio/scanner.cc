@@ -13,10 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/recordio/scanner.h"
+
+#include <string>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace recordio {
+
 Scanner::Scanner(std::unique_ptr<std::istream> &&stream)
     : stream_(std::move(stream)) {
   Reset();
