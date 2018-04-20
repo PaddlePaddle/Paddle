@@ -48,6 +48,13 @@ static void ParallelExecuteBlocks(
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
 
+static void SavePort(std::shared_ptr<detail::AsyncGRPCServer> rpc_service) {
+  std::ofstream port_file;
+  port_file.open("/tmp/paddle.selected_port");
+  port_file << rpc_service->GetSelectedPort();
+  port_file.close();
+}
+
 ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
                                  const framework::VariableNameMap &outputs,
@@ -66,9 +73,8 @@ void ListenAndServOp::Stop() {
 void ListenAndServOp::PreparePrefetchCtx(
     framework::Executor *executor, framework::BlockDesc *prefetch_block,
     framework::ProgramDesc *program) const {
-  // TODO(qiao) set proper fields for table lookup and update
-  rpc_service_->SetExecutor(executor);
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
+  rpc_service_->SetExecutor(executor);
   auto prefetch_prepared = executor->Prepare(*program, prefetch_block->ID());
   rpc_service_->SetPrefetchBlkdId(prefetch_block->ID());
   rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
@@ -134,7 +140,7 @@ void ListenAndServOp::RunSyncUpdate(
       break;
     }
 
-    // NOTE: if is_gpu_place, CUDA kernels are launch by multiple threads
+    // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
     // and this will still work.
 
     // The optimize blocks which have the same parent ID would run parallel
@@ -171,13 +177,6 @@ void ListenAndServOp::RunSyncUpdate(
     rpc_service_->WaitClientGet(fan_in);
     sparse_vars.clear();
   }  // while(true)
-}
-
-static void SavePort(std::shared_ptr<detail::AsyncGRPCServer> rpc_service) {
-  std::ofstream port_file;
-  port_file.open("/tmp/paddle.selected_port");
-  port_file << rpc_service->GetSelectedPort();
-  port_file.close();
 }
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
