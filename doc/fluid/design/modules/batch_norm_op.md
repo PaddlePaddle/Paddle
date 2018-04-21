@@ -2,7 +2,7 @@
 
 ## What is batch normalization
 
-Batch normalization is a frequently-used method in deep network training. It adjusts the mean and variance of a layer's output, and make the data distribution easier for next layer's training. 
+Batch normalization is a frequently-used method in deep network training. It adjusts the mean and variance of a layer's output, and make the data distribution easier for next layer's training.
 
 The principle of batch normalization can be summarized into a simple function:
 
@@ -66,7 +66,7 @@ As most C++ operators do, `batch_norm_op` is defined by inputs, outputs, attribu
 
 The following graph showes the training computational process of `batch_norm_op`:
 
-<img src="../images/batch_norm_op_kernel.png" width="800"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/batch_norm_op_kernel.png" width="800"/>
 
 cudnn provides APIs to finish the whole series of computation, we can use them in our GPU kernel.
 
@@ -74,13 +74,13 @@ cudnn provides APIs to finish the whole series of computation, we can use them i
 
 `batch_norm_op` is warpped as a layer in Python:
 
-```python 
-def batch_norm_layer(net, 
+```python
+def batch_norm_layer(net,
                      input,
-                     output, 
-                     scale, 
-                     bias, 
-                     use_global_est = False, 
+                     output,
+                     scale,
+                     bias,
+                     use_global_est = False,
                      epsilon = 1e-6,
                      momentum = 0.99):
 	mean_cache = scope.new_var(name = 'estimated_mean', trainable = False)
@@ -119,15 +119,15 @@ for pass_id in range(PASS_NUM):
     if pass_id % 100 == 0:
         net.infer(test_image)    # run inferencing model
     # ...
-``` 
+```
 
 `is_infer` is an attribute. Once an operator is created, its attributes can not be changed. It suggests us that we shall maintain two `batch_norm_op` in the model, one's `is_infer` is `True`(we call it `infer_batch_norm_op`) and the other one's is `False`(we call it `train_batch_norm_op`). They share all parameters and variables, but be placed in two different branches. That is to say, if a network contains a `batch_norm_op`, it will fork into two branches, one go through `train_batch_norm_op` and the other one go through `infer_batch_norm_op`:
 
 <div align=center>
-<img src="../images/batch_norm_fork.png" width="500"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/batch_norm_fork.png" width="500"/>
 </div>
 
-Just like what is shown in the above graph, the net forks before `batch_norm_op` and will never merge again. All the operators after `batch_norm_op` will duplicate. 
+Just like what is shown in the above graph, the net forks before `batch_norm_op` and will never merge again. All the operators after `batch_norm_op` will duplicate.
 
 When the net runs in training mode, the end of the left branch will be set as the running target, so the dependency tracking process will ignore right branch automatically. When the net runs in inferencing mode, the process is reversed.
 

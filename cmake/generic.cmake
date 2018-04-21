@@ -251,7 +251,7 @@ function(cc_test TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction(cc_test)
 
@@ -316,6 +316,82 @@ function(nv_test TARGET_NAME)
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(nv_test)
+
+function(hip_library TARGET_NAME)
+  if (WITH_AMD_GPU)
+    set(options STATIC static SHARED shared)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(hip_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_sources ${hip_library_SRCS})
+    HIP_PREPARE_TARGET_COMMANDS(${TARGET_NAME} OBJ _generated_files _source_files ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options})
+    if(_source_files)
+      list(REMOVE_ITEM _sources ${_source_files})
+    endif()
+    if(hip_library_SRCS)
+      if (hip_library_SHARED OR hip_library_shared) # build *.so
+        add_library(${TARGET_NAME} SHARED ${_cmake_options} ${_generated_files} ${_sources})
+        set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
+      else()
+        add_library(${TARGET_NAME} STATIC ${_cmake_options} ${_generated_files} ${_sources})
+        set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE CXX)
+        target_link_libraries(${TARGET_NAME} /opt/rocm/hip/lib/libhip_hcc.so /opt/rocm/hip/lib/libhip_device.a)
+	find_fluid_modules(${TARGET_NAME})
+      endif()
+      if (hip_library_DEPS)
+	add_dependencies(${TARGET_NAME} ${hip_library_DEPS})
+	target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+      endif()
+      # cpplint code style
+      foreach(source_file ${hip_library_SRCS})
+	string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+	  list(APPEND hip_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+	endif()
+      endforeach()
+      add_style_check_target(${TARGET_NAME} ${hip_library_SRCS} ${hip_library_HEADERS})
+    else(hip_library_SRCS)
+      if (hip_library_DEPS)
+	merge_static_libs(${TARGET_NAME} ${hip_library_DEPS})
+      else()
+	message(FATAL "Please specify source file or library in nv_library.")
+      endif()
+    endif(hip_library_SRCS)
+  endif()
+endfunction(hip_library)
+
+function(hip_binary TARGET_NAME)
+  if (WITH_AMD_GPU)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(hip_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    hip_add_executable(${TARGET_NAME} ${hip_binary_SRCS})
+    if(hip_binary_DEPS)
+      target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
+      add_dependencies(${TARGET_NAME} ${hip_binary_DEPS})
+    endif()
+  endif()
+endfunction(hip_binary)
+
+function(hip_test TARGET_NAME)
+  if (WITH_AMD_GPU AND WITH_TESTING)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_sources ${hip_test_SRCS})
+    HIP_PREPARE_TARGET_COMMANDS(${TARGET_NAME} OBJ _generated_files _source_files ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options})
+    if(_source_files)
+      list(REMOVE_ITEM _sources ${_source_files})
+    endif()
+    add_executable(${TARGET_NAME} ${_cmake_options} ${_generated_files} ${_sources})
+    set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
+    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    add_test(${TARGET_NAME} ${TARGET_NAME})
+  endif()
+endfunction(hip_test)
 
 function(go_library TARGET_NAME)
   set(options STATIC static SHARED shared)
@@ -485,9 +561,9 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_ENVS}
+             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction()
 
@@ -511,6 +587,9 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
+  #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
+  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here 
+  # for now to enable dist CI.
   protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
@@ -521,6 +600,9 @@ function(grpc_library TARGET_NAME)
           COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
           ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
+          COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+          ARGS --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
+          "${ABS_PROTO}"
           DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} extern_grpc)
 
   # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it

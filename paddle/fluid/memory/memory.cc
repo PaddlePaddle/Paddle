@@ -69,7 +69,7 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   }
   platform::SetDeviceId(gpu_id);
   if (!as[gpu_id]) {
-    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator,
+    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator(gpu_id),
                                     platform::GpuMinChunkSize(),
                                     platform::GpuMaxChunkSize());
     VLOG(10) << "\n\nNOTE: each GPU device use "
@@ -112,6 +112,38 @@ void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
   GetGPUBuddyAllocator(place.device)->Free(p);
 }
 
+BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
+  static BuddyAllocator* ba = NULL;
+  if (ba == NULL) {
+    ba = new BuddyAllocator(new detail::CUDAPinnedAllocator,
+                            platform::CUDAPinnedMinChunkSize(),
+                            platform::CUDAPinnedMaxChunkSize());
+  }
+  return ba;
+}
+
+template <>
+size_t Used<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place) {
+  return GetCUDAPinnedBuddyAllocator()->Used();
+}
+
+template <>
+void* Alloc<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place,
+                                       size_t size) {
+  auto* buddy_allocator = GetCUDAPinnedBuddyAllocator();
+  void* ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+                 << " bytes in CUDAPinnedPlace";
+  }
+  return ptr;
+}
+
+template <>
+void Free<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place, void* p) {
+  GetCUDAPinnedBuddyAllocator()->Free(p);
+}
 #endif
 
 size_t Usage::operator()(const platform::CPUPlace& cpu) const {
@@ -123,6 +155,14 @@ size_t Usage::operator()(const platform::CUDAPlace& gpu) const {
   return Used(gpu);
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
+}
+
+size_t Usage::operator()(const platform::CUDAPinnedPlace& cuda_pinned) const {
+#ifdef PADDLE_WITH_CUDA
+  return Used(cuda_pinned);
+#else
+  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
 #endif
 }
 

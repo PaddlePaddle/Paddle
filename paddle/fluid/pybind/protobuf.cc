@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/protobuf.h"
 #include <deque>
 #include <iostream>
+#include <string>
+#include <tuple>
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -98,7 +100,7 @@ namespace pybind {
 using namespace paddle::framework;  // NOLINT
 
 template <typename T>
-static py::bytes SerializeMessage(T &self) {
+static py::bytes SerializeMessage(T &self) {  // NOLINT
   // Check IsInitialized in Python
   std::string retv;
   PADDLE_ENFORCE(self.Proto()->SerializePartialToString(&retv),
@@ -107,7 +109,7 @@ static py::bytes SerializeMessage(T &self) {
 }
 
 // Bind Methods
-void BindProgramDesc(py::module &m) {
+void BindProgramDesc(py::module &m) {  // NOLINT
   py::class_<ProgramDesc>(m, "ProgramDesc", "")
       .def(py::init<>())
       .def("__init__",
@@ -151,7 +153,7 @@ void BindProgramDesc(py::module &m) {
            });
 }
 
-void BindBlockDesc(py::module &m) {
+void BindBlockDesc(py::module &m) {  // NOLINT
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def_property_readonly("id", &BlockDesc::ID)
       .def_property_readonly("parent", &BlockDesc::Parent)
@@ -200,13 +202,19 @@ void BindBlockDesc(py::module &m) {
              return self.FindVarRecursive(name);
            },
            py::return_value_policy::reference)
+      .def("remove_var",
+           [](BlockDesc &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.RemoveVar(name);
+           },
+           py::return_value_policy::reference)
       .def("all_vars", &BlockDesc::AllVars, py::return_value_policy::reference)
       .def("op_size", &BlockDesc::OpSize)
       .def("op", &BlockDesc::Op, py::return_value_policy::reference)
       .def("serialize_to_string", SerializeMessage<BlockDesc>);
 }
 
-void BindVarDsec(py::module &m) {
+void BindVarDsec(py::module &m) {  // NOLINT
   py::class_<VarDesc> var_desc(m, "VarDesc", "");
   var_desc
       .def("name",
@@ -257,7 +265,7 @@ void BindVarDsec(py::module &m) {
       .value("RAW", proto::VarType::RAW);
 }
 
-void BindOpDesc(py::module &m) {
+void BindOpDesc(py::module &m) {  // NOLINT
   py::enum_<proto::AttrType>(m, "AttrType", "")
       .value("INT", proto::AttrType::INT)
       .value("INTS", proto::AttrType::INTS)

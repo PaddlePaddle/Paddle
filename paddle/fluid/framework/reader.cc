@@ -29,7 +29,7 @@ void FileReader::ReadNext(std::vector<LoDTensor> *out) {
 
     PADDLE_ENFORCE_EQ(actual.size(), expect.size());
     for (int j = 0; j < actual.size(); ++j) {
-      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
+      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
     }
   }
 }

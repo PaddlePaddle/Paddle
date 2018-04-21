@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
