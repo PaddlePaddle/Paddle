@@ -242,7 +242,9 @@ TEST(TensorContainsNAN, CPU) {
 
   {
     paddle::framework::Tensor src;
-    float16* buf = src.mutable_data<float16>({3}, paddle::platform::CPUPlace());
+    paddle::platform::float16* buf =
+        src.mutable_data<paddle::platform::float16>(
+            {3}, paddle::platform::CPUPlace());
     buf[0] = 0.0;
     buf[1].x = 0x7fff;
     buf[2] = 0.0;
@@ -266,7 +268,9 @@ TEST(TensorContainsInf, CPU) {
 
   {
     paddle::framework::Tensor src;
-    float16* buf = src.mutable_data<float16>({3}, paddle::platform::CPUPlace());
+    paddle::platform::float16* buf =
+        src.mutable_data<paddle::platform::float16>(
+            {3}, paddle::platform::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
