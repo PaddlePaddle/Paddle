@@ -45,9 +45,8 @@ static __global__ void FillInf(platform::float16* buf) {
 }
 
 TEST(TensorContainsNAN, GPU) {
-  using namespace paddle::platform;
-  CUDAPlace gpu(0);
-  auto& pool = DeviceContextPool::Instance();
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     Tensor tensor;
@@ -66,9 +65,8 @@ TEST(TensorContainsNAN, GPU) {
 }
 
 TEST(TensorContainsInf, GPU) {
-  using namespace paddle::platform;
-  CUDAPlace gpu(0);
-  auto& pool = DeviceContextPool::Instance();
+  paddle::platform::CUDAPlace gpu(0);
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     Tensor tensor;
