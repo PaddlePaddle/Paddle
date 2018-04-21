@@ -30,6 +30,7 @@ const f::DDim kDims = {20, 20};
 struct TestBroadcastOpHandle {
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
   std::vector<Scope*> local_scopes_;
+  std::vector<Scope*> param_scopes_;
   Scope g_scope_;
   std::unique_ptr<OpHandleBase> op_handle_;
   std::vector<std::unique_ptr<VarHandleBase>> vars_;
@@ -72,11 +73,17 @@ struct TestBroadcastOpHandle {
   void InitBroadcastOp(size_t input_scope_idx) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
-      local_scopes_[j]->Var("out");
+      Scope& local_scope = local_scopes_.back()->NewScope();
+      *local_scopes_.back()
+           ->Var(details::kLocalExecScopeName)
+           ->GetMutable<Scope*>() = &local_scope;
+      local_scope.Var("out");
+      param_scopes_.emplace_back(&local_scope);
     }
-    local_scopes_[input_scope_idx]->Var("input");
+    param_scopes_[input_scope_idx]->Var("input");
 
     op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_));
+
     auto* in_var_handle =
         new VarHandle(1, input_scope_idx, "input", gpu_list_[input_scope_idx]);
     vars_.emplace_back(in_var_handle);
@@ -105,7 +112,8 @@ struct TestBroadcastOpHandle {
   }
 
   void TestBroadcastLodTensor(size_t input_scope_idx) {
-    auto in_var = local_scopes_[input_scope_idx]->Var("input");
+    auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
+    PADDLE_ENFORCE_NOT_NULL(in_var);
     auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
     in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
 
@@ -117,6 +125,7 @@ struct TestBroadcastOpHandle {
     paddle::framework::TensorFromVector<float>(
         send_vector, *(ctxs_[input_scope_idx]), in_lod_tensor);
     in_lod_tensor->set_lod(lod);
+    in_lod_tensor->Resize(kDims);
 
     op_handle_->Run(false);
 
@@ -124,7 +133,8 @@ struct TestBroadcastOpHandle {
 
     p::CPUPlace cpu_place;
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      auto out_var = local_scopes_[j]->Var("out");
+      auto out_var = param_scopes_[j]->FindVar("out");
+      PADDLE_ENFORCE_NOT_NULL(out_var);
       auto out_tensor = out_var->Get<f::LoDTensor>();
       PADDLE_ENFORCE_EQ(out_tensor.lod(), lod, "lod is not equal.");
 
@@ -139,7 +149,8 @@ struct TestBroadcastOpHandle {
   }
 
   void TestBroadcastSelectedRows(size_t input_scope_idx) {
-    auto in_var = local_scopes_[input_scope_idx]->Var("input");
+    auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
+    PADDLE_ENFORCE_NOT_NULL(in_var);
     auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
     auto value = in_selected_rows->mutable_value();
     value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -162,7 +173,8 @@ struct TestBroadcastOpHandle {
 
     p::CPUPlace cpu_place;
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      auto out_var = local_scopes_[j]->Var("out");
+      auto out_var = param_scopes_[j]->FindVar("out");
+      PADDLE_ENFORCE_NOT_NULL(out_var);
       auto& out_select_rows = out_var->Get<f::SelectedRows>();
       auto rt = out_select_rows.value();
 

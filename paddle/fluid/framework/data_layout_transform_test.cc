@@ -18,27 +18,28 @@
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(DataTransform, DataLayoutFunction) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
+  auto place = paddle::platform::CPUPlace();
+  paddle::framework::Tensor in = paddle::framework::Tensor();
+  paddle::framework::Tensor out = paddle::framework::Tensor();
+  in.mutable_data<double>(paddle::framework::make_ddim({2, 3, 1, 2}), place);
+  in.set_layout(paddle::framework::DataLayout::kNHWC);
 
-  auto place = CPUPlace();
-  Tensor in = Tensor();
-  Tensor out = Tensor();
-  in.mutable_data<double>(make_ddim({2, 3, 1, 2}), place);
-  in.set_layout(DataLayout::kNHWC);
+  auto kernel_nhwc = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::FP32, place,
+      paddle::framework::DataLayout::kNHWC,
+      paddle::framework::LibraryType::kPlain);
+  auto kernel_ncwh = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::FP32, place,
+      paddle::framework::DataLayout::kNCHW,
+      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_nhwc = OpKernelType(proto::VarType::FP32, place,
-                                  DataLayout::kNHWC, LibraryType::kPlain);
-  auto kernel_ncwh = OpKernelType(proto::VarType::FP32, place,
-                                  DataLayout::kNCHW, LibraryType::kPlain);
+  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
 
-  TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
-
-  EXPECT_TRUE(out.layout() == DataLayout::kNCHW);
-  EXPECT_TRUE(out.dims() == make_ddim({2, 2, 3, 1}));
+  EXPECT_TRUE(out.layout() == paddle::framework::DataLayout::kNCHW);
+  EXPECT_TRUE(out.dims() == paddle::framework::make_ddim({2, 2, 3, 1}));
 
   TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out);
 
-  EXPECT_TRUE(in.layout() == DataLayout::kNHWC);
-  EXPECT_TRUE(in.dims() == make_ddim({2, 3, 1, 2}));
+  EXPECT_TRUE(in.layout() == paddle::framework::DataLayout::kNHWC);
+  EXPECT_TRUE(in.dims() == paddle::framework::make_ddim({2, 3, 1, 2}));
 }

@@ -155,7 +155,7 @@ EOF
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
     if [[ ${WITH_GPU} == "ON" ]]; then
-    BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
+    BASE_IMAGE="nvidia/cuda:8.0-cudnn7-runtime-ubuntu16.04"
     else
     BASE_IMAGE="ubuntu:16.04"
     fi
@@ -164,7 +164,7 @@ function gen_dockerfile() {
     DOCKERFILE_CUDNN_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
-        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/x86_64-linux-gnu/libcudnn.so"
     fi
 
     cat <<EOF
