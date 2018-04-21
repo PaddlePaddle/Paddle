@@ -60,7 +60,7 @@ class MKLDNNActivationGradKernel
   }
 };
 
-namespace {
+namespace {  // NOLINT
 framework::OpKernelType GetKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel& oper) {

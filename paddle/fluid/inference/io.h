@@ -27,17 +27,17 @@ namespace inference {
 
 void Init(bool init_p2p);
 
-void LoadPersistables(framework::Executor& executor, framework::Scope& scope,
+void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename);
 
-std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
-                                             framework::Scope& scope,
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
                                              const std::string& dirname);
 
-std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
-                                             framework::Scope& scope,
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
                                              const std::string& prog_filename,
                                              const std::string& param_filename);
 

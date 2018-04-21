@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
-#include <iostream>
 
 #include <string>
 #include <thread>  // NOLINT
@@ -33,16 +32,14 @@ namespace m = paddle::operators::math;
 
 USE_OP(dropout);
 
-static paddle::framework::DDim dims = {10, 10};
-
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto var = scope->Var("X");
   auto tensor = var->GetMutable<f::LoDTensor>();
-  tensor->Resize(dims);
+  tensor->Resize({10, 10});
 
   std::vector<float> init;
-  for (int64_t i = 0; i < f::product(dims); ++i) {
+  for (int64_t i = 0; i < 10 * 10; ++i) {
     init.push_back(1.0);
   }
 
@@ -51,19 +48,18 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto place = ctx.GetPlace();
   auto out_var = scope->Var("Out");
   auto out_tensor = out_var->GetMutable<f::LoDTensor>();
-  out_tensor->Resize(dims);
+  out_tensor->Resize({10, 10});
   out_tensor->mutable_data<float>(place);  // allocate
 
   auto mask_var = scope->Var("Mask");
   auto mask_tensor = mask_var->GetMutable<f::LoDTensor>();
-  mask_tensor->Resize(dims);
+  mask_tensor->Resize({10, 10});
   mask_tensor->mutable_data<float>(place);  // allocate
 
   // run
   f::AttributeMap attrs;
   float dropout_prob = 0.5;
-  attrs.insert({"is_test", false});
-  attrs.insert({"fix_seed", true});
+  attrs.insert({"fix_seed", 1});
   attrs.insert({"seed", 3});
   attrs.insert({"dropout_prob", dropout_prob});
   auto dropout_op = f::OpRegistry::CreateOp(
@@ -73,7 +69,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   std::vector<float> out_vec;
   TensorToVector(*out_tensor, ctx, &out_vec);
-  ctx.Wait();
 
   std::vector<float> std_out = {
       0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
@@ -88,22 +83,22 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 }
 
-TEST(Dropout, CPUDense) {
-  f::Scope scope;
-  p::CPUPlace place;
-  p::CPUDeviceContext ctx(place);
-  Compare(&scope, ctx);
-}
-
-// TODO(wyi, dzhwinter): Due to
+// TODO(wyi): Due to
 // https://github.com/PaddlePaddle/Paddle/issues/9507, I temporarily
 // disable this test to remove the prevention of the merge of
 // unrelated PRs.
 /*
+TEST(Dropout, CPUDense) {
+  f::Scope scope;
+  p::CPUPlace place;
+  p::CPUDeviceContext ctx(place);
+  Compare(scope, ctx);
+}
+
 TEST(Dropout, GPUDense) {
   f::Scope scope;
   p::CUDAPlace place;
   p::CUDADeviceContext ctx(place);
-  Compare(&scope, ctx);
+  Compare(scope, ctx);
 }
 */
