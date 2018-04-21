@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -460,6 +461,9 @@ All parameter, weight, gradient are variables in Paddle.
         self.back().ShareDataWith(t);
         self.back().set_lod(t.lod());
       });
+
+  m.def("IsInplace",
+        [](std::string op) -> bool { return operators::IsInplace(op); });
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
