@@ -12,9 +12,11 @@ configure_file(
     "${BINARY_BUILD_DIR_EN}/conf.py"
     @ONLY)
 
-sphinx_add_target(paddle_api_docs
+sphinx_add_target(paddle_v2_apis
                   html
                   ${BINARY_BUILD_DIR_EN}
                   ${SPHINX_CACHE_DIR_EN}
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_EN})
+
+add_dependencies(paddle_v2_apis  gen_proto_py framework_py_proto copy_paddle_pybind paddle_python)

@@ -292,14 +292,18 @@ def run_benchmark(cluster_spec, server):
         return np.mean(test_accs)
 
     config = tf.ConfigProto(
-        intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+        intra_op_parallelism_threads=1,
+        inter_op_parallelism_threads=1,
+        log_device_placement=True)
     config.gpu_options.allow_growth = True
 
     hooks = [tf.train.StopAtStepHook(last_step=1000000)]
 
     with tf.train.MonitoredTrainingSession(
-            master=server.target, is_chief=(args.task_index == 0),
-            hooks=hooks) as sess:
+            master=server.target,
+            is_chief=(args.task_index == 0),
+            hooks=hooks,
+            config=config) as sess:
         iters, num_samples, start_time = 0, 0, 0.0
         for pass_id in range(args.num_passes):
             # train

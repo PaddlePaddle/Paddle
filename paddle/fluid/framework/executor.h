@@ -22,6 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
@@ -59,6 +60,9 @@ class Executor {
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id);
+
+  static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
+      const ProgramDesc& program, const std::vector<int>& block_ids);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
