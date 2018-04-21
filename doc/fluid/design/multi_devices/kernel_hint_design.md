@@ -1,7 +1,7 @@
 # Kernel Hint Design
 
 ## Problem
-In PaddlePaddle's [Design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md), one Operator may have multiple kernels. Users may have some personal preference to choose a certain type of kernel for an operator, such as `force_cpu` to choose a CPU kernel, `use_cudnn` to choose a CUDNN kernel, we need to provide a way for users to do this.
+In PaddlePaddle's [Design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/execution/switch.md), one Operator may have multiple kernels. Users may have some personal preference to choose a certain type of kernel for an operator, such as `force_cpu` to choose a CPU kernel, `use_cudnn` to choose a CUDNN kernel, we need to provide a way for users to do this.
 
 In the current design, we use KernelType to describe one kernel.
 
@@ -14,7 +14,7 @@ struct KernelType {
 ```
  `place_` `data_type_` and `layout_` can be got from the input tensors of the operator, `GetActualKernelType(inputs)` use inputs to infer the proper kernel key that fit the incoming data, but users can not directly configure it.
 
-The [design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md) also provides a virtual method `GetExpectedKernelType` that user can overload and use to choose the KernelType they want to use.
+The [design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/execution/switch.md) also provides a virtual method `GetExpectedKernelType` that user can overload and use to choose the KernelType they want to use.
 
 So we should send the information user defined in proto to `GetExpectedKernelType` for choosing a kernel.
 
