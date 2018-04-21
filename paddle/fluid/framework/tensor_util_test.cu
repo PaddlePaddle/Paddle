@@ -57,7 +57,7 @@ TEST(TensorContainsNAN, GPU) {
   }
   {
     Tensor tensor;
-    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    float16* buf = tensor.mutable_data<paddle::platform::float16>({3}, gpu);
     FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsNAN(tensor));
@@ -77,7 +77,7 @@ TEST(TensorContainsInf, GPU) {
   }
   {
     Tensor tensor;
-    float16* buf = tensor.mutable_data<float16>({3}, gpu);
+    float16* buf = tensor.mutable_data<paddle::platform::float16>({3}, gpu);
     FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsInf(tensor));
