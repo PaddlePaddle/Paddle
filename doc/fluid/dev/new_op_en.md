@@ -26,13 +26,6 @@ Here are the base types needed. For details, please refer to the design docs.
 Operators can be categorized into two groups: operator with kernel(s) and operator without kernel(s). An operator with kernel(s) inherits from `OperatorWithKernel` while the one without kernel(s) inherits from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
 
 
- Information           | Where is it defined
---------------  | :----------------------
-OpProtoMake definition  | `.cc`files, Backward Op does not need an OpProtoMake interface.
-Op definition           | `.cc` files
-Kernel implementation       | The kernel methods shared between CPU and CUDA are defined in `.h` files. CPU-specific kernels live in `.cc` files, while CUDA-specific kernels are implemented in `.cu`files.
-Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.
-
 <table>
 <thead>
 <tr>
@@ -176,7 +169,7 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
 
 `MulKernel` inherits `framework::OpKernel`, which includes the following templates:
 
-- `typename  DeviceContext` denotes device context type. When different devices, namely the CPUDeviceContext and the CUDADeviceContext, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+- `typename  DeviceContext` denotes device context type. When different devices, namely the CPUDeviceContext and the CUDADeviceContext, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.h#L43).
 
 - `typename T` denotes data type, such as `float` or `double`.
 
@@ -207,7 +200,7 @@ Note that **different devices (CPU, CUDA)share one Op definition; whether or not
 
 `MulOp`'s CPU and CUDA share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.cc).
 
-To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
+To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/use_eigen_en.md).
 
 
 This concludes the forward implementation of an operator. Next its operation and kernel need to be registered in a `.cc` file.
