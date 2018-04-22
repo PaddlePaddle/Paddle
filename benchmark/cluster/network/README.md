@@ -19,10 +19,12 @@ Throughput is the main feature of our choice of a framework.
 ## BRPC
 
 ## GRPC 
+**speed unit: MB/s**
 <table>
 <thead>
 <tr>
-<th>Buffer size </th>
+<th> </th>
+<th>loop times</th>
 <th>4K</th>
 <th>16K</th>
 <th>32K</th>
@@ -38,49 +40,24 @@ Throughput is the main feature of our choice of a framework.
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
+<td>pserver(4threads)<br>client(4threads)</td>
+<td>300</td>
+<td>17.49</td>
+<td>134.57</td>
+<td>195.92</td>
+<td>332.66</td>
+<td>601.70</td>
+<td>438.08</td>
+<td>689.00</td>
+<td>812.12</td>
+<td>1026.10</td>
+<td>1101.00</td>
+<td>318.85</td>
 </tr>
 </tbody>
 </table>
+
+**Notice: GRPC client consume more than 10GB memory in this test.**
 
 ## iperf
 - Refrence: 
