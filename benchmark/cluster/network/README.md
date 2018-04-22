@@ -57,7 +57,7 @@ Throughput is the main feature of our choice of a framework.
 </tbody>
 </table>
 
-**Notice: GRPC client consume more than 10GB memory in this test.**
+**Notice: GRPC client consume more than 10GB memory in this test when buffer size >= 4MB.**
 
 ## iperf
 - Refrence: 
