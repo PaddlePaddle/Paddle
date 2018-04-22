@@ -1,13 +1,18 @@
 # Throughput of a program on the 100Gb network.
 ## Motivation
+Throughput is the main feature of our choice of a framework.
+ 
+   - Compared with the delay,we are more concerned with the throughput of the framework.   
+   - Benchmark of framework maybe not true in our envirionment as they said.
+   - It's not useful if we can't make use of a framework's potential: we maybe not expert of the framework.
+
+### Some common questions:
 - Can data transformation use TCP protocol use full of a 100Gb network?
     - Is RDMA necessary?
     - Is MPI(MPI Send and MPI Receive) necessary?
 - What's the TCP program's throughput upper limit?
     - How to tune the TCP program's throughput?
 - What's the benchmark of GPU direct? Is it high cost-effective?
-- Compared with the delay,we are more concerned with the throughput of the framework.
-	- Throughput is the main indicator of our choice of a framework
 
 ## Hardware Infomation
 
