@@ -114,7 +114,7 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto* tensor = InitVar()->GetMutable<framework::LoDTensor>();
+  auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
 
   framework::LoD lod;
@@ -150,7 +150,7 @@ bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto* slr = InitVar()->GetMutable<framework::SelectedRows>();
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
@@ -172,7 +172,7 @@ bool VariableResponse::CopySelectRowsTensorData(
 bool VariableResponse::CopySelectRowsData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, int length) {
-  auto* slr = InitVar()->GetMutable<framework::SelectedRows>();
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->mutable_rows()->resize(length /
                               framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
