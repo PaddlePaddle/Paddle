@@ -2688,7 +2688,7 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
         helper.append_op(
             type="sequence_erase",
             inputs={"X": [label]},
-            outputs={"Out": [erase_label]},
+            outputs={"Out": [erased_label]},
             attrs={"tokens": ignored_tokens})
         label = erased_label
 
