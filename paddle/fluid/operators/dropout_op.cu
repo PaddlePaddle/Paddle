@@ -32,14 +32,26 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   thrust::uniform_real_distribution<float> dist(0, 1);
 
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = 0;
+
+  T mask;
+  T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
-    rng.discard(idx);
-    if (dist(rng) < dropout_prob) {
-      mask_data[idx] = static_cast<T>(0);
+    T s = src[idx];
+    if (step_size == 0) {
+      rng.discard(idx);
+      step_size = blockDim.x * gridDim.x;
     } else {
-      mask_data[idx] = static_cast<T>(1);
+      rng.discard(step_size);
     }
-    dst[idx] = mask_data[idx] * src[idx];
+    if (dist(rng) < dropout_prob) {
+      mask = static_cast<T>(0);
+    } else {
+      mask = static_cast<T>(1);
+    }
+    dest = s * mask;
+    mask_data[idx] = mask;
+    dst[idx] = dest;
   }
 }
 

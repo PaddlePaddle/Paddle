@@ -117,12 +117,12 @@ void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;
-    for (auto in : op->inputs_) {
+    for (auto in : op->Inputs()) {
       std::string var_name = "var_" + std::to_string(vars[in]);
       sout << var_name << " -> " << op_name << std::endl;
     }
 
-    for (auto out : op->outputs_) {
+    for (auto out : op->Outputs()) {
       std::string var_name = "var_" + std::to_string(vars[out]);
       sout << op_name << " -> " << var_name << std::endl;
     }
@@ -133,7 +133,7 @@ void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
 
 void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
   for (auto &op : graph->ops_) {
-    if (!op->outputs_.empty()) {
+    if (!op->Outputs().empty()) {
       continue;
     }
     auto *dummy_leaf = new DummyVarHandle();

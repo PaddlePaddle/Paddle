@@ -28,10 +28,6 @@ namespace framework {
 namespace details {
 
 struct SendOpHandle : public OpHandleBase {
-  std::unique_ptr<OperatorBase> op_;
-  const Scope* local_scope_;
-  const platform::Place& place_;
-
   SendOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
                const platform::Place& place);
 
@@ -43,6 +39,11 @@ struct SendOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+ private:
+  std::unique_ptr<OperatorBase> op_;
+  const Scope* local_scope_;
+  const platform::Place& place_;
 };
 
 }  // namespace details

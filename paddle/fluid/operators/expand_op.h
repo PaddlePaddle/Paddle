@@ -14,13 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include <boost/preprocessor/arithmetic/div.hpp>
 #include <boost/preprocessor/arithmetic/mod.hpp>
 #include <boost/preprocessor/comparison/greater.hpp>
 #include <boost/preprocessor/comparison/greater_equal.hpp>
 #include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/repetition/repeat.hpp>
-#include <iostream>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"

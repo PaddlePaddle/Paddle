@@ -102,7 +102,8 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, scatter_grad,
-            ops::ScatterGradOp);
+REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

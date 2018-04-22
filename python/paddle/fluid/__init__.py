@@ -107,7 +107,8 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir'
+        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
+        'eager_delete_scope'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += ['fraction_of_gpu_memory_to_use']

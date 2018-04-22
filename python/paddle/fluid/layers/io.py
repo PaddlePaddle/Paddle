@@ -21,7 +21,7 @@ from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'open_files', 'read_file', 'shuffle', 'double_buffer'
+    'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer'
 ]
 
 
@@ -290,7 +290,7 @@ def open_recordio_file(filename,
                        lod_levels,
                        dtypes,
                        pass_num=1,
-                       for_parallel=False):
+                       for_parallel=True):
     """
     Open a RecordIO file
 
@@ -364,7 +364,7 @@ def open_files(filenames,
                thread_num,
                buffer_size=None,
                pass_num=1,
-               for_parallel=False):
+               for_parallel=True):
     """
     Open files
 
@@ -474,6 +474,11 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs):
 def shuffle(reader, buffer_size):
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
+
+
+def batch(reader, batch_size):
+    return __create_unshared_decorated_reader__(
+        'create_batch_reader', reader, {'batch_size': int(batch_size)})
 
 
 def double_buffer(reader, place=None):

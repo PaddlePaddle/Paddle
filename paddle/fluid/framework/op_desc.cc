@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_desc.h"
+#include <algorithm>
 #include <functional>
-#include <mutex>
+#include <mutex>  // NOLINT
+#include <string>
 #include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
