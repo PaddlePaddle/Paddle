@@ -206,7 +206,13 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(
 void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
                                                 const std::string &p_name,
                                                 size_t dev_id) const {
-  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
+#ifdef PADDLE_WITH_CUDA
+  auto *op_handle =
+      new BroadcastOpHandle(local_scopes_, places_, true, nccl_ctxs_);
+#else
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, false);
+#endif
+
   result->ops_.emplace_back(op_handle);
   auto *in = result->vars_.at(dev_id).at(p_name).back().get();
   op_handle->AddInput(in);
@@ -217,10 +223,7 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
     auto *out_var = new VarHandle(vars.size(), i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
-
-#ifdef PADDLE_WITH_CUDA
-    op_handle->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
-#else
+#ifndef ADDLE_WITH_CUDA
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
 #endif

@@ -82,7 +82,7 @@ struct TestBroadcastOpHandle {
     }
     param_scopes_[input_scope_idx]->Var("input");
 
-    op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_));
+    op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_, false));
 
     auto* in_var_handle =
         new VarHandle(1, input_scope_idx, "input", gpu_list_[input_scope_idx]);
