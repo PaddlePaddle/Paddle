@@ -16,9 +16,55 @@ Throughput is the main feature of our choice of a framework.
 
 ## Hardware Infomation
 
+## iperf
+- Refrence: 
+
+[iperf3 at 40Gbps and above](https://fasterdata.es.net/performance-testing/network-troubleshooting-tools/iperf/multi-stream-iperf3/)
+
+- Results:
+	
+<table>
+<thead>
+<tr>
+<th>client </th>
+<th>time</th>
+<th>speed<br>(Gbits/sec)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>s1</td>
+<td>37.00-38.00</td>
+<td>10.2</td>
+</tr>
+<tr>
+<td>s2</td>
+<td>37.00-38.00</td>
+<td>14.1</td>
+</tr>
+<tr>
+<td>s3</td>
+<td>37.00-38.00</td>
+<td>10.4</td>
+</tr>
+<tr>
+<td>s4</td>
+<td>37.00-38.00</td>
+<td>11.1</td>
+</tr>
+<tr>
+<td>total</td>
+<td></td>
+<td>45.8</td>
+</tr>
+</tbody>
+</table>
+
 ## BRPC
 
 ## GRPC 
+[Cod is here](https://github.com/gongweibao/tests/tree/develop/grpc_test)
+
 **speed unit: MB/s**
 <table>
 <thead>
@@ -57,46 +103,8 @@ Throughput is the main feature of our choice of a framework.
 </tbody>
 </table>
 
-**Notice: GRPC client consume more than 10GB memory in this test when buffer size >= 4MB.**
+**Notice: GRPC client consume more than 10GB memory in this test when buffer size >= 4MB. And it seems that GRPC creates many threads background.**
 
-## iperf
-- Refrence: 
-
-[iperf3 at 40Gbps and above](https://fasterdata.es.net/performance-testing/network-troubleshooting-tools/iperf/multi-stream-iperf3/)
-
-- Results:
-	
-<table>
-<thead>
-<tr>
-<th>client </th>
-<th>time</th>
-<th>speed<br>(Gbits/sec)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>s1</td>
-<td>37.00-38.00</td>
-<td>10.2</td>
-</tr>
-<tr>
-<td>s2</td>
-<td>37.00-38.00</td>
-<td>14.1</td>
-</tr>
-<tr>
-<td>s3</td>
-<td>37.00-38.00</td>
-<td>10.4</td>
-</tr>
-<tr>
-<td>s4</td>
-<td>37.00-38.00</td>
-<td>11.1</td>
-</tr>
-</tbody>
-</table>
 
 ## ib\_read\_bw
 ## MPI 
@@ -120,7 +128,7 @@ Throughput is the main feature of our choice of a framework.
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
+<td>server(4threads)<br>client(4threads)</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
@@ -133,35 +141,7 @@ Throughput is the main feature of our choice of a framework.
 <td> </td>
 <td> </td>
 </tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
+<tr></tbody>
 </table>
 
 ### With RDMA
@@ -184,7 +164,7 @@ Throughput is the main feature of our choice of a framework.
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
+<td>server(4threads)<br>client(4threads)</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
@@ -197,42 +177,14 @@ Throughput is the main feature of our choice of a framework.
 <td> </td>
 <td> </td>
 </tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
+<tr></tbody>
 </table>
 
 ### With RADMA + GPU direct
 <table>
 <thead>
 <tr>
-<th>Buffer size </th>
+<th></th>
 <th>4K</th>
 <th>16K</th>
 <th>32K</th>
@@ -248,7 +200,7 @@ Throughput is the main feature of our choice of a framework.
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
+<td>server(4threads)<br>client(4threads)</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
@@ -260,36 +212,7 @@ Throughput is the main feature of our choice of a framework.
 <td> </td>
 <td> </td>
 <td> </td>
-</tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
+</tr></tbody>
 </table>
 
 
