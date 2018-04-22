@@ -25,8 +25,6 @@ LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
 RPC_CLIENT_VAR_NAME = "RPC_CLIENT_VAR"
 
-GLOBAL_BLOCK_IDX = 0
-
 
 class VarBlock:
     def __init__(self, varname, offset, size):
