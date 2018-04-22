@@ -58,23 +58,32 @@ class DoubleBufferReader : public framework::DecoratedReader {
   bool HasNext() const;
 
   void StartPrefetcher() {
-    channel_ = framework::MakeChannel<size_t>(kChannelSize);
-    prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
+    read_pos_ = 0;
+    buf_size_ = 0;
+    running_ = true;
+    prefetcher_ = std::thread([this] {
+      PrefetchThreadFunc();
+      running_ = false;
+    });
   }
 
   void EndPrefetcher() {
-    channel_->Close();
     if (prefetcher_.joinable()) {
       prefetcher_.join();
     }
-    delete channel_;
-    channel_ = nullptr;
   }
 
   void PrefetchThreadFunc();
 
   std::thread prefetcher_;
-  framework::Channel<size_t>* channel_;
+
+  std::mutex mutex_;
+  std::condition_variable read_cv_;
+  std::condition_variable write_cv_;
+  size_t read_pos_;
+  size_t buf_size_;
+  std::atomic<bool> running_;
+
   platform::Place place_;
   std::vector<std::vector<framework::LoDTensor>> cpu_tensor_cache_;
   std::vector<std::vector<framework::LoDTensor>> gpu_tensor_cache_;
@@ -141,16 +150,21 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   out->clear();
   if (HasNext()) {
-    size_t cached_tensor_id;
-    channel_->Receive(&cached_tensor_id);
+    std::unique_lock<std::mutex> lock(mutex_);
+    read_cv_.wait(lock, [this] { return buf_size_ != 0; });
+
     if (platform::is_gpu_place(place_)) {
-      *out = gpu_tensor_cache_[cached_tensor_id];
-      ctxs_[cached_tensor_id]->Wait();
+      *out = gpu_tensor_cache_[read_pos_];
+      ctxs_[read_pos_]->Wait();
     } else {
       // CPU place
-      *out = cpu_tensor_cache_[cached_tensor_id];
+      *out = cpu_tensor_cache_[read_pos_];
     }
+
+    read_pos_ = (read_pos_ + 1) % cpu_tensor_cache_.size();
+    --buf_size_;
   }
+  write_cv_.notify_one();
 }
 
 void DoubleBufferReader::ReInit() {
@@ -159,17 +173,19 @@ void DoubleBufferReader::ReInit() {
   StartPrefetcher();
 }
 
-bool DoubleBufferReader::HasNext() const {
-  while (!channel_->IsClosed() && !channel_->CanReceive()) {
-  }
-  return channel_->CanReceive();
-}
+bool DoubleBufferReader::HasNext() const { return running_ || buf_size_ != 0; }
 
 void DoubleBufferReader::PrefetchThreadFunc() {
   VLOG(5) << "A new prefetch thread starts.";
   size_t cached_tensor_id = 0;
-  while (true) {
+  while (running_) {
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      write_cv_.wait(lock,
+                     [this] { return buf_size_ != cpu_tensor_cache_.size(); });
+    }
     auto& cpu_batch = cpu_tensor_cache_[cached_tensor_id];
+    cpu_batch.clear();
     reader_->ReadNext(&cpu_batch);
     if (cpu_batch.empty()) {
       // The underlying reader have no next data.
@@ -177,6 +193,7 @@ void DoubleBufferReader::PrefetchThreadFunc() {
     }
     if (platform::is_gpu_place(place_)) {
       auto& gpu_batch = gpu_tensor_cache_[cached_tensor_id];
+      gpu_batch.clear();
       auto* gpu_ctx = ctxs_[cached_tensor_id].get();
       gpu_batch.resize(cpu_batch.size());
       for (size_t i = 0; i < cpu_batch.size(); ++i) {
@@ -184,18 +201,15 @@ void DoubleBufferReader::PrefetchThreadFunc() {
         gpu_batch[i].set_lod(cpu_batch[i].lod());
       }
     }
-    try {
-      size_t tmp = cached_tensor_id;
-      channel_->Send(&tmp);
-    } catch (paddle::platform::EnforceNotMet e) {
-      VLOG(5) << "WARNING: The double buffer channel has been closed. The "
-                 "prefetch thread will terminate.";
-      break;
-    }
     ++cached_tensor_id;
     cached_tensor_id %= kCacheSize;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      ++buf_size_;
+    }
+    read_cv_.notify_one();
   }
-  channel_->Close();
+  read_cv_.notify_one();
   VLOG(5) << "Prefetch thread terminates.";
 }
 
