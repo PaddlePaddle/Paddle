@@ -28,7 +28,7 @@ class ParallelExecutor(object):
                  loss_name=None,
                  main_program=None,
                  num_threads=None,
-                 num_threads_per_dev=1,
+                 threads_per_dev=None,
                  allow_op_delay=False,
                  use_nccl_allreduce=True,
                  share_vars_from=None):
@@ -42,6 +42,9 @@ class ParallelExecutor(object):
                 if not provided, then default_main_program will be used.
             num_threads(int, default None): How many threads are used for
                 training.
+            threads_per_dev(int, default None): How many threads per device
+                are used for training. If it is set, the setting of num_threads
+                will bre reset.
             allow_op_delay(bool, default False): Whether to delay and buffer
                 some operators together for scheduling or not, which may
                 improve performance in some cases, defalut False.
@@ -85,11 +88,12 @@ class ParallelExecutor(object):
                 self._places.append(p)
         assert self._places, "no place for execution"
 
-        if num_threads is None:
+        if num_threads is None or threads_per_dev is not None:
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places) * num_threads_per_dev
+                num_threads = len(self._places) * (1 if threads_per_dev is None
+                                                   else threads_per_dev)
             else:
                 num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())
