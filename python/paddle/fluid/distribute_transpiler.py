@@ -370,6 +370,8 @@ class DistributeTranspiler:
             else:
                 recv_inputs.append(single_trainer_var)
 
+        # step 3
+        # each optimization op will has a optimize block
         optimize_block = None
 
         # step 4
@@ -433,6 +435,7 @@ class DistributeTranspiler:
         for idx, opt_op in enumerate(opt_op_on_pserver):
             per_opt_block = pserver_program.create_block(pre_block_idx)
             if optimize_block is None:
+                # first optimize block
                 optimize_block = per_opt_block
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
