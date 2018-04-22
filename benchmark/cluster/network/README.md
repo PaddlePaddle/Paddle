@@ -6,6 +6,8 @@
 - What's the TCP program's throughput upper limit?
     - How to tune the TCP program's throughput?
 - What's the benchmark of GPU direct? Is it high cost-effective?
+- Compared with the delay,we are more concerned with the throughput of the framework.
+	- Throughput is the main indicator of our choice of a framework
 
 ## Hardware Infomation
 
