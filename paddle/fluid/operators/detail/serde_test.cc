@@ -51,7 +51,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
 
   ::grpc::ByteBuffer msg;
   operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
-  EXPECT_GT(msg.Length(), 0);
+  EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
   std::vector<::grpc::Slice> slices;
@@ -84,7 +84,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(false, &scope, &ctx);
+  operators::detail::VariableResponse resp(&scope, &ctx);
   EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
@@ -129,7 +129,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
 
   ::grpc::ByteBuffer msg;
   operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
-  EXPECT_GT(msg.Length(), 0);
+  EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
   std::vector<::grpc::Slice> slices;
@@ -171,7 +171,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(false, &scope, &ctx);
+  operators::detail::VariableResponse resp(&scope, &ctx);
   if (from_type == 0) {
     EXPECT_EQ(resp.Parse(msg), 0);
   } else {
