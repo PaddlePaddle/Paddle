@@ -167,8 +167,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
     // ------------------- cudnn backward algorithm ---------------------
-    miopenConvFwdAlgorithm_t data_algo;
-    miopenConvBwdWeightsAlgorithm_t filter_algo;
+    miopenConvFwdAlgorithm_t data_algo = miopenConvolutionFwdAlgoGEMM;
+    miopenConvBwdWeightsAlgorithm_t filter_algo = miopenConvolutionBwdWeightsAlgoGEMM;
     size_t bwd_filter_ws_size, fwd_ws_size;
     size_t workspace_size_in_bytes = 0;
     //size_t workspace_size_limit = kConvCUDNNWorkspaceLimitBytes;
