@@ -66,7 +66,7 @@ void InitP2P(int count) {
 }
 
 void InitDevices(bool init_p2p) {
-  /*Init all avaiable devices by default */
+  /*Init all available devices by default */
 
   std::vector<platform::Place> places;
   places.emplace_back(platform::CPUPlace());
