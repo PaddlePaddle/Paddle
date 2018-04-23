@@ -39,6 +39,8 @@ class MultiPassReader : public framework::DecoratedReader {
       ++cur_pass_;
       if (cur_pass_ < pass_num_) {
         reader_->ReInit();
+      } else {
+        break;
       }
     }
     return std::move(res);

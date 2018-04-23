@@ -32,14 +32,14 @@ class ShuffleReader : public framework::DecoratedReader {
   }
 
   LoDTensorListPtr ReadNext() override {
-    if (buffer_it != buffer_.end()) {
+    if (buffer_it_ != buffer_.end()) {
       VLOG(10) << "Resetting shuffle buffer";
       ReloadBuffer();
       if (buffer_.empty()) {
         return nullptr;
       }
     }
-    return std::move(*buffer_it++);
+    return std::move(*buffer_it_++);
   }
 
  private:
@@ -67,7 +67,7 @@ class ShuffleReader : public framework::DecoratedReader {
 
   size_t buffer_size_;
   std::vector<LoDTensorListPtr> buffer_;
-  std::vector<LoDTensorListPtr>::iterator buffer_it;
+  std::vector<LoDTensorListPtr>::iterator buffer_it_;
   std::default_random_engine engine_;
 };
 
