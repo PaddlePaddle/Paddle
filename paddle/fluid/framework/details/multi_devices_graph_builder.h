@@ -40,8 +40,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
-                          bool skip_scale_loss,
-                          const std::vector<Scope *> &local_scopes);
+                          const std::vector<Scope *> &local_scopes,
+                          bool skip_scale_loss);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
