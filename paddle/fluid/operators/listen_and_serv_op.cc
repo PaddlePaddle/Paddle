@@ -332,8 +332,7 @@ from send_op and send back variables to recv_op.
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
         "a map from grad name to it's optimize block id")
         .SetDefault({});
-    AddAttr<bool>("sync_mode", "if works at sync_mode or not")
-        .SetDefault(false);
+    AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
     AddAttr<framework::BlockDesc *>(kPrefetchBlock,
