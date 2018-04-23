@@ -328,7 +328,8 @@ from send_op and send back variables to recv_op.
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<std::vector<std::string>>(
-        "grad_to_id(['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'])",
+        "grad_to_id",
+        "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not")
