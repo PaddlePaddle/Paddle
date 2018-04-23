@@ -46,7 +46,9 @@ class VariableResponse {
   }
 
   virtual ~VariableResponse() {
-    if (create_scope_) scope_->DeleteScope(local_scope_);
+    if (create_scope_) {
+      scope_->DeleteScope(local_scope_);
+    }
   }
 
   // return:
