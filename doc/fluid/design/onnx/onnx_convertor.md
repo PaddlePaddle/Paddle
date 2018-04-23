@@ -4,8 +4,6 @@
 
 Therefore, it is necessary to enable the conversion between PaddlePaddle and ONNX. This design doc is aimed at implementing a convertor, mainly for converting between **Fluid** models and ONNX (it is very likely that we may support older v2 models in the future). A complete convertor should be bidirectional - with a frontend AND a backend, but considering the importance, the we will start with the frontend i.e. Fluid models to ONNX models.
 
-One thing that makes it doable in Fluid's case is the use of a static IR - the `ProgramDesc` - as opposed to a dynamic graph, as created in the cases of frameworks like PyTorch.
-
 
 # How it works
 
@@ -23,6 +21,8 @@ Here are a few major considerations when it comes to converting models:
    1. We need to ensure that the inference outputs of the ops in run inside a model are the same as those when running the ONNX converted ops through an alternative ONNX backend.
    2. Checking to see if the generated nodes on the graph are validated by the internal ONNX checkers.
 - **Versioning**: ONNX versions its op listing over versions. In fact, it has versioning on 3 different levels: ops, graphs, and ONNX models. This requires that we are conscious about versioning the convertor and updating tests and op convertor logic for each release. It also implies that we release pre-trained ONNX models upon each version release.
+
+One thing that makes this conversion more feasible in Fluid's case is the use of a static IR - the `ProgramDesc` - as opposed to a dynamic graph, as created in the cases of frameworks like PyTorch.
 
 
 # Project structure
@@ -45,11 +45,17 @@ The project contains four important parts:
 # Usage
 The converter should be designed to very easy-to-use. Bidirectional conversion between a Fluid inference model and an ONNX binary model will be supported. Model validation will also provided to verify the correctness of converted model.
 
-* Fluid inference model to ONNX binary model
+* Convert Fluid inference model to ONNX binary model
 
-```
-python convert.py --fluid_model <fluid inference model> --onnx_model <ONNX model> validate True
-```
+    ```
+    python convert.py --fluid_model <fluid inference model> --onnx_model <ONNX model> validate True
+    ```
+
+* Validate the converted model
+
+    ```
+    python validate.py --fluid_model <fluid inference model> --onnx_model <ONNX model>
+    ```
 
 The conversion and model validation will be completed consecutively, finally output a readable model structure description. And for the converse conversion, users only need to exchange the input and output.
 
