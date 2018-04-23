@@ -34,7 +34,9 @@ void SendOpHandle::RunImpl() {
     }
     in->generated_op_->Wait(dev_ctxes_[p]);
   }
-  this->RunAndRecordEvent([&] { op_->Run(*local_scope_, place_); });
+  auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  // auto &lod_tensor = tmp_scope->FindVar(var_name)->Get<LoDTensor>();
+  this->RunAndRecordEvent([&] { op_->Run(*tmp_scope, place_); });
 }
 
 std::string SendOpHandle::Name() const { return "send"; }
