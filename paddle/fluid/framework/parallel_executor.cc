@@ -57,7 +57,8 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay)
+    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay,
+    bool customize_scale_loss)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -90,12 +91,13 @@ ParallelExecutor::ParallelExecutor(
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           member_->nccl_ctxs_.get());
+  details::MultiDevSSAGraphBuilder builder(
+      member_->places_, loss_var_name, params, member_->local_scopes_,
+      customize_scale_loss, member_->nccl_ctxs_.get());
 #else
   details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_);
+                                           params, member_->local_scopes_,
+                                           customize_scale_loss);
 #endif
   auto graph = builder.Build(main_program);
 
