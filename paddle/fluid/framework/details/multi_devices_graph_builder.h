@@ -62,7 +62,10 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
 
-  void CreateComputationalOps(SSAGraph *result, const OpDesc &op) const;
+  bool IsDistTrainOp(const OpDesc &op, OpDesc *send_op) const;
+
+  void CreateComputationalOps(SSAGraph *result, const OpDesc &op,
+                              size_t num_places) const;
 
   void CreateScaleLossGradOp(SSAGraph *result) const;
 
