@@ -1,15 +1,15 @@
 RNN Models
 ==========
-Recurrent neural network(RNN) is an important tool to model sequential data. PaddlePaddle provides flexible interface for building complex recurrent neural network. And we will show how to use PaddlePaddle to build RNN models include the following four main parts.
+Recurrent neural networks(RNN) are an important tool to model sequential data. PaddlePaddle provides flexible interface for building complex recurrent neural network. We will demonstrate how to use PaddlePaddle to build RNN models in the following 4 parts.
 
-In the first part, we will guide you how to configure recurrent neural network in PaddlePaddle from simple to complex. First, we will use vanilla recurrent neural network as example to show how to configure recurrent neural network architecture. Then We will use the sequence to sequence model as an example to demonstrate how you can configure complex recurrent neural network models gradually.
+In the first part, we will guide you how to configure recurrent neural network in PaddlePaddle from simple to complex. First, we will use a vanilla recurrent neural network as an example to show how to configure recurrent neural network architecture. Then We will use the sequence to sequence model as an example to demonstrate how you can configure complex recurrent neural network models gradually.
 
 ..  toctree::
   :maxdepth: 1
 
   rnn_config_en.rst
 
-Recurrent Group is the key unit to build complex recurrent neural network models. The second part described related concepts and Basic principle of Recurrent Group, and give a detailed description of Recurrent Group API interface. In addition, Sequence-level RNN(hierarchical sequence as input) and usage of Recurrent Group in it are also introduced.
+Recurrent Group is the key unit to build complex recurrent neural network models. The second part describes related concepts and Basic principles of Recurrent Group, and give a detailed description of Recurrent Group API interface. In addition, it also introduces Sequence-level RNN(hierarchical sequence as input) and the usage of Recurrent Group in it.
 
 ..  toctree::
   :maxdepth: 1
