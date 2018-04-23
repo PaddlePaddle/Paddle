@@ -1,10 +1,11 @@
 # Throughput of a program on the 100Gb network.
 ## Motivation
-Throughput is the main feature of our choice of a framework.
+Throughput is the main feature of our choice of a framework. And We need framework of multi-thread model to use full of network throughput.However,multi-process sometimes can be used to test the limit of TCP on network hardware.
  
    - Compared with the delay,we are more concerned with the throughput of the framework.   
    - Benchmark of framework maybe not true in our envirionment as they said.
    - It's not useful if we can't make use of a framework's potential: we maybe not expert of the framework.
+   -  
 
 ### Some common questions:
 - Can data transformation use TCP protocol use full of a 100Gb network?
@@ -22,7 +23,7 @@ Throughput is the main feature of our choice of a framework.
 <table>
 <thead>
 <tr>
-<th>Buffer size </th>
+<th>      </th>
 <th>4K</th>
 <th>16K</th>
 <th>32K</th>
@@ -39,7 +40,7 @@ Throughput is the main feature of our choice of a framework.
 <tbody>
 <tr>
 <td>1 * 1</td>
-<td>  </td>
+<td>8.36</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
