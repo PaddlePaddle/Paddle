@@ -29,7 +29,7 @@ namespace framework {
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
 
-void InitGflags(const std::vector<std::string> &argv) {
+void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
     int argc = argv.size();
     char **arr = new char *[argv.size()];
