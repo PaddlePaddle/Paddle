@@ -30,29 +30,46 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
 template <>
 void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
-    const void* src, size_t num, cudaStream_t stream) {
+    const void* src, size_t num, cudaStream_t stream = nullptr) {
   platform::SetDeviceId(src_place.device);
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+  if (stream) {
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+  } else {
+    platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+  }
 }
 
 template <>
 void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CPUPlace src_place,
-    const void* src, size_t num, cudaStream_t stream) {
+    const void* src, size_t num, cudaStream_t stream = nullptr) {
   platform::SetDeviceId(dst_place.device);
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+  if (stream) {
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+  } else {
+    platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+  }
 }
 
 template <>
 void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CUDAPlace src_place,
-    const void* src, size_t num, cudaStream_t stream) {
+    const void* src, size_t num, cudaStream_t stream = nullptr) {
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
-    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
+    if (stream) {
+      platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
+    } else {
+      platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
+    }
   } else {
-    platform::GpuMemcpyPeer(dst, dst_place.device, src, src_place.device, num,
-                            stream);
+    if (stream) {
+      platform::GpuMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
+                                   num, stream);
+    } else {
+      platform::GpuMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
+                                  num, stream);
+    }
   }
 }
 
@@ -81,18 +98,26 @@ template <>
 void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
     platform::CUDAPlace src_place, const void* src, size_t num,
-    cudaStream_t stream) {
+    cudaStream_t stream = nullptr) {
   platform::SetDeviceId(src_place.device);
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+  if (stream) {
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+  } else {
+    platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+  }
 }
 
 template <>
 void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     platform::CUDAPlace dst_place, void* dst,
     platform::CUDAPinnedPlace src_place, const void* src, size_t num,
-    cudaStream_t stream) {
+    cudaStream_t stream = nullptr) {
   platform::SetDeviceId(dst_place.device);
-  platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+  if (stream) {
+    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+  } else {
+    platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+  }
 }
 
 #endif
