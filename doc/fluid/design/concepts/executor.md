@@ -1,7 +1,7 @@
 # Executor Design Doc
 
 ## Motivation
-In [fluid](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid.md), we encourage the user to use deep learning programming paradigms to describe the training process. When the user-written Python program is executed, it will first create a protobuf message
+In [fluid](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/motivation/fluid.md), we encourage the user to use deep learning programming paradigms to describe the training process. When the user-written Python program is executed, it will first create a protobuf message
 [`ProgramDesc`](https://github.com/PaddlePaddle/Paddle/blob/a91efdde6910ce92a78e3aa7157412c4c88d9ee8/paddle/framework/framework.proto#L145) that describes the process and is conceptually like an [abstract syntax tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree).
 
 The executor runs the `ProgramDesc` like an interpreter. `ProgramDesc` contains the intrinsics (operators in this case) and variables which will be used, executor explicitly executes the stored precompiled code.

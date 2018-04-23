@@ -17,71 +17,6 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 
 ## Hardware Infomation
 
-## BRPC
-
-## GRPC 
-<table>
-<thead>
-<tr>
-<th>      </th>
-<th>4K</th>
-<th>16K</th>
-<th>32K</th>
-<th>64K</th>
-<th>128K</th>
-<th>256K</th>
-<th>512K</th>
-<th>1M</th>
-<th>2M</th>
-<th>4M</th>
-<th>8M</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1 * 1</td>
-<td>8.36</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
-</table>
 
 ## iperf
 - Refrence: 
@@ -119,8 +54,59 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <td>37.00-38.00</td>
 <td>11.1</td>
 </tr>
+<tr>
+<td>total</td>
+<td></td>
+<td>45.8</td>
+</tr>
 </tbody>
 </table>
+
+## BRPC
+
+## GRPC 
+[Cod is here](https://github.com/gongweibao/tests/tree/develop/grpc_test)
+
+**speed unit: MB/s**
+<table>
+<thead>
+<tr>
+<th> </th>
+<th>loop times</th>
+<th>4K</th>
+<th>16K</th>
+<th>32K</th>
+<th>64K</th>
+<th>128K</th>
+<th>256K</th>
+<th>512K</th>
+<th>1M</th>
+<th>2M</th>
+<th>4M</th>
+<th>8M</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pserver(4threads)<br>client(4threads)</td>
+<td>300</td>
+<td>17.49</td>
+<td>134.57</td>
+<td>195.92</td>
+<td>332.66</td>
+<td>601.70</td>
+<td>438.08</td>
+<td>689.00</td>
+<td>812.12</td>
+<td>1026.10</td>
+<td>1101.00</td>
+<td>318.85</td>
+</tr>
+</tbody>
+</table>
+
+**Notice: GRPC client consume more than 10GB memory in this test when buffer size >= 4MB. And it seems that GRPC creates many threads background.**
+
 
 ## ib\_read\_bw
 ## MPI 
@@ -144,7 +130,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
+<td>server(4threads)<br>client(4threads)</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
@@ -157,35 +143,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <td> </td>
 <td> </td>
 </tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
+<tr></tbody>
 </table>
 
 ### With RDMA
@@ -208,7 +166,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
+<td>server(4threads)<br>client(4threads)</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
@@ -221,42 +179,14 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <td> </td>
 <td> </td>
 </tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
+<tr></tbody>
 </table>
 
 ### With RADMA + GPU direct
 <table>
 <thead>
 <tr>
-<th>Buffer size </th>
+<th></th>
 <th>4K</th>
 <th>16K</th>
 <th>32K</th>
@@ -272,7 +202,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 </thead>
 <tbody>
 <tr>
-<td>1 * 1</td>
+<td>server(4threads)<br>client(4threads)</td>
 <td>  </td>
 <td>  </td>
 <td>  </td>
@@ -284,36 +214,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <td> </td>
 <td> </td>
 <td> </td>
-</tr>
-<tr>
-<td>2 * 2</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr>
-<td>4 * 4</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-</tbody>
+</tr></tbody>
 </table>
 
 

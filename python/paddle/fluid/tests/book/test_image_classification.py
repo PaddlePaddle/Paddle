@@ -248,6 +248,10 @@ def infer(use_cuda, save_dirname=None):
 
         print("infer results: ", results[0])
 
+        fluid.io.save_inference_model(save_dirname, feed_target_names,
+                                      fetch_targets, exe,
+                                      inference_transpiler_program)
+
 
 def main(net_type, use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():

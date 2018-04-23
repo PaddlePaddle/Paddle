@@ -29,9 +29,7 @@ namespace framework {
 namespace details {
 
 struct GatherOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
-
+ public:
   GatherOpHandle(const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places);
 
@@ -41,6 +39,11 @@ struct GatherOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
+
+ private:
+  const std::vector<Scope *> &local_scopes_;
+  const std::vector<platform::Place> &places_;
 };
 
 }  // namespace details

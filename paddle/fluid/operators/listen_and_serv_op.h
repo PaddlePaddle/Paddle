@@ -34,17 +34,22 @@ void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
-  ListenAndServOp(const std::string &type,
-                  const framework::VariableNameMap &inputs,
-                  const framework::VariableNameMap &outputs,
-                  const framework::AttributeMap &attrs);
+  ListenAndServOp(const std::string& type,
+                  const framework::VariableNameMap& inputs,
+                  const framework::VariableNameMap& outputs,
+                  const framework::AttributeMap& attrs);
 
   int GetSelectedPort() const;
 
+  void RunSyncLoop(framework::Executor* executor,
+                   framework::ProgramDesc* program,
+                   framework::Scope* recv_scope,
+                   framework::BlockDesc* prefetch_block) const;
+
   void Stop() override;
 
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override;
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override;
 
  protected:
   mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
