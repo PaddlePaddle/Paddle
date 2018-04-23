@@ -1107,6 +1107,10 @@ class Program(object):
     def random_seed(self):
         return self._seed
 
+    @property
+    def num_blocks(self):
+        return self.desc.num_blocks()
+
     @random_seed.setter
     def random_seed(self, seed):
         if not isinstance(seed, int):
