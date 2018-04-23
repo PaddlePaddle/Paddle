@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -323,6 +323,16 @@ message ClipConfig {
   required double max = 2;
 }
 
+message UpsampleConfig {
+  required ImageConfig image_conf = 1;
+  optional uint32 scale = 2 [ default = 2 ];
+  optional uint32 scale_y = 3 [ default = 2 ];
+  optional bool pad_out_x = 4 [ default = false ];
+  optional bool pad_out_y = 5 [ default = false ];
+  optional uint32 upsample_size = 6;
+  optional uint32 upsample_size_y = 7;
+}
+
 message ROIPoolConfig {
   required uint32 pooled_width = 1;
   required uint32 pooled_height = 2;
@@ -359,6 +369,7 @@ message LayerInputConfig {
   optional ClipConfig clip_conf = 18;
   optional ScaleSubRegionConfig scale_sub_region_conf = 19;
   optional ROIPoolConfig roi_pool_conf = 20;
+  optional UpsampleConfig upsample_conf = 21;
 }
 
 message LayerConfig {

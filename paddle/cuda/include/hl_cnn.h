@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -369,5 +369,49 @@ extern void hl_maxout_backward(real* inGrad,
                                size_t size,
                                size_t featLen,
                                size_t groups);
+
+/**
+ * @brief   Upsample forward.
+ * @param[in]   inputData   input data.
+ * @param[out]  maskData    the mask data from MaxPoolWithMaskLayer.
+ * @param[out]  batchSize   the batch size of the input.
+ * @param[in]   imgSizeH    image height.
+ * @param[in]   imgSizeW    image width.
+ * @param[in]   channels    the input channels.
+ * @param[in]   outputH     the output height.
+ * @param[in]   outputW     the output widht.
+ * @param[out]  outputData  output data.
+ */
+extern void hl_upsample_forward(real* inputData,
+                                real* maskData,
+                                size_t batchSize,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW,
+                                real* outputData);
+
+/**
+ * @brief   Upsample backward.
+ * @param[in]   outputGradData  the output grad data.
+ * @param[out]  maskData    the mask data from MaxPoolWithMaskLayer.
+ * @param[out]  batchSize       the batch size of the input.
+ * @param[in]   imgSizeH        image height.
+ * @param[in]   imgSizeW        image width.
+ * @param[in]   channels        the input channels.
+ * @param[in]   outputH         the output height.
+ * @param[in]   outputW         the output widht.
+ * @param[out]  inputGradData   the input grad data.
+ */
+extern void hl_upsample_backward(real* outputGradData,
+                                 real* maskData,
+                                 size_t batchSize,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t channels,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 real* inputGradData);
 
 #endif  // HL_CNN_H_

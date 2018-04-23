@@ -2,6 +2,13 @@
 {# Import the theme's layout. #}
 {% extends "!layout.html" %}
 
+{# SIDE NAV, TOGGLES ON MOBILE #}		
+{% block menu %}
+<nav class="doc-menu-vertical" role="navigation">
+{% set toctree = toctree(maxdepth=-1, collapse=False,titles_only=True, includehidden=True) %}
+{{ toctree }}
+</nav>
+{% endblock %}
 
 {%- block extrahead %} 
 <script>

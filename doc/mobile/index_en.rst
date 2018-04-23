@@ -1,4 +1,4 @@
-MOBILE
+Mobile
 ======
 
 ..  toctree::

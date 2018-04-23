@@ -16,13 +16,22 @@ from paddle.trainer.config_parser import *
 from default_decorators import *
 
 __all__ = [
-    "evaluator_base", "classification_error_evaluator", "auc_evaluator",
-    "pnpair_evaluator", "precision_recall_evaluator", "ctc_error_evaluator",
-    "chunk_evaluator", "sum_evaluator", "column_sum_evaluator",
-    "value_printer_evaluator", "gradient_printer_evaluator",
-    "maxid_printer_evaluator", "maxframe_printer_evaluator",
-    "seqtext_printer_evaluator", "classification_error_printer_evaluator",
-    "detection_map_evaluator"
+    "evaluator_base",
+    "classification_error_evaluator",
+    "auc_evaluator",
+    "pnpair_evaluator",
+    "precision_recall_evaluator",
+    "ctc_error_evaluator",
+    "chunk_evaluator",
+    "sum_evaluator",
+    "column_sum_evaluator",
+    "value_printer_evaluator",
+    "gradient_printer_evaluator",
+    "maxid_printer_evaluator",
+    "maxframe_printer_evaluator",
+    "seqtext_printer_evaluator",
+    "classification_error_printer_evaluator",
+    "detection_map_evaluator",
 ]
 
 

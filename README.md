@@ -37,6 +37,7 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 
       - Optimized math operations through SSE/AVX intrinsics, BLAS libraries
       (e.g. MKL, OpenBLAS, cuBLAS) or customized CPU/GPU kernels.
+      - Optimized CNN networks through MKL-DNN library.
       - Highly optimized recurrent networks which can handle **variable-length**
       sequence without padding.
       - Optimized local and distributed training for models with high dimensional
