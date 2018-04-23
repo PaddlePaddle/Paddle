@@ -29,7 +29,8 @@ class ParallelExecutor(object):
                  main_program=None,
                  num_threads=None,
                  allow_op_delay=False,
-                 share_vars_from=None):
+                 share_vars_from=None,
+                 customize_loss_grad=False):
         """
         ParallelExecutor can run program in parallel.
 
@@ -122,7 +123,8 @@ class ParallelExecutor(object):
             loss_name if loss_name else '',
             scope,
             local_scopes,
-            allow_op_delay)
+            allow_op_delay,
+            customize_loss_grad)
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):
