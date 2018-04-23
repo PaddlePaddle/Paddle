@@ -23,7 +23,7 @@ from test_batch_norm_op import TestBatchNormOpInference, TestBatchNormOpTraining
 
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
-    def setUp(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
@@ -149,8 +149,7 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
 
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
-    def setUp(self):
-        self.dtype = np.float32
+    def init_kernel_type(self):
         self.use_mkldnn = True
 
     def test_check_output(self):

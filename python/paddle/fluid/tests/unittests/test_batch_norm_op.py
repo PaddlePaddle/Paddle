@@ -159,6 +159,7 @@ class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
         self.use_mkldnn = False
+        self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
@@ -256,11 +257,14 @@ class TestBatchNormOpInference(unittest.TestCase):
                                       [2, 3, 4, 5])
                 self.check_with_place(place, data_format, self.dtype, [2, 3])
 
+    def init_kernel_type(self):
+        pass
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
         self.use_mkldnn = False
+        self.init_kernel_type()
 
     def test_check_output(self):
         places = []
@@ -279,6 +283,7 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.use_mkldnn = False
+        self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.allclose(np.array(tensor), np_array, atol=atol)
@@ -401,6 +406,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
             for data_format in ["NCHW", "NHWC"]:
                 test_with_place(place, data_format, [2, 3, 4, 5])
 
+    def init_kernel_type(self):
+        pass
 
 if __name__ == '__main__':
     unittest.main()
