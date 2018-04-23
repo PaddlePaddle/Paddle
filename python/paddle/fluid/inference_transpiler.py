@@ -330,11 +330,17 @@ class InferenceTranspiler:
         '''
 
         def find_op(var):
+            # It is possible that var.op is not up to date after some 
+            # modifications to program desc. Here we force to make it up to date.
+            var.op = None
+            for op in self.block.ops:
+                if var.name in op.output_arg_names:
+                    var.op = op
+                    break
+
             if var.op is None:
-                for op in self.block.ops:
-                    if var.name in op.output_arg_names:
-                        var.op = op
-                        break
+                raise ValueError("The target variable must have an "
+                                 "associated operator that generates it.")
 
         i = 0
         while i < len(self.block.ops):

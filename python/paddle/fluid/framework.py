@@ -1070,16 +1070,25 @@ class Program(object):
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
-                    if t.op is None:
-                        global_block = self.global_block()
-                        for op in global_block.ops:
-                            if t.name in op.output_arg_names:
-                                t.op = op
-                                break
+                    # After transpiler processing, the op that output this
+                    # variable maybe has been changed, so t.op is not reliable
+                    # and we need to find the current op that generate this 
+                    # variable here.
+                    t.op = None
+                    global_block = self.global_block()
+                    for idx, op in enumerate(global_block.ops):
+                        if t.name in op.output_arg_names:
+                            t.op = op
+                            break
+
                     t = t.op
+                    if t is None:
+                        raise ValueError(
+                            "The target variable must have an "
+                            "associated operator that generates it.")
                 else:
-                    raise ValueError(("All targets of prune() can only be "
-                                      "Variable or Operator."))
+                    raise ValueError("All targets of prune() can only be "
+                                     "Variable or Operator.")
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()

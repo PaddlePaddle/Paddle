@@ -266,7 +266,7 @@ def infer(use_cuda, save_dirname=None):
                 np.testing.assert_almost_equal(
                     results[0][i], fp16_results[0][i], decimal=2)
 
-            print("fp16 infer results: ", fp16_results[0])
+            print("float16 infer results: ", fp16_results[0])
 
             fluid.io.save_inference_model("float16_" + save_dirname,
                                           feed_target_names, fetch_targets, exe,
