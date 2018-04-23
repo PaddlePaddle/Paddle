@@ -118,15 +118,18 @@ class TestPool3d_Op(OpTest):
 
         self.outputs = {'Out': output.astype('float32')}
 
+    def testcudnn(self):
+        return core.is_compiled_with_cuda() and self.use_cudnn
+
     def test_check_output(self):
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
             self.check_output()
 
     def test_check_grad(self):
-        if self.use_cudnn and self.pool_type != "max":
+        if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, set(['X']), 'Out', max_relative_error=0.07)

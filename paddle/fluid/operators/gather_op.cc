@@ -100,7 +100,8 @@ Out = [[3, 4],
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(gather, ops::GatherOp, ops::GatherOpMaker, gather_grad,
-            ops::GatherGradOp);
+REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>);

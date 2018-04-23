@@ -117,8 +117,9 @@ class LabelSmoothGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
-            label_smooth_grad, ops::LabelSmoothGradOp);
+REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
 REGISTER_OP_CPU_KERNEL(
     label_smooth,
     ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, float>,

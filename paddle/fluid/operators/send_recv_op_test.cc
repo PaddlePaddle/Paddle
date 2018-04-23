@@ -127,7 +127,7 @@ void StartServerNet(bool is_sparse) {
   const auto &root_block = program.Block(0);
   auto *optimize_block = program.AppendBlock(root_block);
   auto *prefetch_block = program.AppendBlock(root_block);
-  // X for server side tensors, RX for received tensers, must be of same shape.
+  // X for server side tensors, RX for received tensors, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
 
   f::AttributeMap attrs;
@@ -139,7 +139,6 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"PrefetchBlock", prefetch_block});
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
-  LOG(INFO) << "selected port before run " << selected_port;
   listen_and_serv_op->Run(scope, place);
   LOG(INFO) << "server exit";
 }
@@ -158,16 +157,13 @@ TEST(SendRecvOp, CPUDense) {
   selected_port = static_cast<paddle::operators::ListenAndServOp *>(
                       listen_and_serv_op.get())
                       ->GetSelectedPort();
-  LOG(INFO) << "selected port " << selected_port;
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
   auto send_op = f::OpRegistry::CreateOp(
       "send", {{"X", {"x1"}}},
       {{"Out", {"Out"}}, {"RPCClient", {"RPC_CLIENT_VAR"}}}, attrs);
-  LOG(INFO) << "before run " << endpoint;
   send_op->Run(scope, place);
-  LOG(INFO) << "end run";
 
   auto in_var = scope.Var("x1");
   auto tensor = in_var->GetMutable<f::LoDTensor>();
@@ -180,7 +176,6 @@ TEST(SendRecvOp, CPUDense) {
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
-  LOG(INFO) << "before stop";
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
@@ -199,7 +194,6 @@ TEST(SendRecvOp, CPUSparse) {
   selected_port = static_cast<paddle::operators::ListenAndServOp *>(
                       listen_and_serv_op.get())
                       ->GetSelectedPort();
-  LOG(INFO) << "selected port " << selected_port;
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
