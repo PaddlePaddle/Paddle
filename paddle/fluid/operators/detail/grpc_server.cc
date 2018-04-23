@@ -68,9 +68,9 @@ class RequestSend final : public RequestBase {
         queue_(queue),
         responder_(&ctx_) {
     if (sync_mode_) {
-      request_.reset(new VariableResponse(false, scope, dev_ctx_));
+      request_.reset(new VariableResponse(scope, dev_ctx_, false));
     } else {
-      request_.reset(new VariableResponse(true, scope, dev_ctx_));
+      request_.reset(new VariableResponse(scope, dev_ctx_, true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
@@ -158,9 +158,9 @@ class RequestPrefetch final : public RequestBase {
         program_(program),
         prefetch_ctx_(prefetch_ctx) {
     if (sync_mode_) {
-      request_.reset(new VariableResponse(false, scope, dev_ctx_));
+      request_.reset(new VariableResponse(scope, dev_ctx_, false));
     } else {
-      request_.reset(new VariableResponse(true, scope, dev_ctx_));
+      request_.reset(new VariableResponse(scope, dev_ctx_, true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
