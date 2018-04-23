@@ -1,10 +1,10 @@
 ## Background
 
-RecordIO is a file format as a container of records.  This package is a C++ implementation of https://github.com/paddlepaddle/recordio, which originates from https://github.com/wangkuiyi/recordio.
+The RecordIO file format is a container for records.  This package is a C++ implementation of https://github.com/paddlepaddle/recordio, which originates from https://github.com/wangkuiyi/recordio.
 
 ## Fault-tolerant Writing
 
-For the initial design purpose of ReocrdIO within Google, which was logging, RecordIO groups record into *chunks*, whose header contains an MD5 hash of the chunk.  A process that writes logs is supposed to call the Writer interface to add records.  Once the writer accumulates a handful of them, it groups a chunk, put the MD5 into the chunk header, and appends the chunk to the file.  In the case that the process crashes unexpectedly, the leftover could be that the last chunk in the file was half-written. This doesn't prevent the process, after restarted, continue writing to the same RecordIO file, because the reader will be able to identify incomplete chunks and skip them.
+For the initial design purpose of RecordIO within Google, which was logging, RecordIO groups record into *chunks*, whose header contains an MD5 hash of the chunk.  A process that writes logs is supposed to call the Writer interface to add records.  Once the writer accumulates a handful of them, it groups a chunk, put the MD5 into the chunk header, and appends the chunk to the file.  In the event the process crashes unexpected, the last chunk in the RecordIO file could be incomplete/corrupt. The RecordIO reader is able to recover from these errors when the process restarts by identifying incomplete chucks and skipping over them.
 
 ## Reading Ranges
 
