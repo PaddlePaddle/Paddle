@@ -297,8 +297,11 @@ class DistributeTranspiler:
             inputs={"X": send_inputs},
             outputs={"Out": send_outputs,
                      "RPCClient": rpc_client_var},
-            attrs={"endpoints": pserver_endpoints,
-                   "epmap": eplist})
+            attrs={
+                "endpoints": pserver_endpoints,
+                "epmap": eplist,
+                "sync_mode": self.sync_mode
+            })
         # step4: Concat the parameters splits together after recv.
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:
@@ -404,8 +407,8 @@ class DistributeTranspiler:
         for op in self.optimize_ops:
             if op.type == "scale":
                 for in_name in op.input_arg_names:
-                    if in_name.startswith("beta1_pow_acc") or\
-                        in_name.startswith("beta2_pow_acc"):
+                    if in_name.startswith("beta1_pow_acc") or \
+                            in_name.startswith("beta2_pow_acc"):
                         global_ops.append(op)
 
         def __append_optimize_op__(op, block, grad_to_block_id):
@@ -434,7 +437,6 @@ class DistributeTranspiler:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id)
 
         # append global ops
-        opt_state_block = None
         if global_ops:
             opt_state_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
