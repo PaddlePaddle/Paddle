@@ -162,6 +162,12 @@ void ParallelExecutor::BCastParamsToGPUs(
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+
+  std::unordered_set<std::string> fetch_var_set;
+  for (auto &var_name : fetch_tensors) {
+    fetch_var_set.emplace(var_name);
+  }
+
   // Create local scopes.
   for (auto it = member_->local_scopes_.rbegin();
        it != member_->local_scopes_.rend(); ++it) {
@@ -175,7 +181,9 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
         continue;
       }
 
-      if (std::get<2>(name_type_pair)) {  // Persistable
+      if (std::get<2>(name_type_pair) ||
+          fetch_var_set.count(std::get<0>(name_type_pair)) !=
+              0) {  // Persistable || in fetch set
         InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       } else {
