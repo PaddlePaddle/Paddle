@@ -64,15 +64,15 @@ class ReadOp : public framework::OperatorBase {
                     "Cannot find reader variable %s", Input("Reader"))
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
-    std::vector<framework::LoDTensor> ins;
-    reader->ReadNext(&ins);
-    PADDLE_ENFORCE(!ins.empty(), "There is no next data.");
-    PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
-    for (size_t i = 0; i < ins.size(); ++i) {
+    auto ins = reader->ReadNext();
+    PADDLE_ENFORCE_NOT_NULL(ins, "There is no next data.");
+    PADDLE_ENFORCE_EQ(ins->size(), out_arg_names.size());
+    for (size_t i = 0; i < ins->size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
-      out->ShareDataWith(ins[i]);
-      out->set_lod(ins[i].lod());
+      auto& lod_tensor = ins->at(i);
+      out->ShareDataWith(lod_tensor);
+      out->set_lod(lod_tensor.lod());
     }
   }
 };

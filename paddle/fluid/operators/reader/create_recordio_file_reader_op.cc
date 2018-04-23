@@ -36,12 +36,12 @@ class RecordIOFileReader : public framework::FileReader {
   void ReInit() override { scanner_.Reset(); }
 
  protected:
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+  LoDTensorListPtr ReadNextImpl() override {
     if (ThreadSafe) {
       std::lock_guard<std::mutex> guard(*mutex_);
-      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
+      return framework::ReadFromRecordIO(&scanner_, dev_ctx_);
     } else {
-      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
+      return framework::ReadFromRecordIO(&scanner_, dev_ctx_);
     }
   }
 
@@ -70,8 +70,9 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
 
-    out->Reset(new RecordIOFileReader<true>(
-        filename, RestoreShapes(shape_concat, ranks)));
+    out->Reset(
+        std::unique_ptr<framework::ReaderBase>(new RecordIOFileReader<true>(
+            filename, RestoreShapes(shape_concat, ranks))));
   }
 };
 

@@ -20,20 +20,19 @@ ReaderBase::~ReaderBase() {}
 
 FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) {
-  ReadNextImpl(out);
-  if (out->empty()) {
-    return;
+std::unique_ptr<std::vector<LoDTensor>> FileReader::ReadNext() {
+  auto out = ReadNextImpl();
+  if (out == nullptr) {
+    return out;
   }
   for (size_t i = 0; i < dims_.size(); ++i) {
     auto &actual = out->at(i).dims();
     auto &expect = dims_[i];
 
     PADDLE_ENFORCE_EQ(actual.size(), expect.size());
-    for (int j = 0; j < actual.size(); ++j) {
-      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
-    }
   }
+
+  return out;
 }
 }  // namespace framework
 }  // namespace paddle

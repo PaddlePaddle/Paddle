@@ -49,7 +49,7 @@ class DoubleBufferReader : public framework::DecoratedReader {
     StartPrefetcher();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  LoDTensorListPtr ReadNext() override;
   void ReInit() override;
 
   ~DoubleBufferReader() { EndPrefetcher(); }
@@ -110,7 +110,8 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
       place = platform::CUDAPlace(static_cast<int>(num));
     }
 
-    out->Reset(new DoubleBufferReader(underlying_reader.Get(), place));
+    out->Reset(std::unique_ptr<framework::ReaderBase>(
+        new DoubleBufferReader(underlying_reader.Get(), place)));
   }
 };
 
@@ -138,19 +139,21 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  out->clear();
-  if (HasNext()) {
-    size_t cached_tensor_id;
-    channel_->Receive(&cached_tensor_id);
-    if (platform::is_gpu_place(place_)) {
-      *out = gpu_tensor_cache_[cached_tensor_id];
-      ctxs_[cached_tensor_id]->Wait();
-    } else {
-      // CPU place
-      *out = cpu_tensor_cache_[cached_tensor_id];
-    }
+DoubleBufferReader::LoDTensorListPtr DoubleBufferReader::ReadNext() {
+  if (!HasNext()) {
+    return nullptr;
   }
+  LoDTensorListPtr out(new std::vector<framework::LoDTensor>);
+  size_t cached_tensor_id;
+  channel_->Receive(&cached_tensor_id);
+  if (platform::is_gpu_place(place_)) {
+    *out = gpu_tensor_cache_[cached_tensor_id];
+    ctxs_[cached_tensor_id]->Wait();
+  } else {
+    // CPU place
+    *out = cpu_tensor_cache_[cached_tensor_id];
+  }
+  return out;
 }
 
 void DoubleBufferReader::ReInit() {
@@ -170,11 +173,12 @@ void DoubleBufferReader::PrefetchThreadFunc() {
   size_t cached_tensor_id = 0;
   while (true) {
     auto& cpu_batch = cpu_tensor_cache_[cached_tensor_id];
-    reader_->ReadNext(&cpu_batch);
-    if (cpu_batch.empty()) {
+    auto ins = reader_->ReadNext();
+    if (ins == nullptr) {
       // The underlying reader have no next data.
       break;
     }
+    cpu_batch = *ins;
     if (platform::is_gpu_place(place_)) {
       auto& gpu_batch = gpu_tensor_cache_[cached_tensor_id];
       auto* gpu_ctx = ctxs_[cached_tensor_id].get();

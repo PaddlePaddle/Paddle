@@ -26,7 +26,9 @@ namespace framework {
 
 class ReaderBase {
  public:
-  virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
+  using LoDTensorListPtr = std::unique_ptr<std::vector<LoDTensor>>;
+
+  virtual LoDTensorListPtr ReadNext() = 0;
 
   virtual void ReInit() = 0;
 
@@ -49,10 +51,10 @@ class FileReader : public ReaderBase {
  public:
   explicit FileReader(const std::vector<DDim>& dims);
 
-  void ReadNext(std::vector<LoDTensor>* out) override;
+  LoDTensorListPtr ReadNext() override;
 
  protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+  virtual LoDTensorListPtr ReadNextImpl() = 0;
 
  private:
   std::vector<DDim> dims_;
@@ -60,15 +62,17 @@ class FileReader : public ReaderBase {
 
 // The ReaderHolder is used as reader' unified wrapper,
 // making it easier to access different type reader in Variables.
-class ReaderHolder {
+class ReaderHolder : public ReaderBase {
  public:
-  void Reset(ReaderBase* reader) { reader_.reset(reader); }
+  void Reset(std::unique_ptr<ReaderBase>&& reader) {
+    reader_ = std::move(reader);
+  }
 
   ReaderBase* Get() const { return reader_.get(); }
 
-  void ReadNext(std::vector<LoDTensor>* out) {
+  LoDTensorListPtr ReadNext() {
     PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->ReadNext(out);
+    return reader_->ReadNext();
   }
   void ReInit() {
     PADDLE_ENFORCE_NOT_NULL(reader_);

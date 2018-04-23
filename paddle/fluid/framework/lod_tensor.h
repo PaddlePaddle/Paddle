@@ -36,7 +36,7 @@ namespace paddle {
 namespace recordio {
 class Writer;
 class Scanner;
-}
+}  // namespace recordio
 
 namespace framework {
 
@@ -223,7 +223,7 @@ extern void WriteToRecordIO(recordio::Writer* writer,
                             const std::vector<LoDTensor>& tensor,
                             const platform::DeviceContext& dev_ctx);
 
-extern std::vector<LoDTensor> ReadFromRecordIO(
+extern std::unique_ptr<std::vector<LoDTensor>> ReadFromRecordIO(
     recordio::Scanner* scanner, const platform::DeviceContext& dev_ctx);
 
 }  // namespace framework

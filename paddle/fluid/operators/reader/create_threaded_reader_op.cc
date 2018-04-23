@@ -24,9 +24,9 @@ class ThreadedReader : public framework::DecoratedReader {
   ThreadedReader(ReaderBase* reader, bool safe_mode)
       : DecoratedReader(reader), safe_mode_(safe_mode) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  LoDTensorListPtr ReadNext() override {
     std::lock_guard<std::mutex> lock(mutex_);
-    reader_->ReadNext(out);
+    return reader_->ReadNext();
   }
 
   void ReInit() override {
@@ -59,7 +59,8 @@ class CreateThreadedReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     bool safe_mode = Attr<bool>("safe_mode");
-    out->Reset(new ThreadedReader(underlying_reader.Get(), safe_mode));
+    out->Reset(std::unique_ptr<framework::ReaderBase>(
+        new ThreadedReader(underlying_reader.Get(), safe_mode)));
   }
 };
 

@@ -31,7 +31,7 @@ class MultiFileReader : public framework::ReaderBase {
     StartNewScheduler();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  LoDTensorListPtr ReadNext() override;
   void ReInit() override;
 
   ~MultiFileReader() { EndScheduler(); }
@@ -53,11 +53,18 @@ class MultiFileReader : public framework::ReaderBase {
   framework::Channel<std::vector<framework::LoDTensor>>* buffer_;
 };
 
-void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  out->clear();
-  if (HasNext()) {
-    buffer_->Receive(out);
+MultiFileReader::LoDTensorListPtr MultiFileReader::ReadNext() {
+  if (!HasNext()) {
+    return nullptr;
   }
+
+  std::vector<framework::LoDTensor> res;
+  buffer_->Receive(&res);
+
+  MultiFileReader::LoDTensorListPtr retv(
+      new std::vector<framework::LoDTensor>());
+  *retv = res;
+  return std::move(retv);
 }
 
 void MultiFileReader::ReInit() {
@@ -143,13 +150,12 @@ void MultiFileReader::PrefetchThreadFunc(std::string file_name,
   std::unique_ptr<framework::ReaderBase> reader =
       CreateReaderByFileName(file_name, dims_);
   while (true) {
-    std::vector<framework::LoDTensor> ins;
-    reader->ReadNext(&ins);
-    if (ins.empty()) {
+    auto ins = reader->ReadNext();
+    if (ins == nullptr) {
       break;
     }
     try {
-      buffer_->Send(&ins);
+      buffer_->Send(ins.get());
     } catch (paddle::platform::EnforceNotMet e) {
       VLOG(5) << "WARNING: The buffer channel has been closed. The prefetch "
                  "thread of file '"
@@ -188,9 +194,9 @@ class OpenFilesOp : public framework::OperatorBase {
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new MultiFileReader(file_names,
-                                   RestoreShapes(shape_concat, ranks),
-                                   thread_num, buffer_size));
+    out->Reset(std::unique_ptr<framework::ReaderBase>(
+        new MultiFileReader(file_names, RestoreShapes(shape_concat, ranks),
+                            thread_num, buffer_size)));
   }
 };
 

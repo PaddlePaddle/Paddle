@@ -31,23 +31,24 @@ class RandomDataGenerator : public framework::ReaderBase {
     dist_ = std::uniform_real_distribution<float>(min_, max_);
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    out->clear();
-    out->reserve(shapes_.size());
-    for (const framework::DDim& shape : shapes_) {
+  std::unique_ptr<std::vector<framework::LoDTensor>> ReadNext() override {
+    auto* out = new std::vector<framework::LoDTensor>();
+    out->resize(shapes_.size());
+    for (size_t i = 0; i < shapes_.size(); ++i) {
+      auto& shape = shapes_.at(i);
       PADDLE_ENFORCE_GE(
           shape.size(), 2,
           "The rank of reader's output data should be 2 at least.(Now it's %d)",
           shape.size());
-      framework::LoDTensor out_tensor;
+      framework::LoDTensor& out_tensor = out->at(i);
       out_tensor.Resize(shape);
       T* data = out_tensor.mutable_data<T>(platform::CPUPlace());
       int64_t numel = framework::product(shape);
-      for (int64_t i = 0; i < numel; ++i) {
-        data[i] = dist_(engine_);
+      for (int64_t j = 0; j < numel; ++j) {
+        data[j] = dist_(engine_);
       }
-      out->push_back(out_tensor);
     }
+    return std::unique_ptr<std::vector<framework::LoDTensor>>(out);
   }
 
   void ReInit() override { return; }
@@ -78,8 +79,9 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
     std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RandomDataGenerator<T>(shapes, Attr<float>("min"),
-                                          Attr<float>("max")));
+    out->Reset(
+        std::unique_ptr<framework::ReaderBase>(new RandomDataGenerator<T>(
+            shapes, Attr<float>("min"), Attr<float>("max"))));
   }
 };
 

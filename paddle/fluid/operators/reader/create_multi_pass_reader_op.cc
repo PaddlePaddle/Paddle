@@ -22,27 +22,31 @@ namespace reader {
 class MultiPassReader : public framework::DecoratedReader {
  public:
   MultiPassReader(ReaderBase* reader, int pass_num)
-      : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
-
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    reader_->ReadNext(out);
-    if (out->empty()) {
-      ++pass_count_;
-      if (pass_count_ < pass_num_) {
-        reader_->ReInit();
-        reader_->ReadNext(out);
-      }
-    }
-  }
+      : DecoratedReader(reader), pass_num_(pass_num), cur_pass_(0) {}
 
   void ReInit() override {
-    pass_count_ = 0;
+    cur_pass_ = 0;
     reader_->ReInit();
+  }
+
+  LoDTensorListPtr ReadNext() override {
+    LoDTensorListPtr res = nullptr;
+    while (true) {
+      res = ReadNext();
+      if (res != nullptr) {
+        break;
+      }
+      ++cur_pass_;
+      if (cur_pass_ < pass_num_) {
+        reader_->ReInit();
+      }
+    }
+    return std::move(res);
   }
 
  private:
   int pass_num_;
-  mutable int pass_count_;
+  mutable int cur_pass_;
 };
 
 class CreateMultiPassReaderOp : public framework::OperatorBase {
@@ -60,7 +64,8 @@ class CreateMultiPassReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     int pass_num = Attr<int>("pass_num");
-    out->Reset(new MultiPassReader(underlying_reader.Get(), pass_num));
+    out->Reset(std::unique_ptr<framework::ReaderBase>(
+        new MultiPassReader(underlying_reader.Get(), pass_num)));
   }
 };
 

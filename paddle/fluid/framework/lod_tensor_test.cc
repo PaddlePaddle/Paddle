@@ -255,13 +255,13 @@ TEST(LoDTensor, RecordIO) {
     std::unique_ptr<std::istream> stream_ptr(stream);
     recordio::Scanner scanner(std::move(stream_ptr));
     auto tensors = ReadFromRecordIO(&scanner, ctx);
-    ASSERT_EQ(tensors.size(), 2);
-    assert_tensor_ok(tensors[0]);
-    assert_tensor_ok(tensors[1]);
+    ASSERT_EQ(tensors->size(), 2U);
+    assert_tensor_ok(tensors->at(0));
+    assert_tensor_ok(tensors->at(1));
     tensors = ReadFromRecordIO(&scanner, ctx);
-    ASSERT_EQ(tensors.size(), 2);
-    assert_tensor_ok(tensors[0]);
-    assert_tensor_ok(tensors[1]);
+    ASSERT_EQ(tensors->size(), 2U);
+    assert_tensor_ok(tensors->at(0));
+    assert_tensor_ok(tensors->at(1));
   }
 }
 
