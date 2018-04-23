@@ -20,8 +20,7 @@ namespace paddle {
 namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
-                const platform::DeviceContext& ctx, Tensor* dst,
-                bool sync = false) {
+                const platform::DeviceContext& ctx, Tensor* dst, bool sync) {
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   src.check_memory_size();
