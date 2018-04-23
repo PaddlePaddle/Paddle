@@ -30,7 +30,7 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
 template <>
 void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
-    const void* src, size_t num, cudaStream_t stream = nullptr) {
+    const void* src, size_t num, cudaStream_t stream) {
   platform::SetDeviceId(src_place.device);
   if (stream) {
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
@@ -42,7 +42,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
 template <>
 void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CPUPlace src_place,
-    const void* src, size_t num, cudaStream_t stream = nullptr) {
+    const void* src, size_t num, cudaStream_t stream) {
   platform::SetDeviceId(dst_place.device);
   if (stream) {
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
@@ -54,7 +54,7 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
 template <>
 void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CUDAPlace src_place,
-    const void* src, size_t num, cudaStream_t stream = nullptr) {
+    const void* src, size_t num, cudaStream_t stream) {
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
     if (stream) {
@@ -68,7 +68,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
                                    num, stream);
     } else {
       platform::GpuMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
-                                  num, stream);
+                                  num);
     }
   }
 }
@@ -98,7 +98,7 @@ template <>
 void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
     platform::CUDAPlace src_place, const void* src, size_t num,
-    cudaStream_t stream = nullptr) {
+    cudaStream_t stream) {
   platform::SetDeviceId(src_place.device);
   if (stream) {
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
@@ -111,7 +111,7 @@ template <>
 void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     platform::CUDAPlace dst_place, void* dst,
     platform::CUDAPinnedPlace src_place, const void* src, size_t num,
-    cudaStream_t stream = nullptr) {
+    cudaStream_t stream) {
   platform::SetDeviceId(dst_place.device);
   if (stream) {
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
