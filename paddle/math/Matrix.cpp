@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1024,6 +1024,66 @@ void GpuMatrix::check(std::ostream& os, Matrix& refMat, bool printDiff) {
   LOG(INFO) << "the  diffCnt is " << diffCnt;
 }
 
+void GpuMatrix::upsampleForward(Matrix& input,
+                                Matrix& mask,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW) {
+  CHECK(input.useGpu_ == true) << "Matrix type are not equal";
+  CHECK(mask.useGpu_ == true) << "Matrix type are not equal";
+
+  real* inputData = input.getData();
+  real* maskData = mask.getData();
+  real* outData = data_;
+
+  size_t batch = input.getHeight();
+
+  CHECK(imgSizeH * imgSizeW * channels == input.getWidth());
+  CHECK(imgSizeH * imgSizeW * channels == mask.getWidth());
+  CHECK_EQ(batch, this->getHeight());
+  CHECK(width_ == outputH * outputW * channels);
+  hl_upsample_forward(inputData,
+                      maskData,
+                      batch,
+                      imgSizeH,
+                      imgSizeW,
+                      channels,
+                      outputH,
+                      outputW,
+                      outData);
+}
+
+void GpuMatrix::upsampleBackward(Matrix& outputGrad,
+                                 Matrix& mask,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t channels,
+                                 size_t outputH,
+                                 size_t outputW) {
+  CHECK(outputGrad.useGpu_ == true) << "Matrix type are not equal";
+  CHECK(mask.useGpu_ == true) << "Matrix type are not equal";
+
+  real* outputGradData = outputGrad.getData();
+  real* maskData = mask.getData();
+  real* inputGradData = data_;
+  size_t batch = outputGrad.getHeight();
+
+  CHECK(imgSizeH * imgSizeW == this->getWidth() / channels);
+  CHECK_EQ(batch, this->getHeight());
+  CHECK_EQ(channels * outputH * outputW, outputGrad.getWidth());
+  hl_upsample_backward(outputGradData,
+                       maskData,
+                       batch,
+                       imgSizeH,
+                       imgSizeW,
+                       channels,
+                       outputH,
+                       outputW,
+                       inputGradData);
+}
+
 void GpuMatrix::maxPoolForward(Matrix& inputMat,
                                size_t imgSizeH,
                                size_t imgSizeW,
@@ -1986,6 +2046,72 @@ void CpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(info, 0);
 }
 
+void CpuMatrix::upsampleForward(Matrix& input,
+                                Matrix& mask,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW) {
+  real* inputData = input.getData();
+  real* maskData = mask.getData();
+  real* outData = data_;
+  size_t inLength = imgSizeH * imgSizeW;
+  size_t outLength = outputH * outputW;
+  size_t batch = input.getHeight();
+  CHECK(inLength == input.getWidth() / channels);
+  CHECK_EQ(batch, this->getHeight());
+  CHECK_EQ(channels * outLength, this->getWidth());
+
+  for (size_t k = 0; k < batch; k++) {
+    for (size_t c = 0; c < channels; c++) {
+      for (size_t i = 0; i < inLength; i++) {
+        size_t out_index = static_cast<int>(maskData[i]);
+        if (out_index >= outLength) {
+          LOG(FATAL) << "upsample index " << out_index << " out of range.";
+        }
+        outData[out_index] = inputData[i];
+      }
+      inputData += inLength;
+      maskData += inLength;
+      outData += outLength;
+    }
+  }
+}
+
+void CpuMatrix::upsampleBackward(Matrix& outputGrad,
+                                 Matrix& mask,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t channels,
+                                 size_t outputH,
+                                 size_t outputW) {
+  real* outputGradData = outputGrad.getData();
+  real* maskData = mask.getData();
+  real* inputGradData = data_;
+  size_t inLength = imgSizeH * imgSizeW;
+  size_t outLength = outputH * outputW;
+  size_t batch = outputGrad.getHeight();
+  CHECK(inLength == this->getWidth() / channels);
+  CHECK_EQ(batch, this->getHeight());
+  CHECK_EQ(channels * outLength, outputGrad.getWidth());
+
+  for (size_t k = 0; k < batch; k++) {
+    for (size_t c = 0; c < channels; c++) {
+      for (size_t i = 0; i < inLength; i++) {
+        size_t out_index = static_cast<int>(maskData[i]);
+        if (out_index >= outLength) {
+          LOG(FATAL) << "upsample index " << out_index << " out of range.";
+        }
+        inputGradData[i] = outputGradData[out_index];
+      }
+      inputGradData += inLength;
+      maskData += inLength;
+      outputGradData += outLength;
+    }
+  }
+}
+
 void CpuMatrix::maxPoolForward(Matrix& inputMat,
                                size_t imgSizeH,
                                size_t imgSizeW,
@@ -2015,13 +2141,6 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
     CHECK_EQ(channels * outLength, maskMatP->getWidth());
   }
 
-  /* initialize the data_ */
-  for (size_t i = 0; i < height_; i++) {
-    for (size_t j = 0; j < width_; j++) {
-      outData[i * outStride + j] = -(real)FLT_MAX;
-    }
-  }
-
   /* pool max one by one */
   for (size_t n = 0; n < num; ++n) {  // frame by frame
     if (!isContiguous()) {
@@ -2030,19 +2149,24 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t ph = 0; ph < outputH; ++ph) {
         int hstart = ph * strideH - paddingH;
-        int hend = std::min(hstart + sizeY, imgSizeH);
-        hstart = std::max(hstart, 0);
+        int hend = hstart + sizeY;
+        hstart = hstart < 0 ? 0 : hstart;
+        hend = hend < (int)imgSizeH ? hend : (int)imgSizeH;
         for (size_t pw = 0; pw < outputW; ++pw) {
           int wstart = pw * strideW - paddingW;
-          int wend = std::min(wstart + sizeX, imgSizeW);
-          wstart = std::max(wstart, 0);
+          int wend = wstart + sizeX;
+          wstart = wstart < 0 ? 0 : wstart;
+          wend = wend < (int)imgSizeW ? wend : (int)imgSizeW;
           if (maskData == NULL) {
+            real tmp = -(real)FLT_MAX;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
-                outData[ph * outputW + pw] = std::max(
-                    outData[ph * outputW + pw], inputData[h * imgSizeW + w]);
+                tmp = tmp < inputData[h * imgSizeW + w]
+                          ? inputData[h * imgSizeW + w]
+                          : tmp;
               }
             }
+            outData[ph * outputW + pw] = tmp;
           } else {
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {

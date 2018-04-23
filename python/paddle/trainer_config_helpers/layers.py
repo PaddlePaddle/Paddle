@@ -148,6 +148,7 @@ __all__ = [
     'resize_layer',
     'sub_seq_layer',
     'scale_sub_region_layer',
+    'upsample_layer',
     'factorization_machine',
 ]
 
@@ -166,6 +167,7 @@ class LayerType(object):
     SEQUENCE_RESHAPE = 'seqreshape'
     POOLING_MAX = 'max'
     POOLING_AVG = 'average'
+    UPSAMPLE_LAYER = 'upsample'
     FC_LAYER = 'fc'
     COST = 'cost'
     COSINE_SIM_VEC = 'cos_vm'
@@ -2542,15 +2544,21 @@ def img_conv_layer(input,
     what-are-deconvolutional-layers/>`_ .
     The num_channel means input image's channel number. It may be 1 or 3 when
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
-    num_filters * num_group.
+    num_filters.
 
     There are several groups of filters in PaddlePaddle implementation.
-    Each group will process some channels of the input. For example, if
-    num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
-    32*4 = 128 filters to process the input. The channels will be split into 4
-    pieces. First 256/4 = 64 channels will be processed by first 32 filters. The
-    rest channels will be processed by the rest groups of filters.
+    If the groups attribute is greater than 1, for example groups=2,
+    the input will be splitted into 2 parts along the channel axis, and
+    the filters will also be splitted into 2 parts. The first half of the filters 
+    is only connected to the first half of the input channels, while the second 
+    half of the filters is only connected to the second half of the input. After
+    the computation of convolution for each part of input,
+    the output will be obtained by concatenating the two results.
 
+    The details of grouped convolution, please refer to:
+    `ImageNet Classification with Deep Convolutional Neural Networks
+    <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
+    
     The example usage is:
 
     ..  code-block:: python
@@ -2575,7 +2583,8 @@ def img_conv_layer(input,
     :param filter_size_y: The dimension of the filter kernel on the y axis. If the parameter
                           is not set, it will be set automatically according to filter_size.
     :type filter_size_y: int
-    :param num_filters: Each filter group's number of filter
+    :param num_filters: The number of filters. It is as same as the output image channel.
+    :type num_filters: int
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
     :param groups: The group number. 1 is the default group number.
@@ -2740,17 +2749,17 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + ceil(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + ceil(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     - ceil_mode=False:
 
     ..  math::
 
-        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + floor(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + floor(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     The example usage is:
 
@@ -3005,6 +3014,83 @@ def img_pool3d_layer(input,
         parents=[input],
         num_filters=num_channels,
         size=l.config.size)
+
+
+@wrap_name_default("upsample")
+@layer_support()
+def upsample_layer(input,
+                   name=None,
+                   scale=None,
+                   scale_y=None,
+                   upsample_size=None,
+                   upsample_size_y=None,
+                   pad_out_x=False,
+                   pad_out_y=False,
+                   layer_attr=None):
+    """
+    The DePooling process.
+    Inputs should be a list of length 2. The first input is a layer,
+    and the second input should be the MaxWithMaskPoolingLayer
+
+    The example usage is:
+
+    ..  code-block:: python
+        pool1 = paddle.v2.layer.img_pool(input=input, pool_size=2, stride=2,
+                                        pool_type=paddle.pooling.MaxWithMask())
+        upsample = paddle.v2.layer.upsample(input=[layer1, pool1])
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: contains an input layer and a MaxWithMaskPoolingLayer
+    :type input: list | tuple | collections.Sequence
+    :param scale: outputSize =  scale * inputSize
+    :type scale: int | list | tuple | .
+    :param scale_y: scale_y will be equal to scale, if it's value is None, 
+    :type scale: int | None. 
+    :param upsample_size: specify the outputSize.
+    :type upsample_size: int | list | tuple.
+    :param upsample_size_y: specify the y dimension outputSize.
+    :type upsample_size_y: int.
+    :param pad_out_x: specify exact x dimension size. This parameter only works when scale is 2
+    :type pad_out_x: bool.
+    :param pad_out_y: specify exact y dimension size. This parameter only works when scale is 2
+    :type pad_out_y: bool.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert (scale is not None) or (upsample_size is not None), \
+            'scale or upsample_size, there must be one to be designated'
+
+    assert len(input) == 2, 'layer input size must be 2'
+
+    assert input[1].layer_type == LayerType.POOL_LAYER, \
+            'the second input should be the MaxPoolWithMaskLayer'
+
+    scale_y = scale \
+            if scale is not None else scale_y
+    upsample_size_y = upsample_size  \
+            if upsample_size is not None else upsample_size_y
+
+    layer_type = LayerType.UPSAMPLE_LAYER
+
+    layer = Layer(
+        name=name,
+        type=layer_type,
+        inputs=[
+            Input(
+                input[0].name,
+                upsample=Upsample(scale, scale_y, pad_out_x, pad_out_y,
+                                  upsample_size, upsample_size_y)),
+            Input(input[1].name)
+        ],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+
+    sz = layer.config.size
+
+    return LayerOutput(name, layer_type=layer_type, parents=input, size=sz)
 
 
 @wrap_name_default("spp")
@@ -7177,7 +7263,7 @@ def img_conv3d_layer(input,
     :param filter_size: The dimensions of the filter kernel along three axises. If the parameter
                         is set to one integer, the three dimensions will be same.
     :type filter_size: int | tuple | list
-    :param num_filters: The number of filters in each group.
+    :param num_filters: The number of filters. It is as same as the output image channel.
     :type num_filters: int
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation

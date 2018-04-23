@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -223,5 +223,25 @@ inline void hl_maxout_backward(real* inGrad,
                                size_t size,
                                size_t featLen,
                                size_t group) {}
+
+inline void hl_upsample_forward(real* inputData,
+                                real* maskData,
+                                size_t batchSize,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW,
+                                real* outputData) {}
+
+inline void hl_upsample_backward(real* outputGradData,
+                                 real* maskData,
+                                 size_t batchSize,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t channels,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 real* inputGradData) {}
 
 #endif  // HL_CNN_STUB_H_
