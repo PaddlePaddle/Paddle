@@ -254,7 +254,6 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   }
 };
 
-
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc &op_desc,
@@ -270,7 +269,6 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
 
 }  // namespace operators
 }  // namespace paddle
-
 
 namespace ops = paddle::operators;
 
