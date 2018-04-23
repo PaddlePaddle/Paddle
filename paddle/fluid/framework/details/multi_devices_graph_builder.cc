@@ -44,8 +44,8 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
-    const std::unordered_set<std::string> &params, bool skip_scale_loss,
-    const std::vector<Scope *> &local_scopes)
+    const std::unordered_set<std::string> &params,
+    const std::vector<Scope *> &local_scopes, bool skip_scale_loss)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes) {
