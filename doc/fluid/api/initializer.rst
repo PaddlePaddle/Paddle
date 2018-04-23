@@ -33,3 +33,44 @@ Xavier
     :members:
     :noindex:
 
+MSRA
+------
+
+..  autoclass:: paddle.fluid.initializer.MSRA
+    :members:
+    :noindex:
+
+ConstantInitializer
+-------------------
+
+..  autoclass:: paddle.fluid.initializer.ConstantInitializer
+    :members:
+    :noindex:
+
+UniformInitializer
+------------------
+
+..  autoclass:: paddle.fluid.initializer.UniformInitializer
+    :members:
+    :noindex:
+
+NormalInitializer
+-----------------
+
+..  autoclass:: paddle.fluid.initializer.NormalInitializer
+    :members:
+    :noindex:
+
+XavierInitializer
+-----------------
+
+..  autoclass:: paddle.fluid.initializer.XavierInitializer
+    :members:
+    :noindex:
+
+
+MSRAInitializer
+-----------------
+..  autoclass:: paddle.fluid.initializer.MSRAInitializer
+    :members:
+    :noindex:

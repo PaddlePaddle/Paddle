@@ -83,8 +83,9 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(prelu, ops::PReluOp, ops::PReluOpMaker, prelu_grad,
-            ops::PReluGradOp);
+REGISTER_OPERATOR(prelu, ops::PReluOp, ops::PReluOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(prelu_grad, ops::PReluGradOp);
 REGISTER_OP_CPU_KERNEL(
     prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

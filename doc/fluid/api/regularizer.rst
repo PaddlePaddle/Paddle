@@ -25,3 +25,16 @@ L2Decay
     :members:
     :noindex:
 
+L1DecayRegularizer
+---------------------
+
+..  autoclass:: paddle.fluid.regularizer.L1DecayRegularizer
+    :members:
+    :noindex:
+
+L2DecayRegularizer
+---------------------
+
+..  autoclass:: paddle.fluid.regularizer.L2DecayRegularizer
+    :members:
+    :noindex:

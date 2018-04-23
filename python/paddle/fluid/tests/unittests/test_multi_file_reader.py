@@ -69,7 +69,6 @@ class TestMultipleReader(unittest.TestCase):
                     break
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)
-            data_files.reset()
             self.assertEqual(batch_count, self.num_batch * 3)
 
     def test_main(self):
