@@ -1,5 +1,5 @@
 if(WITH_GPU)
   nv_library(nccl_common SRCS nccl_gpu_common.cc DEPS device_context operator )
 elseif(WITH_AMD_GPU)
-  hip_library(nccl_common SRCS nccl_gpu_common.cc DEPS device_context operator )
+  hip_library(nccl_common SRCS rccl_gpu_common.cc DEPS device_context operator )
 endif()
