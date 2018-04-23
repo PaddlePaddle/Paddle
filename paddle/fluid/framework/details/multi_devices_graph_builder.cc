@@ -60,17 +60,6 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   }
 }
 
-// void GetLeavesOfTopVar(VarLink *top_var,
-//                       std::unordered_set<VarHandle *> *leaves) {
-//  if (top_var && top_var->children_.size() == 0) {
-//    leaves->insert(top_var->var_handle_);
-//  } else if (top_var) {
-//    for (auto &vars : top_var->children_) {
-//      GetLeavesOfTopVar(vars, leaves);
-//    }
-//  }
-//}
-
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
                                                 const OpDesc &op,
                                                 const platform::Place &p,
