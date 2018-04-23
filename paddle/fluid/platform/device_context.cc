@@ -254,8 +254,7 @@ class EigenHipStreamDevice : public Eigen::StreamInterface {
 
   unsigned int* semaphore() const override {
     if (semaphore_ == NULL) {
-      char* scratch =
-          static_cast<char*>(scratchpad()) + Eigen::kHipScratchSize;
+      char* scratch = static_cast<char*>(scratchpad()) + Eigen::kHipScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
       PADDLE_ENFORCE(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
@@ -265,7 +264,7 @@ class EigenHipStreamDevice : public Eigen::StreamInterface {
 
  private:
   CUDAPlace place_;
-  const hipStream_t* stream_;         // not owned;
+  const hipStream_t* stream_;           // not owned;
   const hipDeviceProp_t* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
@@ -326,7 +325,9 @@ hipblasHandle_t CUDADeviceContext::hipblas_handle() const {
   return hipblas_handle_;
 }
 
-miopenHandle_t CUDADeviceContext::miopen_handle() const { return miopen_handle_; }
+miopenHandle_t CUDADeviceContext::miopen_handle() const {
+  return miopen_handle_;
+}
 
 hipStream_t CUDADeviceContext::stream() const { return stream_; }
 

@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <hipblas.h>
 #include <dlfcn.h>
+#include <hipblas.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
@@ -40,7 +40,7 @@ extern void *hipblas_dso_handle;
     inline hipblasStatus_t operator()(Args... args) {                          \
       typedef hipblasStatus_t (*hipblasFunc)(Args...);                         \
       std::call_once(hipblas_dso_flag, []() {                                  \
-	hipblas_dso_handle = paddle::platform::dynload::GetHipblasDsoHandle(); \
+        hipblas_dso_handle = paddle::platform::dynload::GetHipblasDsoHandle(); \
       });                                                                      \
       void *p_##__name = dlsym(hipblas_dso_handle, #__name);                   \
       return reinterpret_cast<hipblasFunc>(p_##__name)(args...);               \

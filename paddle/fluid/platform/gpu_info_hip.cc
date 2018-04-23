@@ -64,9 +64,8 @@ int GetCUDAMaxThreadsPerMultiProcessor(int id) {
 
 int GetCurrentDeviceId() {
   int device_id;
-  PADDLE_ENFORCE(
-      hipGetDevice(&device_id),
-      "hipGetDevice failed in paddle::platform::GetCurrentDeviceId");
+  PADDLE_ENFORCE(hipGetDevice(&device_id),
+                 "hipGetDevice failed in paddle::platform::GetCurrentDeviceId");
   return device_id;
 }
 

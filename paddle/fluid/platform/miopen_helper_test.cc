@@ -27,8 +27,8 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
   std::vector<int> dims(4);
   std::vector<int> strides(4);
   paddle::platform::dynload::miopenGet4dTensorDescriptor(
-      desc, &type, &dims[0], &dims[1], &dims[2], &dims[3],
-      &strides[0], &strides[1], &strides[2], &strides[3]);
+      desc, &type, &dims[0], &dims[1], &dims[2], &dims[3], &strides[0],
+      &strides[1], &strides[2], &strides[3]);
 
   for (size_t i = 0; i < dims.size(); ++i) {
     EXPECT_EQ(dims[i], shape[i]);
@@ -55,8 +55,8 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   std::vector<int> kernel_4d(4);
   std::vector<int> strides(4);
   paddle::platform::dynload::miopenGet4dTensorDescriptor(
-      desc_4d, &type, &kernel_4d[0], &kernel_4d[1], &kernel_4d[2], &kernel_4d[3],
-      &strides[0], &strides[1], &strides[2], &strides[3]);
+      desc_4d, &type, &kernel_4d[0], &kernel_4d[1], &kernel_4d[2],
+      &kernel_4d[3], &strides[0], &strides[1], &strides[2], &strides[3]);
 
   for (size_t i = 0; i < shape_4d.size(); ++i) {
     EXPECT_EQ(kernel_4d[i], shape_4d[i]);
@@ -77,8 +77,8 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
   std::vector<int> strides(2);
   std::vector<int> dilations(2);
   paddle::platform::dynload::miopenGetConvolutionDescriptor(
-      desc, &mode, &pads[0], &pads[1], &strides[0], &strides[1],
-      &dilations[0], &dilations[1]);
+      desc, &mode, &pads[0], &pads[1], &strides[0], &strides[1], &dilations[0],
+      &dilations[1]);
 
   for (size_t i = 0; i < src_pads.size(); ++i) {
     EXPECT_EQ(pads[i], src_pads[i]);
@@ -104,8 +104,8 @@ TEST(CudnnHelper, ScopedPoolingDescriptor) {
   std::vector<int> pads(2);
   std::vector<int> strides(2);
   paddle::platform::dynload::miopenGet2dPoolingDescriptor(
-      desc, &mode, &kernel[0], &kernel[1], &pads[0], &pads[1],
-      &strides[0], &strides[1]);
+      desc, &mode, &kernel[0], &kernel[1], &pads[0], &pads[1], &strides[0],
+      &strides[1]);
 
   for (size_t i = 0; i < src_pads.size(); ++i) {
     EXPECT_EQ(kernel[i], src_kernel[i]);

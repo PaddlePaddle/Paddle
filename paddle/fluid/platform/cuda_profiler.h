@@ -28,8 +28,7 @@ namespace platform {
 
 #ifdef PADDLE_WITH_HIP
 void CudaProfilerInit(std::string output_file, std::string output_mode,
-                      std::string config_file) {
-}
+                      std::string config_file) {}
 
 void CudaProfilerStart() { PADDLE_ENFORCE(hipProfilerStart()); }
 

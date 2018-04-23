@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <miopen/miopen.h>
 #include <dlfcn.h>
+#include <miopen/miopen.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
@@ -58,7 +58,7 @@ extern void EnforceMIOpenLoaded(const char* fn_name);
     auto operator()(Args... args) -> decltype(__name(args...)) {             \
       using miopen_func = decltype(__name(args...)) (*)(Args...);            \
       std::call_once(miopen_dso_flag, []() {                                 \
-	miopen_dso_handle = paddle::platform::dynload::GetMIOpenDsoHandle(); \
+        miopen_dso_handle = paddle::platform::dynload::GetMIOpenDsoHandle(); \
       });                                                                    \
       EnforceMIOpenLoaded(#__name);                                          \
       void* p_##__name = dlsym(miopen_dso_handle, #__name);                  \

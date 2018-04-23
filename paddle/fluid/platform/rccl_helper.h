@@ -38,11 +38,11 @@ class NCCLGroupGuard {
  public:
   inline NCCLGroupGuard() {
     mutex().lock();
-    //PADDLE_ENFORCE(dynload::rcclGroupStart());
+    // PADDLE_ENFORCE(dynload::rcclGroupStart());
   }
 
   inline ~NCCLGroupGuard() {
-    //PADDLE_ENFORCE(dynload::rcclGroupEnd());
+    // PADDLE_ENFORCE(dynload::rcclGroupEnd());
     mutex().unlock();
   }
 

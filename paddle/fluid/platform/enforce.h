@@ -50,14 +50,14 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 
 #include "paddle/fluid/platform/dynload/hipblas.h"
-#include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/hiprand.h"
+#include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rccl.h"
 
 #include <hip/hip_runtime_api.h>
 #include <hipblas.h>
-#include <miopen/miopen.h>
 #include <hiprand.h>
+#include <miopen/miopen.h>
 #include <rccl.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
@@ -203,7 +203,6 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 }
 
 #endif  // PADDLE_WITH_CUDA
-
 
 #ifdef PADDLE_WITH_HIP
 

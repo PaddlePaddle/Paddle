@@ -23,11 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef __HIPCC__
+#include <thrust/execution_policy.h>
+#include <thrust/system/cuda/detail/par.h>
+#include <thrust/transform.h>
 #include <algorithm>
 #include <type_traits>
-#include <thrust/system/cuda/detail/par.h>
-#include <thrust/execution_policy.h>
-#include <thrust/transform.h>
 #include "paddle/fluid/platform/details/cuda_transform_iterator_cast.h"
 #endif
 #ifdef __NVCC__

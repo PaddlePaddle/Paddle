@@ -59,7 +59,6 @@ DEFINE_string(rccl_dir, "",
               "libcurand. For instance, /opt/rocm/lib. If default, "
               "dlopen will search rocm from LD_LIBRARY_PATH");
 
-
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -217,11 +216,11 @@ void* GetTensorRtDsoHandle() {
 #endif
 }
 
-void* GetMIOpenDsoHandle(){
+void* GetMIOpenDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libMIOpen.so", false);
 }
 
-void* GetHipblasDsoHandle(){
+void* GetHipblasDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipblas.so");
 }
 
