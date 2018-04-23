@@ -11,7 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""VGG16 benchmark in Fluid"""
+"""VGG16 benchmark in Fluid
+
+# Single trainer, single PS on a single machine.
+VGG_SRC="${CODE_DIR}/vgg16_fluid.py"
+export TRAINING_ROLE=PSERVER
+export TRAINERS=1
+export POD_IP=127.0.0.1
+export PADDLE_INIT_PORT=6174
+MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 &
+sleep 10  # wait for PS to start.
+export TRAINING_ROLE=TRAINER
+MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 --device=GPU &
+
+# To run multiple trainers on a single machine
+# change TRAINERS=2 and launch 2 trainers.
+# CUDA_VISIBLE_DEVICES=4 MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 --device=GPU --task_index=0 &
+# CUDA_VISIBLE_DEVICES=5 MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 --device=GPU --task_index=1 &
+"""
+
 from __future__ import print_function
 
 import sys
@@ -200,18 +218,19 @@ def main():
                 num_samples += len(data)
                 train_pass_acc.add(value=acc, weight=b_size)
                 print(
-                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
-                    % (pass_id, iters, loss, acc,
-                       len(data) / (time.time() - ts))
+                    "Task:%d Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, "
+                    "Speed = %.2f img/s " % (args.task_index, pass_id, iters,
+                                             loss, acc,
+                                             len(data) / (time.time() - ts))
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
             pass_train_acc = train_pass_acc.eval()
             pass_test_acc = test(exe)
-            print(
-                "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
-                % (pass_id, num_samples / pass_elapsed, pass_train_acc,
-                   pass_test_acc))
+            print("Task:%d Pass = %d, Training performance = %f imgs/s, "
+                  "Train accuracy = %f, Test accuracy = %f\n" %
+                  (args.task_index, pass_id, num_samples / pass_elapsed,
+                   pass_train_acc, pass_test_acc))
 
     if args.local:
         # Parameter initialization
