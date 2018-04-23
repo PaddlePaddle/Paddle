@@ -315,9 +315,11 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
     VLOG(3) << "HandleRequest for " << cq_name << " while after Next";
 
     PADDLE_ENFORCE(tag);
-    // FIXME(typhoonzero): de-couple the barriers with recv_op
-    if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
-    if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);
+    if (sync_mode_) {
+      // FIXME(typhoonzero): de-couple the barriers with recv_op
+      if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
+      if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);
+    }
 
     RequestBase* base = reinterpret_cast<RequestBase*>(tag);
     // reference:
@@ -334,13 +336,13 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
 
     switch (base->Status()) {
       case PROCESS: {
-        VLOG(4) << cq_name << " status:" << base->Status();
+        VLOG(4) << cq_name << " PROCESS status:" << base->Status();
         TryToRegisterNewOne();
         base->Process();
         break;
       }
       case FINISH: {
-        VLOG(4) << cq_name << " status:" << base->Status();
+        VLOG(4) << cq_name << " FINISH status:" << base->Status();
         delete base;
         break;
       }
