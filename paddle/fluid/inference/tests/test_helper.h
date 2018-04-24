@@ -90,7 +90,7 @@ void CheckError(const paddle::framework::LoDTensor& output1,
 }
 
 std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
-    paddle::framework::Executor& executor, paddle::framework::Scope* scope,
+    paddle::framework::Executor* executor, paddle::framework::Scope* scope,
     const std::string& dirname, const bool is_combined = false) {
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
   if (is_combined) {
@@ -101,12 +101,12 @@ std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
     std::string prog_filename = "__model_combined__";
     std::string param_filename = "__params_combined__";
     inference_program =
-        paddle::inference::Load(executor, *scope, dirname + "/" + prog_filename,
+        paddle::inference::Load(executor, scope, dirname + "/" + prog_filename,
                                 dirname + "/" + param_filename);
   } else {
     // Parameters are saved in separate files sited in the specified
     // `dirname`.
-    inference_program = paddle::inference::Load(executor, *scope, dirname);
+    inference_program = paddle::inference::Load(executor, scope, dirname);
   }
   return inference_program;
 }
@@ -117,7 +117,7 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
-  auto inference_program = InitProgram(executor, scope, dirname, is_combined);
+  auto inference_program = InitProgram(&executor, scope, dirname, is_combined);
   auto& global_block = inference_program->Block(0);
 
   const std::vector<std::string>& feed_target_names =
@@ -168,7 +168,7 @@ void TestInference(const std::string& dirname,
     paddle::platform::RecordEvent record_event(
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
-    inference_program = InitProgram(executor, scope, dirname, is_combined);
+    inference_program = InitProgram(&executor, scope, dirname, is_combined);
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,

@@ -128,7 +128,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     //
     // NOTE: DelayedOps have a lower priority. It will be scheduled after all
     // ready_ops have been performed.
-    if (ready_ops.empty() && allow_op_delay_) {
+    if (ready_ops.empty() && allow_op_delay_ && running_ops_ == 0) {
       run_all_ops(delayed_ops);
     } else {
       run_all_ops(ready_ops);
@@ -140,7 +140,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     if (timeout) {
       if (exception_) {
-        throw * exception_;
+        auto exp = *exception_;
+        exception_.reset();
+        throw exp;
       } else {
         continue;
       }

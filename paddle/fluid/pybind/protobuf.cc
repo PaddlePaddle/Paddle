@@ -127,6 +127,7 @@ void BindProgramDesc(pybind11::module *m) {
       .def("block", &pd::ProgramDesc::MutableBlock,
            pybind11::return_value_policy::reference)
       .def("num_blocks", &pd::ProgramDesc::Size)
+      .def("flush", &pd::ProgramDesc::Flush)
       .def("get_feed_target_names", &pd::ProgramDesc::GetFeedTargetNames)
       .def("get_fetch_target_names", &pd::ProgramDesc::GetFetchTargetNames)
       .def("serialize_to_string", SerializeMessage<pd::ProgramDesc>)

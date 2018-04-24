@@ -24,12 +24,34 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void RandomGenerator(const size_t n, const T* src,
-                                const T* cpu_mask_data, T* mask_data, T* dst) {
+__global__ void RandomGenerator(const size_t n, const int seed,
+                                const float dropout_prob, const T* src,
+                                T* mask_data, T* dst) {
+  thrust::minstd_rand rng;
+  rng.seed(seed);
+  thrust::uniform_real_distribution<float> dist(0, 1);
+
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = 0;
+
+  T mask;
+  T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
-    mask_data[idx] = cpu_mask_data[idx];
-    dst[idx] = mask_data[idx] * src[idx];
+    T s = src[idx];
+    if (step_size == 0) {
+      rng.discard(idx);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      rng.discard(step_size);
+    }
+    if (dist(rng) < dropout_prob) {
+      mask = static_cast<T>(0);
+    } else {
+      mask = static_cast<T>(1);
+    }
+    dest = s * mask;
+    mask_data[idx] = mask;
+    dst[idx] = dest;
   }
 }
 
@@ -56,27 +78,15 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       std::random_device rnd;
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-      std::minstd_rand engine;
-      engine.seed(seed);
-      std::uniform_real_distribution<float> dist(0, 1);
-      framework::Vector<T> cpu_mask(size);
-      for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
-          cpu_mask[i] = static_cast<T>(0);
-        } else {
-          cpu_mask[i] = static_cast<T>(1);
-        }
-      }
 
       int threads = 512;
       int grid = (x->numel() + threads - 1) / threads;
       RandomGenerator<
           T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, x_data, cpu_mask.CUDAData(context.GetPlace()), mask_data,
-          y_data);
+          size, seed, dropout_prob, x_data, mask_data, y_data);
     } else {
-      auto X = EigenVector<T>::Flatten(*x);
-      auto Y = EigenVector<T>::Flatten(*y);
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
       Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }
@@ -89,8 +99,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
-    ops::GPUDropoutKernel<plat::CUDADeviceContext, double>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(dropout_grad,
-                        ops::DropoutGradKernel<plat::CUDADeviceContext, double>,
                         ops::DropoutGradKernel<plat::CUDADeviceContext, float>);

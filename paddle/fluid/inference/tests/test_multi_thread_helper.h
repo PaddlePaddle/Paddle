@@ -82,7 +82,7 @@ void TestMultiThreadInference(
 
   // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program =
-      paddle::inference::Load(executor, *scope, dirname);
+      InitProgram(&executor, scope, dirname, false);
 
   std::vector<std::thread*> threads;
   for (int i = 0; i < num_threads; ++i) {
