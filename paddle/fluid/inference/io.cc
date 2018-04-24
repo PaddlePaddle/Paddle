@@ -28,6 +28,8 @@ namespace inference {
 // linking the inference shared library.
 void Init(bool init_p2p) { framework::InitDevices(init_p2p); }
 
+void Init(int argc, char** argv) { framework::Init(argc, argv); }
+
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);

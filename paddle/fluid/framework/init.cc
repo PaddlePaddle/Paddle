@@ -15,9 +15,11 @@ limitations under the License. */
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
@@ -25,8 +27,27 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+DEFINE_string(devices, "", "The devices to be used.");
+DEFINE_bool(init_p2p, true, "Whether to init p2p.");
+
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
+
+using paddle::platform::DeviceContextPool;
+
+void Init(int argc, char **argv) {
+  std::call_once(gflags_init_flag,
+                 [&]() { google::ParseCommandLineFlags(&argc, &argv, true); });
+
+  // init devices
+  std::vector<int> devices;
+  std::string token;
+  std::istringstream tokenStream(FLAGS_devices);
+  while (std::getline(tokenStream, token, ',')) {
+    devices.push_back(std::stoi(token));
+  }
+  InitDevices(FLAGS_init_p2p, devices);
+}
 
 void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -64,6 +85,30 @@ void InitP2P(int count) {
 #endif
 }
 
+void InitP2P(std::vector<int> devices) {
+#ifdef PADDLE_WITH_CUDA
+  std::call_once(p2p_init_flag, [&]() {
+    int count = devices.size();
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j < count; ++j) {
+        if (devices[i] == devices[j]) continue;
+        int can_acess = -1;
+        PADDLE_ENFORCE(
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]),
+            "Failed to test P2P access.");
+        if (can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
+                       << " to " << devices[j];
+        } else {
+          cudaSetDevice(devices[i]);
+          cudaDeviceEnablePeerAccess(devices[j], 0);
+        }
+      }
+    }
+  });
+#endif
+}
+
 void InitDevices(bool init_p2p) {
   /*Init all avaiable devices by default */
 
@@ -88,6 +133,34 @@ void InitDevices(bool init_p2p) {
   if (init_p2p) {
     InitP2P(count);
   }
+  platform::DeviceContextPool::Init(places);
+}
+
+void InitDevices(bool init_p2p, const std::vector<int> devices) {
+  std::vector<platform::Place> places;
+  int count = 0;
+#ifdef PADDLE_WITH_CUDA
+  try {
+    count = platform::GetCUDADeviceCount();
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+  }
+#else
+  LOG(WARNING)
+      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
+#endif
+
+  for (size_t i = 0; i < devices.size(); ++i) {
+    if (devices[i] >= count) {
+      LOG(WARNING) << "Invalid devices id.";
+      continue;
+    }
+    places.emplace_back(platform::CUDAPlace(devices[i]));
+  }
+  if (init_p2p) {
+    InitP2P(devices);
+  }
+  places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
 }
 

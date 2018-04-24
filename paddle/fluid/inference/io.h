@@ -27,6 +27,8 @@ namespace inference {
 
 void Init(bool init_p2p);
 
+void Init(int argc, char** argv);
+
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
