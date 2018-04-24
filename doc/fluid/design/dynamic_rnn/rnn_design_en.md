@@ -83,11 +83,11 @@ In addition, the user may need to perceive the existence of a sequence (such as 
 The framework needs to support the following features to implement the transmit of `lod_start_pos`:
 
 1. Implement the transfer as `shared_ptr`
-   a. Do not modify the contents of `lod_start_pos` as a consumer
-   a. Modify producer of `lod_start_pos` as producer
-   a. Conventions consumer only needs to copy `shared_ptr` passed over
-   a. producer needs to create its own independent memory to store its own independent modifications and expose `shared_ptr` to subsequent consumer
-   a. Since the transfer process is implemented by copying `shared_ptr`, the framework only needs to pass `lod_start_pos` once.
+    - Do not modify the contents of `lod_start_pos` as a consumer
+    - Modify producer of `lod_start_pos` as producer
+    - Conventions consumer only needs to copy `shared_ptr` passed over
+    - producer needs to create its own independent memory to store its own independent modifications and expose `shared_ptr` to subsequent consumer
+    - Since the transfer process is implemented by copying `shared_ptr`, the framework only needs to pass `lod_start_pos` once.
 
 2. Op is transparent enough not to sense `lod_start_pos`
 3. Producer Op that needs to modify `lod_start_pos` can update its `lod_start_pos` data when `Run`
