@@ -84,5 +84,19 @@ class TestCase2(TestBilinearInterpOp):
         self.out_w = 12
 
 
+class TestCase2(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.input_shape = [16, 3, 512, 1024]
+        self.out_h = 128
+        self.out_w = 256
+
+
+class TestCase2(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.input_shape = [8, 1, 256, 128]
+        self.out_h = 1024
+        self.out_w = 1024
+
+
 if __name__ == "__main__":
     unittest.main()
