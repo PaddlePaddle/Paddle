@@ -25,11 +25,11 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class TensorrtEngineTest : public ::testing::Test {
+class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ASSERT_EQ(0, cudaStreamCreate(&stream_));
-    engine_ = new TensorrtEngine(1, 1 << 10, &stream_);
+    engine_ = new TensorRTEngine(1, 1 << 10, &stream_);
     engine_->InitNetwork();
   }
 
@@ -39,28 +39,26 @@ class TensorrtEngineTest : public ::testing::Test {
   }
 
  protected:
-  TensorrtEngine* engine_;
+  TensorRTEngine* engine_;
   cudaStream_t stream_;
 };
 
-TEST_F(TensorrtEngineTest, add_layer) {
+TEST_F(TensorRTEngineTest, add_layer) {
   const int size = 1;
 
   float raw_weight[size] = {2.};  // Weight in CPU memory.
   float raw_bias[size] = {3.};
 
   LOG(INFO) << "create weights";
-  TensorrtEngine::Weight weight(TensorrtEngine::data_type::kFLOAT, raw_weight,
-                                size);
-  TensorrtEngine::Weight bias(TensorrtEngine::data_type::kFLOAT, raw_bias,
-                              size);
-  auto* x = engine_->DeclInput("x", TensorrtEngine::data_type::kFLOAT,
-                               nvinfer1::DimsCHW{1, 1, 1});
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, size);
+  TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, size);
+  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+                                  nvinfer1::DimsCHW{1, 1, 1});
   auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
                                         weight.get(), bias.get());
   PADDLE_ENFORCE(fc_layer != nullptr);
 
-  engine_->DeclOutput(fc_layer, 0, "y");
+  engine_->DeclareOutput(fc_layer, 0, "y");
   LOG(INFO) << "freeze network";
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);

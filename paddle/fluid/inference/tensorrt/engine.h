@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <unordered_map>
 #include "paddle/fluid/inference/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
 namespace inference {
@@ -29,15 +30,12 @@ namespace tensorrt {
  * There are two alternative ways to use it, one is  to build from a paddle
  * protobuf model, another way is to manully construct the network.
  */
-class TensorrtEngine : public EngineBase {
+class TensorRTEngine : public EngineBase {
  public:
-  using data_type = nvinfer1::DataType;
-  using dim_type = nvinfer1::Dims;
-
   // Weight is model parameter.
   class Weight {
    public:
-    Weight(data_type dtype, void* value, int num_elem) {
+    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
       w_.type = dtype;
       w_.values = value;
       w_.count = num_elem;
@@ -48,30 +46,40 @@ class TensorrtEngine : public EngineBase {
     nvinfer1::Weights w_;
   };
 
-  TensorrtEngine(int max_batch, int max_workspace, cudaStream_t* stream)
-      : max_batch_(max_batch), max_workspace_(max_workspace), stream_(stream) {}
+  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream,
+                 nvinfer1::ILogger& logger = NaiveLogger::Global())
+      : max_batch_(max_batch),
+        max_workspace_(max_workspace),
+        stream_(stream),
+        logger_(logger) {}
 
-  virtual ~TensorrtEngine();
+  virtual ~TensorRTEngine();
 
-  // TODO(Superjomn) implement it latter when graph segmentation is supported.
-  virtual void Build(const PbType& paddle_model) override;
+  // TODO(Superjomn) implement it later when graph segmentation is supported.
+  virtual void Build(const DescType& paddle_model) override;
 
   virtual void Execute(int batch_size) override;
 
-  // Initialize the infer network, so that layers can add to this network.
-  void InitNetwork();
-  // Finished adding layers, freeze this network and creates the executation
+  // Initialize the inference network, so that TensorRT layers can add to this
+  // network.
+  void InitNetwork() {
+    infer_builder_.reset(createInferBuilder(logger_));
+    infer_network_.reset(infer_builder_->createNetwork());
+  }
+  // After finishing adding ops, freeze this network and creates the executation
   // environment.
   void FreezeNetwork();
 
-  // Add an input and set its namd, data type and dimention.
-  nvinfer1::ITensor* DeclInput(const std::string& name, data_type dtype,
-                               const dim_type& dim);
+  // Add an input and set its name, data type and dimention.
+  nvinfer1::ITensor* DeclareInput(const std::string& name,
+                                  nvinfer1::DataType dtype,
+                                  const nvinfer1::Dims& dim);
   // Set the offset-th output from a layer as the network's output, and set its
   // name.
-  void DeclOutput(nvinfer1::ILayer* layer, int offset, const std::string& name);
+  void DeclareOutput(const nvinfer1::ILayer* layer, int offset,
+                     const std::string& name);
 
-  // GPU memory address for a tensor with specific name. One can operate on
+  // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
   // data directly to the buffer to save data copy overhead.
   // NOTE this should be used after calling `FreezeNetwork`.
@@ -93,26 +101,29 @@ class TensorrtEngine : public EngineBase {
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
  private:
+  // the max batch size
   int max_batch_;
+  // the max memory size the engine uses
   int max_workspace_;
   cudaStream_t* stream_;
+  nvinfer1::ILogger& logger_;
 
   std::vector<void*> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
 
+  // TensorRT related internal members
   template <typename T>
   struct Destroyer {
     void operator()(T* x) { x->destroy(); }
   };
-
   template <typename T>
   using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
-};  // class TensorrtEngine
+};  // class TensorRTEngine
 
 // Add an layer__ into engine__ with args ARGS.
 // For example:

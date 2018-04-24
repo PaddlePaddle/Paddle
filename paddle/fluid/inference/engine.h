@@ -21,27 +21,26 @@ namespace inference {
 
 /*
  * EngineBase is the base class of all inference engines. An inference engine
- * takes a paddle program as input, and output the result in paddle Tensor
- * format. It can be used to optimize performance of computation subgraphs, for
- * example, break down the original model into subgraphs and execute each
- * subgraph in different engines.
+ * takes a paddle program as input, and outputs the result in fluid Tensor
+ * format. It can be used to optimize performance of computation sub-blocks, for
+ * example, break down the original block into sub-blocks and execute each
+ * sub-blocks in different engines.
  *
  * For example:
  *   When inference, the resnet50 model can put most of the model into subgraph
  * and run it on a TensorRT engine.
  *
- * There are several engines such as TensorRT and other internal frameworks, so
- * an EngineBase is put forward to give an unified interface for all the
+ * There are several engines such as TensorRT and other frameworks, so an
+ * EngineBase is put forward to give an unified interface for all the
  * different engine implemention.
  */
 class EngineBase {
  public:
-  // TODO fix it latter
-  using PbType = int;  // proto::BlockDesc;
+  using DescType = ::paddle::framework::proto::BlockDesc;
 
   // Build the model and do some preparation, for example, in TensorRT, run
   // createInferBuilder, buildCudaEngine.
-  virtual void Build(const PbType& paddle_model) = 0;
+  virtual void Build(const DescType& paddle_model) = 0;
 
   // Execute the engine, that will run the inference network.
   virtual void Execute(int batch_size) = 0;
