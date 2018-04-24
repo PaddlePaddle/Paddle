@@ -37,7 +37,8 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs, bool use_nccl_allreduce)
+    platform::NCCLContextMap *nccl_ctxs, bool skip_scale_loss,
+    bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
@@ -49,7 +50,8 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_nccl_allreduce)
+    const std::vector<Scope *> &local_scopes, bool skip_scale_loss,
+    bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
@@ -58,6 +60,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
   }
+  skip_scale_loss_ = skip_scale_loss;
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
@@ -108,7 +111,9 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       // always use the first device
       CreateSendOp(&result, *op);
     } else if (IsScaleLossOp(*op)) {
-      CreateScaleLossGradOp(&result);
+      if (!skip_scale_loss_) {
+        CreateScaleLossGradOp(&result);
+      }
       is_forwarding = false;
     } else {
       int op_dev_id = GetOpDeviceID(var_name_on_devices, *op);

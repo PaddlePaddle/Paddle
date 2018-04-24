@@ -30,8 +30,9 @@ class ParallelExecutor(object):
                  num_threads=None,
                  threads_per_dev=None,
                  allow_op_delay=False,
-                 use_nccl_allreduce=True,
-                 share_vars_from=None):
+                 share_vars_from=None,
+                 customize_loss_grad=False,
+                 use_nccl_allreduce=True):
         """
         ParallelExecutor can run program in parallel.
 
@@ -83,7 +84,7 @@ class ParallelExecutor(object):
         else:
             for i in xrange(multiprocessing.cpu_count()):
                 p = core.Place()
-                self._act_places.append(core.CPUPlace(i))
+                self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         assert self._places, "no place for execution"
@@ -129,7 +130,9 @@ class ParallelExecutor(object):
             scope,
             local_scopes,
             allow_op_delay,
+            customize_loss_grad,
             use_nccl_allreduce)
+
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):
