@@ -39,7 +39,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // parallelism execution, need to know when to free the tensor.
   DestroyCallback destroy_callback = [](void* backing) {};
 
-  void* buf = malloc(1024);
+  auto buffer = std::unique_ptr<char>(new char[1024]);
+  void* buf = buffer.get();
+
   void* payload = nullptr;
   size_t payload_size;
   ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
