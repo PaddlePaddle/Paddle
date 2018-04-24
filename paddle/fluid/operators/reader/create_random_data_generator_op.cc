@@ -52,8 +52,6 @@ class RandomDataGenerator : public framework::ReaderBase {
 
   void ReInit() override { return; }
 
-  bool HasNext() const override { return true; }
-
  private:
   float min_;
   float max_;
@@ -74,7 +72,7 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
     PADDLE_ENFORCE_EQ(std::accumulate(ranks.begin(), ranks.end(), 0),
-                      int(shape_concat.size()),
+                      static_cast<int>(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
     std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);

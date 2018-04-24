@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iostream>
 #include "mkldnn.hpp"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-
-#include <iostream>
 
 namespace paddle {
 namespace operators {
@@ -63,15 +62,26 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                               softmax_md, 1 /*dim: C*/);
     // create memory primitives
     auto softmax_src_memory =
-        memory({softmax_md, mkldnn_engine}, (void*)input_data);
+        memory({softmax_md, mkldnn_engine},
+               static_cast<void*>(const_cast<T*>(input_data)));
     auto softmax_dst_memory =
-        memory({softmax_md, mkldnn_engine}, (void*)output_data);
+        memory({softmax_md, mkldnn_engine},
+               static_cast<void*>(const_cast<T*>(output_data)));
     auto softmax_prim_desc =
         softmax_forward::primitive_desc(softmax_desc, mkldnn_engine);
     auto softmax = softmax_forward(softmax_prim_desc, softmax_src_memory,
                                    softmax_dst_memory);
     std::vector<primitive> pipeline{softmax};
     stream(stream::kind::eager).submit(pipeline).wait();
+
+    const bool is_test = ctx.Attr<bool>("is_test");
+    if (!is_test) {
+      T threshold = exp(-64);
+      for (size_t i = 0; i < dst_tz[0] * dst_tz[1]; ++i) {
+        output_data[i] =
+            output_data[i] < threshold ? threshold : output_data[i];
+      }
+    }
   }
 };
 

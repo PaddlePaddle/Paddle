@@ -873,6 +873,11 @@ HOSTDEVICE inline bool(isfinite)(const float16& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+inline std::ostream& operator<<(std::ostream& os, const float16& a) {
+  os << static_cast<float>(a);
+  return os;
+}
+
 }  // namespace platform
 }  // namespace paddle
 
@@ -1001,6 +1006,46 @@ HOSTDEVICE inline bool(isfinite)(const float16& a) {
 template <>
 HOSTDEVICE inline float16 exp(const float16& a) {
   return float16(::expf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 log(const float16& a) {
+  return float16(::logf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 tanh(const float16& a) {
+  return float16(::tanhf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 sqrt(const float16& a) {
+  return float16(::sqrtf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 ceil(const float16& a) {
+  return float16(::ceilf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 floor(const float16& a) {
+  return float16(::floorf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 round(const float16& a) {
+  return float16(::roundf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 pow(const float16& a, const float16& b) {
+  return float16(::powf(static_cast<float>(a), static_cast<float>(b)));
+}
+
+template <>
+HOSTDEVICE inline float16 abs(const float16& a) {
+  return float16(::fabs(static_cast<float>(a)));
 }
 
 }  // namespace numext

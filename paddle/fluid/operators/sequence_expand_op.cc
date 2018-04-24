@@ -84,12 +84,11 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
         }
       }
       out_dims[0] = out_first_dim;
-      ctx->SetOutputDim("Out", out_dims);
     } else {
       out_dims[0] = -1;
-      ctx->SetOutputDim("Out", out_dims);
-      ctx->ShareLoD("X", /*->*/ "Out");
     }
+    ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -201,8 +200,10 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_expand, ops::SequenceExpandOp, ops::SequenceExpandOpMaker,
-            sequence_expand_grad, ops::SequenceExpandOpGrad);
+REGISTER_OPERATOR(sequence_expand, ops::SequenceExpandOp,
+                  ops::SequenceExpandOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, float>,

@@ -88,8 +88,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
              details::OpHandleBase *op);
 
-  void RunDelayedOps(const std::unordered_set<OpHandleBase *> &delayed_ops);
-
  private:
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
@@ -99,9 +97,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   bool allow_op_delay_;
-
-  size_t computation_count_{0};
-  size_t max_async_computation{100};
 };
 
 }  // namespace details

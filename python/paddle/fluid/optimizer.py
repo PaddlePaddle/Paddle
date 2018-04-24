@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import re
 from collections import defaultdict
 from paddle.fluid.framework import Program
 import framework
@@ -27,7 +27,8 @@ from contextlib import contextmanager
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
-    'Adadelta', 'ModelAverage'
+    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'Adadelta', 'ModelAverage'
 ]
 
 
@@ -818,8 +819,8 @@ class ModelAverage(Optimizer):
     min_average_window, max_average_window and current update times.
 
     Args:
-        params_grads: A list of parameter-grad variable pairs.
         average_window_rate: The rate of average window.
+        params_grads: A list of parameter-grad variable pairs.
         min_average_window: The minimum size of average window.
         max_average_window: The maximum size of average window.
 
@@ -840,8 +841,8 @@ class ModelAverage(Optimizer):
     """
 
     def __init__(self,
-                 params_grads,
                  average_window_rate,
+                 params_grads=None,
                  min_average_window=10000,
                  max_average_window=10000,
                  **kwargs):
@@ -849,24 +850,37 @@ class ModelAverage(Optimizer):
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
-        self.params_grads = params_grads
+
+        self.params_grads = [] if params_grads is None else params_grads
+        params = {}
         for param, grad in self.params_grads:
-            if grad is not None:
-                self._append_average_accumulate_op(param)
+            if param.do_model_average != False:
+                params[param.name] = (param, grad)
+        for param in framework.default_main_program().global_block(
+        ).all_parameters():
+            if param.name not in params and param.do_model_average != False:
+                grad = param.block.create_var(
+                    name=unique_name.generate(".".join([param.name, 'tmp'])),
+                    dtype=param.dtype,
+                    persistable=False,
+                    stop_gradient=True)
+                params[param.name] = (param, grad)
+        self.params_grads = params.values()
+
+        for param, grad in self.params_grads:
+            self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
         block = self.apply_program.global_block()
         with program_guard(main_program=self.apply_program):
             for param_grad in self.params_grads:
-                if param_grad[1] is not None:
-                    self._add_average_apply_op(block, param_grad)
+                self._add_average_apply_op(block, param_grad)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
         with program_guard(main_program=self.restore_program):
             for param_grad in self.params_grads:
-                if param_grad[1] is not None:
-                    self._add_average_restore_op(block, param_grad)
+                self._add_average_restore_op(block, param_grad)
 
     def _add_average_apply_op(self, block, param_grad):
         param = block.clone_variable(param_grad[0])

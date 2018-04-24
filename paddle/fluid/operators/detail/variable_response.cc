@@ -114,8 +114,7 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto var = scope_->FindVar(meta_.varname());
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
 
   framework::LoD lod;
@@ -151,8 +150,7 @@ bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto var = scope_->FindVar(meta_.varname());
-  auto* slr = var->GetMutable<framework::SelectedRows>();
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
@@ -174,8 +172,7 @@ bool VariableResponse::CopySelectRowsTensorData(
 bool VariableResponse::CopySelectRowsData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, int length) {
-  auto var = scope_->FindVar(meta_.varname());
-  auto* slr = var->GetMutable<framework::SelectedRows>();
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->mutable_rows()->resize(length /
                               framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
@@ -414,6 +411,20 @@ int VariableResponse::Parse(Source* source) {
         if (!CopySelectRowsData(&input, *dev_ctx_, length)) {
           return tag;
         }
+        break;
+      }
+      case sendrecv::VariableMessage::kOutVarnameFieldNumber: {
+        uint32_t length;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
+          return tag;
+        }
+
+        std::string temp;
+        if (!input.ReadString(&temp, length)) {
+          return tag;
+        }
+
+        meta_.set_out_varname(temp);
         break;
       }
 

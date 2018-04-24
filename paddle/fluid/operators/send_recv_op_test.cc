@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -37,11 +37,11 @@ namespace m = paddle::operators::math;
 std::unique_ptr<f::OperatorBase> listen_and_serv_op;
 int selected_port;
 
-void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
+void InitTensorsInScope(const p::CPUPlace &place, f::Scope *scope) {
   p::CPUDeviceContext ctx(place);
   for (int i = 0; i < 2; ++i) {
     auto var_name = paddle::string::Sprintf("x%d", i);
-    auto var = scope.Var(var_name);
+    auto var = scope->Var(var_name);
     auto tensor = var->GetMutable<f::LoDTensor>();
     tensor->Resize({10, 10});
     float *expect = tensor->mutable_data<float>(place);
@@ -50,20 +50,20 @@ void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
     }
   }
 
-  auto out_var = scope.Var("Out");
+  auto out_var = scope->Var("Out");
   auto out_tensor = out_var->GetMutable<f::LoDTensor>();
   out_tensor->Resize({10, 10});
   out_tensor->mutable_data<float>(place);  // allocate
 }
 
-void InitSelectedRowsInScope(f::Scope &scope, p::CPUPlace &place) {
+void InitSelectedRowsInScope(const p::CPUPlace &place, f::Scope *scope) {
   p::CPUDeviceContext ctx(place);
   int64_t height = 10;
   int64_t row_numel = 10;
   m::SetConstant<p::CPUDeviceContext, float> set_one;
   // init x0
   std::vector<int64_t> rows0{0, 4, 7};
-  auto x0_var = scope.Var("x0");
+  auto x0_var = scope->Var("x0");
   auto x0 = x0_var->GetMutable<f::SelectedRows>();
   x0->set_rows(rows0);
   x0->set_height(height);
@@ -74,7 +74,7 @@ void InitSelectedRowsInScope(f::Scope &scope, p::CPUPlace &place) {
 
   // init x1
   std::vector<int64_t> rows1{2, 9};
-  auto x1_var = scope.Var("x1");
+  auto x1_var = scope->Var("x1");
   auto x1 = x1_var->GetMutable<f::SelectedRows>();
   x1->set_rows(rows1);
   x1->set_height(height);
@@ -83,7 +83,7 @@ void InitSelectedRowsInScope(f::Scope &scope, p::CPUPlace &place) {
       f::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}), place);
   set_one(ctx, x1_value, 1.0);
 
-  auto out_var = scope.Var("Out");
+  auto out_var = scope->Var("Out");
   auto out = out_var->GetMutable<f::SelectedRows>();
   auto out_value = out->mutable_value();
   out->set_height(height);
@@ -117,16 +117,17 @@ void StartServerNet(bool is_sparse) {
   f::Scope scope;
   p::CPUPlace place;
   if (is_sparse) {
-    InitSelectedRowsInScope(scope, place);
+    InitSelectedRowsInScope(place, &scope);
   } else {
-    InitTensorsInScope(scope, place);
+    InitTensorsInScope(place, &scope);
   }
 
   // sub program run in listen_and_serv_op, for simple test we use sum
   f::ProgramDesc program;
   const auto &root_block = program.Block(0);
   auto *optimize_block = program.AppendBlock(root_block);
-  // X for server side tensors, RX for received tensers, must be of same shape.
+  auto *prefetch_block = program.AppendBlock(root_block);
+  // X for server side tensors, RX for received tensors, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
 
   f::AttributeMap attrs;
@@ -135,9 +136,9 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"ParamList", std::vector<std::string>({"Out"})});
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", optimize_block});
+  attrs.insert({"PrefetchBlock", prefetch_block});
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
-  LOG(INFO) << "selected port before run " << selected_port;
   listen_and_serv_op->Run(scope, place);
   LOG(INFO) << "server exit";
 }
@@ -148,7 +149,7 @@ TEST(SendRecvOp, CPUDense) {
   // local net
   f::Scope scope;
   p::CPUPlace place;
-  InitTensorsInScope(scope, place);
+  InitTensorsInScope(place, &scope);
   // create rpc client var
   scope.Var("RPC_CLIENT_VAR");
 
@@ -156,16 +157,13 @@ TEST(SendRecvOp, CPUDense) {
   selected_port = static_cast<paddle::operators::ListenAndServOp *>(
                       listen_and_serv_op.get())
                       ->GetSelectedPort();
-  LOG(INFO) << "selected port " << selected_port;
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
   auto send_op = f::OpRegistry::CreateOp(
       "send", {{"X", {"x1"}}},
       {{"Out", {"Out"}}, {"RPCClient", {"RPC_CLIENT_VAR"}}}, attrs);
-  LOG(INFO) << "before run " << endpoint;
   send_op->Run(scope, place);
-  LOG(INFO) << "end run";
 
   auto in_var = scope.Var("x1");
   auto tensor = in_var->GetMutable<f::LoDTensor>();
@@ -178,7 +176,6 @@ TEST(SendRecvOp, CPUDense) {
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
-  LOG(INFO) << "before stop";
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
@@ -191,13 +188,12 @@ TEST(SendRecvOp, CPUSparse) {
   f::Scope scope;
   p::CPUPlace place;
   p::CPUDeviceContext ctx(place);
-  InitSelectedRowsInScope(scope, place);
+  InitSelectedRowsInScope(place, &scope);
   scope.Var("RPC_CLIENT_VAR");
   f::AttributeMap attrs;
   selected_port = static_cast<paddle::operators::ListenAndServOp *>(
                       listen_and_serv_op.get())
                       ->GetSelectedPort();
-  LOG(INFO) << "selected port " << selected_port;
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});

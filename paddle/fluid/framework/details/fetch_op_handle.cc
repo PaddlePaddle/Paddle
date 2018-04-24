@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -48,20 +51,23 @@ void FetchOpHandle::RunImpl() {
     auto *var = static_cast<VarHandle *>(input);
     var->generated_op_->Wait(cpu_ctx);
   }
-
   tensors_.resize(inputs_.size());
-  auto *var = static_cast<VarHandle *>(inputs_[0]);
-  auto &var_name = var->name_;
+  auto *var_handle = static_cast<VarHandle *>(inputs_[0]);
+  auto &var_name = var_handle->name_;
   platform::CPUPlace cpu;
   auto &scopes = *local_scopes_;
 
   for (size_t i = 0; i < scopes.size(); ++i) {
     auto &scope = scopes[i];
-    auto &t = scope->FindVar(var_name)->Get<framework::LoDTensor>();
-    if (platform::is_gpu_place(var->place_)) {
+    auto *var =
+        scope->FindVar(kLocalExecScopeName)->Get<Scope *>()->FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
+                            var_name);
+    auto &t = var->Get<framework::LoDTensor>();
+    if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i]);
-      dev_ctxes_[t.place()]->Wait();
+      TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i], true);
+      dev_ctxes_.at(t.place())->Wait();
 #endif
     } else {
       tensors_[i].ShareDataWith(t);

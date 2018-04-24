@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/matmul_op.h"
+#include <algorithm>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -235,8 +237,9 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(matmul, ops::MatMulOp, ops::MatMulOpMaker, matmul_grad,
-            ops::MatMulOpGrad);
+REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

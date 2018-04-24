@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 import numpy as np
 
 import layers
@@ -21,7 +22,6 @@ from layer_helper import LayerHelper
 from initializer import Constant
 
 __all__ = [
-    'Accuracy',
     'ChunkEvaluator',
     'EditDistance',
     'DetectionMAP',
@@ -59,6 +59,9 @@ class Evaluator(object):
     """
 
     def __init__(self, name, **kwargs):
+        warnings.warn(
+            "The %s is deprecated, because maintain a modified program inside evaluator cause bug easily, please use fluid.metrics.%s instead."
+            % (self.__class__.__name__, self.__class__.__name__), Warning)
         self.states = []
         self.metrics = []
         self.helper = LayerHelper(name, **kwargs)
@@ -269,7 +272,7 @@ class DetectionMAP(Evaluator):
         input (Variable): The detection results, which is a LoDTensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
         gt_label (Variable): The ground truth label index, which is a LoDTensor
-            with shape [N, 1]. 
+            with shape [N, 1].
         gt_difficult (Variable): Whether this ground truth is a difficult
             bounding box (bbox), which is a LoDTensor [N, 1].
         gt_box (Variable): The ground truth bounding box (bbox), which is a

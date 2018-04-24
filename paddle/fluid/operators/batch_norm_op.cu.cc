@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/framework/data_layout.h"
-
 #include <cfloat>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
@@ -115,23 +114,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     const auto *bias = ctx.Input<Tensor>("Bias");
 
     auto *y = ctx.Output<Tensor>("Y");
-    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
 
     // alloc memory
     y->mutable_data<T>(ctx.GetPlace());
-    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-        functor;
-    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
-    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
     auto handle = dev_ctx.cudnn_handle();
 
@@ -160,6 +147,21 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       // Run training mode.
       // obtain running mean and running inv var, and see if we need to
       // initialize them.
+
+      auto *mean_out = ctx.Output<Tensor>("MeanOut");
+      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
+      mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+
+      auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+      auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+      saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+          functor;
+      functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+      functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+
       double this_factor = 1. - momentum;
 
       CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(

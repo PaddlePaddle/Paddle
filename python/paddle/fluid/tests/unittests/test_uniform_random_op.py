@@ -15,6 +15,16 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+
+
+def output_hist(out):
+    hist, _ = np.histogram(out, range=(-5, 10))
+    hist = hist.astype("float32")
+    hist /= float(out.size)
+    prob = 0.1 * np.ones((10))
+    return hist, prob
 
 
 class TestUniformRandomOp(OpTest):
@@ -33,11 +43,37 @@ class TestUniformRandomOp(OpTest):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        tensor = outs[0]
-        hist, _ = np.histogram(outs[0], range=(-5, 10))
-        hist = hist.astype("float32")
-        hist /= float(outs[0].size)
-        prob = 0.1 * np.ones((10))
+        hist, prob = output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOpSelectedRows(unittest.TestCase):
+    def get_places(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        return places
+
+    def test_check_output(self):
+        for place in self.get_places():
+            self.check_with_place(place)
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+        out = scope.var("X").get_selected_rows()
+
+        op = Operator(
+            "uniform_random",
+            Out="X",
+            shape=[4, 784],
+            min=-5.0,
+            max=10.0,
+            seed=10)
+        op.run(scope, place)
+        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))

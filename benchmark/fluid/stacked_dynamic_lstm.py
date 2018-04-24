@@ -38,6 +38,14 @@ def parse_args():
         default=32,
         help='The sequence number of a batch data. (default: %(default)d)')
     parser.add_argument(
+        '--skip_batch_num',
+        type=int,
+        default=5,
+        help='The first num of minibatch num to skip, for better performance test'
+    )
+    parser.add_argument(
+        '--iterations', type=int, default=80, help='The number of minibatches.')
+    parser.add_argument(
         '--emb_dim',
         type=int,
         default=512,
@@ -64,6 +72,10 @@ def parse_args():
         default=int(os.environ.get('CROP_SIZE', '1500')),
         help='The max sentence length of input. Since this model use plain RNN,'
         ' Gradient could be explored if sentence is too long')
+    parser.add_argument(
+        '--with_test',
+        action='store_true',
+        help='If set, test the testset during training.')
     args = parser.parse_args()
     return args
 
@@ -157,37 +169,43 @@ def main():
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
 
-    def train_loop(pass_num, crop_size):
-        with profiler.profiler(args.device, 'total') as prof:
-            for pass_id in range(pass_num):
-                train_reader = batch(
-                    paddle.reader.shuffle(
-                        crop_sentence(imdb.train(word_dict), crop_size),
-                        buf_size=25000),
-                    batch_size=args.batch_size)
-                word_nums = 0
-                pass_start_time = time.time()
-                for batch_id, data in enumerate(train_reader()):
-                    tensor_words = to_lodtensor([x[0] for x in data], place)
-                    for x in data:
-                        word_nums += len(x[0])
-                    label = numpy.array([x[1] for x in data]).astype("int64")
-                    label = label.reshape((-1, 1))
-                    loss_np, acc, weight = exe.run(
-                        fluid.default_main_program(),
-                        feed={"words": tensor_words,
-                              "label": label},
-                        fetch_list=[loss, batch_acc, batch_size_tensor])
-                    print("pass_id=%d, batch_id=%d, loss=%f, acc=%f" %
-                          (pass_id, batch_id, loss_np, acc))
+    train_reader = batch(
+        paddle.reader.shuffle(
+            crop_sentence(imdb.train(word_dict), args.crop_size),
+            buf_size=25000),
+        batch_size=args.batch_size)
 
-                pass_end_time = time.time()
-                time_consumed = pass_end_time - pass_start_time
-                words_per_sec = word_nums / time_consumed
-                print("pass_id=%d, sec/pass: %f, words/s: %f" %
-                      (pass_id, time_consumed, words_per_sec))
+    iters, num_samples, start_time = 0, 0, time.time()
+    for pass_id in range(args.pass_num):
+        train_accs = []
+        train_losses = []
+        for batch_id, data in enumerate(train_reader()):
+            if iters == args.skip_batch_num:
+                start_time = time.time()
+                num_samples = 0
+            if iters == args.iterations:
+                break
+            tensor_words = to_lodtensor([x[0] for x in data], place)
+            label = numpy.array([x[1] for x in data]).astype("int64")
+            label = label.reshape((-1, 1))
+            loss_np, acc, weight = exe.run(
+                fluid.default_main_program(),
+                feed={"words": tensor_words,
+                      "label": label},
+                fetch_list=[loss, batch_acc, batch_size_tensor])
+            iters += 1
+            for x in data:
+                num_samples += len(x[0])
+            print(
+                "Pass = %d, Iter = %d, Loss = %f, Accuracy = %f" %
+                (pass_id, iters, loss_np, acc)
+            )  # The accuracy is the accumulation of batches, but not the current batch.
 
-    train_loop(args.pass_num, args.crop_size)
+        train_elapsed = time.time() - start_time
+        examples_per_sec = num_samples / train_elapsed
+        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+              (num_samples, train_elapsed, examples_per_sec))
+        exit(0)
 
 
 def to_lodtensor(data, place):
@@ -205,5 +223,14 @@ def to_lodtensor(data, place):
     return res
 
 
+def print_arguments(args):
+    print('----------- lstm Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s: %s' % (arg, value))
+    print('------------------------------------------------')
+
+
 if __name__ == '__main__':
+    args = parse_args()
+    print_arguments(args)
     main()

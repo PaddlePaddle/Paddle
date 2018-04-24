@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,7 +29,7 @@ namespace framework {
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
 
-void InitGflags(std::vector<std::string> &argv) {
+void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
     int argc = argv.size();
     char **arr = new char *[argv.size()];
@@ -64,8 +65,8 @@ void InitP2P(int count) {
 #endif
 }
 
-void InitDevices() {
-  /*Init all avaiable devices by default */
+void InitDevices(bool init_p2p) {
+  /*Init all available devices by default */
 
   std::vector<platform::Place> places;
   places.emplace_back(platform::CPUPlace());
@@ -85,7 +86,9 @@ void InitDevices() {
   for (int i = 0; i < count; ++i) {
     places.emplace_back(platform::CUDAPlace(i));
   }
-  InitP2P(count);
+  if (init_p2p) {
+    InitP2P(count);
+  }
   platform::DeviceContextPool::Init(places);
 }
 

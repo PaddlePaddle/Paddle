@@ -1,6 +1,9 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
+
+# When you modify it, please be aware of cudnn-runtime version 
+# and libcudnn.so.x in paddle/scripts/docker/build.sh
+FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG UBUNTU_MIRROR
@@ -45,6 +48,17 @@ ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 # install glide
 RUN curl -s -q https://glide.sh/get | sh
 
+# Install TensorRT
+# following TensorRT.tar.gz is not the default official one, we do two miny changes:
+# 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
+#    and its size is only one-third of the official one.
+# 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
+#    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
+RUN wget -qO- http://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
+    tar -xz -C /usr/local && \
+    cp -rf /usr/local/TensorRT/include /usr && \
+    cp -rf /usr/local/TensorRT/lib /usr
+
 # git credential to skip password typing
 RUN git config --global credential.helper store
 
@@ -57,7 +71,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip install --upgrade pip && \
+RUN pip install --upgrade pip==9.0.3 && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark

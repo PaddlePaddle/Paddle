@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/increment_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -89,4 +90,4 @@ REGISTER_OP_CPU_KERNEL(
     increment, ops::IncrementKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>)
+    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>);
