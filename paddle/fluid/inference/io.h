@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void Init(std::vector<std::string> &argv);
+void Init(const std::vector<std::string> argv);
 
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
