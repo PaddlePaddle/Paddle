@@ -84,7 +84,7 @@ struct Transform<platform::CPUDeviceContext> {
   }
 };
 
-#if (defined(__HIPCC__) || defined(__NVCC))
+#if (defined(__HIPCC__) || defined(__NVCC__))
 template <>
 struct Transform<platform::CUDADeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
