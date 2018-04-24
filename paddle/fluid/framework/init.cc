@@ -30,7 +30,7 @@ std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
-    argv.push_back("dummy");
+    argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
     std::string line;
