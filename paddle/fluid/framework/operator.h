@@ -79,26 +79,28 @@ class OperatorBase {
 
   virtual ~OperatorBase() {}
 
-  template <typename T>
-  inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
-    return boost::get<T>(attrs_.at(name));
-  }
-
-  /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const Scope* scope) const;
-
-  std::string DebugString() const { return DebugStringEx(nullptr); }
-
-  /// Net will call this interface function to Run an op.
+  /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
 
+  /// if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(const Scope* scope) const;
+  std::string DebugString() const { return DebugStringEx(nullptr); }
+
   virtual bool SupportGPU() const { return false; }
+
+  const std::string& Type() const { return type_; }
+
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+                   name);
+    return boost::get<T>(attrs_.at(name));
+  }
+  const AttributeMap& Attrs() const { return attrs_; }
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
@@ -115,10 +117,6 @@ class OperatorBase {
   const std::vector<std::string>& Outputs(const std::string& name) const;
 
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
-
-  const std::string& Type() const { return type_; }
-  void SetType(const std::string& type) { type_ = type; }
-  const AttributeMap& Attrs() const { return attrs_; }
 
   // Return a new operator instance, which is as same as this.
   // Use unique_ptr to prevent caller forget to delete this pointer.
