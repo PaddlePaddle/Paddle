@@ -359,6 +359,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(indices)
         print(str(program))
 
+    def test_roi_pool(self):
+        print("test_roi_pool")
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[10, 256, 30, 30], dtype="float32")
+            rois = layers.data(name="rois", shape=[20, 5], dtype="float32")
+            output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            self.assertIsNotNone(output)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
