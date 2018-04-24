@@ -3778,14 +3778,14 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         spatial_scale (float): Multiplicative spatial scale factor. To translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
 
     Returns:
-        Variable: The output of ROIPoolOp is a 4-D tensor with shape (num_rois, channels, pooled_h, pooled_w).
+        pool_out (Variable): The output of ROIPoolOp is a 4-D tensor with shape (num_rois, channels, pooled_h, pooled_w).
+        argmaxes (Variable): Argmaxes corresponding to indices in input with shape (num_rois, channels, pooled_h, pooled_w). 
 
     Examples:
         .. code-block:: python
              # assuming we have input x_feas, rois x_rois, pooled_height ph, pooled_width pw and spatial_scale scale.
-             pool_out = fluid.layers.roi_pool(input=x_feas, rois=x_rois, pooled_height=ph, pooled_width=pw, spatial_scale=scale)
+             pool_out, argmaxes = fluid.layers.roi_pool(input=x_feas, rois=x_rois, pooled_height=ph, pooled_width=pw, spatial_scale=scale)
     """
-
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
@@ -3793,10 +3793,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         type="pool2d",
         inputs={"X": input,
                 "ROIs": rois},
-        outputs={"Out": pool_out},
+        outputs={"Out": pool_out,
+                 "Argmax": argmaxes},
         attrs={
             "pooled_height": pooled_height,
             "pooled_width": pooled_width,
             "spatial_scale": spatial_scale
         })
-    return pool_out
+    return pool_out, argmaxes
