@@ -59,12 +59,10 @@ void GatherOpHandle::RunImpl() {
 
   std::vector<int64_t> out_rows;
   std::vector<Tensor> in_tensors;
-  //  std::vector<platform::Place> in_places;
 
   auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
   // gather the inputs
   for (auto *in_handle : in_var_handles) {
-    //    in_places.push_back(in_handle->place_);
     auto *in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(in_var);
