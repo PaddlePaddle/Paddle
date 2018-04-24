@@ -79,7 +79,7 @@ class ParallelExecutor(object):
         else:
             for i in xrange(multiprocessing.cpu_count()):
                 p = core.Place()
-                self._act_places.append(core.CPUPlace(i))
+                self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         assert self._places, "no place for execution"
