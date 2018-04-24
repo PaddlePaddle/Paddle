@@ -47,16 +47,17 @@ class Scope {
   Scope& NewScope() const;
 
   /// Create a variable with given name if it doesn't exist.
-  Variable* Var(const std::string& name);
+  Variable* Var(const VarUUID& id);
 
   /// Create a variable with a scope-unique name.
-  Variable* Var(std::string* name = nullptr);
+  Variable* Var(VarUUID* id = nullptr);
 
-  void EraseVars(const std::vector<std::string>& var_names);
+  /// EraseVars in scope.
+  void EraseVars(const std::vector<VarUUID>& var_names);
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
-  Variable* FindVar(const std::string& name) const;
+  Variable* FindVar(const VarUUID& name) const;
 
   const Scope* parent() const { return parent_; }
 
@@ -78,13 +79,20 @@ class Scope {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
-  Variable* FindVarLocally(const std::string& name) const;
+  Variable* FindVarLocally(const VarUUID& id) const;
 
  private:
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
 
-  mutable std::unordered_map<std::string, Variable*> vars_;
+  // mutable std::unordered_map<std::string, Variable*> vars_;
+  struct Hasher {
+    size_t operator() (const VarUUID& id) const {
+      return id.unique_id;
+    }
+  };
+  mutable std::unordered_map<VarUUID, Variable*, Hasher> vars_;
+
   mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};
 

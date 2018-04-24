@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <vector>
 #include <memory>
 #include <string>
+#include <iostream>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/variable.h"
 
-TEST(Variable, GetMutable) {
-  using paddle::framework::Variable;
+using paddle::framework::Variable;
 
+TEST(Variable, GetMutable) {
   struct Tensor {
     int content_;
   };
@@ -38,4 +40,17 @@ TEST(Variable, GetMutable) {
 
   const std::string& ss = v->Get<std::string>();
   EXPECT_EQ("hello", ss);
+}
+
+TEST(UUIDGenerator, Generate) {
+  constexpr int count = 10;
+  std::vector<int> ids;
+  UUIDGenerator gen = UUIDGenerator::Instance();
+  for (int i=0; i < count; ++i) {
+    ids.push_back(gen());
+  }
+  for(auto& id : ids) {
+    std::cout << id << " ";
+  }
+  std::cout << endl;
 }

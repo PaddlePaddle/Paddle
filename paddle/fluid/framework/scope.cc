@@ -18,6 +18,7 @@ limitations under the License. */
 #include <set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(benchmark, false,
@@ -43,7 +44,7 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
-Variable* Scope::Var(const std::string& name) {
+Variable* Scope::Var(const VarUUID& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
   v = new Variable();
@@ -53,7 +54,7 @@ Variable* Scope::Var(const std::string& name) {
   return v;
 }
 
-Variable* Scope::Var(std::string* name) {
+Variable* Scope::Var(VarUUID* name) {
   auto var_name = string::Sprintf("%p.%d", this, vars_.size());
   if (name != nullptr) {
     *name = var_name;
@@ -61,7 +62,8 @@ Variable* Scope::Var(std::string* name) {
   return Var(var_name);
 }
 
-Variable* Scope::FindVar(const std::string& name) const {
+Variable* Scope::FindVar(const VarUUID& name) const {
+  platform::RecordEvent event("Scope");
   auto var = FindVarLocally(name);
   if (var != nullptr) {
     return var;
@@ -135,6 +137,7 @@ std::string Scope::Rename(const std::string& origin_name) const {
 }
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
+  platform::RecordEvent event("Scope");
   auto it = vars_.find(name);
   if (it != vars_.end()) return it->second;
   return nullptr;

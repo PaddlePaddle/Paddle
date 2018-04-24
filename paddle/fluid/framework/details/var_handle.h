@@ -68,6 +68,7 @@ struct DummyVarHandle : public VarHandleBase {
   std::string DebugString() const override;
 };
 
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

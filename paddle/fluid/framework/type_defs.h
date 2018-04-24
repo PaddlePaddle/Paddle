@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 
 namespace paddle {
 namespace framework {
@@ -29,7 +30,10 @@ class OpDesc;
 class InferShapeContext;
 class BlockDesc;
 
-using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+using details::VarUUID;
+class VarUUID;
+// using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+using VariableNameMap = std::map<std::string, std::vector<VarUUID>>;
 
 // The order should be as same as framework.proto
 using Attribute =
