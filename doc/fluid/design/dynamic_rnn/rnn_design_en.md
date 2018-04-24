@@ -29,7 +29,7 @@ std::vector<level_t> lod_start_pos;
 ```
 Each `level_t` here stores a level of offset information consistent with paddle's current practice.
 
-In order to transmit sequence information more transparently, we have introduced a new tensor called `LODTensor`[4].
+In order to transmit sequence information more transparently, we have introduced a new tensor called `LODTensor`[1].
 Its tensor-related interfaces all inherit directly from `Tensor`, but it also adds serial-related interfaces.
 Thus, when working with a `LODTensor`, ordinary `Op` is used directly as `Tensor`.
 The `Op` of the operation sequence will additionally operate the relevant interface of the `LODTensor` variable-length sequence operation.
@@ -172,10 +172,4 @@ x    x
 - Concat each sequence as a regular mini-batch representation
 
 ## references
-[Tensorflow Bucketing](https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.training/bucketing)
-
-[mxnet Bucketing](http://mxnet.io/how_to/bucketing.html)
-
-[variable length input in RNN scenario](https://discuss.pytorch.org/t/about-the-variable-length-input-in-rnn-scenario/345/5)
-
-[Level of details](https://en.wikipedia.org/wiki/Level_of_detail)
+1. [Level of details](https://en.wikipedia.org/wiki/Level_of_detail)
