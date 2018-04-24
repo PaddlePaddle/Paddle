@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Init(std::vector<std::string> argv);
-
 void InitGflags(std::vector<std::string> argv);
 
 void InitGLOG(const std::string &prog_name);

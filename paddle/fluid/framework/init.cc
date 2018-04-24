@@ -15,7 +15,6 @@ limitations under the License. */
 #include <algorithm>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/operator.h"
@@ -26,25 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-DEFINE_string(devices, "", "The devices to be used.");
-DEFINE_bool(init_p2p, true, "Whether to init p2p.");
-
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
-
-using paddle::platform::DeviceContextPool;
-
-void Init(std::vector<std::string> argv) {
-  InitGflags(argv);
-  // init devices
-  std::vector<int> devices;
-  std::string token;
-  std::istringstream tokenStream(FLAGS_devices);
-  while (std::getline(tokenStream, token, ',')) {
-    devices.push_back(std::stoi(token));
-  }
-  InitDevices(FLAGS_init_p2p, devices);
-}
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -60,27 +42,6 @@ void InitGflags(std::vector<std::string> argv) {
     google::ParseCommandLineFlags(&argc, &arr, true);
     VLOG(1) << "Init commandline: " << line;
   });
-}
-
-void InitP2P(int count) {
-#ifdef PADDLE_WITH_CUDA
-  std::call_once(p2p_init_flag, [&]() {
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0; j < count; ++j) {
-        if (i == j) continue;
-        int can_acess = -1;
-        PADDLE_ENFORCE(cudaDeviceCanAccessPeer(&can_acess, i, j),
-                       "Failed to test P2P access.");
-        if (can_acess != 1) {
-          LOG(WARNING) << "Cannot enable P2P access from " << i << " to " << j;
-        } else {
-          cudaSetDevice(i);
-          cudaDeviceEnablePeerAccess(j, 0);
-        }
-      }
-    }
-  });
-#endif
 }
 
 void InitP2P(std::vector<int> devices) {
