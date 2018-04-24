@@ -78,6 +78,7 @@ struct AdamFunctor<T, GPUAdam> {
 
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
     p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
@@ -140,8 +141,6 @@ struct AdamFunctor<T, CPUAdam> {
         moment1_out_, static_cast<Eigen::Index>(numel)};
     Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_out{
         moment2_out_, static_cast<Eigen::Index>(numel)};
-
-    //    auto lr = Eigen::Array<T, 1, Eigen::Dynamic>::Constant(numel, *lr_);
 
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
@@ -208,6 +207,7 @@ struct SparseAdamFunctor {
       T p = param_[rows_[i] * row_numel_ + j];
 
       lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+
       mom1 = beta1_ * mom1 + (1 - beta1_) * g;
       mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
       p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
@@ -263,6 +263,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
             lr.template data<T>(), grad.template data<T>(),
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()));
+            functor(param.numel());
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
