@@ -8,7 +8,7 @@ which supports the variable length sequences without padding.
 This doc will design fluid's RNN based on this idea.
 
 ## Multi-layer sequence data format `LODTensor`
-At present, Paddle will store data in one mini-batch in one-dimensional array.
+At present, Paddle stores data in one mini-batch in one-dimensional array.
 
 `Argument.sequenceStartPositions` is used to store information for each sentence.
 
@@ -69,25 +69,25 @@ private:
 };
 ```
 Among them, `lod_start_pos_` uses `shared_ptr` to reduce the cost of storage and replication.
-Think of `LODTensor` as an extension of `Tensor`, which is almost completely compatible with the original `Tensor`.
+`LODTensor` can be thought as an extension of `Tensor`, which is almost completely compatible with the original `Tensor`.
 
 ## How to support the framework
 ### Replace `Tensor` with `LoDTensor`
-To implement the passing of `LODTensor`, many `Tensor` in the framework need to be `LODTensor`.
-Simple implementation, directly ** replace all previous `Tensor` with `LODTensor`, where you can directly modify the `Tensor` interface created in `pybind.cc`.
+To implement the passing of `LODTensor`, most `Tensor` in the framework need to be replaced with `LODTensor`.
+Simple implementation, directly **replace all previous `Tensor` with `LODTensor`** , where you can directly modify the `Tensor` interface created in `pybind.cc`.
 
 In addition, the user may need to perceive the existence of a sequence (such as the sequence of the visualization needs to parse the output sequence in the model), so some of the serial operation APIs also need to be exposed to the python layer.
 
-### Pass `lod_start_pos` along with the Op call chain
+### Transmit `lod_start_pos` along with the Op call chain
 `lod_start_pos` is passed along with the Op call chain
-The framework needs to support the following features to implement the passing of `lod_start_pos`:
+The framework needs to support the following features to implement the transmit of `lod_start_pos`:
 
 1. Implement the transfer as `shared_ptr`
-     - Do not modify the contents of `lod_start_pos` as a consumer
-     - Modify producer of `lod_start_pos` as producer
-     - Conventions consumer only needs to copy `shared_ptr` passed over
-     - producer needs to create its own independent memory to store its own independent modifications and expose `shared_ptr` to subsequent consumer
-     - Since the transfer process is implemented by copying `shared_ptr`, the framework only needs to pass `lod_start_pos` once.
+   a. Do not modify the contents of `lod_start_pos` as a consumer
+   a. Modify producer of `lod_start_pos` as producer
+   a. Conventions consumer only needs to copy `shared_ptr` passed over
+   a. producer needs to create its own independent memory to store its own independent modifications and expose `shared_ptr` to subsequent consumer
+   a. Since the transfer process is implemented by copying `shared_ptr`, the framework only needs to pass `lod_start_pos` once.
 
 2. Op is transparent enough not to sense `lod_start_pos`
 3. Producer Op that needs to modify `lod_start_pos` can update its `lod_start_pos` data when `Run`
