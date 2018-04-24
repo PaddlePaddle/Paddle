@@ -55,7 +55,8 @@ class TestElementWiseAddOp(unittest.TestCase):
                         "X": block.var('x'),
                         "Y": block.var('y'),
                     },
-                    outputs={"Out": block.var('out'), })
+                    outputs={"Out": block.var('out'), },
+                    attrs={"axis": self.axis, })
 
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
@@ -79,7 +80,7 @@ class TestElementWiseAddOp(unittest.TestCase):
                               },
                               fetch_list=['x@GRAD', 'y@GRAD'])
                 self.__assert_close(x_grad, out[0], "x@GRAD")
-                self.__assert_close(y_grad, out[1], "y@GRAD", atol=2.0)
+                self.__assert_close(y_grad, out[1], "y@GRAD", atol=1.4)
 
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
