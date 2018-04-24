@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void Init(std::vector<std::string> &argv) { framework::Init(argv); }
+void Init(const std::vector<std::string> argv) { framework::Init(argv); }
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
