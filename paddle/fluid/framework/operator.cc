@@ -316,7 +316,6 @@ bool OpSupportGPU(const std::string& op_type) {
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
     // All control operator must support GPU
-
     return true;
   }
   for (auto& kern_pair : it->second) {
