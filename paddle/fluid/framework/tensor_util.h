@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
-                const platform::DeviceContext& ctx, Tensor* dst);
+                const platform::DeviceContext& ctx, Tensor* dst,
+                bool sync = false);
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
 
