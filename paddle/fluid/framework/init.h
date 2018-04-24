@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Init(int argc, char **argv);
+void Init(std::vector<std::string> &argv);
 
 void InitGflags(std::vector<std::string> &argv);
 

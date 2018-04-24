@@ -24,11 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-// Temporarily add this function for exposing framework::InitDevices() when
-// linking the inference shared library.
-void Init(bool init_p2p) { framework::InitDevices(init_p2p); }
-
-void Init(int argc, char** argv) { framework::Init(argc, argv); }
+void Init(std::vector<std::string> &argv) { framework::Init(argv); }
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
