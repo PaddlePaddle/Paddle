@@ -109,13 +109,15 @@ class OperatorBase {
   std::string Input(const std::string& name) const;
   //! Get a input which has multiple variables.
   const std::vector<std::string>& Inputs(const std::string& name) const;
+  //! Get all inputs variable names
+  std::vector<std::string> InputVars() const;
 
   //! Get a output with argument's name described in `op_proto`
   std::string Output(const std::string& name) const;
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   const std::vector<std::string>& Outputs(const std::string& name) const;
-
+  //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
   // Return a new operator instance, which is as same as this.
