@@ -160,67 +160,37 @@ def fc(input,
     dtype = helper.input_dtype()
 
     mul_results = []
-    if use_mkldnn:
-        tmp = helper.create_tmp_variable(dtype)
-        input_shape = input.shape
+    for input_var, param_attr in helper.iter_inputs_and_params():
+        input_shape = input_var.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
 
         w = helper.create_parameter(
-            attr=helper.param_attr,
-            shape=param_shape,
-            dtype=dtype,
-            is_bias=False)
-        if bias_attr is None or bias_attr is False:
-            bias_attr = False
-        else:
-            bias_attr = True
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+        tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
-            type="fc",
-            inputs={"Input": input,
-                    "W": w},
+            type="mul",
+            inputs={"X": input_var,
+                    "Y": w},
             outputs={"Out": tmp},
             attrs={
-                "use_mkldnn": use_mkldnn,
-                "is_test": is_test,
-                "bias_attr": bias_attr
+                "x_num_col_dims": num_flatten_dims,
+                "y_num_col_dims": 1,
+                "use_mkldnn": use_mkldnn
             })
-        return helper.append_activation(tmp)
+        mul_results.append(tmp)
+
+    if len(mul_results) == 1:
+        pre_bias = mul_results[0]
     else:
-        for input_var, param_attr in helper.iter_inputs_and_params():
-            input_shape = input_var.shape
-            param_shape = [
-                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-            ] + [size]
-
-            w = helper.create_parameter(
-                attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-            tmp = helper.create_tmp_variable(dtype)
-            helper.append_op(
-                type="mul",
-                inputs={"X": input_var,
-                        "Y": w},
-                outputs={"Out": tmp},
-                attrs={
-                    "x_num_col_dims": num_flatten_dims,
-                    "y_num_col_dims": 1,
-                })
-            mul_results.append(tmp)
-
-        if len(mul_results) == 1:
-            pre_bias = mul_results[0]
-        else:
-            pre_bias = helper.create_tmp_variable(dtype)
-            helper.append_op(
-                type="sum",
-                inputs={"X": mul_results},
-                outputs={"Out": pre_bias})
-        # add bias
-        pre_activation = helper.append_bias_op(
-            pre_bias, dim_start=num_flatten_dims)
-        # add activation
-        return helper.append_activation(pre_activation)
+        pre_bias = helper.create_tmp_variable(dtype)
+        helper.append_op(
+            type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
+    # add bias
+    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
+    # add activation
+    return helper.append_activation(pre_activation)
 
 
 def embedding(input,
@@ -3734,8 +3704,8 @@ def label_smooth(label,
                  name=None):
     """
     Label smoothing is a mechanism to regularize the classifier layer and is
-    called label-smoothing regularization (LSR). 
-    
+    called label-smoothing regularization (LSR).
+
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
     cause overfitting and reduce the ability of the model to adapt. Label
@@ -3759,10 +3729,10 @@ def label_smooth(label,
         prior_dist(Variable): The prior distribution to be used to smooth
                               labels. If not provided, an uniform distribution
                               is used. The shape of :attr:`prior_dist` should
-                              be :math:`(1, class\_num)`. 
+                              be :math:`(1, class\_num)`.
         epsilon(float): The weight used to mix up the original ground-truth
                         distribution and the fixed distribution.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, 
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
                                                   float_64, int etc.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.

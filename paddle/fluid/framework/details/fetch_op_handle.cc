@@ -66,7 +66,7 @@ void FetchOpHandle::RunImpl() {
     auto &t = var->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i]);
+      TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i], true);
       dev_ctxes_.at(t.place())->Wait();
 #endif
     } else {
