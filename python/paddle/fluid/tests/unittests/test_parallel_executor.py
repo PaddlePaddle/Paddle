@@ -692,7 +692,6 @@ class TestCRFModel(unittest.TestCase):
             pe = fluid.ParallelExecutor(
                 use_cuda=True,
                 loss_name=avg_cost.name,
-                threads_per_dev=2,
                 use_nccl_allreduce=use_nccl_allreduce)
 
             feeder = fluid.DataFeeder(
