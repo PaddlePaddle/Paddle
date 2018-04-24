@@ -239,10 +239,9 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
                                                 const std::string &p_name,
                                                 size_t dev_id) const {
 #ifdef PADDLE_WITH_CUDA
-  auto *op_handle =
-      new BroadcastOpHandle(local_scopes_, places_, true, nccl_ctxs_);
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, nccl_ctxs_);
 #else
-  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, false);
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
 #endif
 
   result->ops_.emplace_back(op_handle);

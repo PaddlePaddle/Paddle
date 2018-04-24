@@ -96,19 +96,19 @@ struct TestBroadcastOpHandle {
     }
     param_scopes_[input_scope_idx]->Var("input");
 
-#ifdef PADDLE_WITH_CUDA
-    op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_, use_gpu_,
-                                           nccl_ctxs_.get()));
-#endif
-
     if (use_gpu_) {
-#ifndef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
+      op_handle_.reset(
+          new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
-#ifndef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
       op_handle_.reset(
-          new BroadcastOpHandle(local_scopes_, gpu_list_, use_gpu_));
+          new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#else
+      op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_));
 #endif
     }
 

@@ -44,9 +44,17 @@ class ParallelExecutor(object):
                 training.
             allow_op_delay(bool, default False): Whether to delay and buffer
                 some operators together for scheduling or not, which may
-                improve performance in some cases, defalut False.
+                improve performance in some cases, default False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
+            use_nccl_allreduce(bool, default True): Whether to use nccl_allreduce
+                or not, if set True, the communication between different
+                devices by nccl allReduce, which doesn't support updating sparse
+                parameter, if set False, the communication between different
+                devices by reduce_op and broadcast_op, which will distribute all
+                the parameter gradients evenly to different device and updates
+                the parameters, and finally broadcast to other device, this method
+                support updating sparse parameter. Default True.
 
         Returns:
             A ParallelExecutor object.

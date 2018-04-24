@@ -67,10 +67,7 @@ struct VarHandle : public VarHandleBase {
            o.scope_idx_ == scope_idx_;
   }
 
-  bool operator!=(const VarHandle& o) const {
-    return o.generated_op_ != generated_op_ || o.name_ != name_ ||
-           o.scope_idx_ != scope_idx_;
-  }
+  bool operator!=(const VarHandle& o) const { return !this->operator==(o); }
 };
 
 // Dummy Variable. It is used to represent dependencies between operators

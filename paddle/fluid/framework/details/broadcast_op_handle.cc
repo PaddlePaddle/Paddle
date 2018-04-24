@@ -53,7 +53,7 @@ void BroadcastOpHandle::RunImpl() {
 
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
-  if (!use_nccl_ || platform::is_cpu_place(in_tensor.place())) {
+  if (platform::is_cpu_place(in_tensor.place())) {
     for (auto *out : out_var_handles) {
       if (*out == *in_var_handle) {
         continue;
@@ -72,7 +72,7 @@ void BroadcastOpHandle::RunImpl() {
       auto dev_ctx = dev_ctxes_.at(out_p);
       RunAndRecordEvent(out_p, [in_tensor, out_var, dev_ctx, out_p] {
         paddle::framework::TensorCopy(
-            in_tensor, out_p, *(dev_ctx),
+            in_tensor, out_p, *dev_ctx,
             &VariableVisitor::GetMutableTensor(out_var));
       });
     }
@@ -81,22 +81,24 @@ void BroadcastOpHandle::RunImpl() {
     PADDLE_ENFORCE(platform::is_gpu_place(in_tensor.place()));
     VarHandle *out_handle;
     int root = boost::get<platform::CUDAPlace>(in_tensor.place()).device;
-    std::vector<std::function<void()>> all_reduce_calls;
+    std::vector<std::function<void()>> broadcast_calls;
 
     for (size_t j = 0; j < out_var_handles.size(); ++j) {
-      auto *out = out_var_handles[j];
-      auto *out_var = var_scopes.at(out->scope_idx_)->FindVar(out->name_);
+      VarHandle *out_var_handle = out_var_handles[j];
+      Variable *out_var = var_scopes.at(out_var_handle->scope_idx_)
+                              ->FindVar(out_var_handle->name_);
 
-      if (*out != *in_var_handle) {
+      if (*out_var_handle != *in_var_handle) {
         PADDLE_ENFORCE_NOT_NULL(out_var);
-        PADDLE_ENFORCE_EQ(out->place_.which(), in_tensor.place().which(),
+        PADDLE_ENFORCE_EQ(out_var_handle->place_.which(),
+                          in_tensor.place().which(),
                           "Places must be all on CPU or all on CUDA.");
         VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
         VariableVisitor::GetMutableTensor(out_var).mutable_data(
-            out->place_, in_tensor.type());
+            out_var_handle->place_, in_tensor.type());
       }
 
-      auto out_p = out->place_;
+      auto out_p = out_var_handle->place_;
       int dev_id = boost::get<platform::CUDAPlace>(out_p).device;
 
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
@@ -106,15 +108,15 @@ void BroadcastOpHandle::RunImpl() {
       void *send_recv_buffer = nullptr;
       if (root == dev_id) {
         send_recv_buffer = const_cast<void *>(in_tensor.data<void>());
-        out_handle = out;
+        out_handle = out_var_handle;
       } else {
         send_recv_buffer =
             VariableVisitor::GetMutableTensor(out_var).mutable_data(
-                out->place_);
+                out_var_handle->place_);
       }
 
       int type = platform::ToNCCLDataType(in_tensor.type());
-      all_reduce_calls.emplace_back([=] {
+      broadcast_calls.emplace_back([=] {
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
             send_recv_buffer, in_tensor.numel(),
             static_cast<ncclDataType_t>(type), root, comm, stream));
@@ -124,7 +126,7 @@ void BroadcastOpHandle::RunImpl() {
     this->RunAndRecordEvent([&] {
       {
         platform::NCCLGroupGuard guard;
-        for (auto &call : all_reduce_calls) {
+        for (auto &call : broadcast_calls) {
           call();
         }
       }

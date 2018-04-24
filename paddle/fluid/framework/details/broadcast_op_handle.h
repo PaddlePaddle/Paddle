@@ -36,12 +36,9 @@ struct BroadcastOpHandle : public OpHandleBase {
  public:
 #ifdef PADDLE_WITH_CUDA
   BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places, bool use_nccl,
+                    const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
-      : local_scopes_(local_scopes),
-        places_(places),
-        use_nccl_(use_nccl),
-        nccl_ctxs_(nccl_ctxs) {
+      : local_scopes_(local_scopes), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
         dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
@@ -50,8 +47,8 @@ struct BroadcastOpHandle : public OpHandleBase {
   }
 #else
   BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places, bool use_nccl)
-      : local_scopes_(local_scopes), places_(places), use_nccl_(use_nccl) {}
+                    const std::vector<platform::Place> &places)
+      : local_scopes_(local_scopes), places_(places) {}
 #endif
 
   std::string Name() const override;
@@ -65,7 +62,6 @@ struct BroadcastOpHandle : public OpHandleBase {
  private:
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
-  bool use_nccl_;
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
