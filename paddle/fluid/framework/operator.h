@@ -271,20 +271,6 @@ class ExecutionContext {
     return res;
   }
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const {
-    PADDLE_ENFORCE_LT(i, InputSize(in));
-    PADDLE_ENFORCE_LT(j, OutputSize(out));
-    auto* in_var = MultiInputVar(in)[i];
-    auto* out_var = MultiOutputVar(out)[j];
-    if (!in_var->IsType<LoDTensor>()) return;
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_lod(in_tensor.lod());
-  }
-
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
   template <typename DeviceContextType>
