@@ -390,9 +390,7 @@ private:
 
       if (this->loadThread_) {  // wait poolActualSize < poolSize;
         std::unique_lock<std::mutex> l(mtx_);
-        pushCV_.wait(l, [this, additionalBatchSize] {
-          return this->poolActualSize_ < poolSize_;
-        });
+        pushCV_.wait(l, [this] { return this->poolActualSize_ < poolSize_; });
       }
 
       {
