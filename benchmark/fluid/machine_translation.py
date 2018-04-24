@@ -24,13 +24,10 @@ import distutils.util
 import paddle.v2 as paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.profiler as profiler
 import paddle.fluid.framework as framework
 from paddle.fluid.executor import Executor
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument(
-    "--iterations", type=int, default=-1, help="Number of iterations")
 parser.add_argument(
     "--embedding_dim",
     type=int,
@@ -375,11 +372,8 @@ def print_arguments(args):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    device = "GPU" if args.use_gpu == True else "CPU"
-
-    with profiler.profiler(
-            device, sorted_key=None, profile_path='.') as cpuprof:
-        if args.infer_only:
-            infer()
-        else:
-            train()
+    print_arguments(args)
+    if args.infer_only:
+        infer()
+    else:
+        train()
