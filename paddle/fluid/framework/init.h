@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-#include <mutex>
+#include <mutex>  // NOLINT
+#include <string>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -20,9 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Init(std::vector<std::string> &argv);
+void Init(std::vector<std::string> argv);
 
-void InitGflags(std::vector<std::string> &argv);
+void InitGflags(std::vector<std::string> argv);
 
 void InitGLOG(const std::string &prog_name);
 

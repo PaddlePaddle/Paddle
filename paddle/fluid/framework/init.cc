@@ -34,7 +34,7 @@ std::once_flag p2p_init_flag;
 
 using paddle::platform::DeviceContextPool;
 
-void Init(std::vector<std::string> &argv) {
+void Init(std::vector<std::string> argv) {
   InitGflags(argv);
   // init devices
   std::vector<int> devices;
@@ -46,7 +46,7 @@ void Init(std::vector<std::string> &argv) {
   InitDevices(FLAGS_init_p2p, devices);
 }
 
-void InitGflags(std::vector<std::string> &argv) {
+void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
     argv.push_back("dummy");
     int argc = argv.size();
@@ -108,7 +108,7 @@ void InitP2P(std::vector<int> devices) {
 }
 
 void InitDevices(bool init_p2p) {
-  /*Init all avaiable devices by default */
+  /*Init all available devices by default */
 
   std::vector<platform::Place> places;
   places.emplace_back(platform::CPUPlace());
