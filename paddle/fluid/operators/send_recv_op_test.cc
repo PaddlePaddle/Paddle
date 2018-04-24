@@ -137,7 +137,7 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", optimize_block});
   attrs.insert({"PrefetchBlock", prefetch_block});
-  attrs.insert({"grad_to_id", {}});
+  attrs.insert({"grad_to_id", std::vector<std::string>({""})});
   attrs.insert({"sync_mode", true});
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
