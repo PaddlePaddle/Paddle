@@ -79,6 +79,7 @@ __all__ = [
     'lrn',
     'pad',
     'label_smooth',
+    'roi_pool',
 ]
 
 
@@ -3789,3 +3790,43 @@ def label_smooth(label,
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)})
     return smooth_label
+
+
+def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+    """
+    **ROIPool Layer**
+    RoI pooling, its purpose is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7×7).
+    The operator has three steps:
+        1.Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height
+        2.Finding the largest value in each section
+        3.Copying these max values to the output buffer
+
+    Args:
+        input (Variable): The input for roi pooling.
+        rois (Variable): ROIs (Regions of Interest) to pool over. It should be a 2-D tensor of shape (num_rois, 5). It given as [[batch_id, x1, y1, x2, y2], …], where batch_id is the id of the data, (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        pooled_height (integer): The pooled output height. Default: 1
+        pooled_width (integer): The pooled output width. Default: 1
+        spatial_scale (float): Multiplicative spatial scale factor. To translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
+
+    Returns:
+        Variable: The output of ROIPoolOp is a 4-D tensor with shape (num_rois, channels, pooled_h, pooled_w).
+
+    Examples:
+        .. code-block:: python
+             # assuming we have input x_feas, rois x_rois, pooled_height ph, pooled_width pw and spatial_scale scale.
+             pool_out = fluid.layers.roi_pool(input=x_feas, rois=x_rois, pooled_height=ph, pooled_width=pw, spatial_scale=scale)
+    """
+    helper = LayerHelper('roi_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="pool2d",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": pool_out},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale
+        })
+    return pool_out
