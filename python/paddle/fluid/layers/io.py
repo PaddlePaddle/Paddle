@@ -457,8 +457,8 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def __create_unshared_decorated_reader__(op_type, reader, attrs):
-    new_reader_name = unique_name(op_type)
+def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
+    new_reader_name = name if name is not None else unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
     main_blk.append_op(
@@ -481,12 +481,12 @@ def batch(reader, batch_size):
         'create_batch_reader', reader, {'batch_size': int(batch_size)})
 
 
-def double_buffer(reader, place=None):
+def double_buffer(reader, place=None, name=None):
     attrs = dict()
     if place is not None:
         attrs['place'] = str(place).upper()
-    return __create_unshared_decorated_reader__('create_double_buffer_reader',
-                                                reader, attrs)
+    return __create_unshared_decorated_reader__(
+        'create_double_buffer_reader', reader, attrs, name=name)
 
 
 def multi_pass(reader, pass_num):
