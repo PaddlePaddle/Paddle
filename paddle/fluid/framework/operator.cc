@@ -554,7 +554,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             std::shared_ptr<Tensor> out(new Tensor);
             DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
                           out.get());
-            CopyVariableWithTensor(*var, *(out.get()), *trans_var);
+            CopyVariableWithTensor(*var, *(out.get()), trans_var);
           }
         }
       }
