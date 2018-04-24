@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
@@ -35,10 +34,8 @@ std::once_flag p2p_init_flag;
 
 using paddle::platform::DeviceContextPool;
 
-void Init(int argc, char **argv) {
-  std::call_once(gflags_init_flag,
-                 [&]() { google::ParseCommandLineFlags(&argc, &argv, true); });
-
+void Init(std::vector<std::string> &argv) {
+  InitGflags(argv);
   // init devices
   std::vector<int> devices;
   std::string token;
@@ -51,6 +48,7 @@ void Init(int argc, char **argv) {
 
 void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
+    argv.push_back("dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
     std::string line;
@@ -151,7 +149,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
-    if (devices[i] >= count) {
+    if (devices[i] >= count || devices[i] < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
