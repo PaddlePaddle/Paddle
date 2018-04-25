@@ -112,7 +112,8 @@ class MatMulFunctor {
       batched_gemm<DeviceContext, T>(
           context, GetTranspose(trans_a), GetTranspose(trans_b), dim_a.height_,
           dim_b.width_, dim_a.width_, alpha, a.data<T>(), b.data<T>(), beta,
-          out->data<T>(), batch_size, dim_a.stride_, dim_b.stride_);
+          out->mutable_data<T>(out->place()), batch_size, dim_a.stride_,
+          dim_b.stride_);
       PADDLE_ENFORCE(cudaDeviceSynchronize());
     }
   }
