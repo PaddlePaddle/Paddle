@@ -314,7 +314,7 @@ void batched_gemm<platform::CUDADeviceContext, float>(
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  const int strideC = M * N;
+  int64_t strideC = M * N;
   std::cerr << "Before" << std::endl;
   PADDLE_ENFORCE(cudaSetDevice(0));
   PADDLE_ENFORCE(cudaDeviceSynchronize());
@@ -325,7 +325,8 @@ void batched_gemm<platform::CUDADeviceContext, float>(
             << " C ptr=" << C << std::endl;
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
-      strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
+      static_cast<int64_t>(strideB), A, lda, static_cast<int64_t>(strideA),
+      &beta, C, ldc, strideC, batchCount));
   PADDLE_ENFORCE(cudaDeviceSynchronize());
 #else
   PADDLE_ENFORCE(false, "SgemmStridedBatched is not supported on cuda <= 7.5");
