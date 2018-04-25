@@ -194,5 +194,3 @@ REGISTER_INFERENCE_OPTIMIZER(SubblockToEngineOptimizer);
 #define REGISTER_INFERENCE_OPTIMIZER(Optimizer__) \
    InferenceOptimizer::Register(Optimizer__());
 ```
-
-
