@@ -34,7 +34,7 @@ inline mkldnn::memory::format to_mkldnn_format(DataLayout layout) {
   switch (layout) {
     case DataLayout::kNHWC:
       // TODO(pzelazko) currently Tensor has nhwc layout by default, but
-      // eventually nchw is used
+      // eventually nchw is used.
       // return mkldnn::memory::format::nhwc;
       return mkldnn::memory::format::nchw;
     case DataLayout::kNCHW:
@@ -183,11 +183,8 @@ inline void MKLDNNTensorMutable::Reorder(mkldnn::memory::format dst_format) {
        src_format == mkldnn::memory::format::oihw)) {
     src_format = mkldnn::memory::format::oihw;
   }
-  // TODO(pzelazko): what if input is nhwc?
 
   if (src_format == dst_format) {
-    std::cout << "reordering was requested but in and out format are the same: "
-              << src_format << std::endl;
     return;
   }
 
@@ -243,6 +240,14 @@ inline void MKLDNNTensor::Reorder(Tensor& out, DataLayout dst_layout,
   auto reorder = mkldnn::reorder(src_memory, dst_memory);
   std::vector<mkldnn::primitive> pipeline{reorder};
   mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+}
+
+inline mkldnn::memory::format GetMKLDNNFormat(const Tensor& tensor) {
+  DataLayout layout = tensor.layout();
+  if (layout == DataLayout::kMKLDNN) {
+    return MKLDNNTensor(tensor).GetFormat();
+  }
+  return to_mkldnn_format(layout);
 }
 
 namespace detail {

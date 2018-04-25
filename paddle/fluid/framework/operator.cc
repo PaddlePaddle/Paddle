@@ -434,7 +434,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_layout(in_tensor.layout());
-    // TODO(pzelazko:layout): set mkldnn layout
   }
 
   bool IsRuntime() const override { return true; }
