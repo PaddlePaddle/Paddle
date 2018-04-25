@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <deque>
-#include <memory>
 
 #include "paddle/fluid/platform/enforce.h"
 
