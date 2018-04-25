@@ -512,3 +512,53 @@ def read_file(file_obj):
         return out[0]
     else:
         return out
+
+
+class Reader(object):
+    """
+    This reader will be used for training in Imperative Fluid:
+    https://github.com/PaddlePaddle/Paddle/issues/9912
+    """
+
+    def iterate(self):
+        class ReaderLoop(object):
+            def __init__(self, batch_reader):
+                """
+                TODO(thuan):
+                Add reader_loop operator to block.  Input is batch_reader
+                variable.  batch_loop will create a new block and add it to the
+                program.  It will continue to loop until we reach EOF (as
+                determined by calling hasNext method on batch_reader).  During
+                each loop, it'll call executor on it's block
+                """
+                pass
+
+            def __enter__(self):
+                """
+                TODO(thuan):
+                - Create new block: fluid.default_main_program().create_block()
+                - Create new variable for each tensor (as defined by shape and
+                dtype in the batch_reader), add to current block
+                - Add next_batch operator to current block.  Input is the
+                batch_reader. Output is the variables created in previous step
+                - return a tuple of all variables. ie: return (var1, var2, var3, ...)
+                """
+                pass
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                return True
+
+        return ReaderLoop(self)
+
+
+def batch_reader(file, batch_size, shape, dtype, format='recordio'):
+    """
+    TODO(thuan):
+    - Perform check to make sure we support this file format
+    - Create new batch_reader variable
+    - Depending on the file format, add the corresponding reader operator.
+      ie: create_recordio_reader, ect.
+    - Add create_batch_reader operator to block, pass in the reader created
+      in the previous step
+    """
+    pass
