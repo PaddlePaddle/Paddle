@@ -29,9 +29,9 @@ std::string VarHandle::DebugString() const {
 
 std::string DummyVarHandle::DebugString() const { return "dummy"; }
 
-VarUUID::VarUUID(const std::strign& name) : name(name) {
-  unique_id = UUIDGenerator::Instance()(name);
-}
+// VarUUID::VarUUID(const std::strign& name) : name(name) {
+//   unique_id = UUIDGenerator::Instance()(name);
+// }
 
 }  // namespace details
 }  // namespace framework

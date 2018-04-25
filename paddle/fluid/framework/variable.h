@@ -95,25 +95,6 @@ class Variable {
 
 using details::VarUUID;
 using details::VarUUIDHash;
-/// variable unique_id generator, threadsafe singleton.
-class UUIDGenerator {
- public:
-  int operator()(const std::string& name) { return hasher(name); }
-  UUIDGenerator& Instance() {
-    std::call_once(once_flag, &UUIDGenerator::InitOnce);
-    return *g;
-  }
-
- private:
-  static void InitOnce() { g = new UUIDGenerator(); }
-  std::hash<std::string> hasher;
-  static UUIDGenerator* g;
-  static std::once_flag once_flag;
-  DISABLE_COPY_AND_ASSIGN(UUIDGenerator);
-};
-
-UUIDGenerator* UUIDGenerator::g = nullptr;
-std::once_flag UUIDGenerator::once_flag;
 
 }  // namespace framework
 }  // namespace paddle

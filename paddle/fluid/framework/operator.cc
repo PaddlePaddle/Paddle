@@ -14,6 +14,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <string>
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_transform.h"
@@ -46,7 +47,7 @@ proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
   }
 }
 
-static DDim GetDims(const Scope& scope, const std::string& name,
+static DDim GetDims(const Scope& scope, const VarUUID& name,
                     bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -66,7 +67,7 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
-static LoD GetLoD(const Scope& scope, const std::string& name) {
+static LoD GetLoD(const Scope& scope, const VarUUID& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -98,7 +99,7 @@ VarUUID OperatorBase::Input(const std::string& name) const {
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
                     "Operator %s's input %s should contain only one variable.",
                     type_, name);
-  return ins.empty() ? kEmptyVarName : ins[0];
+  return ins.empty() ? VarUUID(kEmptyVarName) : ins[0];
 }
 
 const std::vector<VarUUID>& OperatorBase::Inputs(
@@ -114,7 +115,7 @@ VarUUID OperatorBase::Output(const std::string& name) const {
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
                     "Operator %s's output %s should contain only one variable.",
                     type_, name);
-  return outs.empty() ? kEmptyVarName : outs[0];
+  return outs.empty() ? VarUUID(kEmptyVarName) : outs[0];
 }
 
 const std::vector<VarUUID>& OperatorBase::Outputs(
@@ -244,11 +245,13 @@ void OperatorBase::CheckAllInputOutputSet() const {
 void OperatorBase::GenerateTemporaryNames() {
   static std::atomic<size_t> gUniqId(0UL);
   for (auto& output : outputs_) {
-    for (auto& output_name : output.second) {
-      if (output_name == kTempVarName) {
+    for (auto& output_id : output.second) {
+      if (output_id.name == kTempVarName) {
+        std::string output_name = "";
         output_name += type_;
         output_name += "@";
         output_name += std::to_string(gUniqId.fetch_add(1));
+        output_id = VarUUID(output_name);
       }
     }
   }
@@ -294,7 +297,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   std::vector<const Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) {
+                 [&](const VarUUID& sub_name) {
                    auto var = scope_.FindVar(sub_name);
                    return var == nullptr ? nullptr : GetTensorFromVar(var);
                  });
@@ -314,7 +317,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   std::vector<Tensor*> res;
   res.reserve(names.size());
   std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) {
+                 [&](const VarUUID& sub_name) {
                    auto var = scope_.FindVar(sub_name);
                    return var == nullptr ? nullptr
                                          : GetMutableTensorFromVar(var);

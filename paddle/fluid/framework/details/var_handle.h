@@ -69,9 +69,35 @@ struct DummyVarHandle : public VarHandleBase {
   std::string DebugString() const override;
 };
 
+/// variable unique_id generator, threadsafe singleton.
+class UUIDGenerator {
+public:
+  int operator()(const std::string& name) { return hasher(name); }
+  int Hash(const std::string& name) { return hasher(name); }
+  static UUIDGenerator& Instance() {
+    std::call_once(once_flag, &UUIDGenerator::InitOnce);
+    return *g;
+  }
+
+private:
+  static void InitOnce() { g = new UUIDGenerator(); }
+  UUIDGenerator() {}
+  std::hash<std::string> hasher;
+  static UUIDGenerator* g;
+  static std::once_flag once_flag;
+  DISABLE_COPY_AND_ASSIGN(UUIDGenerator);
+};
+
+UUIDGenerator* UUIDGenerator::g = nullptr;
+std::once_flag UUIDGenerator::once_flag;
+
 // a runtime unique variable identity.
 struct VarUUID {
-  explicit VarUUID(const std::string& name);
+  explicit VarUUID(const std::string& name) : name(name) {
+    // UUIDGenerator& gen = UUIDGenerator::Instance();
+    // unique_id = gen(name);
+    unique_id = UUIDGenerator::Instance()(name);
+  }
   VarUUID(const std::string& name, int id) : name(name), unique_id(id) {}
   bool operator==(const VarUUID& rhs) const {
     return unique_id == rhs.unique_id;
@@ -94,6 +120,7 @@ inline std::ostream& operator<<(std::ostream& os, const VarUUID& var) {
   }
   return os;
 }
+
 
 }  // namespace details
 }  // namespace framework
