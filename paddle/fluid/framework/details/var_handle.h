@@ -15,9 +15,9 @@
 #pragma once
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <unordered_map>
 
 #include "paddle/fluid/platform/place.h"
 
@@ -84,9 +84,7 @@ struct VarUUID {
 };
 
 struct VarUUIDHash {
-  size_t operator() (const VarUUID& id) const {
-    return id.unique_id;
-  }
+  size_t operator()(const VarUUID& id) const { return id.unique_id; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const VarUUID& var) {
@@ -96,7 +94,6 @@ inline std::ostream& operator<<(std::ostream& os, const VarUUID& var) {
   }
   return os;
 }
-
 
 }  // namespace details
 }  // namespace framework

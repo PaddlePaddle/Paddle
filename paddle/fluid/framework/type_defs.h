@@ -20,8 +20,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {

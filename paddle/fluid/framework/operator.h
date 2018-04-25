@@ -222,8 +222,9 @@ class ExecutionContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const VarUUID& name) {
-                     return name == VarUUID(kEmptyVarName) ? nullptr
-                       : scope_.FindVar(name);
+                     return name == VarUUID(kEmptyVarName)
+                                ? nullptr
+                                : scope_.FindVar(name);
                    });
     return res;
   }
@@ -234,8 +235,9 @@ class ExecutionContext {
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const VarUUID& name) {
-                     return name == VarUUID(kEmptyVarName) ? nullptr
-                       : scope_.FindVar(name);
+                     return name == VarUUID(kEmptyVarName)
+                                ? nullptr
+                                : scope_.FindVar(name);
                    });
     return res;
   }

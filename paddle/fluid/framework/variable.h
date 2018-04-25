@@ -14,16 +14,15 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <typeindex>
 #include <typeinfo>
-#include <thread> // for call_once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
-
 
 class Variable {
  public:
@@ -70,7 +69,7 @@ class Variable {
   // parameter of Variable.
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(T* ptr) : ptr_(ptr), type_(typeid(T)) {}
+    explicit PlaceholderImpl(T* ptr) : ptr_(ptr), type_(typeid(T)) {}
 
     virtual const std::type_info& Type() const { return type_; }
     virtual void* Ptr() const { return static_cast<void*>(ptr_.get()); }
@@ -98,16 +97,15 @@ using details::VarUUID;
 using details::VarUUIDHash;
 /// variable unique_id generator, threadsafe singleton.
 class UUIDGenerator {
-public:
-  int operator()(const std::string& name) {return hasher(name);}
+ public:
+  int operator()(const std::string& name) { return hasher(name); }
   UUIDGenerator& Instance() {
     std::call_once(once_flag, &UUIDGenerator::InitOnce);
     return *g;
   }
-private:
-  static void InitOnce() {g = new UUIDGenerator();}
-  explicit UUIDGenerator() {
-  }
+
+ private:
+  static void InitOnce() { g = new UUIDGenerator(); }
   std::hash<std::string> hasher;
   static UUIDGenerator* g;
   static std::once_flag once_flag;

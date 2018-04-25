@@ -108,7 +108,8 @@ void Scope::DeleteScope(Scope* scope) {
 }
 
 void Scope::EraseVars(const std::vector<VarUUID>& var_names) {
-  std::unordered_set<VarUUID, VarUUIDHash> var_set(var_names.begin(), var_names.end());
+  std::unordered_set<VarUUID, VarUUIDHash> var_set(var_names.begin(),
+                                                   var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
       delete it->second;
