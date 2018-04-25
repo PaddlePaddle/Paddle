@@ -18,39 +18,40 @@ limitations under the License. */
 
 using paddle::framework::Scope;
 using paddle::framework::Variable;
+using paddle::framework::VarUUID;
 
 TEST(Scope, VarsShadowing) {
   Scope s;
   Scope& ss1 = s.NewScope();
   Scope& ss2 = s.NewScope();
 
-  Variable* v0 = s.Var("a");
-  Variable* v1 = ss1.Var("a");
+  Variable* v0 = s.Var(VarUUID("a"));
+  Variable* v1 = ss1.Var(VarUUID("a"));
 
   EXPECT_NE(v0, v1);
 
-  EXPECT_EQ(v0, s.FindVar("a"));
-  EXPECT_EQ(v1, ss1.FindVar("a"));
-  EXPECT_EQ(v0, ss2.FindVar("a"));
+  EXPECT_EQ(v0, s.FindVar(VarUUID("a")));
+  EXPECT_EQ(v1, ss1.FindVar(VarUUID("a")));
+  EXPECT_EQ(v0, ss2.FindVar(VarUUID("a")));
 }
 
 TEST(Scope, FindVar) {
   Scope s;
   Scope& ss = s.NewScope();
 
-  EXPECT_EQ(nullptr, s.FindVar("a"));
-  EXPECT_EQ(nullptr, ss.FindVar("a"));
+  EXPECT_EQ(nullptr, s.FindVar(VarUUID("a")));
+  EXPECT_EQ(nullptr, ss.FindVar(VarUUID("a")));
 
-  ss.Var("a");
+  ss.Var(VarUUID("a"));
 
-  EXPECT_EQ(nullptr, s.FindVar("a"));
-  EXPECT_NE(nullptr, ss.FindVar("a"));
+  EXPECT_EQ(nullptr, s.FindVar(VarUUID("a")));
+  EXPECT_NE(nullptr, ss.FindVar(VarUUID("a")));
 }
 
 TEST(Scope, FindScope) {
   Scope s;
   Scope& ss = s.NewScope();
-  Variable* v = s.Var("a");
+  Variable* v = s.Var(VarUUID("a"));
 
   EXPECT_EQ(&s, s.FindScope(v));
   EXPECT_EQ(&s, ss.FindScope(v));
@@ -58,7 +59,7 @@ TEST(Scope, FindScope) {
 
 TEST(Scope, GetAllNames) {
   Scope s;
-  Variable* v = s.Var("a");
+  Variable* v = s.Var(VarUUID("a"));
   EXPECT_EQ(&s, s.FindScope(v));
 
   std::vector<std::string> ans = s.LocalVarNames();

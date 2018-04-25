@@ -71,6 +71,8 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
+  explicit RecordEvent(const std::string& name);
+
   RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();

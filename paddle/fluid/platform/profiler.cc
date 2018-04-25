@@ -176,6 +176,15 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
   SetCurAnnotation(name_);
 }
 
+RecordEvent::RecordEvent(const std::string& name) : start_ns_(PosixInNsec()) {
+  if (g_state == ProfilerState::kDisabled) return;
+  platform::CPUPlace place;
+  dev_ctx_ = DeviceContextPool::Instance().Get(place);
+  name_ = name;
+  PushEvent(name_, dev_ctx_);
+  SetCurAnnotation(name_);
+}
+
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled) return;
   DeviceTracer* tracer = GetDeviceTracer();

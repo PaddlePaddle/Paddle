@@ -9,11 +9,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
+using framework::details::VarUUID;
+
 class DeleteVarOp : public framework::OperatorBase {
  public:
   DeleteVarOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -28,7 +31,11 @@ class DeleteVarOp : public framework::OperatorBase {
     dev_ctx.Wait();
 
     auto delete_var_names = Inputs("X");
-    const_cast<framework::Scope &>(scope).EraseVars(delete_var_names);
+    std::vector<VarUUID> delete_var_ids;
+    for (auto &var : delete_var_names) {
+      delete_var_ids.push_back(VarUUID(var));
+    }
+    const_cast<framework::Scope &>(scope).EraseVars(delete_var_ids);
   }
 };
 
