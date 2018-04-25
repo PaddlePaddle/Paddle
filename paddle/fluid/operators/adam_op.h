@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <math.h>  // for sqrt in CPU and CUDAa
+#include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -255,20 +255,18 @@ class AdamOpKernel : public framework::OpKernel<T> {
       if (platform::is_cpu_place(ctx.GetPlace())) {
         AdamFunctor<T, CPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(),
-            mom1.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad.template data<T>(),
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()));
-            functor(param.numel());
+        functor(param.numel());
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(),
-            mom1.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
