@@ -22,7 +22,7 @@ Since the person who collects the data might be different from the person who wr
 Instead of files, data might come online.  For example:
 
 - Data generator for performance benchmarking.
-- Data generator for training special models like [GAN](https://en.wikipedia.org/wiki/Generative_adversarial_network).
+- Data generator for training models like [GAN](https://en.wikipedia.org/wiki/Generative_adversarial_network).
 - The online data stream in production systems, e.g., online advertising.
 
 Consider that 
@@ -36,7 +36,7 @@ we need
 
 ### A Choice: RecordIO
 
-The [RecordIO file format](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/recordio/README.md) is a container of records and is fault-tolerable.  It groups record into *chunks* and each chunk starts with a magic number and includes its MD5 hash, so that we could check the consistency skip over damaged chunks, which could be created by generators crashed unexpectedly or broken network connections.
+The [RecordIO file format](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/recordio/README.md) is a container of records and is fault-tolerable.  It groups record into *chunks*, and each chunk starts with a magic number and includes its MD5 hash, which allows us to check the consistency skip over damaged chunks, which could be created by generators crashed unexpectedly or broken network connections.
 
 ## Discussions
 
@@ -46,7 +46,7 @@ We also considered other data formats, e.g., [SSTable](https://www.igvita.com/20
 
 ### Data Reading API
 
-An intuitive solution is to provide the following set of Fluid operators
+An intuitive solution is to provide the following set of Fluid operators:
 
 ```python
 rio = fluid.open_recordio("/dev/stdin")
@@ -59,12 +59,12 @@ However, it seems (at least right now) that we are going to use another data fil
 ```python
 rio = fluid.create_recordio_reader(fluid.open_file("/dev/stdin"))
 records fluid.read_recordio(rio, num_records)
-fluid.close_recordio_reader(rio) # This closes the file as well.
+fluid.close_reader(rio) # This closes the file as well.
 ```
 
 ### Record Format
 
-Usually, each instance contains multiple fields.  For example, each instance of ResNet includes an image and one or more text labels. In another example of text classification, each instance contains text and its labels.
+Usually, each instance contains multiple fields.  For example, each data instance of ResNet includes an image and one or more text labels. In another case of text classification, each instance contains text and its labels.
 
 Data reading operators of Fluid must understand not only the file format, but also the record format, so could it map fields into Fluid variables of various types.  For this purpose, we propose to standardize the record format as a protobuf message. 
 
@@ -137,3 +137,36 @@ cat data | recordio_decode | awk -f change_label.awk | recordio_encode | python 
 ```
 
 Please be aware that base64 would increase the data size by up to 30%, but for quick-n-dirty experiments, this should be acceptable. For high-performance/production usages, please feel free to write the data augmentation programs in a production language like C++ and Go, and don't use base64.
+
+### Multiplexing
+
+GPUs usually work much faster than data loading, especially when data come from slow data generators.  To fully utilize GPUs, we might multiplex data generators, which requires a new operator, `fluid.create_multiplex_reader`.
+
+Let us consider the following usage:
+
+1. Run N data generator instances, each writes to a [FIFO](http://man7.org/linux/man-pages/man3/mkfifo.3.html):
+
+   ```bash
+   mkfifo ch1 ch2 ... chN
+   ./data_generator > ch1 &
+   ./data_generator > ch2 &
+   ...
+   ./data_generator > chN
+   ```
+   
+1. Then we start the Fluid program and let it read from the multiplex of ch1, ..., chN:
+
+   ```bash
+   python multiplex.py ch1 ch2 ... chN
+   ```
+   
+The `multiplex.py` file in the above example calls `fluid.create_multiplex_reader`:
+
+```python
+rio = fluid.create_multiplex_reader(
+          fluid.create_recordio_reader(fluid.open_file("ch1")),
+          ...
+          fluid.create_recordio_reader(fluid.open_file("chN")))
+...
+fluid.close_reader(rio)
+```
