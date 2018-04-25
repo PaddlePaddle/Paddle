@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -116,26 +117,27 @@ class MatMulFunctor {
     PADDLE_ENFORCE_EQ(
         kA, kB,
         "First matrix's width must be equal with second matrix's height.");
-    if (batchCountA && batchCountB) {
-      PADDLE_ENFORCE_EQ(
-          batchCountA, batchCountB,
-          "When input tensors a and b are both batched, they must have the "
-          "same batch dimension.");
-    }
-    int batchCount = std::max(batchCountA, batchCountB);
+
+    PADDLE_ENFORCE_EQ(batchCountA, batchCountB);
 
     CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
     CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
     if (!batchCount) {
       // regular matrix multiplication
+      PADDLE_ENFORCE_EQ(a.numel(), M * kA);
+      PADDLE_ENFORCE_EQ(b.numel(), N * kA);
+      PADDLE_ENFORCE_EQ(out->numel(), M * N);
       gemm<DeviceContext, T>(context, transA, transB, M, N, kA, alpha,
                              a.data<T>(), b.data<T>(), beta, out->data<T>());
     } else {
       // batched matrix multiplication
+      PADDLE_ENFORCE_EQ(a.numel(), batchCountA * M * kA);
+      PADDLE_ENFORCE_EQ(b.numel(), batchCountA * kA * N);
+      PADDLE_ENFORCE_EQ(out->numel(), batchCountA * M * N);
       batched_gemm<DeviceContext, T>(
           context, transA, transB, M, N, kA, alpha, a.data<T>(), b.data<T>(),
-          beta, out->data<T>(), batchCount, strideA, strideB);
+          beta, out->data<T>(), batchCountA, strideA, strideB);
     }
   }
 };
