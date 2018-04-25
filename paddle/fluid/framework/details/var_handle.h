@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_set>
 #include <utility>
+#include <unordered_map>
 
 #include "paddle/fluid/platform/place.h"
 
@@ -67,6 +68,34 @@ struct VarHandle : public VarHandleBase {
 struct DummyVarHandle : public VarHandleBase {
   std::string DebugString() const override;
 };
+
+// a runtime unique variable identity.
+struct VarUUID {
+  explicit VarUUID(const std::string& name);
+  VarUUID(const std::string& name, int id) : name(name), unique_id(id) {}
+  bool operator==(const VarUUID& rhs) const {
+    return unique_id == rhs.unique_id;
+  }
+  bool operator!=(const VarUUID& rhs) const {
+    return unique_id != rhs.unique_id;
+  }
+  std::string name;
+  int unique_id; /*default -1 if uninitialized*/
+};
+
+struct VarUUIDHash {
+  size_t operator() (const VarUUID& id) const {
+    return id.unique_id;
+  }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VarUUID& var) {
+  os << var.name;
+  if (VLOG_IS_ON(5)) {
+    os << "[" << var.unique_id << "]";
+  }
+  return os;
+}
 
 
 }  // namespace details

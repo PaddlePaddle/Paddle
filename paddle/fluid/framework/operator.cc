@@ -93,7 +93,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   RunImpl(scope, place);
 }
 
-std::string OperatorBase::Input(const std::string& name) const {
+VarUUID OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
                     "Operator %s's input %s should contain only one variable.",
@@ -101,7 +101,7 @@ std::string OperatorBase::Input(const std::string& name) const {
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
-const std::vector<std::string>& OperatorBase::Inputs(
+const std::vector<VarUUID>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
   PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
@@ -109,7 +109,7 @@ const std::vector<std::string>& OperatorBase::Inputs(
   return it->second;
 }
 
-std::string OperatorBase::Output(const std::string& name) const {
+VarUUID OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
                     "Operator %s's output %s should contain only one variable.",
@@ -117,7 +117,7 @@ std::string OperatorBase::Output(const std::string& name) const {
   return outs.empty() ? kEmptyVarName : outs[0];
 }
 
-const std::vector<std::string>& OperatorBase::Outputs(
+const std::vector<VarUUID>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
   PADDLE_ENFORCE(it != outputs_.end(),
@@ -191,8 +191,8 @@ OperatorBase::OperatorBase(const std::string& type,
   CheckAllInputOutputSet();
 }
 
-std::vector<std::string> OperatorBase::InputVars() const {
-  std::vector<std::string> ret_val;
+std::vector<VarUUID> OperatorBase::InputVars() const {
+  std::vector<VarUUID> ret_val;
   for (auto& o : inputs_) {
     ret_val.reserve(ret_val.size() + o.second.size());
     ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
@@ -200,8 +200,8 @@ std::vector<std::string> OperatorBase::InputVars() const {
   return ret_val;
 }
 
-std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
-  std::vector<std::string> ret_val;
+std::vector<VarUUID> OperatorBase::OutputVars(bool has_intermediate) const {
+  std::vector<VarUUID> ret_val;
   if (has_intermediate) {
     // push all outputs into ret_val
     for (auto& o : outputs_) {

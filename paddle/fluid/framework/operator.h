@@ -109,19 +109,19 @@ class OperatorBase {
   const VariableNameMap& Outputs() const { return outputs_; }
 
   //! Get a input with argument's name described in `op_proto`
-  std::string Input(const std::string& name) const;
+  VarUUID Input(const std::string& name) const;
   //! Get a input which has multiple variables.
-  const std::vector<std::string>& Inputs(const std::string& name) const;
+  const std::vector<VarUUID>& Inputs(const std::string& name) const;
 
-  std::vector<std::string> InputVars() const;
+  std::vector<VarUUID> InputVars() const;
 
   //! Get a output with argument's name described in `op_proto`
-  std::string Output(const std::string& name) const;
+  VarUUID Output(const std::string& name) const;
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
-  const std::vector<std::string>& Outputs(const std::string& name) const;
+  const std::vector<VarUUID>& Outputs(const std::string& name) const;
 
-  virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
+  virtual std::vector<VarUUID> OutputVars(bool has_intermediate) const;
 
   const std::string& Type() const { return type_; }
   void SetType(const std::string& type) { type_ = type; }
@@ -207,12 +207,12 @@ class ExecutionContext {
 
   const Variable* InputVar(const std::string& name) const {
     auto ipt = op_.Input(name);
-    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return ipt == VarUUID(kEmptyVarName) ? nullptr : scope_.FindVar(ipt);
   }
 
   Variable* OutputVar(const std::string& name) const {
     auto opt = op_.Output(name);
-    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
+    return opt == VarUUID(kEmptyVarName) ? nullptr : scope_.FindVar(opt);
   }
 
   const std::vector<const Variable*> MultiInputVar(
@@ -221,9 +221,9 @@ class ExecutionContext {
     std::vector<const Variable*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return name == kEmptyVarName ? nullptr
-                                                  : scope_.FindVar(name);
+                   [this](const VarUUID& name) {
+                     return name == VarUUID(kEmptyVarName) ? nullptr
+                       : scope_.FindVar(name);
                    });
     return res;
   }
@@ -233,9 +233,9 @@ class ExecutionContext {
     std::vector<Variable*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return name == kEmptyVarName ? nullptr
-                                                  : scope_.FindVar(name);
+                   [this](const VarUUID& name) {
+                     return name == VarUUID(kEmptyVarName) ? nullptr
+                       : scope_.FindVar(name);
                    });
     return res;
   }
@@ -258,7 +258,7 @@ class ExecutionContext {
     std::vector<const T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const VarUUID& sub_name) {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
@@ -271,7 +271,7 @@ class ExecutionContext {
     std::vector<T*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) {
+                   [&](const VarUUID& sub_name) {
                      auto var = scope_.FindVar(sub_name);
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
@@ -312,12 +312,12 @@ class ExecutionContext {
 #endif
 
   //! Get actual name vector for this input.
-  const std::vector<std::string>& Inputs(const std::string& name) const {
+  const std::vector<VarUUID>& Inputs(const std::string& name) const {
     return op_.Inputs(name);
   }
 
   //! Get actual name vector for this output.
-  const std::vector<std::string>& Outputs(const std::string& name) const {
+  const std::vector<VarUUID>& Outputs(const std::string& name) const {
     return op_.Outputs(name);
   }
 

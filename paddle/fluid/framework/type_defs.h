@@ -31,8 +31,6 @@ class InferShapeContext;
 class BlockDesc;
 
 using details::VarUUID;
-class VarUUID;
-// using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableNameMap = std::map<std::string, std::vector<VarUUID>>;
 
 // The order should be as same as framework.proto

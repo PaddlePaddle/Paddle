@@ -86,12 +86,7 @@ class Scope {
   explicit Scope(Scope const* parent) : parent_(parent) {}
 
   // mutable std::unordered_map<std::string, Variable*> vars_;
-  struct Hasher {
-    size_t operator() (const VarUUID& id) const {
-      return id.unique_id;
-    }
-  };
-  mutable std::unordered_map<VarUUID, Variable*, Hasher> vars_;
+  mutable std::unordered_map<VarUUID, Variable*, VarUUIDHash> vars_;
 
   mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};

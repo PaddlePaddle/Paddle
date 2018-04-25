@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace framework {
@@ -27,6 +28,11 @@ std::string VarHandle::DebugString() const {
 }
 
 std::string DummyVarHandle::DebugString() const { return "dummy"; }
+
+VarUUID::VarUUID(const std::strign& name) : name(name) {
+  unique_id = UUIDGenerator::Instance()(name);
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

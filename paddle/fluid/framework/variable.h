@@ -18,8 +18,8 @@
 #include <typeinfo>
 #include <thread> // for call_once
 
-
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 
 namespace paddle {
 namespace framework {
@@ -94,43 +94,28 @@ class Variable {
   const std::string* name_;
 };
 
+using details::VarUUID;
+using details::VarUUIDHash;
 /// variable unique_id generator, threadsafe singleton.
 class UUIDGenerator {
 public:
-  int operator()() {return engine();}
+  int operator()(const std::string& name) {return hasher(name);}
   UUIDGenerator& Instance() {
     std::call_once(once_flag, &UUIDGenerator::InitOnce);
     return *g;
   }
 private:
   static void InitOnce() {g = new UUIDGenerator();}
-  UUIDGenerator() {
-    engine.seed(std::random_device()());
+  explicit UUIDGenerator() {
   }
-  std::minstd_rand engine;
-  static UUIDGenerator *g;
+  std::hash<std::string> hasher;
+  static UUIDGenerator* g;
   static std::once_flag once_flag;
+  DISABLE_COPY_AND_ASSIGN(UUIDGenerator);
 };
 
-UUIDGenerator::UUIDGenerator* g = nullptr;
+UUIDGenerator* UUIDGenerator::g = nullptr;
 std::once_flag UUIDGenerator::once_flag;
-
-// a runtime unique variable identity.
-struct VarUUID : public VarHandleBase {
-  explicit VarUUID(const std::string& name) : name(name), unique_id(-1) {}
-  VarUUID(const std::string& name, int id) : name(name), unique_id(id) {}
-  std::string DebugString() const override;
-  std::string name;
-  int unique_id; /*default -1 if uninitialized*/
-};
-
-inline std::ostream& operator<<(std::ostream& os, const VarUUID& var) {
-  os << var.name;
-  if (VLOG_IS_ON(5)) {
-    os << "[" << var.unique_id << "]";
-  }
-  return os;
-}
 
 }  // namespace framework
 }  // namespace paddle
