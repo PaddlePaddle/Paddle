@@ -239,6 +239,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   score_tensor->Resize({static_cast<int64_t>(score_data.size())});
   score_tensor->mutable_data<T>(paddle::platform::CPUPlace());
   framework::TensorFromVector<T>(score_data, cpu_ctx, score_tensor);
+  delete cpu_place;
 }
 
 template <typename T>
