@@ -171,17 +171,6 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   return ss.str();
 }
 
-void OperatorBase::Rename(const std::string& old_name,
-                          const std::string& new_name) {
-  for (auto& input : inputs_) {
-    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
-  }
-  for (auto& output : outputs_) {
-    std::replace(output.second.begin(), output.second.end(), old_name,
-                 new_name);
-  }
-}
-
 OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,
@@ -327,7 +316,6 @@ bool OpSupportGPU(const std::string& op_type) {
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
     // All control operator must support GPU
-
     return true;
   }
   for (auto& kern_pair : it->second) {
@@ -554,7 +542,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             std::shared_ptr<Tensor> out(new Tensor);
             DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
                           out.get());
-            CopyVariableWithTensor(*var, *(out.get()), *trans_var);
+            CopyVariableWithTensor(*var, *(out.get()), trans_var);
           }
         }
       }
