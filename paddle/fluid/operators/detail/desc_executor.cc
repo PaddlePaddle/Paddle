@@ -17,10 +17,13 @@
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/pybind/pybind.h"
 
-bool read_from_file(const std::string& file, char** buf, int64* buf_len) {
+bool read_from_file(const std::string& file, char** buf, int64_t* buf_len) {
   FILE* f = fopen(file.c_str(), "rb");
   if (NULL == f) {
     printf("open %s error\n", file.c_str());
@@ -28,7 +31,7 @@ bool read_from_file(const std::string& file, char** buf, int64* buf_len) {
   }
 
   fseek(f, 0, SEEK_END);
-  int64 fsize = ftell(f);
+  int64_t fsize = ftell(f);
   fseek(f, 0, SEEK_SET);  // same as rewind(f);
 
   *buf = static_cast<char*>(malloc(fsize + 1));
@@ -40,7 +43,7 @@ bool read_from_file(const std::string& file, char** buf, int64* buf_len) {
   *buf_len = fsize;
 
   fclose(f);
-  buf[fsize] = 0;
+  (*buf)[fsize] = 0;
   return true;
 }
 
@@ -48,16 +51,18 @@ using namespace paddle;  // NOLINT
 
 framework::ProgramDesc* load_desc(const std::string& file) {
   char* buf = NULL;
-  int64 buf_len = 0;
+  std::unique_ptr<char[]> tmp(buf);
+  int64_t buf_len = 0;
+
   if (!read_from_file(file, &buf, &buf_len)) {
     return NULL;
   }
 
   framework::proto::ProgramDesc proto;
   if (!proto.ParseFromArray(buf, buf_len)) {
+    printf("parse from %s error!\n", file.c_str());
     return NULL;
   }
-  delete[] buf;
 
   return (new framework::ProgramDesc(proto));
 }
@@ -67,11 +72,29 @@ DEFINE_string(start_up_proto, "", "start up proto file");
 DEFINE_string(loop_proto, "", "loop proto file");
 
 int main(int argc, char** argv) {
+  // init.
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  framework::InitGLOG(argv[0]);
+  framework::InitDevices(true);
+
+  // check arguments.
+  if (FLAGS_start_up_proto.empty()) {
+    printf("please set start_up_proto path\n");
+    return -1;
+  }
+
+  if (FLAGS_loop_proto.empty()) {
+    printf("please set loop_proto path\n");
+    return -1;
+  }
+
   framework::ProgramDesc program;
   framework::Scope scope;
+
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+
+  // platform::CPUDeviceContext* ctx = platform::DeviceContextPool()Get(place);
 
   framework::ProgramDesc* start_up = load_desc(FLAGS_start_up_proto);
   framework::ProgramDesc* loop = load_desc(FLAGS_loop_proto);

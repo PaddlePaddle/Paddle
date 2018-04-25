@@ -90,6 +90,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
+  int batch_count = 0;
   bool exit_flag = false;
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
@@ -166,6 +167,14 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     // FIXME(typhoonzero): use another condition to sync wait clients get.
     rpc_service_->WaitClientGet(fan_in);
     sparse_vars.clear();
+
+    // Just for test
+    batch_count++;
+    if (batch_count == 10) {
+      rpc_service_->SetCond(1);
+      rpc_service_->ShutDown();
+      break;
+    }
   }  // while(true)
 }
 
