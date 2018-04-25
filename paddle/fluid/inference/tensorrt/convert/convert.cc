@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/convert.h"
-#include "paddle/fluid/inference/tensorrt/convert/convert_conv2d.h"
-#include "paddle/fluid/inference/tensorrt/convert/convert_mul.h"
 
 namespace paddle {
 namespace inference {
@@ -23,10 +21,8 @@ namespace tensorrt {
 void TensorRTConverter::ConvertBlock(const framework::BlockDesc& block) {
   for (auto op : block.AllOps()) {
     std::string type = op->Type();
-    PADDLE_ENFORCE(GetOpConverter().count(type),
-                   "No converter registered for op: %s", type);
-    auto op_converter = GetOpConverter()[type];
-    op_converter->Convert(*op);
+    OpConverter op_converter;
+    op_converter.Convert(*op);
   }
 }
 

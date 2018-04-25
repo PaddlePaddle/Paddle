@@ -12,22 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
 #include "paddle/fluid/inference/tensorrt/convert/convert.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class MulOpConverter : public OpConverter {
- public:
-  MulOpConverter() {}
-  void Convert(const framework::OpDesc& op);
-};
+REGISTER_TRT_OP_CONVETER(conv2d, Conv2dOpConverter);
 
-REGISTER_TRT_OP_CONVETER(mul, MulOpConverter);
-void MulOpConverter::Convert(const framework::OpDesc& op) {
-  LOG(INFO) << "convert a fluid mul op to tensorrt fc layer without bias";
+void Conv2dOpConverter::Convert(const framework::OpDesc& op) {
+  LOG(INFO) << "convert a fluid conv2d op to tensorrt conv layer without bias";
 }
 
 }  // namespace tensorrt
