@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
-
 #include <algorithm>
+#include "paddle/fluid/framework/details/reduce_and_gather.h"
 
 namespace paddle {
 namespace framework {
@@ -28,32 +28,6 @@ NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
     this->dev_ctxes_[p] = nccl_ctxs_.DevCtx(p);
   }
 }
-
-struct ReduceLoDTensor {
-  const std::vector<LoDTensor> &src_tensors_;
-  LoDTensor &dst_tensor_;
-
-  ReduceLoDTensor(const std::vector<LoDTensor> &src, LoDTensor *dst)
-      : src_tensors_(src), dst_tensor_(*dst) {}
-
-  template <typename T>
-  void operator()() const {
-    PADDLE_ENFORCE(!src_tensors_.empty());
-    auto &t0 = src_tensors_[0];
-    PADDLE_ENFORCE_NE(t0.numel(), 0);
-    dst_tensor_.Resize(t0.dims());
-    T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
-    std::copy(t0.data<T>(), t0.data<T>() + t0.numel(), dst);
-
-    for (size_t i = 1; i < src_tensors_.size(); ++i) {
-      auto &t = src_tensors_[i];
-      PADDLE_ENFORCE_EQ(t.dims(), t0.dims());
-      PADDLE_ENFORCE_EQ(t.type(), t0.type());
-      std::transform(t.data<T>(), t.data<T>() + t.numel(), dst, dst,
-                     [](T a, T b) -> T { return a + b; });
-    }
-  }
-};
 
 void NCCLAllReduceOpHandle::RunImpl() {
   if (inputs_.size() == 1) {
@@ -69,21 +43,21 @@ void NCCLAllReduceOpHandle::RunImpl() {
     int dtype = -1;
     size_t numel = 0;
 
-    std::vector<LoDTensor> lod_tensors;
+    std::vector<const LoDTensor *> lod_tensors;
 
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       auto *s = local_scopes_[i];
       auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
       auto &lod_tensor = local_scope.FindVar(var_name)->Get<LoDTensor>();
-      lod_tensors.emplace_back(lod_tensor);
+      lod_tensors.emplace_back(&lod_tensor);
     }
 
-    if (platform::is_gpu_place(lod_tensors[0].place())) {
+    if (platform::is_gpu_place(lod_tensors[0]->place())) {
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &p = places_[i];
-        auto &lod_tensor = lod_tensors[i];
+        auto &lod_tensor = *lod_tensors[i];
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
 
         if (dtype == -1) {
@@ -119,7 +93,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
-      VisitDataType(ToDataType(lod_tensors[0].type()), func);
+      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &scope =

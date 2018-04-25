@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
@@ -24,11 +27,7 @@ namespace framework {
 namespace details {
 
 struct FetchOpHandle : public OpHandleBase {
-  FeedFetchList *data_;
-  size_t offset_;
-  std::vector<Scope *> *local_scopes_;
-  std::vector<LoDTensor> tensors_;
-
+ public:
   FetchOpHandle(FeedFetchList *data, size_t offset,
                 std::vector<Scope *> *local_scopes);
 
@@ -42,6 +41,12 @@ struct FetchOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+ private:
+  FeedFetchList *data_;
+  size_t offset_;
+  std::vector<Scope *> *local_scopes_;
+  std::vector<LoDTensor> tensors_;
 };
 
 }  // namespace details

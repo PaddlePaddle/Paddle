@@ -596,7 +596,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kStepBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
   }

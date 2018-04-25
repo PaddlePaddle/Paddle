@@ -53,7 +53,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   };
 
   auto InsertPendingOp = [&pending_ops](OpHandleBase &op_instance) {
-    pending_ops.insert({&op_instance, op_instance.inputs_.size()});
+    pending_ops.insert({&op_instance, op_instance.Inputs().size()});
   };
 
   // Transform SSAGraph to pending_ops & pending_vars
@@ -69,7 +69,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   }
 
   for (auto &op : graph_->ops_) {
-    if (op->inputs_.empty()) {  // Special case, Op has no input.
+    if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
       InsertPendingOp(*op);
@@ -99,7 +99,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     fetch_ops.emplace_back(op);
 
     for (auto &p : places_) {
-      op->dev_ctxes_[p] = fetch_ctxs_.Get(p);
+      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
     }
 
     for (auto *var : vars) {
@@ -128,7 +128,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     //
     // NOTE: DelayedOps have a lower priority. It will be scheduled after all
     // ready_ops have been performed.
-    if (ready_ops.empty() && allow_op_delay_) {
+    if (ready_ops.empty() && allow_op_delay_ && running_ops_ == 0) {
       run_all_ops(delayed_ops);
     } else {
       run_all_ops(ready_ops);
@@ -140,7 +140,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     if (timeout) {
       if (exception_) {
-        throw * exception_;
+        auto exp = *exception_;
+        exception_.reset();
+        throw exp;
       } else {
         continue;
       }
@@ -180,7 +182,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       op->Run(use_event_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
-      ready_var_q->Extend(op->outputs_);
+      ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));

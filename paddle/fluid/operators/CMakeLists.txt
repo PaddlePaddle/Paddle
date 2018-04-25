@@ -110,12 +110,12 @@ function(op_library TARGET)
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
-    string(REGEX MATCH "REGISTER_OP\\(.*REGISTER_OP\\(" multi_register "${TARGET_CONTENT}")
-    string(REGEX MATCH "REGISTER_OP\\([a-z0-9_]*," one_register "${multi_register}")
+    string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
+    string(REGEX MATCH "REGISTER_OPERATOR\\([a-z0-9_]*," one_register "${multi_register}")
     if (one_register STREQUAL "")
         string(REPLACE "_op" "" TARGET "${TARGET}")
     else ()
-        string(REPLACE "REGISTER_OP(" "" TARGET "${one_register}")
+        string(REPLACE "REGISTER_OPERATOR(" "" TARGET "${one_register}")
         string(REPLACE "," "" TARGET "${TARGET}")
     endif()
 
@@ -163,7 +163,12 @@ function(op_library TARGET)
 
     # pybind USE_OP
     if (${pybind_flag} EQUAL 0)
+      # NOTE(*): activation use macro to regist the kernels, set use_op manually.
+      if(${TARGET} STREQUAL "activation")
+        file(APPEND ${pybind_file} "USE_OP(relu);\n")
+      else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
+      endif()
     endif()
 endfunction()
 

@@ -133,12 +133,12 @@ void TestInference(const std::string& dirname,
       std::string prog_filename = "__model_combined__";
       std::string param_filename = "__params_combined__";
       inference_program = paddle::inference::Load(
-          executor, *scope, dirname + "/" + prog_filename,
+          &executor, scope, dirname + "/" + prog_filename,
           dirname + "/" + param_filename);
     } else {
       // Parameters are saved in separate files sited in the specified
       // `dirname`.
-      inference_program = paddle::inference::Load(executor, *scope, dirname);
+      inference_program = paddle::inference::Load(&executor, scope, dirname);
     }
   }
   // Disable the profiler and print the timing information

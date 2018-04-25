@@ -44,6 +44,7 @@ class ParallelExecutorPrivate {
 #endif
 
   std::vector<std::tuple<std::string, proto::VarType::Type, bool>> var_types_;
+  bool own_local_scope;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -56,21 +57,24 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay)
+    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay,
+    bool customize_scale_loss)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
   // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
+    member_->own_local_scope = true;
     member_->local_scopes_.emplace_back(member_->global_scope_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&scope->NewScope());
     }
   } else {
+    member_->own_local_scope = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(local_scopes[i]);
+      member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
     }
   }
 
@@ -87,12 +91,13 @@ ParallelExecutor::ParallelExecutor(
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           member_->nccl_ctxs_.get());
+  details::MultiDevSSAGraphBuilder builder(
+      member_->places_, loss_var_name, params, member_->local_scopes_,
+      customize_scale_loss, member_->nccl_ctxs_.get());
 #else
   details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_);
+                                           params, member_->local_scopes_,
+                                           customize_scale_loss);
 #endif
   auto graph = builder.Build(main_program);
 
@@ -227,6 +232,14 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
+    }
+  }
+}
+
+ParallelExecutor::~ParallelExecutor() {
+  if (member_->own_local_scope) {
+    for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
+      member_->global_scope_->DeleteScope(member_->local_scopes_[i]);
     }
   }
 }

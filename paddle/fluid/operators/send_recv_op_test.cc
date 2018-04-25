@@ -127,7 +127,7 @@ void StartServerNet(bool is_sparse) {
   const auto &root_block = program.Block(0);
   auto *optimize_block = program.AppendBlock(root_block);
   auto *prefetch_block = program.AppendBlock(root_block);
-  // X for server side tensors, RX for received tensers, must be of same shape.
+  // X for server side tensors, RX for received tensors, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
 
   f::AttributeMap attrs;

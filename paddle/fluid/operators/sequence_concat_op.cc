@@ -124,9 +124,11 @@ class SequenceConcatGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_EX(sequence_concat, ops::SequenceConcatOp,
-               ops::SequenceConcatOpMaker, sequence_concat_grad,
-               ops::SequenceConcatGradOp, false);
+REGISTER_OPERATOR(sequence_concat, ops::SequenceConcatOp,
+                  ops::SequenceConcatOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<
+                      false> /* set false to disable empty grad */);
+REGISTER_OPERATOR(sequence_concat_grad, ops::SequenceConcatGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat,
     ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, float>);

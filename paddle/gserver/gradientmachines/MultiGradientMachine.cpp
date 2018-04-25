@@ -52,7 +52,7 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
   } else {
     numDevices_ = 0;
   }
-  ParamInitCallback mainParamInitCb = [this](int paramId, Parameter* para) {
+  ParamInitCallback mainParamInitCb = [](int paramId, Parameter* para) {
     // only create buf for CPU parameters
     // GPU parameters will be created in each thread
     if (para->useGpu()) return;
