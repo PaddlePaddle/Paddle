@@ -323,7 +323,8 @@ void batched_gemm<platform::CUDADeviceContext, float>(
                  sizeof(float) * 2);
   alpha_beta_ptr[0] = alpha;
   alpha_beta_ptr[1] = beta;
-  std::cerr << "After ptr" << std::endl;
+  std::cerr << "After ptr " << alpha_beta_ptr << " " << alpha_beta_ptr + 1
+            << std::endl;
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, alpha_beta_ptr, B,
       ldb, strideB, A, lda, strideA, alpha_beta_ptr + 1, C, ldc, strideC,
