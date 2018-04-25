@@ -319,7 +319,7 @@ void batched_gemm<platform::CUDADeviceContext, float>(
   PADDLE_ENFORCE(cudaDeviceSynchronize());
 
   float* alpha_beta_ptr;
-  posix_memalign(reinterpret_cast<void**>(&alpha_beta_ptr), 32u,
+  posix_memalign(reinterpret_cast<void**>(&alpha_beta_ptr), sizeof(void*),
                  sizeof(float) * 2);
   alpha_beta_ptr[0] = alpha;
   alpha_beta_ptr[1] = beta;
