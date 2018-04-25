@@ -318,20 +318,23 @@ void batched_gemm<platform::CUDADeviceContext, float>(
   std::cerr << "Before" << std::endl;
   PADDLE_ENFORCE(cudaDeviceSynchronize());
 
-  float* alpha_beta_ptr;
-  PADDLE_ENFORCE_EQ(posix_memalign(reinterpret_cast<void**>(&alpha_beta_ptr),
-                                   64ul, sizeof(float) * 2),
-                    0);
-  alpha_beta_ptr[0] = alpha;
-  alpha_beta_ptr[1] = beta;
-  std::cerr << "After ptr " << alpha_beta_ptr << " " << alpha_beta_ptr + 1
-            << " M=" << M << " N=" << N << " K=" << K << " strideA=" << strideA
-            << " strideB" << strideB << " strideC" << strideC
-            << " batchCount=" << batchCount << std::endl;
+  float* alpha_ptr;
+  PADDLE_ENFORCE_EQ(
+      posix_memalign(reinterpret_cast<void**>(&alpha_ptr), 64ul, sizeof(float)),
+      0);
+  float* beta_ptr;
+  PADDLE_ENFORCE_EQ(
+      posix_memalign(reinterpret_cast<void**>(&beta_ptr), 64ul, sizeof(float)),
+      0);
+  *alpha_ptr = alpha;
+  *beta_ptr = beta;
+  std::cerr << "After ptr " << alpha_ptr << " " << beta_ptr << " M=" << M
+            << " N=" << N << " K=" << K << " strideA=" << strideA << " strideB"
+            << strideB << " strideC" << strideC << " batchCount=" << batchCount
+            << std::endl;
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, alpha_beta_ptr, B,
-      ldb, strideB, A, lda, strideA, alpha_beta_ptr + 1, C, ldc, strideC,
-      batchCount));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, alpha_ptr, B, ldb,
+      strideB, A, lda, strideA, beta_ptr, C, ldc, strideC, batchCount));
   PADDLE_ENFORCE(cudaDeviceSynchronize());
 #else
   PADDLE_ENFORCE(false, "SgemmStridedBatched is not supported on cuda <= 7.5");
