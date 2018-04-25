@@ -48,9 +48,11 @@ class Scope {
 
   /// Create a variable with given name if it doesn't exist.
   Variable* Var(const VarUUID& id);
+  Variable* Var(const std::string& name);
 
   /// Create a variable with a scope-unique name.
   Variable* Var(VarUUID* id = nullptr);
+  Variable* Var(std::string* name = nullptr);
 
   /// EraseVars in scope.
   void EraseVars(const std::vector<VarUUID>& var_names);
@@ -58,6 +60,7 @@ class Scope {
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   Variable* FindVar(const VarUUID& name) const;
+  Variable* FindVar(const std::string& name) const;
 
   const Scope* parent() const { return parent_; }
 
@@ -80,6 +83,7 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
   Variable* FindVarLocally(const VarUUID& id) const;
+  Variable* FindVarLocally(const std::string& name) const;
 
  private:
   // Call Scope::NewScope for a sub-scope.

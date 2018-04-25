@@ -44,6 +44,10 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
+Variable* Scope::Var(const std::string& name) {
+  return Var(VarUUID(name));
+}
+
 Variable* Scope::Var(const VarUUID& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
@@ -54,6 +58,14 @@ Variable* Scope::Var(const VarUUID& name) {
   return v;
 }
 
+Variable* Scope::Var(std::string* name) {
+  auto var_name = string::Sprintf("%p.%d", this, vars_.size());
+  if (name != nullptr) {
+    *name = var_name;
+  }
+  return Var(var_name);
+}
+
 Variable* Scope::Var(VarUUID* name) {
   auto var_name = string::Sprintf("%p.%d", this, vars_.size());
   VarUUID id(var_name);
@@ -61,6 +73,10 @@ Variable* Scope::Var(VarUUID* name) {
     *name = id;
   }
   return Var(id);
+}
+
+Variable* Scope::FindVar(const std::string& name) const {
+  return FindVar(VarUUID(name));
 }
 
 Variable* Scope::FindVar(const VarUUID& name) const {
@@ -137,6 +153,10 @@ std::string Scope::Rename(const std::string& origin_name) const {
   auto var_name = string::Sprintf("%p.%d", this, vars_.size());
   Rename(origin_name, var_name);
   return var_name;
+}
+
+Variable* Scope::FindVarLocally(const std::string& name) const {
+  return FindVarLocally(name);
 }
 
 Variable* Scope::FindVarLocally(const VarUUID& name) const {

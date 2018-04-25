@@ -38,10 +38,10 @@ class SendBarrierOp : public framework::OperatorBase {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
 
     auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
+    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(VarUUID(client_var_name)),
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
+    auto* client_var = scope.FindVar(VarUUID(client_var_name));
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 
     // need to wait before sending send_barrier message

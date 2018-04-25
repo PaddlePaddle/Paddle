@@ -355,7 +355,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(length, 1UL,
                       "Input %s should not have more than one inputs", name);
     auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    auto* var = ipt == VarUUID(kEmptyVarName) ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
 
@@ -368,7 +368,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(length, 1UL,
                       "Output %s should not have more than one inputs", name);
     auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    auto* var = ipt == VarUUID(kEmptyVarName) ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
   }
 
@@ -400,12 +400,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
-  const std::vector<std::string>& Inputs(
+  const std::vector<VarUUID>& Inputs(
       const std::string& name) const override {
     return op_.Inputs(name);
   }
 
-  const std::vector<std::string>& Outputs(
+  const std::vector<VarUUID>& Outputs(
       const std::string& name) const override {
     return op_.Outputs(name);
   }

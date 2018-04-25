@@ -131,7 +131,7 @@ class WhileGradOp : public framework::OperatorBase {
         VLOG(8) << "Linking outside " << outside_og_name << " --> inside "
                 << inside_og_name;
         auto &og_outside =
-            detail::Ref(scope.FindVar(outside_og_name),
+          detail::Ref(scope.FindVar(VarUUID(outside_og_name)),
                         "Cannot find Outside Gradient %s", outside_og_name);
         auto &og_inside =
             detail::Ref(cur_scope.Var(inside_og_name),
