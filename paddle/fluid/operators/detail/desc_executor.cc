@@ -44,6 +44,7 @@ bool read_from_file(const std::string& file, char** buf, int64_t* buf_len) {
 
   fclose(f);
   (*buf)[fsize] = 0;
+  fclose(f);
   return true;
 }
 

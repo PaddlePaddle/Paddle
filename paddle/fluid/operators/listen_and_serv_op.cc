@@ -170,10 +170,10 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
 
     // Just for test
     batch_count++;
-    if (batch_count == 10) {
-      rpc_service_->SetCond(1);
-      rpc_service_->ShutDown();
-      break;
+    printf("batch_count:%d\n", batch_count);
+    if (batch_count == 100) {
+      sleep(10);
+      rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
     }
   }  // while(true)
 }
@@ -212,6 +212,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // Write to a file of server selected port for python use.
   SavePort(rpc_service_);
   RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
+  server_thread_->join();
 }
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
