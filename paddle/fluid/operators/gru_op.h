@@ -56,8 +56,6 @@ class GRUKernel : public framework::OpKernel<T> {
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
-    context.ShareLoD("Input", "Hidden");
-
     auto hidden_dims = hidden->dims();
 
     bool is_reverse = context.Attr<bool>("is_reverse");
