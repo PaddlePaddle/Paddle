@@ -319,12 +319,15 @@ void batched_gemm<platform::CUDADeviceContext, float>(
   PADDLE_ENFORCE(cudaDeviceSynchronize());
 
   float* alpha_beta_ptr;
-  posix_memalign(reinterpret_cast<void**>(&alpha_beta_ptr), sizeof(void*),
-                 sizeof(float) * 2);
+  PADDLE_ENFORCE_EQ(posix_memalign(reinterpret_cast<void**>(&alpha_beta_ptr),
+                                   64ul, sizeof(float) * 2),
+                    0);
   alpha_beta_ptr[0] = alpha;
   alpha_beta_ptr[1] = beta;
   std::cerr << "After ptr " << alpha_beta_ptr << " " << alpha_beta_ptr + 1
-            << std::endl;
+            << " M=" << M << " N=" << N << " K=" << K << " strideA=" << strideA
+            << " strideB" << strideB << " strideC" << strideC
+            << " batchCount=" << batchCount << std::endl;
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, alpha_beta_ptr, B,
       ldb, strideB, A, lda, strideA, alpha_beta_ptr + 1, C, ldc, strideC,
