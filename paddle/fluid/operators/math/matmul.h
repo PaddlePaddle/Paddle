@@ -123,7 +123,7 @@ class MatMulFunctor {
     CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
     CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-    if (!batchCount) {
+    if (!batchCountA) {
       // regular matrix multiplication
       PADDLE_ENFORCE_EQ(a.numel(), M * kA);
       PADDLE_ENFORCE_EQ(b.numel(), N * kA);
