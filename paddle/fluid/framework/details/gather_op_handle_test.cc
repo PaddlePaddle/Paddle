@@ -29,6 +29,7 @@ const f::DDim kDims = {20, 20};
 struct TestGatherOpHandle {
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
   std::vector<Scope*> local_scopes_;
+  std::vector<Scope*> param_scopes_;
   Scope g_scope_;
   std::unique_ptr<OpHandleBase> op_handle_;
   std::vector<std::unique_ptr<VarHandleBase>> vars_;
@@ -71,9 +72,14 @@ struct TestGatherOpHandle {
   void InitGatherOp(size_t input_scope_idx) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
-      local_scopes_[j]->Var("out");
+      Scope& local_scope = local_scopes_.back()->NewScope();
+      *local_scopes_.back()
+           ->Var(details::kLocalExecScopeName)
+           ->GetMutable<Scope*>() = &local_scope;
+      local_scope.Var("input");
+      param_scopes_.emplace_back(&local_scope);
     }
-    local_scopes_[input_scope_idx]->Var("input");
+    param_scopes_[input_scope_idx]->Var("out");
 
     op_handle_.reset(new GatherOpHandle(local_scopes_, gpu_list_));
     // add input
@@ -115,7 +121,8 @@ struct TestGatherOpHandle {
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
-      auto in_var = local_scopes_[input_scope_idx]->Var("input");
+      auto in_var = param_scopes_.at(input_scope_idx)->FindVar("input");
+      PADDLE_ENFORCE_NOT_NULL(in_var);
       auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -128,10 +135,11 @@ struct TestGatherOpHandle {
       value->Resize(kDims);
     }
 
-    auto out_var = local_scopes_[output_scope_idx]->Var("out");
+    auto out_var = param_scopes_.at(output_scope_idx)->FindVar("out");
+    PADDLE_ENFORCE_NOT_NULL(out_var);
     auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
 
-    auto in_var = local_scopes_[output_scope_idx]->Var("input");
+    auto in_var = param_scopes_.at(output_scope_idx)->FindVar("input");
     auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
 
     out_selected_rows->mutable_value()->ShareDataWith(
@@ -155,7 +163,8 @@ struct TestGatherOpHandle {
     f::TensorCopy(rt, cpu_place, *(ctxs_[output_scope_idx]), &result_tensor);
     float* ct = result_tensor.data<float>();
 
-    for (int64_t j = 0; j < f::product(kDims); ++j) {
+    for (int64_t j = 0;
+         j < f::product(kDims) * static_cast<int64_t>(gpu_list_.size()); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
   }

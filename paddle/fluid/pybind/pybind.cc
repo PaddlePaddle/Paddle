@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -252,10 +253,11 @@ All parameter, weight, gradient are variables in Paddle.
              return self.Var(VarUUID(name));
            },
            py::return_value_policy::reference)
-    .def("find_var",[](const std::string& name) -> Variable* {
-        return self.FindVar(VarUUID(name));
-      }
-           , py::return_value_policy::reference)
+      .def("find_var",
+           [](const std::string &name) -> Variable * {
+             return self.FindVar(VarUUID(name));
+           },
+           py::return_value_policy::reference)
       .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
@@ -464,6 +466,9 @@ All parameter, weight, gradient are variables in Paddle.
         self.back().set_lod(t.lod());
       });
 
+  m.def("IsInplace",
+        [](std::string op) -> bool { return operators::IsInplace(op); });
+
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
@@ -501,11 +506,11 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &bcast_vars,
               const ProgramDesc &main_program, const std::string &loss_var_name,
               Scope *scope, std::vector<Scope *> &local_scopes,
-              bool allow_op_delay) {
-             new (&self)
-                 ParallelExecutor(num_threads, use_event, places, params,
-                                  bcast_vars, main_program, loss_var_name,
-                                  scope, local_scopes, allow_op_delay);
+              bool allow_op_delay, bool customize_loss_grad) {
+             new (&self) ParallelExecutor(num_threads, use_event, places,
+                                          params, bcast_vars, main_program,
+                                          loss_var_name, scope, local_scopes,
+                                          allow_op_delay, customize_loss_grad);
            })
       .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.

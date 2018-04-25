@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
 

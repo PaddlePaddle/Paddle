@@ -27,6 +27,11 @@ DEFINE_bool(benchmark, false,
             "Default cuda is asynchronous device, set to True will"
             "force op run in synchronous mode.");
 
+DEFINE_bool(
+    eager_delete_scope, true,
+    "Delete local scope eagerly. It will reduce GPU memory usage but "
+    "slow down the destruction of variables.(around 1% performance harm)");
+
 namespace paddle {
 namespace framework {
 
@@ -44,9 +49,7 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
-Variable* Scope::Var(const std::string& name) {
-  return Var(VarUUID(name));
-}
+Variable* Scope::Var(const std::string& name) { return Var(VarUUID(name)); }
 
 Variable* Scope::Var(const VarUUID& name) {
   auto* v = FindVarLocally(name);
@@ -64,15 +67,6 @@ Variable* Scope::Var(std::string* name) {
     *name = var_name;
   }
   return Var(var_name);
-}
-
-Variable* Scope::Var(VarUUID* name) {
-  auto var_name = string::Sprintf("%p.%d", this, vars_.size());
-  VarUUID id(var_name);
-  if (name != nullptr) {
-    *name = id;
-  }
-  return Var(id);
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
@@ -110,13 +104,13 @@ std::vector<std::string> Scope::LocalVarNames() const {
   return known_vars;
 }
 
-void Scope::DeleteScope(Scope* scope) {
+void Scope::DeleteScope(Scope* scope) const {
   std::unique_lock<std::mutex> lock(mutex_);
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
   // When making memory benchmark on Fluid, we have to delete scope sync.
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
     delete scope;
   } else {
     Async([scope] { delete scope; });

@@ -131,7 +131,7 @@ class WhileGradOp : public framework::OperatorBase {
         VLOG(8) << "Linking outside " << outside_og_name << " --> inside "
                 << inside_og_name;
         auto &og_outside =
-          detail::Ref(scope.FindVar(VarUUID(outside_og_name)),
+            detail::Ref(scope.FindVar(VarUUID(outside_og_name)),
                         "Cannot find Outside Gradient %s", outside_og_name);
         auto &og_inside =
             detail::Ref(cur_scope.Var(inside_og_name),
@@ -288,7 +288,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     while_grad->SetInput(framework::GradVarName(kOutputs), output_grads_list);
 
     while_grad->SetAttrMap(this->Attrs());
-    while_grad->SetBlockAttr(kStepBlock, *grad_block);
+    while_grad->SetBlockAttr(kStepBlock, grad_block);
     // record the original output gradient names, since the gradient name of
     // while operator could be renamed.
     while_grad->SetAttr("original_output_grad", output_grads_list);

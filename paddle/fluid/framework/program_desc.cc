@@ -27,10 +27,14 @@ BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   return blocks_.back().get();
 }
 
-proto::ProgramDesc *ProgramDesc::Proto() {
+void ProgramDesc::Flush() {
   for (auto &block : blocks_) {
     block->Flush();
   }
+}
+
+proto::ProgramDesc *ProgramDesc::Proto() {
+  Flush();
   return &desc_;
 }
 
@@ -52,7 +56,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
       for (const auto &attr : op->Proto()->attrs()) {
         if (attr.type() == proto::AttrType::BLOCK) {
           size_t blk_idx = attr.block_idx();
-          op->SetBlockAttr(attr.name(), *this->MutableBlock(blk_idx));
+          op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
         }
       }
     }
@@ -69,7 +73,7 @@ ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
       for (const auto &attr : op->Proto()->attrs()) {
         if (attr.type() == proto::AttrType::BLOCK) {
           size_t blk_idx = attr.block_idx();
-          op->SetBlockAttr(attr.name(), *this->MutableBlock(blk_idx));
+          op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
         }
       }
     }

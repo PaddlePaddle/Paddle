@@ -62,6 +62,11 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
+
+  bool operator==(const VarHandle& o) const {
+    return o.generated_op_ == generated_op_ && o.name_ == name_ &&
+           o.scope_idx_ == scope_idx_;
+  }
 };
 
 // Dummy Variable. It is used to represent dependencies between operators
@@ -71,7 +76,7 @@ struct DummyVarHandle : public VarHandleBase {
 
 /// variable unique_id generator, threadsafe singleton.
 class UUIDGenerator {
-public:
+ public:
   int operator()(const std::string& name) { return hasher(name); }
   int Hash(const std::string& name) { return hasher(name); }
   static UUIDGenerator& Instance() {
@@ -79,7 +84,7 @@ public:
     return *g;
   }
 
-private:
+ private:
   static void InitOnce() { g = new UUIDGenerator(); }
   UUIDGenerator() {}
   std::hash<std::string> hasher;
@@ -120,7 +125,6 @@ inline std::ostream& operator<<(std::ostream& os, const VarUUID& var) {
   }
   return os;
 }
-
 
 }  // namespace details
 }  // namespace framework

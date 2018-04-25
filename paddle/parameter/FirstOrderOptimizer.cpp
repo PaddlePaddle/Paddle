@@ -145,9 +145,9 @@ AdagradParameterOptimizer::needSpecialTraversal(
   if (numUpdates_ % kMaxNumAccumulates == 0) {
     // Move the sum to a different buffer to avoid loss of precision
     // due to too many sums.
-    return [this](const VectorPtr vecs[],
-                  const ParameterConfig& config,
-                  size_t sparseId) {
+    return [](const VectorPtr vecs[],
+              const ParameterConfig& config,
+              size_t sparseId) {
       vecs[PARAMETER_GRADIENT_SQURESUM]->add(
           *vecs[PARAMETER_GRADIENT_SQURESUM1]);
       vecs[PARAMETER_GRADIENT_SQURESUM1]->zeroMem();
