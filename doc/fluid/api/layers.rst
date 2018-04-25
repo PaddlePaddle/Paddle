@@ -820,3 +820,9 @@ topk
 
 ..  autofunction:: paddle.fluid.layers.topk
     :noindex:
+
+roi_pool
+---------
+
+..  autofunction:: paddle.fluid.layers.roi_pool
+    :noindex:
