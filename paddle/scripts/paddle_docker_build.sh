@@ -14,30 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function print_usage() {
-  RED='\033[0;31m'
-  BLUE='\033[0;34m'
-  BOLD='\033[1m'
-  NONE='\033[0m'
-
-  echo -e "\n${RED}Usage${NONE}:
-  ${BOLD}$0${NONE} [OPTION]"
-
-  echo -e "\n${RED}Options${NONE}:
-  ${BLUE}start${NONE}: start dev container
-  ${BLUE}build${NONE}: run build for x86 platform
-  ${BLUE}build_android${NONE}: run build for android platform
-  ${BLUE}build_ios${NONE}: run build for ios platform
-  ${BLUE}test${NONE}: run all unit tests
-  ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
-  ${BLUE}doc${NONE}: generate paddle documents
-  ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
-  ${BLUE}capi${NONE}: generate paddle CAPI package
-  ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
-  ${BLUE}check_style${NONE}: run code style check
-  "
-}
-
 function container_running() {
     name=$1
     docker ps -a --format "{{.Names}}" | grep "${name}" > /dev/null
@@ -96,16 +72,16 @@ function main() {
       start)
         start_build_docker
         ;;
-      build | build_android | build_ios | test | bind_test | doc | dockerfile | capi | fluid_inference_lib | check_style)
+      build_android)
+        start_build_docker
+        docker exec ${CONTAINER_ID} bash -c "./paddle/scripts/paddle_build.sh $@"
+      *)
         if container_running "${CONTAINER_ID}"; then
             docker exec ${CONTAINER_ID} bash -c "./paddle/scripts/paddle_build.sh $@"
         else
             echo "Please start container first, with command:"
             echo "$0 start"
         fi
-        ;;
-      *)
-        print_usage
         ;;
     esac
 }

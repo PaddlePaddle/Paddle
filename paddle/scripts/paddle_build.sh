@@ -35,6 +35,7 @@ function print_usage() {
     ${BLUE}test${NONE}: run all unit tests
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
     ${BLUE}doc${NONE}: generate paddle documents
+    ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}capi${NONE}: generate paddle CAPI package
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
@@ -357,6 +358,22 @@ EOF
     make -j `nproc` paddle_docs paddle_apis
 }
 
+function gen_html() {
+    cat <<EOF
+    ========================================
+    Converting C++ source code into HTML ...
+    ========================================
+EOF
+    export WOBOQ_OUT=${PADDLE_ROOT}/build/woboq_out
+    mkdir -p $WOBOQ_OUT
+    cp -rv /woboq/data $WOBOQ_OUT/../data
+    /woboq/generator/codebrowser_generator \
+    	-b ${PADDLE_ROOT}/build \
+    	-a \
+    	-o $WOBOQ_OUT \
+    	-p paddle:${PADDLE_ROOT}
+    /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
+}
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
@@ -463,6 +480,9 @@ function main() {
         ;;
       doc)
         gen_docs
+        ;;
+      html)
+        gen_html
         ;;
       dockerfile)
         gen_dockerfile
