@@ -135,10 +135,10 @@ xEngine engine;
 engine.Build(some_desc);
 
 for (const auto& batch : dataset) {
-	auto& input0 = engine.buffer("input0");
+    auto& input0 = engine.buffer("input0");
     if (input0.device == DeviceType::CPU) {
-    	std::memcpy(input0.buffer, batch.data(), batch.size());
-    	input0.size = batch.size();
+    std::memcpy(input0.buffer, batch.data(), batch.size());
+    input0.size = batch.size();
     } else if (input0.device == DeviceType::GPU) {
     	cudaMemCpy(input0.buffer, batch.data(), batch.size());
         input0.size = batch.size();
@@ -192,12 +192,12 @@ to make the implementation of the input and output combination more extensible, 
 
 ```c++
 struct EngineInputConveterBase {
-	// the `out` is a cuda memory that has been allocated.
+    // the `out` is a cuda memory that has been allocated.
     virtual void operator()(LoDTensor& in, void* out, size_t max_size) = 0;
     static void Execute(const std::string& in_op_type, const std::string& out_op_type,
                       const LoDTensor& in, void* out, size_t max_size) {
-    	conveters[in_op_type + "_to_" + out_op_type](in, out, max_size);
-  	}
+        conveters[in_op_type + "_to_" + out_op_type](in, out, max_size);
+    }
     
     template<typename T>
     static Register(const std::string& key) { conveters[key] = T(); }
