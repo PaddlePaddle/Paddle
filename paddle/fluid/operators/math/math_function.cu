@@ -317,10 +317,17 @@ void batched_gemm<platform::CUDADeviceContext, float>(
   const int strideC = M * N;
   std::cerr << "Before" << std::endl;
   PADDLE_ENFORCE(cudaDeviceSynchronize());
-  std::cerr << "After ptr alpha" << &alpha << " " << &beta << std::endl;
+
+  float* alpha_beta_ptr;
+  posix_memalign(reinterpret_cast<void**>(&alpha_beta_ptr), 32u,
+                 sizeof(float) * 2);
+  alpha_beta_ptr[0] = alpha;
+  alpha_beta_ptr[1] = beta;
+  std::cerr << "After ptr" << std::endl;
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
-      strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, alpha_beta_ptr, B,
+      ldb, strideB, A, lda, strideA, alpha_beta_ptr + 1, C, ldc, strideC,
+      batchCount));
   PADDLE_ENFORCE(cudaDeviceSynchronize());
 #else
   PADDLE_ENFORCE(false, "SgemmStridedBatched is not supported on cuda <= 7.5");
