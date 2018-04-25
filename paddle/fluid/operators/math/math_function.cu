@@ -317,7 +317,7 @@ void batched_gemm<platform::CUDADeviceContext, float>(
   const int strideC = M * N;
   std::cerr << "Before" << std::endl;
   PADDLE_ENFORCE(cudaDeviceSynchronize());
-  std::cerr << "After" << std::endl;
+  std::cerr << "After ptr alpha" << &alpha << " " << &beta << std::endl;
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
       strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
