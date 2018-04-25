@@ -18,6 +18,7 @@
 #include <typeindex>
 #include <typeinfo>
 
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -91,6 +92,9 @@ class Variable {
   friend class Scope;
   const std::string* name_;
 };
+
+using details::VarUUID;
+using details::VarUUIDHash;
 
 }  // namespace framework
 }  // namespace paddle

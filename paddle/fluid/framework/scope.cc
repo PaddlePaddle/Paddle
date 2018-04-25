@@ -15,9 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 
 #include <memory>  // for unique_ptr
-#include <set>
+#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(benchmark, false,
@@ -25,11 +26,6 @@ DEFINE_bool(benchmark, false,
             "and add some memory usage logs."
             "Default cuda is asynchronous device, set to True will"
             "force op run in synchronous mode.");
-
-DEFINE_bool(
-    eager_delete_scope, true,
-    "Delete local scope eagerly. It will reduce GPU memory usage but "
-    "slow down the destruction of variables.(around 1% performance harm)");
 
 namespace paddle {
 namespace framework {
@@ -48,13 +44,15 @@ Scope& Scope::NewScope() const {
   return *kids_.back();
 }
 
-Variable* Scope::Var(const std::string& name) {
+Variable* Scope::Var(const std::string& name) { return Var(VarUUID(name)); }
+
+Variable* Scope::Var(const VarUUID& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
   v = new Variable();
-  vars_[name] = v;
+  vars_[VarUUID(name)] = v;
   VLOG(3) << "Create variable " << name;
-  v->name_ = &(vars_.find(name)->first);
+  v->name_ = &(vars_.find(name)->first.name);
   return v;
 }
 
@@ -67,6 +65,11 @@ Variable* Scope::Var(std::string* name) {
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
+  return FindVar(VarUUID(name));
+}
+
+Variable* Scope::FindVar(const VarUUID& name) const {
+  platform::RecordEvent event("Scope");
   auto var = FindVarLocally(name);
   if (var != nullptr) {
     return var;
@@ -91,26 +94,27 @@ std::vector<std::string> Scope::LocalVarNames() const {
   std::vector<std::string> known_vars;
   known_vars.reserve(this->vars_.size());
   for (auto& p : vars_) {
-    known_vars.emplace_back(p.first);
+    known_vars.emplace_back(p.first.name);
   }
   return known_vars;
 }
 
-void Scope::DeleteScope(Scope* scope) const {
+void Scope::DeleteScope(Scope* scope) {
   std::unique_lock<std::mutex> lock(mutex_);
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
   // When making memory benchmark on Fluid, we have to delete scope sync.
-  if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
+  if (FLAGS_benchmark) {
     delete scope;
   } else {
     Async([scope] { delete scope; });
   }
 }
 
-void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  std::set<std::string> var_set(var_names.begin(), var_names.end());
+void Scope::EraseVars(const std::vector<VarUUID>& var_names) {
+  std::unordered_set<VarUUID, VarUUIDHash> var_set(var_names.begin(),
+                                                   var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
       delete it->second;
@@ -123,13 +127,14 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
-  auto origin_it = vars_.find(origin_name);
+  auto origin_it = vars_.find(VarUUID(origin_name));
   PADDLE_ENFORCE(origin_it != vars_.end(),
                  "Cannot find original variable with name %s", origin_name);
-  auto new_it = vars_.find(new_name);
+  VarUUID new_var = VarUUID(new_name);
+  auto new_it = vars_.find(new_var);
   PADDLE_ENFORCE(new_it == vars_.end(),
                  "The variable with name %s is already in the scope", new_name);
-  vars_[new_name] = origin_it->second;
+  vars_[new_var] = origin_it->second;
   vars_.erase(origin_it);
 }
 
@@ -140,6 +145,11 @@ std::string Scope::Rename(const std::string& origin_name) const {
 }
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
+  return FindVarLocally(name);
+}
+
+Variable* Scope::FindVarLocally(const VarUUID& name) const {
+  platform::RecordEvent event("Scope");
   auto it = vars_.find(name);
   if (it != vars_.end()) return it->second;
   return nullptr;
