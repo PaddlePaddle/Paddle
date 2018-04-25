@@ -28,8 +28,8 @@ ComputationOpHandle::ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
 void ComputationOpHandle::RunImpl() {
   auto *cur_ctx = dev_ctxes_[place_];
   for (auto *in : inputs_) {
-    bool need_wait =
-        in->generated_op_ && in->generated_op_->dev_ctxes_[place_] != cur_ctx;
+    bool need_wait = in->generated_op_ &&
+                     in->generated_op_->DeviceContext(place_) != cur_ctx;
     if (need_wait) {
       in->generated_op_->Wait(cur_ctx);
     }

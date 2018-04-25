@@ -162,8 +162,9 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
-            layer_norm_grad, ops::LayerNormGradOp);
+REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);

@@ -5,13 +5,6 @@
 evaluator
 =========
 
-Accuracy
---------
-
-..  autoclass:: paddle.fluid.evaluator.Accuracy
-    :members:
-    :noindex:
-
 ChunkEvaluator
 --------------
 
@@ -19,3 +12,17 @@ ChunkEvaluator
     :members:
     :noindex:
 
+EditDistance
+--------------
+
+..  autoclass:: paddle.fluid.evaluator.EditDistance
+    :members:
+    :noindex:
+
+DetectionMAP
+--------------
+
+..  autoclass:: paddle.fluid.evaluator.DetectionMAP
+    :members:
+    :noindex:
+  

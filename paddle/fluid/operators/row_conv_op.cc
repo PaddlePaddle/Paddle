@@ -250,8 +250,9 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(row_conv, ops::RowConvOp, ops::RowConvOpMaker, row_conv_grad,
-            ops::RowConvGradOp);
+REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

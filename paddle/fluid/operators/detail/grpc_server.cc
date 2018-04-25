@@ -90,7 +90,7 @@ class RequestGet final : public RequestBase {
                       ::grpc::ServerCompletionQueue* cq,
                       framework::Scope* scope,
                       const platform::DeviceContext* dev_ctx,
-                      SimpleBlockQueue<MessageWithName>* queue)
+                      framework::BlockingQueue<MessageWithName>* queue)
       : RequestBase(service, cq, dev_ctx),
         responder_(&ctx_),
         scope_(scope),
@@ -128,7 +128,7 @@ class RequestGet final : public RequestBase {
   sendrecv::VariableMessage request_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* scope_;
-  SimpleBlockQueue<MessageWithName>* queue_;
+  framework::BlockingQueue<MessageWithName>* queue_;
 };
 
 class RequestPrefetch final : public RequestBase {

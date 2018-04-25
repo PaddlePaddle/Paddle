@@ -14,7 +14,7 @@
 
 #pragma once
 #include <memory>
-#include <thread>
+#include <thread>  // NOLINT
 
 namespace paddle {
 namespace framework {
@@ -23,7 +23,7 @@ namespace details {
 // Change it to thread safe flags if needed.
 class ThreadUnsafeOwnershipFlags {
  public:
-  ThreadUnsafeOwnershipFlags(bool flag) : flag_(flag) {}
+  explicit ThreadUnsafeOwnershipFlags(bool flag) : flag_(flag) {}
 
   ThreadUnsafeOwnershipFlags(const ThreadUnsafeOwnershipFlags& other) = delete;
   ThreadUnsafeOwnershipFlags& operator=(
