@@ -49,7 +49,11 @@ ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 RUN curl -s -q https://glide.sh/get | sh
 
 # Install TensorRT
-# The unnecessary files has been removed to make the library small. It only contains include and lib now.
+# following TensorRT.tar.gz is not the default official one, we do two miny changes:
+# 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
+#    and its size is only one-third of the official one.
+# 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
+#    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 RUN wget -qO- http://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
     tar -xz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
