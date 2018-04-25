@@ -33,7 +33,6 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     auto filter = *context.Input<Tensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
-    context.ShareLoD("X", "Out");
 
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");
