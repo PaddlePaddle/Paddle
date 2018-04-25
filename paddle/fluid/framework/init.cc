@@ -69,9 +69,9 @@ void InitP2P(std::vector<int> devices) {
 }
 
 void InitDevices(bool init_p2p) {
-/*Init all available devices by default */
-#ifdef PADDLE_WITH_CUDA
+  /*Init all available devices by default */
   std::vector<int> devices;
+#ifdef PADDLE_WITH_CUDA
   try {
     int count = platform::GetCUDADeviceCount();
     for (int i = 0; i < count; ++i) {
