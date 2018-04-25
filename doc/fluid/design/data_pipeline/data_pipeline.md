@@ -44,27 +44,74 @@ The [RecordIO file format](https://github.com/PaddlePaddle/Paddle/blob/develop/p
 
 We also considered other data formats, e.g., [SSTable](https://www.igvita.com/2012/02/06/sstable-and-log-structured-storage-leveldb/).  Different from that RecordIO is a container of records, SSTable is a container of key-value pairs.  The fact that training and testing data used with machine learning are records but not key-value pairs inspires us to choose ReocrdIO instead of SSTable.
 
+### Data Reading API
+
+An intuitive solution is to provide the following set of Fluid operators
+
+```python
+rio = fluid.open_recordio("/dev/stdin")
+records = fluid.read_recordio(rio, num_records)
+fluid.close_recordio(rio)
+```
+
+However, it seems (at least right now) that we are going to use another data file format for saving model parameters. And, in the future, we might have to introduce more data formats.  So we'd like to have a lower-level API `open_file` and higher-level API like `create_recordio_reader`, and the program should look like:
+
+```python
+rio = fluid.create_recordio_reader(fluid.open_file("/dev/stdin"))
+records fluid.read_recordio(rio, num_records)
+fluid.close_recordio_reader(rio) # This closes the file as well.
+```
+
 ### Record Format
 
 Usually, each instance contains multiple fields.  For example, each instance of ResNet includes an image and one or more text labels. In another example of text classification, each instance contains text and its labels.
 
-Data reading operators of Fluid must understand not only the file format, but also the record format, so could it map fields into Fluid variables of various types.  For this purpose, we propose to standardize the record format as a protobuf message:
+Data reading operators of Fluid must understand not only the file format, but also the record format, so could it map fields into Fluid variables of various types.  For this purpose, we propose to standardize the record format as a protobuf message. 
 
 ```protobuf
 message Instance {
-  enum Type {
-    IMAGE = 0;
-    ...
-  }
-  message Field {
-    required Type type = 1;
-    repeated bytes image = 2; // PNG image
-  }
+  ...
   Field fields = 1;
 }
 ```
 
-***Open Discussion:*** Should we reuse [`VarDesc.Type`](https://github.com/PaddlePaddle/Paddle/blob/72ee737f3f3e539e1f4b2a5e819e0d62f362c7b0/paddle/fluid/framework/framework.proto#L95) instead of reinventing `Instance.Type`?
+Here comes the problem -- how do we define `Field`:
+
+#### Choice 1. 
+
+```protobuf
+message Instance {
+  enum Type {
+    PNG_IMAGE = 0;
+    JPG_IMAGE = 1;
+    TEXT = 2;
+    ...
+  }
+  message Field {
+    required Type type = 1;
+    optional bytes png_image = 2;
+    optional bytes jpg_image = 3;
+    optional bytes text = 4;
+  }
+  ...
+```
+
+However, this would lead to an awkward situation that the raw data types would grow quickly and infinitely. It would also force us to create many operators to parse these many kinds of raw data.  
+
+So we prefer choice 2.
+
+#### Choice 2.
+
+We could reuse [`VarDesc.Type`](https://github.com/PaddlePaddle/Paddle/blob/72ee737f3f3e539e1f4b2a5e819e0d62f362c7b0/paddle/fluid/framework/framework.proto#L95) instead of reinventing `Instance.Type`?
+
+```protobuf
+message Instance {
+  message Field {
+    required VarDesc var_desc = 1;
+    required bytes var_value = 2;
+  }
+}
+```
 
 ### Data Augmentation
 
