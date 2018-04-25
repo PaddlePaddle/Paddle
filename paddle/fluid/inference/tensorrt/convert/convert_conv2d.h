@@ -12,26 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
 #include "paddle/fluid/inference/tensorrt/convert/convert.h"
-#include <gtest/gtest.h>
-#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(tensorrt, ConvertBlock) {
-  framework::ProgramDesc prog;
-  auto* block = prog.MutableBlock(0);
-  auto* mul_op = block->AppendOp();
-  mul_op->SetType("mul");
-  auto* conv2d_op = block->AppendOp();
-  conv2d_op->SetType("conv2d");
+class Conv2dOpConverter : public OpConverter {
+ public:
+  Conv2dOpConverter() {}
+  void Convert(const framework::OpDesc& op);
+};
 
-  framework::Scope scope;
-  TensorRTConverter converter(scope);
-  converter.ConvertBlock(*block);
+void Conv2dOpConverter::Convert(const framework::OpDesc& op) {
+  LOG(INFO) << "convert a fluid conv2d op to tensorrt conv layer without bias";
 }
+
+REGISTER_TRT_OP_CONVETER(conv2d, Conv2dOpConverter);
 
 }  // namespace tensorrt
 }  // namespace inference

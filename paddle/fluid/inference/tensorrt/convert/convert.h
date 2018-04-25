@@ -26,37 +26,46 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class TensorRTConverter {
+class ConverterBase {
  public:
-  explicit TensorRTConverter(const framework::Scope& scope) : scope_(scope) {
-    this->RegisterOpConverters();
-  }
+  ConverterBase() {}
 
-  // convert fluid op to tensorrt layer
-  void ConvertOp(const framework::OpDesc& op);
-
-  // convert fluid block to tensorrt network
-  void ConvertBlock(const framework::BlockDesc& block);
-
- private:
-  // convert op registry, whose key is the fluid op type, and value is the
-  // convert tensorrt function name
-  std::unordered_map<std::string, std::function<void(const framework::OpDesc&)>>
-      op_registry_;
   // fluid inference scope
-  const framework::Scope& scope_;
+  framework::Scope* scope_;
   // tensorrt input/output tensor list, whose key is the fluid variable name,
   // and value is the pointer position of tensorrt tensor
   std::unordered_map<std::string, nvinfer1::ITensor*> tr_tensors_;
+};
 
-  // register different op converters
-  void RegisterOpConverters();
+class OpConverter : public ConverterBase {
+ public:
+  OpConverter() {}
+  virtual ~OpConverter() {}
 
-  // convert a fluid Mul op to tensorrt fc layer without bias
-  static void ConvertMul(const framework::OpDesc& op);
+  // convert fluid op to tensorrt layer
+  virtual void Convert(const framework::OpDesc& op) = 0;
+};
 
-  // convert a fluid Conv2d op to tensorrt conv layer without bias
-  static void ConvertConv2D(const framework::OpDesc& op);
+static std::unordered_map<std::string, OpConverter*>& GetOpConverter() {
+  static std::unordered_map<std::string, OpConverter*> register_op_converter;
+  return register_op_converter;
+}
+
+#define REGISTER_TRT_OP_CONVETER(op_type, convert_class) \
+  class convert_class##Register {                        \
+   public:                                               \
+    convert_class##Register() {                          \
+      GetOpConverter()[#op_type] = new convert_class;    \
+    }                                                    \
+  };                                                     \
+  convert_class##Register convert_class##reg;
+
+class TensorRTConverter : public ConverterBase {
+ public:
+  TensorRTConverter() {}
+
+  // convert fluid block to tensorrt network
+  void ConvertBlock(const framework::BlockDesc& block);
 };
 
 }  // namespace tensorrt
