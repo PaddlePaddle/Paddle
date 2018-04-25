@@ -12,22 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/convert.h"
-#include "paddle/fluid/inference/tensorrt/convert/convert_conv2d.h"
-#include "paddle/fluid/inference/tensorrt/convert/convert_mul.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void TensorRTConverter::ConvertBlock(const framework::BlockDesc& block) {
-  for (auto op : block.AllOps()) {
-    std::string type = op->Type();
-    PADDLE_ENFORCE(GetOpConverter().count(type),
-                   "No converter registered for op: %s", type);
-    auto op_converter = GetOpConverter()[type];
-    op_converter->Convert(*op);
-  }
+TEST(tensorrt, ConvertBlock) {
+  framework::ProgramDesc prog;
+  auto* block = prog.MutableBlock(0);
+  auto* mul_op = block->AppendOp();
+  mul_op->SetType("mul");
+  auto* conv2d_op = block->AppendOp();
+  conv2d_op->SetType("conv2d");
+
+  TensorRTConverter converter;
+  converter.ConvertBlock(*block);
 }
 
 }  // namespace tensorrt
