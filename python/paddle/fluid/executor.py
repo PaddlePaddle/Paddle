@@ -277,7 +277,8 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False,
+            save_program_to_file=""):
         """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
 
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -333,6 +334,12 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
+
+        # FIXME(gongwb): does a program should be save in run function?
+        if len(save_program_to_file) > 0:
+            with open(save_program_to_file, 'w') as f:
+                f.write(program.desc.serialize_to_string())
+
         self.executor.run(program.desc, scope, 0, True, True)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
