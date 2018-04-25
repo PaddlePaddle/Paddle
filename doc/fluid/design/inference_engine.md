@@ -169,9 +169,9 @@ public:
     // Clone an engine instance with weights shared.
     virtual EngineBase* Clone() const = 0;
     // Expose the engine's internal buffer to write/read data directly
-   	virtual Buffer& buffer(const std::string& tensor) = 0;
+    virtual Buffer& buffer(const std::string& tensor) = 0;
     
-	virtual ~EngineBase() {}  
+    virtual ~EngineBase() {}  
 };
 ```
 
