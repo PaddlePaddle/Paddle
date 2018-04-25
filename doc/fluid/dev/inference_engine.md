@@ -1,18 +1,18 @@
 # Utilize Engines to Accelerate Inference
 
-For performance issues, the inference phase need to support some special hardware for acceleration, 
+The inference phase need to support some special hardware for acceleration, 
 such as GPU, FPGA, and ARM.
-Special softwares power some of these hardwares and the inner states are hidden, for example, the TensorRT is released by NVidia to improve inference performance on GPUs, it takes a computation graph as input, 
-optimize and execute it, and the users can hardly modify its internal logics. 
+Special softwares power some of these hardwares and the inner states are hidden, for example, the TensorRT is released by NVidia to improve the inference performance on GPUs, it takes a computation graph as input, 
+optimize and execute it, but the users can't directly modify its internal logics. 
 
 In other words, these software acts like a black box, the external logics prepare its inputs, execute it and process its output. 
-In Paddle serving module, we call such a software engine, and the inference phase will partition sub-blocks(sub graph) and use the engines to improve performance.
+In the Paddle inference module, we call such software an engine, and the inference phase will partition sub-blocks(sub graph) and execute them on the engines to improve performance.
 
 ## Use Engines to Execute Sub-blocks
 
-Compared to Paddle Fluid, the engines covers a few kinds of operators and can only power several kinds of models. In other words, the engines can only support a part of Fluid.
+Compared to Paddle Fluid, the engines covers limited number of operators and can only power several kinds of models. In other words, the engines can only support a part of Fluid.
 
-The Block in Fluid acts like a computation graph is natural to partition the Block into several sub-blocks which powered by several different engines.
+The Block in Fluid acts like a computation graph and it is natural to partition the Block into several sub-blocks which are powered by several different engines.
 
 <p align="center">
 
@@ -32,7 +32,7 @@ It is easy to parallelize the computation by scheduling several engines on diffe
 
 ## Partition the Sub-blocks supported by a Specific Engine
 
-As mentioned above, one engine can support a partition of Fluid operators, the sub-block dispatched should have the operators this engine fully supports.
+As mentioned above, one engine can support a partition of Fluid operators, the sub-block dispatched should be composed by the operators this engine fully supports.
 
 The Inference framework needs a mechanism to mark the sub-block and deliver it to an engine.
 
@@ -75,7 +75,7 @@ o = some_op()
 
 ## Transmit the sub-blocks to an Engine
 
-The marked code blocks will be written into the `BlockDesc`, to make the inference phase more clear to support the engine execution, we break up the whole architecture into three layers:
+The marked code blocks will be written into a `BlockDesc`, to make the inference phase more clear to support the engine execution, we break up the whole architecture into three layers:
 
 - Frontend, the python syntax, generate the basic fluid model description with some inference customized configurations.
 - Optimizer, rewrite the fluid description, such as pruning the unused operators, reuse some variable memory.
