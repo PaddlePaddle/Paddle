@@ -12,10 +12,10 @@ Consider a Fluid training program, `resnet50.py`, needs to read data from disk:
 cat data | python resnet50.py
 ```
 
-The fact that the who collect the data might not be the same person who wrote `resnet50.py` inspires
+Since the person who collects the data might be different from the person who wrote resnet50.py:
 
 1. Fluid operators used in `resnet50.py` can recognize the file format of `data`, or, we need a standard data format.
-1. These operators need to be able to read the standard input.
+1. These operators need to be able to read from the standard input.
 
 ### Case 2: Data from Online Generators
 
