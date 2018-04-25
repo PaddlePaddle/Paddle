@@ -223,8 +223,9 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
                                sentence_vector_list[src_idx].size());
   }
 
-  auto cpu_place = new paddle::platform::CPUPlace();
-  paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
+  auto cpu_place = std::unique_ptr<paddle::platform::CPUPlace>(
+      new paddle::platform::CPUPlace());
+  paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place.get());
 
   framework::LoD lod;
   lod.push_back(source_level_lod);
@@ -239,7 +240,6 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   score_tensor->Resize({static_cast<int64_t>(score_data.size())});
   score_tensor->mutable_data<T>(paddle::platform::CPUPlace());
   framework::TensorFromVector<T>(score_data, cpu_ctx, score_tensor);
-  delete cpu_place;
 }
 
 template <typename T>
