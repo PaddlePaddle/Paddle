@@ -538,9 +538,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (var && VarIsTensor(var)) {
         auto* tensor_in = GetTensorFromVar(var);
         std::cout << "tensor " << var_name << " " << (void*)(tensor_in)
-                  << " is mkldnn: "
-                  << (tensor_in->layout() == DataLayout::kMKLDNN)
-                  << "dims: " << tensor_in->dims().size() << std::endl;
+                  << " layout " << tensor_in->layout()
+                  << " dims: " << tensor_in->dims().size() << std::endl;
         if (tensor_in->IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
               var_name_item.first, *tensor_in, expected_kernel_key);
@@ -579,8 +578,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                   if (var && VarIsTensor(var)) {
                     auto* tensor_out = GetMutableTensorFromVar(var);
                     if (tensor_out->layout() == DataLayout::kMKLDNN) {
-                      tensor_out->set_layout(DataLayout::kNCHW);
-                      std::cout << "setting layout back to NCHW" << std::endl;
+                      tensor_out->set_layout(out->layout());
+                      std::cout << "setting out layout back to "
+                                << out->layout() << std::endl;
                     }
                   }
                 }

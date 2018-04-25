@@ -78,11 +78,12 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
 
   if (in.layout() == DataLayout::kMKLDNN) {
-    PADDLE_ENFORCE(in.type().hash_code() == typeid(float).hash_code(),
-                   "MKLDNN tensor should work with float data type");
+    auto layout = expected_kernel_type.data_layout_;
+    if (layout == DataLayout::kAnyLayout) {
+      layout = DataLayout::kNCHW;
+    }
 
-    MKLDNNTensor(in).Reorder(*out, expected_kernel_type.data_layout_,
-                             expected_kernel_type.place_);
+    MKLDNNTensor(in).Reorder(*out, layout, expected_kernel_type.place_);
     return;
   }
 

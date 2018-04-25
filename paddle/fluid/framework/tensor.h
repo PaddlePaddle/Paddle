@@ -51,10 +51,7 @@ class Tensor {
   };
 
  public:
-  Tensor() : offset_(0) {
-    std::cout << "tensor created " << (void*)this << std::endl;
-  }
-  ~Tensor() { std::cout << "tensor deleted " << (void*)this << std::endl; };
+  Tensor() : offset_(0) {}
 
   /*! Constructor with place should only be used in pybind. */
   explicit Tensor(const platform::Place& place) : offset_(0) {

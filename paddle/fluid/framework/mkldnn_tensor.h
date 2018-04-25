@@ -62,7 +62,7 @@ inline DataLayout to_paddle_layout(mkldnn::memory::format format) {
 
 class MKLDNNTensorData : public Tensor::ExtendedData {
  public:
-  MKLDNNTensorData(const mkldnn::engine& engine) : engine_(engine) {}
+  explicit MKLDNNTensorData(const mkldnn::engine& engine) : engine_(engine) {}
   inline mkldnn::memory::format GetFormat() const { return format_; }
 
   inline void SetFormat(mkldnn::memory::format format) { format_ = format; }
@@ -80,7 +80,7 @@ class MKLDNNTensorData : public Tensor::ExtendedData {
 // Unmutable proxy for Tensor
 class MKLDNNTensor {
  public:
-  MKLDNNTensor(const Tensor& tensor) : tensor_(tensor) {
+  explicit MKLDNNTensor(const Tensor& tensor) : tensor_(tensor) {
     PADDLE_ENFORCE(tensor.layout() == DataLayout::kMKLDNN,
                    "Tensor should has MKLDNN data layout set");
 
@@ -145,7 +145,6 @@ class MKLDNNTensorMutable : public MKLDNNTensor {
   }
 
   inline void Reorder(mkldnn::memory::format dst_format);
-  // inline void Reorder(MKLDNNTensor& output, mkldnn::memory::format format);
 
  private:
   MKLDNNTensorMutable(Tensor& tensor, const mkldnn::engine& engine)
@@ -162,9 +161,11 @@ inline MKLDNNTensorMutable MKLDNNTensorMutable::Create(
   if (!tensor.get_extended_data()) {
     detail::SetMKLDNNData(tensor, engine);
   }
+
   if (!MKLDNNTensor::IsInitialized(tensor)) {
     tensor.set_layout(DataLayout::kMKLDNN);
   }
+
   return MKLDNNTensorMutable(tensor, engine);
 }
 
@@ -173,6 +174,9 @@ inline bool MKLDNNTensor::IsInitialized(Tensor& tensor) {
 }
 
 inline void MKLDNNTensorMutable::Reorder(mkldnn::memory::format dst_format) {
+  PADDLE_ENFORCE(tensor_.type().hash_code() == typeid(float).hash_code(),
+                 "MKLDNN tensor should be created from float type Tensor");
+
   mkldnn::memory::format src_format{data_->GetFormat()};
   if (src_format == mkldnn::memory::format::nchw &&
       (src_format == mkldnn::memory::format::Ohwi8o ||
@@ -204,8 +208,9 @@ inline void MKLDNNTensorMutable::Reorder(mkldnn::memory::format dst_format) {
 
 inline void MKLDNNTensor::Reorder(Tensor& out, DataLayout dst_layout,
                                   platform::Place place) const {
-  if (dst_layout == DataLayout::kAnyLayout) {
-    dst_layout = DataLayout::kNCHW;
+  PADDLE_ENFORCE(dst_layout != DataLayout::kAnyLayout);
+  if (dst_layout == DataLayout::kMKLDNN) {
+    return;
   }
 
   mkldnn::memory::format src_format{GetFormat()};
@@ -213,6 +218,9 @@ inline void MKLDNNTensor::Reorder(Tensor& out, DataLayout dst_layout,
   std::cout << "reordering from " << src_format << " to " << dst_format
             << std::endl;
   if (src_format == dst_format) {
+    out.ShareDataWith(tensor_);
+    out.set_extended_data(nullptr);
+    out.set_layout(dst_layout);
     return;
   }
 
