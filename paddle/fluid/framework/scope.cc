@@ -27,6 +27,11 @@ DEFINE_bool(benchmark, false,
             "Default cuda is asynchronous device, set to True will"
             "force op run in synchronous mode.");
 
+DEFINE_bool(
+    eager_delete_scope, true,
+    "Delete local scope eagerly. It will reduce GPU memory usage but "
+    "slow down the destruction of variables.(around 1% performance harm)");
+
 namespace paddle {
 namespace framework {
 
