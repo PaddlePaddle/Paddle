@@ -20,6 +20,18 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+struct MatDim {
+  int height_;
+  int width_;
+  int batch_size_{0};
+  int stride_{0};
+};
+static std::ostream& operator<<(std::ostream& out, const MatDim& dim) {
+  out << "([" << dim.height_ << ", " << dim.width_
+      << "] batch_size=" << dim.batch_size_ << " stride=" << dim.stride_ << ")";
+  return out;
+}
+
 // Implements the logic of numpy matmul:
 // https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.matmul.html
 //
@@ -30,13 +42,6 @@ namespace math {
 template <typename DeviceContext, typename T>
 class MatMulFunctor {
  public:
-  struct MatDim {
-    int height_;
-    int width_;
-    int batch_size_{0};
-    int stride_{0};
-  };
-
   static MatDim GetMatDim(bool trans, const framework::DDim& dim) {
     MatDim res;
     auto dim_vec = framework::vectorize(dim);
@@ -89,11 +94,21 @@ class MatMulFunctor {
       int batch_size =
           dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_;
 
-      std::cerr << "DimA BatchSize = " << dim_a.batch_size_ << " "
-                << "DimB BatchSize = " << dim_b.batch_size_ << std::endl;
+      std::cerr << "DimA = " << dim_a << " "
+                << "DimB = " << dim_b << std::endl;
 
+      PADDLE_ENFORCE_EQ(a.numel(),
+                        dim_a.stride_ == 0
+                            ? dim_a.height_ * dim_a.width_
+                            : dim_a.height_ * dim_a.width_ * batch_size);
+
+      PADDLE_ENFORCE_EQ(b.numel(),
+                        dim_b.stride_ == 0
+                            ? dim_b.height_ * dim_a.width_
+                            : dim_b.height_ * dim_a.width_ * batch_size);
       PADDLE_ENFORCE_EQ(out->numel(),
                         batch_size * dim_a.height_ * dim_b.width_);
+
       batched_gemm<DeviceContext, T>(
           context, GetTranspose(trans_a), GetTranspose(trans_b), dim_a.height_,
           dim_b.width_, dim_a.width_, alpha, a.data<T>(), b.data<T>(), beta,
