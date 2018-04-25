@@ -88,6 +88,10 @@ class MatMulFunctor {
     } else {
       int batch_size =
           dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_;
+
+      std::cerr << "DimA BatchSize = " << dim_a.batch_size_ << " "
+                << "DimB BatchSize = " << dim_b.batch_size_ << std::endl;
+
       PADDLE_ENFORCE_EQ(out->numel(),
                         batch_size * dim_a.height_ * dim_b.width_);
       batched_gemm<DeviceContext, T>(
