@@ -124,6 +124,59 @@ To help convert input/output data format between any Fluid operators and some `E
 
 `EngineOp` is just a normal Fluid operator, which has an attribute called `subblock` to get the Fluid description about a sub-block.
 
+To unify the behavior of different `EngineOp`s, an underlying interface over all the engines is raised as follows 
+
+```c++
+/*
+EngineBase is used like
+class xEngine : EngineBase { ... }
+
+xEngine engine;
+engine.Build(some_desc);
+
+for (const auto& batch : dataset) {
+	auto& input0 = engine.buffer("input0");
+    if (input0.device == DeviceType::CPU) {
+    	std::memcpy(input0.buffer, batch.data(), batch.size());
+    	input0.size = batch.size();
+    } else if (input0.device == DeviceType::GPU) {
+    	cudaMemCpy(input0.buffer, batch.data(), batch.size());
+        input0.size = batch.size();
+    }
+    engine.Execute();
+    
+    const auto& output0 = engine.buffer("output0");
+    // ...
+}
+*/
+enum class DeviceType {
+    CPU = 0,
+    GPU
+};
+
+struct Buffer {
+    void* buffer;
+    int max_size;
+    int size;
+    DeviceType device;
+};
+
+class EngineBase {
+public:
+    // Build once.
+    virtual Build(const BlockDesc& desc) = 0;
+    virtual Execute() = 0;
+    // Clone an engine instance with weights shared.
+    virtual EngineBase* Clone() const = 0;
+    // Expose the engine's internal buffer to write/read data directly
+   	virtual Buffer& buffer(const std::string& tensor) = 0;
+    
+	virtual ~EngineBase() {}  
+};
+```
+
+
+
 ### Data format convert operators
 
 Both the `EngineInputConvertOp` and `EngineOutputConvertOp` has similar interfaces
@@ -139,14 +192,17 @@ to make the implementation of the input and output combination more extensible, 
 
 ```c++
 struct EngineInputConveterBase {
-      // the `out` is a cuda memory that has been allocated.
-      virtual void operator()(LoDTensor& in, void* out, size_t max_size) = 0;
-      static void Execute(const std::string& in_op_type, const std::string& out_op_type,
+	// the `out` is a cuda memory that has been allocated.
+    virtual void operator()(LoDTensor& in, void* out, size_t max_size) = 0;
+    static void Execute(const std::string& in_op_type, const std::string& out_op_type,
                       const LoDTensor& in, void* out, size_t max_size) {
-    conveters[in_op_type + "_to_" + out_op_type](in, out, max_size);
-  }
+    	conveters[in_op_type + "_to_" + out_op_type](in, out, max_size);
+  	}
+    
+    template<typename T>
+    static Register(const std::string& key) { conveters[key] = T(); }
   
-      static std::map<std::string, EngineInputConveterBase> conveters;
+  	static std::map<std::string, EngineInputConveterBase> conveters;
 };
 
 // some specific implementations
@@ -154,8 +210,8 @@ struct RNN2xEngineConveter : public EngineInputConveterBase {
     void operator()(const LoDTensor& in, void* out, size_t max_size) override;
 };
 
-#define REGISTER_INPUT_CONVERTER(in_op_type__, out_op_type__, conveter__) \
-    EngineInputConveterBase::conveters[#in_op_type__ "_to_" #out_op_type__] = conveter__();
+#define REGISTER_INPUT_CONVERTER(in_op_type__, out_op_type__, Conveter__) \
+    EngineInputConveterBase::Register<Conveter__>(#in_op_type__ "_to_" #out_op_type__);
 
 REGISTER_INPUT_CONVERTER(RNNOp, xEngineOp, RNN2xEngineConveter);
 ```
