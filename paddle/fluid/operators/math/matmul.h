@@ -104,8 +104,8 @@ class MatMulFunctor {
 
       PADDLE_ENFORCE_EQ(b.numel(),
                         dim_b.stride_ == 0
-                            ? dim_a.height_ * dim_b.width_
-                            : dim_a.height_ * dim_b.width_ * batch_size);
+                            ? dim_a.width_ * dim_b.width_
+                            : dim_a.width_ * dim_b.width_ * batch_size);
       PADDLE_ENFORCE_EQ(out->numel(),
                         batch_size * dim_a.height_ * dim_b.width_);
 
