@@ -195,7 +195,7 @@ def assign(input, output):
         helper.append_op(
             type='assign',
             inputs={'X': [input]},
-            outputs={'Out': [output]},
+            outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP32:
