@@ -185,6 +185,9 @@ class DistributeTranspiler:
             :param split_method: A function to determin how to split variables
                 to different servers equally.
             :type split_method: function
+            :type sync_mode: boolean default True
+            :param sync_mode: if sync_mode is set True, it means that dist transpiler
+            will transpile the program into sync_mode pserver and trainer program.
         """
         assert (callable(split_method))
         if program is None:
@@ -479,7 +482,7 @@ class DistributeTranspiler:
                 "Fanin": self.trainer_num,
                 "PrefetchBlock": prefetch_block,
                 "sync_mode": self.sync_mode,
-                "grad_to_id": grad_to_block_id
+                "grad_to_block_id": grad_to_block_id
             })
 
         pserver_program.sync_with_cpp()
