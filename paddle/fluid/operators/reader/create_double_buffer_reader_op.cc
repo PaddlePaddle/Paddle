@@ -55,8 +55,6 @@ class DoubleBufferReader : public framework::DecoratedReader {
   ~DoubleBufferReader() { EndPrefetcher(); }
 
  private:
-  bool HasNext() const;
-
   void StartPrefetcher() {
     channel_ = new reader::BlockingQueue<size_t>(kChannelSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
@@ -139,17 +137,16 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
 };
 
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  out->clear();
-  if (HasNext()) {
-    size_t cached_tensor_id;
-    channel_->Receive(&cached_tensor_id);
+  size_t cached_tensor_id;
+  if (channel_->Receive(&cached_tensor_id)) {
     if (platform::is_gpu_place(place_)) {
       *out = gpu_tensor_cache_[cached_tensor_id];
-      ctxs_[cached_tensor_id]->Wait();
     } else {
       // CPU place
       *out = cpu_tensor_cache_[cached_tensor_id];
     }
+  } else {
+    out->clear();
   }
 }
 
@@ -157,12 +154,6 @@ void DoubleBufferReader::ReInit() {
   reader_->ReInit();
   EndPrefetcher();
   StartPrefetcher();
-}
-
-bool DoubleBufferReader::HasNext() const {
-  while (!channel_->IsClosed() && !channel_->CanReceive()) {
-  }
-  return channel_->CanReceive();
 }
 
 void DoubleBufferReader::PrefetchThreadFunc() {

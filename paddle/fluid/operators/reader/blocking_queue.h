@@ -25,6 +25,11 @@ namespace reader {
 
 template <typename T>
 class BlockingQueue {
+  // BlockingQueue is for buffered reading and is supposed to use only the
+  // reader package. It is true that we could and we should have been using
+  // framework::Channel, but which has currently a deadlock bug. BlockingQueue
+  // is a workaround and a simplified version of framework::Channel as it
+  // doesn't support GPU and it implements on buffered blocking queue.
  public:
   explicit BlockingQueue(size_t capacity)
       : capacity_(capacity), closed_(false) {
@@ -37,26 +42,28 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
     if (closed_) {
+      VLOG(5)
+          << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
       return false;
-    } else {
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
-      queue_.push_back(elem);
-      receive_cv_.notify_one();
-      return true;
     }
+    PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+    queue_.push_back(elem);
+    receive_cv_.notify_one();
+    return true;
   }
 
   bool Send(T&& elem) {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
     if (closed_) {
+      VLOG(5)
+          << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
       return false;
-    } else {
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
-      queue_.emplace_back(std::move(elem));
-      receive_cv_.notify_one();
-      return true;
     }
+    PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+    queue_.emplace_back(std::move(elem));
+    receive_cv_.notify_one();
+    return true;
   }
 
   bool Receive(T* elem) {
@@ -84,16 +91,6 @@ class BlockingQueue {
   bool IsClosed() {
     std::lock_guard<std::mutex> lock(mutex_);
     return closed_;
-  }
-
-  bool CanSend() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return !closed_ && queue_.size() < capacity_;
-  }
-
-  bool CanReceive() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return !queue_.empty();
   }
 
   size_t Cap() {

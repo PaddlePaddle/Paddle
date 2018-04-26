@@ -37,7 +37,6 @@ class MultiFileReader : public framework::ReaderBase {
   ~MultiFileReader() { EndScheduler(); }
 
  private:
-  bool HasNext();
   void StartNewScheduler();
   void EndScheduler();
   void ScheduleThreadFunc();
@@ -54,21 +53,14 @@ class MultiFileReader : public framework::ReaderBase {
 };
 
 void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  out->clear();
-  if (HasNext()) {
-    buffer_->Receive(out);
+  if (!buffer_->Receive(out)) {
+    out->clear();
   }
 }
 
 void MultiFileReader::ReInit() {
   EndScheduler();
   StartNewScheduler();
-}
-
-bool MultiFileReader::HasNext() {
-  while (!buffer_->IsClosed() && !buffer_->CanReceive()) {
-  }
-  return buffer_->CanReceive();
 }
 
 void MultiFileReader::StartNewScheduler() {
