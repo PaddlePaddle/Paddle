@@ -64,7 +64,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
 
   // fill in real data
   float x_v = 1234;
-  engine_->SetInputFromCPU("x", std::reinterpret_cast<void*>(&x_v),
+  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
                            1 * sizeof(float));
   LOG(INFO) << "to execute";
   engine_->Execute(1);
