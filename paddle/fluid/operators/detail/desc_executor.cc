@@ -20,6 +20,7 @@
 #include <string>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_registry.h"
