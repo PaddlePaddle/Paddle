@@ -208,8 +208,8 @@ EOF
           --platform=android-$ANDROID_API \
           --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
     
-    BUILD_ROOT=${PADDLE_ROOT}/build
-    DEST_ROOT={PADDLE_ROOT}/install
+    BUILD_ROOT=${PADDLE_ROOT}/build_android
+    DEST_ROOT=${PADDLE_ROOT}/install_android
     
     mkdir -p $BUILD_ROOT
     cd $BUILD_ROOT
@@ -349,10 +349,10 @@ function gen_docs() {
     ========================================
 EOF
     cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
         -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
-        -DWITH_AVX=${WITH_AVX:-ON} \
-        -DWITH_SWIG_PY=ON \
+        -DWITH_MKL=OFF \
         -DWITH_STYLE_CHECK=OFF
 
     make -j `nproc` paddle_docs paddle_apis
