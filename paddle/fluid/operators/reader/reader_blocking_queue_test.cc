@@ -28,13 +28,6 @@ TEST(BlockingQueue, CapacityTest) {
   EXPECT_EQ(q.Cap(), cap);
 }
 
-TEST(BlockingQueue, CanSendTest) {
-  size_t cap = 1;
-  BlockingQueue<int> q(cap);
-  q.Send(1);
-  EXPECT_FALSE(q.CanSend());
-}
-
 void FirstInFirstOut(size_t queue_cap, size_t elem_num, size_t send_time_gap,
                      size_t receive_time_gap) {
   BlockingQueue<size_t> q(queue_cap);
@@ -83,9 +76,11 @@ TEST(BlockingQueue, SenderBlockingTest) {
   sender.join();
   EXPECT_EQ(send_count, queue_cap);
   std::vector<size_t> res;
-  while (q.CanReceive()) {
+  while (true) {
     size_t elem;
-    EXPECT_TRUE(q.Receive(&elem));
+    if (!q.Receive(&elem) {
+      break;
+    }
     res.push_back(elem);
   }
   EXPECT_EQ(res.size(), queue_cap);
