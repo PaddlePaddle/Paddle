@@ -63,7 +63,9 @@ class VariableResponse {
   // other: number of error field.
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
 
-  framework::Scope& GetLocalScope() const { return *local_scope_; }
+  const framework::Scope& GetLocalScope() const { return *local_scope_; }
+
+  framework::Scope* GetMutableLocalScope() const { return local_scope_; }
 
   inline std::string Varname() { return meta_.varname(); }
   inline std::string OutVarname() { return meta_.out_varname(); }
