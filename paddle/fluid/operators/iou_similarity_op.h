@@ -42,8 +42,8 @@ struct IOUSimilarityFunctor {
     : x_(x), y_(y), z_(z), cols_(static_cast<size_t>(cols)) {}
 
   inline HOSTDEVICE void operator()(size_t tid) const {
-    size_t row_id = tid/cols_;
-    size_t col_id = tid%cols_;
+    size_t row_id = tid / cols_;
+    size_t col_id = tid % cols_;
 
     T x_min1 = x_[row_id * 4];
     T y_min1 = x_[row_id * 4 + 1];
@@ -83,7 +83,7 @@ class IOUSimilarityKernel : public framework::OpKernel<T> {
                                   out->mutable_data<T>(ctx.GetPlace()), y_n);
 
     platform::ForRange<DeviceContext> for_range(
-        static_cast<const DeviceContext&>(ctx.device_context()), x_n*y_n);
+        static_cast<const DeviceContext&>(ctx.device_context()), x_n * y_n);
      for_range(functor);
   }
 };  // namespace operators

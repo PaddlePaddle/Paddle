@@ -31,8 +31,8 @@ class TestIOUSimilarityOp(OpTest):
         self.output = random.rand(2, 3).astype('float32')
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
-                xmin1,ymin1,xmax1,ymax1=self.boxes1[row]
-                xmin2,ymin2,xmax2,ymax2=self.boxes2[col]
+                xmin1,ymin1,xmax1,ymax1 = self.boxes1[row]
+                xmin2,ymin2,xmax2,ymax2 = self.boxes2[col]
                 area1 = (ymax1 - ymin1) * (xmax1 - xmin1)
                 area2 = (ymax2 - ymin2) * (xmax2 - xmin2)
                 inter_xmax = min(xmax1, xmax2)
