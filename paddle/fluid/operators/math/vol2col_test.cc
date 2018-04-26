@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/vol2col.h"
 #include <gtest/gtest.h>
 #include <iostream>
+#include <vector>
 
 template <typename DeviceContext, typename Place>
 void testVol2col() {
