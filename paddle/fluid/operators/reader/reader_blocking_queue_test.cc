@@ -78,7 +78,7 @@ TEST(BlockingQueue, SenderBlockingTest) {
   std::vector<size_t> res;
   while (true) {
     size_t elem;
-    if (!q.Receive(&elem) {
+    if (!q.Receive(&elem)) {
       break;
     }
     res.push_back(elem);
