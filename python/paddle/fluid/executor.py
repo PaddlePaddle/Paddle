@@ -295,6 +295,7 @@ class Executor(object):
         :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
         :param return_numpy: if convert the fetched tensor to numpy
         :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
+        :param save_program_to_file: save program desc to the file before running.
         :return: result according to fetch_list.
         """
         if feed is None:
@@ -335,7 +336,7 @@ class Executor(object):
 
         self._feed_data(program, feed, feed_var_name, scope)
 
-        # FIXME(gongwb): does a program should be save in run function?
+        # TODO(gongwb): does a program should be saved in run function?
         if len(save_program_to_file) > 0:
             with open(save_program_to_file, 'w') as f:
                 f.write(program.desc.serialize_to_string())

@@ -90,7 +90,6 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
-  int batch_count = 0;
   bool exit_flag = false;
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
@@ -167,14 +166,6 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     // FIXME(typhoonzero): use another condition to sync wait clients get.
     rpc_service_->WaitClientGet(fan_in);
     sparse_vars.clear();
-
-    // Just for test
-    batch_count++;
-    printf("batch_count:%d\n", batch_count);
-    if (batch_count == 100) {
-      sleep(10);
-      rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
-    }
   }  // while(true)
 }
 
@@ -212,7 +203,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // Write to a file of server selected port for python use.
   SavePort(rpc_service_);
   RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
-  server_thread_->join();
 }
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
