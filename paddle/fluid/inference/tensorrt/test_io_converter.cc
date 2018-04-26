@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/tensorrt/io_converter.h"
 
 #include <gtest/gtest.h>
@@ -22,8 +23,32 @@ namespace tensorrt {
 
 class EngineInputConverterTester : public ::testing::Test {
  public:
-  void SetUp() override {}
+  void SetUp() override { tensor.Resize({10, 10}); }
+
+  framework::LoDTensor tensor;
 };
+
+TEST_F(EngineInputConverterTester, DefaultCPU) {
+  void* buffer;
+  tensor.mutable_data<float>(platform::CPUPlace());
+  ASSERT_EQ(cudaMalloc(&buffer, tensor.memory_size()), 0);
+
+  cudaStream_t stream;
+  EngineInputConverter::Global().SetStream(&stream);
+  EngineInputConverter::Global().Execute("mul", tensor, buffer,
+                                         tensor.memory_size(), &stream);
+}
+
+TEST_F(EngineInputConverterTester, DefaultGPU) {
+  void* buffer;
+  tensor.mutable_data<float>(platform::CUDAPlace());
+  ASSERT_EQ(cudaMalloc(&buffer, tensor.memory_size()), 0);
+
+  cudaStream_t stream;
+  EngineInputConverter::Global().SetStream(&stream);
+  EngineInputConverter::Global().Execute("mul", tensor, buffer,
+                                         tensor.memory_size(), &stream);
+}
 
 }  // namespace tensorrt
 }  // namespace inference

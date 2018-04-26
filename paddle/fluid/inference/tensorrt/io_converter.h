@@ -34,11 +34,13 @@ class EngineInputConverter {
 
   virtual void operator()(const LoDTensor& in, void* out, size_t max_size) {}
   void Execute(const std::string& in_op_type, const LoDTensor& in, void* out,
-               size_t max_size) {
+               size_t max_size, cudaStream_t* stream) {
+    PADDLE_ENFORCE(stream != nullptr);
     auto it = converters_.find(in_op_type);
     PADDLE_ENFORCE(it != converters_.end(),
                    "no EngineInputConverter for optype [%s]",
                    in_op_type.c_str());
+    it->second->SetStream(stream);
     (*it->second)(in, out, max_size);
   }
 
@@ -52,7 +54,12 @@ class EngineInputConverter {
     converters_[key] = new T;
   }
 
+  void SetStream(cudaStream_t* stream) { stream_ = stream; }
+
   virtual ~EngineInputConverter() {}
+
+ protected:
+  cudaStream_t* stream_{nullptr};
 
  private:
   std::unordered_map<std::string,

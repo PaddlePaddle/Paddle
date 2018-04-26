@@ -26,30 +26,26 @@ using platform::is_cpu_place;
 class DefaultInputConverter : public EngineInputConverter {
  public:
   DefaultInputConverter() {}
-  DefaultInputConverter(cudaStream_t* stream) : stream_(stream) {}
   // NOTE out is GPU memory.
   virtual void operator()(const LoDTensor& in, void* out,
                           size_t max_size) override {
+    PADDLE_ENFORCE(out != nullptr);
     PADDLE_ENFORCE_LE(in.memory_size(), max_size);
     const auto& place = in.place();
     if (is_cpu_place(place)) {
       PADDLE_ENFORCE(stream_ != nullptr);
-      PADDLE_ENFORCE_EQ(0,
-                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
-                                        cudaMemcpyHostToDevice, *stream_));
+      // TODO(superjomn) make this async
+      PADDLE_ENFORCE_EQ(0, cudaMemcpy(out, in.data<float>(), in.memory_size(),
+                                      cudaMemcpyHostToDevice));
+
     } else if (is_gpu_place(place)) {
-      PADDLE_ENFORCE_EQ(0,
-                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
-                                        cudaMemcpyHostToHost, *stream_));
+      // TODO(superjomn) make this async
+      PADDLE_ENFORCE_EQ(0, cudaMemcpy(out, in.data<float>(), in.memory_size(),
+                                      cudaMemcpyHostToHost));
     } else {
       PADDLE_THROW("Unknown device for converter");
     }
   }
-
-  void SetStream(cudaStream_t* stream) { stream_ = stream; }
-
- private:
-  cudaStream_t* stream_;
 };
 
 REGISTER_TRT_INPUT_CONVERTER(mul, DefaultInputConverter);
