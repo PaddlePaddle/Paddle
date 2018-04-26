@@ -674,9 +674,6 @@ class DistributeTranspiler:
 
         # STEP: create table optimize block
         # create table param and grad var in pserver program
-        #param_var = _clone_var(
-        #    pserver_program.global_block(),
-        #    self.origin_program.global_block().vars[self.table_name])
         origin_param_var = self.origin_program.global_block().vars[
             self.table_name]
         param_var = pserver_program.global_block().create_var(
