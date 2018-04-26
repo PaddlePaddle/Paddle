@@ -39,10 +39,10 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D lod tensor of shape (num_rois, 4)"
+                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], …].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
-                   "ROIs should be a 2-D lod tensor of shape (num_rois, 4)"
+                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], …].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
@@ -110,7 +110,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D lod tensor of shape (num_rois, 4)"
+             "should be a 2-D LoDTensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], …]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "

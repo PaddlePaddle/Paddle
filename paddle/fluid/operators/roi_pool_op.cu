@@ -145,21 +145,19 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
 
     framework::Tensor roi_batch_id_list;
-    framework::DDim roi_batch_id_shape = {rois_num};
-    roi_batch_id_list.Resize(roi_batch_id_shape);
+    roi_batch_id_list.Resize({rois_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
-    auto rois_lod = rois->lod();
-    int rois_batch_size = rois_lod[0].size() - 1;
+    auto rois_lod = rois->lod().back();
+    int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
         rois_batch_size, batch_size,
         "The rois_batch_size and imgs batch_size must be the same.");
-    auto rois_index = rois_lod[0];
-    int rois_num_with_lod = rois_index[rois_batch_size];
+    int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
                       "The rois_num from input and lod must be the same.");
     for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_index[n]; i < rois_index[n + 1]; ++i) {
+      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
       }
     }
@@ -199,16 +197,13 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
 
     if (x_grad) {
       framework::Tensor roi_batch_id_list;
-      framework::DDim roi_batch_id_shape = {rois_num};
-      roi_batch_id_list.Resize(roi_batch_id_shape);
+      roi_batch_id_list.Resize({rois_num});
       int* roi_batch_id_data =
           roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
-      auto rois_lod = rois->lod();
-      int rois_batch_size = rois_lod[0].size() - 1;
-      auto rois_index = rois_lod[0];
-      int rois_num_with_lod = rois_index[rois_batch_size];
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
       for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_index[n]; i < rois_index[n + 1]; ++i) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           roi_batch_id_data[i] = n;
         }
       }
