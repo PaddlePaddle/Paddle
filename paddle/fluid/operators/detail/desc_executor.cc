@@ -69,8 +69,9 @@ framework::ProgramDesc* load_desc(const std::string& file) {
 }
 
 DEFINE_string(start_up_proto, "", "start up proto file");
-
 DEFINE_string(loop_proto, "", "loop proto file");
+DEFINE_string(executor_place, "CPU", "executor's place:GPU or CPU");
+DEFINE_int(device_id, 0, "GPU device id");
 
 int main(int argc, char** argv) {
   // init.
@@ -92,13 +93,17 @@ int main(int argc, char** argv) {
   framework::ProgramDesc program;
   framework::Scope scope;
 
-  platform::CPUPlace place;
-  framework::Executor exe(place);
-
-  // platform::CPUDeviceContext* ctx = platform::DeviceContextPool()Get(place);
-
   framework::ProgramDesc* start_up = load_desc(FLAGS_start_up_proto);
   framework::ProgramDesc* loop = load_desc(FLAGS_loop_proto);
+
+  framework::Executor* exe = nullptr;
+  if (FLAGS_executor_place == "CPU") {
+    platform::CPUPlace place;
+    exe = new framework::Executor(place);
+  } else if (FLAGS_executor_place == "GPU") {
+    platform::CPUPlace place;
+    framework::Executor exe(place);
+  }
 
   exe.Run(*start_up, &scope, 0, false, true);
   exe.Run(*loop, &scope, 0, false, true);
