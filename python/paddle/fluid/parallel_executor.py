@@ -48,8 +48,9 @@ class ParallelExecutor(object):
                 it will share variables from the specified ParallelExecutor.
             use_default_grad_scale(bool, default True): If set True, a default
                 scale value equal to `1./device_count` would be multiplied to
-                the gradients. Otherwise, a customized scale value should be
-                feeded to the network.
+                gradients of each device and scaled gradients would be
+                aggregated. Otherwise, a customized scale value should be fed
+                to the network.
 
         Returns:
             A ParallelExecutor object.
