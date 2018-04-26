@@ -12,39 +12,47 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/io_converter.cc"
+#include "paddle/fluid/inference/tensorrt/io_converter.h"
+#include <cuda.h>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class DefaultInputConverter : public EngineInputConveter {
+using platform::is_gpu_place;
+using platform::is_cpu_place;
+
+class DefaultInputConverter : public EngineInputConverter {
  public:
-  MulInputConverter(cudaStream_t* stream) : stream_(stream) {}
+  DefaultInputConverter() {}
+  DefaultInputConverter(cudaStream_t* stream) : stream_(stream) {}
   // NOTE out is GPU memory.
-  virtual void operator()(LoDTensor& in, void* out, size_t max_size) override {
-    PADDLE_ENFORCE_LE(in.size(), max_size);
-    auto& place = in.place();
-    if (IsCPUPlace(place)) {
+  virtual void operator()(const LoDTensor& in, void* out,
+                          size_t max_size) override {
+    PADDLE_ENFORCE_LE(in.memory_size(), max_size);
+    const auto& place = in.place();
+    if (is_cpu_place(place)) {
       PADDLE_ENFORCE(stream_ != nullptr);
-      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out, in.data(), in.size(),
-                                           cudaMemcpyHostToDevice, *stream_));
-    } else if (IsCUDAPlace(place) || IsCUDAPinnedPlace(place)) {
-      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out, in.data(), in.size(),
-                                           cudaMemcpyHostToHost, *stream_));
+      PADDLE_ENFORCE_EQ(0,
+                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
+                                        cudaMemcpyHostToDevice, *stream_));
+    } else if (is_gpu_place(place)) {
+      PADDLE_ENFORCE_EQ(0,
+                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
+                                        cudaMemcpyHostToHost, *stream_));
     } else {
       PADDLE_THROW("Unknown device for converter");
     }
   }
 
+  void SetStream(cudaStream_t* stream) { stream_ = stream; }
+
  private:
   cudaStream_t* stream_;
 };
 
-REGISTER_TRT_INPUT_CONVERTER("mul", DefaultInputConverter);
-
-std::unordered_map<std::string, EngineInputConveter>
-    EngineInputConverter::converters_;
+REGISTER_TRT_INPUT_CONVERTER(mul, DefaultInputConverter);
 
 }  // namespace tensorrt
 }  // namespace inference

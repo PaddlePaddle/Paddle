@@ -14,13 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/io_converter.h"
 
-namespace {
+#include <gtest/gtest.h>
 
-using paddle::inference::tensorrt;
+namespace paddle {
+namespace inference {
+namespace tensorrt {
 
 class EngineInputConverterTester : public ::testing::Test {
  public:
   void SetUp() override {}
 };
 
-}  // namespace
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle

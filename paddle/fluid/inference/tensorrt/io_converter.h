@@ -30,30 +30,45 @@ using framework::LoDTensor;
  */
 class EngineInputConverter {
  public:
-  virtual void operator()(LoDTensor& in, void* out, size_t max_size) = 0;
-  static void Execute(const std::string& in_op_type, const LoDTensor& in,
-                      void* out, size_t max_size) {
-    conveters_[in_op_type](in, out, max_size);
+  EngineInputConverter() {}
+
+  virtual void operator()(const LoDTensor& in, void* out, size_t max_size) {}
+  void Execute(const std::string& in_op_type, const LoDTensor& in, void* out,
+               size_t max_size) {
+    auto it = converters_.find(in_op_type);
+    PADDLE_ENFORCE(it != converters_.end(),
+                   "no EngineInputConverter for optype [%s]",
+                   in_op_type.c_str());
+    (*it->second)(in, out, max_size);
   }
 
-  static void Register(const std::string& key, const EngineInputConverter& v) {
-    conveters_[key] = v;
+  static EngineInputConverter& Global() {
+    static auto* x = new EngineInputConverter;
+    return *x;
   }
+
+  template <typename T>
+  void Register(const std::string& key) {
+    converters_[key] = new T;
+  }
+
+  virtual ~EngineInputConverter() {}
 
  private:
-  static std::unordered_map<std::string, EngineInputConveter> conveters_;
+  std::unordered_map<std::string,
+                     ::paddle::inference::tensorrt::EngineInputConverter*>
+      converters_;
 };
-
-#define REGISTER_TRT_INPUT_CONVERTER(in_op_type__, Conveter__)      \
-  struct trt_input_##in_op_type__##_conveter {                      \
-    trt_input_##in_op_type__##_conveter() {                         \
-      ::paddle::inference::tensorrt::EngineInputConveter::Register( \
-          #in_op_type__, Conveter__());                             \
-    }                                                               \
-  };                                                                \
-  static trt_input_##in_op_type__##_conveter                        \
-      trt_input_##in_op_type__##_conveter__;
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+#define REGISTER_TRT_INPUT_CONVERTER(in_op_type__, Converter__)     \
+  struct trt_input_##in_op_type__##_converter {                     \
+    trt_input_##in_op_type__##_converter() {                        \
+      ::paddle::inference::tensorrt::EngineInputConverter::Global() \
+          .Register<Converter__>(#in_op_type__);                    \
+    }                                                               \
+  };                                                                \
+  trt_input_##in_op_type__##_converter trt_input_##in_op_type__##_converter__;
