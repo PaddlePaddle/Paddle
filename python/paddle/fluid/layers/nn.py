@@ -3792,10 +3792,6 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
-        .. code-block:: python
-            pool_out = fluid.layers.roi_pool(input=x_feas, rois=x_rois,
-                 pooled_height=ph, pooled_width=pw, spatial_scale=scale)
-        For simply usage:
             pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
     """
     helper = LayerHelper('roi_pool', **locals())
