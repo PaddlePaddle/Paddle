@@ -43,8 +43,8 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor& dst,
-                  bool is_src_index) {
+                  framework::Vector<size_t> index_lod,
+                  const framework::Tensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
     auto dst_dims = dst.dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2,

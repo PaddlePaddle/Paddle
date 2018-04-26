@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -35,8 +37,8 @@ class CopyMatrixRowsFunctor {
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& context, const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor& dst,
-                  bool is_src_index);
+                  framework::Vector<size_t> index_lod,
+                  const framework::Tensor& dst, bool is_src_index);
 };
 
 template <typename DeviceContext, typename T>
@@ -58,7 +60,7 @@ class LoDTensor2BatchFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& lod_tensor,
-                  framework::LoDTensor& batch, bool is_cal_batch_lod,
+                  const framework::LoDTensor& batch, bool is_cal_batch_lod,
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
       auto lods = batch.lod();
@@ -153,7 +155,7 @@ class Batch2LoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& batch,
-                  framework::LoDTensor& lod_tensor) const {
+                  const framework::LoDTensor& lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(in_lod.size(), 2UL);
     PADDLE_ENFORCE_EQ(in_lod[1].size(),
