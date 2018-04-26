@@ -241,9 +241,9 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   auto optimize_prepared = executor->Prepare(*program, block_list);
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
-      grad_to_prepared_block;
+      grad_to_prepared_ctx;
   for (size_t i = 0; i < block_list.size(); ++i) {
-    grad_to_prepared_block[id_to_grad[block_list[i]]] = optimize_prepared[i];
+    grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
   }
 
   VLOG(3) << "RunAsyncLoop into while";
@@ -254,9 +254,9 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   for (auto iter = grad_to_queue.begin(); iter != grad_to_queue.end(); iter++) {
     std::string grad_name = iter->first;
     fs.push_back(framework::Async([grad_name, &exit_flag, &executor,
-                                   &grad_to_queue, &grad_to_prepared_block]() {
+                                   &grad_to_queue, &grad_to_prepared_ctx]() {
       AsyncUpdateThread(exit_flag, grad_to_queue[grad_name], executor,
-                        grad_to_prepared_block[grad_name].get());
+                        grad_to_prepared_ctx[grad_name].get());
     }));
   }
 
