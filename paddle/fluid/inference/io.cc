@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/pybind/pybind.h"
 
-DEFINE_string(devices, "", "The devices to be used.");
-DEFINE_bool(init_p2p, true, "Whether to init p2p.");
+DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
+DEFINE_bool(init_p2p, false, "Whether to init p2p.");
 
 namespace paddle {
 namespace inference {
