@@ -444,7 +444,8 @@ class DistributeTranspiler:
             opt_state_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
             for glb_op in global_ops:
-                __append_optimize_op__(glb_op, opt_state_block)
+                __append_optimize_op__(glb_op, opt_state_block,
+                                       grad_to_block_id)
 
         # NOT USED: single block version:
         #
