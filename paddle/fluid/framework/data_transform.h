@@ -35,7 +35,7 @@ void DataTransform(const OpKernelType& expected_kernel_type,
                    const Tensor& input_tensor, Tensor* out);
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
-                            Variable& out_var);
+                            Variable* out_var);
 
 }  // namespace framework
 }  // namespace paddle
