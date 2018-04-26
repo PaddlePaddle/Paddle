@@ -59,8 +59,7 @@ class FetchOp : public framework::OperatorBase {
     // CPU outputs?
     auto &dev_ctx = *pool.Get(src_item.place());
 
-    TensorCopy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
-    dev_ctx.Wait();
+    TensorCopy(src_item, platform::CPUPlace(), dev_ctx, &dst_item, true);
     dst_item.set_lod(src_item.lod());
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
