@@ -75,6 +75,7 @@ function main() {
       build_android)
         start_build_docker
         docker exec ${CONTAINER_ID} bash -c "./paddle/scripts/paddle_build.sh $@"
+        ;;
       *)
         if container_running "${CONTAINER_ID}"; then
             docker exec ${CONTAINER_ID} bash -c "./paddle/scripts/paddle_build.sh $@"

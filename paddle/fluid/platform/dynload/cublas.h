@@ -14,10 +14,12 @@
 
 #pragma once
 
+#include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <dlfcn.h>
 #include <mutex>  // NOLINT
+#include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -37,14 +39,14 @@ extern void *cublas_dso_handle;
 #ifdef PADDLE_USE_DSO
 #define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
+    using FUNC_TYPE = decltype(&::__name);                                   \
     template <typename... Args>                                              \
     inline cublasStatus_t operator()(Args... args) {                         \
-      typedef cublasStatus_t (*cublasFunc)(Args...);                         \
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
       void *p_##__name = dlsym(cublas_dso_handle, #__name);                  \
-      return reinterpret_cast<cublasFunc>(p_##__name)(args...);              \
+      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
@@ -71,8 +73,8 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemm_v2);                \
   __macro(cublasHgemm);                   \
   __macro(cublasSgemmEx);                 \
-  __macro(cublasSgeam_v2);                \
-  __macro(cublasDgeam_v2);                \
+  __macro(cublasSgeam);                   \
+  __macro(cublasDgeam);                   \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \
