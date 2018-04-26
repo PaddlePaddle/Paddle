@@ -109,14 +109,14 @@ There is a tradeoff between sub-block size and the number of `EngineOp,` each `E
 
 So bigger sub-block with less `EngineOp` is better, but some Fluid operators without alternative ones in the engine will break up the big block into small subblocks, whether to execute these sub-blocks on engines or just on Fluid, that needs more consideration.
 
-To help convert input/output data format between any Fluid operators and some `EngineOp`, a pair of `EngineInputConvertOp` and `EngineOutputConvertOp` needs to insert into the Fluid description. The reason for these converters is an operator, not a method are as follows
+To help convert input/output data format between any Fluid operators and some `EngineOp`, a pair of `EngineInputConvert` and `EngineOutputConvert` interface is proposed
 
 - the converter works between the Fluid operators and `EngineOp`s, both of their data formats might be different and need to specify, for example
   - `RNNOp -> xEngineOp`, the input is from an `LoDTensor` to `xTensor`
   - `MulOp -> xEngineOp`, the input is from an `Tensor` to `xTensor`
   - but `RNNOp -> MulOp -> xEngineOp`, the input is from an `LoDTensor` to `xTensor`
   - the `EngineOp` can not get the external operators those link to it (the `RNNOp` and `MulOp` above), so it is impossible to deduce the data's format interact with the external Fluid framework.
-- the converter will result in additional overhead, to make it an operator is more clear and more flexible for further optimization.
+- the converter will result in additional overhead, to make it an indenpendent interface is more clear and more flexible for further optimization.
 
 ## Engine-related Design
 
@@ -211,7 +211,9 @@ struct RNN2xEngineConveter : public EngineInputConveterBase {
 };
 
 #define REGISTER_INPUT_CONVERTER(in_op_type__, out_op_type__, Conveter__) \
-    EngineInputConveterBase::Register<Conveter__>(#in_op_type__ "_to_" #out_op_type__);
+    ... some logics \
+    EngineInputConveterBase::Register<Conveter__>(#in_op_type__ "_to_" #out_op_type__); \
+    ... some logics
 
 REGISTER_INPUT_CONVERTER(RNNOp, xEngineOp, RNN2xEngineConveter);
 ```
