@@ -44,7 +44,8 @@ class RequestBase;
 
 class AsyncGRPCServer final {
  public:
-  explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
+  explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
+      : address_(address), sync_mode_(sync_mode) {}
 
   void RunSyncUpdate();
 
@@ -95,6 +96,7 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
+  const bool sync_mode_;
   framework::Scope *scope_;
   const platform::DeviceContext *dev_ctx_;
 
