@@ -17,8 +17,6 @@
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
-#include <chrono>
-
 namespace paddle {
 namespace operators {
 
@@ -29,7 +27,6 @@ template <typename T>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    std::cout << "-------------\nconv" << std::endl;
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
 
@@ -42,11 +39,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key = ctx.op().Output("Output");
     const std::string key_conv_pd = key + "@conv_pd";
     const std::string key_weights = key + "@weights";
-
-    const Tensor* input_c = ctx.Input<Tensor>("Input");
-    const Tensor* filter_c = ctx.Input<Tensor>("Filter");
-    PADDLE_ENFORCE(input_c->dims().size() == 4,
-                   "Input must be with 4 dimensions, i.e. NCHW");
 
     Tensor* input = ctx.MutableInput<Tensor>("Input");
     Tensor* filter = ctx.MutableInput<Tensor>("Filter");
@@ -63,9 +55,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
 
-    PADDLE_ENFORCE(input_c->dims().size() == 4,
+    PADDLE_ENFORCE(input->dims().size() == 4,
                    "Input must be with 4 dimensions, i.e. NCHW");
-    PADDLE_ENFORCE(filter_c->dims().size() == 4,
+    PADDLE_ENFORCE(filter->dims().size() == 4,
                    "Filter must be with 4 dimensions, i.e. OIHW");
 
     std::vector<int> input_tz = paddle::framework::vectorize2int(input->dims());
@@ -89,13 +81,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
     MKLDNNTensorMutable input_mkldnn =
-        MKLDNNTensorMutable::Create(*input, mkldnn_engine);
+        MKLDNNTensorMutable::Create(input, mkldnn_engine);
     MKLDNNTensorMutable filter_mkldnn =
-        MKLDNNTensorMutable::Create(*filter, mkldnn_engine);
+        MKLDNNTensorMutable::Create(filter, mkldnn_engine);
     MKLDNNTensorMutable output_mkldnn =
-        MKLDNNTensorMutable::Create(*output, mkldnn_engine);
+        MKLDNNTensorMutable::Create(output, mkldnn_engine);
 
-    Reorder(conv_pd, input_mkldnn, output_mkldnn, filter_mkldnn);
+    Reorder(conv_pd, &input_mkldnn, &output_mkldnn, &filter_mkldnn);
 
     auto input_memory = input_mkldnn.GetMemory();
     auto filter_memory = filter_mkldnn.GetMemory();
@@ -107,30 +99,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // push primitive to stream and wait until it's executed
     std::vector<mkldnn::primitive> pipeline{conv_prim};
-    std::chrono::high_resolution_clock::time_point begin =
-        std::chrono::high_resolution_clock::now();
-
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto difference = end - begin;
-    std::cout << "primitive conv time(s): "
-              << std::chrono::duration_cast<std::chrono::microseconds>(
-                     difference)
-                         .count() /
-                     1e6
-              << std::endl;
-
-    static int sum{0};
-    static int counter{0};
-    sum = sum +
-          std::chrono::duration_cast<std::chrono::microseconds>(difference)
-              .count();
-    if (++counter % 10 == 0) {
-      std::cout << "primitive conv average time(s): "
-                << float(sum) / 1000000 / 10 << std::endl;
-      sum = 0;
-    }
   }
 
  private:
@@ -158,8 +127,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
   void Reorder(
       std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd,
-      MKLDNNTensorMutable& input, MKLDNNTensorMutable& output,
-      MKLDNNTensorMutable& filter) const {
+      MKLDNNTensorMutable* input, MKLDNNTensorMutable* output,
+      MKLDNNTensorMutable* filter) const {
     auto input_format =
         mkldnn::memory::primitive_desc(conv_pd->src_primitive_desc())
             .desc()
@@ -173,16 +142,19 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             .desc()
             .data.format;
 
-    std::cout << "input " << input.GetFormat() << " -> " << input_format
-              << std::endl;
-    std::cout << "output " << output.GetFormat() << " -> " << output_format
-              << std::endl;
-    std::cout << "weights " << filter.GetFormat() << " -> " << filter_format
-              << std::endl;
+    if (input->GetFormat() != input_format) {
+      VLOG(3) << "input " << input->GetFormat() << " -> " << input_format;
+    }
+    if (output->GetFormat() != output_format) {
+      VLOG(3) << "output " << output->GetFormat() << " -> " << output_format;
+    }
+    if (filter->GetFormat() != filter_format) {
+      VLOG(3) << "weights " << filter->GetFormat() << " -> " << filter_format;
+    }
 
-    input.Reorder(static_cast<mkldnn::memory::format>(input_format));
-    output.SetFormat(static_cast<mkldnn::memory::format>(output_format));
-    filter.Reorder(static_cast<mkldnn::memory::format>(filter_format));
+    input->Reorder(static_cast<mkldnn::memory::format>(input_format));
+    output->SetFormat(static_cast<mkldnn::memory::format>(output_format));
+    filter->Reorder(static_cast<mkldnn::memory::format>(filter_format));
   }
 };
 
@@ -192,8 +164,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-    std::cout << "-------------\nconv back" << std::endl;
-
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -209,15 +179,15 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     if (!input_grad && !filter_grad) return;
 
     MKLDNNTensorMutable input_mkldnn =
-        MKLDNNTensorMutable::Create(*input, mkldnn_engine);
+        MKLDNNTensorMutable::Create(input, mkldnn_engine);
     MKLDNNTensorMutable filter_mkldnn =
-        MKLDNNTensorMutable::Create(*filter, mkldnn_engine);
+        MKLDNNTensorMutable::Create(filter, mkldnn_engine);
     MKLDNNTensorMutable output_mkldnn =
-        MKLDNNTensorMutable::Create(*output, mkldnn_engine);
+        MKLDNNTensorMutable::Create(output, mkldnn_engine);
     MKLDNNTensorMutable output_grad_mkldnn =
-        MKLDNNTensorMutable::Create(*output_grad, mkldnn_engine);
+        MKLDNNTensorMutable::Create(output_grad, mkldnn_engine);
     MKLDNNTensorMutable filter_grad_mkldnn =
-        MKLDNNTensorMutable::Create(*filter_grad, mkldnn_engine);
+        MKLDNNTensorMutable::Create(filter_grad, mkldnn_engine);
 
     // Get an unique name from "argument" name of "Output" variable
     // This name will be used as key when saving info into device context
@@ -258,8 +228,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                       strides, paddings, *conv_pd,
                                       mkldnn_engine);
 
-      Reorder(conv_bwd_weights_pd, input_mkldnn, output_grad_mkldnn,
-              filter_grad_mkldnn);
+      Reorder(conv_bwd_weights_pd, &input_mkldnn, &output_grad_mkldnn,
+              &filter_grad_mkldnn);
 
       auto input_memory = input_mkldnn.GetMemory();
       auto output_grad_memory = output_grad_mkldnn.GetMemory();
@@ -281,11 +251,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                    strides, paddings, *conv_pd, mkldnn_engine);
 
       MKLDNNTensorMutable input_grad_mkldnn =
-          MKLDNNTensorMutable::Create(*input_grad, mkldnn_engine);
+          MKLDNNTensorMutable::Create(input_grad, mkldnn_engine);
 
       // reorder tensor layout for optimal performance
-      Reorder(conv_bwd_data_pd, output_grad_mkldnn, filter_mkldnn,
-              input_grad_mkldnn);
+      Reorder(conv_bwd_data_pd, &output_grad_mkldnn, &filter_mkldnn,
+              &input_grad_mkldnn);
 
       auto output_grad_memory = output_grad_mkldnn.GetMemory();
       auto filter_memory = filter_grad_mkldnn.GetMemory();
@@ -333,8 +303,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
   void Reorder(const mkldnn::convolution_backward_weights::primitive_desc&
                    bwd_weights_pd,
-               MKLDNNTensorMutable& input, MKLDNNTensorMutable& output_grad,
-               MKLDNNTensorMutable& filter_grad) const {
+               MKLDNNTensorMutable* input, MKLDNNTensorMutable* output_grad,
+               MKLDNNTensorMutable* filter_grad) const {
     auto input_format =
         mkldnn::memory::primitive_desc(bwd_weights_pd.src_primitive_desc())
             .desc()
@@ -348,24 +318,29 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                   .desc()
                                   .data.format;
 
-    std::cout << "input " << input.GetFormat() << " -> " << input_format
-              << std::endl;
-    std::cout << "output_grad " << output_grad.GetFormat() << " -> "
-              << output_grad_format << std::endl;
-    std::cout << "filter_grad " << filter_grad.GetFormat() << " -> "
-              << filter_grad_format << std::endl;
+    if (input->GetFormat() != input_format) {
+      VLOG(3) << "input " << input->GetFormat() << " -> " << input_format;
+    }
+    if (output_grad->GetFormat() != output_grad_format) {
+      VLOG(3) << "output_grad " << output_grad->GetFormat() << " -> "
+              << output_grad_format;
+    }
+    if (filter_grad->GetFormat() != filter_grad_format) {
+      VLOG(3) << "filter_grad " << filter_grad->GetFormat() << " -> "
+              << filter_grad_format;
+    }
 
-    input.Reorder(static_cast<mkldnn::memory::format>(input_format));
-    output_grad.Reorder(
+    input->Reorder(static_cast<mkldnn::memory::format>(input_format));
+    output_grad->Reorder(
         static_cast<mkldnn::memory::format>(output_grad_format));
-    filter_grad.SetFormat(
+    filter_grad->SetFormat(
         static_cast<mkldnn::memory::format>(filter_grad_format));
   }
 
   void Reorder(
       const mkldnn::convolution_backward_data::primitive_desc& bwd_data_pd,
-      MKLDNNTensorMutable& output_grad, MKLDNNTensorMutable& filter,
-      MKLDNNTensorMutable& input_grad) const {
+      MKLDNNTensorMutable* output_grad, MKLDNNTensorMutable* filter,
+      MKLDNNTensorMutable* input_grad) const {
     auto output_grad_format =
         mkldnn::memory::primitive_desc(bwd_data_pd.diff_dst_primitive_desc())
             .desc()
@@ -379,17 +354,22 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
             .desc()
             .data.format;
 
-    std::cout << "output_grad " << output_grad.GetFormat() << " -> "
-              << output_grad_format << std::endl;
-    std::cout << "filter " << filter.GetFormat() << " -> " << filter_format
-              << std::endl;
-    std::cout << "input_grad " << input_grad.GetFormat() << " -> "
-              << input_grad_format << std::endl;
+    if (output_grad->GetFormat() != output_grad_format) {
+      VLOG(3) << "output_grad " << output_grad->GetFormat() << " -> "
+              << output_grad_format;
+    }
+    if (filter->GetFormat() != filter_format) {
+      VLOG(3) << "filter " << filter->GetFormat() << " -> " << filter_format;
+    }
+    if (input_grad->GetFormat() != input_grad_format) {
+      VLOG(3) << "input_grad " << input_grad->GetFormat() << " -> "
+              << input_grad_format;
+    }
 
-    output_grad.Reorder(
+    output_grad->Reorder(
         static_cast<mkldnn::memory::format>(output_grad_format));
-    filter.Reorder(static_cast<mkldnn::memory::format>(filter_format));
-    input_grad.SetFormat(
+    filter->Reorder(static_cast<mkldnn::memory::format>(filter_format));
+    input_grad->SetFormat(
         static_cast<mkldnn::memory::format>(input_grad_format));
   }
 };

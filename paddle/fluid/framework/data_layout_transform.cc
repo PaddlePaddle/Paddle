@@ -83,7 +83,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
       layout = DataLayout::kNCHW;
     }
 
-    MKLDNNTensor(in).Reorder(*out, layout, expected_kernel_type.place_);
+    MKLDNNTensor(in).Reorder(out, layout, expected_kernel_type.place_);
     return;
   }
 

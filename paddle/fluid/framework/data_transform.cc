@@ -29,7 +29,7 @@ static void PassTensorData(Tensor* from, Tensor* to) {
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
                    const Tensor& input_tensor, Tensor* output_tensor) {
-  std::cout << "DataTransform" << std::endl;
+  VLOG(3) << "DataTransform" << std::endl;
   bool transformed = false;
   Tensor in;
   in.ShareDataWith(input_tensor);

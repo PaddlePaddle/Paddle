@@ -15,7 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <mkldnn.h>
-#include "tensor.h"
+#include <vector>
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -26,8 +27,8 @@ namespace detail {
 inline std::shared_ptr<const MKLDNNTensorData> ExtractMKLDNNDataFromTensor(
     const Tensor& tensor);
 inline std::shared_ptr<MKLDNNTensorData> ExtractMKLDNNDataFromTensor(
-    Tensor& tensor);
-inline void SetMKLDNNData(Tensor& tensor, const mkldnn::engine& engine);
+    Tensor* tensor);
+inline void SetMKLDNNData(Tensor* tensor, const mkldnn::engine& engine);
 }
 
 inline mkldnn::memory::format to_mkldnn_format(DataLayout layout) {
@@ -93,7 +94,7 @@ class MKLDNNTensor {
 
   virtual ~MKLDNNTensor() {}
 
-  inline static bool IsInitialized(Tensor& tensor);
+  inline static bool IsInitialized(const Tensor& tensor);
 
   mkldnn::memory::format GetFormat() const { return data_->GetFormat(); }
   const mkldnn::engine& GetEngine() const { return data_->GetEngine(); }
@@ -114,7 +115,7 @@ class MKLDNNTensor {
     return mkldnn::memory::desc({dimensions}, GetDataType(), format);
   }
 
-  inline void Reorder(Tensor& out, DataLayout dst_layout,
+  inline void Reorder(Tensor* out, DataLayout dst_layout,
                       platform::Place place) const;
 
  private:
@@ -125,18 +126,18 @@ class MKLDNNTensor {
 // Proxy class for Tensor
 class MKLDNNTensorMutable : public MKLDNNTensor {
  public:
-  inline static MKLDNNTensorMutable Create(Tensor& tensor,
+  inline static MKLDNNTensorMutable Create(Tensor* tensor,
                                            const mkldnn::engine& engine);
 
   inline mkldnn::memory GetMemory() {
     return mkldnn::memory({GetMemoryDesc(), data_->GetEngine()},
-                          tensor_.data<void>());
+                          tensor_->data<void>());
   }
 
   inline mkldnn::memory GetMutableMemory(const platform::Place& place) {
     return mkldnn::memory(
         {GetMemoryDesc(), data_->GetEngine()},
-        static_cast<void*>(tensor_.mutable_data<float>(place)));
+        static_cast<void*>(tensor_->mutable_data<float>(place)));
   }
 
   inline void SetFormat(mkldnn::memory::format format) {
@@ -147,34 +148,34 @@ class MKLDNNTensorMutable : public MKLDNNTensor {
   inline void Reorder(mkldnn::memory::format dst_format);
 
  private:
-  MKLDNNTensorMutable(Tensor& tensor, const mkldnn::engine& engine)
-      : MKLDNNTensor(tensor), tensor_(tensor) {
+  MKLDNNTensorMutable(Tensor* tensor, const mkldnn::engine& engine)
+      : MKLDNNTensor(*tensor), tensor_(tensor) {
     data_ = detail::ExtractMKLDNNDataFromTensor(tensor);
   }
 
-  Tensor& tensor_;
+  Tensor* tensor_;
   std::shared_ptr<MKLDNNTensorData> data_;
 };
 
 inline MKLDNNTensorMutable MKLDNNTensorMutable::Create(
-    Tensor& tensor, const mkldnn::engine& engine) {
-  if (!tensor.get_extended_data()) {
+    Tensor* tensor, const mkldnn::engine& engine) {
+  if (!tensor->get_extended_data()) {
     detail::SetMKLDNNData(tensor, engine);
   }
 
-  if (!MKLDNNTensor::IsInitialized(tensor)) {
-    tensor.set_layout(DataLayout::kMKLDNN);
+  if (!MKLDNNTensor::IsInitialized(*tensor)) {
+    tensor->set_layout(DataLayout::kMKLDNN);
   }
 
   return MKLDNNTensorMutable(tensor, engine);
 }
 
-inline bool MKLDNNTensor::IsInitialized(Tensor& tensor) {
+inline bool MKLDNNTensor::IsInitialized(const Tensor& tensor) {
   return tensor.layout() == DataLayout::kMKLDNN;
 }
 
 inline void MKLDNNTensorMutable::Reorder(mkldnn::memory::format dst_format) {
-  PADDLE_ENFORCE(tensor_.type().hash_code() == typeid(float).hash_code(),
+  PADDLE_ENFORCE(tensor_->type().hash_code() == typeid(float).hash_code(),
                  "MKLDNN tensor should be created from float type Tensor");
 
   mkldnn::memory::format src_format{data_->GetFormat()};
@@ -188,22 +189,22 @@ inline void MKLDNNTensorMutable::Reorder(mkldnn::memory::format dst_format) {
     return;
   }
 
-  std::cout << "reordering " << (void*)(&tensor_) << " to " << dst_format
-            << std::endl;
+  VLOG(3) << "reordering " << reinterpret_cast<void*>(tensor_) << " to "
+          << dst_format << std::endl;
 
   mkldnn::memory src_memory{{GetMemoryDesc(src_format), data_->GetEngine()},
-                            const_cast<void*>(tensor_.data<void>())};
+                            const_cast<void*>(tensor_->data<void>())};
   data_->SetFormat(dst_format);
   // TODO(pzelazko) change axis here
   mkldnn::memory dst_memory{{GetMemoryDesc(dst_format), data_->GetEngine()},
-                            const_cast<void*>(tensor_.data<void>())};
+                            const_cast<void*>(tensor_->data<void>())};
 
   auto reorder = mkldnn::reorder(src_memory, dst_memory);
   std::vector<mkldnn::primitive> pipeline{reorder};
   mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 }
 
-inline void MKLDNNTensor::Reorder(Tensor& out, DataLayout dst_layout,
+inline void MKLDNNTensor::Reorder(Tensor* out, DataLayout dst_layout,
                                   platform::Place place) const {
   PADDLE_ENFORCE(dst_layout != DataLayout::kAnyLayout);
   if (dst_layout == DataLayout::kMKLDNN) {
@@ -212,12 +213,12 @@ inline void MKLDNNTensor::Reorder(Tensor& out, DataLayout dst_layout,
 
   mkldnn::memory::format src_format{GetFormat()};
   mkldnn::memory::format dst_format{to_mkldnn_format(dst_layout)};
-  std::cout << "reordering from " << src_format << " to " << dst_format
-            << std::endl;
+  VLOG(3) << "reordering from " << src_format << " to " << dst_format
+          << std::endl;
   if (src_format == dst_format) {
-    out.ShareDataWith(tensor_);
-    out.set_extended_data(nullptr);
-    out.set_layout(dst_layout);
+    out->ShareDataWith(tensor_);
+    out->set_extended_data(nullptr);
+    out->set_layout(dst_layout);
     return;
   }
 
@@ -227,15 +228,15 @@ inline void MKLDNNTensor::Reorder(Tensor& out, DataLayout dst_layout,
 
   std::vector<int> dimensions = vectorize2int(tensor_.dims());
 
-  out.Resize(make_ddim(dimensions));
-  out.mutable_data<float>(place);
+  out->Resize(make_ddim(dimensions));
+  out->mutable_data<float>(place);
 
   mkldnn::memory::desc dst_memory_desc(
       {dimensions}, mkldnn::memory::data_type::f32, dst_format);
   mkldnn::memory dst_memory{{dst_memory_desc, GetEngine()},
-                            const_cast<void*>(out.data<void>())};
+                            const_cast<void*>(out->data<void>())};
 
-  out.set_layout(dst_layout);
+  out->set_layout(dst_layout);
 
   auto reorder = mkldnn::reorder(src_memory, dst_memory);
   std::vector<mkldnn::primitive> pipeline{reorder};
@@ -262,24 +263,24 @@ inline std::shared_ptr<const MKLDNNTensorData> ExtractMKLDNNDataFromTensor(
 }
 
 inline std::shared_ptr<MKLDNNTensorData> ExtractMKLDNNDataFromTensor(
-    Tensor& tensor) {
+    Tensor* tensor) {
   std::shared_ptr<framework::Tensor::ExtendedData> data =
-      tensor.get_extended_data();
+      tensor->get_extended_data();
   if (data) {
     return std::dynamic_pointer_cast<MKLDNNTensorData>(data);
   }
   return nullptr;
 }
 
-inline void SetMKLDNNData(Tensor& tensor, const mkldnn::engine& engine) {
+inline void SetMKLDNNData(Tensor* tensor, const mkldnn::engine& engine) {
   std::shared_ptr<MKLDNNTensorData> data = ExtractMKLDNNDataFromTensor(tensor);
   if (!data) {
     data = std::make_shared<MKLDNNTensorData>(engine);
-    tensor.set_extended_data(data);
+    tensor->set_extended_data(data);
   }
-  data->SetFormat(to_mkldnn_format(tensor.layout()));
+  data->SetFormat(to_mkldnn_format(tensor->layout()));
 }
-}
+}  // namespace detail
 
-}  // framework
-}  // paddle
+}  // namespace framework
+}  // namespace paddle
