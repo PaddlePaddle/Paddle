@@ -658,10 +658,10 @@ class Operator(object):
 class Block(object):
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
-        self.vars = dict()  # var_name --> var
+        self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = dict()
+        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self.to_string(True)
