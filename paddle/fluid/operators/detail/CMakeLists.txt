@@ -8,6 +8,6 @@ if(WITH_DISTRIBUTE)
   cc_test(grpc_server_test SRCS grpc_server_test.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor proto_desc lookup_table_op)
 endif()
 
-cc_binary(desc_executor SRCS desc_executor.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure
-      gpr cares zlib protobuf  lookup_table_op ${GLOB_OP_LIB} pybind proto_desc memory executor
-      prune init profiler feed_fetch_method) 
+cc_binary(desc_executor SRCS desc_executor.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr
+    cares zlib protobuf  lookup_table_op  pybind proto_desc memory executor prune init
+    profiler feed_fetch_method parallel_executor ${GLOB_OP_LIB}) 

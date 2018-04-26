@@ -15,6 +15,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <algorithm>
+#include <iostream>
+#include <string>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/init.h"
@@ -70,8 +74,8 @@ framework::ProgramDesc* load_desc(const std::string& file) {
 
 DEFINE_string(start_up_proto, "", "start up proto file");
 DEFINE_string(loop_proto, "", "loop proto file");
-DEFINE_string(executor_place, "CPU", "executor's place:GPU or CPU");
-DEFINE_int(device_id, 0, "GPU device id");
+DEFINE_string(executor_device, "CPU", "executor's place:GPU or CPU");
+DEFINE_int32(executor_device_id, 0, "GPU device id");
 
 int main(int argc, char** argv) {
   // init.
@@ -96,19 +100,27 @@ int main(int argc, char** argv) {
   framework::ProgramDesc* start_up = load_desc(FLAGS_start_up_proto);
   framework::ProgramDesc* loop = load_desc(FLAGS_loop_proto);
 
+  std::string place_str = FLAGS_executor_device;
+  std::transform(place_str.begin(), place_str.end(), place_str.begin(),
+                 [](unsigned char ch) { return toupper(ch); });
+
   framework::Executor* exe = nullptr;
-  if (FLAGS_executor_place == "CPU") {
+  if (place_str == "CPU") {
     platform::CPUPlace place;
     exe = new framework::Executor(place);
-  } else if (FLAGS_executor_place == "GPU") {
-    platform::CPUPlace place;
-    framework::Executor exe(place);
+  } else if (place_str == "GPU") {
+    platform::CUDAPlace place(FLAGS_executor_device_id);
+    exe = new framework::Executor(place);
+  } else {
+    printf("unkown device:%s", FLAGS_executor_device.c_str());
+    return -1;
   }
 
-  exe.Run(*start_up, &scope, 0, false, true);
-  exe.Run(*loop, &scope, 0, false, true);
+  exe->Run(*start_up, &scope, 0, false, true);
+  exe->Run(*loop, &scope, 0, false, true);
 
   delete start_up;
   delete loop;
+  delete exe;
   return 0;
 }
