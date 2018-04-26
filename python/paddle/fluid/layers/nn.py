@@ -3764,26 +3764,39 @@ def label_smooth(label,
 
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    RoI pooling, its purpose is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
+    Region of interest pooling (also known as RoI pooling) is to perform 
+        is to perform max pooling on inputs of nonuniform sizes to obtain
+        fixed-size feature maps (e.g. 7*7).
     The operator has three steps: 
-        1.Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height 
-        2.Finding the largest value in each section 
-        3.Copying these max values to the output buffer
+        1. Dividing each region proposal into equal-sized sections with 
+           the pooled_width and pooled_height 
+        2. Finding the largest value in each section 
+        3. Copying these max values to the output buffer
 
     Args:
-        input (Variable): The input for roi pooling.
-        rois (Variable): ROIs (Regions of Interest) to pool over. It should be a 2-D 1-level lod tensor of shape (num_rois, 4). It given as [[x1, y1, x2, y2], ...], where (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        input (Variable): The input for ROI pooling.
+        rois (Variable): ROIs (Regions of Interest) to pool over. It should
+                         be a 2-D one level LoTensor of shape [num_rois, 4].
+                         The layout is [x1, y1, x2, y2], where (x1, y1)
+                         is the top left coordinates, and (x2, y2) is the 
+                         bottom right coordinates. The num_rois is the 
+                         total number of ROIs in this batch data.
         pooled_height (integer): The pooled output height. Default: 1
         pooled_width (integer): The pooled output width. Default: 1
-        spatial_scale (float): Multiplicative spatial scale factor. To translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
+        spatial_scale (float): Multiplicative spatial scale factor. To
+                               translate ROI coords from their input scale
+                               to the scale used when pooling. Default: 1.0
 
     Returns:
-        pool_out (Variable): The output of ROIPoolOp is a 4-D tensor with shape (num_rois, channels, pooled_h, pooled_w).
+        pool_out (Variable): The output is a 4-D tensor of the shape 
+                             (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
         .. code-block:: python
-             # assuming we have input x_feas, rois x_rois, pooled_height ph, pooled_width pw and spatial_scale scale.
-             pool_out = fluid.layers.roi_pool(input=x_feas, rois=x_rois, pooled_height=ph, pooled_width=pw, spatial_scale=scale)
+            pool_out = fluid.layers.roi_pool(input=x_feas, rois=x_rois,
+                 pooled_height=ph, pooled_width=pw, spatial_scale=scale)
+        For simply usage:
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
