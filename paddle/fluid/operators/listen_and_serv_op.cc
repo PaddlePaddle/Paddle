@@ -256,10 +256,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
       }
       AsyncExecuteBlock(executor, grad_to_prepared_block[recv_var_name].get(),
                         v.second->GetMutableLocalScope());
-      // TODO(qiao): explain why
-      if (var->IsType<framework::SelectedRows>()) {
-        var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
-      }
     }
 
     if (exit_flag) {
