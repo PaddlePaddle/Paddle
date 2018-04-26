@@ -23,6 +23,8 @@ def simple_fc():
     hidden = img
     for i in xrange(4):
         hidden = fluid.layers.fc(input=img, size=200, act='sigmoid')
+        hidden = fluid.layers.dropout(hidden, dropout_prob=0.1, seed=1)
+        hidden = fluid.layers.batch_norm(hidden)
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)
