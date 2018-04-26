@@ -187,6 +187,12 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
+  AddAttr<bool>(
+      "exclude_mode",
+      "(bool, default True) Whether to exclude the padding cells when "
+      "calculating, but only work when pooling_type is avg. The defalut "
+      "is exclude mode.")
+      .SetDefault(true);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);

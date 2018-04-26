@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/pooling.h"
+#include <algorithm>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -27,9 +29,10 @@ template <typename PoolProcess, typename T>
 class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, framework::Tensor* output) {
+                  const framework::Tensor& input, const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, PoolProcess pool_process,
+                  bool exclude_mode, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -66,7 +69,8 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                 pool_process.compute(ele, input_data[h * input_width + w]);
               }
             }
-            int pool_size = (hend - hstart) * (wend - wstart);
+            int pool_size = exclude_mode ? (hend - hstart) * (wend - wstart)
+                                         : ksize_height * ksize_width;
             pool_process.finalize(ele, (static_cast<T>(pool_size)));
             output_data[ph * output_width + pw] = ele;
           }
@@ -86,13 +90,12 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 template <typename PoolProcess, class T>
 class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_grad_process,
-                  framework::Tensor* input_grad) {
+  void operator()(
+      const platform::CPUDeviceContext& context, const framework::Tensor& input,
+      const framework::Tensor& output, const framework::Tensor& output_grad,
+      const std::vector<int>& ksize, const std::vector<int>& strides,
+      const std::vector<int>& paddings, PoolProcess pool_grad_process,
+      bool exclude_mode, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -123,7 +126,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             int wstart = pw * stride_width - padding_width;
             int wend = std::min(wstart + ksize_width, input_width);
             wstart = std::max(wstart, 0);
-            int pool_size = (hend - hstart) * (wend - wstart);
+            int pool_size = exclude_mode ? (hend - hstart) * (wend - wstart)
+                                         : ksize_height * ksize_width;
             float scale = 1.0 / pool_size;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
@@ -154,12 +158,11 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 template <class T>
 class MaxPool2dGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* input_grad) {
+  void operator()(
+      const platform::CPUDeviceContext& context, const framework::Tensor& input,
+      const framework::Tensor& output, const framework::Tensor& output_grad,
+      const std::vector<int>& ksize, const std::vector<int>& strides,
+      const std::vector<int>& paddings, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -246,9 +249,10 @@ template <typename PoolProcess, class T>
 class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process, framework::Tensor* output) {
+                  const framework::Tensor& input, const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, PoolProcess pool_process,
+                  bool exclude_mode, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -298,8 +302,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   }
                 }
               }
-              int pool_size =
-                  (dend - dstart) * (hend - hstart) * (wend - wstart);
+              int exsize = (dend - dstart) * (hend - hstart) * (wend - wstart);
+              int insize = stride_depth * stride_height * ksize_width;
+              int pool_size = exclude_mode ? exsize : insize;
               pool_process.finalize(ele, static_cast<T>(pool_size));
               output_data[output_idx] = ele;
             }
@@ -320,13 +325,12 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 template <typename PoolProcess, class T>
 class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_grad_process,
-                  framework::Tensor* input_grad) {
+  void operator()(
+      const platform::CPUDeviceContext& context, const framework::Tensor& input,
+      const framework::Tensor& output, const framework::Tensor& output_grad,
+      const std::vector<int>& ksize, const std::vector<int>& strides,
+      const std::vector<int>& paddings, PoolProcess pool_grad_process,
+      bool exclude_mode, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -368,8 +372,9 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
               int wend = std::min(wstart + ksize_width, input_width);
               wstart = std::max(wstart, 0);
 
-              int pool_size =
-                  (dend - dstart) * (hend - hstart) * (wend - wstart);
+              int exsize = (dend - dstart) * (hend - hstart) * (wend - wstart);
+              int insize = stride_depth * stride_height * ksize_width;
+              int pool_size = exclude_mode ? exsize : insize;
               float scale = 1.0 / pool_size;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
@@ -404,12 +409,11 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 template <class T>
 class MaxPool3dGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* input_grad) {
+  void operator()(
+      const platform::CPUDeviceContext& context, const framework::Tensor& input,
+      const framework::Tensor& output, const framework::Tensor& output_grad,
+      const std::vector<int>& ksize, const std::vector<int>& strides,
+      const std::vector<int>& paddings, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -510,9 +514,10 @@ template <typename T1, typename T2>
 class MaxPool2dWithIndexFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* output, framework::Tensor* mask) {
+                  const framework::Tensor& input, const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, framework::Tensor* output,
+                  framework::Tensor* mask) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -576,8 +581,9 @@ class MaxPool2dWithIndexGradFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& output_grad,
-                  const framework::Tensor& mask, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
+                  const framework::Tensor& mask, const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_height = input_grad->dims()[2];
@@ -628,9 +634,10 @@ template <typename T1, typename T2>
 class MaxPool3dWithIndexFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* output, framework::Tensor* mask) {
+                  const framework::Tensor& input, const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, framework::Tensor* output,
+                  framework::Tensor* mask) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -708,8 +715,9 @@ class MaxPool3dWithIndexGradFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& output_grad,
-                  const framework::Tensor& mask, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
+                  const framework::Tensor& mask, const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_depth = input_grad->dims()[2];

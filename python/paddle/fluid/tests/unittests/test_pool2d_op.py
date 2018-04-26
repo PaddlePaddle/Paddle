@@ -24,7 +24,8 @@ def max_pool2D_forward_naive(x,
                              strides,
                              paddings,
                              global_pool=0,
-                             ceil_mode=False):
+                             ceil_mode=False,
+                             exclude_mode=None):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -52,7 +53,8 @@ def avg_pool2D_forward_naive(x,
                              strides,
                              paddings,
                              global_pool=0,
-                             ceil_mode=False):
+                             ceil_mode=False,
+                             exclude_mode=True):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -71,8 +73,11 @@ def avg_pool2D_forward_naive(x,
             c_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
 
-            out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / (
-                (r_end - r_start) * (c_end - c_start))
+            if exclude_mode:
+                filed_size = (r_end - r_start) * (c_end - c_start)
+            else:
+                filed_size = ksize[0] * ksize[1]
+            out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / filed_size
     return out
 
 
@@ -87,12 +92,14 @@ class TestPool2d_Op(OpTest):
         self.init_kernel_type()
         self.init_pool_type()
         self.init_ceil_mode()
+        self.init_exclude_mode()
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype(self.dtype)
         output = self.pool2D_forward_naive(input, self.ksize, self.strides,
                                            self.paddings, self.global_pool,
-                                           self.ceil_mode).astype(self.dtype)
+                                           self.ceil_mode, self.exclude_mode)
+        output = output.astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -104,7 +111,9 @@ class TestPool2d_Op(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
             'ceil_mode': self.ceil_mode,
-            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
+            'data_format':
+            'AnyLayout',  # TODO(dzhwinter) : should be fix latter
+            'exclude_mode': self.exclude_mode,
         }
 
         self.outputs = {'Out': output}
@@ -147,6 +156,9 @@ class TestPool2d_Op(OpTest):
 
     def init_ceil_mode(self):
         self.ceil_mode = False
+
+    def init_exclude_mode(self):
+        self.exclude_mode = True
 
 
 class TestCase1(TestPool2d_Op):
@@ -318,6 +330,16 @@ class TestCeilModeCase3(TestCase1):
 class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
+
+
+class TestAvgInclude(TestCase2):  # with padding
+    def init_exclude_mode(self):
+        self.exclude_mode = False
+
+
+class TestCUDNNAvgInclude(TestCUDNNCase3):  # with padding
+    def init_exclude_mode(self):
+        self.exclude_mode = False
 
 
 if __name__ == '__main__':
