@@ -46,16 +46,16 @@ def progdesc_to_diagraph(prog):
 def simple_fc():
     img = fluid.layers.data(name='img', shape=[784])
     hidden = img
-    for i in xrange(1):
-        hidden *= 2
-        # hidden = fluid.layers.dropout(hidden, dropout_prob=0.1, seed=1)
-        hidden = fluid.layers.batch_norm(
-            hidden,
-            moving_mean_name='moving_mean.{0}'.format(i),
-            moving_variance_name='moving_var.{0}'.format(i))
+    for i in xrange(2):
+        hidden = fluid.layers.fc(hidden, size=200, act='sigmoid')
+        hidden = fluid.layers.dropout(hidden, dropout_prob=0.1, seed=1)
+        # hidden = fluid.layers.batch_norm(
+        #     hidden,
+        #     moving_mean_name='moving_mean.{0}'.format(i),
+        #     moving_variance_name='moving_var.{0}'.format(i))
     loss = hidden
     loss = fluid.layers.mean(loss)
-    adam = fluid.optimizer.Adam()
+    adam = fluid.optimizer.Adam(regularization=fluid.regularizer.L2Decay(0.5))
     adam.minimize(loss)
     return loss
 
@@ -85,14 +85,15 @@ def create_unittest(network_func, data_random):
             fluid.memory_optimize(mem_opt_main)
 
             graph = progdesc_to_diagraph(mem_opt_main)
-            print graph
-
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(startup)
             data = data_random()
             pe = fluid.ParallelExecutor(
-                use_cuda=True, loss_name=loss.name, main_program=main)
+                use_cuda=True,
+                loss_name=loss.name,
+                main_program=main,
+                num_threads=10)
             for i in xrange(1000):
                 pe.run(fetch_list=[], feed=next(data))
             loss_value = numpy.array(
@@ -102,7 +103,10 @@ def create_unittest(network_func, data_random):
 
             exe.run(startup)
             pe = fluid.ParallelExecutor(
-                use_cuda=True, loss_name=loss.name, main_program=mem_opt_main)
+                use_cuda=True,
+                loss_name=loss.name,
+                main_program=mem_opt_main,
+                num_threads=10)
             for i in xrange(1000):
                 pe.run(fetch_list=[], feed=next(data))
 
