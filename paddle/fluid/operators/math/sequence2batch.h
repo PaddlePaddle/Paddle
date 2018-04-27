@@ -60,15 +60,15 @@ class LoDTensor2BatchFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& lod_tensor,
-                  const framework::LoDTensor& batch, bool is_cal_batch_lod,
+                  framework::LoDTensor* batch, bool is_cal_batch_lod,
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
-      auto lods = batch.lod();
+      auto lods = batch->lod();
       PADDLE_ENFORCE_GT(lods.size(), 2UL);
       PADDLE_ENFORCE_EQ(lods[1].size(),
                         static_cast<size_t>(lod_tensor.dims()[0]));
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
-      to_batch(context, lod_tensor, lods[1], &batch, true);
+      to_batch(context, lod_tensor, lods[1], batch, true);
       return;
     }
 
@@ -143,10 +143,10 @@ class LoDTensor2BatchFunctor {
     for (size_t i = 0; i < seq_info.size(); ++i) {
       seq_order[i] = seq_info[i].seq_idx;
     }
-    batch.set_lod(batch_lods);
+    batch->set_lod(batch_lods);
 
     CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
-    to_batch(context, lod_tensor, batch_lods[1], &batch, true);
+    to_batch(context, lod_tensor, batch_lods[1], batch, true);
   }
 };
 
@@ -155,13 +155,13 @@ class Batch2LoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& batch,
-                  const framework::LoDTensor& lod_tensor) const {
+                  framework::LoDTensor* lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(in_lod.size(), 2UL);
     PADDLE_ENFORCE_EQ(in_lod[1].size(),
-                      static_cast<size_t>(lod_tensor.dims()[0]));
+                      static_cast<size_t>(lod_tensor->dims()[0]));
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
-    to_seq(context, batch, in_lod[1], &lod_tensor, false);
+    to_seq(context, batch, in_lod[1], lod_tensor, false);
   }
 };
 
