@@ -170,7 +170,7 @@ class ListenAndServ(object):
                 'OptimizeBlock': current_block,
                 'PrefetchBlock': empty_block,
                 'sync_mode': True,  # did not support async now in layers
-                'grad_to_block_id': []
+                'grad_to_block_id': [""]
             })
 
 
