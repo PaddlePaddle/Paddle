@@ -45,17 +45,15 @@ def progdesc_to_diagraph(prog):
 
 def simple_fc():
     img = fluid.layers.data(name='img', shape=[784])
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
     for i in xrange(1):
-        hidden = fluid.layers.fc(input=img, size=200, act='sigmoid')
+        hidden *= 2
         # hidden = fluid.layers.dropout(hidden, dropout_prob=0.1, seed=1)
         hidden = fluid.layers.batch_norm(
             hidden,
             moving_mean_name='moving_mean.{0}'.format(i),
             moving_variance_name='moving_var.{0}'.format(i))
-    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = hidden
     loss = fluid.layers.mean(loss)
     adam = fluid.optimizer.Adam()
     adam.minimize(loss)
@@ -70,9 +68,7 @@ class FCDataRandom(object):
     def next(self):
         return {
             'img': self.random_state.uniform(
-                low=-1, high=1, size=(self.batch_size, 784)).astype('float32'),
-            'label': self.random_state.uniform(
-                low=0.0, high=10.0, size=(self.batch_size, 1)).astype('int64')
+                low=-1, high=1, size=(self.batch_size, 784)).astype('float32')
         }
 
 
