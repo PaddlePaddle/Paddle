@@ -155,23 +155,31 @@ class InferenceTranspiler:
         :param scope: inference scope 
         :type scope: Scope         
         '''
+        print("before scope")
         if scope is None:
             scope = global_scope()
 
+        print("after scope")
         self.scope = scope
         self.place = place
         self.block = program.block(0)
         self.input_map = {}  # store the input names should be adjusted 
 
+        print("before modify feed fetch")
         self._modify_feed_fetch()
+        print("after modify feed fetch")
         self._convert_param_to_float16()
+        print("after convert param to float16")
         self._adjust_input(skip=True)
+        print("after adjust input")
         self._remove_unused_var()
+        print("after remove unused var")
 
         # TODO(luotao): use clone() method to flush the program.desc in force, 
         # since some large program.desc will not be flushed immediately. 
         # And a better solution will be considered later.
         program = program.clone()
+        print("after clone")
 
     # ====================== private transpiler functions =====================
 

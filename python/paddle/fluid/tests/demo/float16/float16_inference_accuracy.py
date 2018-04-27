@@ -72,7 +72,7 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def train(place, save_dirname, threshold=0.5):
+def train(place, save_dirname, threshold=0.4):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -115,7 +115,7 @@ def train(place, save_dirname, threshold=0.5):
         for batch_id, data in enumerate(train_reader()):
             exe.run(main_program, feed=feeder.feed(data))
 
-            if (batch_id % 50) == 0:
+            if (batch_id % 100) == 0:
                 acc_list = []
                 avg_loss_list = []
                 for tid, test_data in enumerate(test_reader()):
@@ -131,14 +131,47 @@ def train(place, save_dirname, threshold=0.5):
                 avg_loss_value = np.array(avg_loss_list).mean()
 
                 print(
-                    'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
+                    'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Accuracy {3:2.2}'.
                     format(pass_id, batch_id + 1,
                            float(avg_loss_value), float(acc_value)))
 
                 if acc_value > threshold:
+                    print(
+                        'Save inference model with test accuracy of {0} at {1}'.
+                        format(float(acc_value), save_dirname))
                     fluid.io.save_inference_model(save_dirname, ["pixel"],
                                                   [predict], exe)
                     return
+
+
+def test_accuracy(executor, inference_program, feed_target_names,
+                  fetch_targets):
+    test_reader = paddle.dataset.cifar.test10()
+    test_num = 0
+    batch_size = 100
+    correct_num = 0
+    imgs = []
+    labels = []
+
+    for item in test_reader():
+        label = item[1]
+        img = item[0].astype(np.float32)
+        imgs.append(img.reshape(3, 32, 32))
+        labels.append(label)
+        if len(imgs) == batch_size:
+            batch_imgs = np.stack(imgs, axis=0)
+            results = executor.run(inference_program,
+                                   feed={feed_target_names[0]: batch_imgs},
+                                   fetch_list=fetch_targets)
+            prediction = np.argmax(results[0], axis=1)
+            correct_num += np.sum(prediction == labels)
+            test_num += batch_size
+            imgs = []
+            labels = []
+
+    print("{0} out of {1} predictions are correct.".format(correct_num,
+                                                           test_num))
+    print("Test accuray is {0}.".format(float(correct_num) / float(test_num)))
 
 
 def infer(place, save_dirname):
@@ -150,37 +183,38 @@ def infer(place, save_dirname):
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
-
+        print('Load inference model from {0}'.format(save_dirname))
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+        test_accuracy(exe, inference_program, feed_target_names, fetch_targets)
 
-        test_reader = paddle.dataset.cifar.test10()
-        test_num = 0
-        batch_size = 100
-        correct_num = 0
-        imgs = []
-        labels = []
+        with open("float32_program.txt", "w") as f:
+            f.write(str(inference_program))
+        """
+        fused_bn_program = inference_program.clone()
+        t = fluid.InferenceTranspiler()
+        t.transpile(fused_bn_program, place)
+        test_accuracy(exe, fused_bn_program, feed_target_names, fetch_targets)
 
-        for item in test_reader():
-            label = item[1]
-            img = item[0].astype(np.float32)
-            imgs.append(img.reshape(3, 32, 32))
-            labels.append(label)
-            if len(imgs) == batch_size:
-                batch_imgs = np.stack(imgs, axis=0)
-                results = exe.run(inference_program,
-                                  feed={feed_target_names[0]: batch_imgs},
-                                  fetch_list=fetch_targets)
-                prediction = np.argmax(results[0], axis=1)
-                correct_num += np.sum(prediction == labels)
-                test_num += batch_size
-                imgs = []
-                labels = []
+        with open("fused_bn_program.txt", "w") as f:
+            f.write(str(fused_bn_program))
 
-        print("{0} out of {1} predictions are correct.".format(correct_num,
-                                                               test_num))
-        print("Test accuray is {0}.".format(
-            float(correct_num) / float(test_num)))
+        float16_inference_program = fused_bn_program.clone()
+        """
+
+        float16_inference_program = inference_program.clone()
+        print("before fp16 transpile")
+        t = fluid.InferenceTranspiler()
+        t.float16_transpile(float16_inference_program, place)
+        print("after fp16 transpile")
+
+        print("before test fp16 accuracy")
+        test_accuracy(exe, float16_inference_program, feed_target_names,
+                      fetch_targets)
+        print("after test fp16 accuracy")
+
+        with open("float16_program.txt", "w") as f:
+            f.write(str(float16_inference_program))
 
 
 if __name__ == "__main__":
