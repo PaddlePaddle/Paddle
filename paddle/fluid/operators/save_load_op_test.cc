@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/float16.h"
 
 USE_NO_KERNEL_OP(save);
 USE_NO_KERNEL_OP(load);
@@ -72,7 +73,7 @@ TEST(SaveLoadFP16Op, CPU) {
 
   float* expect = tensor->mutable_data<float>(place);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
-    expect[i] = static_cast<float>(i);
+    expect[i] = static_cast<float>(paddle::platform::float16(i));
   }
 
   paddle::framework::AttributeMap attrs;
