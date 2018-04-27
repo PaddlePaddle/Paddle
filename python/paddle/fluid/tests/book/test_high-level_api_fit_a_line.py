@@ -32,13 +32,11 @@ def conv_network():
     loss = fluid.layers.cross_entropy(prediction, label)
     return loss
 
-
 def main():
     fluid.train(
         reader=dataset.mnist.train(),
         num_pass=100,
         optimizer=fluid.optimizer.SGD())
-
 
 if __name__ == '__main__':
     main()
