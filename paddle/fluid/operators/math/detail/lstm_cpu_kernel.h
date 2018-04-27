@@ -164,10 +164,12 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
   __m256 r_state_atv;
   __m256 r_out;
 
-  __m256 *value_in = (__m256 *)value.gate_value;
-  __m256 *value_ig = (__m256 *)(value.gate_value + frame_size);
-  __m256 *value_fg = (__m256 *)(value.gate_value + frame_size * 2);
-  __m256 *value_og = (__m256 *)(value.gate_value + frame_size * 3);
+  __m256 *value_in = reinterpret_cast<__m256>(value.gate_value);
+  __m256 *value_ig = reinterpret_cast<__m256>(value.gate_value + frame_size);
+  __m256 *value_fg =
+      reinterpret_cast<__m256>(value.gate_value + frame_size * 2);
+  __m256 *value_og =
+      reinterpret_cast<__m256>(value.gate_value + frame_size * 3);
 
   for (int i = 0; i < frame_size / 8; i++) {
     r_value_in = value_in[i];
@@ -175,13 +177,13 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
     r_value_fg = value_fg[i];
     r_value_og = value_og[i];
     if (value.check_ig) {
-      r_checkI = ((__m256 *)value.check_ig)[i];
-      r_checkF = ((__m256 *)value.check_fg)[i];
-      r_checkO = ((__m256 *)value.check_og)[i];
+      r_checkI = (reinterpret_cast<__m256>(value.check_ig))[i];
+      r_checkF = (reinterpret_cast<__m256>(value.check_fg))[i];
+      r_checkO = (reinterpret_cast<__m256>(value.check_og))[i];
     }
 
     if (value.prev_state_value) {
-      r_prev_state = ((__m256 *)value.prev_state_value)[i];
+      r_prev_state = (reinterpret_cast<__m256>(value.prev_state_value))[i];
     }
 
     op(r_value_in, r_value_ig, r_value_fg, r_value_og, r_prev_state, r_state,
@@ -192,9 +194,9 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
     value_ig[i] = r_value_ig;
     value_fg[i] = r_value_fg;
     value_og[i] = r_value_og;
-    ((__m256 *)value.state_value)[i] = r_state;
-    ((__m256 *)value.state_active_value)[i] = r_state_atv;
-    ((__m256 *)value.output_value)[i] = r_out;
+    (reinterpret_cast<__m256>(value.state_value))[i] = r_state;
+    (reinterpret_cast<__m256>(value.state_active_value))[i] = r_state_atv;
+    (reinterpret_cast<__m256>(value.output_value))[i] = r_out;
   }
 #endif
 }
@@ -227,14 +229,16 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
   __m256 r_checkFGrad;
   __m256 r_checkOGrad;
 
-  __m256 *value_in = (__m256 *)value.gate_value;
-  __m256 *value_ig = (__m256 *)(value.gate_value + frame_size);
-  __m256 *value_fg = (__m256 *)(value.gate_value + frame_size * 2);
-  __m256 *value_og = (__m256 *)(value.gate_value + frame_size * 3);
-  __m256 *grad_in = (__m256 *)grad.gate_grad;
-  __m256 *grad_ig = (__m256 *)(grad.gate_grad + frame_size);
-  __m256 *grad_fg = (__m256 *)(grad.gate_grad + frame_size * 2);
-  __m256 *grad_og = (__m256 *)(grad.gate_grad + frame_size * 3);
+  __m256 *value_in = reinterpret_cast<__m256>(value.gate_value);
+  __m256 *value_ig = reinterpret_cast<__m256>(value.gate_value + frame_size);
+  __m256 *value_fg =
+      reinterpret_cast<__m256>(value.gate_value + frame_size * 2);
+  __m256 *value_og =
+      reinterpret_cast<__m256>(value.gate_value + frame_size * 3);
+  __m256 *grad_in = reinterpret_cast<__m256> grad.gate_grad;
+  __m256 *grad_ig = reinterpret_cast<__m256>(grad.gate_grad + frame_size);
+  __m256 *grad_fg = reinterpret_cast<__m256>(grad.gate_grad + frame_size * 2);
+  __m256 *grad_og = reinterpret_cast<__m256>(grad.gate_grad + frame_size * 3);
 
   for (int i = 0; i < frame_size / 8; i++) {
     r_value_in = value_in[i];
@@ -242,16 +246,16 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     r_value_fg = value_fg[i];
     r_value_og = value_og[i];
     if (value.check_ig) {
-      r_checkI = ((__m256 *)value.check_ig)[i];
-      r_checkF = ((__m256 *)value.check_fg)[i];
-      r_checkO = ((__m256 *)value.check_og)[i];
+      r_checkI = (reinterpret_cast<__m256>(value.check_ig))[i];
+      r_checkF = (reinterpret_cast<__m256>(value.check_fg))[i];
+      r_checkO = (reinterpret_cast<__m256>(value.check_og))[i];
     }
-    r_state = ((__m256 *)value.state_value)[i];
-    r_state_atv = ((__m256 *)value.state_active_value)[i];
-    r_output_grad = ((__m256 *)grad.output_grad)[i];
-    r_state_grad = ((__m256 *)grad.state_grad)[i];
+    r_state = (reinterpret_cast<__m256>(value.state_value))[i];
+    r_state_atv = (reinterpret_cast<__m256>(value.state_active_value))[i];
+    r_output_grad = (reinterpret_cast<__m256>(grad.output_grad))[i];
+    r_state_grad = (reinterpret_cast<__m256>(grad.state_grad))[i];
     if (value.prev_state_value) {
-      r_prev_state = ((__m256 *)value.prev_state_value)[i];
+      r_prev_state = (reinterpret_cast<__m256>(value.prev_state_value))[i];
     }
 
     op(r_value_in, r_value_ig, r_value_fg, r_value_og, r_grad_in, r_grad_ig,
@@ -264,15 +268,18 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     grad_ig[i] = r_grad_ig;
     grad_fg[i] = r_grad_fg;
     grad_og[i] = r_grad_og;
-    ((__m256 *)grad.state_grad)[i] = r_state_grad;
+    (reinterpret_cast<__m256>(grad.state_grad))[i] = r_state_grad;
 
     if (grad.prev_state_grad)
-      ((__m256 *)grad.prev_state_grad)[i] = r_prev_state_grad;
+      (reinterpret_cast<__m256>(grad.prev_state_grad))[i] = r_prev_state_grad;
     if (value.prev_state_value) {
-      if (grad.check_ig_grad) ((__m256 *)grad.check_ig_grad)[i] += r_checkIGrad;
-      if (grad.check_fg_grad) ((__m256 *)grad.check_fg_grad)[i] += r_checkFGrad;
+      if (grad.check_ig_grad)
+        (reinterpret_cast<__m256>(grad.check_ig_grad))[i] += r_checkIGrad;
+      if (grad.check_fg_grad)
+        (reinterpret_cast<__m256>(grad.check_fg_grad))[i] += r_checkFGrad;
     }
-    if (grad.check_og_grad) ((__m256 *)grad.check_og_grad)[i] += r_checkOGrad;
+    if (grad.check_og_grad)
+      (reinterpret_cast<__m256>(grad.check_og_grad))[i] += r_checkOGrad;
   }
 #endif
 }
