@@ -336,9 +336,9 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
 
     switch (base->Status()) {
       case PROCESS: {
-        VLOG(4) << cq_name << " PROCESS status:" << base->Status();
         TryToRegisterNewOne();
         base->Process();
+        VLOG(4) << cq_name << " PROCESS status:" << base->Status();
         break;
       }
       case FINISH: {

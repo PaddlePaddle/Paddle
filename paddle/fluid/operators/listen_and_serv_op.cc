@@ -188,9 +188,11 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
 }
 
 static void AsyncUpdateThread(
-    const bool &exit_flag, const std::shared_ptr<detail::ReceivedQueue> &queue,
+    const std::string &var_name, const bool &exit_flag,
+    const std::shared_ptr<detail::ReceivedQueue> &queue,
     framework::Executor *executor,
     framework::ExecutorPrepareContext *prepared) {
+  VLOG(3) << "update thread for " << var_name << " started";
   while (!exit_flag) {
     const detail::ReceivedMessage v = queue->Pop();
     auto recv_var_name = v.first;
@@ -206,6 +208,7 @@ static void AsyncUpdateThread(
       LOG(ERROR) << "run sub program error " << e.what();
     }
   }
+  VLOG(3) << "update thread for " << var_name << " ended";
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
@@ -246,7 +249,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
   }
 
-  VLOG(3) << "RunAsyncLoop into while";
   bool exit_flag = false;
 
   VLOG(3) << "start async optimize threads";
@@ -255,11 +257,12 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     std::string grad_name = iter->first;
     fs.push_back(framework::Async([grad_name, &exit_flag, &executor,
                                    &grad_to_queue, &grad_to_prepared_ctx]() {
-      AsyncUpdateThread(exit_flag, grad_to_queue[grad_name], executor,
-                        grad_to_prepared_ctx[grad_name].get());
+      AsyncUpdateThread(grad_name, exit_flag, grad_to_queue[grad_name],
+                        executor, grad_to_prepared_ctx[grad_name].get());
     }));
   }
 
+  VLOG(3) << "RunAsyncLoop into while";
   while (!exit_flag) {
     const detail::ReceivedMessage v = rpc_service_->Get();
     auto recv_var_name = v.first;
