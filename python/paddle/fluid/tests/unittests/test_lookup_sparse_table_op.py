@@ -32,9 +32,9 @@ class TestLookupSpraseTable(OpTest):
         scope = core.Scope()
 
         # create and initialize Id Variable
-        ids = scope.var("Ids").get_selected_rows()
-        ids_array = [0, 2, 3, 5, 100]
-        ids.set_rows(ids_array)
+        ids = scope.var("Ids").get_tensor()
+        ids_array = np.array([0, 2, 3, 5, 100]).astype("int64")
+        ids.set(ids_array, place)
 
         # create and initialize W Variable
         rows = [0, 1, 2, 3, 4, 5, 6]
