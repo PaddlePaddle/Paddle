@@ -4,8 +4,8 @@ if [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.1.15-ga-cuda9.0_1-1_amd64.deb"
   URL="http://nccl2-deb.gz.bcebos.com/nccl-repo-ubuntu1604-2.1.15-ga-cuda9.0_1-1_amd64.deb"
 else
-  DEB="nccl-repo-ubuntu1604-2.1.4-ga-cuda8.0_1-1_amd64.deb"
-  URL="http://nccl2-deb.gz.bcebos.com/nccl-repo-ubuntu1604-2.1.4-ga-cuda8.0_1-1_amd64.deb?responseContentDisposition=attachment"
+  DEB="nccl-repo-ubuntu1604-2.1.15-ga-cuda8.0_1-1_amd64.deb"
+  URL="http://nccl2-deb.gz.bcebos.com/nccl-repo-ubuntu1604-2.1.15-ga-cuda8.0_1-1_amd64.deb"
 fi
 
 DIR="/nccl2"
