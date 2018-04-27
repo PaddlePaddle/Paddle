@@ -148,6 +148,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         // present.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
+            std::cerr << "Insert NCCL Reduce to " << og << std::endl;
             InsertNCCLAllReduceOp(&result, og);
           }
         }

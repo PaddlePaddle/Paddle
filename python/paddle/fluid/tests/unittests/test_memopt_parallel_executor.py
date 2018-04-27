@@ -13,18 +13,47 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import graphviz
 import unittest
 import numpy
+
+
+def progdesc_to_diagraph(prog):
+    assert isinstance(prog, fluid.Program)
+    graph = graphviz.Digraph()
+
+    def append_block(g, block):
+        assert isinstance(g, graphviz.Digraph)
+        var_node_dict = dict()
+        for var_id, var_name in enumerate(block.vars):
+            name = 'var_{0}'.format(var_id)
+            g.node(name=name, label=var_name)
+            var_node_dict[var_name] = name
+
+        for op_id, op in enumerate(block.ops):
+            name = 'op_{0}'.format(op_id)
+            g.node(name=name, label=op.type, shape='box')
+            assert isinstance(op, fluid.Operator)
+            for out_name in op.output_arg_names:
+                g.edge(head_name=var_node_dict[out_name], tail_name=name)
+            for in_name in op.input_arg_names:
+                g.edge(head_name=name, tail_name=var_node_dict[in_name])
+
+    append_block(graph, prog.global_block())
+    return graph
 
 
 def simple_fc():
     img = fluid.layers.data(name='img', shape=[784])
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
-    for i in xrange(4):
+    for i in xrange(1):
         hidden = fluid.layers.fc(input=img, size=200, act='sigmoid')
-        hidden = fluid.layers.dropout(hidden, dropout_prob=0.1, seed=1)
-        hidden = fluid.layers.batch_norm(hidden)
+        # hidden = fluid.layers.dropout(hidden, dropout_prob=0.1, seed=1)
+        hidden = fluid.layers.batch_norm(
+            hidden,
+            moving_mean_name='moving_mean.{0}'.format(i),
+            moving_variance_name='moving_var.{0}'.format(i))
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)
@@ -58,6 +87,9 @@ def create_unittest(network_func, data_random):
 
             mem_opt_main = main.clone()
             fluid.memory_optimize(mem_opt_main)
+
+            graph = progdesc_to_diagraph(mem_opt_main)
+            print graph
 
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
