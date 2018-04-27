@@ -21,8 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#include <iostream>
-
 namespace paddle {
 namespace operators {
 
@@ -239,17 +237,14 @@ class BeamSearchOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(ctx->HasOutput(arg),
                      "BeamSearch need output argument '%s'", arg);
     }
-    std::cout << "Done Infer Shape\n";
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    std::cout << "Get Expected type 1\n";
     framework::OpKernelType kt = framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::LoDTensor>("pre_ids")->type()),
         platform::CPUPlace());
-    std::cout << "Get Expected type 2\n";
     return kt;
   }
 };
