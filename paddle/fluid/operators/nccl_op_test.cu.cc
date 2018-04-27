@@ -228,10 +228,8 @@ TEST_F(NCCLTester, ncclReduceOp) {
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-  paddle::memory::Copy(
-      cpu_place, ct, p::CUDAPlace(gpu_list_[kRoot]), rt,
-      recv_tensor.numel() * sizeof(float),
-      static_cast<p::CUDADeviceContext *>(dev_ctxs_[kRoot])->stream());
+  paddle::memory::Copy(cpu_place, ct, p::CUDAPlace(gpu_list_[kRoot]), rt,
+                       recv_tensor.numel() * sizeof(float), nullptr);
 
   for (int64_t j = 0; j < f::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], expected_result, 1e-5);
