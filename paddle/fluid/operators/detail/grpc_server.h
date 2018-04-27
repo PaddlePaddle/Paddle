@@ -19,6 +19,7 @@ limitations under the License. */
 #include <utility>
 
 #include "grpc++/grpc++.h"
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -29,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +37,7 @@ namespace detail {
 
 typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
     ReceivedMessage;
-typedef SimpleBlockQueue<ReceivedMessage> ReceivedQueue;
+typedef framework::BlockingQueue<ReceivedMessage> ReceivedQueue;
 
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 class RequestBase;
@@ -59,15 +59,13 @@ class AsyncGRPCServer final {
 
   void SetProgram(framework::ProgramDesc *program) { program_ = program; }
 
-  void SetPrefetchBlkdId(int blkid) { prefetch_blk_id_ = blkid; }
-
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
   void SetPrefetchPreparedCtx(framework::ExecutorPrepareContext *prepared) {
     prefetch_ctx_ = prepared;
   }
 
-  int GetSelectedPort() { return selected_port_; }
+  int GetSelectedPort() const { return selected_port_; }
 
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
@@ -101,7 +99,7 @@ class AsyncGRPCServer final {
   const platform::DeviceContext *dev_ctx_;
 
   // received variable from RPC, operators fetch variable from this queue.
-  SimpleBlockQueue<MessageWithName> var_get_queue_;
+  framework::BlockingQueue<MessageWithName> var_get_queue_;
   // client send variable to this queue.
   ReceivedQueue var_recv_queue_;
 
@@ -114,7 +112,6 @@ class AsyncGRPCServer final {
   std::unique_ptr<std::thread> t_get_;
   std::unique_ptr<std::thread> t_prefetch_;
 
-  int prefetch_blk_id_;
   framework::ExecutorPrepareContext *prefetch_ctx_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;

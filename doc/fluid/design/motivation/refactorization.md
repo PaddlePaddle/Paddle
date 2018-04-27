@@ -11,7 +11,7 @@ The goals of refactoring include:
 
 1. PaddlePaddle represents the computation, training and inference of Deep Learning models, by computation graphs.
 
-  1. Please refer to [computation graphs](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/graph.md) for a concrete example.
+  1. Please refer to [computation graphs](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/others/graph.md) for a concrete example.
 
 1. Users write Python programs to describe the graphs and run them (locally or remotely).
 
@@ -28,7 +28,7 @@ The goals of refactoring include:
       1. the C++ library `libpaddle.so` for local execution,
       1. the master process of a distributed training job for training, or
       1. the server process of a Kubernetes serving job for distributed serving.
-   1. *Execution* executes the graph by constructing instances of class [`Variable`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/variable.h#L24) and [`OperatorBase`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L70), according to the protobuf message.
+   1. *Execution* executes the graph by constructing instances of class [`Variable`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/variable.h#L24) and [`OperatorBase`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.h#L70), according to the protobuf message.
 
 ## Description and Realization of Computation Graph
 
@@ -48,16 +48,16 @@ At runtime, the C++ program realizes the graph and runs it.
 <tr>
 <td>Data</td>
 <td>
-<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L107">VarDesc</a></td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto#L107">VarDesc</a></td>
 <td>
-<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/variable.h#L24">Variable</a></td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/variable.h#L24">Variable</a></td>
 </tr>
 <tr>
 <td>Operation </td>
 <td>
-<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L35">OpDesc</a></td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto#L35">OpDesc</a></td>
 <td>
-<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L64">Operator</a></td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.h#L64">Operator</a></td>
 </tr>
 <tr>
 <td>Block </td>
@@ -85,7 +85,7 @@ The word *graph* is interchangeable with *block* in this document.  A graph cons
 
 1. The invocation of `train` or [`infer`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/inference.py#L108) methods in the Python program does the following:
 
-   1. Create a new Scope instance in the [scope hierarchy](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/scope.md) for each run of a block,
+   1. Create a new Scope instance in the [scope hierarchy](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/scope.md) for each run of a block,
       1. realize local variables defined in the BlockDesc message in the new scope,
       1. a scope is similar to the stack frame in programming languages,
 
@@ -195,7 +195,7 @@ Maintaining a map, whose key is the type name and the value is the corresponding
 ## Related Concepts
 
 ### Op_Maker
-It's constructor takes `proto` and `checker`. They are completed during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
+It's constructor takes `proto` and `checker`. They are completed during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/scale_op.cc#L37))
 
 ### Register Macros
 ```cpp
@@ -236,7 +236,7 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 * `Tensor` is an n-dimension array with type.
 	* Only dims and data pointers are stored in `Tensor`.
 	* All operations on `Tensor` are written in `Operator` or global functions.
-	* Variable length Tensor design [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md)
+	* Variable length Tensor design [LoDTensor](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/lod_tensor.md)
 * `Variable` instances are the inputs and the outputs of an operator, not just `Tensor`.
 	* `step_scopes` in RNN is a variable and not a tensor.
 * `Scope` is where variables are stored.

@@ -244,9 +244,13 @@ def infer(use_cuda, save_dirname=None):
         assert len(results[0]) == len(transpiler_results[0])
         for i in range(len(results[0])):
             np.testing.assert_almost_equal(
-                results[0][i], transpiler_results[0][i], decimal=6)
+                results[0][i], transpiler_results[0][i], decimal=5)
 
         print("infer results: ", results[0])
+
+        fluid.io.save_inference_model(save_dirname, feed_target_names,
+                                      fetch_targets, exe,
+                                      inference_transpiler_program)
 
 
 def main(net_type, use_cuda, is_local=True):

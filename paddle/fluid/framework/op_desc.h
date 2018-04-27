@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/attribute.h"
@@ -73,7 +74,7 @@ class OpDesc {
 
   void SetAttr(const std::string &name, const Attribute &v);
 
-  void SetBlockAttr(const std::string &name, BlockDesc &block);
+  void SetBlockAttr(const std::string &name, BlockDesc *block);
 
   Attribute GetAttr(const std::string &name) const;
 
@@ -119,7 +120,7 @@ class OpDesc {
 
   void InferVarType(BlockDesc *block) const;
 
-  void MarkAsTarget() { desc_.set_is_target(true); }
+  void SetIsTarget(bool is_target) { desc_.set_is_target(is_target); }
 
   void Flush();
 

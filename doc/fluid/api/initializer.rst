@@ -67,8 +67,7 @@ XavierInitializer
 ..  autoclass:: paddle.fluid.initializer.XavierInitializer
     :members:
     :noindex:
-    MSRA
-    ------
+
 
 MSRAInitializer
 -----------------
