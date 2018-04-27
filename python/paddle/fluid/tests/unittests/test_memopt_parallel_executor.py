@@ -25,10 +25,9 @@ def cosine_decay(learning_rate, step_each_epoch, epochs=120):
     lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
     """
     global_step = _decay_step_counter()
-    with init_on_cpu():
-        epoch = fluid.layers.floor(global_step / step_each_epoch)
-        lr = learning_rate / 2.
-        decayed_lr = lr * (fluid.layers.cos(epoch * (math.pi / epochs)) + 1)
+    epoch = fluid.layers.floor(global_step / step_each_epoch)
+    lr = learning_rate / 2.
+    decayed_lr = lr * (fluid.layers.cos(epoch * (math.pi / epochs)) + 1)
     return decayed_lr
 
 
