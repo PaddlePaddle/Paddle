@@ -62,7 +62,8 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.output_names, ["Out"])
         self.assertEqual(mul_op.output("Out"), ["mul.out"])
         self.assertEqual(
-            set(mul_op.attr_names), set(["x_num_col_dims", "y_num_col_dims"]))
+            set(mul_op.attr_names),
+            set(["x_num_col_dims", "y_num_col_dims", "use_mkldnn"]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)
         self.assertEqual(mul_op.attr("x_num_col_dims"), 1)

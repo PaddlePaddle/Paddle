@@ -14,7 +14,7 @@
 
 #include <thread>  // NOLINT
 
-#include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -23,13 +23,13 @@ namespace reader {
 
 // 'Double buffer' means we shall maintain two batches of input data at the same
 // time. So the kCacheSize shoul be at least 2.
-static constexpr size_t kCacheSize = 2;
+static constexpr size_t kCacheSize = 3;
 // There will be two bacthes out of the channel during training:
 // 1. the one waiting to be sent to the channel
 // 2. the one just be received from the channel, which is also being used by
 // subsequent operators.
 // So the channel size should be kChacheSize - 2
-static constexpr size_t kChannelSize = 0;  // kCacheSize - 2
+static constexpr size_t kChannelSize = 1;  // kCacheSize - 2
 
 class DoubleBufferReader : public framework::DecoratedReader {
  public:
@@ -55,10 +55,8 @@ class DoubleBufferReader : public framework::DecoratedReader {
   ~DoubleBufferReader() { EndPrefetcher(); }
 
  private:
-  bool HasNext() const;
-
   void StartPrefetcher() {
-    channel_ = framework::MakeChannel<size_t>(kChannelSize);
+    channel_ = new reader::BlockingQueue<size_t>(kChannelSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
   }
 
@@ -74,7 +72,7 @@ class DoubleBufferReader : public framework::DecoratedReader {
   void PrefetchThreadFunc();
 
   std::thread prefetcher_;
-  framework::Channel<size_t>* channel_;
+  reader::BlockingQueue<size_t>* channel_;
   platform::Place place_;
   std::vector<std::vector<framework::LoDTensor>> cpu_tensor_cache_;
   std::vector<std::vector<framework::LoDTensor>> gpu_tensor_cache_;
@@ -139,17 +137,16 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
 };
 
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  out->clear();
-  if (HasNext()) {
-    size_t cached_tensor_id;
-    channel_->Receive(&cached_tensor_id);
+  size_t cached_tensor_id;
+  if (channel_->Receive(&cached_tensor_id)) {
     if (platform::is_gpu_place(place_)) {
       *out = gpu_tensor_cache_[cached_tensor_id];
-      ctxs_[cached_tensor_id]->Wait();
     } else {
       // CPU place
       *out = cpu_tensor_cache_[cached_tensor_id];
     }
+  } else {
+    out->clear();
   }
 }
 
@@ -157,12 +154,6 @@ void DoubleBufferReader::ReInit() {
   reader_->ReInit();
   EndPrefetcher();
   StartPrefetcher();
-}
-
-bool DoubleBufferReader::HasNext() const {
-  while (!channel_->IsClosed() && !channel_->CanReceive()) {
-  }
-  return channel_->CanReceive();
 }
 
 void DoubleBufferReader::PrefetchThreadFunc() {
@@ -177,17 +168,14 @@ void DoubleBufferReader::PrefetchThreadFunc() {
     }
     if (platform::is_gpu_place(place_)) {
       auto& gpu_batch = gpu_tensor_cache_[cached_tensor_id];
-      auto* gpu_ctx = ctxs_[cached_tensor_id].get();
       gpu_batch.resize(cpu_batch.size());
       for (size_t i = 0; i < cpu_batch.size(); ++i) {
-        framework::TensorCopy(cpu_batch[i], place_, *gpu_ctx, &gpu_batch[i]);
+        // TODO(fengjiayi): Use asynchronous TensorCopy instead
+        framework::TensorCopySync(cpu_batch[i], place_, &gpu_batch[i]);
         gpu_batch[i].set_lod(cpu_batch[i].lod());
       }
     }
-    try {
-      size_t tmp = cached_tensor_id;
-      channel_->Send(&tmp);
-    } catch (paddle::platform::EnforceNotMet e) {
+    if (!channel_->Send(cached_tensor_id)) {
       VLOG(5) << "WARNING: The double buffer channel has been closed. The "
                  "prefetch thread will terminate.";
       break;

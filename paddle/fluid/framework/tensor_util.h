@@ -27,6 +27,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
+void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
+                    Tensor* dst);
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
