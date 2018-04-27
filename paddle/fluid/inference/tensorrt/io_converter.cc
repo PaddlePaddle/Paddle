@@ -34,21 +34,23 @@ class DefaultInputConverter : public EngineInputConverter {
     const auto& place = in.place();
     if (is_cpu_place(place)) {
       PADDLE_ENFORCE(stream_ != nullptr);
-      // TODO(superjomn) make this async
-      PADDLE_ENFORCE_EQ(0, cudaMemcpy(out, in.data<float>(), in.memory_size(),
-                                      cudaMemcpyHostToDevice));
+      PADDLE_ENFORCE_EQ(0,
+                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
+                                        cudaMemcpyHostToDevice, *stream_));
 
     } else if (is_gpu_place(place)) {
-      // TODO(superjomn) make this async
-      PADDLE_ENFORCE_EQ(0, cudaMemcpy(out, in.data<float>(), in.memory_size(),
-                                      cudaMemcpyHostToHost));
+      PADDLE_ENFORCE_EQ(0,
+                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
+                                        cudaMemcpyHostToHost, *stream_));
+
     } else {
       PADDLE_THROW("Unknown device for converter");
     }
+    cudaStreamSynchronize(*stream_);
   }
 };
 
-REGISTER_TRT_INPUT_CONVERTER(mul, DefaultInputConverter);
+REGISTER_TENSORRT_INPUT_CONVERTER(mul, DefaultInputConverter);
 
 }  // namespace tensorrt
 }  // namespace inference

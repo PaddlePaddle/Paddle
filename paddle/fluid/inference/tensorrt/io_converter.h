@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <unordered_map>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
@@ -33,49 +34,33 @@ class EngineInputConverter {
   EngineInputConverter() {}
 
   virtual void operator()(const LoDTensor& in, void* out, size_t max_size) {}
-  void Execute(const std::string& in_op_type, const LoDTensor& in, void* out,
-               size_t max_size, cudaStream_t* stream) {
-    PADDLE_ENFORCE(stream != nullptr);
-    auto it = converters_.find(in_op_type);
-    PADDLE_ENFORCE(it != converters_.end(),
-                   "no EngineInputConverter for optype [%s]",
-                   in_op_type.c_str());
-    it->second->SetStream(stream);
-    (*it->second)(in, out, max_size);
-  }
-
-  static EngineInputConverter& Global() {
-    static auto* x = new EngineInputConverter;
-    return *x;
-  }
-
-  template <typename T>
-  void Register(const std::string& key) {
-    converters_[key] = new T;
-  }
 
   void SetStream(cudaStream_t* stream) { stream_ = stream; }
+
+  static void Run(const std::string& in_op_type, const LoDTensor& in, void* out,
+                  size_t max_size, cudaStream_t* stream) {
+    PADDLE_ENFORCE(stream != nullptr);
+    auto* converter = Registry<EngineInputConverter>::Lookup(in_op_type);
+    PADDLE_ENFORCE_NOT_NULL(converter);
+    converter->SetStream(stream);
+    (*converter)(in, out, max_size);
+  }
 
   virtual ~EngineInputConverter() {}
 
  protected:
   cudaStream_t* stream_{nullptr};
-
- private:
-  std::unordered_map<std::string,
-                     ::paddle::inference::tensorrt::EngineInputConverter*>
-      converters_;
 };
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
-#define REGISTER_TRT_INPUT_CONVERTER(in_op_type__, Converter__)     \
-  struct trt_input_##in_op_type__##_converter {                     \
-    trt_input_##in_op_type__##_converter() {                        \
-      ::paddle::inference::tensorrt::EngineInputConverter::Global() \
-          .Register<Converter__>(#in_op_type__);                    \
-    }                                                               \
-  };                                                                \
+#define REGISTER_TENSORRT_INPUT_CONVERTER(in_op_type__, Converter__) \
+  struct trt_input_##in_op_type__##_converter {                      \
+    trt_input_##in_op_type__##_converter() {                         \
+      ::paddle::inference::Registry<EngineInputConverter>::Register< \
+          Converter__>(#in_op_type__);                               \
+    }                                                                \
+  };                                                                 \
   trt_input_##in_op_type__##_converter trt_input_##in_op_type__##_converter__;

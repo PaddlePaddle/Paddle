@@ -34,9 +34,8 @@ TEST_F(EngineInputConverterTester, DefaultCPU) {
   ASSERT_EQ(cudaMalloc(&buffer, tensor.memory_size()), 0);
 
   cudaStream_t stream;
-  EngineInputConverter::Global().SetStream(&stream);
-  EngineInputConverter::Global().Execute("mul", tensor, buffer,
-                                         tensor.memory_size(), &stream);
+  EngineInputConverter::Run("mul", tensor, buffer, tensor.memory_size(),
+                            &stream);
 }
 
 TEST_F(EngineInputConverterTester, DefaultGPU) {
@@ -45,9 +44,8 @@ TEST_F(EngineInputConverterTester, DefaultGPU) {
   ASSERT_EQ(cudaMalloc(&buffer, tensor.memory_size()), 0);
 
   cudaStream_t stream;
-  EngineInputConverter::Global().SetStream(&stream);
-  EngineInputConverter::Global().Execute("mul", tensor, buffer,
-                                         tensor.memory_size(), &stream);
+  EngineInputConverter::Run("mul", tensor, buffer, tensor.memory_size(),
+                            &stream);
 }
 
 }  // namespace tensorrt
