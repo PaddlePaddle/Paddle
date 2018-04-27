@@ -28,6 +28,8 @@ DECLARE_bool(benchmark);
 namespace paddle {
 namespace framework {
 
+std::vector<std::string> kEmptyStringVector = std::vector<std::string>{};
+
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
@@ -103,9 +105,22 @@ std::string OperatorBase::Input(const std::string& name) const {
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
+  auto& info_map = OpInfoMap::Instance();
+  auto* op_info = info_map.GetNullable(Type());
+  PADDLE_ENFORCE(op_info != nullptr && op_info->proto_ != nullptr,
+                 "op_info and proto of operator %s should not be null.", type_);
+
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
-                 type_, name);
+  for (auto& in : op_info->Proto().inputs()) {
+    if (in.name() == name) {
+      if (!in.dispensable()) {
+        PADDLE_ENFORCE(it != inputs_.end(),
+                       "Operator %s does not have the input %s.", type_, name);
+      } else {
+        return kEmptyStringVector;
+      }
+    }
+  }
   return it->second;
 }
 
@@ -119,9 +134,23 @@ std::string OperatorBase::Output(const std::string& name) const {
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
+  auto& info_map = OpInfoMap::Instance();
+  auto* op_info = info_map.GetNullable(Type());
+  PADDLE_ENFORCE(op_info != nullptr && op_info->proto_ != nullptr,
+                 "op_info and proto of operator %s should not be null.", type_);
+
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(),
-                 "Operator %s does not have an output called %s.", type_, name);
+  for (auto& out : op_info->Proto().outputs()) {
+    if (out.name() == name) {
+      if (!out.dispensable()) {
+        PADDLE_ENFORCE(it != outputs_.end(),
+                       "Operator %s does not have an output called %s.", type_,
+                       name);
+      } else {
+        return kEmptyStringVector;
+      }
+    }
+  }
   return it->second;
 }
 
@@ -220,13 +249,18 @@ void OperatorBase::CheckAllInputOutputSet() const {
   if (op_info == nullptr || op_info->proto_ == nullptr) return;
 
   for (auto& in : op_info->Proto().inputs()) {
-    PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
-                   "Type %s's input %s is not set", Type(), in.name());
+    if (!in.dispensable()) {
+      PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
+                     "Operator %s's input, %s, is not set", Type(), in.name());
+    }
   }
 
   for (auto& out : op_info->Proto().outputs()) {
-    PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
-                   "Type %s's output %s is not set", Type(), out.name());
+    if (!out.dispensable()) {
+      PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
+                     "Operator %s's output, %s, is not set", Type(),
+                     out.name());
+    }
   }
 }
 
