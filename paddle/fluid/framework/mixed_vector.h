@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <initializer_list>
 #include <vector>
 

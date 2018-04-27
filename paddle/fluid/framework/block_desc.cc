@@ -146,6 +146,7 @@ void BlockDesc::RemoveOp(size_t s, size_t e) {
   if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
     return;
   }
+  need_update_ = true;
   ops_.erase(ops_.begin() + s, ops_.begin() + e);
 }
 

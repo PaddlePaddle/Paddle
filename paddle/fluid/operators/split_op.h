@@ -44,5 +44,20 @@ class SplitOpKernel : public framework::OpKernel<T> {
   }
 };
 
+class SplitGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto op = new framework::OpDesc();
+    op->SetType("concat");
+    op->SetInput("X", OutputGrad("Out"));
+    op->SetOutput("Out", InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

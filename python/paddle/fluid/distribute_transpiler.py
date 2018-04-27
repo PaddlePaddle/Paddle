@@ -18,7 +18,7 @@ import math
 
 import distributed_splitter as splitter
 import framework
-from framework import Program, default_main_program, Variable
+from framework import Program, default_main_program, Variable, Parameter
 from . import core
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -222,8 +222,14 @@ class DistributeTranspiler:
 
         # step1: For large parameters and gradients, split them into smaller
         # blocks.
-        param_list = [pg[0] for pg in params_grads]
-        grad_list = [pg[1] for pg in params_grads]
+        param_list = []
+        grad_list = []
+        for p, g in params_grads:
+            # skip parameter marked not trainable
+            if type(p) == Parameter and p.trainable == False:
+                continue
+            param_list.append(p)
+            grad_list.append(g)
 
         if self.has_distributed_lookup_table:
             param_list = [
@@ -362,21 +368,19 @@ class DistributeTranspiler:
             else:
                 recv_inputs.append(single_trainer_var)
 
-        # step3
-        optimize_block = pserver_program.create_block(0)
-        # step 4
+        # step 3
         # Create a union-find data structure from optimize ops,
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
-        # step 4.2
+        # step 3.2
         # Iterate through the ops and append optimize op which
         # located on current pserver
         opt_op_on_pserver = []
         for _, op in enumerate(self.optimize_ops):
             if self._is_opt_op(op) and self._is_opt_op_on_pserver(endpoint, op):
                 opt_op_on_pserver.append(op)
-        # step 4.3
+        # step 3.3
         # Iterate through the ops, and if an op and the optimize ops
         # which located on current pserver are in one set, then
         # append it into the sub program.
@@ -409,28 +413,30 @@ class DistributeTranspiler:
             else:
                 self._append_pserver_non_opt_ops(block, op)
 
-        append_block = optimize_block
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
         if len(lr_ops) > 0:
+            lr_decay_block = pserver_program.create_block(
+                pserver_program.num_blocks - 1)
             for _, op in enumerate(lr_ops):
-                self._append_pserver_non_opt_ops(append_block, op)
-
-            append_block = pserver_program.create_block(append_block.idx)
+                self._append_pserver_non_opt_ops(lr_decay_block, op)
 
         # append op to the current block
-        per_opt_block = append_block
-        for _, opt_op in enumerate(opt_op_on_pserver):
+        pre_block_idx = pserver_program.num_blocks - 1
+        for idx, opt_op in enumerate(opt_op_on_pserver):
+            per_opt_block = pserver_program.create_block(pre_block_idx)
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
-                if ufind.is_connected(op, opt_op) and \
-                    op not in global_ops:
+                if ufind.is_connected(op, opt_op) and op not in global_ops:
                     __append_optimize_op__(op, per_opt_block)
-            per_opt_block = pserver_program.create_block(append_block.idx)
 
         # append global ops
-        for glb_op in global_ops:
-            __append_optimize_op__(glb_op, per_opt_block)
+        opt_state_block = None
+        if global_ops:
+            opt_state_block = pserver_program.create_block(
+                pserver_program.num_blocks - 1)
+            for glb_op in global_ops:
+                __append_optimize_op__(glb_op, opt_state_block)
 
         # NOT USED: single block version:
         #
@@ -444,10 +450,10 @@ class DistributeTranspiler:
         prefetch_block = None
         if self.has_distributed_lookup_table:
             pserver_index = self.pserver_endpoints.index(endpoint)
-            self._create_table_optimize_block(pserver_index, pserver_program,
-                                              append_block)
+            table_opt_block = self._create_table_optimize_block(
+                pserver_index, pserver_program, pre_block_idx)
             prefetch_block = self._create_prefetch_block(
-                pserver_index, pserver_program, optimize_block)
+                pserver_index, pserver_program, table_opt_block)
 
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
@@ -463,7 +469,7 @@ class DistributeTranspiler:
             inputs={'X': recv_inputs},
             outputs={},
             attrs={
-                "OptimizeBlock": optimize_block,
+                "OptimizeBlock": pserver_program.block(1),
                 "endpoint": endpoint,
                 "Fanin": self.trainer_num,
                 "PrefetchBlock": prefetch_block
@@ -656,7 +662,7 @@ class DistributeTranspiler:
         return prefetch_block
 
     def _create_table_optimize_block(self, pserver_index, pserver_program,
-                                     append_block):
+                                     pre_block_idx):
         def _clone_var(block, var, persistable=True):
             assert isinstance(var, Variable)
             return block.create_var(
@@ -693,7 +699,7 @@ class DistributeTranspiler:
             op for op in self.optimize_ops
             if op.input("Param")[0] == self.table_name
         ][0]
-        table_opt_block = pserver_program.create_block(append_block.idx)
+        table_opt_block = pserver_program.create_block(pre_block_idx)
         # only support sgd now
         assert table_opt_op.type == "sgd"
 
@@ -716,6 +722,8 @@ class DistributeTranspiler:
             inputs=inputs,
             outputs=outputs,
             attrs=table_opt_op.attrs)
+
+        return table_opt_block
 
     # ====================== private transpiler functions =====================
     def _create_vars_from_blocklist(self,
@@ -824,7 +832,7 @@ class DistributeTranspiler:
                 for v in splited_vars:
                     sections.append(v.shape[0])
                 program.global_block().append_op(
-                    type="split",
+                    type="split_byref",
                     inputs={"X": orig_var},
                     outputs={"Out": splited_vars},
                     attrs={"sections": sections}  # assume split evenly

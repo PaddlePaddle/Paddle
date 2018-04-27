@@ -49,9 +49,9 @@ In the new design, we propose to create a new operation for averaging parameter 
 - the optimizer
 - the window_size to keep the updates
 
-The ParameterAverageOptimizer op can be like any other operator with its own CPU/GPU implementation either using Eigen or separate CPU and GPU kernels. As the initial implementation, we can implement the kernel using Eigen following the abstraction pattern implemented for [Operators](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/rmsprop_op.h). We also want to support the case when the Trainer/Optimizer runs on the GPU while ParameterAverageOptimizer runs on a CPU.
+The ParameterAverageOptimizer op can be like any other operator with its own CPU/GPU implementation either using Eigen or separate CPU and GPU kernels. As the initial implementation, we can implement the kernel using Eigen following the abstraction pattern implemented for [Operators](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/rmsprop_op.h). We also want to support the case when the Trainer/Optimizer runs on the GPU while ParameterAverageOptimizer runs on a CPU.
 
-The idea of building an op for averaging is in sync with the refactored PaddlePaddle philosophy of using operators to represent any computation unit. The way the op will be added to the computation graph will be decided by the [layer functions](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md#layer-function) in Python API.
+The idea of building an op for averaging is in sync with the refactored PaddlePaddle philosophy of using operators to represent any computation unit. The way the op will be added to the computation graph will be decided by the [layer functions](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md#layer-function) in Python API.
 
 ### Python API implementation for ParameterAverageOptimizer
 
@@ -59,8 +59,8 @@ Based on Polyak and Juditsky (1992), we can generalize the averaging of updates 
 - Any optimizer (RMSProp , AdaGrad etc.)
 - A window size. The op keeps accumulating updated parameter values over a window of N batches and takes an average. Move the averaged value to a buffer when window is full to avoid loss of precision.
 
-Using the ParameterAverageOptimizer op, any user can add the operation to their computation graphs. However, this will require a lot of lines of code and we should design Python APIs that support averaging. As per the PaddlePaddle [Python API design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md), the layer functions are responsible for creating operators, operator parameters and variables. Since ParameterAverageOptimizer will be an operator, it makes sense to create it in the layer functions.
-We will have a wrapper written in Python that will support the functionality and implement the actual core computation in C++ core as we have done for other [Optimizers](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/rmsprop_op.cc)
+Using the ParameterAverageOptimizer op, any user can add the operation to their computation graphs. However, this will require a lot of lines of code and we should design Python APIs that support averaging. As per the PaddlePaddle [Python API design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md), the layer functions are responsible for creating operators, operator parameters and variables. Since ParameterAverageOptimizer will be an operator, it makes sense to create it in the layer functions.
+We will have a wrapper written in Python that will support the functionality and implement the actual core computation in C++ core as we have done for other [Optimizers](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/rmsprop_op.cc)
 
 #### Creation of the ParameterAverageOptimizer operator
 There are two ways for creating the ParameterAverageOptimizer op:
@@ -71,4 +71,4 @@ The proposal is to add the op immediately while building the computation graph.
 
 #### High-level API
 
-In PaddlePaddle Python API, users will primarily rely on [layer functions](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md#layer-function) to create neural network layers. Hence, we also need to provide parameter average functionality in layer functions.
+In PaddlePaddle Python API, users will primarily rely on [layer functions](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md#layer-function) to create neural network layers. Hence, we also need to provide parameter average functionality in layer functions.

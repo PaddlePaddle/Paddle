@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -23,7 +24,8 @@ namespace paddle {
 namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
-                const platform::DeviceContext& ctx, Tensor* dst);
+                const platform::DeviceContext& ctx, Tensor* dst,
+                bool sync = false);
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
 
