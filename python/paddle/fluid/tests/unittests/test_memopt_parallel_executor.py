@@ -13,34 +13,23 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-import graphviz
+import math
 import unittest
 import numpy
+from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
+from paddle.fluid.initializer import init_on_cpu
 
 
-def progdesc_to_diagraph(prog):
-    assert isinstance(prog, fluid.Program)
-    graph = graphviz.Digraph()
-
-    def append_block(g, block):
-        assert isinstance(g, graphviz.Digraph)
-        var_node_dict = dict()
-        for var_id, var_name in enumerate(block.vars):
-            name = 'var_{0}'.format(var_id)
-            g.node(name=name, label=var_name)
-            var_node_dict[var_name] = name
-
-        for op_id, op in enumerate(block.ops):
-            name = 'op_{0}'.format(op_id)
-            g.node(name=name, label=op.type, shape='box')
-            assert isinstance(op, fluid.Operator)
-            for out_name in op.output_arg_names:
-                g.edge(head_name=var_node_dict[out_name], tail_name=name)
-            for in_name in op.input_arg_names:
-                g.edge(head_name=name, tail_name=var_node_dict[in_name])
-
-    append_block(graph, prog.global_block())
-    return graph
+def cosine_decay(learning_rate, step_each_epoch, epochs=120):
+    """Applies cosine decay to the learning rate.
+    lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
+    """
+    global_step = _decay_step_counter()
+    with init_on_cpu():
+        epoch = fluid.layers.floor(global_step / step_each_epoch)
+        lr = learning_rate / 2.
+        decayed_lr = lr * (fluid.layers.cos(epoch * (math.pi / epochs)) + 1)
+    return decayed_lr
 
 
 def simple_fc():
@@ -55,7 +44,10 @@ def simple_fc():
         #     moving_variance_name='moving_var.{0}'.format(i))
     loss = hidden
     loss = fluid.layers.mean(loss)
-    adam = fluid.optimizer.Adam(regularization=fluid.regularizer.L2Decay(0.5))
+    adam = fluid.optimizer.Adam(
+        learning_rate=cosine_decay(
+            1e-2, step_each_epoch=100),
+        regularization=fluid.regularizer.L2Decay(0.5))
     adam.minimize(loss)
     return loss
 
@@ -83,8 +75,6 @@ def create_unittest(network_func, data_random):
 
             mem_opt_main = main.clone()
             fluid.memory_optimize(mem_opt_main)
-
-            graph = progdesc_to_diagraph(mem_opt_main)
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(startup)
