@@ -124,10 +124,8 @@ class ReshapeKernel : public framework::OpKernel<T> {
       auto *shape_data = shape_tensor->data<int>();
       framework::Tensor cpu_shape_tensor;
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        TensorCopy(*shape_tensor, platform::CPUPlace(), ctx.device_context(),
-                   &cpu_shape_tensor);
+        TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
         shape_data = cpu_shape_tensor.data<int>();
-        ctx.device_context().Wait();
       }
       auto shape =
           std::vector<int>(shape_data, shape_data + shape_tensor->numel());
@@ -146,9 +144,7 @@ class ReshapeKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     if (!inplace) {
       out->mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
-      ctx.device_context().Wait();
-      // TensorCopy will resize to in_dims.
+      framework::TensorCopySync(*in, ctx.GetPlace(), out);
       out->Resize(out_dims);
     } else {
       out->ShareDataWith(*in);
