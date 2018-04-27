@@ -78,7 +78,7 @@ class MKLDNNTensorData : public Tensor::ExtendedData {
   const mkldnn::engine engine_;
 };
 
-// Unmutable proxy for Tensor
+// Decorator class for unmutable Tensor
 class MKLDNNTensor {
  public:
   explicit MKLDNNTensor(const Tensor& tensor) : tensor_(tensor) {
@@ -123,7 +123,7 @@ class MKLDNNTensor {
   std::shared_ptr<const MKLDNNTensorData> data_;
 };
 
-// Proxy class for Tensor
+// Decorator class for Tensor
 class MKLDNNTensorMutable : public MKLDNNTensor {
  public:
   inline static MKLDNNTensorMutable Create(Tensor* tensor,

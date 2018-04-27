@@ -558,6 +558,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             VLOG(3) << "layout after transform: " << out->layout() << std::endl;
             CopyVariableWithTensor(*var, *(out.get()), trans_var);
 #ifdef PADDLE_WITH_MKLDNN
+            // Output tensor layout is set to input tensor layout in InferShape
+            // method. If input tensor layout is transformed from MKLDNN layout
+            // to a different one, then we need to update output tensor layout
+            // here.
             if ((kernel_type_for_var.data_layout_ == DataLayout::kMKLDNN &&
                  expected_kernel_key.library_type_ != LibraryType::kMKLDNN)) {
               for (auto& var_name_item : this->Outputs()) {

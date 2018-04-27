@@ -13,6 +13,8 @@
    limitations under the License. */
 
 #include "mkldnn.hpp"
+
+#include "paddle/fluid/framework/mkldnn_tensor.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/mkldnn_activation_op.h"
 
@@ -49,7 +51,7 @@ void eltwise_forward(const ExecContext &ctx, mkldnn::algorithm algorithm,
                      ? platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
                                                mkldnn::memory::format::nc)
                      : platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
-                                               mkldnn::memory::format::nchw);
+                                               GetMKLDNNFormat(*src));
 
   // create memory primitives
   auto src_memory =
@@ -101,7 +103,7 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
                      ? platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
                                                mkldnn::memory::format::nc)
                      : platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
-                                               mkldnn::memory::format::nchw);
+                                               GetMKLDNNFormat(*x));
 
   // create memory primitives
   auto src_memory = mkldnn::memory(

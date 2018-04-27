@@ -21,16 +21,6 @@
 namespace paddle {
 namespace framework {
 
-namespace {
-DataLayout GetDestinationLayout(DataLayout preffered, bool from_mkldnn_format) {
-  static const DataLayout defaultLayout = Tensor().layout();
-  if (from_mkldnn_format) {
-    return preffered == DataLayout::kAnyLayout ? defaultLayout : preffered;
-  }
-  return preffered;
-}
-}
-
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(from, to,
                     "layout transform should transform different layout");

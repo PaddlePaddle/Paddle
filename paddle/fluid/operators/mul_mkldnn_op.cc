@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "mkldnn.hpp"
+
+#include "paddle/fluid/framework/mkldnn_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -49,17 +51,16 @@ class MulMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> w_tz = paddle::framework::vectorize2int(weight->dims());
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
 
-    auto src_md =
-        src_tz.size() != 2
-            ? type(src_tz, mkldnn::memory::format::nchw)
-            : type({src_tz[0], src_tz[1]}, mkldnn::memory::format::nc);
+    auto src_md = src_tz.size() != 2 ? type(src_tz, GetMKLDNNFormat(*input))
+                                     : type({src_tz[0], src_tz[1]},
+                                            mkldnn::memory::format::nc);
 
     auto dst_md = type({src_tz[0], w_tz[1]}, mkldnn::memory::format::nc);
 
     auto weights_md =
         src_tz.size() != 2
             ? type({w_tz[1], src_tz[1], src_tz[2], src_tz[3]},
-                   mkldnn::memory::format::oihw)
+                   GetMKLDNNFormat(*weight))
             : type({w_tz[1], src_tz[1]}, mkldnn::memory::format::oi);
 
     auto output = ctx.Output<Tensor>("Out");
@@ -128,17 +129,19 @@ class MulMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> w_tz = paddle::framework::vectorize2int(w->dims());
 
-    auto src_md =
-        src_tz.size() != 2
-            ? type(src_tz, mkldnn::memory::format::nchw)
-            : type({src_tz[0], src_tz[1]}, mkldnn::memory::format::nc);
+    auto src_md = src_tz.size() != 2 ? type(src_tz, GetMKLDNNFormat(*input))
+                                     : type({src_tz[0], src_tz[1]},
+                                            mkldnn::memory::format::nc);
 
     auto dst_md = type({src_tz[0], w_tz[1]}, mkldnn::memory::format::nc);
 
+    mkldnn::memory::format weight_format = GetMKLDNNFormat(*w);
+    if (weight_format == mkldnn::memory::format::nchw) {
+      weight_format = mkldnn::memory::oihw;
+    }
     auto weights_md =
         src_tz.size() != 2
-            ? type({w_tz[1], src_tz[1], src_tz[2], src_tz[3]},
-                   mkldnn::memory::format::oihw)
+            ? type({w_tz[1], src_tz[1], src_tz[2], src_tz[3]}, weight_format)
             : type({w_tz[1], src_tz[1]}, mkldnn::memory::format::oi);
 
     auto src_memory = mkldnn::memory({src_md, mkldnn_engine},

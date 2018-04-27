@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/mkldnn_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/lrn_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+
+#include "mkldnn.hpp"
 
 namespace paddle {
 namespace operators {
@@ -78,10 +81,10 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dims = paddle::framework::vectorize2int(x->dims());
 
     auto src_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+        dims, mkldnn::memory::data_type::f32, GetMKLDNNFormat(*x));
 
     auto dst_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+        dims, mkldnn::memory::data_type::f32, GetMKLDNNFormat(*out));
 
     auto forward_desc = mkldnn::lrn_forward::desc{mkldnn::prop_kind::forward,
                                                   mkldnn::lrn_across_channels,
@@ -164,13 +167,13 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto dims = paddle::framework::vectorize2int(x->dims());
 
     auto src_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+        dims, mkldnn::memory::data_type::f32, GetMKLDNNFormat(*x));
 
     auto diff_src_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+        dims, mkldnn::memory::data_type::f32, GetMKLDNNFormat(*x_grad));
 
     auto diff_dst_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+        dims, mkldnn::memory::data_type::f32, GetMKLDNNFormat(*out_grad));
 
     auto diff_dst_memory =
         mkldnn::memory{{diff_dst_md, mkldnn_engine},
