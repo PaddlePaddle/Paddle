@@ -286,12 +286,13 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (filter_grad) {
-      PADDLE_ENFORCE(
-          platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
-              handle, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
-              cudnn_filter_desc,
-              CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &filter_algo));
+      //      PADDLE_ENFORCE(
+      //          platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+      //              handle, cudnn_input_desc, cudnn_output_grad_desc,
+      //              cudnn_conv_desc, cudnn_filter_desc,
+      //              CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+      //              workspace_size_limit, &filter_algo));
+      filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
 
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
