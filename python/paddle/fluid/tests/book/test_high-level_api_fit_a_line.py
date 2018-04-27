@@ -15,7 +15,6 @@
 import paddle.fluid as paddle
 import paddle.v2.dataset as dataset
 
-
 def conv_network():
     image = fluid.layers.data(name='image', shape=[1, 28, 28])
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
