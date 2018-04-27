@@ -21,8 +21,8 @@ namespace math {
 template <typename T>
 class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  framework::LoDTensor* seq, const T* scales) {
+  void operator()(const platform::CPUDeviceContext& context, const T* scales,
+                  framework::LoDTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;

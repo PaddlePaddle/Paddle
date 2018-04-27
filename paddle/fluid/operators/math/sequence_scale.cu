@@ -35,8 +35,8 @@ __global__ void SequenceScaleKernel(T* seq, size_t* lod, const T* scales,
 template <typename T>
 class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  framework::LoDTensor* seq, const T* scales) {
+  void operator()(const platform::CUDADeviceContext& context, const T* scales,
+                  framework::LoDTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
