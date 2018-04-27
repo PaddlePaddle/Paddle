@@ -71,21 +71,23 @@ TEST(math_function, notrans_mul_trans_fp16) {
     return;
   }
 
-  float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
+  paddle::platform::float16* input1_ptr =
+      input1.mutable_data<paddle::platform::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
 
-  out_gpu.mutable_data<float16>({2, 2}, gpu_place);
+  out_gpu.mutable_data<paddle::platform::float16>({2, 2}, gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float16>(
-      context, input1_gpu, false, input2_gpu, true, float16(1), &out_gpu,
-      float16(0));
+  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>(
+      context, input1_gpu, false, input2_gpu, true,
+      paddle::platform::float16(1), &out_gpu, paddle::platform::float16(0));
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
-  float16* out_ptr = out.data<float16>();
+  paddle::platform::float16* out_ptr = out.data<paddle::platform::float16>();
   context.Wait();
   EXPECT_EQ(static_cast<float>(out_ptr[0]), 5);
   EXPECT_EQ(static_cast<float>(out_ptr[1]), 14);
@@ -147,21 +149,23 @@ TEST(math_function, trans_mul_notrans_fp16) {
     return;
   }
 
-  float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
+  paddle::platform::float16* input1_ptr =
+      input1.mutable_data<paddle::platform::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
 
-  out_gpu.mutable_data<float16>({3, 3}, gpu_place);
+  out_gpu.mutable_data<paddle::platform::float16>({3, 3}, gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float16>(
-      context, input1_gpu, true, input2_gpu, false, float16(1), &out_gpu,
-      float16(0));
+  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>(
+      context, input1_gpu, true, input2_gpu, false,
+      paddle::platform::float16(1), &out_gpu, paddle::platform::float16(0));
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
-  float16* out_ptr = out.data<float16>();
+  paddle::platform::float16* out_ptr = out.data<paddle::platform::float16>();
   context.Wait();
   EXPECT_EQ(static_cast<float>(out_ptr[0]), 9);
   EXPECT_EQ(static_cast<float>(out_ptr[1]), 12);
@@ -248,24 +252,29 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   int m = 2;
   int n = 3;
   int k = 3;
-  float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
+  paddle::platform::float16* input1_ptr =
+      input1.mutable_data<paddle::platform::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
-  float16* input2_ptr = input2.mutable_data<float16>({3, 4}, cpu_place);
+  paddle::platform::float16* input2_ptr =
+      input2.mutable_data<paddle::platform::float16>({3, 4}, cpu_place);
   fill_fp16_data(input2_ptr, input2.numel(),
                  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
-  float16* input3_ptr = input3.mutable_data<float16>({2, 4}, cpu_place);
+  paddle::platform::float16* input3_ptr =
+      input3.mutable_data<paddle::platform::float16>({2, 4}, cpu_place);
   fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
   paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
-  float16* a = input1_gpu.data<float16>();
-  float16* b = input2_gpu.data<float16>();
-  float16* c = input3_gpu.mutable_data<float16>(gpu_place);
+  paddle::platform::float16* a = input1_gpu.data<paddle::platform::float16>();
+  paddle::platform::float16* b = input2_gpu.data<paddle::platform::float16>();
+  paddle::platform::float16* c =
+      input3_gpu.mutable_data<paddle::platform::float16>(gpu_place);
 
-  paddle::operators::math::gemm<paddle::platform::CUDADeviceContext, float16>(
-      context, false, false, m, n, k, float16(1), a, 3, b + 1, 4, float16(1),
-      c + 1, 4);
+  paddle::operators::math::gemm<paddle::platform::CUDADeviceContext,
+                                paddle::platform::float16>(
+      context, false, false, m, n, k, paddle::platform::float16(1), a, 3, b + 1,
+      4, paddle::platform::float16(1), c + 1, 4);
 
   paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
 
@@ -354,24 +363,29 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   int m = 2;
   int n = 3;
   int k = 3;
-  float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
+  paddle::platform::float16* input1_ptr =
+      input1.mutable_data<paddle::platform::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
-  float16* input2_ptr = input2.mutable_data<float16>({4, 3}, cpu_place);
+  paddle::platform::float16* input2_ptr =
+      input2.mutable_data<paddle::platform::float16>({4, 3}, cpu_place);
   fill_fp16_data(input2_ptr, input2.numel(),
                  {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11});
-  float16* input3_ptr = input3.mutable_data<float16>({2, 4}, cpu_place);
+  paddle::platform::float16* input3_ptr =
+      input3.mutable_data<paddle::platform::float16>({2, 4}, cpu_place);
   fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
   paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
-  float16* a = input1_gpu.data<float16>();
-  float16* b = input2_gpu.data<float16>();
-  float16* c = input3_gpu.mutable_data<float16>(gpu_place);
+  paddle::platform::float16* a = input1_gpu.data<paddle::platform::float16>();
+  paddle::platform::float16* b = input2_gpu.data<paddle::platform::float16>();
+  paddle::platform::float16* c =
+      input3_gpu.mutable_data<paddle::platform::float16>(gpu_place);
 
-  paddle::operators::math::gemm<paddle::platform::CUDADeviceContext, float16>(
-      context, false, true, m, n, k, float16(1), a, 3, b + 3, 3, float16(1),
-      c + 1, 4);
+  paddle::operators::math::gemm<paddle::platform::CUDADeviceContext,
+                                paddle::platform::float16>(
+      context, false, true, m, n, k, paddle::platform::float16(1), a, 3, b + 3,
+      3, paddle::platform::float16(1), c + 1, 4);
 
   paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
 
