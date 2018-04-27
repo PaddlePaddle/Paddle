@@ -32,7 +32,7 @@ TEST(inference, image_classification) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  const bool is_combined = false;
+  const bool is_combined = true;
   std::vector<std::vector<int64_t>> feed_target_shapes =
       GetFeedTargetShapes(dirname, is_combined);
 
@@ -40,33 +40,36 @@ TEST(inference, image_classification) {
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = FLAGS_batch_size;
-  SetupTensor<float>(&input,
-                     paddle::framework::make_ddim(feed_target_shapes[0]),
-                     static_cast<float>(0), static_cast<float>(1));
+  paddle::framework::DDim input_dims =
+      paddle::framework::make_ddim(feed_target_shapes[0]);
+  LOG(INFO) << input_dims;
+  SetupTensor<float>(&input, input_dims, static_cast<float>(0),
+                     static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
-  paddle::framework::LoDTensor output1;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
-  cpu_fetchs1.push_back(&output1);
+// paddle::framework::LoDTensor output1;
+// std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+// cpu_fetchs1.push_back(&output1);
 
-  // Run inference on CPU
-  LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace, false, true>(
-      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
-  LOG(INFO) << output1.dims();
+// // Run inference on CPU
+// LOG(INFO) << "--- CPU Runs: ---";
+// TestInference<paddle::platform::CPUPlace, false, true>(
+//     dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
+// LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
-  paddle::framework::LoDTensor output2;
+  paddle::framework::LoDTensor output2, output3;
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
   cpu_fetchs2.push_back(&output2);
+  cpu_fetchs2.push_back(&output3);
 
   // Run inference on CUDA GPU
   LOG(INFO) << "--- GPU Runs: ---";
-  TestInference<paddle::platform::CUDAPlace, false, true>(
+  TestInference<paddle::platform::CUDAPlace, true, false>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat, is_combined);
   LOG(INFO) << output2.dims();
 
-  CheckError<float>(output1, output2);
+// CheckError<float>(output1, output2);
 #endif
 }
