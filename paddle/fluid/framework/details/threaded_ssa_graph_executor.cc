@@ -140,7 +140,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     if (timeout) {
       if (exception_) {
-        throw * exception_;
+        auto exp = *exception_;
+        exception_.reset();
+        throw exp;
       } else {
         continue;
       }
