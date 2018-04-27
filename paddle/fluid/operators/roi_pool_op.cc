@@ -18,8 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-static constexpr int kROISize = 5;
+using LoDTensor = framework::LoDTensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
@@ -40,11 +39,11 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D tensor of shape (num_rois, 5)"
-                   "given as [[batch_id, x1, y1, x2, y2], …].");
+                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "given as [[x1, y1, x2, y2], …].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
-                   "ROIs should be a 2-D tensor of shape (num_rois, 5)"
-                   "given as [[batch_id, x1, y1, x2, y2], …].");
+                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "given as [[x1, y1, x2, y2], …].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -109,10 +108,10 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(Tensor), "
+             "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D tensor of shape (num_rois, 5)"
-             "given as [[batch_id, x1, y1, x2, y2], …]. "
+             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "given as [[x1, y1, x2, y2], …]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
