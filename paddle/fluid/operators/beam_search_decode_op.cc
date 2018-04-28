@@ -28,12 +28,13 @@ struct BeamSearchDecodeFunctor {
         id_tensor_(id_tensor),
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
-    // First transform data to CPU
+    // First make a copy of GPU data on CPU
     if (platform::is_gpu_place(step_ids_origin_[0].place())) {
       tensor_on_gpu_ = true;
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
+      // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
         framework::LoDTensor out;
         dev_ctx->Wait();
@@ -49,6 +50,7 @@ struct BeamSearchDecodeFunctor {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
+      // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
         framework::LoDTensor out;
         dev_ctx->Wait();
@@ -76,6 +78,7 @@ struct BeamSearchDecodeFunctor {
 template <typename T>
 void BeamSearchDecodeFunctor::operator()() const {
   BeamSearchDecoder<T> beam_search_decoder;
+  // Check if the tensor is on GPU. If so, use the CPU copy instead
   if (tensor_on_gpu_) {
     beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
                                      score_tensor_);
