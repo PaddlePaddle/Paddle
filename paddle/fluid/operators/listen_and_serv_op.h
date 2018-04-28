@@ -51,6 +51,10 @@ class ListenAndServOp : public framework::OperatorBase {
                     framework::Scope* recv_scope,
                     framework::BlockDesc* prefetch_block) const;
 
+  void StartServerThread();
+
+  void ServerThreadEntry();
+
   void Stop() override;
 
   void RunImpl(const framework::Scope& scope,
@@ -59,6 +63,8 @@ class ListenAndServOp : public framework::OperatorBase {
  protected:
   mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
+  std::mutext server_ready_mutex_;
+  std::condition_variable server_ready_;
 };
 
 }  // namespace operators

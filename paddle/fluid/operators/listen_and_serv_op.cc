@@ -265,6 +265,23 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   }  // while(true)
 }
 
+void ListenAndServOp::StartServerThread() {
+  server_thread_.reset(new std::thread(
+      std::bind(&ListenAndServOp::ServerThreadEntry, this, rpc_service_)));
+}
+
+void ListenAndServOp::ServerThreadEntry(
+    std::shared_ptr<detail::AsyncGRPCServer> service) {
+  service->RunSyncUpdate();
+  VLOG(4) << "RunServer thread end";
+
+  {
+    std::lock_guard<std::mutex> lock(this->barrier_mutex_);
+    barrier_cond_step_ = cond;
+  }
+  barrier_condition_.notify_all();
+}
+
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -298,7 +315,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
-  sleep(5);
+
   // Write to a file of server selected port for python use.
   SavePort(rpc_service_);
   if (sync_mode) {
