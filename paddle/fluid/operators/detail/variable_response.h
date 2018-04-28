@@ -46,7 +46,9 @@ class VariableResponse {
   }
 
   virtual ~VariableResponse() {
-    if (create_scope_) scope_->DeleteScope(local_scope_);
+    if (create_scope_) {
+      scope_->DeleteScope(local_scope_);
+    }
   }
 
   // return:
@@ -62,6 +64,8 @@ class VariableResponse {
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
 
   const framework::Scope& GetLocalScope() const { return *local_scope_; }
+
+  framework::Scope* GetMutableLocalScope() const { return local_scope_; }
 
   inline std::string Varname() { return meta_.varname(); }
   inline std::string OutVarname() { return meta_.out_varname(); }
