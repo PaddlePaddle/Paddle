@@ -183,38 +183,20 @@ def infer(place, save_dirname):
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
-        print('Load inference model from {0}'.format(save_dirname))
+        print("Load inference model from {0}".format(save_dirname))
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+        print("The test set accuracy of inference in float mode is:")
         test_accuracy(exe, inference_program, feed_target_names, fetch_targets)
 
-        with open("float32_program.txt", "w") as f:
-            f.write(str(inference_program))
-        """
-        fused_bn_program = inference_program.clone()
-        t = fluid.InferenceTranspiler()
-        t.transpile(fused_bn_program, place)
-        test_accuracy(exe, fused_bn_program, feed_target_names, fetch_targets)
-
-        with open("fused_bn_program.txt", "w") as f:
-            f.write(str(fused_bn_program))
-
-        float16_inference_program = fused_bn_program.clone()
-        """
-
         float16_inference_program = inference_program.clone()
-        print("before fp16 transpile")
         t = fluid.InferenceTranspiler()
         t.float16_transpile(float16_inference_program, place)
-        print("after fp16 transpile")
 
-        print("before test fp16 accuracy")
+        print("The test set accuracy of inference in float16 mode is:")
         test_accuracy(exe, float16_inference_program, feed_target_names,
                       fetch_targets)
-        print("after test fp16 accuracy")
-
-        with open("float16_program.txt", "w") as f:
-            f.write(str(float16_inference_program))
 
 
 if __name__ == "__main__":
