@@ -13,40 +13,49 @@ We want to make the building procedures:
 1. Build docker images with PaddlePaddle pre-installed, so that we can run
 PaddlePaddle applications directly in docker or on Kubernetes clusters.
 
-To achieve this, we created a repo: https://github.com/PaddlePaddle/buildtools
-which gives several docker images that are `manylinux1` sufficient. Then we
-can build PaddlePaddle using these images to generate corresponding `whl`
-binaries.
+To achieve this, we maintain a dockerhub repo:https://hub.docker.com/r/paddlepaddle/paddle
+which provides pre-built environment images to build PaddlePaddle and generate corresponding `whl`
+binaries.(**We strongly recommend building paddlepaddle in our pre-specified Docker environment.**) 
 
-## Run The Build
+## Development Workflow
+
+Here we describe how the workflow goes on.  We start from considering our daily development environment.
+
+Developers work on a computer, which is usually a laptop or desktop:
+
+<img src="doc/paddle-development-environment.png" width=500 />
+
+or, they might rely on a more sophisticated box (like with GPUs):
+
+<img src="doc/paddle-development-environment-gpu.png" width=500 />
+
+A principle here is that source code lies on the development computer (host) so that editors like Eclipse can parse the source code to support auto-completion.
+
+## Build With Docker
 
 ### Build Environments
 
-The pre-built build environment images are:
+The lastest pre-built build environment images are:
 
 | Image | Tag |
 | ----- | --- |
-| paddlepaddle/paddle_manylinux_devel | cuda7.5_cudnn5 |
-| paddlepaddle/paddle_manylinux_devel | cuda8.0_cudnn5 |
-| paddlepaddle/paddle_manylinux_devel | cuda7.5_cudnn7 |
-| paddlepaddle/paddle_manylinux_devel | cuda9.0_cudnn7 |
+| paddlepaddle/paddle | latest-dev |
+| paddlepaddle/paddle | latest-dev-android |
 
 ### Start Build
-
-Choose one docker image that suit your environment and run the following
-command to start a build:
 
 ```bash
 git clone https://github.com/PaddlePaddle/Paddle.git
 cd Paddle
-docker run --rm -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=OFF" -e "RUN_TEST=OFF" -e "PYTHON_ABI=cp27-cp27mu" paddlepaddle/paddle_manylinux_devel /paddle/paddle/scripts/docker/build.sh
+./paddle/scripts/paddle_docker_build.sh build
 ```
 
 After the build finishes, you can get output `whl` package under
 `build/python/dist`.
 
-This command mounts the source directory on the host into `/paddle` in the container, then run the build script `/paddle/paddle/scripts/docker/build.sh`
-in the container. When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
+This command will download the most recent dev image from docker hub, start a container in the backend and then run the build script `/paddle/paddle/scripts/paddle_build.sh build` in the container. 
+The container mounts the source directory on the host into `/paddle`. 
+When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
 
 ### Build Options
 
@@ -67,7 +76,6 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | `RUN_TEST` | OFF | Run unit test immediently after the build. |
 | `WITH_DOC` | OFF | Build docs after build binaries. |
 | `WOBOQ` | OFF | Generate WOBOQ code viewer under `build/woboq_out` |
-
 
 ## Docker Images
 
@@ -144,59 +152,37 @@ docker push
 kubectl ...
 ```
 
-## Docker Images for Developers
-
-We have a special docker image for developers:
-`paddlepaddle/paddle:<version>-dev`. This image is also generated from
-https://github.com/PaddlePaddle/buildtools
-
-This a development image contains only the
-development tools and standardizes the building procedure.  Users include:
-
-- developers -- no longer need to install development tools on the host, and can build their current work on the host (development computer).
-- release engineers -- use this to build the official release from certain branch/tag on Github.com.
-- document writers / Website developers -- Our documents are in the source repo in the form of .md/.rst files and comments in source code.  We need tools to extract the information, typeset, and generate Web pages.
-
-Of course, developers can install building tools on their development computers.  But different versions of PaddlePaddle might require different set or version of building tools.  Also, it makes collaborative debugging easier if all developers use a unified development environment.
-
-The development image contains the following tools:
-
-   - gcc/clang
-   - nvcc
-   - Python
-   - sphinx
-   - woboq
-   - sshd
-
-Many developers work on a remote computer with GPU; they could ssh into the computer and  `docker exec` into the development container. However, running `sshd` in the container allows developers to ssh into the container directly.
-
-
-### Development Workflow
-
-Here we describe how the workflow goes on.  We start from considering our daily development environment.
-
-Developers work on a computer, which is usually a laptop or desktop:
-
-<img src="doc/paddle-development-environment.png" width=500 />
-
-or, they might rely on a more sophisticated box (like with GPUs):
-
-<img src="doc/paddle-development-environment-gpu.png" width=500 />
-
-A principle here is that source code lies on the development computer (host) so that editors like Eclipse can parse the source code to support auto-completion.
-
 ### Reading source code with woboq codebrowser
 
-For developers who are interested in the C++ source code, please use -e "WOBOQ=ON" to enable the building of C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
+For developers who are interested in the C++ source code, you can build C++ source code into HTML pages using [Woboq codebrowser](https://github.com/woboq/woboq_codebrowser).
 
 - The following command builds PaddlePaddle, generates HTML pages from C++ source code, and writes HTML pages into `$HOME/woboq_out` on the host:
 
 ```bash
-docker run -v $PWD:/paddle -v $HOME/woboq_out:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=ON" -e "WOBOQ=ON" paddlepaddle/paddle:latest-dev
+./paddle/scripts/paddle_docker_build.sh html
 ```
 
 - You can open the generated HTML files in your Web browser. Or, if you want to run a Nginx container to serve them for a wider audience, you can run:
 
 ```
 docker run -v $HOME/woboq_out:/usr/share/nginx/html -d -p 8080:80 nginx
+```
+
+## More Options
+
+### Build Without Docker
+
+Follow the *Dockerfile* in the paddlepaddle repo to set up your local dev environment and run:
+
+```bash
+./paddle/scripts/paddle_build.sh build
+```
+
+### Additional Tasks
+
+You can get the help menu for the build scripts by running with no options:
+
+```bash
+./paddle/scripts/paddle_build.sh
+or ./paddle/scripts/paddle_docker_build.sh
 ```

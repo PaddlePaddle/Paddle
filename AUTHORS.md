@@ -30,6 +30,7 @@
 | NHZlX | Zhao-Long Xing |
 | Noplz | Yuan Gao |
 | pakchoi | Chuan-Jiang Song |
+| panyx0718 | Xin Pan |
 | pengli09 | Peng Li |
 | pkuyym | Ya-Ming Yang |
 | QiJune | Jun Qi |

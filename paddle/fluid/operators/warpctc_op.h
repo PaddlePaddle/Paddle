@@ -222,8 +222,8 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
     const T* loss_grad_data = loss_grad->data<T>();
     math::ScaleLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *logits_grad,
-        loss_grad_data);
+        ctx.template device_context<DeviceContext>(), loss_grad_data,
+        logits_grad);
   }
 };
 
