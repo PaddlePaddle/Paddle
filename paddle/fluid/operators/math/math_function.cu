@@ -26,157 +26,6 @@ namespace math {
 using float16 = paddle::platform::float16;
 
 template <>
-void gemm<platform::CUDADeviceContext, float16>(
-    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float16 alpha, const float16* A, const float16* B, const float16 beta,
-    float16* C) {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-
-  // TODO(kexinzhao): add processing code for compute capability < 53 case
-  PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
-                    "cublas fp16 gemm requires GPU compute capability >= 53");
-
-#if CUDA_VERSION >= 8000
-  float h_alpha = static_cast<float>(alpha);
-  float h_beta = static_cast<float>(beta);
-
-  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-#if CUDA_VERSION >= 9000
-  if (context.GetComputeCapability() >= 70) {
-    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(context.cublas_handle(),
-                                                        CUBLAS_TENSOR_OP_MATH));
-    algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
-  } else {
-    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(context.cublas_handle(),
-                                                        CUBLAS_DEFAULT_MATH));
-  }
-#endif  // CUDA_VERSION >= 9000
-
-  // cublasHgemm does true FP16 computation which is slow for non-Volta
-  // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
-  // input/output in fp16, computation in fp32, which can also be accelerated
-  // using tensor cores in volta GPUs.
-  PADDLE_ENFORCE(platform::dynload::cublasGemmEx(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, B,
-      CUDA_R_16F, ldb, A, CUDA_R_16F, lda, &h_beta, C, CUDA_R_16F, N,
-      CUDA_R_32F, algo));
-#else
-  // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
-  const half h_alpha = static_cast<const half>(alpha);
-  const half h_beta = static_cast<const half>(beta);
-  const half* h_A = reinterpret_cast<const half*>(A);
-  const half* h_B = reinterpret_cast<const half*>(B);
-  half* h_C = reinterpret_cast<half*>(C);
-
-  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
-      h_A, lda, &h_beta, h_C, N));
-#endif  // CUDA_VERSION >= 8000
-}
-
-template <>
-void gemm<platform::CUDADeviceContext, float>(
-    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float alpha, const float* A, const float* B, const float beta,
-    float* C) {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-
-  PADDLE_ENFORCE(platform::dynload::cublasSgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, N));
-}
-
-template <>
-void gemm<platform::CUDADeviceContext, double>(
-    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const double alpha, const double* A, const double* B, const double beta,
-    double* C) {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  PADDLE_ENFORCE(platform::dynload::cublasDgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, N));
-}
-
-template <>
-void gemm<platform::CUDADeviceContext, float16>(
-    const platform::CUDADeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K,
-    const float16 alpha, const float16* A, const int lda, const float16* B,
-    const int ldb, const float16 beta, float16* C, const int ldc) {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-
-  const half h_alpha = static_cast<const half>(alpha);
-  const half h_beta = static_cast<const half>(beta);
-  const half* h_A = reinterpret_cast<const half*>(A);
-  const half* h_B = reinterpret_cast<const half*>(B);
-  half* h_C = reinterpret_cast<half*>(C);
-
-  // TODO(kexinzhao): add processing code for compute capability < 53 case
-  PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
-                    "cublas Hgemm requires GPU compute capability >= 53");
-  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
-      h_A, lda, &h_beta, h_C, ldc));
-}
-
-template <>
-void gemm<platform::CUDADeviceContext, float>(
-    const platform::CUDADeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K, const float alpha,
-    const float* A, const int lda, const float* B, const int ldb,
-    const float beta, float* C, const int ldc) {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  PADDLE_ENFORCE(platform::dynload::cublasSgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, ldc));
-}
-
-template <>
-void gemm<platform::CUDADeviceContext, double>(
-    const platform::CUDADeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K,
-    const double alpha, const double* A, const int lda, const double* B,
-    const int ldb, const double beta, double* C, const int ldc) {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  PADDLE_ENFORCE(platform::dynload::cublasDgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, ldc));
-}
-
-template <>
 void matmul<platform::CUDADeviceContext, float16>(
     const platform::CUDADeviceContext& context,
     const framework::Tensor& matrix_a, bool trans_a,
@@ -200,8 +49,8 @@ void matmul<platform::CUDADeviceContext, float16>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CUDADeviceContext, float16>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<float16>(),
+  Blas<platform::CUDADeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<float16>(),
       matrix_b.data<float16>(), beta, matrix_out->data<float16>());
 }
 
@@ -229,8 +78,8 @@ void matmul<platform::CUDADeviceContext, float>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CUDADeviceContext, float>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<float>(),
+  Blas<platform::CUDADeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<float>(),
       matrix_b.data<float>(), beta, matrix_out->data<float>());
 }
 
@@ -258,8 +107,8 @@ void matmul<platform::CUDADeviceContext, double>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CUDADeviceContext, double>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
+  Blas<platform::CUDADeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
