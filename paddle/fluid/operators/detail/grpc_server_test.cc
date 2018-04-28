@@ -89,7 +89,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
 }
 
 void StartServer(const std::string& endpoint) {
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, true));
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;

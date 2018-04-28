@@ -108,7 +108,9 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
 
     if (softLabel) {
       const T* label_data = labels->data<T>();
-      int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
+      int block = class_num > 512
+                      ? 512
+                      : pow(2, static_cast<int>(std::log2(class_num)));
 
       SoftCrossEntropyKernel<T><<<
           batch_size, block, block * sizeof(T),

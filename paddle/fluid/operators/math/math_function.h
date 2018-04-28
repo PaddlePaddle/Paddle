@@ -26,7 +26,7 @@ limitations under the License. */
 
 #ifndef LAPACK_FOUND
 extern "C" {
-#include <cblas.h>
+#include <cblas.h>  // NOLINT
 int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
                    int* ipiv);
 int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
@@ -39,6 +39,7 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 #endif
 
 #include <cmath>
+#include <vector>
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -78,8 +79,8 @@ template <typename DeviceContext, typename T>
 void batched_gemm(const DeviceContext& context, const CBLAS_TRANSPOSE transA,
                   const CBLAS_TRANSPOSE transB, const int M, const int N,
                   const int K, const T alpha, const T* A, const T* B,
-                  const T beta, T* C, const int batchCount, const int strideA,
-                  const int strideB);
+                  const T beta, T* C, const int batchCount,
+                  const int64_t strideA, const int64_t strideB);
 
 template <typename DeviceContext, typename T>
 void gemv(const DeviceContext& context, const bool trans_a, const int M,
