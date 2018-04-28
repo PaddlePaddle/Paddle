@@ -26,6 +26,7 @@
 | lzhao4ever | Liang Zhao |
 | NHZlX | Zhao-Long Xing |
 | pakchoi | Chuan-Jiang Song |
+| panyx0718 | Xin Pan |
 | pengli09 | Peng Li |
 | pkuyym | Ya-Ming Yang |
 | QiJune | Jun Qi |
@@ -39,7 +40,6 @@
 | wangzhen-nlp | Zhen Wang |
 | wen-bo-yang | Wen-Bo Yang |
 | wwhu | Wei-Wei Hu |
-| panyx0718 | Xin Pan |
 | xinghai-sun | Xing-Hai Sun |
 | Xreki | Yi-Qun Liu |
 | xujun05 | Jun Xu |
