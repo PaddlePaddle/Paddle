@@ -25,7 +25,7 @@ def max_pool3D_forward_naive(x,
                              paddings,
                              global_pool=0,
                              ceil_mode=False,
-                             exclude_mode=None):
+                             exclude_pad=None):
     N, C, D, H, W = x.shape
     if global_pool == 1:
         ksize = [D, H, W]
@@ -60,7 +60,7 @@ def avg_pool3D_forward_naive(x,
                              paddings,
                              global_pool=0,
                              ceil_mode=False,
-                             exclude_mode=True):
+                             exclude_pad=True):
     N, C, D, H, W = x.shape
     if global_pool == 1:
         ksize = [D, H, W]
@@ -85,13 +85,13 @@ def avg_pool3D_forward_naive(x,
                 w_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
                 x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
 
-                if exclude_mode:
-                    filed_size = (d_end - d_start) * (r_end - r_start) * (
-                        c_end - c_start)
+                if exclude_pad:
+                    filed_size = (d_end - d_start) * (h_end - h_start) * (
+                        w_end - w_start)
                 else:
                     filed_size = ksize[0] * ksize[1] * ksize[2]
-                out[:, :, k, i, j] = np.sum(x_masked, axis=(2, 3, 4)) / (
-                    (d_end - d_start) * (h_end - h_start) * (w_end - w_start))
+                out[:, :, k, i, j] = np.sum(x_masked, axis=(2, 3,
+                                                            4)) / filed_size
     return out
 
 
@@ -103,14 +103,14 @@ class TestPool3d_Op(OpTest):
         self.init_op_type()
         self.init_pool_type()
         self.init_ceil_mode()
-        self.init_exclude_mode()
+        self.init_exclude_pad()
 
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype("float32")
         output = self.pool3D_forward_naive(input, self.ksize, self.strides,
                                            self.paddings, self.global_pool,
-                                           self.ceil_mode, self.exclude_mode)
+                                           self.ceil_mode, self.exclude_pad)
         output = output.astype("float32")
         self.inputs = {'X': input}
 
@@ -124,7 +124,7 @@ class TestPool3d_Op(OpTest):
             'ceil_mode': self.ceil_mode,
             'data_format':
             'AnyLayout',  # TODO(dzhwinter) : should be fix latter
-            'exclude_mode': self.exclude_mode,
+            'exclude_pad': self.exclude_pad,
         }
 
         self.outputs = {'Out': output.astype('float32')}
@@ -165,6 +165,9 @@ class TestPool3d_Op(OpTest):
 
     def init_ceil_mode(self):
         self.ceil_mode = False
+
+    def init_exclude_pad(self):
+        self.exclude_pad = True
 
 
 class TestCase1(TestPool3d_Op):
@@ -289,13 +292,13 @@ class TestCeilModeCase4(TestCase2):
 
 
 class TestAvgInclude(TestCase2):  # with padding
-    def init_exclude_mode(self):
-        self.exclude_mode = False
+    def init_exclude_pad(self):
+        self.exclude_pad = False
 
 
 class TestCUDNNAvgInclude(TestCUDNNCase3):  # with padding
-    def init_exclude_mode(self):
-        self.exclude_mode = False
+    def init_exclude_pad(self):
+        self.exclude_pad = False
 
 
 if __name__ == '__main__':
