@@ -241,6 +241,12 @@ void AsyncGRPCServer::RunSyncUpdate() {
   t_prefetch_.reset(new std::thread(
       std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
                 "cq_prefetch", prefetch_register)));
+
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_ready_);
+    ready_ = 1;
+  }
+  condition_ready_.notify_all();
   // wait server
   server_->Wait();
   t_send_->join();
