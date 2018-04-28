@@ -56,11 +56,11 @@ DataFeeder
 Reader
 ======
 
-..  automodule:: paddle.v2.reader
+..  automodule:: paddle.reader
     :members:
     :noindex:
 
-..  automodule:: paddle.v2.reader.creator
+..  automodule:: paddle.reader.creator
     :members:
     :noindex:
 
