@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest, randomize_probability
+import paddle.fluid as fluid
 
 
 class TestCrossEntropyOp1(OpTest):
@@ -103,6 +104,61 @@ class TestCrossEntropyOp3(OpTest):
     def test_check_grad(self):
         self.check_grad(
             ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001)
+
+
+class TestCrossEntropyStable(unittest.TestCase):
+    def main(self, place):
+        if isinstance(
+                place,
+                fluid.CUDAPlace) and not fluid.core.is_compiled_with_cuda():
+            return
+
+        class DataRandom(object):
+            def __init__(self):
+                self.random = np.random.RandomState(seed=1)
+
+            def next(self):
+                return {
+                    'input': self.random.uniform(
+                        low=-1, high=1, size=(64, 200)).astype('float32'),
+                    'label': self.random.uniform(
+                        low=0, high=10000, size=(64, 1)).astype('int64'),
+                }
+
+        losses = []
+        for _ in xrange(2):
+            startup = fluid.Program()
+            startup.random_seed = 1
+            main = fluid.Program()
+            scope = fluid.core.Scope()
+            with fluid.scope_guard(scope):
+                with fluid.program_guard(main, startup):
+                    img = fluid.layers.data('input', shape=[200])
+                    label = fluid.layers.data('label', shape=[1], dtype='int64')
+                    prediction = fluid.layers.fc(input=img,
+                                                 size=10000,
+                                                 act='softmax')
+                    xe = fluid.layers.cross_entropy(
+                        input=prediction, label=label)
+                    loss = fluid.layers.mean(xe)
+                    adam = fluid.optimizer.Adam()
+                    adam.minimize(loss)
+
+                    exe = fluid.Executor(place)
+                    exe.run(startup)
+                    data = DataRandom()
+                    for i in xrange(1000):
+                        exe.run(feed=next(data))
+                    losses.append(
+                        exe.run(feed=next(data), fetch_list=[loss])[0])
+        print losses
+        self.assertAlmostEqual(losses[0][0], losses[1][0])
+
+    def test_cpu(self):
+        self.main(fluid.CPUPlace())
+
+    def test_cuda(self):
+        self.main(fluid.CUDAPlace(0))
 
 
 if __name__ == "__main__":
