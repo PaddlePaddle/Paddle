@@ -39,6 +39,7 @@
 | wangzhen-nlp | Zhen Wang |
 | wen-bo-yang | Wen-Bo Yang |
 | wwhu | Wei-Wei Hu |
+| panyx0718 | Xin Pan |
 | xinghai-sun | Xing-Hai Sun |
 | Xreki | Yi-Qun Liu |
 | xujun05 | Jun Xu |
