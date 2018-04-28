@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 from op_test import OpTest, randomize_probability
-import paddle.fluid as fluid
 
 
 class TestCrossEntropyOp1(OpTest):
