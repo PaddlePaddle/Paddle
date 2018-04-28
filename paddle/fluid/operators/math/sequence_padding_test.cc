@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include <gtest/gtest.h>
+#include <vector>
 
 template <typename DeviceContext, typename Place, typename T>
 void TestSequencePadding(const paddle::framework::LoD& lod,
@@ -75,7 +76,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
 
   delete place;
   delete context;
-};
+}
 
 TEST(Seq2BatchPadding, CPU) {
   paddle::framework::LoD lod1;

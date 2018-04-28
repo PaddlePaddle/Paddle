@@ -640,6 +640,7 @@ def start_server(args):
             elif request_path == "/cleanup":
                 self._set_headers()
                 logging.info("Received request to cleanup cluster")
+                args.no_clean_up = False
                 cleanup(args.task_name)
                 self.wfile.write("cleanup in progress")
 

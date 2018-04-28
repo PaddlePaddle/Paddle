@@ -111,7 +111,9 @@ def __bootstrap__():
         'eager_delete_scope'
     ]
     if core.is_compiled_with_cuda():
-        read_env_flags += ['fraction_of_gpu_memory_to_use']
+        read_env_flags += [
+            'fraction_of_gpu_memory_to_use', 'cudnn_algo_use_autotune'
+        ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

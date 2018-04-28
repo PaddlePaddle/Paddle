@@ -17,6 +17,7 @@ limitations under the License. */
 #include <NvInfer.h>
 #include <cuda.h>
 #include <glog/logging.h>
+#include <string>
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
