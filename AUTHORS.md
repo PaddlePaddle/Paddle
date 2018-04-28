@@ -2,12 +2,14 @@
 |---|---|
 | abhinavarora | Abhinav Arora |
 | backyes | Yan-Fei Wang |
+| baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
-| JiayiFeng | Jia-Yi Feng |
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | dzhwinter | Zhi-Hong Dong |
+| dragonwarrior | Long Wang |
+| dyning | Yuning Du |
 | emailweixu | Wei Xu |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
@@ -16,6 +18,7 @@
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | jacquesqiao | Long-Fei Qiao |
+| JiayiFeng | Jia-Yi Feng |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
 | lipeng-unisound | Peng Li |
@@ -25,6 +28,7 @@
 | luotao01 | Tao Luo |
 | lzhao4ever | Liang Zhao |
 | NHZlX | Zhao-Long Xing |
+| Noplz | Yuan Gao |
 | pakchoi | Chuan-Jiang Song |
 | pengli09 | Peng Li |
 | pkuyym | Ya-Ming Yang |
