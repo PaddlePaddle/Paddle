@@ -28,8 +28,6 @@ DECLARE_bool(benchmark);
 namespace paddle {
 namespace framework {
 
-std::vector<std::string> kEmptyStringVector = std::vector<std::string>{};
-
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
@@ -95,6 +93,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   RunImpl(scope, place);
 }
 
+bool OperatorBase::HasInputs(const std::string& name) const {
+  if (inputs_.find(name) != inputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -105,23 +111,18 @@ std::string OperatorBase::Input(const std::string& name) const {
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
-  auto& info_map = OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(Type());
-  PADDLE_ENFORCE(op_info != nullptr && op_info->proto_ != nullptr,
-                 "op_info and proto of operator %s should not be null.", type_);
-
   auto it = inputs_.find(name);
-  for (auto& in : op_info->Proto().inputs()) {
-    if (in.name() == name) {
-      if (!in.dispensable()) {
-        PADDLE_ENFORCE(it != inputs_.end(),
-                       "Operator %s does not have the input %s.", type_, name);
-      } else {
-        return kEmptyStringVector;
-      }
-    }
-  }
+  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
+                 type_, name);
   return it->second;
+}
+
+bool OperatorBase::HasOutputs(const std::string& name) const {
+  if (outputs_.find(name) != outputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
@@ -134,23 +135,9 @@ std::string OperatorBase::Output(const std::string& name) const {
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
-  auto& info_map = OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(Type());
-  PADDLE_ENFORCE(op_info != nullptr && op_info->proto_ != nullptr,
-                 "op_info and proto of operator %s should not be null.", type_);
-
   auto it = outputs_.find(name);
-  for (auto& out : op_info->Proto().outputs()) {
-    if (out.name() == name) {
-      if (!out.dispensable()) {
-        PADDLE_ENFORCE(it != outputs_.end(),
-                       "Operator %s does not have an output called %s.", type_,
-                       name);
-      } else {
-        return kEmptyStringVector;
-      }
-    }
-  }
+  PADDLE_ENFORCE(it != outputs_.end(),
+                 "Operator %s does not have an output called %s.", type_, name);
   return it->second;
 }
 
@@ -366,6 +353,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto& ins = Inputs(name);
     size_t length = ins.size();
     if (length == 0) {
@@ -379,6 +369,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutput(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto& outs = Outputs(name);
     size_t length = outs.size();
     if (length == 0) {
@@ -392,6 +385,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasInputs(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto inputs = op_.Inputs(name);
     if (inputs.empty()) {
       return false;
@@ -405,6 +401,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto outputs = op_.Outputs(name);
     if (outputs.empty()) {
       return false;
