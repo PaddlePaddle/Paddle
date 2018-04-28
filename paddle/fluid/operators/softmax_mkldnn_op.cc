@@ -77,7 +77,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
     if (!is_test) {
       T threshold = exp(-64);
-      for (size_t i = 0; i < dst_tz[0] * dst_tz[1]; ++i) {
+      for (int i = 0; i < dst_tz[0] * dst_tz[1]; ++i) {
         output_data[i] =
             output_data[i] < threshold ? threshold : output_data[i];
       }

@@ -194,7 +194,7 @@ struct TestReduceOpHandle {
     }
 
     f::Tensor result_tensor;
-    f::TensorCopy(rt, cpu_place, *(ctxs_[output_scope_idx]), &result_tensor);
+    f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
     for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
@@ -239,7 +239,7 @@ struct TestReduceOpHandle {
     auto &rt = out_var->Get<f::LoDTensor>();
 
     f::Tensor result_tensor;
-    f::TensorCopy(rt, cpu_place, *(ctxs_[output_scope_idx]), &result_tensor);
+    f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
     for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
