@@ -39,7 +39,6 @@ ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/dzhwinter/warp-ctc.git"
-    GIT_TAG         cc12b667a89d8d4c9b163c523f0709eba5f0364f
     PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
