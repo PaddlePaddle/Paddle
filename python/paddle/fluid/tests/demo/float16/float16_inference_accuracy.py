@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import argparse
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -72,7 +73,7 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def train(place, save_dirname, threshold=0.4):
+def train(place, save_dirname, threshold):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -199,6 +200,16 @@ def infer(place, save_dirname):
                       fetch_targets)
 
 
+@contextlib.contextmanager
+def scope_prog_guard():
+    prog = fluid.Program()
+    startup_prog = fluid.Program()
+    scope = fluid.core.Scope()
+    with fluid.scope_guard(scope):
+        with fluid.program_guard(prog, startup_prog):
+            yield
+
+
 if __name__ == "__main__":
     if not fluid.core.is_compiled_with_cuda():
         raise Exception("This test requires CUDA GPUs!")
@@ -210,5 +221,21 @@ if __name__ == "__main__":
 
     save_dirname = "image_classification_resnet.inference.model"
 
-    train(place, save_dirname)
-    infer(place, save_dirname)
+    parser = argparse.ArgumentParser(
+        description='float16 inference accuracy test')
+    parser.add_argument(
+        '--threshold',
+        type=float,
+        default=0.6,
+        help='Save inference model when test accuracy reach this threshold.')
+    parser.add_argument(
+        '--repeat', type=int, default=1, help='The number of tests to run.')
+    args = parser.parse_args()
+
+    print("This inference accuracy experiment will repeat test {0} times.".
+          format(args.repeat))
+    for i in range(args.repeat):
+        with scope_prog_guard():
+            print("\n\nTest #{0}:\n".format(i + 1))
+            train(place, save_dirname, args.threshold)
+            infer(place, save_dirname)
