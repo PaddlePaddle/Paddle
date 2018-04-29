@@ -4,6 +4,8 @@ cc_library(paddle_fluid_api
     SRCS io.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
+cc_library(inference_data_denpendency_graph SRCS data_denpendency_graph.cc)
+
 # Create static library
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 cc_library(paddle_fluid DEPS ${fluid_modules})
