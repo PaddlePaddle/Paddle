@@ -83,7 +83,7 @@ For more detailed examples of the prediction code, you can refer to the code exa
 #### step 1. Initialize the PaddlePaddle runtime environment
 The first step need to call [`paddle_init`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/main.h#L27) to initialize the PaddlePaddle runtime environment, the interface accepts two parameters: the number of parameters and the parameter list.
 
-#### step2. Load model
+#### step 2. Load model
 
 Here introduce an important concept when using the the C-API：Gradient Machine。
 
