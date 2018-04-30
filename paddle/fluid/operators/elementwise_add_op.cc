@@ -25,6 +25,9 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
     AddComment(comment_);
   }
 };
+
+REGISTER_GRAD_MAKER(ElementwiseAdd, elementwise_add);
+
 }  // namespace operators
 }  // namespace paddle
 

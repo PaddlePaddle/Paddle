@@ -150,5 +150,26 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     }
   }
 };
+
+#define REGISTER_GRAD_MAKER(OP_NAME, KERNEL_TYPE)                           \
+  class OP_NAME##GradMaker : public framework::SingleGradOpDescMaker {      \
+   public:                                                                  \
+    using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;          \
+                                                                            \
+   protected:                                                               \
+    std::unique_ptr<framework::OpDesc> Apply() const override {             \
+      auto* op = new framework::OpDesc();                                   \
+      op->SetType(#KENREL_TYPE "_grad");                                    \
+      op->SetInput("Out", Output("Out"));                                   \
+      op->SetInput(::paddle::framework::GradVarName("Out"),                 \
+                   OutputGrad("Out"));                                      \
+      op->SetAttrMap(Attrs());                                              \
+                                                                            \
+      op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X")); \
+      op->SetOutput(::paddle::framework::GradVarName("Y"), InputGrad("Y")); \
+      return std::unique_ptr<::paddle::framework::OpDesc>(op);              \
+    }                                                                       \
+  }
+
 }  // namespace operators
 }  // namespace paddle

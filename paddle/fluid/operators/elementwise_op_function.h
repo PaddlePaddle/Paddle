@@ -499,14 +499,18 @@ void ElemwiseGradCompute(const framework::ExecutionContext& ctx,
                          const framework::Tensor& dout, int axis,
                          framework::Tensor* dx, framework::Tensor* dy,
                          DX_OP dx_op, DY_OP dy_op) {
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+  const T* out_data = out.data<T>();
+  const T* dout_data = dout.data<T>();
+  T* dx_data = nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace());
+  T* dy_data = nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace());
   if (x.dims() == y.dims()) {
     size_t N = static_cast<size_t>(framework::product(x.dims()));
     platform::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(), N);
     for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP>{
-        x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), dx_op, dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
+        x_data, y_data, out_data, dout_data, dx_op, dy_op, dx_data, dy_data});
   } else {  // Y is a scalar
     auto x_dim = x.dims();
     auto y_dim = y.dims();
@@ -523,34 +527,24 @@ void ElemwiseGradCompute(const framework::ExecutionContext& ctx,
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
         ElemwiseGradBroadcast1CUDA(
-            ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-            y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+            ctx.template device_context<DeviceContext>().stream(), x_data,
+            y_data, out_data, dout_data, h, w, dx_op, dy_op, dx_data, dy_data);
 #endif
       } else {
-        ElemwiseGradBroadcast1CPU(
-            x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), h, w,
-            dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+        ElemwiseGradBroadcast1CPU(x_data, y_data, out_data, dout_data, h, w,
+                                  dx_op, dy_op, dx_data, dy_data);
       }
     } else {
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
         ElemwiseGradBroadcast2CUDA(
-            ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-            y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post, dx_op,
-            dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+            ctx.template device_context<DeviceContext>().stream(), x_data,
+            y_data, out_data, dout_data, pre, n, post, dx_op, dy_op, dx_data,
+            dy_data);
 #endif
       } else {
-        ElemwiseGradBroadcast2CPU(
-            x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n,
-            post, dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+        ElemwiseGradBroadcast2CPU(x_data, y_data, out_data, dout_data, pre, n,
+                                  post, dx_op, dy_op, dx_data, dy_data);
       }
     }
   }
@@ -600,12 +594,18 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx,
   }
 }
 
-template <typename Functor, typename DeviceContext, typename T,
-          typename OutType = T>
+// inplace elementwise operation to save memory
+// e.g. z = x + y -> x = x + y (inplace)
+template <typename Functor, typename DeviceContext, typename T>
 void ElementwiseComputeEx(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, int axis, Functor func,
-                          framework::Tensor* z) {
+                          framework::Tensor)
+
+    template <typename Functor, typename DeviceContext, typename T,
+              typename OutType = T>
+    void ElementwiseComputeEx(const framework::ExecutionContext& ctx,
+                              const framework::Tensor* x,
+                              const framework::Tensor* y, int axis,
+                              Functor func, framework::Tensor* z) {
   TransformFunctor<Functor, T, DeviceContext, OutType> functor(
       x, y, z, ctx.template device_context<DeviceContext>(), func);
 
