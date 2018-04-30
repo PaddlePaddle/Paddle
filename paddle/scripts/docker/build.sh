@@ -155,7 +155,7 @@ EOF
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
     if [[ ${WITH_GPU} == "ON" ]]; then
-    BASE_IMAGE="nvidia/cuda:8.0-cudnn7-runtime-ubuntu16.04"
+    BASE_IMAGE="nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04"
     else
     BASE_IMAGE="ubuntu:16.04"
     fi

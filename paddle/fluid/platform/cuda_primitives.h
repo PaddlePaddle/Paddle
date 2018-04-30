@@ -66,5 +66,22 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 }
 #endif
 
+// __shfl_down has been deprecated as of CUDA 9.0.
+#if CUDA_VERSION < 9000
+template <typename T>
+__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
+  return __shfl_down(val, delta);
+}
+#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
+#else
+template <typename T>
+__forceinline__ __device__ T __shfl_down_sync(unsigned mask, T val, int delta) {
+  return __shfl_down(mask, val, delta);
+}
+#define FULL_WARP_MASK 0xFFFFFFFF
+#define CREATE_SHFL_MASK(mask, predicate) \
+  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
+#endif
+
 }  // namespace platform
 }  // namespace paddle

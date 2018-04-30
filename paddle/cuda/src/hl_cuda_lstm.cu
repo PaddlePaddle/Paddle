@@ -344,9 +344,9 @@ __device__ __forceinline__ void transpose_32x32(real a[], const int idx) {
   int addr = idx % 32;
 #pragma unroll
   for (int k = 1; k < 32; k++) {
-    // rSrc[k] = __shfl(rSrc[k], (threadIdx.x + k) % 32, 32);
-    addr = __shfl(addr, (idx + 1) % 32, 32);
-    a[k] = __shfl(a[k], addr, 32);
+    // rSrc[k] = __shfl_sync(rSrc[k], (threadIdx.x + k) % 32, 32);
+    addr = __shfl_sync(addr, (idx + 1) % 32, 32);
+    a[k] = __shfl_sync(a[k], addr, 32);
   }
 
 #pragma unroll
@@ -362,8 +362,8 @@ __device__ __forceinline__ void transpose_32x32(real a[], const int idx) {
   addr = (32 - idx) % 32;
 #pragma unroll
   for (int k = 0; k < 32; k++) {
-    a[k] = __shfl(a[k], addr, 32);
-    addr = __shfl(addr, (idx + 31) % 32, 32);
+    a[k] = __shfl_sync(a[k], addr, 32);
+    addr = __shfl_sync(addr, (idx + 31) % 32, 32);
   }
 }
 
