@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/concat.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {

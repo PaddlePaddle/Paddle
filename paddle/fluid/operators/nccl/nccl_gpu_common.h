@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <vector>

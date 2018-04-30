@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/row_conv_op.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -220,7 +220,7 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += __shfl_down(val, offset);
+          val += platform::__shfl_down_sync(0, val, offset);
         }
         __syncthreads();
 
@@ -276,7 +276,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += __shfl_down(val, offset);
+          val += platform::__shfl_down_sync(0, val, offset);
         }
         __syncthreads();
 
