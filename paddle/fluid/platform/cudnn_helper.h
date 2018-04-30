@@ -75,7 +75,8 @@ enum class DataLayout {  // Not use
 
 enum class PoolingMode {
   kMaximum,
-  kAverage,
+  kAverageExclude,
+  kAverageInclude,
 };
 
 template <typename T>
@@ -292,10 +293,24 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
+
+    cudnnPoolingMode_t cudnn_mode;
+    switch (mode) {
+      case PoolingMode::kMaximum:
+        cudnn_mode = CUDNN_POOLING_MAX;
+        break;
+      case PoolingMode::kAverageExclude:
+        cudnn_mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+        break;
+      case PoolingMode::kAverageInclude:
+        cudnn_mode = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+        break;
+      default:
+        PADDLE_THROW("Unsupport pooling mode.");
+    }
+
     PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
-        desc_, (mode == PoolingMode::kMaximum
-                    ? CUDNN_POOLING_MAX
-                    : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING),
+        desc_, cudnn_mode,
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
         kernel.size(), kernel.data(), pads.data(), strides.data()));
     return desc_;
