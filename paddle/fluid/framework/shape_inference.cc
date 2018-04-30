@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 
 DDim InferShapeContext::GetInputDim(const std::string &name) const {
-  const std::vector<std::string> &arg_names = Inputs(name);
+  auto &arg_names = Inputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
                     "Input(%s) should hold one element, but now it holds %d",
                     name, arg_names.size());
@@ -32,13 +32,13 @@ DDim InferShapeContext::GetInputDim(const std::string &name) const {
 
 std::vector<DDim> InferShapeContext::GetInputsDim(
     const std::string &name) const {
-  const std::vector<std::string> &arg_names = Inputs(name);
+  auto &arg_names = Inputs(name);
   return GetDims(arg_names);
 }
 
 std::vector<DDim> InferShapeContext::GetReaderDims(
     const std::string &name) const {
-  const std::vector<std::string> &arg_names = Inputs(name);
+  auto &arg_names = Inputs(name);
   PADDLE_ENFORCE_EQ(
       arg_names.size(), 1UL,
       "Reader input '%s' should hold one element, but now it holds %d", name,
@@ -68,7 +68,7 @@ void InferShapeContext::SetOutputsDim(const std::string &name,
 
 void InferShapeContext::SetReaderDims(const std::string &name,
                                       const std::vector<DDim> &dims) {
-  const std::vector<std::string> &arg_names = Outputs(name);
+  auto &arg_names = Outputs(name);
   PADDLE_ENFORCE_EQ(
       arg_names.size(), 1UL,
       "Reader output '%s' should hold one element, but now it holds %d", name,
@@ -78,7 +78,7 @@ void InferShapeContext::SetReaderDims(const std::string &name,
 
 std::vector<InferShapeVarPtr> InferShapeContext::GetInputVarPtrs(
     const std::string &name) {
-  const std::vector<std::string> arg_names = Inputs(name);
+  auto &arg_names = Inputs(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(arg_names.size());
   std::transform(
@@ -89,7 +89,7 @@ std::vector<InferShapeVarPtr> InferShapeContext::GetInputVarPtrs(
 
 std::vector<InferShapeVarPtr> InferShapeContext::GetOutputVarPtrs(
     const std::string &name) {
-  const std::vector<std::string> arg_names = Outputs(name);
+  auto &arg_names = Outputs(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(arg_names.size());
   std::transform(

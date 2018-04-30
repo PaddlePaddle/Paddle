@@ -51,8 +51,9 @@ class InferShapeContext {
   void SetReaderDims(const std::string &name, const std::vector<DDim> &dims);
 
   virtual AttrReader Attrs() const = 0;
-  virtual const std::vector<VarUUID> &Inputs(const std::string &name) const = 0;
-  virtual const std::vector<VarUUID> &Outputs(
+  virtual const std::vector<std::string> &Inputs(
+      const std::string &name) const = 0;
+  virtual const std::vector<std::string> &Outputs(
       const std::string &name) const = 0;
 
   virtual void ShareLoD(const std::string &in, const std::string &out,

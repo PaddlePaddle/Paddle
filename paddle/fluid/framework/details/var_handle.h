@@ -77,30 +77,21 @@ struct DummyVarHandle : public VarHandleBase {
 /// variable unique_id generator, threadsafe singleton.
 class UUIDGenerator {
  public:
+  UUIDGenerator() {}
   int operator()(const std::string& name) { return hasher(name); }
-  int Hash(const std::string& name) { return hasher(name); }
   static UUIDGenerator& Instance() {
-    std::call_once(once_flag, &UUIDGenerator::InitOnce);
-    return *g;
+    static UUIDGenerator g;
+    return g;
   }
 
  private:
-  static void InitOnce() { g = new UUIDGenerator(); }
-  UUIDGenerator() {}
   std::hash<std::string> hasher;
-  static UUIDGenerator* g;
-  static std::once_flag once_flag;
   DISABLE_COPY_AND_ASSIGN(UUIDGenerator);
 };
-
-UUIDGenerator* UUIDGenerator::g = nullptr;
-std::once_flag UUIDGenerator::once_flag;
 
 // a runtime unique variable identity.
 struct VarUUID {
   explicit VarUUID(const std::string& name) : name(name) {
-    // UUIDGenerator& gen = UUIDGenerator::Instance();
-    // unique_id = gen(name);
     unique_id = UUIDGenerator::Instance()(name);
   }
   VarUUID(const std::string& name, int id) : name(name), unique_id(id) {}
