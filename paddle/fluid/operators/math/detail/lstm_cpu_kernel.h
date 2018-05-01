@@ -235,7 +235,7 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
       reinterpret_cast<__m256>(value.gate_value + frame_size * 2);
   __m256 *value_og =
       reinterpret_cast<__m256>(value.gate_value + frame_size * 3);
-  __m256 *grad_in = reinterpret_cast<__m256> grad.gate_grad;
+  __m256 *grad_in = reinterpret_cast<__m256>(grad.gate_grad);
   __m256 *grad_ig = reinterpret_cast<__m256>(grad.gate_grad + frame_size);
   __m256 *grad_fg = reinterpret_cast<__m256>(grad.gate_grad + frame_size * 2);
   __m256 *grad_og = reinterpret_cast<__m256>(grad.gate_grad + frame_size * 3);
