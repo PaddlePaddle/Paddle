@@ -174,6 +174,36 @@ def test_accuracy(executor, inference_program, feed_target_names,
     print("Test accuray is {0}.".format(float(correct_num) / float(test_num)))
 
 
+def test_accuracy_new(executor, inference_program, feed_target_names,
+                      fetch_targets):
+    batch_size = 128
+    test_reader = paddle.batch(
+        paddle.dataset.cifar.test10(), batch_size=batch_size)
+    data_shape = [3, 32, 32]
+    test_num = 0
+    correct_num = 0
+
+    for test_data in test_reader():
+        test_image = np.array(
+            map(lambda x: x[0].reshape(data_shape), test_data)).astype(
+                "float32")
+        test_label = np.array(map(lambda x: x[1], test_data)).astype("int64")
+        test_label = test_label.reshape([-1, 1])
+
+        results = executor.run(program=inference_program,
+                               feed={feed_target_names[0]: test_image},
+                               fetch_list=fetch_targets)
+
+        prediction = np.argmax(results[0], axis=1).reshape([-1, 1])
+        correct_num += np.sum(prediction == test_label)
+        test_num += test_label.size
+
+    print("{0} out of {1} predictions are correct.".format(correct_num,
+                                                           test_num))
+    print("New Test accuray is {0}.".format(
+        float(correct_num) / float(test_num)))
+
+
 def infer(place, save_dirname):
     exe = fluid.Executor(place)
     inference_scope = fluid.core.Scope()
@@ -189,6 +219,8 @@ def infer(place, save_dirname):
 
         print("The test set accuracy of inference in float mode is:")
         test_accuracy(exe, inference_program, feed_target_names, fetch_targets)
+        test_accuracy_new(exe, inference_program, feed_target_names,
+                          fetch_targets)
 
         float16_inference_program = inference_program.clone()
         t = fluid.InferenceTranspiler()
@@ -197,6 +229,8 @@ def infer(place, save_dirname):
         print("The test set accuracy of inference in float16 mode is:")
         test_accuracy(exe, float16_inference_program, feed_target_names,
                       fetch_targets)
+        test_accuracy_new(exe, float16_inference_program, feed_target_names,
+                          fetch_targets)
 
 
 @contextlib.contextmanager

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -31,11 +32,11 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
 
 template <typename T>
 __device__ __forceinline__ T sum_single_warp(T val) {
-  val += __shfl_down(val, 16);
-  val += __shfl_down(val, 8);
-  val += __shfl_down(val, 4);
-  val += __shfl_down(val, 2);
-  val += __shfl_down(val, 1);
+  val += platform::__shfl_down_sync(0, val, 16);
+  val += platform::__shfl_down_sync(0, val, 8);
+  val += platform::__shfl_down_sync(0, val, 4);
+  val += platform::__shfl_down_sync(0, val, 2);
+  val += platform::__shfl_down_sync(0, val, 1);
   return val;
 }
 
@@ -108,7 +109,9 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
 
     if (softLabel) {
       const T* label_data = labels->data<T>();
-      int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
+      int block = class_num > 512
+                      ? 512
+                      : pow(2, static_cast<int>(std::log2(class_num)));
 
       SoftCrossEntropyKernel<T><<<
           batch_size, block, block * sizeof(T),

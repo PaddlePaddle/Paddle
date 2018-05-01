@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cstdint>
 #include <memory>
 #include <random>
-typedef long int64;
 namespace paddle {
 namespace operators {
 namespace math {
@@ -27,25 +27,25 @@ namespace math {
 */
 class Sampler {
  public:
-  explicit Sampler(int64 range) : range_(range) {
+  explicit Sampler(int64_t range) : range_(range) {
     PADDLE_ENFORCE_GT(range, 0);
     std::random_device r;
     seed_ = r();
   }
-  explicit Sampler(int64 range, unsigned int seed)
+  explicit Sampler(int64_t range, unsigned int seed)
       : range_(range), seed_(seed) {
     PADDLE_ENFORCE_GT(range, 0);
   }
   virtual ~Sampler();
   // Sample a single value
-  virtual int64 Sample() const = 0;
+  virtual int64_t Sample() const = 0;
   // The probability that a single call to Sample() returns the given value.
-  virtual float Probability(int64 value) const = 0;
+  virtual float Probability(int64_t value) const = 0;
 
-  int64 range() { return range_; };
+  int64 range() { return range_; }
 
  protected:
-  const int64 range_;
+  const int64_t range_;
   unsigned int seed_;
 };
 
@@ -56,15 +56,15 @@ class Sampler {
  */
 class UniformSampler : public Sampler {
  public:
-  explicit UniformSampler(int64 range);
+  explicit UniformSampler(int64_t range);
 
-  explicit UniformSampler(int64 range, unsigned int seed);
+  explicit UniformSampler(int64_t range, unsigned int seed);
 
   ~UniformSampler() override {}
 
   int64 Sample() const override;
 
-  float Probability(int64 value) const override;
+  float Probability(int64_t value) const override;
 
  private:
   const float inv_range_;
@@ -79,15 +79,15 @@ class UniformSampler : public Sampler {
  */
 class LogUniformSampler : public Sampler {
  public:
-  explicit LogUniformSampler(int64 range);
+  explicit LogUniformSampler(int64_t range);
 
-  explicit LogUniformSampler(int64 range, unsigned int seed);
+  explicit LogUniformSampler(int64_t range, unsigned int seed);
 
   ~LogUniformSampler() override {}
 
   int64 Sample() const override;
 
-  float Probability(int64 value) const override;
+  float Probability(int64_t value) const override;
 
  private:
   const float log_range_;
@@ -95,6 +95,6 @@ class LogUniformSampler : public Sampler {
   std::shared_ptr<std::uniform_real_distribution<>> dist_;
 };
 
-}  // math
+}  // namespace math
 }  // namespace operators
 }  // namespace paddle

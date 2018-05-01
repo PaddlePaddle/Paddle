@@ -1,7 +1,7 @@
 # Averaging Parameter in PaddlePaddle
 
 ## Why Averaging
-In a large scale machine learning setup where the size of the training data is huge, it could take us a large number of iterations over the training data before we can achieve the optimal values of parameters of our model. Looking at the problem setup, it is desirable if we can obtain the optimal values of parameters by going through the data in as few passes as we can.
+In a large scale machine learning setup where the size of the training data is huge, it could take us a large number of iterations over the training data before we can achieve the optimal values of parameters of our model. Looking at the problem setup, it is desirable to obtain the optimal values of parameters by going through the data in as few passes as possible.
 
 Polyak and Juditsky (1992) showed that the test performance of simple average of parameters obtained by Stochastic Gradient Descent (SGD) is as good as that of parameter values that are obtained by training the model over and over again, over the training dataset.
 
@@ -16,16 +16,16 @@ We propose averaging for any optimizer similar to how ASGD performs it, as menti
 ### How to perform Parameter Averaging in PaddlePaddle
 
 Parameter Averaging in PaddlePaddle works in the following way during training :
-1. It will take in an instance of a normal optimizer as an input, e.g. RMSPropOptimizer
+1. It will take in an instance of an optimizer as an input, e.g. RMSPropOptimizer
 2. The optimizer itself is responsible for updating the parameters.
 3. The ParameterAverageOptimizer maintains a separate copy of the parameters for itself:
-    1. In concept, the values of this copy are the average of the values of the parameters in the most recent N batches.
-    2. However, saving all the N instances of the parameters in memory is not feasible.
+    1. In theory, the values of this copy are the average of the values of the parameters in the most recent N batches.
+    2. However, saving all N instances of the parameters in memory is not feasible.
     3. Therefore, an approximation algorithm is used.
 
 Hence, overall we have have two copies of the parameters: one for the optimizer itself, and one for the ParameterAverageOptimizer. The former should be used in back propagation, while the latter should be used during testing and should be saved.
 
-During the testing/ saving the model phase, we perform the following steps:
+During the testing/saving the model phase, we perform the following steps:
 1. Perform the delayed operations.
 2. Save current values of the parameters to a temporary variable.
 3. Replace the values of the parameters with the averaged values.

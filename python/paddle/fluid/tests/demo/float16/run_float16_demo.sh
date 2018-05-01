@@ -8,22 +8,26 @@ DEMO_PATH=/paddle/python/paddle/fluid/tests/demo/float16
 export CUDA_VISIBLE_DEVICES=0
 
 # Build the PaddlePaddle Fluid wheel package and install it.
-mkdir -p $BUILD_PATH && cd $BUILD_PATH
-cmake .. -DWITH_AVX=OFF \
-         -DWITH_MKL=OFF \
-         -DWITH_GPU=ON \
-         -DWITH_TESTING=ON \
-         -DWITH_TIMER=ON \
-         -DWITH_PROFILER=ON \
-         -DWITH_FLUID_ONLY=ON
-CPUCOUNT=$(grep -c "^processor" /proc/cpuinfo)
-make -j${CPUCOUNT}
-pip install -U "$WHEEL_PATH/$(ls $WHEEL_PATH)"
+#mkdir -p $BUILD_PATH && cd $BUILD_PATH
+#cmake .. -DWITH_AVX=OFF \
+#         -DWITH_MKL=OFF \
+#         -DWITH_GPU=ON \
+#         -DWITH_TESTING=ON \
+#         -DWITH_TIMER=ON \
+#         -DWITH_PROFILER=ON \
+#         -DWITH_FLUID_ONLY=ON
+#make -j `nproc`
+#pip install -U "$WHEEL_PATH/$(ls $WHEEL_PATH)"
 
 # Run the demo testing code
-#python float16_inference_accuracy.py --threshold=0.6 --repeat=10 > float16_inference_accuracy.log
 cd $DEMO_PATH
-python float16_inference_benchmark.py
+stdbuf -oL python float16_inference_accuracy.py \
+       --threshold=0.5 \
+       --repeat=1 \
+       2>&1 | tee -a float16_inference_accuracy.log
+#python float16_inference_benchmark.py
+
+exit
 
 # Test inference benchmark of vgg16 on imagenet
 $INFER_PATH/test_inference_image_classification_vgg \
