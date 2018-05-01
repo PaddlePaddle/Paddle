@@ -111,7 +111,6 @@ def train(place, save_dirname, threshold):
     exe.run(fluid.default_startup_program())
     main_program = fluid.default_main_program()
 
-    loss = 0.0
     for pass_id in range(PASS_NUM):
         for batch_id, data in enumerate(train_reader()):
             exe.run(main_program, feed=feeder.feed(data))
