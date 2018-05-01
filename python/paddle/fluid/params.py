@@ -27,7 +27,15 @@ class Params(object):
             self._load(path)
 
     def _load(self, path):
+        # reference: load_persistables in io.py
         pass
 
     def save(self, path):
+        # reference: save_persistables in io.py
+        pass
+
+    def add_params(self, scope):
+        # take the keys from the scope,
+        # if not already exists in self.scope,
+        # add the key and value into self.scope.
         pass

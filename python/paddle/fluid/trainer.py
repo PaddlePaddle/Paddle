@@ -34,10 +34,15 @@ class Event(Enum):
 
 class Trainer(object):
     def __init__(self, network_func, optimizer, params=None, place=None):
+        # we need to generate a framework.Program by calling
+        # network_func reference: fluid.program_guard in test_word2vec.py
+        # move the default_main_program to self.program
+        # and run the default_startup program on an empty
         self.network_func = network_func
         self.optimizer = optimizer
         self.params = params
         self.place = place
+        # TODO(helin): support distributed training
 
     def train(self, reader, num_epochs, event_handler):
         pass
