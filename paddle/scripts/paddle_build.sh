@@ -356,6 +356,11 @@ EOF
         -DWITH_STYLE_CHECK=OFF
 
     make -j `nproc` paddle_docs paddle_apis
+
+    # check websites for broken links
+    linkchecker doc/v2/en/html/index.html
+    linkchecker doc/v2/cn/html/index.html
+    linkchecker doc/v2/api/en/html/index.html
 }
 
 function gen_html() {
