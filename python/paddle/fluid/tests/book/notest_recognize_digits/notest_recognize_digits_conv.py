@@ -79,14 +79,14 @@ def train(use_cuda, save_dirname):
                     trainer.params.save(save_dirname)
                     return
                 else:
-                    print(
-                        'BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                            format(event.batch_id + 1,
-                                   float(avg_loss_val), float(acc_val)))
+                    print('BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
+                          format(event.batch_id + 1,
+                                 float(avg_loss_val), float(acc_val)))
                     if math.isnan(float(avg_loss_val)):
                         sys.exit("got NaN loss, training failed.")
 
-    trainer.train(reader=dataset.mnist.train(), num_pass=100, event_handler=event_handler)
+    trainer.train(
+        reader=dataset.mnist.train(), num_pass=100, event_handler=event_handler)
 
 
 def infer(use_cuda, save_dirname=None):
@@ -96,8 +96,8 @@ def infer(use_cuda, save_dirname=None):
     inferencer = fluid.Inferencer(inference_network, params, place=place)
 
     batch_size = 1
-    tensor_img = numpy.random.uniform(
-        -1.0, 1.0, [batch_size, 1, 28, 28]).astype("float32")
+    tensor_img = numpy.random.uniform(-1.0, 1.0,
+                                      [batch_size, 1, 28, 28]).astype("float32")
 
     results = inferencer.infer({'img': tensor_img})
 
@@ -108,12 +108,8 @@ def main(use_cuda):
     save_dirname = "recognize_digits_conv.inference.model"
 
     # call train() with is_local argument to run distributed train
-    train(
-        use_cuda=use_cuda,
-        save_dirname=save_dirname)
-    infer(
-        use_cuda=use_cuda,
-        save_dirname=save_dirname)
+    train(use_cuda=use_cuda, save_dirname=save_dirname)
+    infer(use_cuda=use_cuda, save_dirname=save_dirname)
 
 
 if __name__ == '__main__':
