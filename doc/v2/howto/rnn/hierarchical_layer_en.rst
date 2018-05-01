@@ -86,7 +86,3 @@ The use of expand is as follows.
   - Role: A one-layer sequence is extended to a two-layer sequence
   - Input: layer1 must be a one-layer sequence that is the data to be extended; layer2 must be a two-level sequence, providing extended length information
   - Output: A two-layer sequence with the same number of elements in the sequence as layer2. It is required that the number of elements contained in a one-layer sequence (0-layer sequence) be the same as the number of bisequences containing subseq. The i-th element of the single-layer sequence (the 0-layer sequence) is expanded into a single-layer sequence that constitutes the i-th subseq of the output two-layer sequence.
-
-
-
-
