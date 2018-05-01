@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
-
 __all__ = [
     'Event',
     'Trainer',
 ]
 
 
-class Event(Enum):
+class Event(object):
     BEGIN_EPOCH = 0
     END_EPOCH = 1
     BEGIN_STEP = 2
