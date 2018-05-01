@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 namespace paddle {
-namespace inferece {
+namespace inference {
 namespace analysis {
 
 enum class Device { CPU, GPU };

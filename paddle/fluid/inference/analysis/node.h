@@ -44,7 +44,7 @@ namespace analysis {
 class Node {
  public:
   // Node type. NOTE the new node types should add here.
-  enum class Type { kNone = -1, kFunction, kValue };
+  enum class Type { kNone = -1, kFunction, kValue, kFunctionBlock };
 
   Node() : id_(counter_) { ++counter_; }
 
@@ -133,6 +133,11 @@ class Function : public Node {
   friend class NodeMap;
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Function);
 };
+
+/*
+ * FunctionBlock is a Node that contains a sub-graph multiple Node.
+ */
+struct FunctionBlock : public Node {};
 
 class NodeMap {
  public:
