@@ -20,9 +20,13 @@ __all__ = [
 
 class Inferencer(object):
     def __init__(self, network_func, params, place=None):
-        self.network_func = network_func
+        # we need to generate a framework.Program by calling
+        # network_func reference: fluid.program_guard in test_word2vec.py
+        # move the default_main_program to self.program
+        # and run the default_startup program
         self.params = params
         self.place = place
 
     def infer(self, inputs):
+        # run self.program
         pass
