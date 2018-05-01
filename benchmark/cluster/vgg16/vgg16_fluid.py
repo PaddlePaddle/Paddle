@@ -11,25 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""VGG16 benchmark in Fluid
-
-# Single trainer, single PS on a single machine.
-VGG_SRC="${CODE_DIR}/vgg16_fluid.py"
-export TRAINING_ROLE=PSERVER
-export TRAINERS=1
-export POD_IP=127.0.0.1
-export PADDLE_INIT_PORT=6174
-MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 &
-sleep 10  # wait for PS to start.
-export TRAINING_ROLE=TRAINER
-MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 --device=GPU &
-
-# To run multiple trainers on a single machine
-# change TRAINERS=2 and launch 2 trainers.
-# CUDA_VISIBLE_DEVICES=4 MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 --device=GPU --task_index=0 &
-# CUDA_VISIBLE_DEVICES=5 MKL_NUM_THREADS=1 python -u ${VGG_SRC} --local 0 --ps_host=127.0.0.1:6174 --trainer_hosts=127.0.0.1:6174 --device=GPU --task_index=1 &
-"""
-
+"""VGG16 benchmark in Fluid"""
 from __future__ import print_function
 
 import sys
