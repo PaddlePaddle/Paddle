@@ -32,10 +32,16 @@ class Event(object):
 
 class Trainer(object):
     def __init__(self, network_func, optimizer, params=None, place=None):
-        # we need to generate a framework.Program by calling
-        # network_func reference: fluid.program_guard in test_word2vec.py
-        # move the default_main_program to self.program
-        # and run the default_startup program on an empty
+        # 1. we need to generate a framework.Program by calling
+        # network_func. Reference: fluid.program_guard in
+        # test_word2vec.py
+
+        # 2. move the default_main_program to self.program and run the
+        # default_startup program on an empty core.Scope()
+
+        # 3. call self.params.add_vars with the initialized scope, it
+        # will add the new vars of the initialized scope into
+        # self.params.
         self.network_func = network_func
         self.optimizer = optimizer
         self.params = params
