@@ -14,9 +14,7 @@
 
 from . import core
 
-__all__ = [
-    'Params',
-]
+__all__ = ['Params', ]
 
 
 class Params(object):
