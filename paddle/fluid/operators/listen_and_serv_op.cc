@@ -80,12 +80,7 @@ static void ParallelExecuteBlocks(
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
 
-static void SavePort(std::shared_ptr<detail::AsyncGRPCServer> rpc_service) {
-  std::ofstream port_file;
-  port_file.open("/tmp/paddle.selected_port");
-  port_file << rpc_service->GetSelectedPort();
-  port_file.close();
-}
+std::atomic_int ListenAndServOp::selected_port_{0};
 
 ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
@@ -93,13 +88,25 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
-int ListenAndServOp::GetSelectedPort() const {
-  return rpc_service_->GetSelectedPort();
-}
-
 void ListenAndServOp::Stop() {
   rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
   server_thread_->join();
+}
+
+void ListenAndServOp::SavePort(const std::string &file_path) const {
+  // NOTE: default write file to /tmp/paddle.selected_port
+  selected_port_ = rpc_service_->GetSelectedPort();
+
+  std::ofstream port_file;
+  port_file.open(file_path);
+  port_file << selected_port_.load();
+  port_file.close();
+  VLOG(4) << "selected port written to " << file_path;
+}
+
+void ListenAndServOp::WaitServerReady() {
+  while (selected_port_.load() == 0) {
+  }
 }
 
 void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
@@ -265,23 +272,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   }  // while(true)
 }
 
-void ListenAndServOp::StartServerThread() {
-  server_thread_.reset(new std::thread(
-      std::bind(&ListenAndServOp::ServerThreadEntry, this, rpc_service_)));
-}
-
-void ListenAndServOp::ServerThreadEntry(
-    std::shared_ptr<detail::AsyncGRPCServer> service) {
-  service->RunSyncUpdate();
-  VLOG(4) << "RunServer thread end";
-
-  {
-    std::lock_guard<std::mutex> lock(this->barrier_mutex_);
-    barrier_cond_step_ = cond;
-  }
-  barrier_condition_.notify_all();
-}
-
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -315,9 +305,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
+  rpc_service_->WaitServerReady();
 
   // Write to a file of server selected port for python use.
-  SavePort(rpc_service_);
+  SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
   } else {

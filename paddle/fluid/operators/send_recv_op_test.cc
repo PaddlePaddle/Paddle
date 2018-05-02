@@ -116,6 +116,7 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 void StartServerNet(bool is_sparse) {
   f::Scope scope;
   p::CPUPlace place;
+  VLOG(4) << "before init tensor";
   if (is_sparse) {
     InitSelectedRowsInScope(place, &scope);
   } else {
@@ -129,6 +130,7 @@ void StartServerNet(bool is_sparse) {
   auto *prefetch_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensors, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
+  VLOG(4) << "before attr";
 
   f::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:0")});
@@ -139,15 +141,19 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"PrefetchBlock", prefetch_block});
   attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
   attrs.insert({"sync_mode", true});
+  VLOG(4) << "before init op";
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
+  VLOG(4) << "before run op";
   listen_and_serv_op->Run(scope, place);
   LOG(INFO) << "server exit";
 }
 
 TEST(SendRecvOp, CPUDense) {
   std::thread server_thread(StartServerNet, false);
-  sleep(5);  // wait server to start
+  // wait server to start
+  static_cast<paddle::operators::ListenAndServOp *>(listen_and_serv_op.get())
+      ->WaitServerReady();
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -181,11 +187,13 @@ TEST(SendRecvOp, CPUDense) {
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
+  paddle::operators::ListenAndServOp::ResetPort();
 }
 
 TEST(SendRecvOp, CPUSparse) {
   std::thread server_thread(StartServerNet, true);
-  sleep(3);  // wait server to start
+  static_cast<paddle::operators::ListenAndServOp *>(listen_and_serv_op.get())
+      ->WaitServerReady();
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -226,4 +234,5 @@ TEST(SendRecvOp, CPUSparse) {
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset();
+  paddle::operators::ListenAndServOp::ResetPort();
 }
