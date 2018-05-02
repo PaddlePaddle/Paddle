@@ -169,7 +169,7 @@ struct TestBroadcastOpHandle {
       PADDLE_ENFORCE_EQ(out_tensor.lod(), lod, "lod is not equal.");
 
       f::Tensor result_tensor;
-      f::TensorCopy(out_tensor, cpu_place, *(ctxs_[j]), &result_tensor);
+      f::TensorCopySync(out_tensor, cpu_place, &result_tensor);
       float* ct = result_tensor.mutable_data<float>(cpu_place);
 
       for (int64_t i = 0; i < f::product(kDims); ++i) {
@@ -215,7 +215,7 @@ struct TestBroadcastOpHandle {
       }
 
       f::Tensor result_tensor;
-      f::TensorCopy(rt, cpu_place, *(ctxs_[j]), &result_tensor);
+      f::TensorCopySync(rt, cpu_place, &result_tensor);
       float* ct = result_tensor.data<float>();
 
       for (int64_t i = 0; i < f::product(kDims); ++i) {

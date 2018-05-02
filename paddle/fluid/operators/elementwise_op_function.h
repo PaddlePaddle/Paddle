@@ -22,6 +22,7 @@ limitations under the License. */
 #ifdef __NVCC__
 #include <cuda.h>
 #include <thrust/iterator/iterator_adaptor.h>
+#include "paddle/fluid/platform/cuda_primitives.h"
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 #endif
 
@@ -333,36 +334,24 @@ static void ElemwiseGradBroadcast1CPU(const T* x, const T* y, const T* out,
     }
   }
 }
-#ifdef __NVCC__
 
-// __shfl_down has been deprecated as of CUDA 9.0.
-#if CUDA_VERSION < 9000
-template <typename T>
-__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
-  return __shfl_down(val, delta);
-}
-#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
-#else
-#define FULL_WARP_MASK 0xFFFFFFFF
-#define CREATE_SHFL_MASK(mask, predicate) \
-  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
-#endif
+#ifdef __NVCC__
 
 template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {
-  // TODO(zcd): The warp size should be taken from the
+  // NOTE(zcd): The warp size should be taken from the
   // parameters of the GPU but not specified as 32 simply.
   // To make the reduceSum more efficiently,
   // I use Warp-Level Parallelism and assume the Warp size
   // is 32 which may be different for different GPU,
   // but most card's warp size is 32.
-  __shared__ T shm[32];
   const int warpSize = 32;
+  __shared__ T shm[warpSize];
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, tid < len);
 
   for (int offset = warpSize / 2; offset > 0; offset /= 2)
-    val += __shfl_down_sync(mask, val, offset);
+    val += platform::__shfl_down_sync(mask, val, offset);
 
   if (tid < warpSize) shm[tid] = 0;
 
@@ -371,13 +360,14 @@ __device__ T reduceSum(T val, int tid, int len) {
   if (tid % warpSize == 0) {
     shm[tid / warpSize] = val;
   }
+  __syncthreads();
 
   CREATE_SHFL_MASK(mask, tid < warpSize);
 
   if (tid < warpSize) {
     val = shm[tid];
     for (int offset = warpSize / 2; offset > 0; offset /= 2)
-      val += __shfl_down_sync(mask, val, offset);
+      val += platform::__shfl_down_sync(mask, val, offset);
   }
 
   return val;

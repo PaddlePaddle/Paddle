@@ -49,7 +49,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
-                         const platform::Place &p, const size_t &i) const;
+                         size_t place_id) const;
 
  private:
   std::string loss_var_name_;
@@ -67,6 +67,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
 
+  /**
+   * Is this operator as the end-point operator before/after send operator.
+   */
   bool IsDistTrainOp(const OpDesc &op, OpDesc *send_op) const;
 
   void CreateComputationalOps(SSAGraph *result, const OpDesc &op,
@@ -90,6 +93,12 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   int GetOpDeviceID(
       const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
       const OpDesc &op) const;
+
+  /**
+   * Get send op in the global block of program.
+   * nullptr if not found.
+   */
+  OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
 };
 }  // namespace details
 }  // namespace framework

@@ -364,7 +364,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kParallelBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kParallelBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
   }
