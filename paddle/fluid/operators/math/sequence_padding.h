@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -64,13 +65,13 @@ template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::LoDTensor& seq,
-                  framework::Tensor& padding, bool norm_by_times);
+                  framework::Tensor* padding, bool norm_by_times);
 };
 
 template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
-  void operator()(const DeviceContext& context, framework::LoDTensor& seq,
+  void operator()(const DeviceContext& context, framework::LoDTensor* seq,
                   const framework::Tensor& padding, bool norm_by_times);
 };
 
