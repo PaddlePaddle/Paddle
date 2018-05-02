@@ -163,11 +163,11 @@ def vgg16(input):
 
 
 def train(place, save_dirname):
-    class_dim = 102
-
     if args.data_set == "cifar10":
+        class_dim = 10
         data_shape = [3, 32, 32]
     elif args.data_set == "imagenet":
+        class_dim = 102
         data_shape = [3, 224, 224]
     else:
         raise ValueError("%s dataset is not supported" % data_set)
@@ -336,7 +336,6 @@ def infer(place, save_dirname):
                                       float16_inference_program)
 
 
-"""
 @contextlib.contextmanager
 def scope_prog_guard():
     prog = fluid.Program()
@@ -345,7 +344,7 @@ def scope_prog_guard():
     with fluid.scope_guard(scope):
         with fluid.program_guard(prog, startup_prog):
             yield
-"""
+
 
 if __name__ == "__main__":
     if not fluid.core.is_compiled_with_cuda():
@@ -356,6 +355,8 @@ if __name__ == "__main__":
         raise Exception(
             "This test requires compute capability of CUDA GPU >= 5.3!")
 
-    save_dirname = "image_classification_" + args.data_set + "_" + args.model + ".inference.model"
-    train(place, save_dirname)
-    infer(place, save_dirname)
+    for i in range(args.repeat):
+        with scope_prog_guard():
+            save_dirname = "image_classification_" + args.data_set + "_" + args.model + ".inference.model"
+            train(place, save_dirname)
+            infer(place, save_dirname)
