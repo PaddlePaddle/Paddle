@@ -60,16 +60,20 @@ class Node {
   size_t id() const { return id_; }
   void SetName(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
+
   void SetType(Type type) { type_ = type; }
   Type type() const { return type_; }
-  const std::vector<Node *> &inlinks() const { return inlinks_; }
-  void SetInlinks(const std::vector<Node *> &inlinks) { inlinks_ = inlinks; }
-  const std::vector<Node *> &outlinks() const { return outlinks_; }
-  void SetOutlinks(const std::vector<Node *> &outlinks) {
-    outlinks_ = outlinks;
-  }
+
+  void *extra_info() const { return extra_info_; }
+  void SetExtraInfo(void *extra_info) { extra_info_ = extra_info; }
 
   static unsigned int counter() { return counter_; }
+
+  // Input links.
+  std::vector<Node *> inlinks;
+  // Output links.
+  std::vector<Node *> outlinks;
+
 
  protected:
   // The id number not the name is a node's unique identifier in the computation
@@ -79,10 +83,7 @@ class Node {
   Type type_{Type::kNone};
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Node);
 
-  // Input links.
-  std::vector<Node *> inlinks_;
-  // Output links.
-  std::vector<Node *> outlinks_;
+  void* extra_info_;
 
  private:
   static unsigned counter_;

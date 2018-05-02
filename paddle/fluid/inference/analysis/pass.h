@@ -24,20 +24,19 @@ namespace analysis {
 
 class Pass {
  public:
+  Pass() = default;
   // Virtual method overridden by subclasses to do only necessary initialization
   // before any pass is run.
-  virtual bool Initialize() = 0;
+  virtual bool Initialize() { return false; }
 
   // Virtual method overriden by subclasses to do any necessary clean up after
   // all passes have run.
-  virtual bool Finalize() = 0;
+  virtual bool Finalize() { return false; }
 
   // Get a Pass appropriate to print the Node this pass operates on.
   virtual Pass *CreatePrinterPass(std::ostream &os,
                                   const std::string &banner) const = 0;
 
- private:
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(Pass);
 };
 
 // NodePass process on any Node types.
@@ -56,6 +55,13 @@ class FunctionPass : Pass {
 class FunctionBlockPass : Pass {
  public:
   virtual void Run(FunctionBlock &node) = 0;
+};
+
+// GraphPass processes on any GraphType.
+template<typename GraphType>
+class GraphPass : Pass {
+ public:
+  virtual void Run(GraphType &graph) = 0;
 };
 
 }  // namespace analysis
