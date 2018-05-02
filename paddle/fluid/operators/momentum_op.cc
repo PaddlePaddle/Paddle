@@ -17,6 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class MomentumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
