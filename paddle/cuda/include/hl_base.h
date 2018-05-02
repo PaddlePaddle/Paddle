@@ -206,8 +206,8 @@ typedef struct {
 
 #ifdef __NVCC__
 
-#include "./cuda_runtime.h"
-#include "./hl_cuda.h"
+#include <cuda_runtime.h>
+#include "paddle/cuda/include/hl_cuda.h"
 #include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
