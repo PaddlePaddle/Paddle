@@ -198,8 +198,11 @@ TEST(SendRecvOp, CPUSparse) {
   std::thread server_thread(StartServerNet, true, &initialized);
   while (!initialized) {
   }
-  static_cast<paddle::operators::ListenAndServOp *>(listen_and_serv_op.get())
-      ->WaitServerReady();
+  auto *listen_and_serv_op_ptr =
+      static_cast<paddle::operators::ListenAndServOp *>(
+          listen_and_serv_op.get());
+  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
+  listen_and_serv_op_ptr->WaitServerReady();
 
   // local net
   f::Scope scope;
@@ -208,10 +211,6 @@ TEST(SendRecvOp, CPUSparse) {
   InitSelectedRowsInScope(place, &scope);
   scope.Var("RPC_CLIENT_VAR");
   f::AttributeMap attrs;
-  auto *listen_and_serv_op_ptr =
-      static_cast<paddle::operators::ListenAndServOp *>(
-          listen_and_serv_op.get());
-  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
   selected_port = listen_and_serv_op_ptr->GetSelectedPort();
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
