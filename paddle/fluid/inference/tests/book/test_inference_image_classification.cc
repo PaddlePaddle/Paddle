@@ -62,5 +62,21 @@ TEST(inference, image_classification) {
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
+
+  // float16 inference requires cuda GPUs with >= 5.3 compute capability
+  if (paddle::platform::GetCUDAComputeCapability(0) >= 53) {
+    paddle::framework::LoDTensor output3;
+    std::vector<paddle::framework::LoDTensor*> cpu_fetchs3;
+    cpu_fetchs3.push_back(&output3);
+
+    LOG(INFO) << "--- GPU Runs in float16 mode: ---";
+    std::string fp16_dirname = dirname;
+    fp16_dirname.replace(fp16_dirname.find("book/"),
+                         std::string("book/").size(), "book/float16_");
+    TestInference<paddle::platform::CUDAPlace, false, true>(
+        fp16_dirname, cpu_feeds, cpu_fetchs3, FLAGS_repeat);
+
+    CheckError<float>(output2, output3);
+  }
 #endif
 }

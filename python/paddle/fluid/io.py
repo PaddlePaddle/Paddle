@@ -336,7 +336,7 @@ def save_inference_model(dirname,
 
     if main_program is None:
         main_program = default_main_program()
-    copy_program = main_program
+    copy_program = main_program.clone()
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
