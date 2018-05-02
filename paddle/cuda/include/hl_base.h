@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_CUDA_INCLUDE_HL_BASE_H_
-#define PADDLE_CUDA_INCLUDE_HL_BASE_H_
+#pragma once
 
 #include <cstddef>
 
@@ -244,5 +243,3 @@ __shfl_sync(unsigned, T val, int src_line, int width) {
 #endif
 
 #endif  // __NVCC__
-
-#endif  // PADDLE_CUDA_INCLUDE_HL_BASE_H_
