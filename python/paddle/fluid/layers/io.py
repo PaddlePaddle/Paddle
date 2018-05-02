@@ -168,7 +168,9 @@ class ListenAndServ(object):
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
                 'OptimizeBlock': current_block,
-                'PrefetchBlock': empty_block
+                'PrefetchBlock': empty_block,
+                'sync_mode': True,  # did not support async now in layers
+                'grad_to_block_id': [""]
             })
 
 
