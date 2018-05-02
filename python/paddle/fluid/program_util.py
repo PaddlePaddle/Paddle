@@ -26,24 +26,22 @@ def create_programs_from_network(network_func, optimizer=None):
 
     if network_func:
         with program_guard(prog, startup_prog):
-            loss_var = None
             network_fetch_params = network_func()
 
             if isinstance(network_fetch_params, Variable):
-                loss_var = network_fetch_params
+                fetch_params = [network_fetch_params]
             elif isinstance(network_fetch_params, tuple):
-                if len(network_fetch_params) == 0:
-                    raise Exception("network function must return loss as the "
-                                    "first return argument")
-                loss_var = network_fetch_params[0]
-                fetch_params = network_fetch_params[1:]
+                fetch_params = network_fetch_params
             else:
-                raise TypeError("network function must return a loss Variable, "
-                                "or a loss Variable and tuple of fetch "
-                                "Variables")
+                raise TypeError("network function can only return a Variable "
+                                "or tuple of Variables")
 
             if optimizer:
                 if isinstance(optimizer, Optimizer):
+                    if len(fetch_params) == 0:
+                        raise Exception("network function must return a loss "
+                                        "Variable")
+                    loss_var = fetch_params[0]
                     optimize_ops, params_grads = optimizer.minimize(
                         loss_var, startup_prog)
                 else:
