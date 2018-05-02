@@ -201,14 +201,16 @@ static void AsyncUpdateThread(
       LOG(ERROR) << "Can not find server side var: " << recv_var_name;
       PADDLE_THROW("Can not find server side var");
     }
-    try {
-      executor->RunPreparedContext(prepared, v.second->GetMutableLocalScope(),
-                                   false, false);
-    } catch (std::exception &e) {
-      LOG(ERROR) << "run sub program error " << e.what();
-    }
+    auto fs = framework::Async([var_name, &executor, &v, prepared] {
+      try {
+        executor->RunPreparedContext(prepared, v.second->GetMutableLocalScope(),
+                                     false, false);
+      } catch (std::exception &e) {
+        LOG(ERROR) << "run sub program error " << e.what();
+      }
+    });
+    fs.wait();
   }
-  VLOG(3) << "update thread for " << var_name << " ended";
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
@@ -256,8 +258,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   for (auto iter = grad_to_queue.begin(); iter != grad_to_queue.end(); iter++) {
     std::string grad_name = iter->first;
     VLOG(3) << "create async update thread for " << grad_name;
-    fs.push_back(framework::Async([grad_name, &exit_flag, &executor,
-                                   &grad_to_queue, &grad_to_prepared_ctx]() {
+    fs.push_back(framework::AsyncIO([grad_name, &exit_flag, &executor,
+                                     &grad_to_queue, &grad_to_prepared_ctx]() {
       AsyncUpdateThread(grad_name, exit_flag, grad_to_queue[grad_name],
                         executor, grad_to_prepared_ctx[grad_name].get());
     }));
