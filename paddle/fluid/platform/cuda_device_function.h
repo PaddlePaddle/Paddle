@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// __shfl_down has been deprecated as of CUDA 9.0.
+// __shfl_down and __shfl have been deprecated as of CUDA 9.0.
 #if CUDA_VERSION < 9000
 template <typename T>
 __forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
@@ -54,6 +54,7 @@ __device__ T reduceSum(T val, int tid, int len) {
     val += platform::__shfl_down_sync(mask, val, offset);
 
   if (tid < warpSize) shm[tid] = 0;
+
   if (tid % warpSize == 0) {
     shm[tid / warpSize] = val;
   }
@@ -66,7 +67,6 @@ __device__ T reduceSum(T val, int tid, int len) {
     for (int offset = warpSize / 2; offset > 0; offset /= 2)
       val += platform::__shfl_down_sync(mask, val, offset);
   }
-
   return val;
 }
 

@@ -31,19 +31,18 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
   }
 }
 
-template <typename T, int WarpSize>
+template <typename T>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int class_num) {
   int tid = threadIdx.x;
   T val = 0;
 
-  int cur_idx = tid;
-  int next_idx = blockIdx.x * class_num + tid;
-  while (cur_idx < class_num) {
-    val += math::TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
-    next_idx += blockDim.x;
-    cur_idx += blockDim.x;
+  int idx = blockIdx.x * class_num + tid;
+  int end = blockIdx.x * class_num + class_num;
+  for (; idx < end; idx += blockDim.x;) {
+    val += math::TolerableValue<T>()(std::log(X[idx])) * label[idx];
   }
+
   val = paddle::platform::reduceSum(val, tid, blockDim.x);
   if (threadIdx.x == 0) {
     Y[blockIdx.x] = -val;
@@ -61,7 +60,6 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor* labels, bool softLabel) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
-    const int WarpSize = 32;
 
     int batch_size = prob->dims()[0];
     int class_num = prob->dims()[1];
@@ -72,8 +70,7 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
                       ? 512
                       : pow(2, static_cast<int>(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<
-          T, WarpSize><<<batch_size, block, block * sizeof(T), ctx.stream()>>>(
+      SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
