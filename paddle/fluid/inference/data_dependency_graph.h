@@ -16,12 +16,10 @@ limitations under the License. */
 #include <vector>
 
 namespace paddle {
-namespace  inference {
+namespace inference {
 
 struct Node {
-  enum class Type {
-    DATA, OP
-  };
+  enum class Type { DATA, OP };
 
   std::string name;
   // Pointer to the ProtoBuf message.

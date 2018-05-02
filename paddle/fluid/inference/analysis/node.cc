@@ -20,7 +20,7 @@ namespace inference {
 namespace analysis {
 
 unsigned Node::counter_ = 0;
-std::string Value::repr() const { return std::__cxx11::string(); }
+std::string Value::repr() const { return std::string(); }
 
 Node *NodeMap::Create(Node::Type type) {
   switch (type) {

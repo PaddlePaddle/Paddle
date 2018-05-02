@@ -74,7 +74,6 @@ class Node {
   // Output links.
   std::vector<Node *> outlinks;
 
-
  protected:
   // The id number not the name is a node's unique identifier in the computation
   // graph.
@@ -83,7 +82,7 @@ class Node {
   Type type_{Type::kNone};
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Node);
 
-  void* extra_info_;
+  void *extra_info_;
 
  private:
   static unsigned counter_;

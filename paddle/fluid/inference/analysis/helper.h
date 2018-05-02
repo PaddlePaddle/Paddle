@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <paddle/fluid/platform/enforce.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -24,9 +28,33 @@ class iterator_range {
 
  public:
   template <typename Container>
-  iterator_range(Container&& c) : begin_(c.begin()), end_(c.end()) {}
+  iterator_range(Container &&c) : begin_(c.begin()), end_(c.end()) {}
 
   iterator_range(IteratorT begin, IteratorT end) : begin_(begin), end_(end) {}
+};
+
+/*
+ * An registry helper class, with its records keeps the order they registers.
+ */
+template <typename T>
+class OrderedRegistry {
+ public:
+  T *Register(const std::string &name, std::unique_ptr<T> &&x) {
+    PADDLE_ENFORCE(!dic_.count(name));
+    dic_[name] = data_.size();
+    data_.emplace_back(std::move(x));
+    return data_.back().get();
+  }
+
+  T *Lookup(const std::string &name) {
+    auto it = dic_.find(name);
+    if (it == dic_.end()) return nullptr;
+    return data_[it->second].get();
+  }
+
+ protected:
+  std::unordered_map<std::string, int> dic_;
+  std::vector<std::unique_ptr<T>> data_;
 };
 
 }  // namespace analysis
@@ -35,6 +63,6 @@ class iterator_range {
 
 #define PADDLE_DISALLOW_COPY_AND_ASSIGN(type__) \
   \
-type__(const type__&) = delete;                 \
+type__(const type__ &) = delete;                \
   \
 void operator=(const type__&) = delete;

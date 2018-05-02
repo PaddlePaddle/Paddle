@@ -20,25 +20,28 @@
 #pragma once
 
 #include <paddle/fluid/framework/program_desc.h>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/pass.h"
-#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class FluidToDataFlowGraphPass : public GraphPass<DataFlowGraph> {
+class FluidToDataFlowGraphPass : public DataFlowGraphPass {
  public:
-  FluidToDataFlowGraphPass(const framework::ProgramDesc& desc);
+  explicit FluidToDataFlowGraphPass();
   bool Initialize() override;
+  bool Initialize(const framework::ProgramDesc &desc);
   bool Finalize() override;
-  void Run(DataFlowGraph &graph) override;
+
+  void Run(DataFlowGraph *graph) override;
+
   Pass *CreatePrinterPass(std::ostream &os,
                           const std::string &banner) const override;
 
  private:
-  const framework::ProgramDesc& desc_;
+  framework::ProgramDesc const *desc_;
 };
 
 }  // namespace analysis

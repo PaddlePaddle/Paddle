@@ -19,6 +19,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
@@ -30,28 +31,30 @@ class PassManager;
 /*
  * PassManagerMain - Executes all the PassManagers.
  */
-class PassManagerMain {
+class PassManagerMain : public OrderedRegistry<PassManager> {
  public:
+  static PassManagerMain &Global() {
+    static auto *x = new PassManagerMain;
+    return *x;
+  }
+
   // Execute all the PassManagers registered.
-  static void RunAll();
+  void RunAll(const framework::ProgramDesc &desc);
 
-  // Register a pass manager with its name.
-  static void Register(const std::string &name,
-                       std::unique_ptr<PassManager> &&obj);
+  PADDLE_DISALLOW_COPY_AND_ASSIGN(PassManagerMain)
 
-  // Get a pass manager called name, return nullptr if not exists.
-  static PassManager *Lookup(const std::string &name);
+ protected:
+  DataFlowGraph data_flow_graph_;
 
  private:
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(PassManagerMain)
-  static std::unordered_map<std::string, std::unique_ptr<PassManager>> data_;
+  PassManagerMain() = default;
 };
 
 /*
  * PassManager is the base class for all pass managers, a pass manager has
  * several Pass-es registered, and execute them in the right order.
  */
-class PassManager {
+class PassManager : public OrderedRegistry<Pass> {
  public:
   enum Type {
     kUnknown = -1,
@@ -63,8 +66,10 @@ class PassManager {
     kCustomIter
   };
 
-  // Call all the passes' Initialize methods.
-  virtual bool Initialize() = 0;
+  // Call all the passes' Initialize methods. The desc and data_flow_graph are
+  // globally shared, so pass them as the arguemnts for all the pass managers.
+  virtual bool Initialize(const framework::ProgramDesc &desc,
+                          DataFlowGraph *data_flow_graph) = 0;
 
   // Run all the passes.
   virtual void RunAll() = 0;
@@ -72,12 +77,8 @@ class PassManager {
   // Call all the passes' Finalize methods.
   virtual bool Finalize() = 0;
 
-  // Register a PassT into this pass manager.
-  template <typename PassT>
-  virtual PassT *Register(const std::string &name) {}
-
  protected:
-  Type type_;
+  Type type_{Type::kUnknown};
 };
 
 // A pass manager that traverse the graph in DFS order.
@@ -86,7 +87,8 @@ class DFSPassManager : public PassManager {
  public:
   DFSPassManager(const GraphType &graph);
 
-  bool Initialize() override;
+  bool Initialize(const framework::ProgramDesc &desc,
+                  DataFlowGraph *data_flow_graph) override;
   bool Finalize() override;
   // DFS traverse the graph, call the passes in each step.
   void RunAll() override;
@@ -101,9 +103,30 @@ class DFSPassManager : public PassManager {
  * A pass manager that traverse the graph in a customized order, it is a virtual
  * class and need to be override by sub-classes.
  */
-class CustomIterPassManager : public PassManager {
+class DataFlowGraphPassManager : public PassManager {
  public:
-  CustomIterPassManager() : type_(kCustomIter) {}
+  DataFlowGraphPassManager();
+  bool Initialize(const framework::ProgramDesc &desc,
+                  DataFlowGraph *data_flow_graph) override {
+    graph_ = data_flow_graph;
+    for (auto &pass : data_) {
+      pass->Initialize();
+      pass->Initialize(desc);
+    }
+    return true;
+  }
+
+  void RunAll() override;
+
+  bool Finalize() override {
+    for (auto &pass : data_) {
+      pass->Finalize();
+    }
+    return true;
+  }
+
+ private:
+  DataFlowGraph *graph_;
 };
 
 }  // namespace analysis
