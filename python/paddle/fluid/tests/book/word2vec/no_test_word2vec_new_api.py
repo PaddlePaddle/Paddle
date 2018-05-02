@@ -79,9 +79,9 @@ def inference_network(is_sparse):
     return predict_word
 
 
-def train_network():
+def train_network(is_sparse):
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
-    predict_word = inference_network()
+    predict_word = inference_network(is_sparse)
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
     return avg_cost
@@ -94,7 +94,8 @@ def train(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     def event_handler(event):
-        if isinstance(event, fluid.Event.END_EPOCH):
+        print type(event)
+        if isinstance(event, fluid.EndEpochEvent):
             avg_cost = trainer.test(reader=paddle.dataset.imikolov.test(
                 word_dict, N))
 
@@ -105,10 +106,11 @@ def train(use_cuda, is_sparse, save_path):
                 sys.exit("got NaN loss, training failed.")
 
     trainer = fluid.Trainer(
-        partial(inference_network, is_sparse),
+        partial(train_network, is_sparse),
         fluid.optimizer.SGD(learning_rate=0.001),
         place=place)
-    trainer.train(train_reader, 100, event_handler)
+    trainer.train(
+        reader=train_reader, num_epochs=100, event_handler=event_handler)
 
 
 def infer(use_cuda, save_path):
