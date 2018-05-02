@@ -50,8 +50,6 @@ def data(name,
        dtype(int|float): The type of data : float32, float_16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
-       main_program(Program): Name of the main program that calls this
-       startup_program(Program): Name of the startup program
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
 
     Returns:
@@ -74,13 +72,15 @@ def data(name,
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
 
-    return helper.create_global_variable(
+    data_var = helper.create_global_variable(
         name=name,
         shape=shape,
         dtype=dtype,
         type=type,
         stop_gradient=stop_gradient,
         lod_level=lod_level)
+    data_var.is_data = True
+    return data_var
 
 
 class BlockGuardServ(BlockGuard):
