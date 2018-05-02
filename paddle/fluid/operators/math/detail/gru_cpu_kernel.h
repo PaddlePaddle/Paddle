@@ -89,14 +89,14 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
   __m256 r_value_reset_gate;
   __m256 r_value_reset_output;
   __m256 r_prev_out = _mm256_set1_ps(0.0f);
-  __m256 *update_gate = (__m256 *)gate_value;
-  __m256 *reset_gate = (__m256 *)(gate_value + frame_size);
+  __m256 *update_gate = reinterpret_cast<__m256 *>(gate_value);
+  __m256 *reset_gate = reinterpret_cast<__m256 *>(gate_value + frame_size);
 
   for (int i = 0; i < frame_size / 8; i++) {
     r_value_update_gate = update_gate[i];
     r_value_reset_gate = reset_gate[i];
     if (prev_output_value) {
-      r_prev_out = ((__m256 *)prev_output_value)[i];
+      r_prev_out = (reinterpret_cast<__m256 *>(prev_output_value))[i];
     }
 
     op_reset_output(r_value_update_gate, r_value_reset_gate, r_prev_out,
@@ -104,7 +104,7 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
 
     update_gate[i] = r_value_update_gate;
     reset_gate[i] = r_value_reset_gate;
-    ((__m256 *)reset_output_value)[i] = r_value_reset_output;
+    (reinterpret_cast<__m256 *>(reset_output_value))[i] = r_value_reset_output;
   }
 #endif
 }
@@ -119,21 +119,21 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
   __m256 r_value_frame_state;
   __m256 r_prev_out = _mm256_set1_ps(0.0f);
   __m256 r_output;
-  __m256 *update_gate = (__m256 *)gate_value;
-  __m256 *frame_state = (__m256 *)(gate_value + frame_size * 2);
+  __m256 *update_gate = reinterpret_cast<__m256 *>(gate_value);
+  __m256 *frame_state = reinterpret_cast<__m256 *>(gate_value + frame_size * 2);
 
   for (int i = 0; i < frame_size / 8; i++) {
     r_value_update_gate = update_gate[i];
     r_value_frame_state = frame_state[i];
     if (prev_output_value) {
-      r_prev_out = ((__m256 *)prev_output_value)[i];
+      r_prev_out = (reinterpret_cast<__m256 *>(prev_output_value))[i];
     }
 
     op_final_output(r_value_update_gate, r_value_frame_state, r_prev_out,
                     r_output, active_node);
 
     frame_state[i] = r_value_frame_state;
-    ((__m256 *)output_value)[i] = r_output;
+    (reinterpret_cast<__m256 *>(output_value))[i] = r_output;
   }
 #endif
 }
@@ -284,20 +284,22 @@ void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
   __m256 r_out_grad;
   __m256 r_prev_out_value = _mm256_set1_ps(0.0f);
   __m256 r_prev_out_grad = _mm256_set1_ps(0.0f);
-  __m256 *update_gate_value = (__m256 *)gate_value;
-  __m256 *update_gate_grad = (__m256 *)gate_grad;
-  __m256 *frame_state_value = (__m256 *)(gate_value + frame_size * 2);
-  __m256 *frame_state_grad = (__m256 *)(gate_grad + frame_size * 2);
+  __m256 *update_gate_value = reinterpret_cast<__m256 *>(gate_value);
+  __m256 *update_gate_grad = reinterpret_cast<__m256 *>(gate_grad);
+  __m256 *frame_state_value =
+      reinterpret_cast<__m256 *>(gate_value + frame_size * 2);
+  __m256 *frame_state_grad =
+      reinterpret_cast<__m256 *>(gate_grad + frame_size * 2);
 
   for (int i = 0; i < frame_size / 8; i++) {
     r_update_gate_value = update_gate_value[i];
     r_frame_state_value = frame_state_value[i];
-    r_out_grad = ((__m256 *)output_grad)[i];
+    r_out_grad = (reinterpret_cast<__m256 *>(output_grad))[i];
     if (prev_out_value) {
-      r_prev_out_value = ((__m256 *)prev_out_value)[i];
+      r_prev_out_value = (reinterpret_cast<__m256 *>(prev_out_value))[i];
     }
     if (prev_out_grad) {
-      r_prev_out_grad = ((__m256 *)prev_out_grad)[i];
+      r_prev_out_grad = (reinterpret_cast<__m256 *>(prev_out_grad))[i];
     }
 
     op_state_grad(r_update_gate_value, r_update_gate_grad, r_frame_state_value,
@@ -307,7 +309,7 @@ void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
     update_gate_grad[i] = r_update_gate_grad;
     frame_state_grad[i] = r_frame_state_grad;
     if (prev_out_grad) {
-      ((__m256 *)prev_out_grad)[i] = r_prev_out_grad;
+      (reinterpret_cast<__m256 *>(prev_out_grad))[i] = r_prev_out_grad;
     }
   }
 #endif
@@ -327,10 +329,11 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
   __m256 r_reset_output_grad = _mm256_set1_ps(0.0f);
   __m256 r_prev_out_value = _mm256_set1_ps(0.0f);
   __m256 r_prev_out_grad = _mm256_set1_ps(0.0f);
-  __m256 *update_gate_value = (__m256 *)gate_value;
-  __m256 *update_gate_grad = (__m256 *)gate_grad;
-  __m256 *reset_gate_value = (__m256 *)(gate_value + frame_size);
-  __m256 *reset_gate_grad = (__m256 *)(gate_grad + frame_size);
+  __m256 *update_gate_value = reinterpret_cast<__m256 *>(gate_value);
+  __m256 *update_gate_grad = reinterpret_cast<__m256 *>(gate_grad);
+  __m256 *reset_gate_value =
+      reinterpret_cast<__m256 *>(gate_value + frame_size);
+  __m256 *reset_gate_grad = reinterpret_cast<__m256 *>(gate_grad + frame_size);
 
   for (int i = 0; i < frame_size / 8; i++) {
     r_update_gate_value = update_gate_value[i];
@@ -338,13 +341,13 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
     r_reset_gate_value = reset_gate_value[i];
 
     if (prev_out_value && prev_out_grad) {
-      r_reset_output_grad = ((__m256 *)reset_output_grad)[i];
+      r_reset_output_grad = (reinterpret_cast<__m256 *>(reset_output_grad))[i];
     }
     if (prev_out_value) {
-      r_prev_out_value = ((__m256 *)prev_out_value)[i];
+      r_prev_out_value = (reinterpret_cast<__m256 *>(prev_out_value))[i];
     }
     if (prev_out_grad) {
-      r_prev_out_grad = ((__m256 *)prev_out_grad)[i];
+      r_prev_out_grad = (reinterpret_cast<__m256 *>(prev_out_grad))[i];
     }
 
     op_reset_grad(r_update_gate_value, r_update_gate_grad, r_reset_gate_value,
@@ -354,7 +357,7 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
     update_gate_grad[i] = r_update_gate_grad;
     reset_gate_grad[i] = r_reset_gate_grad;
     if (prev_out_grad) {
-      ((__m256 *)prev_out_grad)[i] = r_prev_out_grad;
+      (reinterpret_cast<__m256 *>(prev_out_grad))[i] = r_prev_out_grad;
     }
   }
 #endif
