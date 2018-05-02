@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
@@ -27,6 +27,7 @@ class NCCLContextMap;
 namespace framework {
 class Scope;
 namespace details {
+
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
 #ifdef PADDLE_WITH_CUDA
@@ -34,14 +35,14 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool skip_scale_loss,
-                          platform::NCCLContextMap *nccl_ctxs);
+                          platform::NCCLContextMap *nccl_ctxs,
+                          bool use_default_grad_scale, bool use_nccl_allreduce);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool use_default_grad_scale);
+                          bool use_default_grad_scale, bool use_nccl_allreduce);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -59,6 +60,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
+  bool use_nccl_allreduce_;
   bool use_default_grad_scale_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
@@ -74,12 +76,23 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                               size_t num_places) const;
 
   void CreateScaleLossGradOp(SSAGraph *result) const;
+  VarHandle *CreateReduceOp(SSAGraph *result, int dst_dev_id,
+                            const std::string &og) const;
+  void CreateComputationalOp(SSAGraph *result, const OpDesc &op,
+                             int dev_id) const;
 
   bool IsParameterGradientOnce(
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
   void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
+
+  void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
+                         size_t dev_id) const;
+
+  int GetOpDeviceID(
+      const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
+      const OpDesc &op) const;
 
   /**
    * Get send op in the global block of program.

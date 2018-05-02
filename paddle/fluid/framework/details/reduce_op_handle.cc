@@ -22,6 +22,7 @@ namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
+  if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
@@ -52,19 +53,18 @@ void ReduceOpHandle::RunImpl() {
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated(in_var_handles);
   auto pre_place = in_0_handle->place_;
-  std::vector<platform::Place> in_places;
+  std::vector<platform::Place> in_places;  // used to get dev_ctx
   auto pre_in_tensor = VariableVisitor::GetMutableTensor(pre_in_var);
   for (auto *in_handle : in_var_handles) {
-    auto in_p = in_handle->place_;
-    PADDLE_ENFORCE_EQ(in_p.which(), pre_place.which(),
-                      "Places must be all on CPU or all on CUDA.");
-    in_places.emplace_back(in_p);
+    in_places.emplace_back(in_handle->place_);
 
     auto in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(in_var);
 
     auto in_tensor = VariableVisitor::GetMutableTensor(in_var);
+    PADDLE_ENFORCE_EQ(pre_in_tensor.place().which(), in_tensor.place().which(),
+                      "Places must be all on CPU or all on GPU.");
     PADDLE_ENFORCE_EQ(in_tensor.type(), pre_in_tensor.type(),
                       "The type of input is not consistent.");
   }
@@ -84,11 +84,11 @@ void ReduceOpHandle::RunImpl() {
     std::vector<const LoDTensor *> lod_tensors =
         GetInputValues<LoDTensor>(in_var_handles, var_scopes);
 
-    if (paddle::platform::is_cpu_place(pre_place)) {
+    if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
       ReduceLoDTensor func(lod_tensors,
                            out_var->GetMutable<framework::LoDTensor>());
       VisitDataType(ToDataType(lod_tensors[0]->type()), func);
-    } else if (paddle::platform::is_gpu_place(pre_place)) {
+    } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);

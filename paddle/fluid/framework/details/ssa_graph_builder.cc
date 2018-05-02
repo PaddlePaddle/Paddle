@@ -47,6 +47,17 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
   }
 }
 
+VarHandle *SSAGraphBuilder::GetLatestVarHandle(SSAGraph *graph,
+                                               const std::string &each_var_name,
+                                               size_t place_offset) {
+  auto &var_holders = graph->vars_[place_offset];
+  auto &var_holder = var_holders[each_var_name];
+  if (var_holder.empty()) {
+    return nullptr;
+  }
+  return var_holder.rbegin()->get();
+}
+
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
     SSAGraph *graph, const std::string &each_var_name,
     const platform::Place &place, size_t place_offset) {
