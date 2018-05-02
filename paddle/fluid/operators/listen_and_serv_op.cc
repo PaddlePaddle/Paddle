@@ -255,6 +255,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   std::vector<std::future<void>> fs;
   for (auto iter = grad_to_queue.begin(); iter != grad_to_queue.end(); iter++) {
     std::string grad_name = iter->first;
+    VLOG(3) << "create async update thread for " << grad_name;
     fs.push_back(framework::Async([grad_name, &exit_flag, &executor,
                                    &grad_to_queue, &grad_to_prepared_ctx]() {
       AsyncUpdateThread(grad_name, exit_flag, grad_to_queue[grad_name],
