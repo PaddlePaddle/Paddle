@@ -321,7 +321,6 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
 
     if (sync_mode_) {
       // FIXME(typhoonzero): de-couple the barriers with recv_op
-      VLOG(3) << "HandleRequest for " << cq_name << " before WaitCond";
       if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
       if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);
       VLOG(3) << "HandleRequest for " << cq_name << " after WaitCond";
@@ -359,10 +358,8 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
 
 void AsyncGRPCServer::WaitCond(int cond) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  VLOG(3) << "WaitCond " << cond << " in";
   barrier_condition_.wait(lock,
                           [=] { return this->barrier_cond_step_ == cond; });
-  VLOG(3) << "WaitCond " << cond << " out";
 }
 
 void AsyncGRPCServer::SetCond(int cond) {
