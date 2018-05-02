@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import argparse
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -21,6 +22,34 @@ import math
 import sys
 import numpy as np
 import os
+
+parser = argparse.ArgumentParser(
+    'Float16 inference accuracy test and benchmark.')
+parser.add_argument(
+    '--train_batch_size', type=int, default=16, help="Batch size for training.")
+parser.add_argument(
+    '--inf_batch_size', type=int, default=32, help="Batch size for inference.")
+parser.add_argument(
+    '--repeat', type=int, default=1, help="How many times to run the test.")
+parser.add_argument(
+    '--data_set',
+    type=str,
+    default='cifar10',
+    choices=['cifar10', 'imagenet'],
+    help="Optional dataset for benchmark.")
+parser.add_argument(
+    '--model',
+    type=str,
+    default='vgg',
+    choices=['vgg', 'resnet'],
+    help="Optional model for benchmark.")
+parser.add_argument(
+    '--threshold',
+    type=float,
+    default=0.005,
+    help='Save inference model when test accuracy reach this threshold.')
+parser.add_argument('--learning_rate', type=float, default=0.001)
+args = parser.parse_args()
 
 
 def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
@@ -65,7 +94,7 @@ def layer_warp(block_func, input, ch_out, count, stride):
     return res_out
 
 
-def resnet(input, class_dim, depth=50, data_format='NCHW'):
+def resnet_imagenet(input, depth=50):
     cfg = {
         18: ([2, 2, 2, 1], basicblock),
         34: ([3, 4, 6, 3], basicblock),
@@ -90,7 +119,22 @@ def resnet(input, class_dim, depth=50, data_format='NCHW'):
     return pool2
 
 
-def vgg16(input, class_dim):
+def resnet_cifar10(input, depth=32):
+    assert (depth - 2) % 6 == 0
+
+    n = (depth - 2) // 6
+
+    conv1 = conv_bn_layer(
+        input=input, ch_out=16, filter_size=3, stride=1, padding=1)
+    res1 = layer_warp(basicblock, conv1, 16, n, 1)
+    res2 = layer_warp(basicblock, res1, 32, n, 2)
+    res3 = layer_warp(basicblock, res2, 64, n, 2)
+    pool = fluid.layers.pool2d(
+        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+    return pool
+
+
+def vgg16(input):
     def conv_block(input, num_filter, groups, dropouts):
         return fluid.nets.img_conv_group(
             input=input,
@@ -117,21 +161,32 @@ def vgg16(input, class_dim):
     return fc2
 
 
-def train(net_type, data_set, place, save_dirname, threshold=0.005):
+def train(place, save_dirname):
     class_dim = 102
-    data_shape = [3, 224, 224]
+
+    if args.data_set == "cifar10":
+        data_shape = [3, 32, 32]
+    elif args.data_set == "imagenet":
+        data_shape = [3, 224, 224]
+    else:
+        raise ValueError("%s dataset is not supported" % data_set)
 
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if net_type == "vgg":
+    if args.model == "vgg":
         print("train vgg")
-        net = vgg16(images, class_dim)
-    elif net_type == "resnet":
+        net = vgg16(images)
+    elif args.model == "resnet":
         print("train resnet")
-        net = resnet(images, class_dim)
+        if args.data_set == "cifar10":
+            net = resnet_cifar10(images)
+        elif args.data_set == "imagenet":
+            net = resnet_imagenet(images)
+        else:
+            raise ValueError("%s dataset is not supported" % args.data_set)
     else:
-        raise ValueError("%s network is not supported" % net_type)
+        raise ValueError("%s network is not supported" % args.model)
 
     predict = fluid.layers.fc(input=net, size=class_dim, act='softmax')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
@@ -140,19 +195,23 @@ def train(net_type, data_set, place, save_dirname, threshold=0.005):
 
     #Test program
     test_program = fluid.default_main_program().clone(for_test=True)
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
     optimizer.minimize(avg_cost)
 
-    BATCH_SIZE = 32
+    BATCH_SIZE = args.train_batch_size
     PASS_NUM = 100
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.flowers.train(), buf_size=128 * 10),
-        batch_size=BATCH_SIZE)
+            paddle.dataset.flowers.train()
+            if args.data_set == 'imagenet' else paddle.dataset.cifar.train10(),
+            buf_size=128 * 10),
+        batch_size=args.train_batch_size)
 
     test_reader = paddle.batch(
-        paddle.dataset.flowers.test(), batch_size=BATCH_SIZE)
+        paddle.dataset.flowers.test()
+        if args.data_set == 'imagenet' else paddle.dataset.cifar.test10(),
+        batch_size=args.inf_batch_size)
 
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
@@ -200,7 +259,7 @@ def train(net_type, data_set, place, save_dirname, threshold=0.005):
                     format(pass_id, batch_id + 1,
                            float(avg_loss_value), float(acc_value)))
 
-                if acc_value > threshold:
+                if acc_value > args.threshold:
                     print(
                         'Save inference model with test accuracy of {0} at {1}'.
                         format(float(acc_value), save_dirname))
@@ -209,37 +268,44 @@ def train(net_type, data_set, place, save_dirname, threshold=0.005):
                     return
 
 
-def test_accuracy(data_set, executor, inference_program, feed_target_names,
+def test_accuracy(executor, inference_program, feed_target_names,
                   fetch_targets):
-    test_reader = paddle.dataset.cifar.test10()
-    test_num = 0
-    batch_size = 100
-    correct_num = 0
-    imgs = []
-    labels = []
+    if args.data_set == "cifar10":
+        data_shape = [3, 32, 32]
+    elif args.data_set == "imagenet":
+        data_shape = [3, 224, 224]
+    else:
+        raise ValueError("%s dataset is not supported" % data_set)
 
-    for item in test_reader():
-        label = item[1]
-        img = item[0].astype(np.float32)
-        imgs.append(img.reshape(3, 32, 32))
-        labels.append(label)
-        if len(imgs) == batch_size:
-            batch_imgs = np.stack(imgs, axis=0)
-            results = executor.run(inference_program,
-                                   feed={feed_target_names[0]: batch_imgs},
-                                   fetch_list=fetch_targets)
-            prediction = np.argmax(results[0], axis=1)
-            correct_num += np.sum(prediction == labels)
-            test_num += batch_size
-            imgs = []
-            labels = []
+    test_reader = paddle.batch(
+        paddle.dataset.cifar.test10()
+        if args.data_set == "cifar10" else paddle.dataset.flowers.test(),
+        batch_size=args.inf_batch_size)
+
+    test_num = 0
+    correct_num = 0
+
+    for test_data in test_reader():
+        test_image = np.array(
+            map(lambda x: x[0].reshape(data_shape), test_data)).astype(
+                "float32")
+        test_label = np.array(map(lambda x: x[1], test_data)).astype("int64")
+        test_label = test_label.reshape([-1, 1])
+
+        results = executor.run(program=inference_program,
+                               feed={feed_target_names[0]: test_image},
+                               fetch_list=fetch_targets)
+
+        prediction = np.argmax(results[0], axis=1).reshape([-1, 1])
+        correct_num += np.sum(prediction == test_label)
+        test_num += test_label.size
 
     print("{0} out of {1} predictions are correct.".format(correct_num,
                                                            test_num))
     print("Test accuray is {0}.".format(float(correct_num) / float(test_num)))
 
 
-def infer(data_set, place, save_dirname):
+def infer(place, save_dirname):
     exe = fluid.Executor(place)
     inference_scope = fluid.core.Scope()
 
@@ -252,22 +318,24 @@ def infer(data_set, place, save_dirname):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        #print("The test set accuracy of inference in float mode is:")
-        #test_accuracy(data_set, exe, inference_program, feed_target_names, fetch_targets)
+        print("The test set accuracy of inference in float mode is:")
+        test_accuracy(exe, inference_program, feed_target_names, fetch_targets)
 
         float16_inference_program = inference_program.clone()
         t = fluid.InferenceTranspiler()
         t.float16_transpile(float16_inference_program, place)
+
+        print("The test set accuracy of inference in float16 mode is:")
+        test_accuracy(exe, float16_inference_program, feed_target_names,
+                      fetch_targets)
 
         fp16_save_dirname = "float16_" + save_dirname
         fluid.io.save_inference_model(fp16_save_dirname, feed_target_names,
                                       fetch_targets, exe,
                                       float16_inference_program)
 
-        #print("The test set accuracy of inference in float16 mode is:")
-        #test_accuracy(exe, float16_inference_program, feed_target_names, fetch_targets)
 
-
+"""
 @contextlib.contextmanager
 def scope_prog_guard():
     prog = fluid.Program()
@@ -276,7 +344,7 @@ def scope_prog_guard():
     with fluid.scope_guard(scope):
         with fluid.program_guard(prog, startup_prog):
             yield
-
+"""
 
 if __name__ == "__main__":
     if not fluid.core.is_compiled_with_cuda():
@@ -287,11 +355,6 @@ if __name__ == "__main__":
         raise Exception(
             "This test requires compute capability of CUDA GPU >= 5.3!")
 
-    net_types = ["vgg"]
-    data_sets = ["imagenet"]
-    for data_set in data_sets:
-        for net in net_types:
-            with scope_prog_guard():
-                save_dirname = "image_classification_" + data_set + "_" + net + ".inference.model"
-                train(net, data_set, place, save_dirname)
-                infer(data_set, place, save_dirname)
+    save_dirname = "image_classification_" + args.data_set + "_" + args.model + ".inference.model"
+    train(place, save_dirname)
+    infer(place, save_dirname)
