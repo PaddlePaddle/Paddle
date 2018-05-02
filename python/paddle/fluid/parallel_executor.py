@@ -30,8 +30,7 @@ class ParallelExecutor(object):
                  num_threads=None,
                  allow_op_delay=False,
                  share_vars_from=None,
-                 use_default_grad_scale=True,
-                 use_nccl_allreduce=True):
+                 use_default_grad_scale=True):
         """
         ParallelExecutor can run program in parallel.
 
@@ -47,14 +46,6 @@ class ParallelExecutor(object):
                 improve performance in some cases, default False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
-            use_nccl_allreduce(bool, default True): Whether to use nccl_allreduce
-                or not, if set True, the communication between different
-                devices by nccl allReduce, which doesn't support updating sparse
-                parameter, if set False, the communication between different
-                devices by reduce_op and broadcast_op, which will distribute all
-                the parameter gradients evenly to different device and updates
-                the parameters, and finally broadcast to other device, this method
-                support updating sparse parameter. Default True.
             use_default_grad_scale(bool, default True): If set True, a default
                 scale value equal to `1./device_count` would be multiplied to
                 gradients of each device and scaled gradients would be
@@ -138,8 +129,7 @@ class ParallelExecutor(object):
             scope,
             local_scopes,
             allow_op_delay,
-            use_default_grad_scale,
-            use_nccl_allreduce)
+            use_default_grad_scale)
 
         self.scope = scope
 

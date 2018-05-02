@@ -37,25 +37,20 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale,
-    bool use_nccl_allreduce)
+    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
-      nccl_ctxs_(nccl_ctxs),
-      use_nccl_allreduce_(use_nccl_allreduce) {
+      nccl_ctxs_(nccl_ctxs) {
 #else
-
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
-    bool use_nccl_allreduce)
+    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale)
     : loss_var_name_(loss_var_name),
       places_(places),
-      local_scopes_(local_scopes),
-      use_nccl_allreduce_(use_nccl_allreduce) {
+      local_scopes_(local_scopes) {
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
@@ -121,8 +116,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
       places_.size());
 
-  size_t cur_device_id = 0;
-
+  //  size_t cur_device_id = 0;
+  size_t update_sparse_gp_device_id = 0;
   std::vector<std::unordered_set<std::string>> var_name_on_devices;
   std::vector<std::unordered_set<std::string>> bcast_var_name_set;
 
@@ -162,14 +157,13 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         // broadcast, and each gradient is only broadcast once.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            if (use_nccl_allreduce_) {
-              InsertNCCLAllReduceOp(&result, og);
-            } else {
-              CreateReduceOp(&result, cur_device_id, og);
-              var_name_on_devices[cur_device_id].emplace(og);
-              bcast_var_name_set[cur_device_id].emplace(
+            if (IsSparseGradient(og)) {
+              CreateReduceOp(&result, update_sparse_gp_device_id, og);
+              var_name_on_devices[update_sparse_gp_device_id].emplace(og);
+              bcast_var_name_set[update_sparse_gp_device_id].emplace(
                   og.substr(0, og.size() - strlen(kGradVarSuffix)));
-              cur_device_id = (cur_device_id + 1) % places_.size();
+            } else {
+              InsertNCCLAllReduceOp(&result, og);
             }
           }
         }
@@ -205,13 +199,15 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   return std::unique_ptr<SSAGraph>(graph);
 }
 
+bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
+  auto og_var = local_scopes_[0]->FindVar(og);
+  PADDLE_ENFORCE_NOT_NULL(og_var);
+  return og_var->IsType<SelectedRows>();
+}
+
 int MultiDevSSAGraphBuilder::GetOpDeviceID(
     const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
     const OpDesc &op) const {
-  if (use_nccl_allreduce_) {
-    return -1;
-  }
-
   int var_dev_id = -1;
   for (auto &var_name : op.InputArgumentNames()) {
     if (var_dev_id != -1) break;
