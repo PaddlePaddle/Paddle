@@ -65,7 +65,7 @@ class TensorRTEngine : public EngineBase {
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork() {
-    infer_builder_.reset(createInferBuilder(logger_));
+    infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
   // After finishing adding ops, freeze this network and creates the executation

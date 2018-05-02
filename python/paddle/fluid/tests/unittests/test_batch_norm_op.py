@@ -275,10 +275,7 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
 class TestBatchNormOpTraining(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        if not np.allclose(np.array(tensor), np_array, atol=atol):
-            import pdb
-            pdb.set_trace()
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.allclose(np.array(tensor), np_array, atol=atol)
 
     def test_forward_backward(self):
         def test_with_place(place, data_layout, shape):

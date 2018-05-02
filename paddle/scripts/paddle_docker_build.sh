@@ -28,11 +28,16 @@ function start_build_docker() {
         docker rm -f "${CONTAINER_ID}" 1>/dev/null
     fi
 
+    apt_mirror='s#http://archive.ubuntu.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g'
     DOCKER_ENV=$(cat <<EOL
         -e FLAGS_fraction_of_gpu_memory_to_use=0.15 \
         -e CTEST_OUTPUT_ON_FAILURE=1 \
         -e CTEST_PARALLEL_LEVEL=5 \
+        -e APT_MIRROR=${apt_mirror} \
         -e WITH_GPU=ON \
+        -e CUDA_ARCH_NAME=Auto \
+        -e WITH_AVX=ON \
+        -e WITH_GOLANG=OFF \
         -e WITH_TESTING=ON \
         -e WITH_C_API=OFF \
         -e WITH_COVERAGE=ON \
@@ -42,18 +47,23 @@ function start_build_docker() {
         -e PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15 \
         -e CUDA_VISIBLE_DEVICES=0,1 \
         -e WITH_DISTRIBUTE=ON \
+        -e WITH_FLUID_ONLY=ON \
         -e RUN_TEST=ON
 EOL
     )
+
+    DOCKER_CMD="nvidia-docker"
+    if ! [ -x "$(command -v ${DOCKER_CMD})" ]; then
+        DOCKER_CMD="docker"
+    fi
     set -x
-    nvidia-docker run -it \
-        -d \
+    ${DOCKER_CMD} run -it \
         --name $CONTAINER_ID \
         ${DOCKER_ENV} \
         -v $PADDLE_ROOT:/paddle \
         -w /paddle \
         $IMG \
-        /bin/bash
+        paddle/scripts/paddle_build.sh $@
     set +x
 }
 
@@ -67,24 +77,7 @@ function main() {
         VERSION="latest-dev-android"
     fi
     IMG=${DOCKER_REPO}:${VERSION}
-
-    case $1 in
-      start)
-        start_build_docker
-        ;;
-      build_android)
-        start_build_docker
-        docker exec ${CONTAINER_ID} bash -c "./paddle/scripts/paddle_build.sh $@"
-        ;;
-      *)
-        if container_running "${CONTAINER_ID}"; then
-            docker exec ${CONTAINER_ID} bash -c "./paddle/scripts/paddle_build.sh $@"
-        else
-            echo "Please start container first, with command:"
-            echo "$0 start"
-        fi
-        ;;
-    esac
+    start_build_docker $@
 }
 
 main $@
