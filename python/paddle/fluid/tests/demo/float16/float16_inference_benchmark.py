@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+from float16_transpiler import Float16Transpiler
 
 import argparse
 import paddle
@@ -322,8 +323,8 @@ def infer(place, save_dirname):
         test_accuracy(exe, inference_program, feed_target_names, fetch_targets)
 
         float16_inference_program = inference_program.clone()
-        t = fluid.InferenceTranspiler()
-        t.float16_transpile(float16_inference_program, place)
+        t = Float16Transpiler()
+        t.transpile(float16_inference_program, place)
 
         print("The test set accuracy of inference in float16 mode is:")
         test_accuracy(exe, float16_inference_program, feed_target_names,
