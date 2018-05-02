@@ -34,7 +34,7 @@ class TestSendOp(unittest.TestCase):
         p.start()
 
         time.sleep(10)
-        with open("/tmp/paddle.selected_port", "r") as fn:
+        with open("/tmp/paddle.%d.selected_port" % p.pid, "r") as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
 
