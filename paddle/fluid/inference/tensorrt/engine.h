@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 
@@ -56,9 +58,9 @@ class TensorRTEngine : public EngineBase {
   virtual ~TensorRTEngine();
 
   // TODO(Superjomn) implement it later when graph segmentation is supported.
-  virtual void Build(const DescType& paddle_model) override;
+  void Build(const DescType& paddle_model) override;
 
-  virtual void Execute(int batch_size) override;
+  void Execute(int batch_size) override;
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.

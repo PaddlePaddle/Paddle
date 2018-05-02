@@ -10,7 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/bilinear_interp_op.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {

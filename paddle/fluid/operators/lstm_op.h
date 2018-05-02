@@ -33,7 +33,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index_lod, *dst, indexed_src);
+  row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -57,7 +57,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     bool is_reverse = ctx.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& device_ctx = ctx.template device_context<DeviceContext>();
-    to_batch(device_ctx, *input, *batch_gate, true, is_reverse);
+    to_batch(device_ctx, *input, batch_gate, true, is_reverse);
 
     auto in_dims = input->dims();
     int frame_size = static_cast<int>(in_dims[1] / 4);
@@ -161,11 +161,11 @@ class LSTMKernel : public framework::OpKernel<T> {
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden.set_lod(batch_gate->lod());
     // restore the output hidden in LoDTensor from the batch hidden
-    to_seq(device_ctx, batch_hidden, *hidden_out);
+    to_seq(device_ctx, batch_hidden, hidden_out);
 
     batch_cell.set_lod(batch_gate->lod());
     // restore the output cell state in LoDTensor from the batch cell
-    to_seq(device_ctx, batch_cell, *cell_out);
+    to_seq(device_ctx, batch_cell, cell_out);
   }
 };
 
@@ -257,7 +257,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
         const framework::DDim& dims, framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
-      to_batch(ctx, src, dst, false);
+      to_batch(ctx, src, &dst, false);
     };
 
     LoDTensor batch_hidden, batch_hidden_g, batch_cell;
@@ -351,7 +351,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     if (in_g) {
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());
-      to_seq(device_ctx, batch_gate_g, *in_g);
+      to_seq(device_ctx, batch_gate_g, in_g);
     }
     if (bias && bias_g) {
       /* backward bias */
