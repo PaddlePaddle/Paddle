@@ -122,6 +122,19 @@ def infer(use_cuda, save_path):
 
     lod = [0, 4, 10]
     tensor_words = create_random_lodtensor(
-        lod, place, low=0, high=word_dict_len - 1)
+        lod, place, low=0, high=len(word_dict) - 1)
     results = inferencer.infer({'words': tensor_words})
     print("infer results: ", results)
+
+
+def main(use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+    save_path = "understand_sentiment_stacked_lstm.inference.model"
+    train(use_cuda, save_path)
+    infer(use_cuda, save_path)
+
+
+if __name__ == '__main__':
+    for use_cuda in (False, True):
+        main(use_cuda=use_cuda)
