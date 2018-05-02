@@ -12,7 +12,7 @@ services:
 os:
   - linux
 env:
-  - JOB=doc
+  - JOB=build_doc
   - JOB=check_style
   - JOB=build_android
 addons:
@@ -43,10 +43,10 @@ before_install:
 script:
   - |
     # 43min timeout
-    if [[ "$JOB" != "doc" ]]; then timeout 2580 paddle/scripts/paddle_docker_build.sh ${JOB}; else paddle/scripts/paddle_build.sh ${JOB}; fi;
+    if [[ "$JOB" != "build_doc" ]]; then timeout 2580 paddle/scripts/paddle_docker_build.sh ${JOB}; else paddle/scripts/paddle_build.sh ${JOB}; fi;
     if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
   - |
-    if [[ "$JOB" != "doc" ]]; then exit 0; fi;
+    if [[ "$JOB" != "build_doc" ]]; then exit 0; fi;
     # For document only
     if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
     if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
