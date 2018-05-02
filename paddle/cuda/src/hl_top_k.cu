@@ -244,13 +244,16 @@ __device__ __forceinline__ void blockReduce(Pair* shTopK,
     if (--beamSize == 0) break;
     __syncthreads();
 
+    unsigned mask = 0u;
+    // CREATE_SHFL_MASK(mask, tid < len);
+
     if (tid == maxId[0]) {
       if (beam < maxLength) {
         shTopK[tid] = topK[beam];
       }
     }
     if (maxId[0] / 32 == warp) {
-      if (__shfl_sync(beam, (maxId[0]) % 32, 32) == maxLength) break;
+      if (__shfl_sync(mask, beam, (maxId[0]) % 32, 32) == maxLength) break;
     }
   }
 }
