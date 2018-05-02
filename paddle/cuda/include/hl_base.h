@@ -228,6 +228,21 @@ extern __thread cudaStream_t default_stream;
         << "CUDA error: " << hl_get_device_error_string((size_t)err); \
   }
 
+// __shfl has been deprecated as of CUDA 9.0.
+#if CUDA_VERSION < 9000
+template <typename T>
+__forceinline__ __device__ T
+__shfl_sync(unsigned, T val, int src_line, int width) {
+  return __shfl(val, src_line, width);
+}
+
+#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
+#else
+#define FULL_WARP_MASK 0xFFFFFFFF
+#define CREATE_SHFL_MASK(mask, predicate) \
+  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
+#endif
+
 #endif /* __NVCC__ */
 
 #endif /* HL_BASE_H_ */
