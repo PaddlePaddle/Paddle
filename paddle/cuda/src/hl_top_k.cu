@@ -250,7 +250,7 @@ __device__ __forceinline__ void blockReduce(Pair* shTopK,
       }
     }
     if (maxId[0] / 32 == warp) {
-      if (__shfl(beam, (maxId[0]) % 32, 32) == maxLength) break;
+      if (__shfl_sync(beam, (maxId[0]) % 32, 32) == maxLength) break;
     }
   }
 }
