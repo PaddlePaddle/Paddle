@@ -354,9 +354,6 @@ __device__ T reduceSum(T val, int tid, int len) {
     val += platform::__shfl_down_sync(mask, val, offset);
 
   if (tid < warpSize) shm[tid] = 0;
-
-  __syncthreads();
-
   if (tid % warpSize == 0) {
     shm[tid / warpSize] = val;
   }

@@ -30,16 +30,6 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
   }
 }
 
-template <typename T>
-__device__ __forceinline__ T sum_single_warp(T val) {
-  val += platform::__shfl_down_sync(0, val, 16);
-  val += platform::__shfl_down_sync(0, val, 8);
-  val += platform::__shfl_down_sync(0, val, 4);
-  val += platform::__shfl_down_sync(0, val, 2);
-  val += platform::__shfl_down_sync(0, val, 1);
-  return val;
-}
-
 // CUDA do not support dynamic arrary in template
 // https://stackoverflow.com/questions/20497209
 template <typename T>
@@ -64,7 +54,7 @@ struct SharedMemory<double> {
   }
 };
 
-template <typename T>
+template <typename T, int WarpSize>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int class_num) {
   int tid = threadIdx.x;
@@ -88,7 +78,14 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
   }
 
   T val = d_sum[tid];
-  val = sum_single_warp<T>(val);
+
+  // Temporary modification
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2)
+    val += platform::__shfl_down_sync(mask, val, offset);
+
   if (tid == 0) Y[blockIdx.x] = -val;
 }
 }  // namespace
@@ -103,6 +100,7 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor* labels, bool softLabel) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
+    const int WarpSize = 32;
 
     int batch_size = prob->dims()[0];
     int class_num = prob->dims()[1];
@@ -113,9 +111,8 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
                       ? 512
                       : pow(2, static_cast<int>(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<T><<<
-          batch_size, block, block * sizeof(T),
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      SoftCrossEntropyKernel<
+          T, WarpSize><<<batch_size, block, block * sizeof(T), ctx.stream()>>>(
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
