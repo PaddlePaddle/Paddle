@@ -98,7 +98,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
 
     if (!norm_by_times && num_sequences == 1UL) {
       TensorCopy(seq, context.GetPlace(), context, padding);
-      padding.Resize(padding_dims);
+      padding->Resize(padding_dims);
       return;
     }
 
