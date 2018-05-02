@@ -21,7 +21,11 @@ import executor
 from executor import *
 
 import trainer
-from trainer import *
+from trainer import Trainer
+from trainer import BeginEpochEvent
+from trainer import EndEpochEvent
+from trainer import BeginStepEvent
+from trainer import EndStepEvent
 
 import inferencer
 from inferencer import Inferencer
