@@ -42,9 +42,20 @@ struct CUBlas<double> {
 
 template <>
 struct CUBlas<platform::float16> {
-  template <typename... ARGS>
-  static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasHgemm(args...));
+  using float16 = platform::float16;
+
+  static void GEMM(cublasHandle_t handle, cublasOperation_t transa,
+                   cublasOperation_t transb, int m, int n, int k,
+                   const float16 *alpha, const float16 *A, int lda,
+                   const float16 *B, int ldb, const float16 *beta, float16 *C,
+                   int ldc) {
+    PADDLE_ENFORCE(
+        platform::dynload::cublasHgemm(handle, transa, transb, m, n, k,
+                                       reinterpret_cast<const __half *>(alpha),
+                                       reinterpret_cast<const __half *>(A), lda,
+                                       reinterpret_cast<const __half *>(B), ldb,
+                                       reinterpret_cast<const __half *>(beta),
+                                       reinterpret_cast<__half *>(C), ldc));
   }
 };
 
