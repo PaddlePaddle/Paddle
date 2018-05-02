@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "NvInfer.h"
-#include "cuda.h"
-#include "cuda_runtime_api.h"
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 
 namespace dy = paddle::platform::dynload;
@@ -43,7 +43,7 @@ class Logger : public nvinfer1::ILogger {
 
 class ScopedWeights {
  public:
-  ScopedWeights(float value) : value_(value) {
+  explicit ScopedWeights(float value) : value_(value) {
     w.type = nvinfer1::DataType::kFLOAT;
     w.values = &value_;
     w.count = 1;
@@ -58,13 +58,13 @@ class ScopedWeights {
 // The following two API are implemented in TensorRT's header file, cannot load
 // from the dynamic library. So create our own implementation and directly
 // trigger the method from the dynamic library.
-nvinfer1::IBuilder* createInferBuilder(nvinfer1::ILogger& logger) {
+nvinfer1::IBuilder* createInferBuilder(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IBuilder*>(
-      dy::createInferBuilder_INTERNAL(&logger, NV_TENSORRT_VERSION));
+      dy::createInferBuilder_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
-nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger& logger) {
+nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IRuntime*>(
-      dy::createInferRuntime_INTERNAL(&logger, NV_TENSORRT_VERSION));
+      dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
 
 const char* kInputTensor = "input";
@@ -103,7 +103,7 @@ nvinfer1::IHostMemory* CreateNetwork() {
   return model;
 }
 
-void Execute(nvinfer1::IExecutionContext& context, const float* input,
+void Execute(const nvinfer1::IExecutionContext& context, const float* input,
              float* output) {
   const nvinfer1::ICudaEngine& engine = context.getEngine();
   // Two binds, input and output
