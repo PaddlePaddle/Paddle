@@ -36,13 +36,13 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
                           platform::NCCLContextMap *nccl_ctxs,
-                          bool use_default_grad_scale, bool use_nccl_allreduce);
+                          bool use_default_grad_scale);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool use_default_grad_scale, bool use_nccl_allreduce);
+                          bool use_default_grad_scale);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -60,7 +60,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
-  bool use_nccl_allreduce_;
   bool use_default_grad_scale_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
@@ -99,6 +98,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
    * nullptr if not found.
    */
   OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
+
+  bool IsSparseGradient(const std::string &og) const;
 };
 }  // namespace details
 }  // namespace framework

@@ -205,8 +205,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   allow_op_delay=False,
                                   feed_dict=None,
                                   seed=None,
-                                  use_parallel_executor=True,
-                                  use_nccl_allreduce=True):
+                                  use_parallel_executor=True):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -235,10 +234,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
-                    True,
-                    loss_name=loss.name,
-                    allow_op_delay=allow_op_delay,
-                    use_nccl_allreduce=use_nccl_allreduce)
+                    True, loss_name=loss.name, allow_op_delay=allow_op_delay)
             else:
                 exe = fluid.Executor(place=place)
 
@@ -284,25 +280,20 @@ class TestMNIST(TestParallelExecutorBase):
             fluid.recordio_writer.convert_reader_to_recordio_file(
                 './mnist.recordio', reader, feeder)
 
-    def check_simple_fc_convergence(self, use_nccl_allreduce=True):
+    def check_simple_fc_convergence(self):
         self.check_network_convergence(simple_fc_net)
         self.check_network_convergence(simple_fc_net, allow_op_delay=True)
 
         img = numpy.zeros(shape=[32, 784], dtype='float32')
         label = numpy.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
-            simple_fc_net,
-            feed_dict={"image": img,
-                       "label": label},
-            use_nccl_allreduce=use_nccl_allreduce)
+            simple_fc_net, feed_dict={"image": img,
+                                      "label": label})
 
-    def test_simple_fc_with_nccl_allreduce(self):
-        self.check_simple_fc_convergence(True)
+    def test_simple_fc(self):
+        self.check_simple_fc_convergence()
 
-    def test_simple_fc_with_reduce_op(self):
-        self.check_simple_fc_convergence(False)
-
-    def check_simple_fc_parallel_accuracy(self, use_nccl_allreduce=True):
+    def check_simple_fc_parallel_accuracy(self):
         img = numpy.zeros(shape=[32, 784], dtype='float32')
         label = numpy.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -316,35 +307,26 @@ class TestMNIST(TestParallelExecutorBase):
             seed=1000,
             feed_dict={"image": img,
                        "label": label},
-            use_parallel_executor=True,
-            use_nccl_allreduce=use_nccl_allreduce)
+            use_parallel_executor=True)
 
         for p_f in parallel_first_loss:
             self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
         for p_l in parallel_last_loss:
             self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
 
-    def test_simple_fc_parallel_accuracy_with_nccl_allreduce(self):
-        self.check_simple_fc_parallel_accuracy(True)
+    def test_simple_fc_parallel_accuracy(self):
+        self.check_simple_fc_parallel_accuracy()
 
-    def test_simple_fc_parallel_accuracy_with_reduce_op(self):
-        self.check_simple_fc_parallel_accuracy(False)
-
-    def check_batchnorm_fc_convergence(self, use_nccl_allreduce):
+    def check_batchnorm_fc_convergence(self):
         self.check_network_convergence(fc_with_batchnorm)
         img = numpy.zeros(shape=[32, 784], dtype='float32')
         label = numpy.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
-            fc_with_batchnorm,
-            feed_dict={"image": img,
-                       "label": label},
-            use_nccl_allreduce=use_nccl_allreduce)
+            fc_with_batchnorm, feed_dict={"image": img,
+                                          "label": label})
 
-    def test_batchnorm_fc_with_nccl_allreduce(self):
-        self.check_batchnorm_fc_convergence(True)
-
-    def test_batchnorm_fc_with_reduce_op(self):
-        self.check_batchnorm_fc_convergence(False)
+    def test_batchnorm_fc(self):
+        self.check_batchnorm_fc_convergence()
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -366,21 +348,17 @@ class TestResnet(TestParallelExecutorBase):
     #         fluid.recordio_writer.convert_reader_to_recordio_file(
     #             "./flowers.recordio", reader, feeder, compressor=fluid.core.RecordIOWriter.Compressor.NoCompress)
 
-    def check_resnet_convergence(self, use_nccl_allreduce):
+    def check_resnet_convergence(self):
         import functools
         batch_size = 2
         self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt50Small, batch_size=batch_size),
             iter=20,
-            batch_size=batch_size,
-            use_nccl_allreduce=use_nccl_allreduce)
+            batch_size=batch_size)
 
-    def test_resnet_with_nccl_allreduce(self):
-        self.check_resnet_convergence(True)
-
-    def test_resnet_with_reduce_op(self):
-        self.check_resnet_convergence(False)
+    def test_resnet(self):
+        self.check_resnet_convergence()
 
 
 class ModelHyperParams(object):
@@ -544,7 +522,7 @@ class TestTransformer(TestParallelExecutorBase):
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
-    def check_network_convergence(self, use_nccl_allreduce):
+    def check_network_convergence(self):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -565,16 +543,12 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             feed_dict = {'image': image, 'label': label}
 
             train_exe = fluid.ParallelExecutor(
-                use_cuda=True,
-                loss_name=loss.name,
-                main_program=main,
-                use_nccl_allreduce=use_nccl_allreduce)
+                use_cuda=True, loss_name=loss.name, main_program=main)
 
             test_exe = fluid.ParallelExecutor(
                 use_cuda=True,
                 main_program=test_program,
-                share_vars_from=train_exe,
-                use_nccl_allreduce=use_nccl_allreduce)
+                share_vars_from=train_exe)
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
@@ -588,11 +562,8 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
 
-    def test_parallel_testing_with_nccl_allreduce(self):
-        self.check_network_convergence(use_nccl_allreduce=True)
-
-    def test_parallel_testing_with_reduce_op(self):
-        self.check_network_convergence(use_nccl_allreduce=False)
+    def test_parallel(self):
+        self.check_network_convergence()
 
 
 import paddle.dataset.conll05 as conll05
@@ -612,7 +583,7 @@ embedding_name = 'emb'
 
 
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
-            is_sparse, use_nccl_allreduce, **ignored):
+            is_sparse, **ignored):
     # 8 features
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
@@ -681,7 +652,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
 
 class TestCRFModel(unittest.TestCase):
-    def check_network_convergence(self, is_sparse, use_nccl_allreduce):
+    def check_network_convergence(self, is_sparse):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -729,10 +700,7 @@ class TestCRFModel(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup)
 
-            pe = fluid.ParallelExecutor(
-                use_cuda=True,
-                loss_name=avg_cost.name,
-                use_nccl_allreduce=use_nccl_allreduce)
+            pe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
 
             feeder = fluid.DataFeeder(
                 feed_list=[
@@ -749,11 +717,7 @@ class TestCRFModel(unittest.TestCase):
                                  fetch_list=[avg_cost.name]))[0]
 
     def test_update_sparse_parameter(self):
-        self.check_network_convergence(is_sparse=True, use_nccl_allreduce=False)
+        self.check_network_convergence(is_sparse=True)
 
-    def test_update_dense_parameter_with_nccl_allreduce(self):
-        self.check_network_convergence(is_sparse=False, use_nccl_allreduce=True)
-
-    def test_update_dense_parameter_with_reduce_op(self):
-        self.check_network_convergence(
-            is_sparse=False, use_nccl_allreduce=False)
+    def test_update_dense_parameter(self):
+        self.check_network_convergence(is_sparse=False)
