@@ -208,9 +208,9 @@ void AsyncGRPCServer::WaitClientGet(int count) {
   }
 }
 
-bool AsyncGRPCServer::WaitServerReady() {
+void AsyncGRPCServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
-  condition_ready_.wait(lock, [&] { return this->ready_ == 1; });
+  condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
 }
 
 void AsyncGRPCServer::RunSyncUpdate() {
