@@ -11,9 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include <utility>
+#include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
@@ -34,21 +36,26 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
-    platform::NCCLContextMap *nccl_ctxs)
+    const std::vector<Scope *> &local_scopes,
+    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale,
+    bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
-      nccl_ctxs_(nccl_ctxs) {
+      nccl_ctxs_(nccl_ctxs),
+      use_nccl_allreduce_(use_nccl_allreduce) {
 #else
+
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale)
+    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
+    bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
-      local_scopes_(local_scopes) {
+      local_scopes_(local_scopes),
+      use_nccl_allreduce_(use_nccl_allreduce) {
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
@@ -114,6 +121,14 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
       places_.size());
 
+  size_t cur_device_id = 0;
+
+  std::vector<std::unordered_set<std::string>> var_name_on_devices;
+  std::vector<std::unordered_set<std::string>> bcast_var_name_set;
+
+  var_name_on_devices.resize(places_.size());
+  bcast_var_name_set.resize(places_.size());
+
   // Find "send" op first for split is in front of send.
   OpDesc *send_op = GetSendOpDesc(program);
 
@@ -132,16 +147,41 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       }
       is_forwarding = false;
     } else {
-      CreateComputationalOps(&result, *op, places_.size());
-      if (!is_forwarding) {
+      int op_dev_id = GetOpDeviceID(var_name_on_devices, *op);
+      if (op_dev_id == -1) {  // var on all device
+        CreateComputationalOps(&result, *op, places_.size());
+      } else {
+        CreateComputationalOp(&result, *op, op_dev_id);
+        for (auto &var_name : op->OutputArgumentNames()) {
+          var_name_on_devices[op_dev_id].emplace(var_name);
+        }
+      }
+
+      if (!is_forwarding && places_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            InsertNCCLAllReduceOp(&result, og);
+            if (use_nccl_allreduce_) {
+              InsertNCCLAllReduceOp(&result, og);
+            } else {
+              CreateReduceOp(&result, cur_device_id, og);
+              var_name_on_devices[cur_device_id].emplace(og);
+              bcast_var_name_set[cur_device_id].emplace(
+                  og.substr(0, og.size() - strlen(kGradVarSuffix)));
+              cur_device_id = (cur_device_id + 1) % places_.size();
+            }
           }
         }
       }
+    }
+  }
+
+  // Insert BCast Ops
+  for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
+    auto &to_bcast_set = bcast_var_name_set[dev_id];
+    for (auto &bcast_name : to_bcast_set) {
+      CreateBroadcastOp(&result, bcast_name, dev_id);
     }
   }
 
@@ -165,6 +205,60 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   return std::unique_ptr<SSAGraph>(graph);
 }
 
+int MultiDevSSAGraphBuilder::GetOpDeviceID(
+    const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
+    const OpDesc &op) const {
+  if (use_nccl_allreduce_) {
+    return -1;
+  }
+
+  int var_dev_id = -1;
+  for (auto &var_name : op.InputArgumentNames()) {
+    if (var_dev_id != -1) break;
+    for (size_t i = 0; i < var_name_on_devices.size(); ++i) {
+      if (var_name_on_devices[i].count(var_name)) {
+        var_dev_id = static_cast<int>(i);
+        break;
+      }
+    }
+  }
+  return var_dev_id;
+}
+
+void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
+                                                const std::string &p_name,
+                                                size_t dev_id) const {
+#ifdef PADDLE_WITH_CUDA
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, nccl_ctxs_);
+#else
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
+#endif
+
+  result->ops_.emplace_back(op_handle);
+  auto *in = result->vars_.at(dev_id).at(p_name).back().get();
+  op_handle->AddInput(in);
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &vars = result->vars_.at(dev_id).at(p_name);
+    auto &p = places_[i];
+    auto *out_var = new VarHandle(vars.size(), i, p_name, p);
+    vars.emplace_back(out_var);
+    op_handle->AddOutput(out_var);
+#ifndef ADDLE_WITH_CUDA
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+#endif
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
+                                                    const OpDesc &op,
+                                                    int dev_id) const {
+  result->ops_.emplace_back(
+      new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]));
+  CreateOpHandleIOs(result, op, dev_id);
+}
+
 OpDesc *MultiDevSSAGraphBuilder::GetSendOpDesc(
     const ProgramDesc &program) const {
   for (auto *op : program.Block(0).AllOps()) {
@@ -174,7 +268,6 @@ OpDesc *MultiDevSSAGraphBuilder::GetSendOpDesc(
   }
   return nullptr;
 }
-
 void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     SSAGraph *result, const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA
@@ -247,6 +340,35 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
   }
 }
 
+VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(
+    SSAGraph *result, int dst_dev_id, const std::string &og) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
+  result->ops_.emplace_back(new ReduceOpHandle(local_scopes_, places_));
+#endif
+  auto *op_handle = result->ops_.back().get();
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &vars = result->vars_[i][og];
+#ifndef PADDLE_WITH_CUDA
+    auto &p = places_[i];
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+#endif
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
+    op_handle->AddInput(prev_grad.get());
+  }
+  auto &vars = result->vars_[dst_dev_id][og];
+  auto var =
+      new VarHandle(vars.size() - 1, dst_dev_id, og, places_[dst_dev_id]);
+  vars.emplace_back(var);
+  op_handle->AddOutput(var);
+  return var;
+}
+
 void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
                                            const OpDesc &op) const {
   auto &p = places_[0];
@@ -263,6 +385,7 @@ bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
   return op.OutputArgumentNames().size() == 1 &&
          op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
 }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
