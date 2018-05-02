@@ -28,3 +28,5 @@ endif()
 if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
+
+add_subdirectory(analysis)

@@ -42,6 +42,8 @@ class EngineInputConverter {
     PADDLE_ENFORCE_NOT_NULL(stream);
     auto* converter = Registry<EngineInputConverter>::Lookup(in_op_type);
     PADDLE_ENFORCE_NOT_NULL(converter, "no InputConverter found for %s", in_op_type);
+    PADDLE_ENFORCE_NOT_NULL(converter, "no InputConverter found for %s",
+                            in_op_type);
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }
