@@ -5,19 +5,20 @@ WHEEL_PATH=$BUILD_PATH/python/dist
 INFER_PATH=$BUILD_PATH/paddle/fluid/inference/tests/book
 DEMO_PATH=/paddle/contrib/float16
 
+# Use the single most powerful CUDA GPU on your machine
 export CUDA_VISIBLE_DEVICES=0
 
 # Build the PaddlePaddle Fluid wheel package and install it.
-#mkdir -p $BUILD_PATH && cd $BUILD_PATH
-#cmake .. -DWITH_AVX=OFF \
-#         -DWITH_MKL=OFF \
-#         -DWITH_GPU=ON \
-#         -DWITH_TESTING=ON \
-#         -DWITH_TIMER=ON \
-#         -DWITH_PROFILER=ON \
-#         -DWITH_FLUID_ONLY=ON
-#make -j `nproc`
-#pip install -U "$WHEEL_PATH/$(ls $WHEEL_PATH)"
+mkdir -p $BUILD_PATH && cd $BUILD_PATH
+cmake .. -DWITH_AVX=OFF \
+         -DWITH_MKL=OFF \
+         -DWITH_GPU=ON \
+         -DWITH_TESTING=ON \
+         -DWITH_TIMER=ON \
+         -DWITH_PROFILER=ON \
+         -DWITH_FLUID_ONLY=ON
+make -j `nproc`
+pip install -U "$WHEEL_PATH/$(ls $WHEEL_PATH)"
 
 cd $DEMO_PATH
 # Clear previous log results
