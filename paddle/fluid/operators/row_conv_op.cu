@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/row_conv_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
 
 namespace paddle {
 namespace operators {

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
@@ -30,63 +31,23 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
   }
 }
 
-// CUDA do not support dynamic arrary in template
-// https://stackoverflow.com/questions/20497209
-template <typename T>
-struct SharedMemory {
-  // Ensure that we won't compile any un-specialized types
-  __device__ T* GetPointer() { return NULL; }
-};
-
-template <>
-struct SharedMemory<float> {
-  __device__ float* GetPointer() {
-    extern __shared__ float s_float[];
-    return s_float;
-  }
-};
-
-template <>
-struct SharedMemory<double> {
-  __device__ double* GetPointer() {
-    extern __shared__ double s_double[];
-    return s_double;
-  }
-};
-
 template <typename T, int WarpSize>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int class_num) {
   int tid = threadIdx.x;
-  SharedMemory<T> d_sum_shared;
-  T* d_sum = d_sum_shared.GetPointer();
-  d_sum[tid] = 0;
+  T val = 0;
 
   int cur_idx = tid;
   int next_idx = blockIdx.x * class_num + tid;
   while (cur_idx < class_num) {
-    d_sum[tid] +=
-        math::TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
+    val += math::TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
     next_idx += blockDim.x;
     cur_idx += blockDim.x;
   }
-  __syncthreads();
-
-  for (unsigned int stride = blockDim.x >> 1; stride >= 32; stride >>= 1) {
-    if (tid < stride) d_sum[tid] += d_sum[tid + stride];
-    __syncthreads();
+  val = paddle::platform::reduceSum(val, tid, blockDim.x);
+  if (threadIdx.x == 0) {
+    Y[blockIdx.x] = -val;
   }
-
-  T val = d_sum[tid];
-
-  // Temporary modification
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-
-  for (int offset = WarpSize / 2; offset > 0; offset /= 2)
-    val += platform::__shfl_down_sync(mask, val, offset);
-
-  if (tid == 0) Y[blockIdx.x] = -val;
 }
 }  // namespace
 
