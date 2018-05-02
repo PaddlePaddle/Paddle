@@ -46,13 +46,13 @@ const int kDataTypeSize[] = {
 // The following two API are implemented in TensorRT's header file, cannot load
 // from the dynamic library. So create our own implementation and directly
 // trigger the method from the dynamic library.
-static nvinfer1::IBuilder* createInferBuilder(nvinfer1::ILogger& logger) {
+static nvinfer1::IBuilder* createInferBuilder(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IBuilder*>(
-      dy::createInferBuilder_INTERNAL(&logger, NV_TENSORRT_VERSION));
+      dy::createInferBuilder_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
-static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger& logger) {
+static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IRuntime*>(
-      dy::createInferRuntime_INTERNAL(&logger, NV_TENSORRT_VERSION));
+      dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
 
 // A logger for create TensorRT infer builder.
@@ -80,7 +80,7 @@ class NaiveLogger : public nvinfer1::ILogger {
     return *x;
   }
 
-  virtual ~NaiveLogger() override {}
+  ~NaiveLogger() override {}
 };
 
 }  // namespace tensorrt

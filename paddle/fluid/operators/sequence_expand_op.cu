@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/operators/sequence_expand_op.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
