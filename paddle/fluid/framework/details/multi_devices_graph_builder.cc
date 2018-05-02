@@ -37,7 +37,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs, bool skip_scale_loss,
+    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale,
     bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
@@ -50,7 +50,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool skip_scale_loss,
+    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
     bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
@@ -60,7 +60,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
   }
-  skip_scale_loss_ = skip_scale_loss;
+  use_default_grad_scale_ = use_default_grad_scale;
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
@@ -141,8 +141,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     } else if (IsDistTrainOp(*op, send_op)) {
       CreateComputationalOps(&result, *op, 1);
     } else if (IsScaleLossOp(*op)) {
-      // user can customize loss@grad if skip_scale_loss_
-      if (!skip_scale_loss_) {
+      // user can customize loss@grad if not use_default_grad_scale_
+      if (use_default_grad_scale_) {
         CreateScaleLossGradOp(&result);
       }
       is_forwarding = false;

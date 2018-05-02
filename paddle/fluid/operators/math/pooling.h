@@ -25,8 +25,7 @@ namespace math {
 
 #define FLT_MAX \
   __FLT_MAX__  // TODO(zcd) :It might need to be placed in another file, but I'm
-               // still
-               // wondering where to put it.
+               // still wondering where to put it.
 
 /*
  * \brief Extracting simple operations from pooling.

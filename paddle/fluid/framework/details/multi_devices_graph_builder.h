@@ -36,13 +36,13 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
                           platform::NCCLContextMap *nccl_ctxs,
-                          bool skip_scale_loss, bool use_nccl_allreduce);
+                          bool use_default_grad_scale, bool use_nccl_allreduce);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool skip_scale_loss, bool use_nccl_allreduce);
+                          bool use_default_grad_scale, bool use_nccl_allreduce);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -61,7 +61,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
   bool use_nccl_allreduce_;
-  bool skip_scale_loss_;
+  bool use_default_grad_scale_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
