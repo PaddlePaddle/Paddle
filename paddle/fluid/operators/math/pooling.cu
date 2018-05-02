@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <vector>
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -22,7 +20,7 @@ namespace operators {
 namespace math {
 
 template <typename PoolProcess, typename T>
-__global__ void KernelPool2D(const int nthreads, const T* input_data,  // NOLINT
+__global__ void KernelPool2D(const int nthreads, const T* input_data,
                              const int channels, const int input_height,
                              const int input_width, const int output_height,
                              const int output_width, const int ksize_height,
@@ -60,8 +58,8 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,  // NOLINT
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool2DGrad(
-    const int nthreads, const T* input_data, const T* output_data,     // NOLINT
-    const T* output_grad, const int channels, const int input_height,  // NOLINT
+    const int nthreads, const T* input_data, const T* output_data,
+    const T* output_grad, const int channels, const int input_height,
     const int input_width, const int output_height, const int output_width,
     const int ksize_height, const int ksize_width, const int stride_height,
     const int stride_width, const int padding_height, const int padding_width,
@@ -108,8 +106,8 @@ __global__ void KernelPool2DGrad(
 
 template <typename T>
 __global__ void KernelMaxPool2DGrad(
-    const int nthreads, const T* input_data, const T* output_data,     // NOLINT
-    const T* output_grad, const int channels, const int input_height,  // NOLINT
+    const int nthreads, const T* input_data, const T* output_data,
+    const T* output_grad, const int channels, const int input_height,
     const int input_width, const int output_height, const int output_width,
     const int ksize_height, const int ksize_width, const int stride_height,
     const int stride_width, const int padding_height, const int padding_width,
@@ -160,10 +158,8 @@ template <typename PoolProcess, typename T>
 class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -205,10 +201,8 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -252,10 +246,8 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -314,7 +306,7 @@ template class Pool2dGradFunctor<platform::CUDADeviceContext,
                                  double>;
 
 template <typename PoolProcess, typename T>
-__global__ void KernelPool3D(const int nthreads, const T* input_data,  // NOLINT
+__global__ void KernelPool3D(const int nthreads, const T* input_data,
                              const int channels, const int input_depth,
                              const int input_height, const int input_width,
                              const int output_depth, const int output_height,
@@ -360,8 +352,8 @@ __global__ void KernelPool3D(const int nthreads, const T* input_data,  // NOLINT
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3DGrad(
-    const int nthreads, const T* input_data, const T* output_data,    // NOLINT
-    const T* output_grad, const int channels, const int input_depth,  // NOLINT
+    const int nthreads, const T* input_data, const T* output_data,
+    const T* output_grad, const int channels, const int input_depth,
     const int input_height, const int input_width, const int output_depth,
     const int output_height, const int output_width, const int ksize_depth,
     const int ksize_height, const int ksize_width, const int stride_depth,
@@ -424,8 +416,8 @@ __global__ void KernelPool3DGrad(
 
 template <typename T>
 __global__ void KernelMaxPool3DGrad(
-    const int nthreads, const T* input_data, const T* output_data,    // NOLINT
-    const T* output_grad, const int channels, const int input_depth,  // NOLINT
+    const int nthreads, const T* input_data, const T* output_data,
+    const T* output_grad, const int channels, const int input_depth,
     const int input_height, const int input_width, const int output_depth,
     const int output_height, const int output_width, const int ksize_depth,
     const int ksize_height, const int ksize_width, const int stride_depth,
@@ -482,10 +474,8 @@ template <typename PoolProcess, class T>
 class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -535,10 +525,8 @@ class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -590,10 +578,8 @@ class MaxPool3dGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -750,10 +736,8 @@ template <typename T1, typename T2>
 class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* output, framework::Tensor* mask) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -795,10 +779,8 @@ class MaxPool2dWithIndexGradFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& output_grad,
-                  const framework::Tensor& mask,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& mask, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_channels = input_grad->dims()[1];
@@ -955,10 +937,8 @@ template <typename T1, typename T2>
 class MaxPool3dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* output, framework::Tensor* mask) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -1007,10 +987,8 @@ class MaxPool3dWithIndexGradFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& output_grad,
-                  const framework::Tensor& mask,
-                  std::vector<int>& ksize,     // NOLINT
-                  std::vector<int>& strides,   // NOLINT
-                  std::vector<int>& paddings,  // NOLINT
+                  const framework::Tensor& mask, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_channels = input_grad->dims()[1];
