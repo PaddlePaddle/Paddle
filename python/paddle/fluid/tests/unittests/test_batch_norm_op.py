@@ -284,10 +284,25 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.use_mkldnn = False
+        self.data_formats = ["NCHW", "NHWC"]
         self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.allclose(np.array(tensor), np_array, atol=atol)
+
+    def ref_forward_backward(self, x, y_grad, scale, bias, mean, variance,
+                             epsilon, momentum, shape, data_layout):
+        # run forward
+        y, saved_mean, var_ref = _reference_training(x, scale, bias, epsilon,
+                                                     data_layout)
+        mean_out = saved_mean * (1. - momentum) + momentum * mean
+        variance_out = var_ref * (1. - momentum) + momentum * variance
+        saved_variance = 1. / np.sqrt(var_ref + epsilon)
+        # run backward
+        x_grad, scale_grad, bias_grad = _reference_grad(
+            x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout)
+
+        return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
 
     def test_forward_backward(self):
         def test_with_place(place, data_layout, shape):
@@ -307,16 +322,11 @@ class TestBatchNormOpTraining(unittest.TestCase):
             mean = np.zeros(scale_shape).astype(np.float32)
             variance = np.ones(scale_shape).astype(np.float32)
 
-            # run forward
-            y, saved_mean, var_ref = _reference_training(x, scale, bias,
-                                                         epsilon, data_layout)
-            mean_out = saved_mean * (1. - momentum) + momentum * mean
-            variance_out = var_ref * (1. - momentum) + momentum * variance
-            saved_variance = 1. / np.sqrt(var_ref + epsilon)
-            # run backward
             y_grad = np.random.random_sample(shape).astype(np.float32)
-            x_grad, scale_grad, bias_grad = _reference_grad(
-                x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout)
+
+            y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad = self.ref_forward_backward(
+                x, y_grad, scale, bias, mean, variance, epsilon, momentum,
+                shape, data_layout)
 
             var_dict = locals()
             var_dict['y@GRAD'] = y_grad
@@ -400,11 +410,12 @@ class TestBatchNormOpTraining(unittest.TestCase):
             print "op test forward passed: ", str(place), data_layout
 
         places = [core.CPUPlace()]
+
         if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
             places.append(core.CUDAPlace(0))
 
         for place in places:
-            for data_format in ["NCHW", "NHWC"]:
+            for data_format in self.data_formats:
                 test_with_place(place, data_format, [2, 3, 4, 5])
 
     def init_kernel_type(self):
