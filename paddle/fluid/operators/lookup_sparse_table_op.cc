@@ -62,7 +62,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto w_t = w_var->GetMutable<framework::SelectedRows>();
     std::vector<int64_t> keys;
     keys.resize(ids_t.numel());
-    for (size_t i = 0; i < ids_t.numel(); ++i) {
+    for (int64_t i = 0; i < ids_t.numel(); ++i) {
       keys[i] = ids_t.data<int64_t>()[i];
     }
 
