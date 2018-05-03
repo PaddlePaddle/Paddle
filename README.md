@@ -83,7 +83,7 @@ We provide [English](http://www.paddlepaddle.org/docs/develop/documentation/en/g
 
    You can also run distributed training jobs on Kubernetes clusters.
 
-- [Python API](http://www.paddlepaddle.org/docs/develop/api/fluid/en/layers.html)
+- [Python API](http://www.paddlepaddle.org/docs/develop/api/en/overview.html)
 
    Our new API enables much shorter programs.
 
