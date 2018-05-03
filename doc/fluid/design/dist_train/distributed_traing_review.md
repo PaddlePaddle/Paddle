@@ -1,8 +1,6 @@
 # Parallelism, Asynchronous,  Synchronous, Codistillation
 
 
-[TOC]
-
 For valuable models, it’s worth using more hardware resources to reduce the training time and improve the final model quality. This doc discuss various solutions, their empirical results and some latest researches.
 
 # Model Parallelism
