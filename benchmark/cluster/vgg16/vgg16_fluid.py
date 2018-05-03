@@ -240,8 +240,6 @@ def main():
 
         t = fluid.DistributeTranspiler()
         t.transpile(
-            optimize_ops,
-            params_grads,
             trainer_id=args.task_index,
             pservers=args.ps_hosts,
             trainers=trainers)
