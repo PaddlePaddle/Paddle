@@ -21,8 +21,7 @@ import executor
 from executor import *
 
 import trainer
-from trainer import Trainer
-from trainer import Event
+from trainer import *
 
 import inferencer
 from inferencer import Inferencer
