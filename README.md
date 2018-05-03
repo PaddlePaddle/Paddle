@@ -75,11 +75,11 @@ We provide [English](http://www.paddlepaddle.org/docs/develop/documentation/en/g
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2/howto/cluster/index_en.rst)
+- [Distributed Training](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/cluster/index_en.html)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Distributed Training on Kubernetes](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2/howto/cluster/multi_cluster/k8s_en.md)
+- [Distributed Training on Kubernetes](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/cluster/multi_cluster/k8s_en.html)
 
    You can also run distributed training jobs on Kubernetes clusters.
 
