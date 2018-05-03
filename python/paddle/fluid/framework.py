@@ -854,10 +854,9 @@ class Block(object):
         try:
             start = list(self.ops).index(ops[0])
             end = list(self.ops).index(ops[-1])
+            [self.remove_op(start) for _ in xrange(end - start + 1)]
         except Exception, e:
             raise e
-
-        self.desc.remove_op(start, end + 1)
 
     def slice_ops(self, start, end):
         return self.ops[start:end]
