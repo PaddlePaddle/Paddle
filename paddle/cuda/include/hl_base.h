@@ -230,6 +230,11 @@ extern __thread cudaStream_t default_stream;
 // __shfl has been deprecated as of CUDA 9.0.
 #if CUDA_VERSION < 9000
 template <typename T>
+__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
+  return __shfl_down(val, delta);
+}
+
+template <typename T>
 __forceinline__ __device__ T
 __shfl_sync(unsigned, T val, int src_line, int width) {
   return __shfl(val, src_line, width);
