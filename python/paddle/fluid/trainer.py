@@ -125,9 +125,8 @@ class Trainer(object):
     def save_params(self, param_path):
         # reference: save_persistables in io.py
         exe = executor.Executor(self.place)
-        exe.run(self.startup_program, scope=self.scope)
-
-        io.save_persistables(exe, dirname=param_path)
+        io.save_persistables(
+            exe, dirname=param_path, main_program=self.startup_program)
 
     @staticmethod
     def _check_and_get_place(place):
