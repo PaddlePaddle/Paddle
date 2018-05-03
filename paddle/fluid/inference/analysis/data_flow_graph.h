@@ -38,16 +38,18 @@ struct DataFlowGraph {
 
 /*
  * An graph trait help to traverse the graph using BFS.
+ * The BFS start from a graph's inputs, the graph should be fully-connected, so
+ * that the iterator can reach the end.
  */
 template <>
 struct GraphTraits<DataFlowGraph> {
   // BFS iterator on nodes.
   struct NodesBFSIterator : public std::forward_iterator_tag {
-    NodesBFSIterator(const std::vector<Node *> &source);
-    NodesBFSIterator(NodesBFSIterator &&other);
     NodesBFSIterator() = default;
+    explicit NodesBFSIterator(const std::vector<Node *> &source);
+    explicit NodesBFSIterator(NodesBFSIterator &&other);
     // NOTE Heavy to use.
-    NodesBFSIterator(const NodesBFSIterator &other);
+    explicit NodesBFSIterator(const NodesBFSIterator &other);
 
     Node &operator*();
     NodesBFSIterator &operator++();
@@ -84,7 +86,7 @@ struct GraphTraits<DataFlowGraph> {
     std::unordered_set<Node *> visited_;
   };
 
-  GraphTraits(DataFlowGraph &&graph) : graph_(graph) {}
+  GraphTraits(const DataFlowGraph &graph) : graph_(graph) {}
 
   // default use BFS to visit the nodes.
   iterator_range nodes() {
@@ -104,7 +106,7 @@ struct GraphTraits<DataFlowGraph> {
   NodesDFSIterator nodes_dfs_end() { return NodesDFSIterator(); }
 
  private:
-  DataFlowGraph graph_;
+  const DataFlowGraph &graph_;
 };
 };
 

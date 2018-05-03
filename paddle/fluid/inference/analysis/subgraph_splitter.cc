@@ -16,6 +16,39 @@ limitations under the License. */
 
 namespace paddle {
 namespace inference {
-namespace analysis {}  // namespace analysis
+namespace analysis {
+
+SubGraphSplitter::SubGraphSplitter(
+    const DataFlowGraph &graph,
+    SubGraphSplitter::NodeInsideSubgraphTeller &&teller)
+    : graph_(graph), node_inside_subgraph_teller_(std::move(teller)) {}
+
+void SubGraphSplitter::MarkNodesInsideSubGraph() {
+  auto trait = GraphTraits<DataFlowGraph>(graph_);
+  auto nodes = trait.nodes();
+  for (auto it = nodes.begin(); it != nodes.end(); it++) {
+    if (node_inside_subgraph_teller_(*it)) {
+      NodeAttr &attr = (*it).NewAttr<NodeAttr>(kMarkerAttrName);
+      attr.is_in_subgraph = true;
+    }
+  }
+}
+
+std::vector<std::vector<const Node *>> SubGraphSplitter::ExtractSubGraphs() {
+  std::vector<Node *> marked_nodes;
+  auto trait = GraphTraits<DataFlowGraph>(graph_);
+  auto nodes = trait.nodes();
+  for (auto it = nodes.begin(); it != nodes.end(); it++) {
+    auto &attr = it->NewAttr<NodeAttr>(kMarkerAttrName);
+    if (attr.is_in_subgraph) {
+      marked_nodes.push_back(it);
+    }
+  }
+  // extract sub-graphs in the marked node set, use Union Find algorithm.
+
+  return std::vector<std::vector<const Node *>>();
+}
+
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

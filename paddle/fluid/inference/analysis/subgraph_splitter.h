@@ -31,6 +31,7 @@ namespace analysis {
  */
 class SubGraphSplitter {
  public:
+  const static char *kMarkerAttrName = "sub_graph_splitter_";
   // Tell whether a node is inside a sub-graph.
   using NodeInsideSubgraphTeller = std::function<bool(const Node *)>;
 
@@ -44,6 +45,10 @@ class SubGraphSplitter {
 
   // Merge the marked nodes into sub-graphs and return the sub-graphs.
   std::vector<std::vector<const Node *>> ExtractSubGraphs();
+
+  struct NodeAttr {
+    bool is_in_subgraph{false};
+  };
 
  private:
   const DataFlowGraph &graph_;

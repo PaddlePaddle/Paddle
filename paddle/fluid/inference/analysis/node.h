@@ -74,6 +74,35 @@ class Node {
   // Output links.
   std::vector<Node *> outlinks;
 
+  // A helper class to maintain the status from Pass.
+  // TODO(superjomn) add a checker here to ensure the T is primary.
+  struct Attr {
+    // NOTE T should be a primary type or a struct combined by several primary
+    // types.
+    // NOTE the STL containers should not use here.
+    // Some usages
+    // Attr attr;
+    // T data;
+    // attr.data.assign((char*)data, sizeof(data));
+    template <typename T>
+    T &As() {
+      // init storage in the first usage.
+      if (data.empty()) data.resize(sizeof(T));
+      PADDLE_ENFORCE_EQ(data.size(), sizeof(T), "Node attr type recast error");
+      return *reinterpret_cast<T *>(data.c_str());
+    }
+
+   private:
+    std::string data;
+  };
+
+  template <typename T>
+  T &NewAttr<T>(const std::string &name) {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it == attrs_.end(), "set duplicate attribute %s", name);
+    return it->As<T>();
+  }
+
  protected:
   // The id number not the name is a node's unique identifier in the computation
   // graph.
@@ -83,6 +112,8 @@ class Node {
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Node);
 
   void *extra_info_;
+
+  mutable std::unordered_map<std::string, Attr> attrs_;
 
  private:
   static unsigned counter_;
@@ -109,10 +140,11 @@ class Value : public Node {
 
   std::string repr() const override;
 
+  PADDLE_DISALLOW_COPY_AND_ASSIGN(Value);
+
  protected:
   Value() { SetType(Node::Type::kValue); }
   friend class NodeMap;
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(Value);
 
  private:
   DataType data_type_;

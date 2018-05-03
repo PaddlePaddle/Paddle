@@ -31,6 +31,9 @@ class iterator_range {
   iterator_range(Container &&c) : begin_(c.begin()), end_(c.end()) {}
 
   iterator_range(IteratorT begin, IteratorT end) : begin_(begin), end_(end) {}
+
+  IteratorT begin() const { return begin_; }
+  IteratorT end() const { return end_; }
 };
 
 /*
