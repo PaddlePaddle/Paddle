@@ -341,8 +341,13 @@ function bind_test() {
 
 
 function gen_docs() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
+    if [ -z "$TRAVIS_BUILD_DIR" ]; then
+        mkdir -p ${PADDLE_ROOT}/build
+        cd ${PADDLE_ROOT}/build
+     else
+        mkdir -p ${$TRAVIS_BUILD_DIR}/build
+        cd ${$TRAVIS_BUILD_DIR}/build
+     fi
     cat <<EOF
     ========================================
     Building documentation ...

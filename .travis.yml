@@ -43,7 +43,7 @@ before_install:
 script:
   - |
     # 43min timeout
-    if [[ "$JOB" != "doc" ]]; then timeout 2580 paddle/scripts/paddle_docker_build.sh ${JOB}; else paddle/scripts/paddle_build.sh ${JOB}; fi;
+    if [[ "$JOB" != "doc" ]]; then timeout 2580 paddle/scripts/paddle_docker_build.sh ${JOB}; else paddle/scripts/travis/build_doc.sh; fi;
     if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
   - |
     if [[ "$JOB" != "doc" ]]; then exit 0; fi;
