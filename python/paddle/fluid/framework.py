@@ -1054,10 +1054,15 @@ class Program(object):
             The cloned Program object.
         """
         p = Program()
+        p.desc = core.ProgramDesc(self.desc)
         if for_test:
-            p.desc = core.inference_optimize(self.desc)
-        else:
-            p.desc = core.ProgramDesc(self.desc)
+            for i in range(p.desc.num_blocks()):
+                block = p.desc.block(i)
+                for j in xrange(block.op_size()):
+                    op = block.op(j)
+                    if op.has_attr('is_test'):
+                        op.set_attr('is_test', True)
+
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         p.copy_param_info_from(self)
@@ -1072,7 +1077,7 @@ class Program(object):
                 if isinstance(t, Variable):
                     # After transpiler processing, the op that output this
                     # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this 
+                    # and we need to find the current op that generate this
                     # variable here.
                     t.op = None
                     global_block = self.global_block()
