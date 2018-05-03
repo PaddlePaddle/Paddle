@@ -848,16 +848,6 @@ class Block(object):
         self.desc.remove_op(index, index + 1)
         del self.ops[index]
 
-    def delete_ops(self, ops):
-        # remove from cpp
-        # FIXME(typhoonzero): remove only the first occurrence.
-        try:
-            start = list(self.ops).index(ops[0])
-            end = list(self.ops).index(ops[-1])
-            [self.remove_op(start) for _ in xrange(end - start + 1)]
-        except Exception, e:
-            raise e
-
     def slice_ops(self, start, end):
         return self.ops[start:end]
 
