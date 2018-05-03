@@ -400,11 +400,11 @@ class LayerHelper(object):
         if isinstance(act, basestring):
             act = {'type': act}
 
+        if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
+            act['use_cudnn'] = self.kwargs.get('use_cudnn')
         if 'use_mkldnn' in self.kwargs:
             act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         act_type = act.pop('type')
-        if 'use_mkldnn' in self.kwargs:
-            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
         if not core.IsInplace(act_type):
