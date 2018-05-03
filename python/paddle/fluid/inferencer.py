@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import core
+
 __all__ = ['Inferencer', ]
 
 
 class Inferencer(object):
-    def __init__(self, network_func, params, place=None):
+    def __init__(self, network_func, param_path=None, place=None):
         # 1. we need to generate a framework.Program by calling
         # network_func. Reference: fluid.program_guard in test_word2vec.py
 
         # 2. move the default_main_program to self.program.
 
         # 3. run the default_startup program.
-        self.params = params
+
+        # 4. load params from param_path into scope
+        self.scope = core.Scope()
         self.place = place
 
     def infer(self, inputs):

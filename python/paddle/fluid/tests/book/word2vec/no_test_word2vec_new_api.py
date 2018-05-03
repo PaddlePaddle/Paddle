@@ -39,7 +39,7 @@ word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
 
 
-def inference_network(is_sparse):
+def inference_program(is_sparse):
     first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
     second_word = fluid.layers.data(name='secondw', shape=[1], dtype='int64')
     third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
@@ -79,9 +79,9 @@ def inference_network(is_sparse):
     return predict_word
 
 
-def train_network(is_sparse):
+def train_program(is_sparse):
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
-    predict_word = inference_network(is_sparse)
+    predict_word = inference_program(is_sparse)
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
     return avg_cost
@@ -100,23 +100,25 @@ def train(use_cuda, is_sparse, save_path):
                 word_dict, N))
 
             if avg_cost < 5.0:
-                trainer.params.save(save_path)
+                trainer.save_params(save_path)
                 return
             if math.isnan(avg_cost):
                 sys.exit("got NaN loss, training failed.")
 
     trainer = fluid.Trainer(
-        partial(train_network, is_sparse),
+        partial(train_program, is_sparse),
         fluid.optimizer.SGD(learning_rate=0.001),
         place=place)
     trainer.train(
         reader=train_reader, num_epochs=100, event_handler=event_handler)
 
 
-def infer(use_cuda, save_path):
-    params = fluid.Params(save_path)
+def infer(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(inference_network, params, place=place)
+    inferencer = fluid.Inferencer(
+        partial(inference_program, is_sparse),
+        param_path=save_path,
+        place=place)
 
     lod = [0, 1]
     first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
@@ -138,7 +140,7 @@ def main(use_cuda, is_sparse):
 
     save_path = "word2vec.inference.model"
     train(use_cuda, is_sparse, save_path)
-    infer(use_cuda, save_path)
+    infer(use_cuda, is_sparse, save_path)
 
 
 if __name__ == '__main__':
