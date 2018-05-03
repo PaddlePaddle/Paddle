@@ -25,72 +25,6 @@ namespace math {
 using float16 = paddle::platform::float16;
 
 template <>
-void gemm<platform::CPUDeviceContext, float16>(
-    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float16 alpha, const float16* A, const float16* B, const float16 beta,
-    float16* C) {
-  PADDLE_THROW("float16 GEMM not supported on CPU");
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, float>(
-    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float alpha, const float* A, const float* B, const float beta,
-    float* C) {
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
-  cblas_sgemm(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
-              beta, C, ldc);
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, double>(
-    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const double alpha, const double* A, const double* B, const double beta,
-    double* C) {
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
-  cblas_dgemm(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
-              beta, C, ldc);
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, float16>(
-    const platform::CPUDeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K,
-    const float16 alpha, const float16* A, const int lda, const float16* B,
-    const int ldb, const float16 beta, float16* C, const int ldc) {
-  PADDLE_THROW("float16 GEMM not supported on CPU");
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, float>(
-    const platform::CPUDeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K, const float alpha,
-    const float* A, const int lda, const float* B, const int ldb,
-    const float beta, float* C, const int ldc) {
-  cblas_sgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-              lda, B, ldb, beta, C, ldc);
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, double>(
-    const platform::CPUDeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K,
-    const double alpha, const double* A, const int lda, const double* B,
-    const int ldb, const double beta, double* C, const int ldc) {
-  cblas_dgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-              lda, B, ldb, beta, C, ldc);
-}
-
-template <>
 void matmul<platform::CPUDeviceContext, float16>(
     const platform::CPUDeviceContext& context,
     const framework::Tensor& matrix_a, bool trans_a,
@@ -123,8 +57,8 @@ void matmul<platform::CPUDeviceContext, float>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUDeviceContext, float>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<float>(),
+  Blas<platform::CPUDeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<float>(),
       matrix_b.data<float>(), beta, matrix_out->data<float>());
 }
 
@@ -152,8 +86,8 @@ void matmul<platform::CPUDeviceContext, double>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUDeviceContext, double>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
+  Blas<platform::CPUDeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
@@ -230,8 +164,8 @@ void batched_gemm<platform::CPUDeviceContext, float>(
     const float* Ak = &A[k * strideA];
     const float* Bk = &B[k * strideB];
     float* Ck = &C[k * M * N];
-    gemm<platform::CPUDeviceContext, float>(context, transA, transB, M, N, K,
-                                            alpha, Ak, Bk, beta, Ck);
+    Blas<platform::CPUDeviceContext>(context).GEMM(transA, transB, M, N, K,
+                                                   alpha, Ak, Bk, beta, Ck);
   }
 }
 
@@ -246,8 +180,8 @@ void batched_gemm<platform::CPUDeviceContext, double>(
     const double* Ak = &A[k * strideA];
     const double* Bk = &B[k * strideB];
     double* Ck = &C[k * M * N];
-    gemm<platform::CPUDeviceContext, double>(context, transA, transB, M, N, K,
-                                             alpha, Ak, Bk, beta, Ck);
+    Blas<platform::CPUDeviceContext>(context).GEMM(transA, transB, M, N, K,
+                                                   alpha, Ak, Bk, beta, Ck);
   }
 }
 #endif

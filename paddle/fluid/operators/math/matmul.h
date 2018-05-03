@@ -131,8 +131,9 @@ class MatMulFunctor {
 
     if (!batchCount) {
       // regular matrix multiplication
-      gemm<DeviceContext, T>(context, transA, transB, M, N, kA, alpha,
-                             a.data<T>(), b.data<T>(), beta, out->data<T>());
+      Blas<DeviceContext>(context).GEMM(transA, transB, M, N, kA, alpha,
+                                        a.data<T>(), b.data<T>(), beta,
+                                        out->data<T>());
     } else {
       // batched matrix multiplication
       batched_gemm<DeviceContext, T>(
