@@ -247,26 +247,6 @@ def infer(use_cuda, save_dirname=None):
                                       fetch_targets, exe,
                                       inference_transpiler_program)
 
-        if use_cuda and fluid.core.is_float16_supported(place):
-            # Use float16_transpiler to speedup
-            fp16_transpiler_program = inference_transpiler_program.clone()
-            t.float16_transpile(fp16_transpiler_program, place)
-
-            fp16_results = exe.run(fp16_transpiler_program,
-                                   feed={feed_target_names[0]: tensor_img},
-                                   fetch_list=fetch_targets)
-
-            assert len(results[0]) == len(fp16_results[0])
-            for i in range(len(results[0])):
-                np.testing.assert_almost_equal(
-                    results[0][i], fp16_results[0][i], decimal=2)
-
-            print("float16 infer results: ", fp16_results[0])
-
-            fluid.io.save_inference_model("float16_" + save_dirname,
-                                          feed_target_names, fetch_targets, exe,
-                                          fp16_transpiler_program)
-
 
 def main(net_type, use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
