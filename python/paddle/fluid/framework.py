@@ -1056,7 +1056,7 @@ class Program(object):
         p = Program()
         p.desc = core.ProgramDesc(self.desc)
         if for_test:
-            for i in range(p.desc.num_blocks()):
+            for i in xrange(p.desc.num_blocks()):
                 block = p.desc.block(i)
                 for j in xrange(block.op_size()):
                     op = block.op(j)
@@ -1104,7 +1104,13 @@ class Program(object):
 
     def inference_optimize(self):
         res = Program()
-        res.desc = core.inference_optimize(self.desc)
+        res.desc = core.ProgramDesc(self.desc)
+        for i in xrange(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for j in xrange(block.op_size()):
+                op = block.op(j)
+                if op.has_attr('is_test'):
+                    op.set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
