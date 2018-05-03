@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_base.h"
-#include "hl_sparse.ph"
-#include "hl_top_k.h"
+#include "paddle/cuda/include/hl_base.h"
+#include "paddle/cuda/include/hl_sparse.ph"
+#include "paddle/cuda/include/hl_top_k.h"
 #include "paddle/utils/Logging.h"
 
 // using namespace hppl;
@@ -244,8 +244,9 @@ __device__ __forceinline__ void blockReduce(Pair* shTopK,
     if (--beamSize == 0) break;
     __syncthreads();
 
+    // NOTE(zcd): temporary solution
     unsigned mask = 0u;
-    // CREATE_SHFL_MASK(mask, tid < len);
+    CREATE_SHFL_MASK(mask, true);
 
     if (tid == maxId[0]) {
       if (beam < maxLength) {
