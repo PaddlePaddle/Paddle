@@ -17,6 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class MomentumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -49,6 +51,12 @@ class MomentumOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
