@@ -56,23 +56,22 @@ class Trainer(object):
     """
 
     Args:
-        network_func(callable): A function which will return loss. The loss must be a scaler.
+        program_func(callable): A function which will return loss. The loss must be a scaler.
         optimizer(optimizer.Optimizer): The optimizer should be an instance of Optimizer
-        params:
         place: The device place of this trainer.
     """
 
-    def __init__(self, network_func, optimizer, params=None, place=None):
+    def __init__(self, program_func, optimizer, param_path=None, place=None):
         # 1. we need to generate a framework.Program by calling
-        # network_func. Reference: fluid.program_guard in
+        # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
-        self.scope = self._get_scope_from_params(params)
+        self.scope = core.Scope()
 
         self.startup_program = framework.Program()
         self.train_program = framework.Program()
 
         with framework.program_guard(self.train_program, self.startup_program):
-            loss = network_func()
+            loss = program_func()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
@@ -84,14 +83,13 @@ class Trainer(object):
         # 2. move the default_main_program to self.program and run the
         # default_startup program on an empty core.Scope()
         # Run startup program
-        if params is None:
-            exe = executor.Executor(place)
-            exe.run(self.startup_program, scope=self.scope)
+        exe = executor.Executor(place)
+        exe.run(self.startup_program, scope=self.scope)
 
-        # 3. call self.params.add_vars with the initialized scope, it
-        # will add the new vars of the initialized scope into
-        # self.params.
-        # TODO(yuyang): This depends on parameters implementation.
+        if param_path:
+            # load params from param_path into scope
+            # TODO(yuyang): This depends on parameters implementation.
+            pass
 
         # TODO(helin): support distributed training
 
@@ -124,19 +122,9 @@ class Trainer(object):
     def test(self, reader):
         pass
 
-    def _get_scope_from_params(self, params):
-        """
-        Get Scope from parameter object.
-        Args:
-            params(Parameter|None): The parameter object instance. Could be None.
-
-        Returns: New scope if params is None. Or params.scope()
-        NOTE: This method is WIP. Not fully implemented.
-        """
-        if params is None:
-            return core.Scope()  # new scope when params is None
-        else:
-            raise NotImplementedError("Not implemented right now.")
+    def save_params(self, param_path):
+        # reference: save_persistables in io.py
+        pass
 
     @staticmethod
     def _check_and_get_place(place):
