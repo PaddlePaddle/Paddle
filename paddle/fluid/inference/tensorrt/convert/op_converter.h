@@ -30,13 +30,14 @@ namespace tensorrt {
 class OpConverter {
  public:
   OpConverter() {}
-
   virtual void operator()(const framework::OpDesc& op) {}
-  void Execute(const framework::OpDesc& op) {
+
+  void Execute(const framework::OpDesc& op, TensorRTEngine* engine) {
     std::string type = op.Type();
     auto it = converters_.find(type);
     PADDLE_ENFORCE(it != converters_.end(), "no OpConverter for optype [%s]",
                    type);
+    it->second->SetEngine(engine);
     (*it->second)(op);
   }
 
@@ -50,18 +51,31 @@ class OpConverter {
     converters_[key] = new T;
   }
 
+  // convert fluid op to tensorrt layer
+  void ConvertOp(const framework::OpDesc& op, TensorRTEngine* engine) {
+    OpConverter::Global().Execute(op, engine);
+  }
+
+  // convert fluid block to tensorrt network
+  void ConvertBlock(const framework::BlockDesc& block, TensorRTEngine* engine) {
+    for (auto op : block.AllOps()) {
+      OpConverter::Global().Execute(*op, engine);
+    }
+  }
+
+  void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
+
   virtual ~OpConverter() {}
+
+  // TensorRT engine
+  TensorRTEngine* engine_{nullptr};
 
  private:
   // registered op converter map, whose key is the fluid op type, and value is
   // the pointer position of corresponding OpConverter class.
   std::unordered_map<std::string, OpConverter*> converters_;
-
   // fluid inference scope
-  framework::Scope* scope_;
-  // tensorrt input/output tensor map, whose key is the fluid variable name,
-  // and value is the pointer position of tensorrt tensor
-  std::unordered_map<std::string, nvinfer1::ITensor*> tr_tensors_;
+  framework::Scope* scope_{nullptr};
 };
 
 #define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)      \
@@ -71,18 +85,6 @@ class OpConverter {
     }                                                          \
   };                                                           \
   trt_##op_type__##_converter trt_##op_type__##_converter__;
-
-class BlockConverter {
- public:
-  BlockConverter() {}
-
-  // convert fluid block to tensorrt network
-  void ConvertBlock(const framework::BlockDesc& block) {
-    for (auto op : block.AllOps()) {
-      OpConverter::Global().Execute(*op);
-    }
-  }
-};
 
 }  // namespace tensorrt
 }  // namespace inference
