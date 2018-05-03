@@ -16,34 +16,14 @@ env:
   - JOB=check_style
   - JOB=build_android
 addons:
-  apt:
-    packages:
-      - gcc-4.8
-      - g++-4.8
-      - git
-      - build-essential
-      - python
-      - python-pip
-      - python2.7-dev
-      - python-wheel
-      - libboost-dev
-      - curl
-      - swig
-      - graphviz
-      - clang-format-3.8
-      - automake
-      - libtool
-      - ccache
   ssh_known_hosts: 13.229.163.131
 before_install:
-  - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
-  - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
   - |
     # 43min timeout
-    if [[ "$JOB" != "doc" ]]; then timeout 2580 paddle/scripts/paddle_docker_build.sh ${JOB}; else paddle/scripts/paddle_build.sh ${JOB}; fi;
+    paddle/scripts/paddle_docker_build.sh ${JOB}
     if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
   - |
     if [[ "$JOB" != "doc" ]]; then exit 0; fi;
