@@ -80,8 +80,8 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
   auto* input = infer_network_->addInput(name.c_str(), dtype, dim);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
-
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] * AccumDims(dim);
+  TensorRTEngine::SetITensor(name, input);
   return input;
 }
 
@@ -91,6 +91,19 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                     name);
 
   auto* output = layer->getOutput(offset);
+  PADDLE_ENFORCE(output != nullptr);
+  output->setName(name.c_str());
+  infer_network_->markOutput(*output);
+  // output buffers' size can only be decided latter, set zero here to mark this
+  // and will reset latter.
+  buffer_sizes_[name] = 0;
+}
+
+void TensorRTEngine::DeclareOutput(const std::string& name) {
+  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
+                    name);
+
+  auto* output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
   infer_network_->markOutput(*output);
@@ -110,7 +123,6 @@ void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
   PADDLE_ENFORCE(it != buffer_sizes_.end());
   PADDLE_ENFORCE_GT(it->second, 0);
   PADDLE_ENFORCE_GE(max_size, it->second);
-
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(dst, buffer(name), it->second,
                                        cudaMemcpyDeviceToHost, *stream_));
 }
@@ -126,8 +138,22 @@ void*& TensorRTEngine::buffer(const std::string& name) {
 void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
                                      size_t size) {
   void* buf = buffer(name);
+  cudaMemcpyAsync(buf, data, size, cudaMemcpyHostToDevice, *stream_);
   PADDLE_ENFORCE_EQ(
       0, cudaMemcpyAsync(buf, data, size, cudaMemcpyHostToDevice, *stream_));
+}
+
+void TensorRTEngine::SetITensor(const std::string& name,
+                                nvinfer1::ITensor* tensor) {
+  PADDLE_ENFORCE(tensor != nullptr);
+  PADDLE_ENFORCE_EQ(0, itensor_map_.count(name), "duplicate itensor name %s",
+                    name);
+  itensor_map_[name] = tensor;
+}
+
+nvinfer1::ITensor* TensorRTEngine::GetITensor(const std::string& name) {
+  PADDLE_ENFORCE(itensor_map_.count(name), "no itensor %s", name);
+  return itensor_map_[name];
 }
 
 }  // namespace tensorrt
