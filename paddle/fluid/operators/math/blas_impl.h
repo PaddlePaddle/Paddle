@@ -45,12 +45,10 @@ struct CBlas<platform::float16> {
 
 template <>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::GEMM(const CBLAS_TRANSPOSE transA,
-                                            const CBLAS_TRANSPOSE transB,
-                                            const int M, const int N,
-                                            const int K, const T alpha,
-                                            const T *A, const T *B,
-                                            const T beta, T *C) const {
+void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                            CBLAS_TRANSPOSE transB, int M,
+                                            int N, int K, T alpha, const T *A,
+                                            const T *B, T beta, T *C) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -60,13 +58,39 @@ void Blas<platform::CPUDeviceContext>::GEMM(const CBLAS_TRANSPOSE transA,
 
 template <>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::GEMM(
-    const bool transA, const bool transB, const int M, const int N, const int K,
-    const T alpha, const T *A, const int lda, const T *B, const int ldb,
-    const T beta, T *C, const int ldc) const {
+void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
+                                            int N, int K, T alpha, const T *A,
+                                            int lda, const T *B, int ldb,
+                                            T beta, T *C, int ldc) const {
   CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
                  transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
                  lda, B, ldb, beta, C, ldc);
+}
+
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a, bool trans_a,
+                                 const framework::Tensor &mat_b, bool trans_b,
+                                 T alpha, framework::Tensor *mat_out,
+                                 T beta) const {
+  auto dim_a = mat_a.dims();
+  auto dim_b = mat_b.dims();
+  auto dim_out = mat_out->dims();
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
+                 "The input and output of matmul be matrix");
+  PADDLE_ENFORCE(
+      mat_a.place() == mat_b.place() && mat_a.place() == mat_out->place(),
+      "The places of matrices must be same");
+
+  int M = dim_out[0];
+  int N = dim_out[1];
+  int K = !trans_a ? dim_a[1] : dim_a[0];
+
+  CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !trans_b ? CblasNoTrans : CblasTrans;
+
+  this->GEMM(transA, transB, M, N, K, alpha, mat_a.data<T>(), mat_b.data<T>(),
+             beta, mat_out->data<T>());
 }
 
 }  // namespace math
