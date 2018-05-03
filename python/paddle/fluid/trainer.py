@@ -17,6 +17,7 @@ import framework
 import executor
 import data_feeder
 import contextlib
+import io
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
@@ -88,8 +89,7 @@ class Trainer(object):
 
         if param_path:
             # load params from param_path into scope
-            # TODO(yuyang): This depends on parameters implementation.
-            pass
+            io.load_vars(exe, dirname=param_path, predicate=io.is_persistable)
 
         # TODO(helin): support distributed training
 
@@ -124,7 +124,10 @@ class Trainer(object):
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
-        pass
+        exe = executor.Executor(self.place)
+        exe.run(self.startup_program, scope=self.scope)
+
+        io.save_vars(exe, dirname=param_path, predicate=io.is_persistable)
 
     @staticmethod
     def _check_and_get_place(place):
