@@ -241,7 +241,8 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
     CREATE_SHFL_MASK(mask, true);
 
     if (maxid[0] / 32 == warp) {
-      if (platform::__shfl_sync(mask, *beam, (maxid[0]) % 32, 32) == MaxLength)
+      if (platform::CudaShuffleSync(mask, *beam, (maxid[0]) % 32, 32) ==
+          MaxLength)
         break;
     }
   }
