@@ -75,19 +75,19 @@ We provide [English](http://www.paddlepaddle.org/docs/develop/documentation/en/g
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/usage/cluster/cluster_train_en.html)
+- [Distributed Training](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2/howto/cluster/index_en.rst)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Distributed Training on Kubernetes](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/usage/cluster/k8s_en.html)
+- [Distributed Training on Kubernetes](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2/howto/cluster/multi_cluster/k8s_en.md)
 
    You can also run distributed training jobs on Kubernetes clusters.
 
-- [Python API](http://www.paddlepaddle.org/docs/develop/documentation/en/api/index_en.html)
+- [Python API](http://www.paddlepaddle.org/docs/develop/api/fluid/en/layers.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/dev/contribute_to_paddle_en.html)
+- [How to Contribute](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/dev/contribute_to_paddle_en.html)
 
    We appreciate your contributions!
 
