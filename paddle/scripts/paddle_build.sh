@@ -40,6 +40,7 @@ function print_usage() {
     ${BLUE}capi${NONE}: generate paddle CAPI package
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
+    ${BLUE}cicheck${NONE}: run CI tasks
     "
 }
 
@@ -453,6 +454,8 @@ function gen_capi_package() {
 }
 
 function gen_fluid_inference_lib() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
     if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
         cat <<EOF
     ========================================
@@ -502,6 +505,13 @@ function main() {
         ;;
       check_style)
         check_style
+        ;;
+      cicheck)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_test
+        gen_capi_package
+        gen_fluid_inference_lib
         ;;
       *)
         print_usage
