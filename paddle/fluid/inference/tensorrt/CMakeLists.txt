@@ -1,4 +1,3 @@
-if(WITH_TESTING)
-  nv_test(test_tensorrt SRCS test_tensorrt.cc DEPS dynload_cuda device_context dynamic_loader)
-  nv_test(test_tensorrt_engine SRCS test_engine.cc engine.cc DEPS dynload_cuda)
-endif()
+nv_test(test_tensorrt SRCS test_tensorrt.cc DEPS dynload_cuda device_context dynamic_loader)
+nv_test(test_tensorrt_engine SRCS test_engine.cc engine.cc DEPS dynload_cuda)
+nv_test(test_io_converter SRCS test_io_converter.cc io_converter.cc DEPS dynload_cuda dynamic_loader lod_tensor)
