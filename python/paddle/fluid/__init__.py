@@ -30,9 +30,6 @@ from trainer import EndStepEvent
 import inferencer
 from inferencer import Inferencer
 
-import params
-from params import Params
-
 import io
 import evaluator
 import initializer
@@ -61,7 +58,7 @@ from parallel_executor import ParallelExecutor
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ +\
-          trainer.__all__ + inferencer.__all__ + params.__all__ + [
+          trainer.__all__ + inferencer.__all__ + [
     'io',
     'initializer',
     'layers',
