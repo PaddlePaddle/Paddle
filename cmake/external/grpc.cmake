@@ -33,7 +33,7 @@ ExternalProject_Add(
     extern_grpc
     DEPENDS protobuf zlib
     GIT_REPOSITORY "https://github.com/grpc/grpc.git"
-    GIT_TAG "v1.10.x"
+    GIT_TAG "v1.8.x"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""

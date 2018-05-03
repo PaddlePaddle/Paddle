@@ -22,7 +22,11 @@ import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    '--profile_path', type=str, default='', help='Input profile file name.')
+    '--profile_path',
+    type=str,
+    default='',
+    help='Input profile file name. If there are multiple file, the format '
+    'should be trainer1=file1,trainer2=file2,ps=file3')
 parser.add_argument(
     '--timeline_path', type=str, default='', help='Output timeline file name.')
 args = parser.parse_args()
@@ -108,8 +112,8 @@ class _ChromeTraceFormatter(object):
 
 
 class Timeline(object):
-    def __init__(self, profile_pb):
-        self._profile_pb = profile_pb
+    def __init__(self, profile_dict):
+        self._profile_dict = profile_dict
         self._pid = 0
         self._devices = dict()
         self._chrome_trace = _ChromeTraceFormatter()
@@ -120,35 +124,37 @@ class Timeline(object):
         return cur_pid
 
     def _allocate_pids(self):
-        for event in self._profile_pb.events:
-            if event.type == profiler_pb2.Event.CPU:
-                if (event.device_id, "CPU") not in self._devices:
-                    pid = self._allocate_pid()
-                    self._devices[(event.device_id, "CPU")] = pid
-                    self._chrome_trace.emit_pid("cpu:block:%d" %
-                                                (event.device_id), pid)
-            elif event.type == profiler_pb2.Event.GPUKernel:
-                if (event.device_id, "GPUKernel") not in self._devices:
-                    pid = self._allocate_pid()
-                    self._devices[(event.device_id, "GPUKernel")] = pid
-                    self._chrome_trace.emit_pid("gpu:%d" % (event.device_id),
-                                                pid)
+        for k, profile_pb in self._profile_dict.iteritems():
+            for event in profile_pb.events:
+                if event.type == profiler_pb2.Event.CPU:
+                    if (k, event.device_id, "CPU") not in self._devices:
+                        pid = self._allocate_pid()
+                        self._devices[(k, event.device_id, "CPU")] = pid
+                        self._chrome_trace.emit_pid("%s:cpu:block:%d" %
+                                                    (k, event.device_id), pid)
+                elif event.type == profiler_pb2.Event.GPUKernel:
+                    if (k, event.device_id, "GPUKernel") not in self._devices:
+                        pid = self._allocate_pid()
+                        self._devices[(k, event.device_id, "GPUKernel")] = pid
+                        self._chrome_trace.emit_pid("%s:gpu:%d" %
+                                                    (k, event.device_id), pid)
 
     def _allocate_events(self):
-        for event in self._profile_pb.events:
-            if event.type == profiler_pb2.Event.CPU:
-                type = "CPU"
-            elif event.type == profiler_pb2.Event.GPUKernel:
-                type = "GPUKernel"
-            pid = self._devices[(event.device_id, type)]
-            args = {'name': event.name}
-            if event.memcopy.bytes > 0:
-                args = {'mem_bytes': event.memcopy.bytes}
-            # TODO(panyx0718): Chrome tracing only handles ms. However, some
-            # ops takes micro-seconds. Hence, we keep the ns here.
-            self._chrome_trace.emit_region(
-                event.start_ns, (event.end_ns - event.start_ns) / 1.0, pid,
-                event.sub_device_id, 'Op', event.name, args)
+        for k, profile_pb in self._profile_dict.iteritems():
+            for event in profile_pb.events:
+                if event.type == profiler_pb2.Event.CPU:
+                    type = "CPU"
+                elif event.type == profiler_pb2.Event.GPUKernel:
+                    type = "GPUKernel"
+                pid = self._devices[(k, event.device_id, type)]
+                args = {'name': event.name}
+                if event.memcopy.bytes > 0:
+                    args = {'mem_bytes': event.memcopy.bytes}
+                # TODO(panyx0718): Chrome tracing only handles ms. However, some
+                # ops takes micro-seconds. Hence, we keep the ns here.
+                self._chrome_trace.emit_region(
+                    event.start_ns, (event.end_ns - event.start_ns) / 1.0, pid,
+                    event.sub_device_id, 'Op', event.name, args)
 
     def generate_chrome_trace(self):
         self._allocate_pids()
@@ -163,11 +169,23 @@ timeline_path = '/tmp/timeline'
 if args.timeline_path:
     timeline_path = args.timeline_path
 
-with open(profile_path, 'r') as f:
-    profile_s = f.read()
-    profile_pb = profiler_pb2.Profile()
-    profile_pb.ParseFromString(profile_s)
+profile_paths = profile_path.split(',')
+profile_dict = dict()
+if len(profile_path) == 1:
+    with open(profile_path, 'r') as f:
+        profile_s = f.read()
+        profile_pb = profiler_pb2.Profile()
+        profile_pb.ParseFromString(profile_s)
+    profile_dict['trainer'] = profile_pb
+else:
+    for profile_path in profile_paths:
+        k, v = profile_path.split('=')
+        with open(v, 'r') as f:
+            profile_s = f.read()
+            profile_pb = profiler_pb2.Profile()
+            profile_pb.ParseFromString(profile_s)
+        profile_dict[k] = profile_pb
 
-tl = Timeline(profile_pb)
+tl = Timeline(profile_dict)
 with open(timeline_path, 'w') as f:
     f.write(tl.generate_chrome_trace())
