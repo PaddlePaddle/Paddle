@@ -39,7 +39,7 @@ class Inferencer(object):
 
         if param_path:
             # load params from param_path into scope
-            io.load_vars(exe, dirname=param_path, predicate=io.is_persistable)
+            io.load_persistables(exe, dirname=param_path)
 
     def infer(self, inputs):
         # run self.program

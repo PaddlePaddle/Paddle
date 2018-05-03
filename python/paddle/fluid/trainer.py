@@ -89,7 +89,7 @@ class Trainer(object):
 
         if param_path:
             # load params from param_path into scope
-            io.load_vars(exe, dirname=param_path, predicate=io.is_persistable)
+            io.load_persistables(exe, dirname=param_path)
 
         # TODO(helin): support distributed training
 
@@ -127,7 +127,7 @@ class Trainer(object):
         exe = executor.Executor(self.place)
         exe.run(self.startup_program, scope=self.scope)
 
-        io.save_vars(exe, dirname=param_path, predicate=io.is_persistable)
+        io.save_persistables(exe, dirname=param_path)
 
     @staticmethod
     def _check_and_get_place(place):
