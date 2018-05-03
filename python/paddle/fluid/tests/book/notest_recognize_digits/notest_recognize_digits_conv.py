@@ -26,7 +26,7 @@ import paddle.v2.dataset as dataset
 BATCH_SIZE = 64
 
 
-def inference_network():
+def inference_program():
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
 
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
@@ -48,10 +48,10 @@ def inference_network():
     return prediction
 
 
-def train_network():
+def train_program():
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    predict = inference_network()
+    predict = inference_program()
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
     acc = fluid.layers.accuracy(input=predict, label=label)
@@ -62,27 +62,30 @@ def train(use_cuda, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    trainer = fluid.Trainer(train_network, place=place, optimizer=optimizer)
+    trainer = fluid.Trainer(train_program, place=place, optimizer=optimizer)
 
     def event_handler(event):
         if isinstance(event, fluid.EndIteration):
-            print(event.metrics)
+            avg_cost, acc = event.values
+            print("avg_cost: %s" % avg_cost)
+            print("acc     : %s" % acc)
+
             if (event.batch_id + 1) % 10 == 0:
                 test_metrics = trainer.test(reader=dataset.mnist.test())
-                avg_loss_set = test_metrics[0]
+                avg_cost_set = test_metrics[0]
                 acc_set = test_metrics[1]
 
                 # get test acc and loss
-                acc_val = numpy.array(acc_set).mean()
-                avg_loss_val = numpy.array(avg_loss_set).mean()
-                if float(acc_val) > 0.2:  # Smaller value to increase CI speed
-                    trainer.params.save(save_dirname)
+                acc = numpy.array(acc_set).mean()
+                avg_cost = numpy.array(avg_cost_set).mean()
+                if float(acc) > 0.2:  # Smaller value to increase CI speed
+                    trainer.save_params(save_dirname)
                     return
                 else:
-                    print('BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                          format(event.batch_id + 1,
-                                 float(avg_loss_val), float(acc_val)))
-                    if math.isnan(float(avg_loss_val)):
+                    print(
+                        'BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.format(
+                            event.batch_id + 1, float(avg_cost), float(acc)))
+                    if math.isnan(float(avg_cost)):
                         sys.exit("got NaN loss, training failed.")
 
     trainer.train(
@@ -90,10 +93,10 @@ def train(use_cuda, save_dirname):
 
 
 def infer(use_cuda, save_dirname=None):
-    params = fluid.Params(save_dirname)
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    inferencer = fluid.Inferencer(inference_network, params, place=place)
+    inferencer = fluid.Inferencer(
+        inference_program, param_path=save_dirname, place=place)
 
     batch_size = 1
     tensor_img = numpy.random.uniform(-1.0, 1.0,
