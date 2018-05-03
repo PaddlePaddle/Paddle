@@ -244,7 +244,7 @@ __device__ __forceinline__ void blockReduce(Pair* shTopK,
     if (--beamSize == 0) break;
     __syncthreads();
 
-    // temporary solution
+    // NOTE(zcd): temporary solution
     unsigned mask = 0u;
     CREATE_SHFL_MASK(mask, true);
 
