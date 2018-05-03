@@ -120,11 +120,11 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
-std::vector<int64_t> SelectedRows::Get(std::vector<int64_t> keys,
-                                       framework::Tensor* value) const {
+std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
+    std::vector<int64_t> keys, framework::Tensor* value) const {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
-  std::vector<int64_t> non_keys;
+  std::vector<std::pair<int64_t, int64_t>> non_keys_pair;
   int64_t value_width = value_->numel() / value_->dims()[0];
   PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
                     "output tensor should have the same shape with table "
@@ -133,7 +133,7 @@ std::vector<int64_t> SelectedRows::Get(std::vector<int64_t> keys,
   for (size_t i = 0; i < keys.size(); ++i) {
     int64_t index = Index(keys[i]);
     if (index == -1) {
-      non_keys.push_back(keys[i]);
+      non_keys_pair.push_back(std::make_pair(keys[i], static_cast<int64_t>(i)));
     } else {
       framework::VisitDataType(
           framework::ToDataType(value_->type()),
@@ -141,7 +141,7 @@ std::vector<int64_t> SelectedRows::Get(std::vector<int64_t> keys,
                             index * value_width, value_width));
     }
   }
-  return non_keys;
+  return non_keys_pair;
 }
 
 bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
