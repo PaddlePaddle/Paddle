@@ -27,8 +27,9 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     : queue_(source.begin(), source.end()) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
-    GraphTraits<DataFlowGraph>::NodesBFSIterator &&other)
-    : queue_(std::move(other.queue_)), visited_(std::move(other.visited_)) {}
+    GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
+    : queue_(std::move(other.queue_)),
+      visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     const GraphTraits<DataFlowGraph>::NodesBFSIterator &other)
@@ -58,12 +59,12 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator
   auto *cur = queue_.front();
   visited_.insert(cur);
   queue_.pop_front();
-  for (auto *input : cur->inlinks()) {
+  for (auto *input : cur->inlinks) {
     if (!visited_.count(input)) {
       queue_.push_back(input);
     }
-    return *this;
   }
+  return *this;
 }
 
 bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
@@ -79,13 +80,14 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
 // NodesDFSIterator
 //
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
-    std::vector<Node *> source) {
+    const std::vector<Node *> &source) {
   for (auto *x : source) stack_.push(x);
 }
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
-    GraphTraits<DataFlowGraph>::NodesDFSIterator &&other)
-    : stack_(std::move(other.stack_)), visited_(std::move(other.visited_)) {}
+    GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
+    : stack_(std::move(other.stack_)),
+      visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
     const GraphTraits<DataFlowGraph>::NodesDFSIterator &other)
@@ -100,7 +102,7 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator
     &GraphTraits<DataFlowGraph>::NodesDFSIterator::operator++() {
   if (stack_.empty()) return *this;
   visited_.insert(stack_.top());
-  for (auto *x : stack_.top()->outlinks()) {
+  for (auto *x : stack_.top()->outlinks) {
     if (!visited_.count(x)) stack_.push(x);
   }
   stack_.pop();
@@ -123,7 +125,7 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator::operator=(
   return *this;
 }
 Node *GraphTraits<DataFlowGraph>::NodesDFSIterator::operator->() {
-  return nullptr;
+  return stack_.top();
 }
 
 }  // namespace analysis

@@ -31,12 +31,11 @@ namespace analysis {
  */
 class SubGraphSplitter {
  public:
-  const static char *kMarkerAttrName = "sub_graph_splitter_";
+  const static char *kMarkerAttrName;
   // Tell whether a node is inside a sub-graph.
   using NodeInsideSubgraphTeller = std::function<bool(const Node *)>;
 
-  SubGraphSplitter(const DataFlowGraph &graph,
-                   NodeInsideSubgraphTeller &&teller);
+  SubGraphSplitter(DataFlowGraph *graph, NodeInsideSubgraphTeller &&teller);
 
  protected:
   // Mark the nodes inside the accepted sub-graph using
@@ -51,7 +50,7 @@ class SubGraphSplitter {
   };
 
  private:
-  const DataFlowGraph &graph_;
+  DataFlowGraph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
 };
 

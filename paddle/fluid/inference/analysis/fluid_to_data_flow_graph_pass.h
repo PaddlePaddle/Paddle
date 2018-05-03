@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include <paddle/fluid/framework/program_desc.h>
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 
@@ -32,7 +32,7 @@ class FluidToDataFlowGraphPass : public DataFlowGraphPass {
  public:
   explicit FluidToDataFlowGraphPass();
   bool Initialize() override;
-  bool Initialize(const framework::ProgramDesc &desc);
+  bool Initialize(const framework::ProgramDesc &desc) override;
   bool Finalize() override;
 
   void Run(DataFlowGraph *graph) override;

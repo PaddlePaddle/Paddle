@@ -22,6 +22,7 @@ limitations under the License. */
 #include <deque>
 #include <stack>
 #include <unordered_set>
+
 #include "paddle/fluid/inference/analysis/graph_traits.h"
 #include "paddle/fluid/inference/analysis/node.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -30,6 +31,9 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+/*
+ * DataFlowGraph - A container of Value and Function Nodes.
+ */
 struct DataFlowGraph {
   NodeMap nodes;
   std::vector<Node *> inputs;
@@ -44,12 +48,13 @@ struct DataFlowGraph {
 template <>
 struct GraphTraits<DataFlowGraph> {
   // BFS iterator on nodes.
-  struct NodesBFSIterator : public std::forward_iterator_tag {
+  struct NodesBFSIterator
+      : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesBFSIterator() = default;
     explicit NodesBFSIterator(const std::vector<Node *> &source);
-    explicit NodesBFSIterator(NodesBFSIterator &&other);
+    NodesBFSIterator(NodesBFSIterator &&other) noexcept;
     // NOTE Heavy to use.
-    explicit NodesBFSIterator(const NodesBFSIterator &other);
+    NodesBFSIterator(const NodesBFSIterator &other);
 
     Node &operator*();
     NodesBFSIterator &operator++();
@@ -59,6 +64,7 @@ struct GraphTraits<DataFlowGraph> {
     // set.
     NodesBFSIterator &operator=(const NodesBFSIterator &other);
     bool operator==(const NodesBFSIterator &other);
+    bool operator!=(const NodesBFSIterator &other) { return !(*this == other); }
 
    private:
     std::deque<Node *> queue_;
@@ -66,10 +72,11 @@ struct GraphTraits<DataFlowGraph> {
   };
 
   // DFS iterator on nodes.
-  struct NodesDFSIterator : public std::iterator {
+  struct NodesDFSIterator
+      : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesDFSIterator() = default;
-    NodesDFSIterator(std::vector<Node *> source);
-    NodesDFSIterator(NodesDFSIterator &&other);
+    explicit NodesDFSIterator(const std::vector<Node *> &source);
+    NodesDFSIterator(NodesDFSIterator &&other) noexcept;
     NodesDFSIterator(const NodesDFSIterator &other);
 
     Node &operator*();
@@ -79,6 +86,7 @@ struct GraphTraits<DataFlowGraph> {
     // set.
     NodesDFSIterator &operator=(const NodesDFSIterator &other);
     bool operator==(const NodesDFSIterator &other);
+    bool operator!=(const NodesDFSIterator &other) { return !(*this == other); }
     Node *operator->();
 
    private:
@@ -86,28 +94,31 @@ struct GraphTraits<DataFlowGraph> {
     std::unordered_set<Node *> visited_;
   };
 
-  GraphTraits(const DataFlowGraph &graph) : graph_(graph) {}
+  GraphTraits(DataFlowGraph *graph) : graph_(graph) {}
 
   // default use BFS to visit the nodes.
-  iterator_range nodes() {
-    return iterator_range(nodes_bfs_begin(), nodes_bfs_end());
+  iterator_range<NodesBFSIterator> nodes() {
+    return iterator_range<NodesBFSIterator>(nodes_bfs_begin(), nodes_bfs_end());
   }
-  iterator_range nodes_in_BFS() {
-    return iterator_range(nodes_bfs_begin(), nodes_bfs_end());
+  iterator_range<NodesBFSIterator> nodes_in_BFS() {
+    return iterator_range<NodesBFSIterator>(nodes_bfs_begin(), nodes_bfs_end());
   }
-  iterator_range nodes_in_DFS() {
-    return iterator_range(nodes_dfs_begin(), nodes_dfs_end());
+  iterator_range<NodesDFSIterator> nodes_in_DFS() {
+    return iterator_range<NodesDFSIterator>(nodes_dfs_begin(), nodes_dfs_end());
   }
 
  private:
-  NodesBFSIterator nodes_bfs_begin() { return NodesBFSIterator(graph_.inputs); }
+  NodesBFSIterator nodes_bfs_begin() {
+    return NodesBFSIterator(graph_->inputs);
+  }
   NodesBFSIterator nodes_bfs_end() { return NodesBFSIterator(); }
-  NodesDFSIterator nodes_dfs_begin() { return NodesDFSIterator(graph_.inputs); }
+  NodesDFSIterator nodes_dfs_begin() {
+    return NodesDFSIterator(graph_->inputs);
+  }
   NodesDFSIterator nodes_dfs_end() { return NodesDFSIterator(); }
 
  private:
-  const DataFlowGraph &graph_;
-};
+  DataFlowGraph *graph_;
 };
 
 }  // namespace analysis

@@ -15,8 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
-#include <paddle/fluid/framework/framework.pb.h>
 #include <iosfwd>
+
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/node.h"
@@ -28,14 +29,13 @@ namespace analysis {
 class Pass {
  public:
   Pass() = default;
+  virtual ~Pass() {}
   // Virtual method overridden by subclasses to do only necessary initialization
   // before any pass is run.
   virtual bool Initialize() { return false; }
   // There is some passes such as FlowToDataFlowGraphPass that needs a
   // ProgramDesc.
-  virtual bool Initialize(const framework::proto::ProgramDesc &desc) {
-    return false;
-  }
+  virtual bool Initialize(const framework::ProgramDesc &desc) { return false; }
 
   // Virtual method overriden by subclasses to do any necessary clean up after
   // all passes have run.
@@ -58,19 +58,19 @@ class NodePass : public Pass {
 };
 
 // NodePass process on any Function node types.
-class FunctionPass : Pass {
+class FunctionPass : public Pass {
  public:
   virtual void Run(Function *node) = 0;
 };
 
 // NodePass process on any FunctionBlock node types.
-class FunctionBlockPass : Pass {
+class FunctionBlockPass : public Pass {
  public:
   virtual void Run(FunctionBlock *node) = 0;
 };
 
 // GraphPass processes on any GraphType.
-class DataFlowGraphPass : Pass {
+class DataFlowGraphPass : public Pass {
  public:
   virtual void Run(DataFlowGraph *graph) = 0;
 };

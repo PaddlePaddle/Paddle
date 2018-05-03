@@ -21,13 +21,7 @@ namespace analysis {
 
 void PassManagerMain::RunAll(const framework::ProgramDesc &desc) {
   for (auto &pass : data_) {
-    pass->Initialize(desc, &data_flow_graph_);
-  }
-  for (auto &pass : data_) {
     pass->RunAll();
-  }
-  for (auto &pass : data_) {
-    pass->Finalize();
   }
 }
 
@@ -35,8 +29,8 @@ void PassManagerMain::RunAll(const framework::ProgramDesc &desc) {
 // CustomIterPassManager
 //
 
-DataFlowGraphPassManager::DataFlowGraphPassManager()
-    : type_(Type::kCustomIter) {
+DataFlowGraphPassManager::DataFlowGraphPassManager() {
+  type_ = kCustomIter;
   Register("fluid_to_data_flow_graph", new FluidToDataFlowGraphPass);
 }
 

@@ -25,7 +25,7 @@ namespace analysis {
 /*
  * Parse the graph and replace TensorRT supported nodes with SubGraphNode
  */
-class TensorRTSubGraphPass : public GraphPass<DataFlowGraph> {
+class TensorRTSubGraphPass : public DataFlowGraphPass {
  public:
   // Tell whether to transform a sub-graph into TensorRT.
   using SubGraphToTensorRTTeller =
@@ -35,7 +35,7 @@ class TensorRTSubGraphPass : public GraphPass<DataFlowGraph> {
 
   // This class get a sub-graph as input and determine whether to transform this
   // sub-graph into TensorRT.
-  void Run(DataFlowGraph& graph) override;
+  void Run(DataFlowGraph* graph) override;
 
  private:
   SubGraphToTensorRTTeller subgraph_to_tensorrt_teller_;

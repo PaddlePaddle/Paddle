@@ -57,6 +57,13 @@ class Node {
   // Formatted representation of this Node.
   virtual std::string repr() const = 0;
 
+  template <typename T>
+  T &NewAttr(const std::string &name) {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it == attrs_.end(), "set duplicate attribute %s", name);
+    return it->second.As<T>();
+  }
+
   size_t id() const { return id_; }
   void SetName(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
@@ -89,19 +96,14 @@ class Node {
       // init storage in the first usage.
       if (data.empty()) data.resize(sizeof(T));
       PADDLE_ENFORCE_EQ(data.size(), sizeof(T), "Node attr type recast error");
-      return *reinterpret_cast<T *>(data.c_str());
+      return *reinterpret_cast<T *>(&data[0]);
     }
 
    private:
     std::string data;
   };
 
-  template <typename T>
-  T &NewAttr<T>(const std::string &name) {
-    auto it = attrs_.find(name);
-    PADDLE_ENFORCE(it == attrs_.end(), "set duplicate attribute %s", name);
-    return it->As<T>();
-  }
+  virtual ~Node() {}
 
  protected:
   // The id number not the name is a node's unique identifier in the computation
@@ -119,7 +121,7 @@ class Node {
   static unsigned counter_;
 };
 
-struct Function;
+class Function;
 /*
  * Value represents a value node, it has some attributes including dims, data
  * type and so on.
@@ -133,7 +135,7 @@ class Value : public Node {
   DataType data_type() const { return data_type_; }
 
   void SetDims(const Dims &dims) { dims_ = dims; }
-  Dims &dims() const { return dims_; }
+  const Dims &dims() const { return dims_; }
 
   Device device() const { return device_; }
   void SetDevice(Device device) { device_ = device; }

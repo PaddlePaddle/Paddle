@@ -77,6 +77,8 @@ class PassManager : public OrderedRegistry<Pass> {
   // Call all the passes' Finalize methods.
   virtual bool Finalize() = 0;
 
+  virtual ~PassManager() {}
+
  protected:
   Type type_{Type::kUnknown};
 };

@@ -30,10 +30,11 @@ class iterator_range {
   template <typename Container>
   iterator_range(Container &&c) : begin_(c.begin()), end_(c.end()) {}
 
-  iterator_range(IteratorT begin, IteratorT end) : begin_(begin), end_(end) {}
+  iterator_range(const IteratorT &begin, const IteratorT &end)
+      : begin_(begin), end_(end) {}
 
-  IteratorT begin() const { return begin_; }
-  IteratorT end() const { return end_; }
+  const IteratorT &begin() const { return begin_; }
+  const IteratorT &end() const { return end_; }
 };
 
 /*
@@ -42,10 +43,10 @@ class iterator_range {
 template <typename T>
 class OrderedRegistry {
  public:
-  T *Register(const std::string &name, std::unique_ptr<T> &&x) {
+  T *Register(const std::string &name, T *x) {
     PADDLE_ENFORCE(!dic_.count(name));
     dic_[name] = data_.size();
-    data_.emplace_back(std::move(x));
+    data_.emplace_back(std::unique_ptr<T>(x));
     return data_.back().get();
   }
 
