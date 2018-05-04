@@ -100,7 +100,9 @@ int main(int argc, char** argv) {
   framework::ProgramDesc* loop = load_desc(FLAGS_loop_proto);
 
   std::string place_str = FLAGS_executor_device;
-  std::transform(place_str.begin(), place_str.end(), place_str.begin(),
+  std::transform(place_str.begin(),
+                 place_str.end(),
+                 place_str.begin(),
                  [](unsigned char ch) { return toupper(ch); });
 
   framework::Executor* exe = nullptr;
