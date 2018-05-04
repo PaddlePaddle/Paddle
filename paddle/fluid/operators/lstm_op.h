@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
 namespace paddle {

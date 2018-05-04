@@ -10,10 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/gru_gpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
