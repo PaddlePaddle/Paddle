@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
 namespace paddle {
@@ -114,6 +114,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     auto cand_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
 
+    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -129,9 +130,8 @@ class LSTMKernel : public framework::OpKernel<T> {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_hidden_t = batch_hidden.Slice(pre_h_start, pre_h_end);
-        math::matmul<DeviceContext, T>(device_ctx, pre_hidden_t, false, *weight,
-                                       false, static_cast<T>(1.0), &gate_t,
-                                       static_cast<T>(1.0));
+        blas.MatMul(pre_hidden_t, false, *weight, false, static_cast<T>(1.0),
+                    &gate_t, static_cast<T>(1.0));
       } else if (hidden_t0) {
         // If n == 0 and there is no initialized hidden state, that is to say
         // the H0 is zeros, the calculation W_h * H0 will be skiped.
@@ -143,9 +143,8 @@ class LSTMKernel : public framework::OpKernel<T> {
         Tensor ordered_h0;
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
                                            &ordered_h0, true);
-        math::matmul<DeviceContext, T>(device_ctx, ordered_h0, false, *weight,
-                                       false, static_cast<T>(1.0), &gate_t,
-                                       static_cast<T>(1.0));
+        blas.MatMul(ordered_h0, false, *weight, false, static_cast<T>(1.0),
+                    &gate_t, static_cast<T>(1.0));
       }
 
       lstm_value.gate_value = gate_t.data<T>();
@@ -282,6 +281,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
+    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -320,29 +320,25 @@ class LSTMGradKernel : public framework::OpKernel<T> {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_hidden_g = batch_hidden_g.Slice(pre_h_start, pre_h_end);
-        math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight, true,
-                                       static_cast<T>(1.0), &pre_hidden_g,
-                                       static_cast<T>(1.0));
+        blas.MatMul(gate_g, false, *weight, true, static_cast<T>(1.0),
+                    &pre_hidden_g, static_cast<T>(1.0));
         if (weight_g) {
           /* backward weight */
           auto pre_hidden = batch_hidden.Slice(pre_h_start, pre_h_end);
-          math::matmul<DeviceContext, T>(device_ctx, pre_hidden, true, gate_g,
-                                         false, static_cast<T>(1.0), weight_g,
-                                         static_cast<T>(1.0));
+          blas.MatMul(pre_hidden, true, gate_g, false, static_cast<T>(1.0),
+                      weight_g, static_cast<T>(1.0));
         }
       } else {
         if (h0 && weight_g) {
           ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
                                              &ordered_h0, true);
-          math::matmul<DeviceContext, T>(device_ctx, ordered_h0, true, gate_g,
-                                         false, static_cast<T>(1.0), weight_g,
-                                         static_cast<T>(1.0));
+          blas.MatMul(ordered_h0, true, gate_g, false, static_cast<T>(1.0),
+                      weight_g, static_cast<T>(1.0));
         }
         if (h0 && h0_g) {
           ordered_h0_g.mutable_data<T>(h0_g->dims(), ctx.GetPlace());
-          math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight,
-                                         true, static_cast<T>(1.0),
-                                         &ordered_h0_g, static_cast<T>(0.0));
+          blas.MatMul(gate_g, false, *weight, true, static_cast<T>(1.0),
+                      &ordered_h0_g, static_cast<T>(0.0));
         }
       }
     }
