@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "gtest/gtest.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -21,6 +22,13 @@ void fill_fp16_data(paddle::platform::float16* in_ptr, size_t size,
   for (size_t i = 0; i < data.size(); ++i) {
     in_ptr[i] = paddle::platform::float16(data[i]);
   }
+}
+
+template <typename T>
+inline paddle::operators::math::BlasT<paddle::platform::CUDADeviceContext, T>
+GetBlas(const paddle::platform::CUDADeviceContext& context) {
+  return paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext,
+                                          T>(context);
 }
 
 TEST(math_function, notrans_mul_trans_fp32) {
@@ -42,9 +50,8 @@ TEST(math_function, notrans_mul_trans_fp32) {
   paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
 
   out_gpu.mutable_data<float>({2, 2}, gpu_place);
-
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float>(
-      context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
+  GetBlas<float>(context).MatMul(input1_gpu, false, input2_gpu, true, 1,
+                                 &out_gpu, 0);
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
@@ -81,10 +88,9 @@ TEST(math_function, notrans_mul_trans_fp16) {
 
   out_gpu.mutable_data<paddle::platform::float16>({2, 2}, gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>(
-      context, input1_gpu, false, input2_gpu, true,
-      paddle::platform::float16(1), &out_gpu, paddle::platform::float16(0));
+  GetBlas<paddle::platform::float16>(context).MatMul(
+      input1_gpu, false, input2_gpu, true, paddle::platform::float16(1),
+      &out_gpu, paddle::platform::float16(0));
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
@@ -116,8 +122,8 @@ TEST(math_function, trans_mul_notrans_fp32) {
 
   out_gpu.mutable_data<float>({3, 3}, gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float>(
-      context, input1_gpu, true, input2_gpu, false, 1, &out_gpu, 0);
+  GetBlas<float>(context).MatMul(input1_gpu, true, input2_gpu, false, 1,
+                                 &out_gpu, 0);
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
@@ -159,10 +165,9 @@ TEST(math_function, trans_mul_notrans_fp16) {
 
   out_gpu.mutable_data<paddle::platform::float16>({3, 3}, gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>(
-      context, input1_gpu, true, input2_gpu, false,
-      paddle::platform::float16(1), &out_gpu, paddle::platform::float16(0));
+  GetBlas<paddle::platform::float16>(context).MatMul(
+      input1_gpu, true, input2_gpu, false, paddle::platform::float16(1),
+      &out_gpu, paddle::platform::float16(0));
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
@@ -177,13 +182,6 @@ TEST(math_function, trans_mul_notrans_fp16) {
   EXPECT_EQ(static_cast<float>(out_ptr[6]), 15);
   EXPECT_EQ(static_cast<float>(out_ptr[7]), 22);
   EXPECT_EQ(static_cast<float>(out_ptr[8]), 29);
-}
-
-template <typename T>
-inline paddle::operators::math::BlasT<paddle::platform::CUDADeviceContext, T>
-GetBlas(const paddle::platform::CUDADeviceContext& context) {
-  return paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext,
-                                          T>(context);
 }
 
 TEST(math_function, gemm_notrans_cublas_fp32) {
@@ -437,9 +435,8 @@ void GemvTest(int m, int n, bool trans) {
   paddle::framework::TensorCopySync(mat_a, gpu_place, &g_mat_a);
   paddle::framework::TensorCopySync(vec_b, gpu_place, &g_vec_b);
 
-  paddle::operators::math::gemv<paddle::platform::CUDADeviceContext, T>(
-      context, trans, static_cast<int>(m), static_cast<int>(n), 1., g_data_a,
-      g_data_b, 0., g_data_c);
+  GetBlas<T>(context).GEMV(trans, static_cast<int>(m), static_cast<int>(n), 1.,
+                           g_data_a, g_data_b, 0., g_data_c);
 
   paddle::framework::TensorCopySync(g_vec_c, cpu_place, &vec_c);
 

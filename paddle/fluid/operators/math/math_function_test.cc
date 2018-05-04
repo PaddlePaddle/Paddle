@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/operators/math/math_function.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 template <typename T>
 inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
@@ -129,9 +130,8 @@ void GemvTest(int m, int n, bool trans) {
   }
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemv<paddle::platform::CPUDeviceContext, T>(
-      context, trans, static_cast<int>(m), static_cast<int>(n), 1., data_a,
-      data_b, 0., data_c);
+  GetBlas<T>(context).GEMV(trans, static_cast<int>(m), static_cast<int>(n), 1.,
+                           data_a, data_b, 0., data_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {
