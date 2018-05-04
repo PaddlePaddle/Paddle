@@ -30,8 +30,7 @@ class ParallelExecutor(object):
                  num_threads=None,
                  allow_op_delay=False,
                  share_vars_from=None,
-                 use_default_grad_scale=True,
-                 save_program_to_file=""):
+                 use_default_grad_scale=True):
         """
         ParallelExecutor can run program in parallel.
 
@@ -116,10 +115,6 @@ class ParallelExecutor(object):
                 lambda var: var.persistable and var.type != core.VarDesc.VarType.RAW,
                 main.list_vars())
         ]
-
-        if len(save_program_to_file) > 0:
-            with open(save_program_to_file, 'w') as f:
-                f.write(program.desc.serialize_to_string())
 
         self.executor = core.ParallelExecutor(
             num_threads,
