@@ -658,10 +658,10 @@ class Operator(object):
 class Block(object):
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
-        self.vars = dict()  # var_name --> var
+        self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = dict()
+        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self.to_string(True)
@@ -1070,10 +1070,25 @@ class Program(object):
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
+                    # After transpiler processing, the op that output this
+                    # variable maybe has been changed, so t.op is not reliable
+                    # and we need to find the current op that generate this 
+                    # variable here.
+                    t.op = None
+                    global_block = self.global_block()
+                    for idx, op in enumerate(global_block.ops):
+                        if t.name in op.output_arg_names:
+                            t.op = op
+                            break
+
                     t = t.op
+                    if t is None:
+                        raise ValueError(
+                            "The target variable must have an "
+                            "associated operator that generates it.")
                 else:
-                    raise ValueError(("All targets of prune() can only be "
-                                      "Variable or Operator."))
+                    raise ValueError("All targets of prune() can only be "
+                                     "Variable or Operator.")
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
@@ -1100,6 +1115,10 @@ class Program(object):
     @property
     def random_seed(self):
         return self._seed
+
+    @property
+    def num_blocks(self):
+        return self.desc.num_blocks()
 
     @random_seed.setter
     def random_seed(self, seed):

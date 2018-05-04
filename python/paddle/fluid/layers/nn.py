@@ -60,6 +60,7 @@ __all__ = [
     'edit_distance',
     'l2_normalize',
     'matmul',
+    'topk',
     'warpctc',
     'sequence_reshape',
     'transpose',
@@ -77,6 +78,8 @@ __all__ = [
     'lod_reset',
     'lrn',
     'pad',
+    'label_smooth',
+    'roi_pool',
 ]
 
 
@@ -85,8 +88,10 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_cudnn=False,
        use_mkldnn=False,
        act=None,
+       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -133,6 +138,7 @@ def fc(input,
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
+        is_test(bool): A flag indicating whether execution is in test phase.
         use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
             library is installed. Default: False
         name (str, default None): The name of this layer.
@@ -155,69 +161,43 @@ def fc(input,
     dtype = helper.input_dtype()
 
     mul_results = []
-    if use_mkldnn:
-        tmp = helper.create_tmp_variable(dtype)
-        input_shape = input.shape
+    for input_var, param_attr in helper.iter_inputs_and_params():
+        input_shape = input_var.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
 
         w = helper.create_parameter(
-            attr=helper.param_attr,
-            shape=param_shape,
-            dtype=dtype,
-            is_bias=False)
-        if bias_attr is None or bias_attr is False:
-            bias_attr = False
-        else:
-            bias_attr = True
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+        tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
-            type="fc",
-            inputs={"Input": input,
-                    "W": w},
+            type="mul",
+            inputs={"X": input_var,
+                    "Y": w},
             outputs={"Out": tmp},
-            attrs={"use_mkldnn": use_mkldnn,
-                   "bias_attr": bias_attr})
-        return helper.append_activation(tmp)
+            attrs={
+                "x_num_col_dims": num_flatten_dims,
+                "y_num_col_dims": 1,
+                "use_mkldnn": use_mkldnn
+            })
+        mul_results.append(tmp)
+
+    if len(mul_results) == 1:
+        pre_bias = mul_results[0]
     else:
-        for input_var, param_attr in helper.iter_inputs_and_params():
-            input_shape = input_var.shape
-            param_shape = [
-                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-            ] + [size]
-
-            w = helper.create_parameter(
-                attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-            tmp = helper.create_tmp_variable(dtype)
-            helper.append_op(
-                type="mul",
-                inputs={"X": input_var,
-                        "Y": w},
-                outputs={"Out": tmp},
-                attrs={
-                    "x_num_col_dims": num_flatten_dims,
-                    "y_num_col_dims": 1,
-                })
-            mul_results.append(tmp)
-
-        if len(mul_results) == 1:
-            pre_bias = mul_results[0]
-        else:
-            pre_bias = helper.create_tmp_variable(dtype)
-            helper.append_op(
-                type="sum",
-                inputs={"X": mul_results},
-                outputs={"Out": pre_bias})
-        # add bias
-        pre_activation = helper.append_bias_op(
-            pre_bias, dim_start=num_flatten_dims)
-        # add activation
-        return helper.append_activation(pre_activation)
+        pre_bias = helper.create_tmp_variable(dtype)
+        helper.append_op(
+            type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
+    # add bias
+    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
+    # add activation
+    return helper.append_activation(pre_activation)
 
 
 def embedding(input,
               size,
               is_sparse=False,
+              is_distributed=False,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
@@ -268,8 +248,11 @@ def embedding(input,
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
-        attrs={'is_sparse': is_sparse,
-               'padding_idx': padding_idx})
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'padding_idx': padding_idx
+        })
     return tmp
 
 
@@ -1514,6 +1497,7 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
+               use_mkldnn=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -1592,9 +1576,12 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={"momentum": momentum,
-               "epsilon": epsilon,
-               "is_test": is_test})
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            "use_mkldnn": use_mkldnn
+        })
 
     return helper.append_activation(batch_norm_out)
 
@@ -2566,6 +2553,53 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
+def topk(input, k):
+    """
+    This operator is used to find values and indices of the k largest entries
+    for the last dimension.
+
+    If the input is a vector (rank=1), finds the k largest entries in the vector
+    and outputs their values and indices as vectors. Thus values[j] is the j-th
+    largest entry in input, and its index is indices[j].
+
+    If the input is a Tensor with higher rank, this operator computes the top k
+    entries along the last dimension.
+
+    Args:
+        input(Variable): The input variable which can be a vector or Tensor with
+            higher rank.
+        k(int): An integer value to specify the top k largest elements.
+
+    Returns:
+        values(Variable): The k largest elements along each last dimensional
+            slice.
+        indices(Variable): The indices of values within the last dimension of
+            input.
+
+    Examples:
+        .. code-block:: python
+
+            top5_values, top5_indices = layers.topk(input, k=5)
+    """
+    shape = input.shape
+    if k < 1 and k >= shape[-1]:
+        raise ValueError("k must be greater than 0 and less than %d." %
+                         (shape[-1]))
+
+    helper = LayerHelper("top_k", **locals())
+    values = helper.create_tmp_variable(dtype=input.dtype)
+    indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs={"k": k})
+    values.stop_gradient = True
+    indices.stop_gradient = True
+    return values, indices
+
+
 def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
@@ -2630,7 +2664,7 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
         helper.append_op(
             type="sequence_erase",
             inputs={"X": [label]},
-            outputs={"Out": [erase_label]},
+            outputs={"Out": [erased_label]},
             attrs={"tokens": ignored_tokens})
         label = erased_label
 
@@ -2707,15 +2741,7 @@ def ctc_greedy_decoder(input, blank, name=None):
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
-    # top 1 op
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="top_k",
-        inputs={"X": [input]},
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]},
-        attrs={"k": 1})
+    _, topk_indices = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_tmp_variable(dtype="int64")
@@ -3674,3 +3700,118 @@ def pad(x, paddings, pad_value=0., name=None):
         attrs={'paddings': paddings,
                'pad_value': float(pad_value)})
     return out
+
+
+def label_smooth(label,
+                 prior_dist=None,
+                 epsilon=0.1,
+                 dtype="float32",
+                 name=None):
+    """
+    Label smoothing is a mechanism to regularize the classifier layer and is
+    called label-smoothing regularization (LSR).
+
+    Label smoothing is proposed to encourage the model to be less confident,
+    since optimizing the log-likelihood of the correct label directly may
+    cause overfitting and reduce the ability of the model to adapt. Label
+    smoothing replaces the ground-truth label :math:`y` with the weighted sum
+    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
+    i.e.
+
+    .. math::
+
+        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
+
+    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
+    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
+    uniform distribution is used for :math:`\mu`.
+
+    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
+
+    Args:
+        label(Variable): The input variable containing the label data. The
+                          label data should use one-hot representation.
+        prior_dist(Variable): The prior distribution to be used to smooth
+                              labels. If not provided, an uniform distribution
+                              is used. The shape of :attr:`prior_dist` should
+                              be :math:`(1, class\_num)`.
+        epsilon(float): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
+                                                  float_64, int etc.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The tensor variable containing the smoothed labels.
+
+    Examples:
+        .. code-block:: python
+
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            smooth_label = layers.label_smooth(
+                label=one_hot_label, epsilon=0.1, dtype="float32")
+    """
+    if epsilon > 1. or epsilon < 0.:
+        raise ValueError("The value of epsilon must be between 0 and 1.")
+    helper = LayerHelper("label_smooth", **locals())
+    label.stop_gradient = True
+    smooth_label = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="label_smooth",
+        inputs={"X": label,
+                "PriorDist": prior_dist} if prior_dist else {"X": label},
+        outputs={"Out": smooth_label},
+        attrs={"epsilon": float(epsilon)})
+    return smooth_label
+
+
+def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+    """
+    Region of interest pooling (also known as RoI pooling) is to perform 
+        is to perform max pooling on inputs of nonuniform sizes to obtain
+        fixed-size feature maps (e.g. 7*7).
+    The operator has three steps: 
+        1. Dividing each region proposal into equal-sized sections with 
+           the pooled_width and pooled_height 
+        2. Finding the largest value in each section 
+        3. Copying these max values to the output buffer
+
+    Args:
+        input (Variable): The input for ROI pooling.
+        rois (Variable): ROIs (Regions of Interest) to pool over. It should
+                         be a 2-D one level LoTensor of shape [num_rois, 4].
+                         The layout is [x1, y1, x2, y2], where (x1, y1)
+                         is the top left coordinates, and (x2, y2) is the 
+                         bottom right coordinates. The num_rois is the 
+                         total number of ROIs in this batch data.
+        pooled_height (integer): The pooled output height. Default: 1
+        pooled_width (integer): The pooled output width. Default: 1
+        spatial_scale (float): Multiplicative spatial scale factor. To
+                               translate ROI coords from their input scale
+                               to the scale used when pooling. Default: 1.0
+
+    Returns:
+        pool_out (Variable): The output is a 4-D tensor of the shape 
+                             (num_rois, channels, pooled_h, pooled_w).
+
+    Examples:
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+    """
+    helper = LayerHelper('roi_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+    argmaxes = helper.create_tmp_variable(dtype='int32')
+    helper.append_op(
+        type="roi_pool",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": pool_out,
+                 "Argmax": argmaxes},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale
+        })
+    return pool_out

@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -294,7 +295,7 @@ All parameter, weight, gradient are variables in Paddle.
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDesc prog_with_targets(origin);
     for (const auto &t : targets) {
-      prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
+      prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
     }
     proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
@@ -461,6 +462,9 @@ All parameter, weight, gradient are variables in Paddle.
         self.back().set_lod(t.lod());
       });
 
+  m.def("IsInplace",
+        [](std::string op) -> bool { return operators::IsInplace(op); });
+
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
@@ -498,18 +502,26 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &bcast_vars,
               const ProgramDesc &main_program, const std::string &loss_var_name,
               Scope *scope, std::vector<Scope *> &local_scopes,
-              bool allow_op_delay) {
-             new (&self)
-                 ParallelExecutor(num_threads, use_event, places, params,
-                                  bcast_vars, main_program, loss_var_name,
-                                  scope, local_scopes, allow_op_delay);
+              bool allow_op_delay, bool use_default_grad_scale) {
+             new (&self) ParallelExecutor(
+                 num_threads, use_event, places, params, bcast_vars,
+                 main_program, loss_var_name, scope, local_scopes,
+                 allow_op_delay, use_default_grad_scale);
            })
       .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
+      // NOTE: even we return a vec<Scope*>* to Python use reference policy.
+      // We still cannot get local_scope from this vector, since the element
+      // of vec<Scope*> will be freed by Python GC. We can only return Scope*
+      // one by one and mark them as reference.
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
+      .def("feed_tensors_into_local_scopes",
+           &ParallelExecutor::FeedTensorsIntoLocalScopes)
+      .def("feed_and_split_tensor_into_local_scopes",
+           &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", &ParallelExecutor::Run);
 
   BindRecordIOWriter(&m);

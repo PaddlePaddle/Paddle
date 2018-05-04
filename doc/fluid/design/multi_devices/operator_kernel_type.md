@@ -8,7 +8,7 @@ struct OpKernelType {
   proto::DataType data_type_;
 };
 ```
-For more details, please refer to [codes](https://github.com/PaddlePaddle/Paddle/blob/2d5ec16bc8a09fb8e0f62c89b116b0cd1d333907/paddle/framework/operator.h#L348-L374) in github.
+For more details, please refer to [codes](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.h#L348-L374) in github.
 
 It contains two keys, `Place` and `DataType`. And these two keys will be hashed to a unique key to represent a certain type of kernel. However, these two keys do not provide enough information. We need a more complete representation of `OpKernelType`.
 

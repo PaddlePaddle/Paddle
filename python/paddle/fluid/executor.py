@@ -151,7 +151,7 @@ def fetch_var(name, scope=None, return_numpy=True):
         scope = global_scope()
     assert isinstance(scope, core.Scope)
 
-    var = global_scope().find_var(name)
+    var = scope.find_var(name)
     assert var is not None, (
         "Cannot find " + name + " in scope. Perhaps you need to make the"
         " variable persistable by using var.persistable = True in your"

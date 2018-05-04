@@ -15,31 +15,42 @@
 import unittest
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import numpy
 from multiprocessing import Process
+from threading import Thread
 import os, sys
 import time
 
 
-class TestRecvOp(unittest.TestCase):
-    def no_test_send(self):
+class TestSendOp(unittest.TestCase):
+    def test_send(self):
         # Run init_serv in a thread
         place = fluid.CPUPlace()
+        # NOTE: python thread will not work here due to GIL.
         p = Process(target=self.init_serv, args=(place, ))
         p.daemon = True
         p.start()
-        time.sleep(1)
-        self.init_client(place)
+
+        time.sleep(10)
+        with open("/tmp/paddle.%d.selected_port" % p.pid, "r") as fn:
+            selected_port = int(fn.readlines()[0])
+        self.init_client(place, selected_port)
+
+        self.run_local(place)
+        self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
+
         # FIXME(typhoonzero): find a way to gracefully shutdown the server.
         os.system("kill -9 %d" % p.pid)
         p.join()
 
     def init_serv(self, place):
         main = fluid.Program()
+
         with fluid.program_guard(main):
             serv = layers.ListenAndServ(
-                "127.0.0.1:6174", ["X"], optimizer_mode=False)
+                "127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
                 x = layers.data(
                     shape=[32, 32],
@@ -50,10 +61,11 @@ class TestRecvOp(unittest.TestCase):
                 o = layers.scale(x=x, scale=10.0)
             main.global_block().create_var(
                 name=o.name, psersistable=False, dtype=o.dtype, shape=o.shape)
-        exe = fluid.Executor(place)
-        exe.run(main)
 
-    def init_client(self, place):
+        self.server_exe = fluid.Executor(place)
+        self.server_exe.run(main)
+
+    def init_client(self, place, port):
         main = fluid.Program()
         with fluid.program_guard(main):
             x = layers.data(
@@ -61,10 +73,28 @@ class TestRecvOp(unittest.TestCase):
                 dtype='float32',
                 name='X',
                 append_batch_size=False)
-            fluid.initializer.Constant(value=1.0)(x, main.global_block())
-            layers.Send("127.0.0.1:6174", [x], [x])
+            fluid.initializer.Constant(value=2.3)(x, main.global_block())
+            get_var = main.global_block().create_var(
+                name="scale_0.tmp_0",  # server side var
+                dtype="float32",
+                persistable=False,
+                shape=[32, 32])
+            o = layers.Send("127.0.0.1:%d" % port, [x], [get_var])
         exe = fluid.Executor(place)
-        exe.run(main)
+        self.dist_out = exe.run(main, fetch_list=o)  # o is a list
+
+    def run_local(self, place):
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            x = layers.data(
+                shape=[32, 32],
+                dtype='float32',
+                name='X',
+                append_batch_size=False)
+            fluid.initializer.Constant(value=2.3)(x, main.global_block())
+            o = layers.scale(x=x, scale=10.0)
+        exe = fluid.Executor(place)
+        self.local_out = exe.run(main, fetch_list=[o])
 
 
 if __name__ == "__main__":

@@ -20,6 +20,16 @@ from framework import *
 import executor
 from executor import *
 
+import trainer
+from trainer import Trainer
+from trainer import BeginEpochEvent
+from trainer import EndEpochEvent
+from trainer import BeginStepEvent
+from trainer import EndStepEvent
+
+import inferencer
+from inferencer import Inferencer
+
 import io
 import evaluator
 import initializer
@@ -37,6 +47,7 @@ from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
+from inference_transpiler import InferenceTranspiler
 import clip
 from memory_optimization_transpiler import memory_optimize, release_memory
 import profiler
@@ -46,7 +57,8 @@ from parallel_executor import ParallelExecutor
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
+__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ +\
+          trainer.__all__ + inferencer.__all__ + [
     'io',
     'initializer',
     'layers',
@@ -66,6 +78,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'clip',
     'SimpleDistributeTranspiler',
     'DistributeTranspiler',
+    'InferenceTranspiler',
     'memory_optimize',
     'release_memory',
     'profiler',
@@ -105,10 +118,13 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir'
+        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
+        'eager_delete_scope'
     ]
     if core.is_compiled_with_cuda():
-        read_env_flags += ['fraction_of_gpu_memory_to_use']
+        read_env_flags += [
+            'fraction_of_gpu_memory_to_use', 'cudnn_algo_use_autotune'
+        ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

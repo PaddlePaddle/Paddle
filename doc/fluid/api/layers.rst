@@ -473,6 +473,19 @@ multiplex
 ..  autofunction:: paddle.fluid.layers.multiplex
     :noindex:
 
+label_smooth
+------------
+
+..  autofunction:: paddle.fluid.layers.label_smooth
+    :noindex:
+
+roi_pool
+---------
+
+..  autofunction:: paddle.fluid.layers.roi_pool
+    :noindex:
+
+    
 ops
 ===
 
@@ -808,4 +821,11 @@ zeros
 
 ..  autofunction:: paddle.fluid.layers.zeros
     :noindex:
+
+topk
+----
+
+..  autofunction:: paddle.fluid.layers.topk
+    :noindex:
+
 

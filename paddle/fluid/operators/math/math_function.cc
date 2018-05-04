@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/float16.h"
@@ -22,72 +23,6 @@ namespace operators {
 namespace math {
 
 using float16 = paddle::platform::float16;
-
-template <>
-void gemm<platform::CPUDeviceContext, float16>(
-    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float16 alpha, const float16* A, const float16* B, const float16 beta,
-    float16* C) {
-  PADDLE_THROW("float16 GEMM not supported on CPU");
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, float>(
-    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float alpha, const float* A, const float* B, const float beta,
-    float* C) {
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
-  cblas_sgemm(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
-              beta, C, ldc);
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, double>(
-    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
-    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const double alpha, const double* A, const double* B, const double beta,
-    double* C) {
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
-  cblas_dgemm(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
-              beta, C, ldc);
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, float16>(
-    const platform::CPUDeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K,
-    const float16 alpha, const float16* A, const int lda, const float16* B,
-    const int ldb, const float16 beta, float16* C, const int ldc) {
-  PADDLE_THROW("float16 GEMM not supported on CPU");
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, float>(
-    const platform::CPUDeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K, const float alpha,
-    const float* A, const int lda, const float* B, const int ldb,
-    const float beta, float* C, const int ldc) {
-  cblas_sgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-              lda, B, ldb, beta, C, ldc);
-}
-
-template <>
-void gemm<platform::CPUDeviceContext, double>(
-    const platform::CPUDeviceContext& context, const bool transA,
-    const bool transB, const int M, const int N, const int K,
-    const double alpha, const double* A, const int lda, const double* B,
-    const int ldb, const double beta, double* C, const int ldc) {
-  cblas_dgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-              transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-              lda, B, ldb, beta, C, ldc);
-}
 
 template <>
 void matmul<platform::CPUDeviceContext, float16>(
@@ -122,8 +57,8 @@ void matmul<platform::CPUDeviceContext, float>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUDeviceContext, float>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<float>(),
+  Blas<platform::CPUDeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<float>(),
       matrix_b.data<float>(), beta, matrix_out->data<float>());
 }
 
@@ -151,8 +86,8 @@ void matmul<platform::CPUDeviceContext, double>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUDeviceContext, double>(
-      context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
+  Blas<platform::CPUDeviceContext>(context).GEMM(
+      transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
@@ -161,7 +96,8 @@ void batched_gemm<platform::CPUDeviceContext, float16>(
     const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float16 alpha, const float16* A, const float16* B, const float16 beta,
-    float16* C, const int batchCount, const int strideA, const int strideB) {
+    float16* C, const int batchCount, const int64_t strideA,
+    const int64_t strideB) {
   PADDLE_THROW("float16 batched_gemm not supported on CPU");
 }
 
@@ -172,7 +108,8 @@ void batched_gemm<platform::CPUDeviceContext, float>(
     const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
-    float* C, const int batchCount, const int strideA, const int strideB) {
+    float* C, const int batchCount, const int64_t strideA,
+    const int64_t strideB) {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -194,7 +131,8 @@ void batched_gemm<platform::CPUDeviceContext, double>(
     const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
-    double* C, const int batchCount, const int strideA, const int strideB) {
+    double* C, const int batchCount, const int64_t strideA,
+    const int64_t strideB) {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -220,13 +158,14 @@ void batched_gemm<platform::CPUDeviceContext, float>(
     const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
-    float* C, const int batchCount, const int strideA, const int strideB) {
+    float* C, const int batchCount, const int64_t strideA,
+    const int64_t strideB) {
   for (int k = 0; k < batchCount; ++k) {
     const float* Ak = &A[k * strideA];
     const float* Bk = &B[k * strideB];
     float* Ck = &C[k * M * N];
-    gemm<platform::CPUDeviceContext, float>(context, transA, transB, M, N, K,
-                                            alpha, Ak, Bk, beta, Ck);
+    Blas<platform::CPUDeviceContext>(context).GEMM(transA, transB, M, N, K,
+                                                   alpha, Ak, Bk, beta, Ck);
   }
 }
 
@@ -235,13 +174,14 @@ void batched_gemm<platform::CPUDeviceContext, double>(
     const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
-    double* C, const int batchCount, const int strideA, const int strideB) {
+    double* C, const int batchCount, const int64_t strideA,
+    const int64_t strideB) {
   for (int k = 0; k < batchCount; ++k) {
     const double* Ak = &A[k * strideA];
     const double* Bk = &B[k * strideB];
     double* Ck = &C[k * M * N];
-    gemm<platform::CPUDeviceContext, double>(context, transA, transB, M, N, K,
-                                             alpha, Ak, Bk, beta, Ck);
+    Blas<platform::CPUDeviceContext>(context).GEMM(transA, transB, M, N, K,
+                                                   alpha, Ak, Bk, beta, Ck);
   }
 }
 #endif

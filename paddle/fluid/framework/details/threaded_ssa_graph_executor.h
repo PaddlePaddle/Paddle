@@ -22,6 +22,7 @@
 
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 
 namespace paddle {
@@ -29,46 +30,6 @@ namespace framework {
 class Scope;
 
 namespace details {
-
-template <typename T>
-class BlockingQueue {
- public:
-  void Push(const T &item) {
-    {
-      std::lock_guard<std::mutex> g(mutex_);
-      q_.emplace_back(item);
-    }
-    cv_.notify_one();
-  }
-
-  template <typename U>
-  void Extend(const U &items) {
-    {
-      std::lock_guard<std::mutex> g(mutex_);
-      for (auto &item : items) {
-        q_.emplace_back(item);
-      }
-    }
-    cv_.notify_all();
-  }
-
-  std::deque<T> PopAll(size_t ms, bool *timeout) {
-    auto time =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(ms);
-    std::unique_lock<std::mutex> lock(mutex_);
-    *timeout = !cv_.wait_until(lock, time, [this] { return !q_.empty(); });
-    std::deque<T> ret;
-    if (!*timeout) {
-      std::swap(ret, q_);
-    }
-    return ret;
-  }
-
- private:
-  std::mutex mutex_;
-  std::condition_variable cv_;
-  std::deque<T> q_;
-};
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
@@ -88,8 +49,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
              details::OpHandleBase *op);
 
-  void RunDelayedOps(const std::unordered_set<OpHandleBase *> &delayed_ops);
-
  private:
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
@@ -99,9 +58,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   bool allow_op_delay_;
-
-  size_t computation_count_{0};
-  size_t max_async_computation{100};
 };
 
 }  // namespace details

@@ -34,7 +34,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
     platform::NCCLContextMap *nccl_ctxs)
     : loss_var_name_(loss_var_name),
       places_(places),
@@ -45,7 +45,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes)
+    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes) {
@@ -53,27 +53,54 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
   }
+  use_default_grad_scale_ = use_default_grad_scale;
 }
 
-void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result, OpDesc *op,
-                                                const platform::Place &p,
-                                                const size_t &i) const {
+void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
+                                                const OpDesc &op,
+                                                size_t place_id) const {
+  auto p = places_[place_id];
   auto *op_handle = result->ops_.back().get();
-  op_handle->dev_ctxes_[p] = const_cast<platform::DeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(p));
+  op_handle->SetDeviceContext(p,
+                              platform::DeviceContextPool::Instance().Get(p));
 
-  auto var_names = op->InputArgumentNames();
-
-  for (auto &each_var_name : var_names) {
-    VarHandle *var = CreateOrGetLatestVarHandle(result, each_var_name, p, i);
+  for (auto &each_var_name : op.InputArgumentNames()) {
+    VarHandle *var =
+        CreateOrGetLatestVarHandle(result, each_var_name, p, place_id);
     op_handle->AddInput(var);
   }
 
-  var_names = op->OutputArgumentNames();
-
-  for (auto &each_var_name : var_names) {
-    CreateOpOutput(result, op_handle, each_var_name, p, i);
+  for (auto &each_var_name : op.OutputArgumentNames()) {
+    CreateOpOutput(result, op_handle, each_var_name, p, place_id);
   }
+}
+
+bool MultiDevSSAGraphBuilder::IsDistTrainOp(const OpDesc &op,
+                                            OpDesc *send_op) const {
+  if (send_op == nullptr) {
+    return false;
+  }
+
+  /**
+   * Check any of opvars contains `.block` and in sendvars
+   */
+  auto checker = [](const std::vector<std::string> &opvars,
+                    const std::vector<std::string> &sendvars) -> bool {
+    for (auto &var : opvars) {
+      if (var.find(".block") != std::string::npos &&
+          std::find(sendvars.begin(), sendvars.end(), var) != sendvars.end()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (op.Type() == "split") {
+    return checker(op.OutputArgumentNames(), send_op->InputArgumentNames());
+  } else if (op.Type() == "concat") {
+    return checker(op.InputArgumentNames(), send_op->OutputArgumentNames());
+  }
+  return false;
 }
 
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
@@ -87,107 +114,32 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
       places_.size());
 
+  // Find "send" op first for split is in front of send.
+  OpDesc *send_op = GetSendOpDesc(program);
+
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
-    bool change_forward = false;
-    if (!is_forwarding) {
-      // FIXME(yy): Do not hard code like this
-      if (op->OutputArgumentNames().size() == 1 &&
-          op->OutputArgumentNames()[0] == GradVarName(loss_var_name_)) {
-        continue;  // Drop fill 1. for backward coeff;
+    if (op->Type() == "send") {
+      // append send op if program is distributed trainer main program.
+      // always use the first device
+      CreateSendOp(&result, *op);
+    } else if (IsDistTrainOp(*op, send_op)) {
+      CreateComputationalOps(&result, *op, 1);
+    } else if (IsScaleLossOp(*op)) {
+      // user can customize loss@grad if not use_default_grad_scale_
+      if (use_default_grad_scale_) {
+        CreateScaleLossGradOp(&result);
       }
-    }
-
-    // append send op if program is distributed trainer main program.
-    // always use the first device
-    if (!is_forwarding && op->Type() == "send") {
-      auto &p = places_[0];
-      auto *s = local_scopes_[0];
-      // FIXME(wuyi): send op always copy from GPU 0
-      result.ops_.emplace_back(new SendOpHandle(*op, s, p));
-      // Create inputs for output on original place and no ssa output
-      // is created for send op.
-      CreateOpHandleIOs(&result, op, p, 0);
-      continue;
-    }
-
-    for (size_t i = 0; i < places_.size(); ++i) {
-      auto &p = places_[i];
-      auto *s = local_scopes_[i];
-
-      result.ops_.emplace_back(new ComputationOpHandle(*op, s, p));
-      auto *op_handle = result.ops_.back().get();
-      CreateOpHandleIOs(&result, op, p, i);
-
-      auto var_names = op->OutputArgumentNames();
-
-      if (is_forwarding) {
-        if (var_names.size() == 1 && var_names[0] == loss_var_name_) {
-// Insert ScaleCost OpHandle
-#ifdef PADDLE_WITH_CUDA
-          auto *communication_dev_ctx = nccl_ctxs_->DevCtx(p);
-#else
-          auto *communication_dev_ctx =
-              platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-#endif
-
-          op_handle = new ScaleLossGradOpHandle(local_scopes_.size(), s, p,
-                                                communication_dev_ctx);
-          result.ops_.emplace_back(op_handle);
-
-          // FIXME: Currently ScaleLossGradOp only use device_count as scale
-          // factor. So it does not depend on any other operators.
-          // VarHandle *loss = GetVarHandle(loss_var_name, place);
-          // loss->pending_ops_.emplace_back(op_handle);
-          // op_handle->inputs_.emplace_back(loss);
-
-          CreateOpOutput(&result, op_handle, GradVarName(loss_var_name_), p, i);
-          change_forward = true;
-        }
-      }
-    }
-
-    if (change_forward) {
       is_forwarding = false;
-    }
-
-    if (!is_forwarding) {
-      auto var_names = op->OutputArgumentNames();
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once. But there are no
-      // other cases, for example, we need to adjust the gradient according to
-      // the input when we get the gradient, which is not considered at present.
-      for (auto &og : var_names) {
-        if (grad_names_.count(og) != 0 &&
-            og_has_been_broadcast.count(og) == 0) {  // is param grad
-                                                     // Insert NCCL AllReduce Op
-          og_has_been_broadcast.insert(og);
-#ifdef PADDLE_WITH_CUDA
-          result.ops_.emplace_back(
-              new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
-          auto *op_handle = result.ops_.back().get();
-
-          for (size_t i = 0; i < places_.size(); ++i) {
-            auto &p = places_[i];
-            auto &vars = result.vars_[i][og];
-
-            if (vars.empty()) {  // This device has no data. continue.
-              continue;
-            }
-            auto &prev_grad = vars[vars.size() - 1];
-            op_handle->AddInput(prev_grad.get());
-
-            vars.emplace_back(new VarHandle);
-            auto &var = vars.back();
-            var->place_ = p;
-            var->name_ = og;
-            var->version_ = vars.size() - 1;
-
-            op_handle->AddOutput(var.get());
+    } else {
+      CreateComputationalOps(&result, *op, places_.size());
+      if (!is_forwarding) {
+        // Currently, we assume that once gradient is generated, it can be
+        // broadcast, and each gradient is only broadcast once.
+        for (auto &og : op->OutputArgumentNames()) {
+          if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
+            InsertNCCLAllReduceOp(&result, og);
           }
-#else
-          PADDLE_ENFORCE("Not implemented");
-#endif
         }
       }
     }
@@ -211,7 +163,106 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   }
 
   return std::unique_ptr<SSAGraph>(graph);
-}  // namespace details
+}
+
+OpDesc *MultiDevSSAGraphBuilder::GetSendOpDesc(
+    const ProgramDesc &program) const {
+  for (auto *op : program.Block(0).AllOps()) {
+    if (op->Type() == "send") {
+      return op;
+    }
+  }
+  return nullptr;
+}
+
+void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
+    SSAGraph *result, const std::string &og) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
+  auto *op_handle = result->ops_.back().get();
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    auto &vars = result->vars_[i][og];
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
+    op_handle->AddInput(prev_grad.get());
+
+    auto var = new VarHandle(vars.size() - 1, i, og, p);
+    vars.emplace_back(var);
+    op_handle->AddOutput(var);
+  }
+#else
+  PADDLE_ENFORCE("Not implemented");
+#endif
+}
+
+bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
+    const std::string &og,
+    std::unordered_set<std::string> *og_has_been_broadcast) const {
+  bool is_pg_once =
+      grad_names_.count(og) != 0 && og_has_been_broadcast->count(og) == 0;
+  if (is_pg_once) {
+    // Insert NCCL AllReduce Op
+    og_has_been_broadcast->insert(og);
+  }
+  return is_pg_once;
+}
+
+void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
+  for (size_t i = 0; i < places_.size(); ++i) {
+// Insert ScaleCost OpHandle
+#ifdef PADDLE_WITH_CUDA
+    auto *communication_dev_ctx = nccl_ctxs_->DevCtx(places_[i]);
+#else
+    auto *communication_dev_ctx =
+        platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
+#endif
+
+    auto *op_handle =
+        new ScaleLossGradOpHandle(local_scopes_.size(), local_scopes_[i],
+                                  places_[i], communication_dev_ctx);
+    result->ops_.emplace_back(op_handle);
+
+    // FIXME: Currently ScaleLossGradOp only use device_count as scale
+    // factor. So it does not depend on any other operators.
+    // VarHandle *loss = GetVarHandle(loss_var_name, place);
+    // loss->pending_ops_.emplace_back(op_handle);
+    // op_handle->inputs_.emplace_back(loss);
+
+    CreateOpOutput(result, op_handle, GradVarName(loss_var_name_), places_[i],
+                   i);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
+                                                     const OpDesc &op,
+                                                     size_t num_places) const {
+  for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
+    auto p = places_[scope_idx];
+    auto s = local_scopes_[scope_idx];
+    result->ops_.emplace_back(new ComputationOpHandle(op, s, p));
+    CreateOpHandleIOs(result, op, scope_idx);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
+                                           const OpDesc &op) const {
+  auto &p = places_[0];
+  auto *s = local_scopes_[0];
+  // FIXME(wuyi): send op always copy from GPU 0
+  result->ops_.emplace_back(new SendOpHandle(op, s, p));
+  // Create inputs for output on original place and no ssa output
+  // is created for send op.
+  CreateOpHandleIOs(result, op, 0);
+}
+
+bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
+  // FIXME(yy): Do not hard code like this
+  return op.OutputArgumentNames().size() == 1 &&
+         op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

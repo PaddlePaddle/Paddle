@@ -24,7 +24,19 @@ template <typename T>
 class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* tensor = ctx.Output<framework::Tensor>("Out");
+    framework::Tensor* tensor = nullptr;
+    auto out_var = ctx.OutputVar("Out");
+    if (out_var->IsType<framework::LoDTensor>()) {
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (out_var->IsType<framework::SelectedRows>()) {
+      auto shape = ctx.Attr<std::vector<int>>("shape");
+      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      tensor->Resize(framework::make_ddim(shape));
+    } else {
+      PADDLE_THROW(
+          "uniform_random_op's output only"
+          "supports SelectedRows and Tensor");
+    }
     T* data = tensor->mutable_data<T>(ctx.GetPlace());
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     std::minstd_rand engine;
@@ -104,11 +116,31 @@ uniform distribution.
         .SetDefault(framework::proto::VarType::FP32);
   }
 };
+
+class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto out_var_name = op_desc.Output("Out").front();
+    if (block->FindRecursiveOrCreateVar(out_var_name).GetType() ==
+        framework::proto::VarType::SELECTED_ROWS) {
+      block->FindRecursiveOrCreateVar(out_var_name)
+          .SetType(framework::proto::VarType::SELECTED_ROWS);
+    } else {
+      block->FindRecursiveOrCreateVar(out_var_name)
+          .SetType(framework::proto::VarType::LOD_TENSOR);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(uniform_random, paddle::operators::UniformRandomOp,
-                             paddle::operators::UniformRandomOpMaker);
+REGISTER_OPERATOR(uniform_random, paddle::operators::UniformRandomOp,
+                  paddle::operators::UniformRandomOpMaker,
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::UniformRandomOpVarTypeInference);
+
 REGISTER_OP_CPU_KERNEL(uniform_random,
                        paddle::operators::CPUUniformRandomKernel<float>,
                        paddle::operators::CPUUniformRandomKernel<double>);
