@@ -367,9 +367,18 @@ int VariableResponse::Parse(Source* source) {
       }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
-                        meta_.type() == sendrecv::LOD_TENSOR) &&
+                        meta_.type() == sendrecv::LOD_TENSOR ||
+                        meta_.type() == sendrecv::NCCL_ID) &&
                            meta_.varname() != "",
                        "meta info should be got first!");
+        if (meta_.type() == sendrecv::NCCL_ID) {
+          auto* var = scope_->FindVar(meta_.varname());
+          if (var != nullptr) {
+            ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
+            memcpy(id->internal, meta_.serialized().c_str(),
+                   meta_.serialized().size());
+          }
+        }
 
         int length = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
