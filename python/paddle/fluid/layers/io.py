@@ -50,8 +50,6 @@ def data(name,
        dtype(int|float): The type of data : float32, float_16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
-       main_program(Program): Name of the main program that calls this
-       startup_program(Program): Name of the startup program
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
 
     Returns:
@@ -74,13 +72,15 @@ def data(name,
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
 
-    return helper.create_global_variable(
+    data_var = helper.create_global_variable(
         name=name,
         shape=shape,
         dtype=dtype,
         type=type,
         stop_gradient=stop_gradient,
         lod_level=lod_level)
+    data_var.is_data = True
+    return data_var
 
 
 class BlockGuardServ(BlockGuard):
@@ -168,7 +168,9 @@ class ListenAndServ(object):
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
                 'OptimizeBlock': current_block,
-                'PrefetchBlock': empty_block
+                'PrefetchBlock': empty_block,
+                'sync_mode': True,  # did not support async now in layers
+                'grad_to_block_id': [""]
             })
 
 
@@ -457,8 +459,8 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def __create_unshared_decorated_reader__(op_type, reader, attrs):
-    new_reader_name = unique_name(op_type)
+def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
+    new_reader_name = name if name is not None else unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
     main_blk.append_op(
@@ -481,12 +483,12 @@ def batch(reader, batch_size):
         'create_batch_reader', reader, {'batch_size': int(batch_size)})
 
 
-def double_buffer(reader, place=None):
+def double_buffer(reader, place=None, name=None):
     attrs = dict()
     if place is not None:
         attrs['place'] = str(place).upper()
-    return __create_unshared_decorated_reader__('create_double_buffer_reader',
-                                                reader, attrs)
+    return __create_unshared_decorated_reader__(
+        'create_double_buffer_reader', reader, attrs, name=name)
 
 
 def multi_pass(reader, pass_num):

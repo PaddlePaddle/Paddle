@@ -43,10 +43,10 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor& dst,
+                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
                   bool is_src_index) {
     auto src_dims = src.dims();
-    auto dst_dims = dst.dims();
+    auto dst_dims = dst->dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2,
                       "The src must be matrix with rank 2.");
     PADDLE_ENFORCE_EQ(dst_dims.size(), 2,
@@ -56,7 +56,7 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
     auto height = dst_dims[0];
     auto width = dst_dims[1];
     auto* src_data = src.data<T>();
-    auto* dst_data = dst.data<T>();
+    auto* dst_data = dst->data<T>();
 
     dim3 threads(128, 8);
     dim3 grid(8, 1);

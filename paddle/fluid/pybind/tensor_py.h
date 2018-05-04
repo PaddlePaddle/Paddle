@@ -63,15 +63,9 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
             tensor.dims(), platform::CPUPlace()));
 
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto dev_ctx = static_cast<const platform::CUDADeviceContext *>(
-            pool.Get(tensor.place()));
-
-        paddle::platform::GpuMemcpyAsync(
-            dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
-            cudaMemcpyDeviceToHost, dev_ctx->stream());
-        dev_ctx->Wait();
+        paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
+                                        sizeof(CUR_TYPE) * tensor.numel(),
+                                        cudaMemcpyDeviceToHost);
 #else
         PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -113,7 +107,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
     return self.data<T>()[offset];
   } else {
     std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopy(self, platform::CPUPlace(), dst.get());
+    framework::TensorCopySync(self, platform::CPUPlace(), dst.get());
     return dst->data<T>()[offset];
   }
 }
@@ -123,9 +117,9 @@ template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   if (platform::is_gpu_place(self->place())) {
     std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopy(*self, platform::CPUPlace(), dst.get());
+    framework::TensorCopySync(*self, platform::CPUPlace(), dst.get());
     dst->data<T>()[offset] = elem;
-    framework::TensorCopy(*dst.get(), self->place(), self);
+    framework::TensorCopySync(*dst.get(), self->place(), self);
 
   } else if (platform::is_cpu_place(self->place())) {
     self->data<T>()[offset] = elem;
@@ -184,17 +178,8 @@ void PyCUDATensorSetFromArray(
 
   self->Resize(framework::make_ddim(dims));
   auto *dst = self->mutable_data<T>(place);
-
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto dev_ctx =
-      static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-  paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
-                                   cudaMemcpyHostToDevice, dev_ctx->stream());
-  // NOTE: For safety, here wait the copy complete.
-  // It because the CPU array.data() could be destroyed after this method.
-  // If we make this method async, it could be copied data from a memory buffer
-  // that has been freed.
-  dev_ctx->Wait();
+  paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
+                                  cudaMemcpyHostToDevice);
 }
 
 template <>
@@ -214,18 +199,9 @@ void PyCUDATensorSetFromArray(
 
   self->Resize(framework::make_ddim(dims));
   auto *dst = self->mutable_data<platform::float16>(place);
-
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto dev_ctx =
-      static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-  paddle::platform::GpuMemcpyAsync(dst, array.data(),
-                                   sizeof(uint16_t) * array.size(),
-                                   cudaMemcpyHostToDevice, dev_ctx->stream());
-  // NOTE: For safety, here wait the copy complete.
-  // It because the CPU array.data() could be destroyed after this method.
-  // If we make this method async, it could be copied data from a memory buffer
-  // that has been freed.
-  dev_ctx->Wait();
+  paddle::platform::GpuMemcpySync(dst, array.data(),
+                                  sizeof(uint16_t) * array.size(),
+                                  cudaMemcpyHostToDevice);
 }
 
 template <typename T>

@@ -16,9 +16,12 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
+DEFINE_string(data_set, "cifar10", "Data set to test");
 DEFINE_string(dirname, "", "Directory of the inference model.");
+DEFINE_string(fp16_dirname, "", "Directory of the float16 inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times");
+DEFINE_bool(skip_cpu, false, "Skip the cpu test");
 
 TEST(inference, image_classification) {
   if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
@@ -35,20 +38,31 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(&input, {FLAGS_batch_size, 3, 32, 32},
-                     static_cast<float>(0), static_cast<float>(1));
+  if (FLAGS_data_set == "cifar10") {
+    SetupTensor<float>(&input, {FLAGS_batch_size, 3, 32, 32},
+                       static_cast<float>(0), static_cast<float>(1));
+  } else if (FLAGS_data_set == "imagenet") {
+    SetupTensor<float>(&input, {FLAGS_batch_size, 3, 224, 224},
+                       static_cast<float>(0), static_cast<float>(1));
+  } else {
+    LOG(FATAL) << "Only cifar10 or imagenet is supported.";
+  }
+
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
   paddle::framework::LoDTensor output1;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
-  cpu_fetchs1.push_back(&output1);
+  if (!FLAGS_skip_cpu) {
+    std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+    cpu_fetchs1.push_back(&output1);
 
-  // Run inference on CPU
-  LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace, false, true>(
-      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
-  LOG(INFO) << output1.dims();
+    // Run inference on CPU
+    LOG(INFO) << "--- CPU Runs: ---";
+    LOG(INFO) << "Batch size is " << FLAGS_batch_size;
+    TestInference<paddle::platform::CPUPlace, false, true>(
+        dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
+    LOG(INFO) << output1.dims();
+  }
 
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::LoDTensor output2;
@@ -57,10 +71,29 @@ TEST(inference, image_classification) {
 
   // Run inference on CUDA GPU
   LOG(INFO) << "--- GPU Runs: ---";
+  LOG(INFO) << "Batch size is " << FLAGS_batch_size;
   TestInference<paddle::platform::CUDAPlace, false, true>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat);
   LOG(INFO) << output2.dims();
 
-  CheckError<float>(output1, output2);
+  if (!FLAGS_skip_cpu) {
+    CheckError<float>(output1, output2);
+  }
+
+  // float16 inference requires cuda GPUs with >= 5.3 compute capability
+  if (!FLAGS_fp16_dirname.empty() &&
+      paddle::platform::GetCUDAComputeCapability(0) >= 53) {
+    paddle::framework::LoDTensor output3;
+    std::vector<paddle::framework::LoDTensor*> cpu_fetchs3;
+    cpu_fetchs3.push_back(&output3);
+
+    LOG(INFO) << "--- GPU Runs in float16 mode: ---";
+    LOG(INFO) << "Batch size is " << FLAGS_batch_size;
+
+    TestInference<paddle::platform::CUDAPlace, false, true>(
+        FLAGS_fp16_dirname, cpu_feeds, cpu_fetchs3, FLAGS_repeat);
+
+    CheckError<float>(output2, output3);
+  }
 #endif
 }

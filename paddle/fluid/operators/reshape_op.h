@@ -93,8 +93,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
     if (unk_dim_idx != -1) {
       output_shape[unk_dim_idx] = -in_size / capacity;
-      PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
-                        "Invalid shape is given.");
+      // in_size < 0 and is un-determinate in compile time, skip the check,
+      // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
+      // capacity = -24, in_size = -8, output_shape[0] = 0
+      // the following check will fail.
+      if (in_size > 0) {
+        PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
+                          "Invalid shape is given.");
+      }
     } else {
       PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
     }
@@ -124,10 +130,8 @@ class ReshapeKernel : public framework::OpKernel<T> {
       auto *shape_data = shape_tensor->data<int>();
       framework::Tensor cpu_shape_tensor;
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        TensorCopy(*shape_tensor, platform::CPUPlace(), ctx.device_context(),
-                   &cpu_shape_tensor);
+        TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
         shape_data = cpu_shape_tensor.data<int>();
-        ctx.device_context().Wait();
       }
       auto shape =
           std::vector<int>(shape_data, shape_data + shape_tensor->numel());
@@ -146,9 +150,7 @@ class ReshapeKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     if (!inplace) {
       out->mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
-      ctx.device_context().Wait();
-      // TensorCopy will resize to in_dims.
+      framework::TensorCopySync(*in, ctx.GetPlace(), out);
       out->Resize(out_dims);
     } else {
       out->ShareDataWith(*in);

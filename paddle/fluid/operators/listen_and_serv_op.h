@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+#include <atomic>
 #include <ostream>
 #include <string>
 
@@ -39,21 +40,33 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap& outputs,
                   const framework::AttributeMap& attrs);
 
-  int GetSelectedPort() const;
-
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
                    framework::BlockDesc* prefetch_block) const;
+
+  void RunAsyncLoop(framework::Executor* executor,
+                    framework::ProgramDesc* program) const;
+
+  void SavePort(
+      const std::string& file_path = "/tmp/paddle.selected_port") const;
+
+  void WaitServerReady();
+
+  int GetSelectedPort() { return selected_port_; }
 
   void Stop() override;
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
 
+  static void ResetPort() { selected_port_ = 0; }
+
  protected:
   mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
+  // FIXME(wuyi): it's static so that the operator can be cloned.
+  static std::atomic_int selected_port_;
 };
 
 }  // namespace operators
