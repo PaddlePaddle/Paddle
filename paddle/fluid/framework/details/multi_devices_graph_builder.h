@@ -75,8 +75,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                               size_t num_places) const;
 
   void CreateScaleLossGradOp(SSAGraph *result) const;
-  VarHandle *CreateReduceOp(SSAGraph *result, int dst_dev_id,
-                            const std::string &og) const;
+  VarHandle *CreateReduceOp(SSAGraph *result, const std::string &og,
+                            int dst_dev_id) const;
   void CreateComputationalOp(SSAGraph *result, const OpDesc &op,
                              int dev_id) const;
 
@@ -87,11 +87,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
 
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
-                         size_t dev_id) const;
-
-  int GetOpDeviceID(
-      const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
-      const OpDesc &op) const;
+                         size_t src_dev_id) const;
 
   /**
    * Get send op in the global block of program.
