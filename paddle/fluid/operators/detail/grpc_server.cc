@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include <limits>
 #include <string>
+#include <vector>
+
+#include <boost/algorithm/string.hpp>
+#include "paddle/fluid/operators/detail/mpi_utils.h"
 
 using ::grpc::ServerAsyncResponseWriter;
 
@@ -131,6 +135,108 @@ class RequestGet final : public RequestBase {
   framework::BlockingQueue<MessageWithName>* queue_;
 };
 
+class RequestMPISend final : public RequestBase {
+ public:
+  explicit RequestMPISend(GrpcService::AsyncService* service,
+                          ::grpc::ServerCompletionQueue* cq,
+                          framework::Scope* scope, ReceivedQueue* queue,
+                          const platform::DeviceContext* dev_ctx, int mpi_dst)
+      : RequestBase(service, cq, dev_ctx), queue_(queue), responder_(&ctx_) {
+    this->mpi_dst = mpi_dst;
+    int method_id = static_cast<int>(detail::GrpcMethod::kMPISendVariable);
+    service_->RequestAsyncUnary(method_id, &ctx_, request_, &responder_, cq_,
+                                cq_, this);
+  }
+
+  virtual ~RequestMPISend() {}
+
+  virtual std::string GetReqName() { return request_->Varname(); }
+
+  virtual void Process() {
+    framework::Async([&dev_ctx, &scope, &request_, &queue]() {
+      vector<string> indexs;
+      boost::split(indexs, request_.var_slice(), boost::is_any_of(":"));
+
+      std::vector<Slice> slices;
+      std::vector<std::future<void>> fs;
+
+      for (int i = 0; i < indexs.length; i++) {
+        int slice_len = indexs[i];
+        Slice slice;
+        slices.push_back(slice);
+        fs.push_back(framework::Async(
+            [&var_req, &grpc_res, &request_, &slice_len, &slice]() {
+              MPIIrecvProcess(&meta_buffer, slice_len, request_.src(),
+                              request_.tag());
+            }));
+      }
+      for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+
+      grpc::ByteBuffer meta_buffer(&slices[0], indexs.length);
+      framework::Variable* outvar = nullptr;
+      DeserializeFromByteBuffer(meta_buffer, dev_ctx_, &scope, &outvar);
+      queue.push(request_.Varname(), outvar);
+    });
+
+    // Async MpiIrecv to receive data
+    // need to add reply content
+    sendrecv::VariableMeta reply;
+
+    responder_.Finish(reply, ::grpc::Status::OK, this);
+    status_ = FINISH;
+  }
+
+ protected:
+  sendrecv::VariableMeta request_;
+  ReceivedQueue* queue_;
+  ServerAsyncResponseWriter<sendrecv::VariableMeta> responder_;
+
+  // For MPI
+  int mpi_dst;
+};
+
+class RequestMPIGet final : public RequestBase {
+ public:
+  explicit RequestMPIGet(GrpcService::AsyncService* service,
+                         ::grpc::ServerCompletionQueue* cq,
+                         framework::Scope* scope, ReceivedQueue* queue,
+                         const platform::DeviceContext* dev_ctx)
+      : RequestBase(service, cq, dev_ctx), queue_(queue), responder_(&ctx_) {
+    request_.reset(new VariableResponse(scope, dev_ctx_));
+    int method_id = static_cast<int>(detail::GrpcMethod::kMPIGetVariable);
+    service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
+                                cq_, cq_, this);
+  }
+
+  virtual ~RequestMPIGet() {}
+
+  virtual std::string GetReqName() { return request_->Varname(); }
+
+  virtual void Process() {
+    // proc request.
+    std::string var_name = request_.varname();
+    auto* var = scope_->FindVar(var_name);
+
+    ::grpc::ByteBuffer mpi_reply;
+    SerializeToByteBuffer(var_name, var, *dev_ctx_, &mpi_reply);
+
+    framework::Async([&dev_ctx, &scope, &request_, &queue, &mpi_reply]() {
+      MPIIsendProcess(&mpi_reply, request_.length(), request_.src(),
+                      request_.tag());
+      queue.push(request_.Varname());
+    });
+
+    sendrecv::VariableMeta reply;
+    responder_.Finish(reply, ::grpc::Status::OK, this);
+    status_ = FINISH;
+  }
+
+ protected:
+  std::shared_ptr<sendrecv::VariableMeta> request_;
+  ReceivedQueue* queue_;
+  ServerAsyncResponseWriter<sendrecv::VariableMeta> responder_;
+};
+
 class RequestPrefetch final : public RequestBase {
  public:
   explicit RequestPrefetch(GrpcService::AsyncService* service,
@@ -217,6 +323,12 @@ void AsyncGRPCServer::RunSyncUpdate() {
   std::function<void()> prefetch_register =
       std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this);
 
+  // For MPI
+  std::function<void()> mpi_send_register =
+      std::bind(&AsyncGRPCServer::TryToRegisterNewMPISendOne, this);
+  std::function<void()> mpi_get_register =
+      std::bind(&AsyncGRPCServer::TryToRegisterNewMPIGetOne, this);
+
   // TODO(wuyi): Run these "HandleRequest" in thread pool
   t_send_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
@@ -227,11 +339,24 @@ void AsyncGRPCServer::RunSyncUpdate() {
   t_prefetch_.reset(new std::thread(
       std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
                 "cq_prefetch", prefetch_register)));
+
+  // For MPI
+  t_mpi_send_.reset(new std::thread(
+      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_mpi_send_.get(),
+                "cq_mpi_send", mpi_send_register)));
+  t_mpi_get_.reset(new std::thread(std::bind(&AsyncGRPCServer::HandleRequest,
+                                             this, cq_mpi_get_.get(),
+                                             "cq_mpi_get", mpi_get_register)));
+
   // wait server
   server_->Wait();
   t_send_->join();
   t_get_->join();
   t_prefetch_->join();
+
+  // For MPI
+  t_mpi_send_->join();
+  t_mpi_get_->join();
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
@@ -282,6 +407,15 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
+
+void AsyncGRPCServer::TryToRegisterNewMPISendOne() {
+  if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewMPISendOne";
+    return;
+  }
+}
+
+void AsyncGRPCServer::TryToRegisterNewMPIGetOne() {}
 
 // FIXME(typhoonzero): change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,

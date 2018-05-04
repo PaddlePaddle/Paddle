@@ -23,6 +23,12 @@ service SendRecvService {
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
   // pre-fetch variable by given variable name and Ids
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
+
+  // MPI mata data send
+  rpc SendVariableMeta(VariableMeta) returns (VariableMeta) {}
+
+  // MPI mata data receive
+  rpc RecvVariableMeta(VariableMeta) returns (VariableMeta) {}
 }
 
 // VariableMessage is serialized paddle variable message.
@@ -72,3 +78,12 @@ message VariableMessage {
 }
 
 message VoidMessage {}
+
+// MPI meta data message
+message VariableMeta {
+  string var_name = 1;
+  string var_slice = 2;
+  int64 mpi_src = 3;
+  int64 mpi_dst = 4;
+  int64 mpi_tag = 5;
+}

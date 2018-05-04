@@ -83,6 +83,9 @@ class AsyncGRPCServer final {
   void TryToRegisterNewGetOne();
   void TryToRegisterNewPrefetchOne();
   void ShutdownQueue();
+  // For MPI
+  void TryToRegisterNewMPISendOne();
+  void TryToRegisterNewMPIGetOne();
 
  private:
   std::mutex cq_mutex_;
@@ -90,6 +93,10 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_prefetch_;
+
+  // For MPI
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_mpi_send_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_mpi_get_;
 
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
@@ -111,6 +118,12 @@ class AsyncGRPCServer final {
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
   std::unique_ptr<std::thread> t_prefetch_;
+
+  // For MPI
+  int mpi_rank;
+  int mpi_size;
+  std::unique_ptr<std::thread> t_mpi_send_;
+  std::unique_ptr<std::thread> t_mpi_get_;
 
   framework::ExecutorPrepareContext *prefetch_ctx_;
   framework::ProgramDesc *program_;

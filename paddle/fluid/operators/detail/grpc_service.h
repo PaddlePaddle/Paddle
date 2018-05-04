@@ -90,6 +90,10 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/GetVariable";
     case GrpcMethod::kPrefetchVariable:
       return "/sendrecv.SendRecvService/PrefetchVariable";
+    case GrpcMethod::kMPISendVariable:
+      return "/sendrecv.SendRecvService/MPISendVariable";
+    case GrpcMethod::kMPIGetVariable:
+      return "/sendrecv.SendRecvService/MPIGetVariable";
   }
 
   // Shouldn't be reached.

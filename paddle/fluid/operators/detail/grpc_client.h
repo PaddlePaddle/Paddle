@@ -53,6 +53,12 @@ struct VarHandle {
   }
 };
 
+struct MPIVarStatus {
+  std::string name;
+  bool grpc;
+  bool mpi;
+};
+
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
@@ -186,12 +192,30 @@ class RPCClient {
 
   bool Wait();
 
+  bool AsyncMPISendVariable(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            int64_t time_out = 600 * 1000);
+
+  bool AsyncMPIRecvVariable(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            int64_t time_out = 600 * 1000);
+
+  bool ProceedMPI();
+
+  bool WaitMPI();
+
  private:
   bool Proceed();
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
   grpc::CompletionQueue cq_;
+  framework::BlockingQueue<MPIVarStatus> mpi_cq_;
+
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   int64_t req_count_ = 0;
 };
