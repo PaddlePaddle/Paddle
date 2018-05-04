@@ -18,6 +18,7 @@ import framework
 import executor
 import data_feeder
 import contextlib
+import io
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
@@ -93,8 +94,7 @@ class Trainer(object):
 
         if param_path:
             # load params from param_path into scope
-            # TODO(yuyang): This depends on parameters implementation.
-            pass
+            io.load_persistables(exe, dirname=param_path)
 
     def dist_transpile_if_necessary(self, optimize_ops, params_grads):
         if "PADDLE_TRAINING_ROLE" not in os.environ:
@@ -172,7 +172,9 @@ class Trainer(object):
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
-        pass
+        exe = executor.Executor(self.place)
+        io.save_persistables(
+            exe, dirname=param_path, main_program=self.startup_program)
 
     @staticmethod
     def _check_and_get_place(place):
