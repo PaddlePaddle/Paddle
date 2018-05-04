@@ -296,7 +296,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
   // Mark this as PS that it should decide profiling by listening from trainer.
-  platform::SetProfileLisener();
+  platform::SetProfileListener();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   framework::Scope &recv_scope = scope.NewScope();

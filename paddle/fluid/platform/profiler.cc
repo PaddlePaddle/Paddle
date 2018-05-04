@@ -459,7 +459,7 @@ void DisableProfiler(EventSortingKey sorted_key,
 bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
 bool ShouldSendProfileState() { return should_send_profile_state; }
 
-void SetProfileLisener() {
+void SetProfileListener() {
   std::mt19937 rng;
   rng.seed(std::random_device()());
   std::uniform_int_distribution<std::mt19937::result_type> dist6(
