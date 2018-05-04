@@ -27,10 +27,15 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pybind/pybind.h"
 
+DEFINE_string(start_up_proto, "", "start up proto file");
+DEFINE_string(loop_proto, "", "loop proto file");
+DEFINE_string(executor_device, "CPU", "executor's place:GPU or CPU");
+DEFINE_int32(executor_device_id, 0, "GPU device id");
+
 bool read_from_file(const std::string& file, char** buf, int64_t* buf_len) {
   FILE* f = fopen(file.c_str(), "rb");
   if (NULL == f) {
-    printf("open %s error\n", file.c_str());
+    fprintf(stderr, "open %s error\n", file.c_str());
     return false;
   }
 
@@ -53,7 +58,7 @@ bool read_from_file(const std::string& file, char** buf, int64_t* buf_len) {
 
 using namespace paddle;  // NOLINT
 
-framework::ProgramDesc* load_desc(const std::string& file) {
+std::unique_ptr<framework::ProgramDesc> load_desc(const std::string& file) {
   char* buf = NULL;
   std::unique_ptr<char[]> tmp(buf);
   int64_t buf_len = 0;
@@ -64,17 +69,13 @@ framework::ProgramDesc* load_desc(const std::string& file) {
 
   framework::proto::ProgramDesc proto;
   if (!proto.ParseFromArray(buf, buf_len)) {
-    printf("parse from %s error!\n", file.c_str());
+    fprintf(stderr, "parse from %s error!\n", file.c_str());
     return NULL;
   }
 
-  return (new framework::ProgramDesc(proto));
+  return std::unique_ptr<framework::ProgramDesc>(
+      new framework::ProgramDesc(proto));
 }
-
-DEFINE_string(start_up_proto, "", "start up proto file");
-DEFINE_string(loop_proto, "", "loop proto file");
-DEFINE_string(executor_device, "CPU", "executor's place:GPU or CPU");
-DEFINE_int32(executor_device_id, 0, "GPU device id");
 
 int main(int argc, char** argv) {
   // init.
@@ -84,20 +85,21 @@ int main(int argc, char** argv) {
 
   // check arguments.
   if (FLAGS_start_up_proto.empty()) {
-    printf("please set start_up_proto path\n");
+    fprintf(stderr, "please set start_up_proto's path\n");
     return -1;
   }
 
   if (FLAGS_loop_proto.empty()) {
-    printf("please set loop_proto path\n");
+    fprintf(stderr, "please set loop_proto's path\n");
     return -1;
   }
 
   framework::ProgramDesc program;
   framework::Scope scope;
 
-  framework::ProgramDesc* start_up = load_desc(FLAGS_start_up_proto);
-  framework::ProgramDesc* loop = load_desc(FLAGS_loop_proto);
+  std::unique_ptr<framework::ProgramDesc> start_up =
+      load_desc(FLAGS_start_up_proto);
+  std::unique_ptr<framework::ProgramDesc> loop = load_desc(FLAGS_loop_proto);
 
   std::string place_str = FLAGS_executor_device;
   std::transform(place_str.begin(),
@@ -105,23 +107,20 @@ int main(int argc, char** argv) {
                  place_str.begin(),
                  [](unsigned char ch) { return toupper(ch); });
 
-  framework::Executor* exe = nullptr;
+  std::unique_ptr<framework::Executor> exe;
   if (place_str == "CPU") {
     platform::CPUPlace place;
-    exe = new framework::Executor(place);
+    exe.reset(new framework::Executor(place));
   } else if (place_str == "GPU") {
     platform::CUDAPlace place(FLAGS_executor_device_id);
-    exe = new framework::Executor(place);
+    exe.reset(new framework::Executor(place));
   } else {
-    printf("unkown device:%s", FLAGS_executor_device.c_str());
+    fprintf(stderr, "unkown device:%s\n", FLAGS_executor_device.c_str());
     return -1;
   }
 
   exe->Run(*start_up, &scope, 0, false, true);
   exe->Run(*loop, &scope, 0, false, true);
 
-  delete start_up;
-  delete loop;
-  delete exe;
   return 0;
 }

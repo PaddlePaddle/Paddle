@@ -232,5 +232,5 @@ endif()
 
 if(WITH_C_DESC_EXECUTOR)
     message(STATUS "build WITH_C_DESC_EXECUTOR")
-    add_subdirectory(tools/desc_executor)
+    add_subdirectory(tools/execute_program_desc)
 endif()
