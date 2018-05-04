@@ -52,26 +52,29 @@ void ReduceOpHandle::RunImpl() {
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated(in_var_handles);
-  auto pre_place = in_0_handle->place_;
+
   std::vector<platform::Place> in_places;  // used to get dev_ctx
-  auto pre_in_tensor = VariableVisitor::GetMutableTensor(pre_in_var);
   for (auto *in_handle : in_var_handles) {
     in_places.emplace_back(in_handle->place_);
-
     auto in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(in_var);
-
-    auto in_tensor = VariableVisitor::GetMutableTensor(in_var);
-    PADDLE_ENFORCE_EQ(pre_in_tensor.place().which(), in_tensor.place().which(),
-                      "Places must be all on CPU or all on GPU.");
-    PADDLE_ENFORCE_EQ(in_tensor.type(), pre_in_tensor.type(),
-                      "The type of input is not consistent.");
+    VariableVisitor::EnforceShapeAndDTypeEQ(*pre_in_var, *in_var);
   }
 
   auto out_var =
       var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(out_var);
+
+  // TODO(zcd): The Place of var_handle is determined at building SSA graph
+  // stage, while the Place of var is determined at runtime. If they are
+  // different, DataTransform should be applied. Currently, it has not been done
+  // yet.
+  PADDLE_ENFORCE_EQ(
+      VariableVisitor::GetMutableTensor(pre_in_var).place().which(),
+      out_var_handle->place_.which(),
+      "Currently, Places of input and output must be all on CPU or all on "
+      "GPU.");
 
   if (pre_in_var->IsType<framework::SelectedRows>()) {
     std::vector<const SelectedRows *> in_selected_rows =
@@ -96,7 +99,7 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place_, pre_in.type());
 
       auto out_p = out_var_handle->place_;
-      int root = boost::get<platform::CUDAPlace>(out_p).device;
+      int root_id = boost::get<platform::CUDAPlace>(out_p).device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
@@ -104,23 +107,23 @@ void ReduceOpHandle::RunImpl() {
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        auto stream = nccl_ctx.stream();
-        auto comm = nccl_ctx.comm_;
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
-        if (root == dev_id) {
+        if (root_id == dev_id) {
           recvbuffer =
               out_var->GetMutable<framework::LoDTensor>()->mutable_data(
                   out_var_handle->place_);
         }
 
         int type = platform::ToNCCLDataType(lod_tensor.type());
-        all_reduce_calls.emplace_back([=] {
-          PADDLE_ENFORCE(platform::dynload::ncclReduce(
-              buffer, recvbuffer, static_cast<size_t>(lod_tensor.numel()),
-              static_cast<ncclDataType_t>(type), ncclSum, root, comm, stream));
-        });
+        size_t numel = static_cast<size_t>(lod_tensor.numel());
+        all_reduce_calls.emplace_back(
+            [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
+              PADDLE_ENFORCE(platform::dynload::ncclReduce(
+                  buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
+                  ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+            });
       }
 
       this->RunAndRecordEvent([&] {
@@ -130,7 +133,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW("CUDA is not enabled.");
 #endif
     } else {
       PADDLE_THROW("Place should be CPUPlace or CUDAPlace.");
