@@ -56,11 +56,15 @@ EOL
     if ! [ -x "$(command -v ${DOCKER_CMD})" ]; then
         DOCKER_CMD="docker"
     fi
+    if [ ! -d "${HOME}/.ccache" ]; then
+        mkdir ${HOME}/.ccache
+    fi
     set -x
     ${DOCKER_CMD} run -it \
         --name $CONTAINER_ID \
         ${DOCKER_ENV} \
         -v $PADDLE_ROOT:/paddle \
+        -v ${HOME}/.ccache:/root/.ccache \
         -w /paddle \
         $IMG \
         paddle/scripts/paddle_build.sh $@
