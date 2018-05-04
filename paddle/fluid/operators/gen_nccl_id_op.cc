@@ -54,7 +54,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     auto var = scope->FindVar("NCCLID");
     PADDLE_ENFORCE_NOT_NULL(var);
     auto id = var->GetMutable<ncclUniqueId>();
-    ncclGetUniqueId(id);
+    platform::dynload::ncclGetUniqueId(id);
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
@@ -120,4 +120,4 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(gen_nccl_id_op, ops::GenNCCLIdOp, ops::GenNCCLIdOpMaker);
+REGISTER_OPERATOR(gen_nccl_id, ops::GenNCCLIdOp, ops::GenNCCLIdOpMaker);

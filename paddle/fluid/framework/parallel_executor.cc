@@ -58,7 +58,7 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay,
-    bool use_default_grad_scale)
+    bool use_default_grad_scale, size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -80,7 +80,13 @@ ParallelExecutor::ParallelExecutor(
 
 // Bcast Parameters to all GPUs
 #ifdef PADDLE_WITH_CUDA
-  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
+  auto *nccl_id_var = scope->FindVar("NCCLID");
+  ncclUniqueId *nccl_id = nullptr;
+  if (nccl_id_var != nullptr) {
+    nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+  }
+  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
+      member_->places_, nccl_id, num_trainers, trainer_id));
 #endif
   if (platform::is_gpu_place(places[0]) && member_->local_scopes_.size() != 1 &&
       local_scopes.empty()) {  // Is CUDA
