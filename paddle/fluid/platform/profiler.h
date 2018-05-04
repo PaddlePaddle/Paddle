@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.pb.h"
 
 namespace paddle {
 namespace platform {

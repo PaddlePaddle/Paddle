@@ -23,16 +23,54 @@ struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
                           const LoDTensorArray& step_scores,
                           LoDTensor* id_tensor, LoDTensor* score_tensor)
-      : step_ids_(step_ids),
-        step_scores_(step_scores),
+      : step_ids_origin_(step_ids),
+        step_scores_origin_(step_scores),
         id_tensor_(id_tensor),
-        score_tensor_(score_tensor) {}
+        score_tensor_(score_tensor) {
+    tensor_on_gpu_ = false;
+    // First make a copy of GPU data on CPU
+    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
+      tensor_on_gpu_ = true;
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
+      // Copy all tensors in the input tensor array
+      for (auto& step_id : step_ids_origin_) {
+        framework::LoDTensor out;
+        dev_ctx->Wait();
+        framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
+        dev_ctx->Wait();
+
+        out.set_lod(step_id.lod());
+        step_ids_.push_back(out);
+      }
+    }
+    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
+      tensor_on_gpu_ = true;
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
+      // Copy all tensors in the input tensor array
+      for (auto& step_score : step_scores_origin_) {
+        framework::LoDTensor out;
+        dev_ctx->Wait();
+        framework::TensorCopy(step_score, platform::CPUPlace(), *dev_ctx, &out);
+        dev_ctx->Wait();
+
+        out.set_lod(step_score.lod());
+        step_scores_.push_back(out);
+      }
+    }
+  }
 
   template <typename T>
   void operator()() const;
 
-  const LoDTensorArray& step_ids_;
-  const LoDTensorArray& step_scores_;
+  bool tensor_on_gpu_;
+  const LoDTensorArray& step_ids_origin_;
+  const LoDTensorArray& step_scores_origin_;
+  LoDTensorArray step_ids_ = LoDTensorArray();
+  LoDTensorArray step_scores_ = LoDTensorArray();
   LoDTensor* id_tensor_;
   LoDTensor* score_tensor_;
 };
@@ -40,8 +78,14 @@ struct BeamSearchDecodeFunctor {
 template <typename T>
 void BeamSearchDecodeFunctor::operator()() const {
   BeamSearchDecoder<T> beam_search_decoder;
-  beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
-                                   score_tensor_);
+  // Check if the tensor is on GPU. If so, use the CPU copy instead
+  if (tensor_on_gpu_) {
+    beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
+                                     score_tensor_);
+  } else {
+    beam_search_decoder.PackAllSteps(step_ids_origin_, step_scores_origin_,
+                                     id_tensor_, score_tensor_);
+  }
 }
 
 template <>

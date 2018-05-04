@@ -105,6 +105,7 @@ class OperatorBase {
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
+  bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -112,6 +113,7 @@ class OperatorBase {
   //! Get all inputs variable names
   std::vector<std::string> InputVars() const;
 
+  bool HasOutputs(const std::string& name) const;
   //! Get a output with argument's name described in `op_proto`
   std::string Output(const std::string& name) const;
   //! Get an output which has multiple variables.
