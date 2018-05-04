@@ -67,12 +67,9 @@ def train(use_cuda, save_dirname):
                 avg_cost = numpy.array(avg_cost_set).mean()
                 if float(acc) > 0.2:  # Smaller value to increase CI speed
                     trainer.save_params(save_dirname)
-                    return
-
                 else:
-                    print(
-                        'BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.format(
-                            event.batch_id + 1, float(avg_cost), float(acc)))
+                    print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
+                        event.batch_id + 1, float(avg_cost), float(acc)))
                     if math.isnan(float(avg_cost)):
                         sys.exit("got NaN loss, training failed.")
 
