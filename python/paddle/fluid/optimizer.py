@@ -77,7 +77,7 @@ class Optimizer(object):
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(self._learning_rate),
-            dtype='float32',
+            dtype='float64',
             persistable=True)
 
     def global_learning_rate(self, program=None):
@@ -391,7 +391,7 @@ class AdamOptimizer(Optimizer):
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32',
+            dtype='float64',
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -400,7 +400,7 @@ class AdamOptimizer(Optimizer):
 
         self._beta2_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta2_pow_acc'),
-            dtype='float32',
+            dtype='float64',
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -493,7 +493,7 @@ class AdamaxOptimizer(Optimizer):
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32',
+            dtype='float64',
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -900,8 +900,8 @@ class ModelAverage(Optimizer):
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
-        tmp = layers.cast(x=tmp, dtype='float32')
-        sum = layers.cast(x=sum, dtype='float32')
+        tmp = layers.cast(x=tmp, dtype='float64')
+        sum = layers.cast(x=sum, dtype='float64')
         layers.elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):
