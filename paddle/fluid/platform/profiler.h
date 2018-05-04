@@ -119,7 +119,7 @@ bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
 bool ShouldSendProfileState();
 // Mark current process as PS by assigning a lister id.
-void SetProfileLisener();
+void SetProfileListener();
 int64_t ListenerId();
 
 }  // namespace platform
