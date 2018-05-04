@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -78,10 +79,11 @@ class SelectedRows {
   /*
    * @brief Get value by the key list, if the
    *
-   * @return a list of keys which does not exists in table
+   * @return a list of pair which contains the non-exists key and the index in
+   * the value
    */
-  std::vector<int64_t> Get(std::vector<int64_t> keys,
-                           framework::Tensor* tensor) const;
+  std::vector<std::pair<int64_t, int64_t>> Get(std::vector<int64_t> keys,
+                                               framework::Tensor* value) const;
 
   /*
    * @brief Set a key-value pair into the table.

@@ -661,7 +661,7 @@ class DistributeTranspiler:
             shape=trainer_out.shape,
             dtype=trainer_out.dtype)
         prefetch_block.append_op(
-            type=LOOKUP_TABLE_TYPE,
+            type="lookup_sparse_table",
             inputs={'Ids': pserver_ids,
                     "W": table_var},
             outputs={"Out": pserver_out},
@@ -685,9 +685,14 @@ class DistributeTranspiler:
 
         # STEP: create table optimize block
         # create table param and grad var in pserver program
-        param_var = _clone_var(
-            pserver_program.global_block(),
-            self.origin_program.global_block().vars[self.table_name])
+        origin_param_var = self.origin_program.global_block().vars[
+            self.table_name]
+        param_var = pserver_program.global_block().create_var(
+            name=origin_param_var.name,
+            shape=origin_param_var.shape,
+            dtype=origin_param_var.dtype,
+            type=core.VarDesc.VarType.SELECTED_ROWS,
+            persistable=True)
         grad_var = _clone_var(
             pserver_program.global_block(),
             self.origin_program.global_block().vars[framework.grad_var_name(

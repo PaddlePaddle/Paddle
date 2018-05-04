@@ -74,10 +74,6 @@ __forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
 }
 #define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
 #else
-template <typename T>
-__forceinline__ __device__ T __shfl_down_sync(unsigned mask, T val, int delta) {
-  return __shfl_down(mask, val, delta);
-}
 #define FULL_WARP_MASK 0xFFFFFFFF
 #define CREATE_SHFL_MASK(mask, predicate) \
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))

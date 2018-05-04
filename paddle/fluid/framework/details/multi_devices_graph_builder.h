@@ -41,7 +41,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool skip_scale_loss);
+                          bool use_default_grad_scale);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -59,7 +59,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
-  bool skip_scale_loss_;
+  bool use_default_grad_scale_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
