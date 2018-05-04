@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-
+#include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -28,6 +28,23 @@ struct CBlas<float> {
   static void GEMM(ARGS... args) {
     cblas_sgemm(args...);
   }
+
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    cblas_saxpy(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(ARGS... args) {
+    cblas_sgemv(args...);
+  }
+
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  static void GEMM_BATCH(ARGS... args) {
+    cblas_sgemm_batch(args...);
+  }
+#endif
 };
 
 template <>
@@ -36,11 +53,33 @@ struct CBlas<double> {
   static void GEMM(ARGS... args) {
     cblas_dgemm(args...);
   }
+
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    cblas_daxpy(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(ARGS... args) {
+    cblas_dgemv(args...);
+  }
+
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  static void GEMM_BATCH(ARGS... args) {
+    cblas_dgemm_batch(args...);
+  }
+#endif
 };
 
 template <>
 struct CBlas<platform::float16> {
   static void GEMM(...) { PADDLE_THROW("float16 GEMM not supported on CPU"); }
+#ifdef PADDLE_WITH_MKLML
+  static void GEMM_BATCH(...) {
+    PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
+  }
+#endif
 };
 
 template <>
@@ -91,6 +130,54 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a, bool trans_a,
 
   this->GEMM(transA, transB, M, N, K, alpha, mat_a.data<T>(), mat_b.data<T>(),
              beta, mat_out->data<T>());
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::AXPY(int n, T alpha, const T *x,
+                                            T *y) const {
+  CBlas<T>::AXPY(n, alpha, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMV(bool trans_a, int M, int N, T alpha,
+                                            const T *A, const T *B, T beta,
+                                            T *C) const {
+  CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
+  CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
+    int64_t strideA, int64_t strideB) const {
+#ifdef PADDLE_WITH_MKLML
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+  for (int k = 0; k < batchCount; ++k) {
+    a_array[k] = &A[k * strideA];
+    b_array[k] = &B[k * strideB];
+    c_array[k] = &C[k * M * N];
+  }
+
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                       a_array.data(), &lda, b_array.data(), &ldb, &beta,
+                       c_array.data(), &ldc, 1 /* group_count */, &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    const float *Ak = &A[k * strideA];
+    const float *Bk = &B[k * strideB];
+    float *Ck = &C[k * M * N];
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
+  }
+#endif
 }
 
 }  // namespace math

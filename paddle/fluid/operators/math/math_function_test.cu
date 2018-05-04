@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "gtest/gtest.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -434,9 +435,8 @@ void GemvTest(int m, int n, bool trans) {
   paddle::framework::TensorCopySync(mat_a, gpu_place, &g_mat_a);
   paddle::framework::TensorCopySync(vec_b, gpu_place, &g_vec_b);
 
-  paddle::operators::math::gemv<paddle::platform::CUDADeviceContext, T>(
-      context, trans, static_cast<int>(m), static_cast<int>(n), 1., g_data_a,
-      g_data_b, 0., g_data_c);
+  GetBlas<T>(context).GEMV(trans, static_cast<int>(m), static_cast<int>(n), 1.,
+                           g_data_a, g_data_b, 0., g_data_c);
 
   paddle::framework::TensorCopySync(g_vec_c, cpu_place, &vec_c);
 
