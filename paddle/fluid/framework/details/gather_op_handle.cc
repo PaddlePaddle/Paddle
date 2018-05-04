@@ -36,7 +36,6 @@ void GatherOpHandle::RunImpl() {
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
-
     PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
                       "The number of output should be one.");
     out_var_handle = out_var_handles.front();
@@ -51,43 +50,39 @@ void GatherOpHandle::RunImpl() {
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx_)->FindVar(in_0_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
+
   PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
                  "Currently, gather_op only can gather SelectedRows.");
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated(in_var_handles);
 
+  auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
   std::vector<int64_t> out_rows;
   std::vector<Tensor> in_tensors;
 
-  auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
-  // gather the inputs
+  // Gather the inputs
   for (auto *in_handle : in_var_handles) {
     auto *in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(in_var);
+    VariableVisitor::EnforceShapeAndDTypeEQ(*in_var, *pre_in_var);
 
     auto &in_sr_value = in_var->Get<framework::SelectedRows>();
-
-    PADDLE_ENFORCE_EQ(in_sr_value.place().which(), pre_in_value.place().which(),
-                      "Places must be all on CPU or all on GPU.");
-    PADDLE_ENFORCE_EQ(in_sr_value.value().type(), pre_in_value.value().type(),
-                      "The type of input is not consistent.");
-    PADDLE_ENFORCE_EQ(in_sr_value.height(), pre_in_value.height(),
-                      "The height of inputs is not consistent.");
-    PADDLE_ENFORCE_EQ(in_sr_value.GetCompleteDims(),
-                      pre_in_value.GetCompleteDims(),
-                      "The dims of inputs is not consistent.");
 
     auto &in_sr_rows = in_sr_value.rows();
     out_rows.insert(out_rows.end(), in_sr_rows.begin(), in_sr_rows.end());
     in_tensors.emplace_back(in_sr_value.value());
   }
 
-  // write the output
+  // TODO(zcd): The Place of var_handle is determined at building SSA graph
+  // stage, while the Place of var is determined at runtime. If they are
+  // different, DataTransform should be applied. Currently, it has not been done
+  // yet.
   auto &out_place = out_var_handle->place_;
   PADDLE_ENFORCE_EQ(out_place.which(), pre_in_value.place().which(),
-                    "Places must be all on CPU or all on GPU.");
+                    "Currently, Places of input and output must be all on CPU "
+                    "or all on GPU.");
   auto out_var =
       var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(out_var);
@@ -97,19 +92,18 @@ void GatherOpHandle::RunImpl() {
   size_t rows = out_rows.size();
   DDim out_dim = pre_in_value.GetCompleteDims();
   out_dim[0] = static_cast<int64_t>(rows);
-  out_value->mutable_value()->Resize(out_dim);
-  out_value->mutable_value()->mutable_data(out_place,
-                                           pre_in_value.value().type());
+  out_value->mutable_value()->Resize(out_dim).mutable_data(
+      out_place, pre_in_value.value().type());
   Tensor *out_tensor = out_value->mutable_value();
 
   // copy
   auto dev_ctx = dev_ctxes_[out_place];
-  RunAndRecordEvent(out_place, [in_tensors, out_tensor, dev_ctx, out_place] {
+  RunAndRecordEvent(out_place, [in_tensors, out_tensor, &dev_ctx, out_place] {
     int s = 0, e = 0;
     for (size_t j = 0; j < in_tensors.size(); ++j) {
       e += in_tensors[j].dims()[0];
       auto sub_out = out_tensor->Slice(s, e);
-      paddle::framework::TensorCopy(in_tensors[j], out_place, *(dev_ctx),
+      paddle::framework::TensorCopy(in_tensors[j], out_place, *dev_ctx,
                                     &sub_out);
       s = e;
     }

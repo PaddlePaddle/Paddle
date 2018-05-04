@@ -62,6 +62,16 @@ struct VarHandle : public VarHandleBase {
   std::string name_;
   platform::Place place_;
 
+  // NOTE(zcd): Strictly speaking, if the two var_handle is equal, the four
+  // member
+  // variables(version_, scope_id_, name_, place_) must be equal. But sometimes
+  // judging whether the two var_handle is equal is actually to determine
+  // whether
+  // the two Variables that represented by var_handle is the same. And the same
+  // Variable may have many different var_handles, the version_ of these
+  // var_handles
+  // is different. So I don't take care of version_ temporarily when overloading
+  // equal.
   bool operator==(const VarHandle& o) const {
     return o.generated_op_ == generated_op_ && o.name_ == name_ &&
            o.scope_idx_ == scope_idx_;

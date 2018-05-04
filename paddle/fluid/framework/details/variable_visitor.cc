@@ -88,6 +88,52 @@ void VariableVisitor::ShareDimsAndLoD(const Variable& src, Variable* trg) {
   VisitVariable(src, &visitor);
 }
 
+struct EnforceEqualShapeAndDTypeVisitor {
+  const Variable* trg_;
+
+  void operator()(const LoDTensor& src) {
+    auto& tensor = trg_->Get<LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        src.place().which(), tensor.place().which(),
+        "The Places of the two Variable must be all on CPU or all on GPU.");
+    PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
+                      "The dtype of the two Variable is not equal.");
+    PADDLE_ENFORCE_EQ(src.dims(), tensor.dims(),
+                      "The dims of the two Variable is not equal.");
+    PADDLE_ENFORCE_EQ(src.lod(), tensor.lod(),
+                      "The lod of the two Variable is not equal.");
+    PADDLE_ENFORCE_EQ(src.layout(), tensor.layout(),
+                      "The layout of the two Variable's tensor is not equal.");
+  }
+
+  void operator()(const SelectedRows& src) {
+    auto& selected_rows = trg_->Get<SelectedRows>();
+    PADDLE_ENFORCE_EQ(
+        src.place().which(), selected_rows.place().which(),
+        "The Places of the two Variable must be all on CPU or all on GPU.");
+    PADDLE_ENFORCE_EQ(src.value().type(), selected_rows.value().type(),
+                      "The dtype of the two Variable is not equal.");
+    PADDLE_ENFORCE_EQ(src.value().layout(), selected_rows.value().layout(),
+                      "The layout of the two Variable's tensor is not equal.");
+    PADDLE_ENFORCE_EQ(src.height(), selected_rows.height(),
+                      "The height of the two Variable is not equal.");
+    PADDLE_ENFORCE_EQ(src.GetCompleteDims(), selected_rows.GetCompleteDims(),
+                      "The dims of the two Variable is not equal.");
+  }
+
+  template <typename T>
+  void operator()(const T&) {
+    PADDLE_ENFORCE("EnforceShapeAndDTypeEQ is not supported by type %s",
+                   typeid(T).name());
+  }
+};
+
+void VariableVisitor::EnforceShapeAndDTypeEQ(const Variable& var1,
+                                             const Variable& var2) {
+  EnforceEqualShapeAndDTypeVisitor visitor{&var1};
+  VisitVariable(var2, &visitor);
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

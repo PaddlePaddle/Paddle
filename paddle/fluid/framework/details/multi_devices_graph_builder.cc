@@ -116,13 +116,12 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
       places_.size());
 
-  //  size_t cur_device_id = 0;
-  size_t update_sparse_gp_device_id = 0;
-  std::vector<std::unordered_set<std::string>> var_name_on_devices;
-  std::vector<std::unordered_set<std::string>> bcast_var_name_set;
+  size_t cur_update_sparse_gp_dev_id = 0;
+  std::vector<std::unordered_set<std::string>> sparse_var_name_on_devices;
+  std::vector<std::unordered_set<std::string>> bcast_sparse_var_name_set;
 
-  var_name_on_devices.resize(places_.size());
-  bcast_var_name_set.resize(places_.size());
+  sparse_var_name_on_devices.resize(places_.size());
+  bcast_sparse_var_name_set.resize(places_.size());
 
   // Find "send" op first for split is in front of send.
   OpDesc *send_op = GetSendOpDesc(program);
@@ -142,13 +141,13 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       }
       is_forwarding = false;
     } else {
-      int op_dev_id = GetOpDeviceID(var_name_on_devices, *op);
+      int op_dev_id = GetOpDeviceID(sparse_var_name_on_devices, *op);
       if (op_dev_id == -1) {  // var on all device
         CreateComputationalOps(&result, *op, places_.size());
       } else {
         CreateComputationalOp(&result, *op, op_dev_id);
         for (auto &var_name : op->OutputArgumentNames()) {
-          var_name_on_devices[op_dev_id].emplace(var_name);
+          sparse_var_name_on_devices[op_dev_id].emplace(var_name);
         }
       }
 
@@ -158,10 +157,13 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
             if (IsSparseGradient(og)) {
-              CreateReduceOp(&result, update_sparse_gp_device_id, og);
-              var_name_on_devices[update_sparse_gp_device_id].emplace(og);
-              bcast_var_name_set[update_sparse_gp_device_id].emplace(
+              CreateReduceOp(&result, cur_update_sparse_gp_dev_id, og);
+              sparse_var_name_on_devices[cur_update_sparse_gp_dev_id].emplace(
+                  og);
+              bcast_sparse_var_name_set[cur_update_sparse_gp_dev_id].emplace(
                   og.substr(0, og.size() - strlen(kGradVarSuffix)));
+              cur_update_sparse_gp_dev_id =
+                  (cur_update_sparse_gp_dev_id + 1) % places_.size();
             } else {
               InsertNCCLAllReduceOp(&result, og);
             }
@@ -172,8 +174,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   }
 
   // Insert BCast Ops
-  for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
-    auto &to_bcast_set = bcast_var_name_set[dev_id];
+  for (size_t dev_id = 0; dev_id < bcast_sparse_var_name_set.size(); ++dev_id) {
+    auto &to_bcast_set = bcast_sparse_var_name_set[dev_id];
     for (auto &bcast_name : to_bcast_set) {
       CreateBroadcastOp(&result, bcast_name, dev_id);
     }
@@ -206,13 +208,14 @@ bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
 }
 
 int MultiDevSSAGraphBuilder::GetOpDeviceID(
-    const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
+    const std::vector<std::unordered_set<std::string>>
+        &sparse_var_name_on_devices,
     const OpDesc &op) const {
   int var_dev_id = -1;
   for (auto &var_name : op.InputArgumentNames()) {
     if (var_dev_id != -1) break;
-    for (size_t i = 0; i < var_name_on_devices.size(); ++i) {
-      if (var_name_on_devices[i].count(var_name)) {
+    for (size_t i = 0; i < sparse_var_name_on_devices.size(); ++i) {
+      if (sparse_var_name_on_devices[i].count(var_name)) {
         var_dev_id = static_cast<int>(i);
         break;
       }
