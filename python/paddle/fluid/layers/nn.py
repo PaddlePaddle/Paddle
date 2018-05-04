@@ -79,6 +79,7 @@ __all__ = [
     'lrn',
     'pad',
     'label_smooth',
+    'roi_pool',
 ]
 
 
@@ -87,6 +88,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_cudnn=False,
        use_mkldnn=False,
        act=None,
        is_test=False,
@@ -1495,6 +1497,7 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
+               use_mkldnn=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -1573,9 +1576,12 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={"momentum": momentum,
-               "epsilon": epsilon,
-               "is_test": is_test})
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            "use_mkldnn": use_mkldnn
+        })
 
     return helper.append_activation(batch_norm_out)
 
@@ -3759,3 +3765,53 @@ def label_smooth(label,
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)})
     return smooth_label
+
+
+def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+    """
+    Region of interest pooling (also known as RoI pooling) is to perform 
+        is to perform max pooling on inputs of nonuniform sizes to obtain
+        fixed-size feature maps (e.g. 7*7).
+    The operator has three steps: 
+        1. Dividing each region proposal into equal-sized sections with 
+           the pooled_width and pooled_height 
+        2. Finding the largest value in each section 
+        3. Copying these max values to the output buffer
+
+    Args:
+        input (Variable): The input for ROI pooling.
+        rois (Variable): ROIs (Regions of Interest) to pool over. It should
+                         be a 2-D one level LoTensor of shape [num_rois, 4].
+                         The layout is [x1, y1, x2, y2], where (x1, y1)
+                         is the top left coordinates, and (x2, y2) is the 
+                         bottom right coordinates. The num_rois is the 
+                         total number of ROIs in this batch data.
+        pooled_height (integer): The pooled output height. Default: 1
+        pooled_width (integer): The pooled output width. Default: 1
+        spatial_scale (float): Multiplicative spatial scale factor. To
+                               translate ROI coords from their input scale
+                               to the scale used when pooling. Default: 1.0
+
+    Returns:
+        pool_out (Variable): The output is a 4-D tensor of the shape 
+                             (num_rois, channels, pooled_h, pooled_w).
+
+    Examples:
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+    """
+    helper = LayerHelper('roi_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+    argmaxes = helper.create_tmp_variable(dtype='int32')
+    helper.append_op(
+        type="roi_pool",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": pool_out,
+                 "Argmax": argmaxes},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale
+        })
+    return pool_out

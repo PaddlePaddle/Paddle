@@ -16,17 +16,29 @@ limitations under the License. */
 
 #include <algorithm>
 #include <fstream>
+#include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/pybind/pybind.h"
 
+DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
+DEFINE_bool(init_p2p, false, "Whether to init p2p.");
+
 namespace paddle {
 namespace inference {
 
-// Temporarily add this function for exposing framework::InitDevices() when
-// linking the inference shared library.
-void Init(bool init_p2p) { framework::InitDevices(init_p2p); }
+void Init(const std::vector<std::string> argv) {
+  framework::InitGflags(argv);
+  // init devices
+  std::vector<int> devices;
+  std::string token;
+  std::istringstream tokenStream(FLAGS_devices);
+  while (std::getline(tokenStream, token, ',')) {
+    devices.push_back(std::stoi(token));
+  }
+  framework::InitDevices(FLAGS_init_p2p, devices);
+}
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);

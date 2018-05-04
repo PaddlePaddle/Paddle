@@ -1,19 +1,35 @@
 Use different clusters
 ======================
 
-PaddlePaddle supports running jobs on several platforms including:
-- `Kubernetes <http://kubernetes.io>`_ open-source system for automating deployment, scaling, and management of containerized applications from Google.
-- `OpenMPI <https://www.open-mpi.org>`_ Mature high performance parallel computing framework.
-- `Fabric <http://www.fabfile.org>`_ A cluster management tool. Write scripts to submit jobs or manage the cluster.
+The user's cluster environment is not the same. To facilitate everyone's deployment, we provide a variety of cluster deployment methods to facilitate the submission of cluster training tasks, which will be introduced as follows:
 
-We'll introduce cluster job management on these platforms. The examples can be found under `cluster_train_v2 <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2>`_ .
+`Kubernetes <http://kubernetes.io>`_ is a scheduling framework of Google open source container cluster, supporting a complete cluster solution for large-scale cluster production environment. The following guidelines show PaddlePaddle's support for Kubernetes:
 
-These cluster platforms provide API or environment variables for training processes, when the job is dispatched to different nodes. Like node ID, IP or total number of nodes etc.
+..  toctree::
+  :maxdepth: 1
+
+  k8s_en.md
+  k8s_distributed_en.md
+
+`OpenMPI <https://www.open-mpi.org>`_ is a mature high-performance parallel computing framework, which is widely used in the field of HPC. The following guide describes how to use OpenMPI to build PaddlePaddle's cluster training task:
+
+..  toctree::
+  :maxdepth: 1
+
+  openmpi_en.md
+
+`Fabric <http://www.fabfile.org>`_ is a convenient tool for program deployment and management. We provide a way to deploy and manage with Fabric. If you want to know more about it, please read the following guidelines:
 
 ..  toctree::
   :maxdepth: 1
 
   fabric_en.md
-  openmpi_en.md
-  k8s_en.md
+
+We also support the deployment of PaddlePaddle on AWS. Learn more about:
+
+..  toctree::
+  :maxdepth: 1
+
   k8s_aws_en.md
+
+The examples can be found under `cluster_train_v2 <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2>`_ .

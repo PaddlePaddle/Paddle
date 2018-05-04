@@ -113,15 +113,15 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
   op->SetAttrMap(attrs);
 }
 
-void StartServerNet(bool is_sparse) {
+void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   f::Scope scope;
   p::CPUPlace place;
+  VLOG(4) << "before init tensor";
   if (is_sparse) {
     InitSelectedRowsInScope(place, &scope);
   } else {
     InitTensorsInScope(place, &scope);
   }
-
   // sub program run in listen_and_serv_op, for simple test we use sum
   f::ProgramDesc program;
   const auto &root_block = program.Block(0);
@@ -129,7 +129,6 @@ void StartServerNet(bool is_sparse) {
   auto *prefetch_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensors, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
-
   f::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:0")});
   attrs.insert({"Fanin", 1});
@@ -137,15 +136,24 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", optimize_block});
   attrs.insert({"PrefetchBlock", prefetch_block});
+  attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
+  attrs.insert({"sync_mode", true});
+  VLOG(4) << "before init op";
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
+  *initialized = true;
   listen_and_serv_op->Run(scope, place);
   LOG(INFO) << "server exit";
 }
 
 TEST(SendRecvOp, CPUDense) {
-  std::thread server_thread(StartServerNet, false);
-  sleep(5);  // wait server to start
+  std::atomic<bool> initialized{false};
+  std::thread server_thread(StartServerNet, false, &initialized);
+  while (!initialized) {
+  }
+  static_cast<paddle::operators::ListenAndServOp *>(listen_and_serv_op.get())
+      ->WaitServerReady();
+
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -154,9 +162,11 @@ TEST(SendRecvOp, CPUDense) {
   scope.Var("RPC_CLIENT_VAR");
 
   f::AttributeMap attrs;
-  selected_port = static_cast<paddle::operators::ListenAndServOp *>(
-                      listen_and_serv_op.get())
-                      ->GetSelectedPort();
+  auto *listen_and_serv_op_ptr =
+      static_cast<paddle::operators::ListenAndServOp *>(
+          listen_and_serv_op.get());
+  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
+  selected_port = listen_and_serv_op_ptr->GetSelectedPort();
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
@@ -179,11 +189,21 @@ TEST(SendRecvOp, CPUDense) {
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
+  paddle::operators::ListenAndServOp::ResetPort();
 }
 
 TEST(SendRecvOp, CPUSparse) {
-  std::thread server_thread(StartServerNet, true);
-  sleep(3);  // wait server to start
+  std::atomic<bool> initialized;
+  initialized = false;
+  std::thread server_thread(StartServerNet, true, &initialized);
+  while (!initialized) {
+  }
+  auto *listen_and_serv_op_ptr =
+      static_cast<paddle::operators::ListenAndServOp *>(
+          listen_and_serv_op.get());
+  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
+  listen_and_serv_op_ptr->WaitServerReady();
+
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -191,9 +211,7 @@ TEST(SendRecvOp, CPUSparse) {
   InitSelectedRowsInScope(place, &scope);
   scope.Var("RPC_CLIENT_VAR");
   f::AttributeMap attrs;
-  selected_port = static_cast<paddle::operators::ListenAndServOp *>(
-                      listen_and_serv_op.get())
-                      ->GetSelectedPort();
+  selected_port = listen_and_serv_op_ptr->GetSelectedPort();
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
@@ -224,4 +242,5 @@ TEST(SendRecvOp, CPUSparse) {
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset();
+  paddle::operators::ListenAndServOp::ResetPort();
 }

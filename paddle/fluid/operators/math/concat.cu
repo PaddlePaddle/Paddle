@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/concat.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -202,16 +204,16 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, const int axis,
-                  std::vector<framework::Tensor>& outputs) {
+                  std::vector<framework::Tensor>* outputs) {
     // TODO(zcd): Add input data validity checking
-    int o_num = outputs.size();
+    int o_num = outputs->size();
     int out_row = 1;
-    auto dim_0 = outputs[0].dims();
+    auto dim_0 = outputs->at(0).dims();
     for (int i = 0; i < axis; ++i) {
       out_row *= dim_0[i];
     }
 
-    int out_col = outputs[0].numel() / out_row;
+    int out_col = outputs->at(0).numel() / out_row;
     int in_col = 0, in_row = out_row;
     bool sameShape = true;
 
@@ -221,13 +223,13 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
 
     outputs_cols[0] = 0;
     for (int i = 0; i < o_num; ++i) {
-      int t_col = outputs[i].numel() / out_row;
+      int t_col = outputs->at(i).numel() / out_row;
       if (sameShape) {
         if (t_col != out_col) sameShape = false;
       }
       in_col += t_col;
       outputs_cols[i + 1] = in_col;
-      outputs_ptr[i] = outputs[i].data<T>();
+      outputs_ptr[i] = outputs->at(i).data<T>();
     }
 
     T** dev_out_gpu_data =
