@@ -597,6 +597,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
   }
+
+  scope.DeleteScope(&new_scope);
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
