@@ -19,14 +19,14 @@ namespace operators {
 namespace detail {
 void MPIIsendProcess(const void *buf, int length, int dst, int tag,
                      MPI_Request *request, MPI_Status *status) {
-  MPI_Isend(buf, length, MPI_BYTE, dst, tag, MPI_COMM_WORLD, &request);
-  MPI_Wait(&request, &status);
+  MPI_Isend(buf, length, MPI_BYTE, dst, tag, MPI_COMM_WORLD, request);
+  MPI_Wait(request, status);
 }
 
 void MPIIrecvProcess(void *buf, int length, int src, int tag,
                      MPI_Request *request, MPI_Status *status) {
-  MPI_Irecv(buf, length, MPI_BYTE, src, tag, MPI_COMM_WORLD, &request);
-  MPI_Wait(&request, &status);
+  MPI_Irecv(buf, length, MPI_BYTE, src, tag, MPI_COMM_WORLD, request);
+  MPI_Wait(request, status);
 }
 }  // namespace detail
 }  // namespace operators
