@@ -43,8 +43,8 @@ void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
       r_prev_out = prev_output_value[i];
     }
 
-    op_reset_output(r_value_update_gate, r_value_reset_gate, r_prev_out,
-                    r_value_reset_output, active_gate);
+    op_reset_output(&r_value_update_gate, &r_value_reset_gate, &r_prev_out,
+                    &r_value_reset_output, active_gate);
 
     update_gate[i] = r_value_update_gate;
     reset_gate[i] = r_value_reset_gate;
@@ -71,8 +71,8 @@ void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
       r_prev_out = prev_output_value[i];
     }
 
-    op_final_output(r_value_update_gate, r_value_frame_state, r_prev_out,
-                    r_output, active_node);
+    op_final_output(&r_value_update_gate, &r_value_frame_state, &r_prev_out,
+                    &r_output, active_node);
 
     frame_state[i] = r_value_frame_state;
     output_value[i] = r_output;
@@ -99,8 +99,8 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
       r_prev_out = (reinterpret_cast<__m256 *>(prev_output_value))[i];
     }
 
-    op_reset_output(r_value_update_gate, r_value_reset_gate, r_prev_out,
-                    r_value_reset_output, active_gate);
+    op_reset_output(&r_value_update_gate, &r_value_reset_gate, &r_prev_out,
+                    &r_value_reset_output, active_gate);
 
     update_gate[i] = r_value_update_gate;
     reset_gate[i] = r_value_reset_gate;
@@ -129,8 +129,8 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
       r_prev_out = (reinterpret_cast<__m256 *>(prev_output_value))[i];
     }
 
-    op_final_output(r_value_update_gate, r_value_frame_state, r_prev_out,
-                    r_output, active_node);
+    op_final_output(&r_value_update_gate, &r_value_frame_state, &r_prev_out,
+                    &r_output, active_node);
 
     frame_state[i] = r_value_frame_state;
     (reinterpret_cast<__m256 *>(output_value))[i] = r_output;
@@ -213,9 +213,9 @@ void hl_naive_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
       r_prev_out_grad = prev_out_grad[i];
     }
 
-    op_state_grad(r_update_gate_value, r_update_gate_grad, r_frame_state_value,
-                  r_frame_state_grad, r_prev_out_value, r_prev_out_grad,
-                  r_out_grad, active_node);
+    op_state_grad(&r_update_gate_value, &r_update_gate_grad,
+                  &r_frame_state_value, &r_frame_state_grad, &r_prev_out_value,
+                  &r_prev_out_grad, &r_out_grad, active_node);
 
     update_gate_grad[i] = r_update_gate_grad;
     frame_state_grad[i] = r_frame_state_grad;
@@ -258,9 +258,9 @@ void hl_naive_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
       r_prev_out_grad = prev_out_grad[i];
     }
 
-    op_reset_grad(r_update_gate_value, r_update_gate_grad, r_reset_gate_value,
-                  r_reset_gate_grad, r_prev_out_value, r_prev_out_grad,
-                  r_reset_output_grad, active_gate);
+    op_reset_grad(&r_update_gate_value, &r_update_gate_grad,
+                  &r_reset_gate_value, &r_reset_gate_grad, &r_prev_out_value,
+                  &r_prev_out_grad, &r_reset_output_grad, active_gate);
 
     update_gate_grad[i] = r_update_gate_grad;
     reset_gate_grad[i] = r_reset_gate_grad;
@@ -302,9 +302,9 @@ void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
       r_prev_out_grad = (reinterpret_cast<__m256 *>(prev_out_grad))[i];
     }
 
-    op_state_grad(r_update_gate_value, r_update_gate_grad, r_frame_state_value,
-                  r_frame_state_grad, r_prev_out_value, r_prev_out_grad,
-                  r_out_grad, active_node);
+    op_state_grad(&r_update_gate_value, &r_update_gate_grad,
+                  &r_frame_state_value, &r_frame_state_grad, &r_prev_out_value,
+                  &r_prev_out_grad, &r_out_grad, active_node);
 
     update_gate_grad[i] = r_update_gate_grad;
     frame_state_grad[i] = r_frame_state_grad;
@@ -350,9 +350,9 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
       r_prev_out_grad = (reinterpret_cast<__m256 *>(prev_out_grad))[i];
     }
 
-    op_reset_grad(r_update_gate_value, r_update_gate_grad, r_reset_gate_value,
-                  r_reset_gate_grad, r_prev_out_value, r_prev_out_grad,
-                  r_reset_output_grad, active_gate);
+    op_reset_grad(&r_update_gate_value, &r_update_gate_grad,
+                  &r_reset_gate_value, &r_reset_gate_grad, &r_prev_out_value,
+                  &r_prev_out_grad, &r_reset_output_grad, active_gate);
 
     update_gate_grad[i] = r_update_gate_grad;
     reset_gate_grad[i] = r_reset_gate_grad;
