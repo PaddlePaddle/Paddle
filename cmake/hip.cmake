@@ -11,7 +11,7 @@ include_directories("/opt/rocm/thrust")
 
 list(APPEND EXTERNAL_LIBS "-L/opt/rocm/lib/ -lhip_hcc")
 
-set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++14" )
+set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++11" )
 
 if(WITH_DSO)
   set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_USE_DSO")
