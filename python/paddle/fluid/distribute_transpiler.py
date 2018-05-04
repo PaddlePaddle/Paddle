@@ -137,8 +137,6 @@ def split_dense_variable(var_list,
 
 class DistributeTranspiler:
     def transpile(self,
-                  optimize_ops,
-                  params_grads,
                   trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
@@ -169,11 +167,6 @@ class DistributeTranspiler:
             4. append ops that should run on current server instance.
             5. add listen_and_serv op
 
-            :param optimize_ops: op list of optimization, should be the
-                                    return value of Optimizer.minimize
-            :type optimize_ops: list
-            :param params_grads: list of tuple(weight, gradient)
-            :type params_grads: list
             :param trainer_id: one unique id for each trainer in a job.
             :type trainer_id: int
             :param program: program to transpile, default is default_main_program
@@ -194,7 +187,6 @@ class DistributeTranspiler:
             program = default_main_program()
         self.origin_program = program
         self.trainer_num = trainers
-        self.optimize_ops = optimize_ops
         self.sync_mode = sync_mode
         # TODO(typhoonzero): currently trainer_id is fetched from cluster system
         # like Kubernetes, we should port this to use etcd later when developing
@@ -202,6 +194,7 @@ class DistributeTranspiler:
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
+        self.optimize_ops, params_grads = self._get_optimize_pass()
 
         # process lookup_table_op
         # 1. check all lookup_table_op is distributed
@@ -324,8 +317,7 @@ class DistributeTranspiler:
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
-        self.origin_program.global_block().delete_ops(self.optimize_ops)
-        self.origin_program.sync_with_cpp()
+        self.delete_ops(self.origin_program.global_block(), self.optimize_ops)
         # FIXME(typhoonzero): serialize once will fix error occurs when clone.
         self.origin_program.__str__()
         return self.origin_program
@@ -408,11 +400,8 @@ class DistributeTranspiler:
         # HACK: optimization global ops only used to scale beta1 and beta2
         # replace it with dependency engine.
         for op in self.optimize_ops:
-            if op.type == "scale":
-                for in_name in op.input_arg_names:
-                    if in_name.startswith("beta1_pow_acc") or \
-                            in_name.startswith("beta2_pow_acc"):
-                        global_ops.append(op)
+            if self._is_adam_connected_op(op):
+                global_ops.append(op)
 
         def __append_optimize_op__(op, block, grad_to_block_id):
             if self._is_opt_op(op):
@@ -612,8 +601,7 @@ class DistributeTranspiler:
                         attrs={"axis": 0})
 
                     # delete lookup_table_op
-                    program.global_block().delete_ops([op])
-                    program.sync_with_cpp()
+                    self.delete_ops(program.global_block(), [op])
                     # break for loop
                     break
 
@@ -1147,3 +1135,41 @@ class DistributeTranspiler:
                     # we only need to append op for once
                     break
         return lr_ops
+
+    def _get_optimize_pass(self):
+        block = self.origin_program.global_block()
+        opt_ops = []
+        params_grads = []
+        for op in block.ops:
+            if self._is_opt_op(op):
+                opt_ops.append(op)
+                params_grads.append((self.origin_program.global_block().var(
+                    op.input("Param")[0]),
+                                     self.origin_program.global_block().var(
+                                         op.input("Grad")[0])))
+            elif self._is_adam_connected_op(op):
+                opt_ops.append(op)
+            else:
+                pass
+        return opt_ops, params_grads
+
+    def _is_adam_connected_op(self, op):
+        """
+        A hack function to determinate whether the input operator
+        is connected to optimize operator.
+        """
+        if op.type == "scale":
+            for in_name in op.input_arg_names:
+                if in_name.startswith("beta1_pow_acc") or \
+                        in_name.startswith("beta2_pow_acc"):
+                    return True
+        return False
+
+    def delete_ops(self, block, ops):
+        try:
+            start = list(block.ops).index(ops[0])
+            end = list(block.ops).index(ops[-1])
+            [block.remove_op(start) for _ in xrange(end - start + 1)]
+        except Exception, e:
+            raise e
+        block.program.sync_with_cpp()

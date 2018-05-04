@@ -53,7 +53,7 @@ void BroadcastOpHandle::RunImpl() {
 
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
-  // NOTE(zcd): the Place of input can be get from in_tensor and in_var_handle ,
+  // NOTE(zcd): the Place of input can get from in_tensor and in_var_handle ,
   // maybe they are different, because the Place that getting from in_tensor is
   // determined at runtime, the other is determined at building SSA graph stage.
   // If they are different, DataTransform should be applied. Currently, it has

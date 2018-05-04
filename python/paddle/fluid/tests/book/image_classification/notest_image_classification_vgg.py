@@ -43,15 +43,14 @@ def vgg16_bn_drop(input):
     bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
-    return fc2
+    predict = fluid.layers.fc(input=fc2, size=10, act='softmax')
+    return predict
 
 
 def inference_network():
-    classdim = 10
     data_shape = [3, 32, 32]
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    net = vgg16_bn_drop(images)
-    predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+    predict = vgg16_bn_drop(images)
     return predict
 
 

@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/operators/math/detail/gru_gpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
@@ -36,12 +37,11 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
-
+    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
     if (value.prev_out_value) {
-      math::gemm<platform::CUDADeviceContext, T>(
-          context, false, false, batch_size, frame_size * 2, frame_size, 1,
-          value.prev_out_value, frame_size, value.gate_weight, frame_size * 2,
-          1, value.gate_value, frame_size * 3);
+      blas.GEMM(false, false, batch_size, frame_size * 2, frame_size, 1,
+                value.prev_out_value, frame_size, value.gate_weight,
+                frame_size * 2, 1, value.gate_value, frame_size * 3);
     }
 
     if (batch_size == 1) {
@@ -61,10 +61,10 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
     }
 
     if (value.prev_out_value) {
-      math::gemm<platform::CUDADeviceContext, T>(
-          context, false, false, batch_size, frame_size, frame_size, 1,
-          value.reset_output_value, frame_size, value.state_weight, frame_size,
-          1, value.gate_value + frame_size * 2, frame_size * 3);
+      blas.GEMM(false, false, batch_size, frame_size, frame_size, 1,
+                value.reset_output_value, frame_size, value.state_weight,
+                frame_size, 1, value.gate_value + frame_size * 2,
+                frame_size * 3);
     }
 
     if (batch_size == 1) {
@@ -121,18 +121,19 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
           grad.output_grad, frame_size, batch_size, active_node);
     }
 
+    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+
     if (value.prev_out_value && grad.prev_out_grad) {
-      math::gemm<platform::CUDADeviceContext, T>(
-          context, false, true, batch_size, frame_size, frame_size, 1,
-          grad.gate_grad + frame_size * 2, frame_size * 3, value.state_weight,
-          frame_size, 0, grad.reset_output_grad, frame_size);
+      blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,
+                grad.gate_grad + frame_size * 2, frame_size * 3,
+                value.state_weight, frame_size, 0, grad.reset_output_grad,
+                frame_size);
 
       if (grad.state_weight_grad) {
-        math::gemm<platform::CUDADeviceContext, T>(
-            context, true, false, frame_size, frame_size, batch_size, 1,
-            value.reset_output_value, frame_size,
-            grad.gate_grad + frame_size * 2, frame_size * 3, 1,
-            grad.state_weight_grad, frame_size);
+        blas.GEMM(true, false, frame_size, frame_size, batch_size, 1,
+                  value.reset_output_value, frame_size,
+                  grad.gate_grad + frame_size * 2, frame_size * 3, 1,
+                  grad.state_weight_grad, frame_size);
       }
     }
 
@@ -153,16 +154,14 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
     }
 
     if (grad.prev_out_grad && value.prev_out_value) {
-      math::gemm<platform::CUDADeviceContext, T>(
-          context, false, true, batch_size, frame_size, frame_size * 2, 1,
-          grad.gate_grad, frame_size * 3, value.gate_weight, frame_size * 2, 1,
-          grad.prev_out_grad, frame_size);
+      blas.GEMM(false, true, batch_size, frame_size, frame_size * 2, 1,
+                grad.gate_grad, frame_size * 3, value.gate_weight,
+                frame_size * 2, 1, grad.prev_out_grad, frame_size);
 
       if (grad.gate_weight_grad) {
-        math::gemm<platform::CUDADeviceContext, T>(
-            context, true, false, frame_size, frame_size * 2, batch_size, 1,
-            value.prev_out_value, frame_size, grad.gate_grad, frame_size * 3, 1,
-            grad.gate_weight_grad, frame_size * 2);
+        blas.GEMM(true, false, frame_size, frame_size * 2, batch_size, 1,
+                  value.prev_out_value, frame_size, grad.gate_grad,
+                  frame_size * 3, 1, grad.gate_weight_grad, frame_size * 2);
       }
     }
   }
