@@ -18,8 +18,6 @@ env:
 addons:
   ssh_known_hosts: 13.229.163.131
 before_install:
-  - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
-  - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
   # For pylint dockstring checker
   - sudo pip install pylint pytest astroid isort
   - |
