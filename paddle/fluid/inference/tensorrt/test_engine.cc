@@ -70,7 +70,6 @@ TEST_F(TensorRTEngineTest, add_layer) {
   engine_->Execute(1);
 
   LOG(INFO) << "to get output";
-  // void* y_v =
   float y_cpu;
   engine_->GetOutputInCPU("y", &y_cpu, sizeof(float));
 

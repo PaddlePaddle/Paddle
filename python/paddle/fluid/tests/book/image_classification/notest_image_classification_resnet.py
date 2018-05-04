@@ -64,15 +64,14 @@ def resnet_cifar10(input, depth=32):
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
     pool = fluid.layers.pool2d(
         input=res3, pool_size=8, pool_type='avg', pool_stride=1)
-    return pool
+    predict = fluid.layers.fc(input=pool, size=10, act='softmax')
+    return predict
 
 
 def inference_network():
-    classdim = 10
     data_shape = [3, 32, 32]
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    net = resnet_cifar10(images, 32)
-    predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+    predict = resnet_cifar10(images, 32)
     return predict
 
 
