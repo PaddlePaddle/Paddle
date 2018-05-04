@@ -467,6 +467,7 @@ EOF
 }
 
 function main() {
+    set -e
     local CMD=$1
     init
     case $CMD in
