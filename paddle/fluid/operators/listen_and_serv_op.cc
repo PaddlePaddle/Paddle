@@ -328,9 +328,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->WaitServerReady();
 
   // Write to a file of server selected port for python use.
-  std::string file_path =
-    string::Sprintf("/tmp/paddle.%d.selected_port",
-                    static_cast<int>(::getpid()));
+  std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
+                                          static_cast<int>(::getpid()));
   SavePort(file_path);
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
