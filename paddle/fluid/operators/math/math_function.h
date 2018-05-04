@@ -51,78 +51,6 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 namespace paddle {
 namespace operators {
 namespace math {
-
-// Support continuous memory now
-// If transA = N, and transB = N
-// Then matrixA: M * K, matrixB: K * N, matrixC : M * N
-// For more detailed info, please refer to
-// http://www.netlib.org/lapack/explore-html/d4/de2/sgemm_8f.html
-
-template <typename DeviceContext>
-class Blas {
- public:
-  explicit Blas(const DeviceContext& context) : context_(context) {}
-
-  template <typename T>
-  void GEMM(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
-            const int M, const int N, const int K, const T alpha, const T* A,
-            const T* B, const T beta, T* C) const;
-
-  template <typename T>
-  void GEMM(const bool transA, const bool transB, const int M, const int N,
-            const int K, const T alpha, const T* A, const int lda, const T* B,
-            const int ldb, const T beta, T* C, const int ldc) const;
-
- private:
-  const DeviceContext& context_;
-};
-
-template <typename DeviceContext, typename T>
-class BlasT : private Blas<DeviceContext> {
- public:
-  using Blas<DeviceContext>::Blas;
-
-  template <typename... ARGS>
-  void GEMM(ARGS... args) const {
-    static_cast<const Blas<DeviceContext>*>(this)->template GEMM<T>(args...);
-  }
-};
-
-template <typename DeviceContext, typename T>
-inline BlasT<DeviceContext, T> GetBlas(
-    const framework::ExecutionContext& exe_ctx) {
-  return BlasT<DeviceContext, T>(
-      exe_ctx.template device_context<DeviceContext>());
-}
-
-template <typename DeviceContext, typename T>
-inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
-  return BlasT<DeviceContext, T>(dev_ctx);
-}
-
-// matrix multiply with continuous memory
-template <typename DeviceContext, typename T>
-void matmul(const DeviceContext& context, const framework::Tensor& matrix_a,
-            bool trans_a, const framework::Tensor& matrix_b, bool trans_b,
-            T alpha, framework::Tensor* matrix_out, T beta);
-
-// Batched gemm
-template <typename DeviceContext, typename T>
-void batched_gemm(const DeviceContext& context, const CBLAS_TRANSPOSE transA,
-                  const CBLAS_TRANSPOSE transB, const int M, const int N,
-                  const int K, const T alpha, const T* A, const T* B,
-                  const T beta, T* C, const int batchCount,
-                  const int64_t strideA, const int64_t strideB);
-
-template <typename DeviceContext, typename T>
-void gemv(const DeviceContext& context, const bool trans_a, const int M,
-          const int N, const T alpha, const T* A, const T* B, const T beta,
-          T* C);
-
-template <typename DeviceContext, typename T>
-void axpy(const DeviceContext& context, const int n, const T alpha, const T* x,
-          T* y);
-
 template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
   void operator()(const DeviceContext& context, const framework::Tensor& in,
@@ -169,8 +97,3 @@ struct RowwiseMean {
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
-
-#include "paddle/fluid/operators/math/blas_impl.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/operators/math/blas_impl.cu.h"
-#endif
