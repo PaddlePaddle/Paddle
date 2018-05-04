@@ -55,6 +55,12 @@ class AdadeltaOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("AvgSquaredGradOut", param_dim);
     ctx->SetOutputDim("AvgSquaredUpdateOut", param_dim);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {

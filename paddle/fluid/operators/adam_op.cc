@@ -69,6 +69,12 @@ class AdamOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Moment1Out", param_dims);
     ctx->SetOutputDim("Moment2Out", param_dims);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class AdamOpMaker : public framework::OpProtoAndCheckerMaker {

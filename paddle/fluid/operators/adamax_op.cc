@@ -63,6 +63,12 @@ class AdamaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("MomentOut", param_dims);
     ctx->SetOutputDim("InfNormOut", param_dims);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
