@@ -30,7 +30,8 @@ class ParallelExecutor(object):
                  num_threads=None,
                  allow_op_delay=False,
                  share_vars_from=None,
-                 use_default_grad_scale=True):
+                 use_default_grad_scale=True,
+                 save_program_to_file=""):
         """
         ParallelExecutor can run program in parallel.
 
@@ -51,6 +52,7 @@ class ParallelExecutor(object):
                 gradients of each device and scaled gradients would be
                 aggregated. Otherwise, a customized scale value should be fed
                 to the network.
+            save_program_to_file: Save the program desc which will be runed to this file.
 
         Returns:
             A ParallelExecutor object.
@@ -114,6 +116,10 @@ class ParallelExecutor(object):
                 lambda var: var.persistable and var.type != core.VarDesc.VarType.RAW,
                 main.list_vars())
         ]
+
+        if len(save_program_to_file) > 0:
+            with open(save_program_to_file, 'w') as f:
+                f.write(program.desc.serialize_to_string())
 
         self.executor = core.ParallelExecutor(
             num_threads,
