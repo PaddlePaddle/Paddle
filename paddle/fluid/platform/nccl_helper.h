@@ -108,8 +108,8 @@ struct NCCLContextMap {
         for (auto &gpu_id : order_) {
           int rank = trainer_id * order_.size() + gpu_id;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE(
-              ncclCommInitRank(comms.get() + gpu_id, nranks, *nccl_id, rank));
+          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+              comms.get() + gpu_id, nranks, *nccl_id, rank));
         }
       }
     }
