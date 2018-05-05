@@ -75,14 +75,15 @@ void GatherOpHandle::RunImpl() {
     in_tensors.emplace_back(in_sr_value.value());
   }
 
-  // TODO(zcd): The Place of var_handle is determined at building SSA graph
-  // stage, while the Place of var is determined at runtime. If they are
-  // different, DataTransform should be applied. Currently, it has not been done
-  // yet.
-  auto &out_place = out_var_handle->place_;
-  PADDLE_ENFORCE_EQ(out_place.which(), pre_in_value.place().which(),
-                    "Currently, Places of input and output must be all on CPU "
-                    "or all on GPU.");
+  // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
+  platform::Place t_out_p = out_var_handle->place_;
+  if (platform::is_gpu_place(pre_in_value.place())) {
+    PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
+                   "Places of input and output must be all on GPU.");
+  } else {
+    t_out_p = platform::CPUPlace();
+  }
+
   auto out_var =
       var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(out_var);
@@ -93,18 +94,18 @@ void GatherOpHandle::RunImpl() {
   DDim out_dim = pre_in_value.GetCompleteDims();
   out_dim[0] = static_cast<int64_t>(rows);
   out_value->mutable_value()->Resize(out_dim).mutable_data(
-      out_place, pre_in_value.value().type());
+      t_out_p, pre_in_value.value().type());
   Tensor *out_tensor = out_value->mutable_value();
 
   // copy
-  auto dev_ctx = dev_ctxes_[out_place];
-  RunAndRecordEvent(out_place, [in_tensors, out_tensor, &dev_ctx, out_place] {
+  auto dev_ctx = dev_ctxes_[out_var_handle->place_];
+  RunAndRecordEvent(out_var_handle->place_, [in_tensors, out_tensor, &dev_ctx,
+                                             t_out_p] {
     int s = 0, e = 0;
     for (size_t j = 0; j < in_tensors.size(); ++j) {
       e += in_tensors[j].dims()[0];
       auto sub_out = out_tensor->Slice(s, e);
-      paddle::framework::TensorCopy(in_tensors[j], out_place, *dev_ctx,
-                                    &sub_out);
+      paddle::framework::TensorCopy(in_tensors[j], t_out_p, *dev_ctx, &sub_out);
       s = e;
     }
   });
