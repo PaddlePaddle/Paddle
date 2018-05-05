@@ -31,6 +31,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+class NodeMap;
+
 /*
  * Node Representation.
  *
@@ -46,7 +48,7 @@ class Node {
   // Node type. NOTE the new node types should add here.
   enum class Type { kNone = -1, kFunction, kValue, kFunctionBlock };
 
-  Node() : id_(counter_), extra_info_(nullptr) { ++counter_; }
+  Node() = default;
 
   // Cast to a subclass type, Function for example.
   template <typename Subclass>
@@ -109,12 +111,14 @@ class Node {
 
   virtual ~Node() {}
 
+  friend class NodeMap;
+
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Node);
 
  protected:
   // The id number not the name is a node's unique identifier in the computation
   // graph.
-  size_t id_;
+  int id_{-1};
   std::string name_;
   Type type_{Type::kNone};
   // Mark this node is deleted by some pass.

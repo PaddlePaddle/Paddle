@@ -35,7 +35,8 @@ class SubGraphSplitter {
   // Tell whether a node is inside a sub-graph.
   using NodeInsideSubgraphTeller = std::function<bool(const Node *)>;
 
-  SubGraphSplitter(DataFlowGraph *graph, NodeInsideSubgraphTeller &&teller);
+  SubGraphSplitter(DataFlowGraph *graph, const NodeInsideSubgraphTeller &teller)
+      : graph_(graph), node_inside_subgraph_teller_(teller) {}
 
   std::vector<std::vector<Node *>> operator()();
 
@@ -64,7 +65,8 @@ class SubGraphFuse {
  public:
   using NodeInsideSubgraphTeller = SubGraphSplitter::NodeInsideSubgraphTeller;
 
-  SubGraphFuse(DataFlowGraph *graph, NodeInsideSubgraphTeller &&teller);
+  SubGraphFuse(DataFlowGraph *graph, const NodeInsideSubgraphTeller &teller)
+      : graph_(graph), node_inside_subgraph_teller_(teller) {}
 
   // The main method which run all the logic.
   void operator()();
@@ -75,7 +77,7 @@ class SubGraphFuse {
 
  private:
   DataFlowGraph *graph_;
-  SubGraphSplitter sub_graph_splitter_;
+  NodeInsideSubgraphTeller node_inside_subgraph_teller_;
 };
 
 }  // namespace analysis

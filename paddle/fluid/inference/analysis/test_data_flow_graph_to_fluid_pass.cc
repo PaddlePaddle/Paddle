@@ -13,3 +13,52 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
+
+#include <glog/logging.h>
+#include <google/protobuf/text_format.h>
+#include <gtest/gtest.h>
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/inference/io.h"
+
+namespace paddle {
+namespace inference {
+namespace analysis {
+
+class FluidToDFGTester : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    // TODO(Superjomn) update latter.
+    const std::string model_dir =
+        "/Users/superjom/project/Paddle/cmake-build-debug/inference_model";
+    auto place = paddle::platform::CPUPlace();
+    auto executor = paddle::framework::Executor(place);
+    auto *scope = new paddle::framework::Scope();
+    auto program = Load(&executor, scope, model_dir);
+    desc = *program->Proto();
+  }
+
+  framework::proto::ProgramDesc desc;
+};
+
+TEST_F(FluidToDFGTester, Test) {
+  framework::proto::ProgramDesc new_desc;
+  DataFlowGraph graph;
+
+  FluidToDataFlowGraphPass pass0;
+  DataFlowGraphToFluidPass pass1;
+  pass0.Initialize(desc);
+  pass1.Initialize(&new_desc);
+
+  pass0.Run(&graph);
+  pass1.Run(&graph);
+
+  pass0.Finalize();
+  pass1.Finalize();
+
+  LOG(INFO) << graph.nodes.size();
+}
+
+}  // analysis
+}  // inference
+}  // paddle

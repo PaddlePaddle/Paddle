@@ -13,3 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
+#include "paddle/fluid/inference/analysis/subgraph_splitter.h"
+
+namespace paddle {
+namespace inference {
+namespace analysis {
+
+TensorRTSubGraphPass::TensorRTSubGraphPass(
+    const TensorRTSubGraphPass::NodeInsideSubgraphTeller &teller)
+    : node_inside_subgraph_teller_(teller) {}
+
+void TensorRTSubGraphPass::Run(DataFlowGraph *graph) {
+  SubGraphFuse(graph, node_inside_subgraph_teller_);
+}
+
+}  // analysis
+}  // inference
+
+}  // paddle

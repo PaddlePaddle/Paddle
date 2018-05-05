@@ -26,7 +26,7 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-class DataFlowGraphToFluidPass : public DataFlowGraphPass {
+class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
  public:
   DataFlowGraphToFluidPass() = default;
 
@@ -34,6 +34,11 @@ class DataFlowGraphToFluidPass : public DataFlowGraphPass {
   bool Finalize() override;
 
   void Run(DataFlowGraph *graph) override;
+
+  Pass *CreatePrinterPass(std::ostream &os,
+                          const std::string &banner) const override {
+    return nullptr;
+  }
 
  protected:
   // Add a Fluid Op into the ProgramDesc.

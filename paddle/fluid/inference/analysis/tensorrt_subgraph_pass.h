@@ -28,18 +28,18 @@ namespace analysis {
 class TensorRTSubGraphPass : public DataFlowGraphPass {
  public:
   // Tell whether to transform a sub-graph into TensorRT.
-  using SubGraphToTensorRTTeller =
-      std::function<bool(const std::vector<const Node*>&)>;
+  using NodeInsideSubgraphTeller = SubGraphFuse::NodeInsideSubgraphTeller;
 
-  TensorRTSubGraphPass(SubGraphToTensorRTTeller&& teller);
+  TensorRTSubGraphPass(const NodeInsideSubgraphTeller& teller);
+
+  bool Initialize() override { return true; }
 
   // This class get a sub-graph as input and determine whether to transform this
   // sub-graph into TensorRT.
   void Run(DataFlowGraph* graph) override;
 
  private:
-  SubGraphToTensorRTTeller subgraph_to_tensorrt_teller_;
-  SubGraphFuse subgraph_fuse_;
+  NodeInsideSubgraphTeller node_inside_subgraph_teller_;
 };
 
 }  // namespace analysis

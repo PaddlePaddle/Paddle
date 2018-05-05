@@ -20,10 +20,6 @@ namespace analysis {
 
 const char *SubGraphSplitter::kMarkerAttrName = "sub_graph_splitter_";
 
-SubGraphSplitter::SubGraphSplitter(
-    DataFlowGraph *graph, SubGraphSplitter::NodeInsideSubgraphTeller &&teller)
-    : graph_(graph), node_inside_subgraph_teller_(std::move(teller)) {}
-
 std::vector<std::vector<Node *>> SubGraphSplitter::operator()() {
   MarkNodesInsideSubGraph();
   return ExtractSubGraphs();
@@ -103,9 +99,6 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   return result;
 }
 
-SubGraphFuse::SubGraphFuse(DataFlowGraph *graph,
-                           SubGraphFuse::NodeInsideSubgraphTeller &&teller)
-    : graph_(graph), sub_graph_splitter_(graph, std::move(teller)) {}
 void SubGraphFuse::operator()() { ReplaceNodesWithSubGraphs(); }
 
 // Extract the inputs and outputs of a graph. The inputs and outputs of a
@@ -133,7 +126,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {
 }
 
 void SubGraphFuse::ReplaceNodesWithSubGraphs() {
-  auto subgraphs = sub_graph_splitter_();
+  auto subgraphs = SubGraphSplitter(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph

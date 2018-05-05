@@ -44,6 +44,7 @@ TEST_F(FluidToDFGTester, Init) {
   pass.Initialize(desc);
   DataFlowGraph graph;
   pass.Run(&graph);
+  ASSERT_GT(graph.nodes.size(), 0);
   pass.Finalize();
 }
 

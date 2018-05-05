@@ -34,10 +34,9 @@ Node *NodeMap::Create(Node::Type type) {
       nodes_.emplace_back(new Value);
       break;
     default:
-      PADDLE_ENFORCE(false, "Not supported node type.");
-      return nullptr;
+      PADDLE_THROW("Not supported node type.");
   }
-  CHECK_EQ(nodes_.back()->id() + 1, size());
+  nodes_.back()->id_ = size() - 1;
   return nodes_.back().get();
 }
 
