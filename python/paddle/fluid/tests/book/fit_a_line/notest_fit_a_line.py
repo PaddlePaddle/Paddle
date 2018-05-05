@@ -29,35 +29,46 @@ train_reader = paddle.batch(
 
 
 # train
-def linear(use_cuda, save_dirname, is_local):
+def linear():
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-
-    global y_predict
+    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
-    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-
     loss = fluid.layers.cross_entropy(y_predict, y)
-    return loss
+    avg_loss = fluid.layers.mean(loss)
+    accuracy = fluid.layers.accuracy(input=y_predict, label=y)
+
+    return avg_loss
 
 
 def train(use_cuda, save_dirname, is_local):
-    trainer = fluid.Trainer(linear, optimizer=fluid.optimizer.SGD())
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+    trainer = fluid.Trainer(
+        linear,
+        optimizer=fluid.optimizer.SGD(learning_rate=0.001),
+        place=place
+    )
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
+        if isinstance(event, fluid.EndStepEvent):
             print event.metrics
 
-        elif isinstance(event, fluid.EndPass):
+        elif isinstance(event, fluid.EndEpochEvent):
             test_metrics = trainer.test(reader=paddle.dataset.uci_housing.test())
             print test_metrics
 
             if test_metrics[0] < 10.0:
                 if save_dirname is not None:
-                    fluid.io.save_inference_model(save_dirname, ['x'], [y_predict])
+                    # fluid.io.save_inference_model(save_dirname, ['x'], [y_predict])
+                    trainer.save_params(save_dirname)
             return
 
-    trainer.train(reader=paddle.dataset.uci_housing.train(), num_pass=100)
+    trainer.train(
+        reader=train_reader,
+        num_epochs=100,
+        event_handler=event_handler,
+        feed_order={'x': 0, 'y': 1})
 
 
 # infer
