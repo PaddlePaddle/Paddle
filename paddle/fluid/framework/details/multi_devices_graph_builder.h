@@ -99,7 +99,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
    */
   OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
 
-  bool IsSparseGradient(const std::string &og) const;
+  bool IsSparseGradient(
+      const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+      const std::string &og) const;
 };
 }  // namespace details
 }  // namespace framework
