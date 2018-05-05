@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
+#include <nccl.h>
 #include <sys/time.h>
 #include <thread>  // NOLINT
 
