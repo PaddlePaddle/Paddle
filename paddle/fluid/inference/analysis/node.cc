@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/node.h"
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -21,6 +22,8 @@ namespace analysis {
 
 unsigned Node::counter_ = 0;
 std::string Value::repr() const { return std::string(); }
+
+std::string Function::repr() const { return std::string(); }
 
 Node *NodeMap::Create(Node::Type type) {
   switch (type) {
@@ -34,13 +37,18 @@ Node *NodeMap::Create(Node::Type type) {
       PADDLE_ENFORCE(false, "Not supported node type.");
       return nullptr;
   }
-  PADDLE_ENFORCE_EQ(nodes_.back()->id(), size());
+  CHECK_EQ(nodes_.back()->id() + 1, size());
   return nodes_.back().get();
 }
 
 Node *NodeMap::Get(size_t id) {
   PADDLE_ENFORCE_GT(size(), id);
   return nodes_[id].get();
+}
+
+void NodeMap::Delete(size_t id) {
+  PADDLE_ENFORCE_LT(id, size());
+  nodes_[id]->SetDeleted();
 }
 }
 }

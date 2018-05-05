@@ -37,13 +37,15 @@ class SubGraphSplitter {
 
   SubGraphSplitter(DataFlowGraph *graph, NodeInsideSubgraphTeller &&teller);
 
+  std::vector<std::vector<Node *>> operator()();
+
  protected:
   // Mark the nodes inside the accepted sub-graph using
   // node_inside_subgraph_teller.
   void MarkNodesInsideSubGraph();
 
   // Merge the marked nodes into sub-graphs and return the sub-graphs.
-  std::vector<std::vector<const Node *>> ExtractSubGraphs();
+  std::vector<std::vector<Node *>> ExtractSubGraphs();
 
   struct NodeAttr {
     bool is_in_subgraph{false};
@@ -55,20 +57,24 @@ class SubGraphSplitter {
 };
 
 /*
- * SubGraphFuse - Replace some nodes with the sub-graph node they are inside.
+ * SubGraphFuse - Replace some nodes with the sub-graph node they are inside. To
+ * some extent, the TensorRT engine is just a fusion op for a model.
  */
 class SubGraphFuse {
  public:
   using NodeInsideSubgraphTeller = SubGraphSplitter::NodeInsideSubgraphTeller;
-  SubGraphFuse(const DataFlowGraph &graph, NodeInsideSubgraphTeller &&teller);
+
+  SubGraphFuse(DataFlowGraph *graph, NodeInsideSubgraphTeller &&teller);
 
   // The main method which run all the logic.
   void operator()();
 
+ protected:
   // Remove the nodes inside sub-graphs and replace with the SubGraphNode.
   void ReplaceNodesWithSubGraphs();
 
  private:
+  DataFlowGraph *graph_;
   SubGraphSplitter sub_graph_splitter_;
 };
 

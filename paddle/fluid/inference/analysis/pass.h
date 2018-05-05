@@ -17,7 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <iosfwd>
 
-#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/node.h"
@@ -34,8 +34,14 @@ class Pass {
   // before any pass is run.
   virtual bool Initialize() { return false; }
   // There is some passes such as FlowToDataFlowGraphPass that needs a
+  // ProgramDesc. Here use the native ProgramDesc ProtoBuf message, so that it
+  // only couple with the proto file.
+  virtual bool Initialize(const framework::proto::ProgramDesc &desc) {
+    return false;
+  }
+  // There are some Passes such as DataFlowGraphToFluidPass that will output a
   // ProgramDesc.
-  virtual bool Initialize(const framework::ProgramDesc &desc) { return false; }
+  virtual bool Initialize(framework::proto::ProgramDesc *desc) { return false; }
 
   // Virtual method overriden by subclasses to do any necessary clean up after
   // all passes have run.
@@ -45,9 +51,13 @@ class Pass {
   virtual Pass *CreatePrinterPass(std::ostream &os,
                                   const std::string &banner) const = 0;
 
+  // Run on a single Node.
   virtual void Run(Node *x) { LOG(FATAL) << "not valid"; }
+  // Run on a single Function.
   virtual void Run(Function *x) { LOG(FATAL) << "not valid"; }
+  // Run on a single FunctionBlock.
   virtual void Run(FunctionBlock *x) { LOG(FATAL) << "not valid"; }
+  // Run on a single DataFlowGraph.
   virtual void Run(DataFlowGraph *x) { LOG(FATAL) << "not valid"; }
 };
 

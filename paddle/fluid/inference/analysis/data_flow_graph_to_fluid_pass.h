@@ -19,8 +19,31 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/analysis/data_flow_graph.h"
+#include "paddle/fluid/inference/analysis/pass.h"
+
 namespace paddle {
 namespace inference {
-namespace analysis {}  // namespace analysis
+namespace analysis {
+class DataFlowGraphToFluidPass : public DataFlowGraphPass {
+ public:
+  DataFlowGraphToFluidPass() = default;
+
+  bool Initialize(framework::proto::ProgramDesc *desc) override;
+  bool Finalize() override;
+
+  void Run(DataFlowGraph *graph) override;
+
+ protected:
+  // Add a Fluid Op into the ProgramDesc.
+  void AddFluidOp(Node *node);
+  // Add a EngineOp into the ProgramDesc.
+  void AddEngineOp(Node *node);
+
+ private:
+  framework::proto::ProgramDesc *desc_;
+};
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

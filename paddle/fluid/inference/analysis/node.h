@@ -46,7 +46,7 @@ class Node {
   // Node type. NOTE the new node types should add here.
   enum class Type { kNone = -1, kFunction, kValue, kFunctionBlock };
 
-  Node() : id_(counter_) { ++counter_; }
+  Node() : id_(counter_), extra_info_(nullptr) { ++counter_; }
 
   // Cast to a subclass type, Function for example.
   template <typename Subclass>
@@ -65,6 +65,10 @@ class Node {
   }
 
   size_t id() const { return id_; }
+
+  bool deleted() const { return deleted_; }
+  void SetDeleted() { deleted_ = true; }
+
   void SetName(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 
@@ -105,13 +109,16 @@ class Node {
 
   virtual ~Node() {}
 
+  PADDLE_DISALLOW_COPY_AND_ASSIGN(Node);
+
  protected:
   // The id number not the name is a node's unique identifier in the computation
   // graph.
   size_t id_;
   std::string name_;
   Type type_{Type::kNone};
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(Node);
+  // Mark this node is deleted by some pass.
+  bool deleted_{false};
 
   void *extra_info_;
 
@@ -160,18 +167,22 @@ class Value : public Node {
  */
 class Function : public Node {
  public:
-  virtual std::string repr() const override;
+  std::string repr() const override;
+
+  PADDLE_DISALLOW_COPY_AND_ASSIGN(Function);
 
  protected:
   Function() { SetType(Node::Type::kFunction); }
   friend class NodeMap;
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(Function);
 };
 
 /*
  * FunctionBlock is a Node that contains a sub-graph multiple Node.
  */
-struct FunctionBlock : public Node {};
+struct FunctionBlock : public Node {
+  std::string repr() const override;
+  std::vector<Node *> subgraph;
+};
 
 class NodeMap {
  public:
@@ -180,6 +191,8 @@ class NodeMap {
 
   // Get a node by its id.
   Node *Get(size_t id);
+
+  void Delete(size_t id);
 
   size_t size() const { return nodes_.size(); }
 

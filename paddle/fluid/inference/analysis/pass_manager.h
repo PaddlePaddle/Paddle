@@ -39,7 +39,7 @@ class PassManagerMain : public OrderedRegistry<PassManager> {
   }
 
   // Execute all the PassManagers registered.
-  void RunAll(const framework::ProgramDesc &desc);
+  void RunAll(const framework::proto::ProgramDesc &desc);
 
   PADDLE_DISALLOW_COPY_AND_ASSIGN(PassManagerMain)
 
@@ -68,7 +68,7 @@ class PassManager : public OrderedRegistry<Pass> {
 
   // Call all the passes' Initialize methods. The desc and data_flow_graph are
   // globally shared, so pass them as the arguemnts for all the pass managers.
-  virtual bool Initialize(const framework::ProgramDesc &desc,
+  virtual bool Initialize(const framework::proto::ProgramDesc &desc,
                           DataFlowGraph *data_flow_graph) = 0;
 
   // Run all the passes.
@@ -89,7 +89,7 @@ class DFSPassManager : public PassManager {
  public:
   DFSPassManager(const GraphType &graph);
 
-  bool Initialize(const framework::ProgramDesc &desc,
+  bool Initialize(const framework::proto::ProgramDesc &desc,
                   DataFlowGraph *data_flow_graph) override;
   bool Finalize() override;
   // DFS traverse the graph, call the passes in each step.
@@ -108,7 +108,7 @@ class DFSPassManager : public PassManager {
 class DataFlowGraphPassManager : public PassManager {
  public:
   DataFlowGraphPassManager();
-  bool Initialize(const framework::ProgramDesc &desc,
+  bool Initialize(const framework::proto::ProgramDesc &desc,
                   DataFlowGraph *data_flow_graph) override {
     graph_ = data_flow_graph;
     for (auto &pass : data_) {

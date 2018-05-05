@@ -19,7 +19,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void PassManagerMain::RunAll(const framework::ProgramDesc &desc) {
+void PassManagerMain::RunAll(const framework::proto::ProgramDesc &desc) {
   for (auto &pass : data_) {
     pass->RunAll();
   }

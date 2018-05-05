@@ -19,9 +19,12 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+FluidToDataFlowGraphPass::FluidToDataFlowGraphPass() {}
+
 bool FluidToDataFlowGraphPass::Initialize() { return Pass::Initialize(); }
 
-bool FluidToDataFlowGraphPass::Initialize(const framework::ProgramDesc &desc) {
+bool FluidToDataFlowGraphPass::Initialize(
+    const framework::proto::ProgramDesc &desc) {
   desc_ = &desc;
   return true;
 }
@@ -31,29 +34,42 @@ bool FluidToDataFlowGraphPass::Finalize() { return Pass::Finalize(); }
 void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
   // insert vars
   std::unordered_map<std::string, size_t> var2id;
-  for (const auto &var : desc_->Block(0).AllVars()) {
+  auto &main_block = desc_->blocks(framework::kRootBlockIndex);
+  for (size_t i = 0; i < main_block.vars_size(); i++) {
+    const auto &var = main_block.vars(i);
     auto *v = graph->nodes.Create(Node::Type::kValue);
-    v->SetName(var->Name());
-    v->SetExtraInfo(var);
-    var2id[var->Name()] = v->id();
+    v->SetName(var.name());
+    v->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&var)));
+    var2id[var.name()] = v->id();
   }
-
-  // insert ops
-  for (const auto &op : desc_->Block(0).AllOps()) {
+  for (size_t i = 0; i < main_block.ops_size(); i++) {
+    const auto &op = main_block.ops(i);
     auto *o = graph->nodes.Create(Node::Type::kFunction);
-    o->SetName(op->Type());
+    o->SetName(op.type());
     // Link to the original protobuf message's memory, make it easier to
     // generate from a data flow graph to fluid ProgramDesc.
-    o->SetExtraInfo(op);
+    o->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&op)));
     // set inputs and outputs
-    for (auto &in : op->InputNames()) {
-      o->inlinks.push_back(graph->nodes.Get(var2id[in]));
+    // TODO(Superjomn) make sure the InputNames is the real variable name.
+    for (size_t j = 0; j < op.inputs_size(); j++) {
+      auto &in_var = op.inputs(j);
+      for (size_t k = 0; k < in_var.arguments_size(); k++) {
+        auto *in = graph->nodes.Get(var2id.at(in_var.arguments(k)));
+        in->outlinks.push_back(o);
+        o->inlinks.push_back(in);
+      }
     }
-    for (auto &out : op->OutputNames()) {
-      o->outlinks.push_back(graph->nodes.Get(var2id[out]));
+    for (size_t j = 0; j < op.outputs_size(); j++) {
+      auto &out_var = op.outputs(j);
+      for (size_t k = 0; k < out_var.arguments_size(); k++) {
+        auto *out = graph->nodes.Get(var2id[out_var.arguments(k)]);
+        out->inlinks.push_back(o);
+        o->outlinks.push_back(out);
+      }
     }
   }
 }
+
 Pass *FluidToDataFlowGraphPass::CreatePrinterPass(
     std::ostream &os, const std::string &banner) const {
   return nullptr;
