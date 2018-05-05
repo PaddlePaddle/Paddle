@@ -88,7 +88,7 @@ void VariableVisitor::ShareDimsAndLoD(const Variable& src, Variable* trg) {
   VisitVariable(src, &visitor);
 }
 
-struct EnforceEqualShapeAndDTypeVisitor {
+struct EnforceShapeAndDTypeEQVisitor {
   const Variable* trg_;
 
   void operator()(const LoDTensor& src) {
@@ -130,7 +130,7 @@ struct EnforceEqualShapeAndDTypeVisitor {
 
 void VariableVisitor::EnforceShapeAndDTypeEQ(const Variable& var1,
                                              const Variable& var2) {
-  EnforceEqualShapeAndDTypeVisitor visitor{&var1};
+  EnforceShapeAndDTypeEQVisitor visitor{&var1};
   VisitVariable(var2, &visitor);
 }
 

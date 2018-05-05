@@ -53,6 +53,7 @@ void ReduceOpHandle::RunImpl() {
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated(in_var_handles);
 
+  // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
   for (auto *in_handle : in_var_handles) {
     in_places.emplace_back(in_handle->place_);
@@ -66,22 +67,23 @@ void ReduceOpHandle::RunImpl() {
       var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(out_var);
 
-  // TODO(zcd): The Place of var_handle is determined at building SSA graph
-  // stage, while the Place of var is determined at runtime. If they are
-  // different, DataTransform should be applied. Currently, it has not been done
-  // yet.
-  PADDLE_ENFORCE_EQ(
-      VariableVisitor::GetMutableTensor(pre_in_var).place().which(),
-      out_var_handle->place_.which(),
-      "Currently, Places of input and output must be all on CPU or all on "
-      "GPU.");
+  // NOTE: The tensors' Place of input and output must be all on GPU or all on
+  // CPU.
+  auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
+  platform::Place t_out_p;
+  if (platform::is_gpu_place(in_p)) {
+    PADDLE_ENFORCE(platform::is_gpu_place(out_var_handle->place_),
+                   "Places of input and output must be all on GPU.");
+    t_out_p = out_var_handle->place_;
+  } else {
+    t_out_p = platform::CPUPlace();
+  }
 
   if (pre_in_var->IsType<framework::SelectedRows>()) {
     std::vector<const SelectedRows *> in_selected_rows =
         GetInputValues<SelectedRows>(in_var_handles, var_scopes);
 
-    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_,
-                       out_var_handle->place_,
+    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
                        out_var->GetMutable<framework::SelectedRows>());
   } else {
     std::vector<const LoDTensor *> lod_tensors =
