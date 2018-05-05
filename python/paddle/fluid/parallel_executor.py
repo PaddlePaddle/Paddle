@@ -30,7 +30,9 @@ class ParallelExecutor(object):
                  num_threads=None,
                  allow_op_delay=False,
                  share_vars_from=None,
-                 use_default_grad_scale=True):
+                 use_default_grad_scale=True,
+                 num_nodes=0,
+                 trainer_id=0):
         """
         ParallelExecutor can run program in parallel.
 
@@ -129,7 +131,9 @@ class ParallelExecutor(object):
             scope,
             local_scopes,
             allow_op_delay,
-            use_default_grad_scale)
+            use_default_grad_scale,
+            num_nodes,
+            trainer_id)
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):
