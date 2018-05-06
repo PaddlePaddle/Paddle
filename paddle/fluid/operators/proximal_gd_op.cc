@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 class ProximalGDOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -42,6 +43,12 @@ class ProximalGDOp : public framework::OperatorWithKernel {
                       "Learning Rate should be a scalar.");
 
     ctx->SetOutputDim("ParamOut", param_dim);
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
