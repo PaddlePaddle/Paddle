@@ -65,6 +65,5 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
   return __longlong_as_double(old);
 }
 #endif
-
 }  // namespace platform
 }  // namespace paddle
