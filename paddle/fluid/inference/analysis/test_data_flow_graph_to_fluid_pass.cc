@@ -19,29 +19,14 @@
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/io.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class FluidToDFGTester : public ::testing::Test {
- protected:
-  void SetUp() override {
-    // TODO(Superjomn) update latter.
-    const std::string model_dir =
-        "/Users/superjom/project/Paddle/cmake-build-debug/inference_model";
-    auto place = paddle::platform::CPUPlace();
-    auto executor = paddle::framework::Executor(place);
-    auto *scope = new paddle::framework::Scope();
-    auto program = Load(&executor, scope, model_dir);
-    desc = *program->Proto();
-  }
-
-  framework::proto::ProgramDesc desc;
-};
-
-TEST_F(FluidToDFGTester, Test) {
+TEST_F(DFG_Tester, Test) {
   framework::proto::ProgramDesc new_desc;
   DataFlowGraph graph;
 

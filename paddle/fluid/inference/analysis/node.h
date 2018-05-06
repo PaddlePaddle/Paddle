@@ -173,11 +173,17 @@ class Value : public Node {
  */
 class Function : public Node {
  public:
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(Function);
-
   std::vector<Dot::Attr> dot_attrs() const override;
 
+  // Get the operator's type from Desc.
+  const std::string &func_type() const { return func_type_; }
+  // Set the operator's type.
+  void SetFuncType(const std::string &func_type) { func_type_ = func_type; }
+
+  PADDLE_DISALLOW_COPY_AND_ASSIGN(Function);
+
  protected:
+  std::string func_type_;
   Function() { SetType(Node::Type::kFunction); }
   friend class NodeMap;
 };
@@ -201,6 +207,8 @@ class NodeMap {
   const Node &Get(size_t id) const;
 
   void Delete(size_t id);
+
+  const std::vector<std::unique_ptr<Node>> &nodes() { return nodes_; }
 
   size_t size() const { return nodes_.size(); }
 

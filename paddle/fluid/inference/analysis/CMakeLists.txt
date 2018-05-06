@@ -6,11 +6,14 @@ cc_library(
         fluid_to_data_flow_graph_pass.cc
         dot.cc
         dot.h
+        ut_helper.h
 )
 
 cc_test(analysis_test SRCS test_fluid_to_data_flow_graph_pass.cc
         test_data_flow_graph_to_fluid_pass.cc
         test_dot.cc
+        test_subgraph_splitter.cc
+        test_data_flow_graph.cc
         DEPS inference_analysis framework_proto
         proto_desc
         gtest

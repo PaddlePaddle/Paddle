@@ -19,6 +19,38 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+// It is a better idea that the inputs and outputs of this graph is set manully
+// before, but there must be a Pass that helps to prune the unnecessary ops that
+// do not contribute to the given targets, so in this pass, analysis and get the
+// inputs and outputs is OK.
+void DataFlowGraph::Build() {
+  inputs.clear();
+  outputs.clear();
+  std::unordered_set<Node *> ins;
+  std::unordered_set<Node *> outs;
+  for (auto &node : nodes.nodes()) {
+    for (auto *in : node->inlinks) {
+      ins.insert(in);
+    }
+    for (auto *out : node->outlinks) {
+      outs.insert(out);
+    }
+  }
+
+  // The nodes that in ins but not in outs is the graph's inputs
+  // similarly, the nodes that in outs but not in ins is the graphs' outputs
+  for (auto *in : ins) {
+    if (!outs.count(in)) {
+      inputs.push_back(in);
+    }
+  }
+  for (auto *out : outs) {
+    if (!outs.count(out)) {
+      outputs.push_back(out);
+    }
+  }
+}
+
 std::string DataFlowGraph::DotString() const {
   Dot dot;
 
@@ -91,9 +123,10 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator
   auto *cur = queue_.front();
   visited_.insert(cur);
   queue_.pop_front();
-  for (auto *input : cur->inlinks) {
-    if (!visited_.count(input)) {
-      queue_.push_back(input);
+  for (auto *output : cur->outlinks) {
+    if (!visited_.count(output)) {
+      queue_.push_back(output);
+      visited_.insert(output);
     }
   }
   return *this;
@@ -103,7 +136,10 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
     const GraphTraits<DataFlowGraph>::NodesBFSIterator &other) {
   if (queue_.empty()) return other.queue_.empty();
   if ((!queue_.empty()) && (!other.queue_.empty())) {
-    return queue_.front() == other.queue_.front();
+    return queue_.front() == other.queue_.front() &&
+           visited_.size() == other.visited_.size();  // here need to check the
+                                                      // equality of queue and
+    // visited. Just a light but week implementation.
   }
   return false;
 }
@@ -134,10 +170,14 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator
     &GraphTraits<DataFlowGraph>::NodesDFSIterator::operator++() {
   if (stack_.empty()) return *this;
   visited_.insert(stack_.top());
-  for (auto *x : stack_.top()->outlinks) {
-    if (!visited_.count(x)) stack_.push(x);
-  }
+  auto* cur = stack_.top();
   stack_.pop();
+  for (auto *x : cur->outlinks) {
+    if (!visited_.count(x)) {
+      stack_.push(x);
+      visited_.insert(x);
+    }
+  }
   return *this;
 }
 bool GraphTraits<DataFlowGraph>::NodesDFSIterator::operator==(

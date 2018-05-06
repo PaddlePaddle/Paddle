@@ -101,29 +101,6 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
 
 void SubGraphFuse::operator()() { ReplaceNodesWithSubGraphs(); }
 
-// Extract the inputs and outputs of a graph. The inputs and outputs of a
-// sub-graph is the inputs nodes and output nodes that doesn't inside the
-// sub-graph.
-std::pair<std::vector<Node *>, std::vector<Node *>>
-ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {
-  std::unordered_set<Node *> nodes(graph.begin(), graph.end());
-  std::unordered_set<Node *> inputs;
-  std::unordered_set<Node *> outputs;
-  for (auto *node : graph) {
-    for (auto *in : node->inlinks) {
-      if (!nodes.count(in) && in->type() == Node::Type::kValue) {
-        inputs.insert(in);
-      }
-    }
-    for (auto *out : node->outlinks) {
-      if (!nodes.count(out) && out->type() == Node::Type::kValue) {
-        outputs.insert(out);
-      }
-    }
-  }
-  return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
-                        std::vector<Node *>(outputs.begin(), outputs.end()));
-}
 
 void SubGraphFuse::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubGraphSplitter(graph_, node_inside_subgraph_teller_)();
