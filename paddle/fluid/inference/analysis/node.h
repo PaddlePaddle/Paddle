@@ -25,6 +25,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/analysis/device.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
@@ -37,11 +38,9 @@ class NodeMap;
  * Node Representation.
  *
  * This is a very important class for analysis. It is the base class of all
- * nodes computed by a program
- * that may be used as operands to other nodes.
+ * nodes computed by a program that may be used as operands to other nodes.
  * Node is the super class of other important classes such as Function and
- * Value, some nodes can have
- * a name.
+ * Value, some nodes can have a name.
  */
 class Node {
  public:
@@ -57,7 +56,15 @@ class Node {
   }
 
   // Formatted representation of this Node.
-  virtual std::string repr() const = 0;
+  virtual std::string repr() const {
+    return name() + "(" + std::to_string(id()) + ")";
+  }
+
+  // DOT node representation. One Node type can customize its own node
+  // representation.
+  virtual std::vector<Dot::Attr> dot_attrs() const {
+    return std::vector<Dot::Attr>({Dot::Attr("style", "filled")});
+  }
 
   template <typename T>
   T &NewAttr(const std::string &name) {
@@ -66,7 +73,7 @@ class Node {
     return it->second.As<T>();
   }
 
-  size_t id() const { return id_; }
+  int id() const { return id_; }
 
   bool deleted() const { return deleted_; }
   void SetDeleted() { deleted_ = true; }
@@ -79,8 +86,6 @@ class Node {
 
   void *extra_info() const { return extra_info_; }
   void SetExtraInfo(void *extra_info) { extra_info_ = extra_info; }
-
-  static unsigned int counter() { return counter_; }
 
   // Input links.
   std::vector<Node *> inlinks;
@@ -127,9 +132,6 @@ class Node {
   void *extra_info_;
 
   mutable std::unordered_map<std::string, Attr> attrs_;
-
- private:
-  static unsigned counter_;
 };
 
 class Function;
@@ -151,7 +153,7 @@ class Value : public Node {
   Device device() const { return device_; }
   void SetDevice(Device device) { device_ = device; }
 
-  std::string repr() const override;
+  std::vector<Dot::Attr> dot_attrs() const override;
 
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Value);
 
@@ -171,9 +173,9 @@ class Value : public Node {
  */
 class Function : public Node {
  public:
-  std::string repr() const override;
-
   PADDLE_DISALLOW_COPY_AND_ASSIGN(Function);
+
+  std::vector<Dot::Attr> dot_attrs() const override;
 
  protected:
   Function() { SetType(Node::Type::kFunction); }
@@ -184,7 +186,7 @@ class Function : public Node {
  * FunctionBlock is a Node that contains a sub-graph multiple Node.
  */
 struct FunctionBlock : public Node {
-  std::string repr() const override;
+  std::string repr() const override { return "block-" + std::to_string(id()); }
   std::vector<Node *> subgraph;
 };
 
@@ -194,7 +196,9 @@ class NodeMap {
   Node *Create(Node::Type type);
 
   // Get a node by its id.
-  Node *Get(size_t id);
+  Node *GetMutable(size_t id);
+
+  const Node &Get(size_t id) const;
 
   void Delete(size_t id);
 

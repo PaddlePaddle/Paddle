@@ -46,6 +46,7 @@ TEST_F(FluidToDFGTester, Init) {
   pass.Run(&graph);
   ASSERT_GT(graph.nodes.size(), 0);
   pass.Finalize();
+  LOG(INFO) << '\n' << graph.DotString();
 }
 
 }  // analysis

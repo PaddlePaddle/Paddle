@@ -38,6 +38,9 @@ struct DataFlowGraph {
   NodeMap nodes;
   std::vector<Node *> inputs;
   std::vector<Node *> outputs;
+
+  // Output a DOT graph file for debug.
+  std::string DotString() const;
 };
 
 /*

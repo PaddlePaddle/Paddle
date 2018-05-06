@@ -20,10 +20,17 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-unsigned Node::counter_ = 0;
-std::string Value::repr() const { return std::string(); }
+std::vector<Dot::Attr> Value::dot_attrs() const {
+  return std::vector<Dot::Attr>({Dot::Attr("style", "filled,rounded"),
+                                 Dot::Attr("shape", "box"),
+                                 Dot::Attr("fillcolor", "red")});
+}
 
-std::string Function::repr() const { return std::string(); }
+std::vector<Dot::Attr> Function::dot_attrs() const {
+  return std::vector<Dot::Attr>({Dot::Attr("style", "filled,rounded"),
+                                 Dot::Attr("shape", "diamond"),
+                                 Dot::Attr("fillcolor", "yellow")});
+}
 
 Node *NodeMap::Create(Node::Type type) {
   switch (type) {
@@ -40,9 +47,14 @@ Node *NodeMap::Create(Node::Type type) {
   return nodes_.back().get();
 }
 
-Node *NodeMap::Get(size_t id) {
+Node *NodeMap::GetMutable(size_t id) {
   PADDLE_ENFORCE_GT(size(), id);
   return nodes_[id].get();
+}
+
+const Node &NodeMap::Get(size_t id) const {
+  PADDLE_ENFORCE_GT(size(), id);
+  return *nodes_[id].get();
 }
 
 void NodeMap::Delete(size_t id) {

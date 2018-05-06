@@ -54,7 +54,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     for (size_t j = 0; j < op.inputs_size(); j++) {
       auto &in_var = op.inputs(j);
       for (size_t k = 0; k < in_var.arguments_size(); k++) {
-        auto *in = graph->nodes.Get(var2id.at(in_var.arguments(k)));
+        auto *in = graph->nodes.GetMutable(var2id.at(in_var.arguments(k)));
         in->outlinks.push_back(o);
         o->inlinks.push_back(in);
       }
@@ -62,7 +62,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     for (size_t j = 0; j < op.outputs_size(); j++) {
       auto &out_var = op.outputs(j);
       for (size_t k = 0; k < out_var.arguments_size(); k++) {
-        auto *out = graph->nodes.Get(var2id[out_var.arguments(k)]);
+        auto *out = graph->nodes.GetMutable(var2id[out_var.arguments(k)]);
         out->inlinks.push_back(o);
         o->outlinks.push_back(out);
       }
