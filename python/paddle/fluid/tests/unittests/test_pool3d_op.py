@@ -90,20 +90,22 @@ def avg_pool3D_forward_naive(x,
 
 class TestPool3d_Op(OpTest):
     def setUp(self):
+        self.op_type = "pool3d"
         self.use_cudnn = False
+        self.dtype = np.float32
         self.init_test_case()
         self.init_global_pool()
-        self.init_op_type()
+        self.init_kernel_type()
         self.init_pool_type()
         self.init_ceil_mode()
 
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
-        input = np.random.random(self.shape).astype("float32")
+        input = np.random.random(self.shape).astype(self.dtype)
         output = self.pool3D_forward_naive(input, self.ksize, self.strides,
                                            self.paddings, self.global_pool,
-                                           self.ceil_mode).astype("float32")
-        self.inputs = {'X': input}
+                                           self.ceil_mode).astype(self.dtype)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,
@@ -116,7 +118,7 @@ class TestPool3d_Op(OpTest):
             'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
-        self.outputs = {'Out': output.astype('float32')}
+        self.outputs = {'Out': output}
 
     def testcudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
@@ -129,6 +131,8 @@ class TestPool3d_Op(OpTest):
             self.check_output()
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -142,8 +146,8 @@ class TestPool3d_Op(OpTest):
         self.strides = [1, 1, 1]
         self.paddings = [0, 0, 0]
 
-    def init_op_type(self):
-        self.op_type = "pool3d"
+    def init_kernel_type(self):
+        pass
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -158,14 +162,10 @@ class TestPool3d_Op(OpTest):
 
 class TestCase1(TestPool3d_Op):
     def init_test_case(self):
-        self.op_type = "pool3d"
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
         self.paddings = [0, 0, 0]
-
-    def init_op_type(self):
-        self.op_type = "pool3d"
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -182,9 +182,6 @@ class TestCase2(TestPool3d_Op):
         self.strides = [1, 1, 1]
         self.paddings = [1, 1, 1]
 
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "avg"
         self.pool3D_forward_naive = avg_pool3D_forward_naive
@@ -194,27 +191,18 @@ class TestCase2(TestPool3d_Op):
 
 
 class TestCase3(TestPool3d_Op):
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 class TestCase4(TestCase1):
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 class TestCase5(TestCase2):
-    def init_op_type(self):
-        self.op_type = "pool3d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
@@ -222,39 +210,105 @@ class TestCase5(TestCase2):
 
 #--------------------test pool3d--------------------
 class TestCUDNNCase1(TestPool3d_Op):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase1(TestPool3d_Op):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase2(TestCase1):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase2(TestCase1):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase3(TestCase2):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase3(TestCase2):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase4(TestCase3):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase4(TestCase3):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase5(TestCase4):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase5(TestCase4):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase6(TestCase5):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool3d"
+
+
+class TestFP16CUDNNCase6(TestCase5):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCeilModeCase1(TestCUDNNCase1):
