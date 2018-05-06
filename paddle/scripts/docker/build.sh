@@ -80,7 +80,8 @@ EOF
         -DWITH_FAST_BUNDLE_TEST=OFF \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_CXX_FLAGS_RELEASE="-O0 -DNDEBUG"
 }
 
 function run_build() {
