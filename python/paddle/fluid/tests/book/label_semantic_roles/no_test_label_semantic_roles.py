@@ -159,7 +159,7 @@ def train(use_cuda, save_path):
             if (event.batch_id % 10) == 0:
                 avg_cost = trainer.test(reader=test_reader)
 
-                print('BatchID {1:04}, Loss {2:2.2}'.format(event.batch_id + 1,
+                print('BatchID {0:04}, Loss {1:2.2}'.format(event.batch_id + 1,
                                                             avg_cost))
 
                 if avg_cost > 0.01:  # Low threshold for speeding up CI
