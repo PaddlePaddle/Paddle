@@ -7,7 +7,7 @@ This document introduce the overall use of the PaddlePaddle C-API.
 The workflow of using the C-API is shown in Figure 1, and is divided into two parts: (1) preparation of a prediction model and (2) prediction program development.
 
 <p align="center">
-<img src="./images/workflow_of_CAPI_en.png" width=500><br> Figure 1. Schematic diagram of C-API usage
+<img src="./images/workflow_of_CAPI.png" width=500><br> Figure 1. Schematic diagram of C-API usage
 </p>
 
 - Prepare the predicted model
