@@ -124,3 +124,4 @@ After completing the above preparation, the forward calculation of the neural ne
 
 After the prediction is finished, the used intermediate variables and resources are cleaned up and released.
 
+

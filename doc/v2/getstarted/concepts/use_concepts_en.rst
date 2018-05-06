@@ -134,7 +134,7 @@ Finally we can start the training by calling trainer's train method:
         event_handler=event_handler,
         num_passes=100)
 
-For more information on using the PaddlePaddle, please refer to `Advanced guide <../../howto/index_cn.html>`_。
+For more information on using the PaddlePaddle, please refer to `advanced guide <../../howto/index_cn.html>`_。
 
 Linear regression complete example
 ==============
