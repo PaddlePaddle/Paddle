@@ -39,6 +39,7 @@ TEST_F(DFG_Tester, Split) {
   ASSERT_GT(dfg.nodes.size(), 5);
   auto subgraphs = SubGraphSplitter(&dfg, teller)();
   LOG(INFO) << "subgraph size: " << subgraphs.size();
+  ASSERT_EQ(subgraphs.size(), 1);
 }
 
 }  // namespace analysis

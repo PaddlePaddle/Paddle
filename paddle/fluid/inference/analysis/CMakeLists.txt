@@ -9,6 +9,10 @@ cc_library(
         ut_helper.h
 )
 
+
+set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
+set(TEST_TASK recognize_digits_mlp)
+
 cc_test(analysis_test SRCS
         node_tester.cc
         dot_tester.cc
@@ -24,4 +28,4 @@ cc_test(analysis_test SRCS
         place
         paddle_fluid_api
         glog
-        )
+        ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model)
