@@ -32,7 +32,7 @@ void SendOpHandle::RunImpl() {
     if (in->DebugString() == "dummy") {  // HACK
       continue;
     }
-    in->generated_op_->Wait(dev_ctxes_[p]);
+    if (in->generated_op_) in->generated_op_->Wait(dev_ctxes_[p]);
   }
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
   // FIXME(wuyi): can not use RunAndRecordEvent here, for it will cause dead
