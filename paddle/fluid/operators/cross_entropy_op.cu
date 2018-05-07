@@ -14,98 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cross_entropy_op.h"
 
-namespace paddle {
-namespace operators {
-
-namespace {
-
-template <typename T>
-__global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
-                                           const int64_t* label, const int N,
-                                           const int D) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    int idx = i * D + label[i];
-    dX[idx] = -dY[i] / X[idx];
-  }
-}
-
-template <typename T>
-__global__ void SoftCrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
-                                               const T* label, const int N,
-                                               const int D) {
-  int ids = blockIdx.x * blockDim.x + threadIdx.x;
-  if (ids < N * D) {
-    int row_ids = ids / D;
-    dX[ids] = -label[ids] * dY[row_ids] / X[ids];
-  }
-}
-}  // namespace
-
-template <typename T>
-class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* label = ctx.Input<Tensor>("Label");
-    Tensor* y = ctx.Output<Tensor>("Y");
-    y->mutable_data<T>(ctx.GetPlace());
-
-    math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
-        ctx.template device_context<platform::CUDADeviceContext>(), y, x, label,
-        ctx.Attr<bool>("soft_label"));
-  }
-};
-
-template <typename T>
-class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
-
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* label = ctx.Input<Tensor>("Label");
-    Tensor* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    dx->mutable_data<T>(ctx.GetPlace());
-
-    const T* dy_data =
-        ctx.Input<Tensor>(framework::GradVarName("Y"))->data<T>();
-    T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
-    const T* x_data = x->data<T>();
-
-    int64_t batch_size = x->dims()[0];
-    int64_t class_num = x->dims()[1];
-
-    int block = 512;
-    int grid = (batch_size * class_num + block - 1) / block;
-
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto stream = dev_ctx.stream();
-
-    if (ctx.Attr<bool>("soft_label")) {
-      auto* label_data = label->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
-          dx_data, dy_data, x_data, label_data, batch_size, class_num);
-    } else {
-      math::SetConstant<platform::CUDADeviceContext, T> functor;
-      functor(dev_ctx, dx, 0);
-      auto* label_data = label->data<int64_t>();
-      grid = (batch_size + block - 1) / block;
-      CrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
-          dx_data, dy_data, x_data, label_data, batch_size, class_num);
-    }
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
-                        ops::CrossEntropyOpCUDAKernel<double>);
+using CUDACtx = paddle::platform::CUDADeviceContext;
+REGISTER_OP_CUDA_KERNEL(cross_entropy,
+                        ops::CrossEntropyOpKernel<CUDACtx, float>,
+                        ops::CrossEntropyOpKernel<CUDACtx, double>);
 REGISTER_OP_CUDA_KERNEL(cross_entropy_grad,
-                        ops::CrossEntropyGradientOpCUDAKernel<float>,
-                        ops::CrossEntropyGradientOpCUDAKernel<double>);
+                        ops::CrossEntropyGradientOpKernel<CUDACtx, float>,
+                        ops::CrossEntropyGradientOpKernel<CUDACtx, double>);

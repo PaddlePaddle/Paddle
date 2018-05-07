@@ -65,7 +65,7 @@ class TensorRTEngine : public EngineBase {
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork() {
-    infer_builder_.reset(createInferBuilder(logger_));
+    infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
   // After finishing adding ops, freeze this network and creates the executation
@@ -80,6 +80,8 @@ class TensorRTEngine : public EngineBase {
   // name.
   void DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                      const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name.
+  void DeclareOutput(const std::string& name);
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
@@ -98,6 +100,10 @@ class TensorRTEngine : public EngineBase {
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.
   void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
+  // Fill an ITensor into map itensor_map_.
+  void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
+  // Get an ITensor called name.
+  nvinfer1::ITensor* GetITensor(const std::string& name);
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
@@ -113,6 +119,8 @@ class TensorRTEngine : public EngineBase {
   std::vector<void*> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
+  std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
+      itensor_map_;
 
   // TensorRT related internal members
   template <typename T>

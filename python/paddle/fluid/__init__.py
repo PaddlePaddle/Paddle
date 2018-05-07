@@ -20,6 +20,16 @@ from framework import *
 import executor
 from executor import *
 
+import trainer
+from trainer import Trainer
+from trainer import BeginEpochEvent
+from trainer import EndEpochEvent
+from trainer import BeginStepEvent
+from trainer import EndStepEvent
+
+import inferencer
+from inferencer import Inferencer
+
 import io
 import evaluator
 import initializer
@@ -30,16 +40,14 @@ import backward
 import regularizer
 import average
 import metrics
+import transpiler
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
-from distribute_transpiler import DistributeTranspiler
-from distribute_transpiler_simple import SimpleDistributeTranspiler
+from transpiler import DistributeTranspiler, SimpleDistributeTranspiler, InferenceTranspiler, memory_optimize, release_memory
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
-from inference_transpiler import InferenceTranspiler
 import clip
-from memory_optimization_transpiler import memory_optimize, release_memory
 import profiler
 import unique_name
 import recordio_writer
@@ -47,7 +55,8 @@ from parallel_executor import ParallelExecutor
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
+__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ +\
+          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + [
     'io',
     'initializer',
     'layers',
@@ -65,11 +74,6 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'WeightNormParamAttr',
     'DataFeeder',
     'clip',
-    'SimpleDistributeTranspiler',
-    'DistributeTranspiler',
-    'InferenceTranspiler',
-    'memory_optimize',
-    'release_memory',
     'profiler',
     'unique_name',
     'recordio_writer',

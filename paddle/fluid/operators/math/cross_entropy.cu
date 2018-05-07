@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -30,65 +32,21 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
 }
 
 template <typename T>
-__device__ __forceinline__ T sum_single_warp(T val) {
-  val += __shfl_down(val, 16);
-  val += __shfl_down(val, 8);
-  val += __shfl_down(val, 4);
-  val += __shfl_down(val, 2);
-  val += __shfl_down(val, 1);
-  return val;
-}
-
-// CUDA do not support dynamic arrary in template
-// https://stackoverflow.com/questions/20497209
-template <typename T>
-struct SharedMemory {
-  // Ensure that we won't compile any un-specialized types
-  __device__ T* GetPointer() { return NULL; }
-};
-
-template <>
-struct SharedMemory<float> {
-  __device__ float* GetPointer() {
-    extern __shared__ float s_float[];
-    return s_float;
-  }
-};
-
-template <>
-struct SharedMemory<double> {
-  __device__ double* GetPointer() {
-    extern __shared__ double s_double[];
-    return s_double;
-  }
-};
-
-template <typename T>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int class_num) {
   int tid = threadIdx.x;
-  SharedMemory<T> d_sum_shared;
-  T* d_sum = d_sum_shared.GetPointer();
-  d_sum[tid] = 0;
+  T val = 0;
 
-  int cur_idx = tid;
-  int next_idx = blockIdx.x * class_num + tid;
-  while (cur_idx < class_num) {
-    d_sum[tid] +=
-        math::TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
-    next_idx += blockDim.x;
-    cur_idx += blockDim.x;
-  }
-  __syncthreads();
-
-  for (unsigned int stride = blockDim.x >> 1; stride >= 32; stride >>= 1) {
-    if (tid < stride) d_sum[tid] += d_sum[tid + stride];
-    __syncthreads();
+  int idx = blockIdx.x * class_num + tid;
+  int end = blockIdx.x * class_num + class_num;
+  for (; idx < end; idx += blockDim.x) {
+    val += math::TolerableValue<T>()(std::log(X[idx])) * label[idx];
   }
 
-  T val = d_sum[tid];
-  val = sum_single_warp<T>(val);
-  if (tid == 0) Y[blockIdx.x] = -val;
+  val = paddle::platform::reduceSum(val, tid, blockDim.x);
+  if (threadIdx.x == 0) {
+    Y[blockIdx.x] = -val;
+  }
 }
 }  // namespace
 
@@ -112,9 +70,7 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
                       ? 512
                       : pow(2, static_cast<int>(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<T><<<
-          batch_size, block, block * sizeof(T),
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();

@@ -26,6 +26,9 @@ class VariableVisitor {
   static Tensor &GetMutableTensor(Variable *var);
 
   static void ShareDimsAndLoD(const Variable &src, Variable *trg);
+
+  static void EnforceShapeAndDTypeEQ(const Variable &var1,
+                                     const Variable &var2);
 };
 
 }  // namespace details
