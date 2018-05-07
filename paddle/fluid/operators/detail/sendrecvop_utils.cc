@@ -53,109 +53,106 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
   } else if (var->IsType<ncclUniqueId>()) {
     // NOTE: sendrecv only support RAW type for NCCL_ID
+    VLOG(3) << "serilizing: setting var type nccl id";
     e.WriteUint64(VarMsg::kTypeFieldNumber, 2);
   }
 
   if (!out_name.empty()) {
     e.WriteString(VarMsg::kOutVarnameFieldNumber, out_name);
   }
-  switch (framework::ToVarType(var->Type())) {
-    case framework::proto::VarType_Type_LOD_TENSOR: {
-      auto tensor = var->Get<framework::LoDTensor>();
-      e.WriteUint64(VarMsg::kDataTypeFieldNumber,
-                    framework::ToDataType(tensor.type()));
-      for (auto& dim : framework::vectorize(tensor.dims())) {
-        e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
-      }
-      auto lod = tensor.lod();  // std::vector<Vector<size_t>>
-      if (lod.size() > 0) {
-        e.WriteUint64(VarMsg::kLodLevelFieldNumber, lod.size());
+  if (var->IsType<framework::LoDTensor>()) {
+    // ===========================Tensor==================================
+    auto tensor = var->Get<framework::LoDTensor>();
+    e.WriteUint64(VarMsg::kDataTypeFieldNumber,
+                  framework::ToDataType(tensor.type()));
+    for (auto& dim : framework::vectorize(tensor.dims())) {
+      e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
+    }
+    auto lod = tensor.lod();  // std::vector<Vector<size_t>>
+    if (lod.size() > 0) {
+      e.WriteUint64(VarMsg::kLodLevelFieldNumber, lod.size());
 
-        for (auto& each : lod) {
-          e.WriteVarlengthBeginning(VarMsg::kLodFieldNumber,
-                                    2 +      // tag + varintlength of submessage
-                                        1 +  // kLodDataFieldNumber
-                                        each.size());
-          // auto copied from GPU
-          for (auto& d : each) {
-            e.WriteUint64(VarMsg::LodData::kLodDataFieldNumber, d);
-          }
+      for (auto& each : lod) {
+        e.WriteVarlengthBeginning(VarMsg::kLodFieldNumber,
+                                  2 +      // tag + varintlength of submessage
+                                      1 +  // kLodDataFieldNumber
+                                      each.size());
+        // auto copied from GPU
+        for (auto& d : each) {
+          e.WriteUint64(VarMsg::LodData::kLodDataFieldNumber, d);
         }
       }
-      if (platform::is_gpu_place(ctx.GetPlace())) {
+    }
+    if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-        PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
-        platform::CPUPlace cpu;
-        auto& gpu_dev_ctx =
-            static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
-        payload = memory::Alloc(cpu, copy_size);
+      PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
+      platform::CPUPlace cpu;
+      auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+      auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
+      payload = memory::Alloc(cpu, copy_size);
 
-        memory::Copy(cpu, payload,
-                     boost::get<platform::CUDAPlace>(tensor.place()),
-                     reinterpret_cast<const void*>(tensor.data<void>()),
-                     copy_size, gpu_dev_ctx.stream());
-        ctx.Wait();
-        destroy_callback = [](void* backing) {
-          platform::CPUPlace cpu;
-          memory::Free(cpu, backing);
-        };
+      memory::Copy(cpu, payload,
+                   boost::get<platform::CUDAPlace>(tensor.place()),
+                   reinterpret_cast<const void*>(tensor.data<void>()),
+                   copy_size, gpu_dev_ctx.stream());
+      ctx.Wait();
+      destroy_callback = [](void* backing) {
+        platform::CPUPlace cpu;
+        memory::Free(cpu, backing);
+      };
 
 #endif
-      } else {
-        payload = tensor.data<void>();
-      }
-      payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
-      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
-    } break;
-    case framework::proto::VarType_Type_SELECTED_ROWS: {
-      // TODO(typhoonzero): selectedrows implement should not use unique_ptr
-      auto* slr = var->GetMutable<framework::SelectedRows>();
-      e.WriteUint64(VarMsg::kDataTypeFieldNumber,
-                    framework::ToDataType(slr->value().type()));
-      for (auto& dim : framework::vectorize(slr->value().dims())) {
-        e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
-      }
-      e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
-      e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
-      auto* tensor = slr->mutable_value();
-      if (platform::is_gpu_place(ctx.GetPlace())) {
+    } else {
+      payload = tensor.data<void>();
+    }
+    payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
+    e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
+  } else if (var->IsType<framework::SelectedRows>()) {
+    // ===========================SELECTED
+    // ROWS==================================
+    // TODO(typhoonzero): selectedrows implement should not use unique_ptr
+    auto* slr = var->GetMutable<framework::SelectedRows>();
+    e.WriteUint64(VarMsg::kDataTypeFieldNumber,
+                  framework::ToDataType(slr->value().type()));
+    for (auto& dim : framework::vectorize(slr->value().dims())) {
+      e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
+    }
+    e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
+    e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
+    auto* tensor = slr->mutable_value();
+    if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
+      platform::CPUPlace cpu;
+      auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+      auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
+      payload = memory::Alloc(cpu, copy_size);
+      memory::Copy(cpu, payload,
+                   boost::get<platform::CUDAPlace>(tensor->place()),
+                   reinterpret_cast<const void*>(tensor->data<void>()),
+                   copy_size, gpu_dev_ctx.stream());
+      ctx.Wait();
+      destroy_callback = [](void* backing) {
         platform::CPUPlace cpu;
-        auto& gpu_dev_ctx =
-            static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size =
-            tensor->numel() * framework::SizeOfType(tensor->type());
-        payload = memory::Alloc(cpu, copy_size);
-        memory::Copy(cpu, payload,
-                     boost::get<platform::CUDAPlace>(tensor->place()),
-                     reinterpret_cast<const void*>(tensor->data<void>()),
-                     copy_size, gpu_dev_ctx.stream());
-        ctx.Wait();
-        destroy_callback = [](void* backing) {
-          platform::CPUPlace cpu;
-          memory::Free(cpu, backing);
-        };
+        memory::Free(cpu, backing);
+      };
 #endif
-      } else {
-        payload = slr->mutable_value()->data<void>();
-      }
-      payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
-      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
-    } break;
-    case framework::proto::VarType_Type_RAW: {
-      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
-                                NCCL_UNIQUE_ID_BYTES);
-      ncclUniqueId* uid = var->GetMutable<ncclUniqueId>();
-      e.WriteRawBytes(std::string(uid->internal, NCCL_UNIQUE_ID_BYTES));
-    } break;
-    default:
-      PADDLE_THROW("Serialize does not support type: %s",
-                   typeid(var->Type()).name());
-      break;
+    } else {
+      payload = slr->mutable_value()->data<void>();
+    }
+    payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
+    e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
+  } else if (var->IsType<ncclUniqueId>()) {
+    // ===========================NCCL ID==================================
+    e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
+                              NCCL_UNIQUE_ID_BYTES);
+    ncclUniqueId* uid = var->GetMutable<ncclUniqueId>();
+    e.WriteRawBytes(std::string(uid->internal, NCCL_UNIQUE_ID_BYTES));
+  } else {
+    PADDLE_THROW("Serialize does not support type: %s",
+                 typeid(var->Type()).name());
   }
 
-  if (framework::ToVarType(var->Type()) == framework::proto::VarType_Type_RAW) {
+  if (var->IsType<ncclUniqueId>()) {
     // for serialize NCCL_ID
     ::grpc::Slice slices(e.size());
     memcpy(const_cast<uint8_t*>(slices.begin()), e.data(), e.size());
