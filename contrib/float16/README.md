@@ -1,3 +1,7 @@
+# Float16 Inference in PaddlePaddle Fluid
+
+Kexin Zhao <zhaokexin01@baidu.com>
+
 ## Introduction
 Working with deep neural networks (DNN) is a two-stage process. First we train DNN using labeled examples of inputs and desired outputs to obtain the model parameters (weights), then we deploy DNN along with the trained weights to run inference on unknown inputs. Typically, these weights are in float data type and hence we run inference in float mode using these weights. This post focuses on the discussion of how to use low precision float16 data type to represent these trained weights and run inference in float16 mode as well as the advantages of float16 inference over its float counterpart by showing some experiment results. 
 
