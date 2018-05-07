@@ -49,7 +49,7 @@ class Inferencer(object):
                             "output of program_func should be a list of Variable"
                         )
 
-    def infer(self, inputs, scope=None, return_numpy=False):
+    def infer(self, inputs, scope=None, return_numpy=True):
         """
         :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
         to get the predict value
@@ -57,7 +57,7 @@ class Inferencer(object):
         :param return_numpy: if return numpy value for row tensor
         :return: the predict value of the inference model
         """
-        if not isinstance(inputs.dict):
+        if not isinstance(inputs, dict):
             raise ValueError(
                 "inputs should be a map of {'input_name': input_var}")
 

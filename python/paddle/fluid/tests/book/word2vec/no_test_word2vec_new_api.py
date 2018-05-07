@@ -76,15 +76,15 @@ def inference_program(is_sparse):
                               size=HIDDEN_SIZE,
                               act='sigmoid')
     predict_word = fluid.layers.fc(input=hidden1, size=dict_size, act='softmax')
-    return predict_word
+    return [predict_word]
 
 
 def train_program(is_sparse):
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
-    predict_word = inference_program(is_sparse)
+    predict_word = inference_program(is_sparse)[0]
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
-    return avg_cost
+    return avg_cost, [predict_word]
 
 
 def train(use_cuda, is_sparse, save_path):
@@ -94,13 +94,13 @@ def train(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     def event_handler(event):
-        print type(event)
         if isinstance(event, fluid.EndEpochEvent):
             avg_cost = trainer.test(reader=paddle.dataset.imikolov.test(
                 word_dict, N))
 
             if avg_cost < 5.0:
-                trainer.save_params(save_path)
+                trainer.save_inference_model(
+                    save_path, ['firstw', 'secondw', 'thirdw', 'forthw'])
                 return
             if math.isnan(avg_cost):
                 sys.exit("got NaN loss, training failed.")
@@ -110,13 +110,13 @@ def train(use_cuda, is_sparse, save_path):
         fluid.optimizer.SGD(learning_rate=0.001),
         place=place)
     trainer.train(
-        reader=train_reader, num_epochs=100, event_handler=event_handler)
+        reader=train_reader, num_epochs=1, event_handler=event_handler)
 
 
 def infer(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        partial(inference_program, is_sparse),
+        program_func=partial(inference_program, is_sparse),
         param_path=save_path,
         place=place)
 
@@ -125,13 +125,16 @@ def infer(use_cuda, is_sparse, save_path):
     second_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    result = inferencer.infer({
-        'firstw': first_word,
-        'secondw': second_word,
-        'thirdw': third_word,
-        'forthw': fourth_word
-    })
-    print(result)
+
+    result = inferencer.infer(
+        {
+            'firstw': first_word,
+            'secondw': second_word,
+            'thirdw': third_word,
+            'forthw': fourth_word
+        },
+        return_numpy=False)
+    print(np.array(result[0]))
 
 
 def main(use_cuda, is_sparse):

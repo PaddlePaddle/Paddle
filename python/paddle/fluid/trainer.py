@@ -77,7 +77,7 @@ class Trainer(object):
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
-            loss = program_func()
+            loss, self.predict_vars = program_func()
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = Trainer._check_and_get_place(place)
@@ -174,6 +174,14 @@ class Trainer(object):
         exe = executor.Executor(self.place)
         io.save_persistables(
             exe, dirname=param_path, main_program=self.startup_program)
+
+    def save_inference_model(self, model_path, feed_var_names):
+        if not isinstance(feed_var_names, list):
+            raise ValueError("feed_var_names should be a list")
+
+        exe = executor.Executor(self.place)
+        io.save_inference_model(model_path, feed_var_names, self.predict_vars,
+                                exe)
 
     @staticmethod
     def _check_and_get_place(place):
