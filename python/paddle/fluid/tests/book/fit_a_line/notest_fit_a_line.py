@@ -18,7 +18,6 @@ import contextlib
 import numpy
 import unittest
 
-
 # train reader
 BATCH_SIZE = 20
 
@@ -45,17 +44,15 @@ def train(use_cuda, save_dirname, is_local):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        linear,
-        optimizer=fluid.optimizer.SGD(learning_rate=0.001),
-        place=place
-    )
+        linear, optimizer=fluid.optimizer.SGD(learning_rate=0.001), place=place)
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
             print event.metrics
 
         elif isinstance(event, fluid.EndEpochEvent):
-            test_metrics = trainer.test(reader=paddle.dataset.uci_housing.test())
+            test_metrics = trainer.test(
+                reader=paddle.dataset.uci_housing.test())
             print test_metrics
 
             if test_metrics[0] < 10.0:
