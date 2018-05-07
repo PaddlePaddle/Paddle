@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
+#ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
+#endif
 #include <sys/time.h>
 #include <thread>  // NOLINT
 
@@ -51,10 +53,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     e.WriteUint64(VarMsg::kTypeFieldNumber, 0);
   } else if (var->IsType<framework::SelectedRows>()) {
     e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
+#ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     // NOTE: sendrecv only support RAW type for NCCL_ID
     VLOG(3) << "serilizing: setting var type nccl id";
     e.WriteUint64(VarMsg::kTypeFieldNumber, 2);
+#endif
   }
 
   if (!out_name.empty()) {
@@ -141,17 +145,19 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     }
     payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
+#ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     // ===========================NCCL ID==================================
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                               NCCL_UNIQUE_ID_BYTES);
     ncclUniqueId* uid = var->GetMutable<ncclUniqueId>();
     e.WriteRawBytes(std::string(uid->internal, NCCL_UNIQUE_ID_BYTES));
+#endif
   } else {
     PADDLE_THROW("Serialize does not support type: %s",
                  typeid(var->Type()).name());
   }
-
+#ifdef PADDLE_WITH_CUDA
   if (var->IsType<ncclUniqueId>()) {
     // for serialize NCCL_ID
     ::grpc::Slice slices(e.size());
@@ -160,7 +166,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     msg->Swap(&tmp);
     return;
   }
-
+#endif
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
   int num_slices = 2;       // only SelectedRows have rows buffer
