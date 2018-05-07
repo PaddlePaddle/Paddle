@@ -71,7 +71,7 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(0, op.block_attr("block_attr"))
 
         mul_op = block.append_op()
-        mul_op.set_type("mul")
+        mul_op.set_type("matmul")
         mul_op.check_attrs()
         self.assertEqual(mul_op.attr("x_num_col_dims"), 1)
         self.assertEqual(mul_op.attr("y_num_col_dims"), 1)

@@ -16,7 +16,13 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>);
+    matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MatMulKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext,
+                          paddle::platform::float16>);

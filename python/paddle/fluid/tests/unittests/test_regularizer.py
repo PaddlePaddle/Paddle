@@ -38,7 +38,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
@@ -75,7 +75,7 @@ class TestL1DecayRegularizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},

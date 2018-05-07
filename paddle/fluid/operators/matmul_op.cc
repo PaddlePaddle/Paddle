@@ -37,38 +37,60 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
-    auto mat_dim_x = math::GetMatDim(GetXDim(dim_x), 0,
+    int x_num_col_dims = context->Attrs().Get<int>("x_num_col_dims");
+    int y_num_col_dims = context->Attrs().Get<int>("y_num_col_dims");
+
+    auto mat_dim_x = math::GetMatDim(GetXDim(dim_x), x_num_col_dims,
                                      context->Attrs().Get<bool>("transpose_X"));
-    auto mat_dim_y = math::GetMatDim(GetYDim(dim_y), 0,
+    auto mat_dim_y = math::GetMatDim(GetYDim(dim_y), y_num_col_dims,
                                      context->Attrs().Get<bool>("transpose_Y"));
 
+    // Check
     PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_);
     PADDLE_ENFORCE(mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
                    mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
+
+    // Calc out dim
     std::vector<int64_t> dim_out;
-    if (mat_dim_x.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_x);
-      dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
-    } else if (mat_dim_y.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_y);
-      dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+    if (x_num_col_dims == 0 && y_num_col_dims == 0) {
+      if (mat_dim_x.batch_size_ != 0) {
+        dim_out = framework::vectorize(dim_x);
+        dim_out[dim_out.size() - 2] = mat_dim_x.height_;
+        dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+      } else if (mat_dim_y.batch_size_ != 0) {
+        dim_out = framework::vectorize(dim_y);
+        dim_out[dim_out.size() - 2] = mat_dim_x.height_;
+        dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+      } else {
+        dim_out = {mat_dim_x.height_, mat_dim_y.width_};
+      }
+
+      if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
+        std::swap(dim_out[dim_out.size() - 2], dim_out[dim_out.size() - 1]);
+        dim_out.resize(dim_out.size() - 1);
+      }
+
+      if (dim_y.size() == 1 && dim_out[dim_out.size() - 1] == 1) {
+        dim_out.resize(dim_out.size() - 1);
+      }
+
+      if (dim_out.empty()) {
+        dim_out = {1};
+      }
     } else {
-      dim_out = {mat_dim_x.height_, mat_dim_y.width_};
-    }
+      // They should be both > 0
+      PADDLE_ENFORCE_GT(x_num_col_dims, 0);
+      PADDLE_ENFORCE_GT(y_num_col_dims, 0);
+      dim_out.reserve(
+          static_cast<size_t>(x_num_col_dims + dim_y.size() - y_num_col_dims));
 
-    if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
-      std::swap(dim_out[dim_out.size() - 2], dim_out[dim_out.size() - 1]);
-      dim_out.resize(dim_out.size() - 1);
-    }
+      for (int i = 0; i < x_num_col_dims; ++i) {
+        dim_out.push_back(dim_x[i]);
+      }
 
-    if (dim_y.size() == 1 && dim_out[dim_out.size() - 1] == 1) {
-      dim_out.resize(dim_out.size() - 1);
-    }
-
-    if (dim_out.empty()) {
-      dim_out = {1};
+      for (int i = y_num_col_dims; i < dim_y.size(); ++i) {
+        dim_out.push_back(dim_y[i]);
+      }
     }
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
     context->ShareLoD("X", /*->*/ "Out");
@@ -90,6 +112,34 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   R"DOC(If true, use the transpose of `Y`.
         )DOC")
         .SetDefault(false);
+    AddAttr<int>("x_num_col_dims",
+                 R"DOC(The mul_op can take tensors with more than two
+              dimensions as its inputs. If the input $X$ is a tensor with more
+              than two dimensions, $X$ will be flattened into a two-dimensional
+              matrix first. The flattening rule is: the first `num_col_dims`
+              will be flattened to form the first dimension of the final matrix
+              (the height of the matrix), and the rest `rank(X) - num_col_dims`
+              dimensions are flattened to form the second dimension of the final
+              matrix (the width of the matrix). As a result, height of the
+              flattened matrix is equal to the product of $X$'s first
+              `x_num_col_dims` dimensions' sizes, and width of the flattened
+              matrix is equal to the product of $X$'s last `rank(x) - num_col_dims`
+              dimensions' size. For example, suppose $X$ is a 6-dimensional
+              tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3.
+              Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] =
+              [24, 30].
+        )DOC")
+        .SetDefault(0)
+        .EqualGreaterThan(0);
+    AddAttr<int>("y_num_col_dims",
+                 R"DOC(The mul_op can take tensors with more than two,
+              dimensions as its inputs. If the input $Y$ is a tensor with more
+              than two dimensions, $Y$ will be flattened into a two-dimensional
+              matrix first. The attribute `y_num_col_dims` determines how $Y$ is
+              flattened. See comments of `x_num_col_dims` for more details.
+        )DOC")
+        .SetDefault(0)
+        .EqualGreaterThan(0);
     AddComment(R"DOC(
 MatMul Operator.
 
@@ -159,7 +209,13 @@ REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>);
+    matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(
     matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::float16>);

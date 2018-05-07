@@ -20,13 +20,12 @@ from op_test import OpTest
 
 class TestMulOp(OpTest):
     def setUp(self):
-        self.op_type = "mul"
-        self.use_mkldnn = False
+        self.op_type = "matmul"
         self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
             'Y': np.random.random((84, 100)).astype("float32")
         }
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {}
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
@@ -46,7 +45,7 @@ class TestMulOp(OpTest):
 
 class TestMulOp2(OpTest):
     def setUp(self):
-        self.op_type = "mul"
+        self.op_type = "matmul"
         self.use_mkldnn = False
         self.inputs = {
             'X': np.random.random((15, 4, 12, 10)).astype("float32"),
@@ -55,7 +54,6 @@ class TestMulOp2(OpTest):
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
-            'use_mkldnn': self.use_mkldnn
         }
         result = np.dot(self.inputs['X'].reshape(15 * 4, 12 * 10),
                         self.inputs['Y'].reshape(4 * 30, 8 * 2 * 9))
@@ -79,12 +77,10 @@ class TestMulOp2(OpTest):
 
 class TestFP16MulOp1(OpTest):
     def setUp(self):
-        self.op_type = "mul"
-        self.use_mkldnn = False
+        self.op_type = "matmul"
         x = np.random.random((32, 84)).astype("float16")
         y = np.random.random((84, 100)).astype("float16")
         self.inputs = {'X': x.view(np.uint16), 'Y': y.view(np.uint16)}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.dot(x, y)}
 
     def test_check_output(self):
@@ -96,16 +92,11 @@ class TestFP16MulOp1(OpTest):
 
 class TestFP16MulOp2(OpTest):
     def setUp(self):
-        self.op_type = "mul"
-        self.use_mkldnn = False
+        self.op_type = "matmul"
         x = np.random.random((15, 4, 12, 10)).astype("float16")
         y = np.random.random((4, 30, 8, 2, 9)).astype("float16")
         self.inputs = {'X': x.view(np.uint16), 'Y': y.view(np.uint16)}
-        self.attrs = {
-            'x_num_col_dims': 2,
-            'y_num_col_dims': 2,
-            'use_mkldnn': self.use_mkldnn
-        }
+        self.attrs = {'x_num_col_dims': 2, 'y_num_col_dims': 2}
         result = np.dot(
             x.reshape(15 * 4, 12 * 10), y.reshape(4 * 30, 8 * 2 * 9))
         result = result.reshape(15, 4, 8, 2, 9)

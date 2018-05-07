@@ -48,14 +48,14 @@ class TestOperator(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         mul_op = block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": [mul_x],
                     "Y": mul_y},
             outputs={"Out": [mul_out]},
             attrs={"x_num_col_dims": 1})
 
         self.assertNotEqual(str(mul_op), "")
-        self.assertEqual(mul_op.type, "mul")
+        self.assertEqual(mul_op.type, "matmul")
         self.assertEqual(mul_op.input_names, ["X", "Y"])
         self.assertEqual(mul_op.input("X"), ["mul.x"])
         self.assertEqual(mul_op.input("Y"), ["mul.y"])

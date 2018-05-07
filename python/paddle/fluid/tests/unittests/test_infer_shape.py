@@ -69,7 +69,7 @@ class TestInferShape(unittest.TestCase):
 
         # prepare the operator
         mul_op_desc = block.append_op()
-        mul_op_desc.set_type("mul")
+        mul_op_desc.set_type("matmul")
         mul_op_desc.set_input("X", ["x"])
         mul_op_desc.set_input("Y", ["y"])
         mul_op_desc.set_output("Out", ["out"])

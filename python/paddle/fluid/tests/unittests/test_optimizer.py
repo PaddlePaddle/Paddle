@@ -38,7 +38,7 @@ class TestOptimizer(unittest.TestCase):
             mean_out = block.create_var(
                 dtype="float32", shape=[1], lod_level=0, name="mean.out")
             block.append_op(
-                type="mul",
+                type="matmul",
                 inputs={"X": mul_x,
                         "Y": mul_y},
                 outputs={"Out": mul_out},
@@ -82,7 +82,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
@@ -136,7 +136,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
@@ -199,7 +199,7 @@ class TestAdagradOptimizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
@@ -263,7 +263,7 @@ class TestAdamOptimizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
@@ -330,7 +330,7 @@ class TestAdamaxOptimizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
@@ -394,7 +394,7 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         block.append_op(
-            type="mul",
+            type="matmul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},

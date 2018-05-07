@@ -50,10 +50,12 @@ class MatMulKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::GetMatDim(GetXDim(x.dims()), 0,
-                                     context.Attr<bool>("transpose_X"));
-    auto mat_dim_b = math::GetMatDim(GetYDim(y.dims()), 0,
-                                     context.Attr<bool>("transpose_Y"));
+    auto mat_dim_a =
+        math::GetMatDim(GetXDim(x.dims()), context.Attr<int>("x_num_col_dims"),
+                        context.Attr<bool>("transpose_X"));
+    auto mat_dim_b =
+        math::GetMatDim(GetYDim(y.dims()), context.Attr<int>("y_num_col_dims"),
+                        context.Attr<bool>("transpose_Y"));
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
   }
 };
@@ -105,14 +107,15 @@ inline void NormalizeTensorShape(framework::Tensor* x,
   }
 }
 
-inline void NormalizeXYOutTensorShape(framework::Tensor* x,
-                                      framework::Tensor* y,
-                                      framework::Tensor* out, bool trans_a,
-                                      bool trans_b) {
+inline void NormalizeXYOutTensorShape(
+    const framework::ExecutionContext& context, framework::Tensor* x,
+    framework::Tensor* y, framework::Tensor* out, bool trans_a, bool trans_b) {
   auto x_dim = GetXDim(x->dims());
   auto y_dim = GetYDim(y->dims());
-  auto mat_dim_x = math::GetMatDim(x_dim, 0, trans_a);
-  auto mat_dim_y = math::GetMatDim(y_dim, 0, trans_b);
+  auto mat_dim_x =
+      math::GetMatDim(x_dim, context.Attr<int>("x_num_col_dims"), trans_a);
+  auto mat_dim_y =
+      math::GetMatDim(y_dim, context.Attr<int>("y_num_col_dims"), trans_b);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -194,7 +197,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
-    NormalizeXYOutTensorShape(&x, &y, &dout, transpose_x, transpose_y);
+    NormalizeXYOutTensorShape(context, &x, &y, &dout, transpose_x, transpose_y);
     framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
@@ -214,10 +217,10 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     if (transpose_x && transpose_y) {
       CalcInputGrad(context, y, true, true, dout, true, false, dx);
       CalcInputGrad(context, dout, true, true, x, true, false, dy);
-    } else if (transpose_x && !transpose_y) {
+    } else if (transpose_x) {
       CalcInputGrad(context, y, false, false, dout, true, false, dx);
       CalcInputGrad(context, x, false, false, dout, false, true, dy);
-    } else if (!transpose_x && transpose_y) {
+    } else if (transpose_y) {
       CalcInputGrad(context, dout, false, false, y, false, true, dx);
       CalcInputGrad(context, dout, true, true, x, false, true, dy);
     } else {

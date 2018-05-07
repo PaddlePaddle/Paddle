@@ -60,8 +60,8 @@ class TestProgram(unittest.TestCase):
             name='Y', shape=[784, 100], dtype='float32')
         out = prog.global_block().create_var(name='Out', dtype='float32')
         prog.global_block().append_op(
-            type="mul", inputs={'X': [x],
-                                'Y': [y]}, outputs={'Out': [out]})
+            type="matmul", inputs={'X': [x],
+                                   'Y': [y]}, outputs={'Out': [out]})
 
         # FIXME(yuyang18): We manual compare the output string, since the order
         # of variable could be changed.
@@ -78,8 +78,8 @@ class TestProgram(unittest.TestCase):
             name='Y', shape=[784, 100], dtype='float32')
         out = prog.global_block().create_var(name='Out', dtype='float32')
         prog.global_block().append_op(
-            type="mul", inputs={'X': [x],
-                                'Y': [y]}, outputs={'Out': [out]})
+            type="matmul", inputs={'X': [x],
+                                   'Y': [y]}, outputs={'Out': [out]})
 
         binary_str = prog.desc.serialize_to_string()
         prog_restored = Program.parse_from_string(binary_str)
