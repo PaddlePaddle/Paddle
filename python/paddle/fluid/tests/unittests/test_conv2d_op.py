@@ -374,5 +374,4 @@ class TestDepthwiseConv2(TestConv2dOp):
 #         self.op_type = "conv_cudnn"
 
 if __name__ == '__main__':
-    exit(0)
     unittest.main()

@@ -14,6 +14,11 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
 endif(NOT WITH_DISTRIBUTE)
 
+list(REMOVE_ITEM TEST_OPS test_elementwise_gradient_op)
+list(REMOVE_ITEM TEST_OPS test_conv2d_op)
+list(REMOVE_ITEM TEST_OPS test_conv3d_op)
+list(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184 
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
