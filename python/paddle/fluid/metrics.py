@@ -116,7 +116,7 @@ class CompositeMetric(MetricBase):
         super(CompositeMetric, self).__init__(name, kwargs)
         self._metrics = []
 
-    def add_metric(self, metric):
+    def update(self, metric):
         if not isinstance(metric, MetricBase):
             raise ValueError("SubMetric should be inherit from MetricBase.")
         self._metrics.append(metric)
@@ -280,6 +280,7 @@ class DetectionMAP(MetricBase):
         super(DetectionMAP, self).__init__(name)
         # the current map value
         self.value = .0
+        self.weight = .0
 
     def update(self, value, weight):
         if not _is_number_or_matrix_(value):
