@@ -19,6 +19,7 @@ import executor
 import data_feeder
 import contextlib
 import io
+import transpiler
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
