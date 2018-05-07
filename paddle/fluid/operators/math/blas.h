@@ -46,6 +46,17 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+struct MatDim {
+  int64_t height_;
+  int64_t width_;
+  int64_t stride_{0};
+  int64_t batch_size_{0};
+  bool trans_;
+};
+
+extern MatDim GetMatDim(const framework::DDim& tensor, int num_flatten_cols,
+                        bool trans);
+
 template <typename DeviceContext>
 class Blas {
  public:
@@ -89,6 +100,28 @@ class Blas {
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
+
+  template <typename T>
+  void MatMul(const framework::Tensor& mat_a, const MatDim& dim_a,
+              const framework::Tensor& mat_b, const MatDim& dim_b, T alpha,
+              framework::Tensor* mat_out, T beta) const {
+    PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
+    CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+    CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+    if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+      this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
+                             dim_a.width_, alpha, mat_a.data<T>(),
+                             mat_b.data<T>(), beta, mat_out->data<T>());
+    } else {
+      PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
+                     dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+      this->template BatchedGEMM<T>(
+          transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
+          mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+          dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+          dim_a.stride_, dim_b.stride_);
+    }
+  }
 
  private:
   const DeviceContext& context_;
