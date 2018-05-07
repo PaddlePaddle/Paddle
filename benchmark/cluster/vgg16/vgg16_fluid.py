@@ -200,18 +200,19 @@ def main():
                 num_samples += len(data)
                 train_pass_acc.add(value=acc, weight=b_size)
                 print(
-                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
-                    % (pass_id, iters, loss, acc,
-                       len(data) / (time.time() - ts))
+                    "Task:%d Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, "
+                    "Speed = %.2f img/s " % (args.task_index, pass_id, iters,
+                                             loss, acc,
+                                             len(data) / (time.time() - ts))
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
             pass_train_acc = train_pass_acc.eval()
             pass_test_acc = test(exe)
-            print(
-                "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
-                % (pass_id, num_samples / pass_elapsed, pass_train_acc,
-                   pass_test_acc))
+            print("Task:%d Pass = %d, Training performance = %f imgs/s, "
+                  "Train accuracy = %f, Test accuracy = %f\n" %
+                  (args.task_index, pass_id, num_samples / pass_elapsed,
+                   pass_train_acc, pass_test_acc))
 
     if args.local:
         # Parameter initialization
@@ -239,8 +240,6 @@ def main():
 
         t = fluid.DistributeTranspiler()
         t.transpile(
-            optimize_ops,
-            params_grads,
             trainer_id=args.task_index,
             pservers=args.ps_hosts,
             trainers=trainers)

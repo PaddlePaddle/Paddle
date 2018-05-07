@@ -99,7 +99,7 @@ ParallelExecutor::ParallelExecutor(
 #ifdef PADDLE_WITH_CUDA
   details::MultiDevSSAGraphBuilder builder(
       member_->places_, loss_var_name, params, member_->local_scopes_,
-      use_default_grad_scale, member_->nccl_ctxs_.get());
+      member_->nccl_ctxs_.get(), use_default_grad_scale);
 #else
   details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
                                            params, member_->local_scopes_,

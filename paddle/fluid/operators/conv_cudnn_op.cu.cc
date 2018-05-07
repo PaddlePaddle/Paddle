@@ -366,7 +366,8 @@ REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
-                   paddle::operators::CUDNNConvOpKernel<double>);
+                   paddle::operators::CUDNNConvOpKernel<double>,
+                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv3d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
                    paddle::operators::CUDNNConvGradOpKernel<double>);

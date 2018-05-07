@@ -71,7 +71,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
   void GetIdByServer(framework::Scope* scope,
                      const platform::DeviceContext& dev_ctx) const {
     std::string endpoint = Attr<std::string>("endpoint");
-    rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, true));
+    rpc_service_ = new detail::AsyncGRPCServer(endpoint, true);
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
     rpc_service_->SetScope(scope);
@@ -79,21 +79,21 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_service_->SetProgram(&empty_program);
     rpc_service_->SetExecutor(&executor);
 
-    server_thread_.reset(new std::thread(std::bind(
-        &detail::AsyncGRPCServer::RunSyncUpdate, rpc_service_.get())));
+    server_thread_.reset(new std::thread(
+        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service_)));
     rpc_service_->SetCond(0);
     VLOG(3) << "start getting nccl id from trainer 0...";
     auto recv = rpc_service_->Get();
     VLOG(3) << "got nccl id and stop server...";
-    // rpc_service_->SetCond(1);
-    // rpc_service_->ShutDown();
-    rpc_service->Push(LISTEN_TERMINATE_MESSAGE);
+    rpc_service_->ShutDown();
     VLOG(3) << "rpc server stopped";
     // TODO(wuyi): reinit nccl communicators
+    server_thread_->join();
+    delete rpc_service_;
   }
 
  protected:
-  mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
+  mutable detail::AsyncGRPCServer* rpc_service_ = nullptr;
   mutable std::shared_ptr<std::thread> server_thread_;
 };
 
