@@ -306,7 +306,7 @@ class Executor(object):
             program = default_main_program()
 
         if not isinstance(program, Program):
-            raise TypeError()
+            raise TypeError("executor take Program as arguments.")
 
         if scope is None:
             scope = global_scope()
