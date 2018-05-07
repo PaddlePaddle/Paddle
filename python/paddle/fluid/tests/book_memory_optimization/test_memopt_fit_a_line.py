@@ -37,8 +37,7 @@ if fluid.core.is_compiled_with_cuda():
 places = fluid.layers.get_places(device_count=0, device_type=device_type)
 pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
 with pd.do():
-    x_ = pd.read_input(x)
-    y_ = pd.read_input(y)
+    x_, y_ = pd.read_input(x, y)
     y_predict = fluid.layers.fc(input=x_, size=1, act=None)
     cost = fluid.layers.square_error_cost(input=y_predict, label=y_)
     avg_cost = fluid.layers.mean(x=cost)

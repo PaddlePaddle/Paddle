@@ -79,8 +79,7 @@ def train(nn_type,
         places = fluid.layers.get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
-            img_ = pd.read_input(img)
-            label_ = pd.read_input(label)
+            img_, label_ = pd.read_input(img, label)
             prediction, avg_loss, acc = net_conf(img_, label_)
             for o in [avg_loss, acc]:
                 pd.write_output(o)
