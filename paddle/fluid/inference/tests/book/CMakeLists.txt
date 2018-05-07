@@ -25,8 +25,9 @@ function(inference_test TARGET_NAME)
 endfunction(inference_test)
 
 ####################
-# Inference tests here depend on fluid/tests/book
-# User need to run tests in fluid/tests/book first to generate saved model.
+# Inference tests here depend on fluid/tests/book. If users want to run
+# individual test with ctest, they need to run tests in fluid/tests/book
+# first to generate saved model.
 ####################
 # This unittest is buggy!
 #inference_test(fit_a_line)
