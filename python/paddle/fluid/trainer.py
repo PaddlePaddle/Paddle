@@ -22,7 +22,7 @@ import io
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
-import distribute_transpiler
+from transpiler import distribute_transpiler
 
 __all__ = [
     'Trainer',
