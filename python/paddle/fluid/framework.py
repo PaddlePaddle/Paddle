@@ -1088,6 +1088,8 @@ class Program(object):
         return res
 
     def inference_optimize(self):
+        # this is an alternative implement before
+        # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
         for i in xrange(res.desc.num_blocks()):
