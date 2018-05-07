@@ -371,19 +371,26 @@ int VariableResponse::Parse(Source* source) {
                         meta_.type() == sendrecv::NCCL_ID) &&
                            meta_.varname() != "",
                        "meta info should be got first!");
-        if (meta_.type() == sendrecv::NCCL_ID) {
-          auto* var = scope_->FindVar(meta_.varname());
-          if (var != nullptr) {
-            ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
-            memcpy(id->internal, meta_.serialized().c_str(),
-                   meta_.serialized().size());
-          }
-        }
-
         int length = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &length)) {
           return tag;
+        }
+
+        if (meta_.type() == sendrecv::NCCL_ID) {
+          VLOG(3) << "parse nccl id request";
+          auto* var = scope_->FindVar(meta_.varname());
+          if (var != nullptr) {
+            VLOG(3) << "parse nccl id: length " << length;
+            ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
+            if (!ReadRaw(&input, *dev_ctx_, platform::CPUPlace(), id->internal,
+                         length)) {
+              return tag;
+            }
+            // memcpy(id->internal, meta_.serialized().c_str(),
+            //        meta_.serialized().size());
+          }
+          break;
         }
 
         framework::DDim dims = GetDims(meta_.dims());

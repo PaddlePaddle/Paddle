@@ -261,8 +261,8 @@ void AsyncGRPCServer::ShutdownQueue() {
 // This URL explains why shutdown is complicate:
 void AsyncGRPCServer::ShutDown() {
   is_shut_down_ = true;
-  ShutdownQueue();
   server_->Shutdown();
+  ShutdownQueue();
 }
 
 void AsyncGRPCServer::TryToRegisterNewSendOne() {

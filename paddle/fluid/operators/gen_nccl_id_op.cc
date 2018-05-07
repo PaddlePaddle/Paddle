@@ -37,7 +37,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& dev_ctx = *pool.Get(dev_place);
+    // put nccl id in CPUPlace
+    auto& dev_ctx = *pool.Get(platform::CPUPlace());
     int trainer_id = Attr<int>("trainer_id");
     framework::Scope& local_scope = scope.NewScope();
 
@@ -60,9 +61,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("endpoint_list");
     detail::RPCClient client;
     for (auto& ep : endpoint_list) {
+      VLOG(3) << "sending nccl id to " << ep;
       client.AsyncSendVariable(ep, dev_ctx, *scope, "NCCLID");
     }
     client.Wait();
+    VLOG(3) << "sending completed...";
   }
 
   void GetIdByServer(framework::Scope* scope,
@@ -78,9 +81,14 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     server_thread_.reset(new std::thread(std::bind(
         &detail::AsyncGRPCServer::RunSyncUpdate, rpc_service_.get())));
-
+    rpc_service_->SetCond(0);
+    VLOG(3) << "start getting nccl id from trainer 0...";
     auto recv = rpc_service_->Get();
-    rpc_service_->ShutDown();
+    VLOG(3) << "got nccl id and stop server...";
+    // rpc_service_->SetCond(1);
+    // rpc_service_->ShutDown();
+    rpc_service->Push(LISTEN_TERMINATE_MESSAGE);
+    VLOG(3) << "rpc server stopped";
     // TODO(wuyi): reinit nccl communicators
   }
 

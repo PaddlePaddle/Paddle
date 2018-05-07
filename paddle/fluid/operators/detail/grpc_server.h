@@ -47,6 +47,8 @@ class AsyncGRPCServer final {
   explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
       : address_(address), sync_mode_(sync_mode) {}
 
+  ~AsyncGRPCServer() {}
+
   void RunSyncUpdate();
 
   // functions to sync server barrier status.
