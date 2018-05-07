@@ -87,7 +87,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
           concat_grad_functor;
-      concat_grad_functor(dev_ctx, *in, static_cast<int>(axis), outputs);
+      concat_grad_functor(dev_ctx, *in, static_cast<int>(axis), &outputs);
     }
   }
 };

@@ -88,6 +88,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_cudnn=False,
        use_mkldnn=False,
        act=None,
        is_test=False,
@@ -1496,6 +1497,7 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
+               use_mkldnn=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -1574,9 +1576,12 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={"momentum": momentum,
-               "epsilon": epsilon,
-               "is_test": is_test})
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            "use_mkldnn": use_mkldnn
+        })
 
     return helper.append_activation(batch_norm_out)
 

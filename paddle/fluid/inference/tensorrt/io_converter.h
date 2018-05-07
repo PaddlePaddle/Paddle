@@ -39,12 +39,9 @@ class EngineInputConverter {
 
   static void Run(const std::string& in_op_type, const LoDTensor& in, void* out,
                   size_t max_size, cudaStream_t* stream) {
-    PADDLE_ENFORCE_NOT_NULL(stream);
+    PADDLE_ENFORCE(stream != nullptr);
     auto* converter = Registry<EngineInputConverter>::Lookup(in_op_type);
-    PADDLE_ENFORCE_NOT_NULL(converter, "no InputConverter found for %s",
-                            in_op_type);
-    PADDLE_ENFORCE_NOT_NULL(converter, "no InputConverter found for %s",
-                            in_op_type);
+    PADDLE_ENFORCE_NOT_NULL(converter);
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }
