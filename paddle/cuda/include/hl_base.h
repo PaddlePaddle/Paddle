@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef HL_BASE_H_
-#define HL_BASE_H_
+#pragma once
 
 #include <cstddef>
 
@@ -207,8 +206,8 @@ typedef struct {
 
 #ifdef __NVCC__
 
-#include "cuda_runtime.h"
-#include "hl_cuda.h"
+#include <cuda_runtime.h>
+#include "paddle/cuda/include/hl_cuda.h"
 #include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
@@ -231,6 +230,11 @@ extern __thread cudaStream_t default_stream;
 // __shfl has been deprecated as of CUDA 9.0.
 #if CUDA_VERSION < 9000
 template <typename T>
+__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
+  return __shfl_down(val, delta);
+}
+
+template <typename T>
 __forceinline__ __device__ T
 __shfl_sync(unsigned, T val, int src_line, int width) {
   return __shfl(val, src_line, width);
@@ -243,6 +247,4 @@ __shfl_sync(unsigned, T val, int src_line, int width) {
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
 #endif
 
-#endif /* __NVCC__ */
-
-#endif /* HL_BASE_H_ */
+#endif  // __NVCC__

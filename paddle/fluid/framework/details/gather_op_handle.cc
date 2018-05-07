@@ -25,6 +25,7 @@ GatherOpHandle::GatherOpHandle(const std::vector<Scope *> &local_scopes,
     : local_scopes_(local_scopes), places_(places) {}
 
 void GatherOpHandle::RunImpl() {
+  if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
@@ -35,7 +36,6 @@ void GatherOpHandle::RunImpl() {
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
-
     PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
                       "The number of output should be one.");
     out_var_handle = out_var_handles.front();
@@ -50,68 +50,62 @@ void GatherOpHandle::RunImpl() {
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx_)->FindVar(in_0_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
+
   PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
                  "Currently, gather_op only can gather SelectedRows.");
-
-  auto pre_place = in_0_handle->place_;
-  PADDLE_ENFORCE_EQ(out_var_handle->place_.which(), pre_place.which(),
-                    "The place of input and output should be the same.");
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated(in_var_handles);
 
+  auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
   std::vector<int64_t> out_rows;
   std::vector<Tensor> in_tensors;
-  std::vector<platform::Place> in_places;
 
-  auto &pre_in = pre_in_var->Get<framework::SelectedRows>();
-  // gather the inputs
+  // Gather the inputs
   for (auto *in_handle : in_var_handles) {
-    auto in_p = in_handle->place_;
-    in_places.push_back(in_p);
-    PADDLE_ENFORCE_EQ(in_p.which(), pre_place.which(),
-                      "Places must be all on CPU or all on CUDA.");
     auto *in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
-    auto &in_sr = in_var->Get<framework::SelectedRows>();
+    PADDLE_ENFORCE_NOT_NULL(in_var);
+    VariableVisitor::EnforceShapeAndDTypeEQ(*in_var, *pre_in_var);
 
-    PADDLE_ENFORCE_EQ(in_sr.value().type(), pre_in.value().type(),
-                      "The type of input is not consistent.");
-    PADDLE_ENFORCE_EQ(pre_in.height(), in_sr.height(),
-                      "The height of inputs is not consistent.");
-    PADDLE_ENFORCE_EQ(pre_in.GetCompleteDims(), in_sr.GetCompleteDims(),
-                      "The dims of inputs is not consistent.");
+    auto &in_sr_value = in_var->Get<framework::SelectedRows>();
 
-    auto &in_sr_rows = in_sr.rows();
+    auto &in_sr_rows = in_sr_value.rows();
     out_rows.insert(out_rows.end(), in_sr_rows.begin(), in_sr_rows.end());
-
-    in_tensors.emplace_back(in_sr.value());
+    in_tensors.emplace_back(in_sr_value.value());
   }
 
-  // write the output
-  auto &out_place = out_var_handle->place_;
-  auto out_scope_idx = out_var_handle->scope_idx_;
-  auto out_var = var_scopes.at(out_scope_idx)->FindVar(out_var_handle->name_);
+  // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
+  platform::Place t_out_p = out_var_handle->place_;
+  if (platform::is_gpu_place(pre_in_value.place())) {
+    PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
+                   "Places of input and output must be all on GPU.");
+  } else {
+    t_out_p = platform::CPUPlace();
+  }
 
-  auto out = out_var->GetMutable<framework::SelectedRows>();
-  out->set_height(pre_in.height());
-  out->set_rows(out_rows);
+  auto out_var =
+      var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
+  PADDLE_ENFORCE_NOT_NULL(out_var);
+  auto out_value = out_var->GetMutable<framework::SelectedRows>();
+  out_value->set_height(pre_in_value.height());
+  out_value->set_rows(out_rows);
   size_t rows = out_rows.size();
-  DDim out_dim = pre_in.GetCompleteDims();
+  DDim out_dim = pre_in_value.GetCompleteDims();
   out_dim[0] = static_cast<int64_t>(rows);
-  out->mutable_value()->Resize(out_dim);
-  out->mutable_value()->mutable_data(out_place, pre_in.value().type());
-  Tensor *out_tensor = out->mutable_value();
+  out_value->mutable_value()->Resize(out_dim).mutable_data(
+      t_out_p, pre_in_value.value().type());
+  Tensor *out_tensor = out_value->mutable_value();
 
   // copy
-  auto dev_ctx = dev_ctxes_[out_place];
-  RunAndRecordEvent(out_place, [in_tensors, out_tensor, dev_ctx, out_place] {
+  auto dev_ctx = dev_ctxes_[out_var_handle->place_];
+  RunAndRecordEvent(out_var_handle->place_, [in_tensors, out_tensor, &dev_ctx,
+                                             t_out_p] {
     int s = 0, e = 0;
     for (size_t j = 0; j < in_tensors.size(); ++j) {
       e += in_tensors[j].dims()[0];
       auto sub_out = out_tensor->Slice(s, e);
-      paddle::framework::TensorCopy(in_tensors[j], out_place, *(dev_ctx),
-                                    &sub_out);
+      paddle::framework::TensorCopy(in_tensors[j], t_out_p, *dev_ctx, &sub_out);
       s = e;
     }
   });

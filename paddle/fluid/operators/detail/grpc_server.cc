@@ -211,6 +211,11 @@ void AsyncGRPCServer::WaitClientGet(int count) {
   }
 }
 
+void AsyncGRPCServer::WaitServerReady() {
+  std::unique_lock<std::mutex> lock(this->mutex_ready_);
+  condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
+}
+
 void AsyncGRPCServer::RunSyncUpdate() {
   ::grpc::ServerBuilder builder;
   builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials(),
@@ -244,6 +249,12 @@ void AsyncGRPCServer::RunSyncUpdate() {
   t_prefetch_.reset(new std::thread(
       std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
                 "cq_prefetch", prefetch_register)));
+
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_ready_);
+    ready_ = 1;
+  }
+  condition_ready_.notify_all();
   // wait server
   server_->Wait();
   t_send_->join();
@@ -261,8 +272,8 @@ void AsyncGRPCServer::ShutdownQueue() {
 // This URL explains why shutdown is complicate:
 void AsyncGRPCServer::ShutDown() {
   is_shut_down_ = true;
-  server_->Shutdown();
   ShutdownQueue();
+  server_->Shutdown();
 }
 
 void AsyncGRPCServer::TryToRegisterNewSendOne() {
