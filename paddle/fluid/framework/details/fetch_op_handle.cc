@@ -49,7 +49,7 @@ void FetchOpHandle::RunImpl() {
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   for (auto *input : inputs_) {
     auto *var = static_cast<VarHandle *>(input);
-    var->generated_op_->Wait(cpu_ctx);
+    if (var->generated_op_) var->generated_op_->Wait(cpu_ctx);
   }
   tensors_.resize(inputs_.size());
   auto *var_handle = static_cast<VarHandle *>(inputs_[0]);
@@ -61,9 +61,14 @@ void FetchOpHandle::RunImpl() {
     auto &scope = scopes[i];
     auto *var =
         scope->FindVar(kLocalExecScopeName)->Get<Scope *>()->FindVar(var_name);
+    if (var == nullptr) {
+      scope->FindVar(var_name);
+    }
+
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
                             var_name);
     auto &t = var->Get<framework::LoDTensor>();
+
     if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
       TensorCopySync(t, cpu, &tensors_[i]);
