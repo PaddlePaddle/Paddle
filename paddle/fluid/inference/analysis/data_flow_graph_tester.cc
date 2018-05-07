@@ -25,10 +25,12 @@ TEST(DataFlowGraph, BFS) {
   dfg.Build();
 
   for (auto* in : dfg.inputs) {
-    LOG(INFO) << "inputs: " << in->name() << " " << static_cast<int>(in->type());
+    LOG(INFO) << "inputs: " << in->name() << " "
+              << static_cast<int>(in->type());
   }
   for (auto* out : dfg.outputs) {
-    LOG(INFO) << "outputs: " << out->name() << " " << static_cast<int>(out->type());
+    LOG(INFO) << "outputs: " << out->name() << " "
+              << static_cast<int>(out->type());
   }
 
   GraphTraits<DataFlowGraph> trait(&dfg);

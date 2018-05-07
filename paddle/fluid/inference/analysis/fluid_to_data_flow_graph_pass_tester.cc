@@ -17,7 +17,6 @@
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 
-
 namespace paddle {
 namespace inference {
 namespace analysis {

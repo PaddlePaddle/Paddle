@@ -66,11 +66,11 @@ class Node {
     return std::vector<Dot::Attr>({Dot::Attr("style", "filled")});
   }
 
+  // Get an additional attribute and convert it to T data type. NOTE this will
+  // silently create a new attribute if not exists.
   template <typename T>
-  T &NewAttr(const std::string &name) {
-    auto it = attrs_.find(name);
-    PADDLE_ENFORCE(it == attrs_.end(), "set duplicate attribute %s", name);
-    return it->second.As<T>();
+  T &attr(const std::string &name) {
+    return attrs_[name].As<T>();
   }
 
   int id() const { return id_; }
@@ -105,7 +105,10 @@ class Node {
     template <typename T>
     T &As() {
       // init storage in the first usage.
-      if (data.empty()) data.resize(sizeof(T));
+      if (data.empty()) {
+        LOG(INFO) << "resize data to " << sizeof(T);
+        data.resize(sizeof(T));
+      }
       PADDLE_ENFORCE_EQ(data.size(), sizeof(T), "Node attr type recast error");
       return *reinterpret_cast<T *>(&data[0]);
     }

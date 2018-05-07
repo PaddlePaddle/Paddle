@@ -46,7 +46,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     const auto &op = main_block.ops(i);
     auto *o = graph->nodes.Create(Node::Type::kFunction);
     o->SetName(op.type());
-    static_cast<Function*>(o)->SetFuncType(op.type());
+    static_cast<Function *>(o)->SetFuncType(op.type());
     // Link to the original protobuf message's memory, make it easier to
     // generate from a data flow graph to fluid ProgramDesc.
     o->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&op)));
@@ -69,6 +69,8 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
       }
     }
   }
+  // Analysis and extract the inputs and outputs of this graph.
+  graph->Build();
 }
 
 Pass *FluidToDataFlowGraphPass::CreatePrinterPass(

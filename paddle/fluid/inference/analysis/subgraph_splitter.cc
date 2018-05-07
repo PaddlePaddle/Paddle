@@ -30,7 +30,7 @@ void SubGraphSplitter::MarkNodesInsideSubGraph() {
   auto nodes = trait.nodes();
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     if (node_inside_subgraph_teller_(&(*it))) {
-      NodeAttr &attr = it->NewAttr<NodeAttr>(kMarkerAttrName);
+      NodeAttr &attr = it->attr<NodeAttr>(kMarkerAttrName);
       attr.is_in_subgraph = true;
     }
   }
@@ -46,8 +46,8 @@ using node_map_t = std::unordered_map<int, Node *>;
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
   int tmp = id;
   do {
-    tmp = node_map.at(tmp)->NewAttr<int>(kUnionFindParent);
-  } while (node_map.at(tmp)->NewAttr<int>(kUnionFindParent) != tmp);
+    tmp = node_map.at(tmp)->attr<int>(kUnionFindParent);
+  } while (node_map.at(tmp)->attr<int>(kUnionFindParent) != tmp);
   return tmp;
 }
 // Make this two node share the same ancestor.
@@ -55,7 +55,7 @@ int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
 void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
-  node_map.at(b_ancestor)->NewAttr<int>(kUnionFindParent) = a_ancestor;
+  node_map.at(b_ancestor)->attr<int>(kUnionFindParent) = a_ancestor;
 }
 
 std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
@@ -63,7 +63,7 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   auto trait = GraphTraits<DataFlowGraph>(graph_);
   auto nodes = trait.nodes();
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    auto &attr = it->NewAttr<NodeAttr>(kMarkerAttrName);
+    auto &attr = it->attr<NodeAttr>(kMarkerAttrName);
     if (attr.is_in_subgraph) {
       marked_nodes.push_back(&(*it));
     }
@@ -72,7 +72,7 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   node_map_t node_map;  // id to ptr
   std::unordered_set<Node *> marked;
   for (auto *n : marked_nodes) {
-    n->NewAttr<int>(kUnionFindParent) =
+    n->attr<int>(kUnionFindParent) =
         n->id();  // n's parent == n.id means it is the ancestor
     node_map[n->id()] = n;
     marked.insert(n);
@@ -88,7 +88,7 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
 
   std::unordered_map<int /*ancestor*/, std::vector<Node *>> clusters;
   for (auto *n : marked_nodes) {
-    clusters[n->NewAttr<int>(kUnionFindParent)].push_back(n);
+    clusters[n->attr<int>(kUnionFindParent)].push_back(n);
   }
   std::vector<std::vector<Node *>> result;
   std::for_each(clusters.begin(), clusters.end(),
@@ -100,7 +100,6 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
 }
 
 void SubGraphFuse::operator()() { ReplaceNodesWithSubGraphs(); }
-
 
 void SubGraphFuse::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubGraphSplitter(graph_, node_inside_subgraph_teller_)();

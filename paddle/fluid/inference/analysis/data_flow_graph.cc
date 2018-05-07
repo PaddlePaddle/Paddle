@@ -170,7 +170,7 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator
     &GraphTraits<DataFlowGraph>::NodesDFSIterator::operator++() {
   if (stack_.empty()) return *this;
   visited_.insert(stack_.top());
-  auto* cur = stack_.top();
+  auto *cur = stack_.top();
   stack_.pop();
   for (auto *x : cur->outlinks) {
     if (!visited_.count(x)) {

@@ -37,6 +37,7 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
     if (it->deleted()) continue;
     switch (it->type()) {
       case Node::Type::kFunction:
+        LOG(INFO) << "add function " << it->name();
         AddFluidOp(&(*it));
         break;
       case Node::Type::kFunctionBlock:
@@ -49,24 +50,17 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
 }
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node* node) {
+  LOG(INFO) << "processing func " << node->name();
   auto* ori_op = static_cast<framework::proto::OpDesc*>(node->extra_info());
   // currently only the main block is analyzed.
   auto* main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto* op = main_block->add_ops();
+  LOG(INFO) << "to copy the op";
   *op = *ori_op;  // copy the attributes, by default, these will not be changed
                   // by analysis phrase.
-  // Rewrite the inputs and outputs of the op, for that after analysis, the
-  // inputs and outputs might be changed.
-  op->mutable_inputs()->Clear();
-  for (const auto& v : node->inlinks) {
-    *(op->mutable_inputs()->Add()) =
-        *(static_cast<framework::proto::OpDesc_Var*>(v->extra_info()));
-  }
-  op->mutable_outputs()->Clear();
-  for (const auto& v : node->outlinks) {
-    *(op->mutable_outputs()->Add()) =
-        *(static_cast<framework::proto::OpDesc_Var*>(v->extra_info()));
-  }
+  // The inputs and outputs of the existing ops are not changed by tensorrt
+  // subgraph pass.
+  // NOTE It might be changed by other passes in the long run.
 }
 
 void DataFlowGraphToFluidPass::AddEngineOp(Node* node) {

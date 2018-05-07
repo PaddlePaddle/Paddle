@@ -9,11 +9,13 @@ cc_library(
         ut_helper.h
 )
 
-cc_test(analysis_test SRCS test_fluid_to_data_flow_graph_pass.cc
-        test_data_flow_graph_to_fluid_pass.cc
-        test_dot.cc
-        test_subgraph_splitter.cc
-        test_data_flow_graph.cc
+cc_test(analysis_test SRCS
+        node_tester.cc
+        dot_tester.cc
+        data_flow_graph_tester.cc
+        subgraph_splitter_tester.cc
+        fluid_to_data_flow_graph_pass_tester.cc
+        data_flow_graph_to_fluid_pass_tester.cc
         DEPS inference_analysis framework_proto
         proto_desc
         gtest
