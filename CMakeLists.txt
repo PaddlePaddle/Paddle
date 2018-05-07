@@ -61,6 +61,7 @@ option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
+option(WITH_C_DESC_EXECUTOR    "Build with C++ program desc executor."   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -227,4 +228,9 @@ endif()
 
 if(WITH_DOC)
     add_subdirectory(doc)
+endif()
+
+if(WITH_C_DESC_EXECUTOR)
+    message(STATUS "build WITH_C_DESC_EXECUTOR")
+    add_subdirectory(tools/execute_program_desc)
 endif()

@@ -51,6 +51,7 @@ class ParallelExecutor(object):
                 gradients of each device and scaled gradients would be
                 aggregated. Otherwise, a customized scale value should be fed
                 to the network.
+            save_program_to_file: Save the program desc which will be runed to this file.
 
         Returns:
             A ParallelExecutor object.

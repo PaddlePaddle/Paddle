@@ -277,7 +277,8 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False,
+            save_program_to_file=""):
         """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
 
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -294,6 +295,7 @@ class Executor(object):
         :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
         :param return_numpy: if convert the fetched tensor to numpy
         :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
+        :param save_program_to_file: save program desc to the file before running.
         :return: result according to fetch_list.
         """
         if feed is None:
@@ -333,6 +335,12 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
+
+        # TODO(gongwb): does a program should be saved in run function?
+        if len(save_program_to_file) > 0:
+            with open(save_program_to_file, 'w') as f:
+                f.write(program.desc.serialize_to_string())
+
         self.executor.run(program.desc, scope, 0, True, True)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
