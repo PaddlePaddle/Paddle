@@ -90,14 +90,16 @@ def train_program(is_sparse):
 def train(use_cuda, is_sparse, save_path):
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
+    test_reader = paddle.batch(
+        paddle.dataset.imikolov.test(word_dict, N), BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     def event_handler(event):
-        print type(event)
+        # print type(event)
         if isinstance(event, fluid.EndEpochEvent):
-            avg_cost = trainer.test(reader=paddle.dataset.imikolov.test(
-                word_dict, N))
+            avg_cost = trainer.test(reader=test_reader)
+            print(avg_cost)
 
             if avg_cost < 5.0:
                 trainer.save_params(save_path)

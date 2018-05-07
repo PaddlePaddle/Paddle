@@ -160,6 +160,7 @@ class Variable(object):
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
+                 is_data=False,
                  **kwargs):
         self.block = block
         self.error_clip = error_clip
@@ -238,6 +239,7 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
         self.stop_gradient = stop_gradient
+        self.is_data = is_data
 
     def __str__(self):
         return self.to_string(True)
@@ -475,7 +477,7 @@ class Operator(object):
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
                 elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                   isinstance(attrs[attr_name], core.ProgramDesc):
+                        isinstance(attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
                 else:
@@ -989,7 +991,8 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -997,7 +1000,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         return ret_var
 
 
@@ -1072,7 +1076,7 @@ class Program(object):
                 if isinstance(t, Variable):
                     # After transpiler processing, the op that output this
                     # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this 
+                    # and we need to find the current op that generate this
                     # variable here.
                     t.op = None
                     global_block = self.global_block()

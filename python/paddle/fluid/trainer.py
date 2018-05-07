@@ -17,6 +17,7 @@ import framework
 import executor
 import data_feeder
 import contextlib
+import pdb
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
@@ -72,6 +73,8 @@ class Trainer(object):
 
         with framework.program_guard(self.train_program, self.startup_program):
             loss = program_func()
+            self.test_output = loss
+            self.test_program = self.train_program.clone()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
@@ -119,8 +122,17 @@ class Trainer(object):
 
         self._train_by_executor(num_epochs, event_handler, reader, feed_order)
 
-    def test(self, reader):
-        pass
+    def test(self, reader, feed_order=None):
+        """
+        Test the model on given test data
+
+        Args:
+            reader: The reader that yields test data.
+            feed_order: Feeding order of reader. None will following the defining
+                order in program
+        """
+
+        return self._test_by_executor(reader, feed_order, [self.test_output])
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
@@ -178,9 +190,8 @@ class Trainer(object):
             if feed_order is None:
                 feed_var_list = [
                     var
-                    for var in self.train_program.global_block(
-                    ).vars.itervalues()
-                    if hasattr(var, 'is_data') and var.is_data
+                    for var in self.train_program.global_block()
+                    .vars.itervalues() if var.is_data
                 ]
             else:
                 feed_var_list = [
@@ -197,3 +208,32 @@ class Trainer(object):
                     exe.run(feed=feeder.feed(data), fetch_list=[])
                     event_handler(EndStepEvent(epoch_id, step_id))
                 event_handler(EndEpochEvent(epoch_id))
+
+    def _test_by_executor(self, reader, feed_order, fetch_list):
+        with executor.scope_guard(self.scope):
+            if feed_order is None:
+                feed_var_list = [
+                    var
+                    for var in self.train_program.global_block()
+                    .vars.itervalues() if var.is_data
+                ]
+            else:
+                feed_var_list = [
+                    self.train_program.global_block().var(var_name)
+                    for var_name in feed_order
+                ]
+
+            exe = executor.Executor(self.place)
+
+            feeder = data_feeder.DataFeeder(
+                feed_list=feed_var_list, place=self.place)
+            accumulated_loss = 0
+            count = 0
+            for data in reader():
+                loss, = exe.run(program=self.test_program,
+                                feed=feeder.feed(data),
+                                fetch_list=fetch_list)
+                accumulated_loss += loss[0]
+                count += 1
+
+            return accumulated_loss / count
