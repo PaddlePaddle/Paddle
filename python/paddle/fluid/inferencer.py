@@ -41,10 +41,8 @@ class Inferencer(object):
                  self.fetch_targets] = io.load_inference_model(
                      executor=self.exe, dirname=param_path)
             else:
-                startup_program = framework.Program()
                 self.inference_program = framework.Program()
-                with framework.program_guard(self.inference_program,
-                                             startup_program):
+                with framework.program_guard(self.inference_program):
                     self.fetch_targets = program_func()
                     if not isinstance(self.fetch_targets, list):
                         raise ValueError(
