@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <stdio.h>
 #include <thread>  // NOLINT
 #include <typeindex>
 #include <vector>
@@ -100,13 +101,13 @@ struct NCCLContextMap {
       }
     } else {
       PADDLE_ENFORCE_GT(node_count, 0);
-      PADDLE_ENFORCE_EQ(node_count % places.size(), 0,
-                        "must have same number of GPUs on each node");
+      // TODO(wuyi): need to ensure each node have same number of GPUs
       {
-        std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
         int nranks = node_count * order_.size();
+        NCCLGroupGuard gurad;
         for (auto &gpu_id : order_) {
           int rank = trainer_id * order_.size() + gpu_id;
+          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
               comms.get() + gpu_id, nranks, *nccl_id, rank));

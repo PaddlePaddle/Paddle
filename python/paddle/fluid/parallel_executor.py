@@ -53,6 +53,11 @@ class ParallelExecutor(object):
                 gradients of each device and scaled gradients would be
                 aggregated. Otherwise, a customized scale value should be fed
                 to the network.
+            num_nodes(int, default 0): If greater than 0, NCCL will be
+                initialized with multpile rank of nodes, each node should have
+                same number of GPUs. Distributed training will be enabled then.
+            trainer_id(int, default 0): Must use together with num_nodes.
+                trainer_id is the "rank" of current node starts from 0.
 
         Returns:
             A ParallelExecutor object.
