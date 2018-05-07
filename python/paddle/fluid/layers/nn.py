@@ -1497,6 +1497,7 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
+               use_cudnn=True,
                use_mkldnn=False,
                name=None,
                moving_mean_name=None,
@@ -1580,6 +1581,7 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
+            "use_cudnn": use_cudnn,
             "use_mkldnn": use_mkldnn
         })
 
