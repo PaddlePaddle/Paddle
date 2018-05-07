@@ -17,6 +17,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#ifdef PADDLE_WITH_CUDA
+#include <nccl.h>
+#endif
 
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -378,19 +381,19 @@ int VariableResponse::Parse(Source* source) {
         }
 
         if (meta_.type() == sendrecv::NCCL_ID) {
-          VLOG(3) << "parse nccl id request";
+#ifdef PADDLE_WITH_CUDA
           auto* var = scope_->FindVar(meta_.varname());
           if (var != nullptr) {
-            VLOG(3) << "parse nccl id: length " << length;
             ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
             if (!ReadRaw(&input, *dev_ctx_, platform::CPUPlace(), id->internal,
                          length)) {
               return tag;
             }
-            // memcpy(id->internal, meta_.serialized().c_str(),
-            //        meta_.serialized().size());
           }
           break;
+#else
+          PADDLE_THROW("Not compiled with CUDA!");
+#endif
         }
 
         framework::DDim dims = GetDims(meta_.dims());
