@@ -20,27 +20,56 @@ __all__ = ['Inferencer', ]
 
 
 class Inferencer(object):
-    def __init__(self, network_func, param_path=None, place=None):
-        # 1. we need to generate a framework.Program by calling
-        # network_func. Reference: fluid.program_guard in test_word2vec.py
+    def __init__(self, program_func=None, param_path=None, place=None):
+        """
+        :param program_func: a function that return the predict Variables of a neural network
+        :param param_path: the path where the inference model is saved by fluid.io.save_inference_model
+        :param place: place to do the inference
+        """
+        if program_func is None and param_path is None:
+            raise ValueError("network_func and param_path can not both be None")
 
-        # 2. move the default_main_program to self.program.
-
-        # 3. run the default_startup program.
-
-        # 4. load params from param_path into scope
+        self.param_path = param_path
         self.scope = core.Scope()
         self.place = place
-        self.startup_program = framework.Program()
-        # TODO: generate the startup_program with network_func
 
-        exe = executor.Executor(place)
-        exe.run(self.startup_program, scope=self.scope)
-
-        if param_path:
+        self.exe = executor.Executor(place)
+        with executor.scope_guard(self.scope):
             # load params from param_path into scope
-            io.load_persistables(exe, dirname=param_path)
+            if param_path is not None:
+                [self.inference_program, _,
+                 self.fetch_targets] = io.load_inference_model(
+                     executor=self.exe, dirname=param_path)
+            else:
+                startup_program = framework.Program()
+                self.inference_program = framework.Program()
+                with framework.program_guard(self.inference_program,
+                                             startup_program):
+                    self.fetch_targets = program_func()
+                    if not isinstance(self.fetch_targets, list):
+                        raise ValueError(
+                            "output of program_func should be a list of Variable"
+                        )
 
-    def infer(self, inputs):
-        # run self.program
-        pass
+    def infer(self, inputs, scope=None, return_numpy=False):
+        """
+        :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
+        to get the predict value
+        :param scope: if user set a scope, the executor will use the variables inside this scope
+        :param return_numpy: if return numpy value for row tensor
+        :return: the predict value of the inference model
+        """
+        if not isinstance(inputs.dict):
+            raise ValueError(
+                "inputs should be a map of {'input_name': input_var}")
+
+        if self.param_path is None and scope is None:
+            raise ValueError("param_path and scope can not both be None")
+
+        with executor.scope_guard(scope or self.scope):
+            results = self.exe.run(self.inference_program,
+                                   feed=inputs,
+                                   fetch_list=self.fetch_targets,
+                                   return_numpy=return_numpy)
+
+        return results

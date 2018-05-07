@@ -59,7 +59,7 @@ class Trainer(object):
     """
 
     Args:
-        program_func(callable): A function which will return loss. The loss must be a scaler.
+        program_func(callable): A function which will return loss. The loss must be a scalar.
         optimizer(optimizer.Optimizer): The optimizer should be an instance of Optimizer
         place: The device place of this trainer.
     """
@@ -74,16 +74,15 @@ class Trainer(object):
         self.train_program = framework.Program()
 
         with framework.program_guard(self.train_program, self.startup_program):
-            loss = program_func()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
-
+            loss = program_func()
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = Trainer._check_and_get_place(place)
 
-        self.dist_transpile_if_necessary(optimize_ops, params_grads)
+        self._dist_transpile_if_necessary(optimize_ops, params_grads)
 
         # 2. move the default_main_program to self.program and run the
         # default_startup program on an empty core.Scope()
@@ -96,7 +95,7 @@ class Trainer(object):
             # load params from param_path into scope
             io.load_persistables(exe, dirname=param_path)
 
-    def dist_transpile_if_necessary(self, optimize_ops, params_grads):
+    def _dist_transpile_if_necessary(self, optimize_ops, params_grads):
         if "PADDLE_TRAINING_ROLE" not in os.environ:
             return
 
