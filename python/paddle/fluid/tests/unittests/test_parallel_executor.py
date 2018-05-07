@@ -721,3 +721,7 @@ class TestCRFModel(unittest.TestCase):
 
     def test_update_dense_parameter(self):
         self.check_network_convergence(is_sparse=False)
+
+
+if __name__ == '__main__':
+    unittest.main()
