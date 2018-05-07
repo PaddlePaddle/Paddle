@@ -36,121 +36,39 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
-    bool transpose_x = context->Attrs().Get<bool>("transpose_X");
-    bool transpose_y = context->Attrs().Get<bool>("transpose_Y");
 
-    PADDLE_ENFORCE_GE(dim_x.size(), 1,
-                      "Input tensor X must be at least 1-dimensional.");
-    PADDLE_ENFORCE_GE(dim_y.size(), 1,
-                      "Input tensor Y must be at least 1-dimensional.");
+    auto mat_dim_x = math::GetMatDim(GetXDim(dim_x), 0,
+                                     context->Attrs().Get<bool>("transpose_X"));
+    auto mat_dim_y = math::GetMatDim(GetYDim(dim_y), 0,
+                                     context->Attrs().Get<bool>("transpose_Y"));
 
-    std::vector<int64_t> out_dim;
-    int64_t batch_count = 1;
-    if (dim_x.size() > 3) {
-      PADDLE_ENFORCE_EQ(
-          dim_y.size(), dim_x.size(),
-          "The dimensions of X and Y must be the same, and both of "
-          "them should be %d-dimensional.",
-          dim_x.size());
-
-      // The first rank-2 dimensions are accumulated on the batch_count, and the
-      // last two dimensions are used for matrix multiplication.
-      for (int j = 0; j < dim_x.size() - 2; ++j) {
-        PADDLE_ENFORCE_EQ(dim_y[j], dim_x[j],
-                          "The %d-th dimension of X and Y must be the same.",
-                          j);
-        out_dim.push_back(dim_x[j]);
-        batch_count *= dim_x[j];
-      }
-    }
-
-    int M = 0, N = 0, KX = 0, KY = 0, batchCountX = 0, batchCountY = 0;
-    bool remove_initial_dim = false, remove_final_dim = false;
-
-    switch (dim_x.size()) {
-      case 1:
-        if (transpose_x) {
-          M = dim_x[0];
-          KX = 1;
-        } else {
-          M = 1;
-          KX = dim_x[0];
-          remove_initial_dim = true;
-        }
-        break;
-      case 2:
-        M = transpose_x ? dim_x[1] : dim_x[0];
-        KX = transpose_x ? dim_x[0] : dim_x[1];
-        break;
-      case 3:
-        batchCountX = dim_x[0];
-        M = transpose_x ? dim_x[2] : dim_x[1];
-        KX = transpose_x ? dim_x[1] : dim_x[2];
-        break;
-      default:
-        batchCountX = batch_count;
-        size_t mat_s = dim_x.size() - 2;
-        M = transpose_x ? dim_x[mat_s + 1] : dim_x[mat_s];
-        KX = transpose_x ? dim_x[mat_s] : dim_x[mat_s + 1];
-        break;
-    }
-
-    switch (dim_y.size()) {
-      case 1:
-        if (transpose_y) {
-          N = dim_y[0];
-          KY = 1;
-        } else {
-          N = 1;
-          KY = dim_y[0];
-          remove_final_dim = true;
-        }
-        break;
-      case 2:
-        KY = transpose_y ? dim_y[1] : dim_y[0];
-        N = transpose_y ? dim_y[0] : dim_y[1];
-        break;
-      case 3:
-        batchCountY = dim_y[0];
-        KY = transpose_y ? dim_y[2] : dim_y[1];
-        N = transpose_y ? dim_y[1] : dim_y[2];
-        break;
-      default:
-        batchCountY = batch_count;
-        size_t mat_s = dim_y.size() - 2;
-        KY = transpose_y ? dim_y[mat_s + 1] : dim_y[mat_s];
-        N = transpose_y ? dim_y[mat_s] : dim_y[mat_s + 1];
-    }
-
-    PADDLE_ENFORCE_EQ(
-        KX, KY,
-        "First matrix's width must be equal with second matrix's height.");
-    if (batchCountX && batchCountY) {
-      PADDLE_ENFORCE_EQ(
-          batchCountX, batchCountY,
-          "When Input(X) and Input(Y) are both three dimensional, they "
-          "must have the same batch dimension.");
-    }
-    int batchCount = std::max(batchCountX, batchCountY);
-
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_);
+    PADDLE_ENFORCE(mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
+                   mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
     std::vector<int64_t> dim_out;
-    if (batchCount) {
-      if (dim_x.size() > 3) {
-        dim_out.insert(dim_out.begin(), out_dim.begin(), out_dim.end());
-      } else {
-        dim_out.push_back(batchCount);
-      }
+    if (mat_dim_x.batch_size_ != 0) {
+      dim_out = framework::vectorize(dim_x);
+      dim_out[dim_out.size() - 2] = mat_dim_x.height_;
+      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+    } else if (mat_dim_y.batch_size_ != 0) {
+      dim_out = framework::vectorize(dim_y);
+      dim_out[dim_out.size() - 2] = mat_dim_x.height_;
+      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+    } else {
+      dim_out = {mat_dim_x.height_, mat_dim_y.width_};
     }
-    if (!remove_initial_dim) {
-      dim_out.push_back(M);
+
+    if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
+      std::swap(dim_out[dim_out.size() - 2], dim_out[dim_out.size() - 1]);
+      dim_out.resize(dim_out.size() - 1);
     }
-    if (!remove_final_dim) {
-      dim_out.push_back(N);
+
+    if (dim_y.size() == 1 && dim_out[dim_out.size() - 1] == 1) {
+      dim_out.resize(dim_out.size() - 1);
     }
-    if (dim_out.size() == 0) {
-      // We don't support 0-dimensional Tensors (scalars), so instead
-      // treat the output as a Tensor of shape (1, ) in this case.
-      dim_out.push_back(1);
+
+    if (dim_out.empty()) {
+      dim_out = {1};
     }
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
     context->ShareLoD("X", /*->*/ "Out");
