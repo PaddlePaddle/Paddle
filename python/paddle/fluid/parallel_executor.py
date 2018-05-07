@@ -30,7 +30,8 @@ class ParallelExecutor(object):
                  num_threads=None,
                  allow_op_delay=False,
                  share_vars_from=None,
-                 use_default_grad_scale=True):
+                 use_default_grad_scale=True,
+                 use_nccl_allreduce=True):
         """
         ParallelExecutor can run program in parallel.
 
@@ -43,9 +44,17 @@ class ParallelExecutor(object):
                 training.
             allow_op_delay(bool, default False): Whether to delay and buffer
                 some operators together for scheduling or not, which may
-                improve performance in some cases, defalut False.
+                improve performance in some cases, default False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
+            use_nccl_allreduce(bool, default True): Whether to use nccl_allreduce
+                or not, if set True, the communication between different
+                devices by nccl allReduce, which doesn't support updating sparse
+                parameter, if set False, the communication between different
+                devices by reduce_op and broadcast_op, which will distribute all
+                the parameter gradients evenly to different device and updates
+                the parameters, and finally broadcast to other device, this method
+                support updating sparse parameter. Default True.
             use_default_grad_scale(bool, default True): If set True, a default
                 scale value equal to `1./device_count` would be multiplied to
                 gradients of each device and scaled gradients would be
@@ -93,7 +102,7 @@ class ParallelExecutor(object):
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places)
+                num_threads = len(self._places) * 2
             else:
                 num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())
@@ -129,7 +138,9 @@ class ParallelExecutor(object):
             scope,
             local_scopes,
             allow_op_delay,
-            use_default_grad_scale)
+            use_default_grad_scale,
+            use_nccl_allreduce)
+
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):
