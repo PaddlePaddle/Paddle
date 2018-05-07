@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import framework
-from framework import Program, default_main_program, Parameter, Variable
-import optimizer
-from layer_helper import LayerHelper
+from ..framework import Program, default_main_program, Parameter, Variable
+from ..layer_helper import LayerHelper
 
 
 def hash_name_to_server(params_grads, pserver_endpoints):
