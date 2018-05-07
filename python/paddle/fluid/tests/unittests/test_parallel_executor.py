@@ -280,7 +280,7 @@ class TestMNIST(TestParallelExecutorBase):
             fluid.recordio_writer.convert_reader_to_recordio_file(
                 './mnist.recordio', reader, feeder)
 
-    def test_simple_fc(self):
+    def check_simple_fc_convergence(self):
         self.check_network_convergence(simple_fc_net)
         self.check_network_convergence(simple_fc_net, allow_op_delay=True)
 
@@ -290,7 +290,10 @@ class TestMNIST(TestParallelExecutorBase):
             simple_fc_net, feed_dict={"image": img,
                                       "label": label})
 
-    def test_simple_fc_parallel_accuracy(self):
+    def test_simple_fc(self):
+        self.check_simple_fc_convergence()
+
+    def check_simple_fc_parallel_accuracy(self):
         img = numpy.zeros(shape=[32, 784], dtype='float32')
         label = numpy.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -311,13 +314,19 @@ class TestMNIST(TestParallelExecutorBase):
         for p_l in parallel_last_loss:
             self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
 
-    def test_batchnorm_fc(self):
+    def test_simple_fc_parallel_accuracy(self):
+        self.check_simple_fc_parallel_accuracy()
+
+    def check_batchnorm_fc_convergence(self):
         self.check_network_convergence(fc_with_batchnorm)
         img = numpy.zeros(shape=[32, 784], dtype='float32')
         label = numpy.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             fc_with_batchnorm, feed_dict={"image": img,
                                           "label": label})
+
+    def test_batchnorm_fc(self):
+        self.check_batchnorm_fc_convergence()
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -339,7 +348,7 @@ class TestResnet(TestParallelExecutorBase):
     #         fluid.recordio_writer.convert_reader_to_recordio_file(
     #             "./flowers.recordio", reader, feeder, compressor=fluid.core.RecordIOWriter.Compressor.NoCompress)
 
-    def test_resnet(self):
+    def check_resnet_convergence(self):
         import functools
         batch_size = 2
         self.check_network_convergence(
@@ -347,6 +356,9 @@ class TestResnet(TestParallelExecutorBase):
                 SE_ResNeXt50Small, batch_size=batch_size),
             iter=20,
             batch_size=batch_size)
+
+    def test_resnet(self):
+        self.check_resnet_convergence()
 
 
 class ModelHyperParams(object):
@@ -510,7 +522,7 @@ class TestTransformer(TestParallelExecutorBase):
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
-    def test_parallel_testing(self):
+    def check_network_convergence(self):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -550,6 +562,9 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
 
+    def test_parallel(self):
+        self.check_network_convergence()
+
 
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
@@ -568,21 +583,26 @@ embedding_name = 'emb'
 
 
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
-            **ignored):
+            is_sparse, **ignored):
     # 8 features
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
+        is_sparse=is_sparse,
         size=[pred_dict_len, word_dim],
         dtype='float32',
         param_attr='vemb')
 
     mark_embedding = fluid.layers.embedding(
-        input=mark, size=[mark_dict_len, mark_dim], dtype='float32')
+        input=mark,
+        is_sparse=is_sparse,
+        size=[mark_dict_len, mark_dim],
+        dtype='float32')
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
         fluid.layers.embedding(
             size=[word_dict_len, word_dim],
+            is_sparse=is_sparse,
             input=x,
             param_attr=fluid.ParamAttr(
                 name=embedding_name, trainable=False)) for x in word_input
@@ -632,7 +652,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
 
 class TestCRFModel(unittest.TestCase):
-    def test_all(self):
+    def check_network_convergence(self, is_sparse):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -652,6 +672,7 @@ class TestCRFModel(unittest.TestCase):
                 name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
             mark = fluid.layers.data(
                 name='mark_data', shape=[1], dtype='int64', lod_level=1)
+
             feature_out = db_lstm(**locals())
             target = fluid.layers.data(
                 name='target', shape=[1], dtype='int64', lod_level=1)
@@ -694,3 +715,9 @@ class TestCRFModel(unittest.TestCase):
                 print map(numpy.array,
                           pe.run(feed=feeder.feed(cur_batch),
                                  fetch_list=[avg_cost.name]))[0]
+
+    def test_update_sparse_parameter(self):
+        self.check_network_convergence(is_sparse=True)
+
+    def test_update_dense_parameter(self):
+        self.check_network_convergence(is_sparse=False)

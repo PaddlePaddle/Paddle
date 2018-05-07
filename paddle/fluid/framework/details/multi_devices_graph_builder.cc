@@ -11,9 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include <utility>
+#include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
@@ -34,8 +36,8 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
-    platform::NCCLContextMap *nccl_ctxs)
+    const std::vector<Scope *> &local_scopes,
+    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
@@ -105,6 +107,11 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(const OpDesc &op,
 
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
+  std::unordered_map<std::string, proto::VarType::Type> var_types;
+  for (auto *var : program.Block(0).AllVars()) {
+    var_types[var->Name()] = var->GetType();
+  }
+
   auto graph = new SSAGraph();
   SSAGraph &result = *graph;
   std::unordered_set<std::string> og_has_been_broadcast;
@@ -133,12 +140,17 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       is_forwarding = false;
     } else {
       CreateComputationalOps(&result, *op, places_.size());
-      if (!is_forwarding) {
+      if (!is_forwarding && places_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            InsertNCCLAllReduceOp(&result, og);
+            if (IsSparseGradient(var_types, og)) {
+              CreateReduceOp(&result, og, 0);
+              CreateBroadcastOp(&result, og, 0);
+            } else {
+              InsertNCCLAllReduceOp(&result, og);
+            }
           }
         }
       }
@@ -165,6 +177,50 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   return std::unique_ptr<SSAGraph>(graph);
 }
 
+bool MultiDevSSAGraphBuilder::IsSparseGradient(
+    const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+    const std::string &og) const {
+  PADDLE_ENFORCE(var_types.count(og) != 0);
+  if (var_types.at(og) == proto::VarType::SELECTED_ROWS) {
+    return true;
+  }
+  return false;
+}
+
+void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
+                                                const std::string &p_name,
+                                                size_t src_dev_id) const {
+#ifdef PADDLE_WITH_CUDA
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, nccl_ctxs_);
+#else
+  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
+#endif
+
+  result->ops_.emplace_back(op_handle);
+  auto *in = result->vars_.at(src_dev_id).at(p_name).back().get();
+  op_handle->AddInput(in);
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &vars = result->vars_.at(i).at(p_name);
+    auto &p = places_[i];
+    auto *out_var = new VarHandle(vars.size(), i, p_name, p);
+    vars.emplace_back(out_var);
+    op_handle->AddOutput(out_var);
+#ifndef ADDLE_WITH_CUDA
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+#endif
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
+                                                    const OpDesc &op,
+                                                    int dev_id) const {
+  result->ops_.emplace_back(
+      new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]));
+  CreateOpHandleIOs(result, op, dev_id);
+}
+
 OpDesc *MultiDevSSAGraphBuilder::GetSendOpDesc(
     const ProgramDesc &program) const {
   for (auto *op : program.Block(0).AllOps()) {
@@ -174,7 +230,6 @@ OpDesc *MultiDevSSAGraphBuilder::GetSendOpDesc(
   }
   return nullptr;
 }
-
 void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     SSAGraph *result, const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA
@@ -247,6 +302,36 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
   }
 }
 
+VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
+                                                   const std::string &og,
+                                                   int dst_dev_id) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
+  result->ops_.emplace_back(new ReduceOpHandle(local_scopes_, places_));
+#endif
+  auto *op_handle = result->ops_.back().get();
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &vars = result->vars_[i][og];
+#ifndef PADDLE_WITH_CUDA
+    auto &p = places_[i];
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+#endif
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
+    op_handle->AddInput(prev_grad.get());
+  }
+  auto &vars = result->vars_[dst_dev_id][og];
+  auto var =
+      new VarHandle(vars.size() - 1, dst_dev_id, og, places_[dst_dev_id]);
+  vars.emplace_back(var);
+  op_handle->AddOutput(var);
+  return var;
+}
+
 void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
                                            const OpDesc &op) const {
   auto &p = places_[0];
@@ -263,6 +348,7 @@ bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
   return op.OutputArgumentNames().size() == 1 &&
          op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
 }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

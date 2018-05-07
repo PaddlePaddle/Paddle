@@ -43,7 +43,7 @@ class ParallelExecutor(object):
                 training.
             allow_op_delay(bool, default False): Whether to delay and buffer
                 some operators together for scheduling or not, which may
-                improve performance in some cases, defalut False.
+                improve performance in some cases, default False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
             use_default_grad_scale(bool, default True): If set True, a default
@@ -93,7 +93,7 @@ class ParallelExecutor(object):
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places)
+                num_threads = len(self._places) * 2
             else:
                 num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())
@@ -130,6 +130,7 @@ class ParallelExecutor(object):
             local_scopes,
             allow_op_delay,
             use_default_grad_scale)
+
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):
