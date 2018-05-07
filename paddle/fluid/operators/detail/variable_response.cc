@@ -434,8 +434,8 @@ int VariableResponse::Parse(Source* source) {
           return tag;
         }
         meta_.set_profile(profiling);
-        int64_t lisner_id = platform::ListenerId();
-        if (lisner_id <= 0) {
+        int64_t listener_id = platform::ListenerId();
+        if (listener_id <= 0) {
           break;
         }
         if (profiling && !platform::IsProfileEnabled()) {
@@ -444,7 +444,7 @@ int VariableResponse::Parse(Source* source) {
           // TODO(panyx0718): Should we allow to customize file dir.
           platform::DisableProfiler(
               platform::EventSortingKey::kDefault,
-              string::Sprintf("/tmp/profile_ps_%lld", lisner_id));
+              string::Sprintf("/tmp/profile_ps_%lld", listener_id));
         }
         break;
       }
