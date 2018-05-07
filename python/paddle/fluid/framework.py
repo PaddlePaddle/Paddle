@@ -1053,18 +1053,14 @@ class Program(object):
         Returns(Program):
             The cloned Program object.
         """
-        p = Program()
-        p.desc = core.ProgramDesc(self.desc)
         if for_test:
-            for i in xrange(p.desc.num_blocks()):
-                block = p.desc.block(i)
-                for j in xrange(block.op_size()):
-                    op = block.op(j)
-                    if op.has_attr('is_test'):
-                        op.set_attr('is_test', True)
+            p = self.inference_optimize()
+        else:
+            p = Program()
+            p.desc = core.ProgramDesc(self.desc)
+            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.sync_with_cpp()
 
-        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-        p.sync_with_cpp()
         p.copy_param_info_from(self)
         return p
 
