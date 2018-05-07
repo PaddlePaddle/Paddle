@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 class DecayedAdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -50,6 +51,12 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

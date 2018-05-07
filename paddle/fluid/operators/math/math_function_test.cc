@@ -13,6 +13,14 @@
 // limitations under the License.
 #include "paddle/fluid/operators/math/math_function.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/operators/math/blas.h"
+
+template <typename T>
+inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
+GetBlas(const paddle::platform::CPUDeviceContext& context) {
+  return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
+                                          T>(context);
+}
 
 TEST(math_function, gemm_notrans_cblas) {
   paddle::framework::Tensor input1;
@@ -34,9 +42,8 @@ TEST(math_function, gemm_notrans_cblas) {
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemm<paddle::platform::CPUDeviceContext, float>(
-      context, false, false, m, n, k, 1, input1_ptr, 3, input2_ptr + 1, 4, 1,
-      input3_ptr + 1, 4);
+  GetBlas<float>(context).GEMM(false, false, m, n, k, 1, input1_ptr, 3,
+                               input2_ptr + 1, 4, 1, input3_ptr + 1, 4);
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
@@ -68,9 +75,8 @@ TEST(math_function, gemm_trans_clbas) {
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemm<paddle::platform::CPUDeviceContext, float>(
-      context, false, true, m, n, k, 1, input1_ptr, 3, input2_ptr + 3, 3, 1,
-      input3_ptr + 1, 4);
+  GetBlas<float>(context).GEMM(false, true, m, n, k, 1, input1_ptr, 3,
+                               input2_ptr + 3, 3, 1, input3_ptr + 1, 4);
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
@@ -124,9 +130,8 @@ void GemvTest(int m, int n, bool trans) {
   }
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemv<paddle::platform::CPUDeviceContext, T>(
-      context, trans, static_cast<int>(m), static_cast<int>(n), 1., data_a,
-      data_b, 0., data_c);
+  GetBlas<T>(context).GEMV(trans, static_cast<int>(m), static_cast<int>(n), 1.,
+                           data_a, data_b, 0., data_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {
