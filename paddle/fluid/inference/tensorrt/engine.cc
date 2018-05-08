@@ -138,7 +138,6 @@ void*& TensorRTEngine::buffer(const std::string& name) {
 void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
                                      size_t size) {
   void* buf = buffer(name);
-  cudaMemcpyAsync(buf, data, size, cudaMemcpyHostToDevice, *stream_);
   PADDLE_ENFORCE_EQ(
       0, cudaMemcpyAsync(buf, data, size, cudaMemcpyHostToDevice, *stream_));
 }
