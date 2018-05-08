@@ -11,10 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
 #include <iostream>
+#include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -45,12 +46,33 @@ struct CUDAPlace {
   int device;
 };
 
+struct CUDAPinnedPlace {
+  CUDAPinnedPlace() {}
+
+  // needed for variant equality comparison
+  inline bool operator==(const CUDAPinnedPlace &) const { return true; }
+  inline bool operator!=(const CUDAPinnedPlace &) const { return false; }
+};
+
 struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &gpu) const { return true; }
+  bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-typedef boost::variant<CUDAPlace, CPUPlace> Place;
+struct IsCPUPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &cpu) const { return true; }
+  bool operator()(const CUDAPlace &) const { return false; }
+  bool operator()(const CUDAPinnedPlace &) const { return false; }
+};
+
+struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const CUDAPlace &) const { return false; }
+  bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
+};
+
+typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
 
 using PlaceList = std::vector<Place>;
 
@@ -59,11 +81,25 @@ const Place &get_place();
 
 const CUDAPlace default_gpu();
 const CPUPlace default_cpu();
+const CUDAPinnedPlace default_cuda_pinned();
 
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
+bool is_cuda_pinned_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
+
+struct PlaceHash {
+  std::size_t operator()(const Place &p) const {
+    constexpr size_t num_dev_bits = 4;
+    std::hash<int> ihash;
+    size_t dev_id = 0;
+    if (is_gpu_place(p)) {
+      dev_id = boost::get<CUDAPlace>(p).device;
+    }
+    return ihash(dev_id << num_dev_bits | p.which());
+  }
+};
 
 std::ostream &operator<<(std::ostream &, const Place &);
 
@@ -82,6 +118,16 @@ struct PlaceVisitorWrapper
     return visitor_(cuda);
 #else
     PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
+    return typename Visitor::result_type();
+#endif
+  }
+
+  typename Visitor::result_type operator()(
+      const CUDAPinnedPlace &cuda_pinned) const {
+#ifdef PADDLE_WITH_CUDA
+    return visitor_(cuda_pinned);
+#else
+    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");
     return typename Visitor::result_type();
 #endif
   }

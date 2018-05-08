@@ -29,8 +29,10 @@ class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_max, ops::ElementwiseOp, ops::ElementwiseMaxOpMaker,
-            elementwise_max_grad, ops::ElementwiseOpGrad);
+REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
+                  ops::ElementwiseMaxOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,

@@ -288,7 +288,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     while_grad->SetInput(framework::GradVarName(kOutputs), output_grads_list);
 
     while_grad->SetAttrMap(this->Attrs());
-    while_grad->SetBlockAttr(kStepBlock, *grad_block);
+    while_grad->SetBlockAttr(kStepBlock, grad_block);
     // record the original output gradient names, since the gradient name of
     // while operator could be renamed.
     while_grad->SetAttr("original_output_grad", output_grads_list);

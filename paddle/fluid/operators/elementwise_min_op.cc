@@ -29,8 +29,10 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_min, ops::ElementwiseOp, ops::ElementwiseMinOpMaker,
-            elementwise_min_grad, ops::ElementwiseOpGrad);
+REGISTER_OPERATOR(elementwise_min, ops::ElementwiseOp,
+                  ops::ElementwiseMinOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(elementwise_min_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_min,
     ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, float>,

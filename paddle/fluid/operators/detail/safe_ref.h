@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace operators {
 namespace detail {

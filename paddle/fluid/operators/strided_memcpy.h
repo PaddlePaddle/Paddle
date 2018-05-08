@@ -37,8 +37,8 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
                           const framework::DDim& src_stride,
                           const framework::DDim& dst_dim,
                           const framework::DDim& dst_stride, T* dst) {
-  using namespace detail;
-  StridedCopyDimVisitor<T> func(dev_ctx, src, src_stride, dst_stride, dst);
+  paddle::operators::detail::StridedCopyDimVisitor<T> func(
+      dev_ctx, src, src_stride, dst_stride, dst);
   boost::apply_visitor(func, dst_dim);
 }
 

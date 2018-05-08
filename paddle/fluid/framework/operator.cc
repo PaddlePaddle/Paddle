@@ -35,7 +35,19 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDims(const Scope& scope, const std::string& name) {
+proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
+  if (var->IsType<framework::LoDTensor>()) {
+    return framework::ToDataType(var->Get<framework::LoDTensor>().type());
+  } else if (var->IsType<framework::SelectedRows>()) {
+    return framework::ToDataType(
+        var->Get<framework::SelectedRows>().value().type());
+  } else {
+    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+  }
+}
+
+static DDim GetDims(const Scope& scope, const std::string& name,
+                    bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
@@ -44,7 +56,11 @@ static DDim GetDims(const Scope& scope, const std::string& name) {
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+    if (get_actual_dim) {
+      return var->Get<SelectedRows>().value().dims();
+    } else {
+      return var->Get<SelectedRows>().GetCompleteDims();
+    }
   } else {
     return DDim({-1});
   }
@@ -77,6 +93,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   RunImpl(scope, place);
 }
 
+bool OperatorBase::HasInputs(const std::string& name) const {
+  if (inputs_.find(name) != inputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -91,6 +115,14 @@ const std::vector<std::string>& OperatorBase::Inputs(
   PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
                  type_, name);
   return it->second;
+}
+
+bool OperatorBase::HasOutputs(const std::string& name) const {
+  if (outputs_.find(name) != outputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
@@ -118,7 +150,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
-        ss << "[" << GetDims(*scope, input.second[i]) << "]";
+        ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
@@ -138,7 +170,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
-        ss << "[" << GetDims(*scope, output.second[i]) << "]";
+        ss << "[" << GetDims(*scope, output.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {
@@ -153,17 +185,6 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   }
   ss << "}.";
   return ss.str();
-}
-
-void OperatorBase::Rename(const std::string& old_name,
-                          const std::string& new_name) {
-  for (auto& input : inputs_) {
-    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
-  }
-  for (auto& output : outputs_) {
-    std::replace(output.second.begin(), output.second.end(), old_name,
-                 new_name);
-  }
 }
 
 OperatorBase::OperatorBase(const std::string& type,
@@ -215,13 +236,18 @@ void OperatorBase::CheckAllInputOutputSet() const {
   if (op_info == nullptr || op_info->proto_ == nullptr) return;
 
   for (auto& in : op_info->Proto().inputs()) {
-    PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
-                   "Type %s's input %s is not set", Type(), in.name());
+    if (!in.dispensable()) {
+      PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
+                     "Operator %s's input, %s, is not set", Type(), in.name());
+    }
   }
 
   for (auto& out : op_info->Proto().outputs()) {
-    PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
-                   "Type %s's output %s is not set", Type(), out.name());
+    if (!out.dispensable()) {
+      PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
+                     "Operator %s's output, %s, is not set", Type(),
+                     out.name());
+    }
   }
 }
 
@@ -311,7 +337,6 @@ bool OpSupportGPU(const std::string& op_type) {
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
     // All control operator must support GPU
-
     return true;
   }
   for (auto& kern_pair : it->second) {
@@ -328,6 +353,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto& ins = Inputs(name);
     size_t length = ins.size();
     if (length == 0) {
@@ -341,6 +369,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutput(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto& outs = Outputs(name);
     size_t length = outs.size();
     if (length == 0) {
@@ -354,6 +385,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasInputs(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto inputs = op_.Inputs(name);
     if (inputs.empty()) {
       return false;
@@ -367,6 +401,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto outputs = op_.Outputs(name);
     if (outputs.empty()) {
       return false;
@@ -442,15 +479,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
-    Variable* var = scope_.FindVar(name);
-    if (var->IsType<ReaderHolder>()) {
-      return var->Get<ReaderHolder>().shapes();
-    } else {
-      PADDLE_THROW(
-          "Only ReaderHolder support 'GetRepeatedDims', but Variable %s's "
-          "type_id is %s.",
-          name, var->Type().name());
-    }
+    PADDLE_THROW("Only compile time support this method");
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
@@ -467,15 +496,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void SetRepeatedDims(const std::string& name,
                        const std::vector<DDim>& dims) override {
-    Variable* var = scope_.FindVar(name);
-    if (var->IsType<ReaderHolder>()) {
-      var->GetMutable<ReaderHolder>()->set_shapes(dims);
-    } else {
-      PADDLE_THROW(
-          "Only ReaderHolder support 'SetRepeatedDims', but Variable %s's "
-          "type_id is %s.",
-          name, var->Type().name());
-    }
+    PADDLE_THROW("Only compile time support this method");
   }
 
   proto::VarType::Type GetVarType(const std::string& name) const override {
@@ -497,8 +518,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto dev_ctx = pool.Get(place);
-  // profile
+  auto* dev_ctx = pool.Get(place);
+
+  // For profiling, don't move out of this function because that will result
+  // in the failure of multi-GPU profiling.
   platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
@@ -531,6 +554,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // do data transform
   Scope& new_scope = scope.NewScope();
 
+  std::vector<std::string> inplace_vars;
   for (auto& var_name_item : this->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
@@ -543,10 +567,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
                           var_name) != out_var_names.end()) {
-              PADDLE_THROW(
-                  "var %s is both input and output, "
-                  "does not support transform",
-                  var_name);
+              inplace_vars.push_back(var_name);
             }
             VLOG(3) << "Transform Variable " << var_name << " from "
                     << kernel_type_for_var << " to " << expected_kernel_key;
@@ -554,7 +575,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             std::shared_ptr<Tensor> out(new Tensor);
             DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
                           out.get());
-            CopyVariableWithTensor(*var, *(out.get()), *trans_var);
+            CopyVariableWithTensor(*var, *(out.get()), trans_var);
           }
         }
       }
@@ -564,6 +585,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
   kernel_iter->second->Compute(
       ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  for (auto& var_name : inplace_vars) {
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
+    auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {

@@ -17,7 +17,7 @@ namespace framework {
 
 class SelectedRowsTester : public ::testing::Test {
  public:
-  virtual void SetUp() override {
+  void SetUp() override {
     std::vector<int64_t> rows{0, 4, 7};
     int64_t height = 10;
     int64_t row_numel = 100;
@@ -57,6 +57,41 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());
   ASSERT_EQ(selected_rows_->value().dims(), dst_tensor.value().dims());
   ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
+}
+
+TEST_F(SelectedRowsTester, SparseTable) {
+  platform::CPUPlace cpu;
+  SelectedRows table;
+  // initialize a sparse table
+  table.mutable_value()->Resize(framework::make_ddim({1, 100}));
+  table.mutable_value()->mutable_data<float>(cpu);
+  table.mutable_rows()->push_back(1);
+
+  int64_t key = 10000;
+  int64_t non_key = 999;
+  framework::Tensor value;
+  value.Resize(framework::make_ddim({1, 100}));
+  auto ptr = value.mutable_data<float>(cpu);
+  ptr[0] = static_cast<float>(10);
+
+  ASSERT_EQ(table.rows().size(), static_cast<size_t>(1));
+  ASSERT_EQ(table.HasKey(key), false);
+
+  table.Set(key, value);
+
+  ASSERT_EQ(table.rows().size(), static_cast<size_t>(2));
+  ASSERT_EQ(table.HasKey(key), true);
+  // check re-allocate
+  ASSERT_EQ(table.value().dims()[0], static_cast<int64_t>(4));
+
+  framework::Tensor get_value;
+  get_value.mutable_data<float>(framework::make_ddim({2, 100}), cpu);
+  std::vector<int64_t> keys({non_key, key});
+  auto non_key_pairs = table.Get(keys, &get_value);
+
+  ASSERT_EQ(get_value.data<float>()[100], static_cast<float>(10));
+  ASSERT_EQ(non_key_pairs.size(), static_cast<size_t>(1));
+  ASSERT_EQ(non_key_pairs[0].first, non_key);
 }
 
 }  // namespace framework

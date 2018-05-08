@@ -1,3 +1,0 @@
-# Kubernetes Distributed
-
-TBD

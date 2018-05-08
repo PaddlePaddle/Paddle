@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import unittest
 import os
@@ -145,12 +145,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,

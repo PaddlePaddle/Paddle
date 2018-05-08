@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
-#include "paddle/fluid/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
@@ -106,21 +105,6 @@ Example:
                  "(int, default 0) "
                  "The axis which the input will be splited on.")
         .SetDefault(0);
-  }
-};
-
-class SplitGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto op = new framework::OpDesc();
-    op->SetType("concat");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetOutput("Out", InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

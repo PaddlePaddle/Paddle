@@ -29,8 +29,11 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_add, ops::ElementwiseOp, ops::ElementwiseAddOpMaker,
-            elementwise_add_grad, ops::ElementwiseOpGrad);
+REGISTER_OPERATOR(elementwise_add, ops::ElementwiseOp,
+                  ops::ElementwiseAddOpMaker, ops::ElementwiseOpInferVarType,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(elementwise_add_grad, ops::ElementwiseOpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,

@@ -87,57 +87,6 @@ class TestProgram(unittest.TestCase):
         print(prog)
         print(prog_restored)
 
-    def test_append_backward(self):
-        prog = Program()
-        block = prog.global_block()
-
-        mul_x = block.create_var(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-        mul_op = block.append_op(
-            type="mul",
-            inputs={"X": [mul_x],
-                    "Y": mul_y},
-            outputs={"Out": [mul_out]},
-            attrs={"x_num_col_dims": 1})
-
-        add_y = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="add.y")
-        add_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="add.out")
-        add_op = block.append_op(
-            type="elementwise_add",
-            inputs={"X": mul_out,
-                    "Y": add_y},
-            outputs={"Out": add_out},
-            attrs={"x_num_col_dims": 1})
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out")
-        block.append_op(
-            type="mean", inputs={"X": add_out}, outputs={"Out": mean_out})
-
-        self.assertEqual(mul_op.idx, 0)
-        self.assertEqual(add_op.idx, 1)
-        param_to_grad = prog.append_backward(mean_out, set())
-
-        for var_name in ("mul.x", "mul.y", "mul.out", "add.y", "add.out",
-                         "mean.out"):
-            self.assertEqual(param_to_grad[var_name][0],
-                             grad_var_name(var_name))
-            self.assertEqual(param_to_grad[var_name][1], 0)
-
-        expect_ops = [
-            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
-            "elementwise_add_grad", "mul_grad"
-        ]
-        actual_ops = []
-        for op in block.ops:
-            actual_ops.append(op.type)
-        self.assertEqual(actual_ops, expect_ops)
-
     def test_program_clone_with_parameter(self):
         main_program = Program()
         startup_program = Program()

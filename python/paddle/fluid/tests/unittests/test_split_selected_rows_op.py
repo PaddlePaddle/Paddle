@@ -60,8 +60,8 @@ class TestSpliteSelectedRows(unittest.TestCase):
 
         # expected output selected rows
         expected_out0_rows = [0, 4]
-        expected_out1_rows = [5, 7]
-        expected_out4_rows = [20]
+        expected_out1_rows = [0, 2]
+        expected_out4_rows = [0]
 
         op = Operator(
             "split_selected_rows",
@@ -101,7 +101,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         out0_grad_tensor.set(np_array, place)
 
         out1_grad = scope.var("out1@GRAD").get_selected_rows()
-        rows1 = [7, 5]
+        rows1 = [2, 0]
         out1_grad.set_rows(rows1)
         out1_grad.set_height(height)
         out1_grad_tensor = out1_grad.get_tensor()

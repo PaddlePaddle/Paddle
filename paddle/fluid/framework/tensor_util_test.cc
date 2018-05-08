@@ -105,16 +105,14 @@ TEST(TensorCopy, Tensor) {
 }
 
 TEST(TensorFromVector, Tensor) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    Tensor cpu_tensor;
+    paddle::framework::Tensor cpu_tensor;
 
     // Copy to CPU Tensor
-    cpu_tensor.Resize(make_ddim({3, 3}));
+    cpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
-    TensorFromVector<int>(src_vec, &cpu_tensor);
+    paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
 
     // Compare Tensors
     const int* cpu_ptr = cpu_tensor.data<int>();
@@ -125,8 +123,8 @@ TEST(TensorFromVector, Tensor) {
     }
 
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
-    cpu_tensor.Resize(make_ddim({2, 2}));
-    TensorFromVector<int>(src_vec, &cpu_tensor);
+    cpu_tensor.Resize(paddle::framework::make_ddim({2, 2}));
+    paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
     cpu_ptr = cpu_tensor.data<int>();
     src_ptr = src_vec.data();
     ASSERT_NE(src_ptr, cpu_ptr);
@@ -140,23 +138,23 @@ TEST(TensorFromVector, Tensor) {
 #ifdef PADDLE_WITH_CUDA
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    Tensor cpu_tensor;
-    Tensor gpu_tensor;
-    Tensor dst_tensor;
+    paddle::framework::Tensor cpu_tensor;
+    paddle::framework::Tensor gpu_tensor;
+    paddle::framework::Tensor dst_tensor;
 
     // Copy to CPU Tensor
     cpu_tensor.Resize(make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
-    CPUDeviceContext cpu_ctx(*cpu_place);
-    TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
-    gpu_tensor.Resize(make_ddim({3, 3}));
+    gpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
     auto gpu_place = new paddle::platform::CUDAPlace();
-    CUDADeviceContext gpu_ctx(*gpu_place);
-    TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    paddle::platform::CUDADeviceContext gpu_ctx(*gpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     // Copy from GPU to CPU tensor for comparison
-    TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
+    paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -172,11 +170,11 @@ TEST(TensorFromVector, Tensor) {
 
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
 
-    cpu_tensor.Resize(make_ddim({2, 2}));
-    TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
-    gpu_tensor.Resize(make_ddim({2, 2}));
-    TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
-    TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
+    cpu_tensor.Resize(paddle::framework::make_ddim({2, 2}));
+    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    gpu_tensor.Resize(paddle::framework::make_ddim({2, 2}));
+    paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -197,18 +195,16 @@ TEST(TensorFromVector, Tensor) {
 }
 
 TEST(TensorToVector, Tensor) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
   {
-    Tensor src;
-    int* src_ptr = src.mutable_data<int>({3, 3}, CPUPlace());
+    paddle::framework::Tensor src;
+    int* src_ptr = src.mutable_data<int>({3, 3}, paddle::platform::CPUPlace());
     for (int i = 0; i < 3 * 3; ++i) {
       src_ptr[i] = i;
     }
 
-    CPUPlace place;
+    paddle::platform::CPUPlace place;
     std::vector<int> dst;
-    TensorToVector<int>(src, &dst);
+    paddle::framework::TensorToVector<int>(src, &dst);
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_ptr[i], dst[i]);
@@ -217,13 +213,13 @@ TEST(TensorToVector, Tensor) {
 #ifdef PADDLE_WITH_CUDA
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    Tensor gpu_tensor;
-    CUDAPlace place;
-    CUDADeviceContext gpu_ctx(place);
-    TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    paddle::framework::Tensor gpu_tensor;
+    paddle::platform::CUDAPlace place;
+    paddle::platform::CUDADeviceContext gpu_ctx(place);
+    paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
 
     std::vector<int> dst;
-    TensorToVector<int>(gpu_tensor, gpu_ctx, &dst);
+    paddle::framework::TensorToVector<int>(gpu_tensor, gpu_ctx, &dst);
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_vec[i], dst[i]);
@@ -233,29 +229,55 @@ TEST(TensorToVector, Tensor) {
 }
 
 TEST(TensorContainsNAN, CPU) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  Tensor src;
-  float* buf = src.mutable_data<float>({3}, CPUPlace());
-  buf[0] = 0.0;
-  buf[1] = NAN;
-  buf[2] = 0.0;
-  ASSERT_TRUE(TensorContainsNAN(src));
-  buf[1] = 0.0;
-  ASSERT_FALSE(TensorContainsNAN(src));
+  {
+    paddle::framework::Tensor src;
+    float* buf = src.mutable_data<float>({3}, paddle::platform::CPUPlace());
+    buf[0] = 0.0;
+    buf[1] = NAN;
+    buf[2] = 0.0;
+    ASSERT_TRUE(paddle::framework::TensorContainsNAN(src));
+    buf[1] = 0.0;
+    ASSERT_FALSE(paddle::framework::TensorContainsNAN(src));
+  }
+
+  {
+    paddle::framework::Tensor src;
+    paddle::platform::float16* buf =
+        src.mutable_data<paddle::platform::float16>(
+            {3}, paddle::platform::CPUPlace());
+    buf[0] = 0.0;
+    buf[1].x = 0x7fff;
+    buf[2] = 0.0;
+    ASSERT_TRUE(paddle::framework::TensorContainsNAN(src));
+    buf[1] = 0.0;
+    ASSERT_FALSE(paddle::framework::TensorContainsNAN(src));
+  }
 }
 
 TEST(TensorContainsInf, CPU) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  Tensor src;
-  double* buf = src.mutable_data<double>({3}, CPUPlace());
-  buf[0] = 1.0;
-  buf[1] = INFINITY;
-  buf[2] = 0.0;
-  ASSERT_TRUE(TensorContainsInf(src));
-  buf[1] = 1.0;
-  ASSERT_FALSE(TensorContainsInf(src));
+  {
+    paddle::framework::Tensor src;
+    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    buf[0] = 1.0;
+    buf[1] = INFINITY;
+    buf[2] = 0.0;
+    ASSERT_TRUE(paddle::framework::TensorContainsInf(src));
+    buf[1] = 1.0;
+    ASSERT_FALSE(paddle::framework::TensorContainsInf(src));
+  }
+
+  {
+    paddle::framework::Tensor src;
+    paddle::platform::float16* buf =
+        src.mutable_data<paddle::platform::float16>(
+            {3}, paddle::platform::CPUPlace());
+    buf[0] = 1.0;
+    buf[1].x = 0x7c00;
+    buf[2] = 0.0;
+    ASSERT_TRUE(paddle::framework::TensorContainsInf(src));
+    buf[1] = 1.0;
+    ASSERT_FALSE(paddle::framework::TensorContainsInf(src));
+  }
 }
 
 TEST(Tensor, FromAndToStream) {

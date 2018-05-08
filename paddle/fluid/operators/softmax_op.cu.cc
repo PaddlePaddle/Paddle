@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    softmax, ops::SoftmaxKernel<paddle::platform::CUDADeviceContext, float>);
+    softmax, ops::SoftmaxKernel<plat::CUDADeviceContext, float>,
+    ops::SoftmaxKernel<plat::CUDADeviceContext, double>,
+    ops::SoftmaxKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
-    softmax_grad,
-    ops::SoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>);
+    softmax_grad, ops::SoftmaxGradKernel<plat::CUDADeviceContext, float>,
+    ops::SoftmaxGradKernel<plat::CUDADeviceContext, double>);

@@ -24,6 +24,14 @@ void *cublas_dso_handle = nullptr;
 
 CUBLAS_BLAS_ROUTINE_EACH(DEFINE_WRAP);
 
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R2
+CUBLAS_BLAS_ROUTINE_EACH_R2(DEFINE_WRAP);
+#endif
+
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R3
+CUBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

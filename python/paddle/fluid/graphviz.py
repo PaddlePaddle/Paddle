@@ -83,7 +83,7 @@ class Graph(object):
         file = open(dot_path, 'w')
         file.write(self.__str__())
         image_path = os.path.join(
-            os.path.dirname(__file__), dot_path[:-3] + "pdf")
+            os.path.dirname(dot_path), dot_path[:-3] + "pdf")
         cmd = ["dot", "-Tpdf", dot_path, "-o", image_path]
         subprocess.Popen(
             cmd,
@@ -199,7 +199,7 @@ class GraphPreviewGenerator(object):
         else:
             self.graph.show(path)
 
-    def add_param(self, name, data_type, shape, highlight=False):
+    def add_param(self, name, data_type, highlight=False):
         label = '\n'.join([
             '<<table cellpadding="5">',
             '  <tr>',
@@ -212,11 +212,6 @@ class GraphPreviewGenerator(object):
             '  <tr>',
             '    <td>',
             str(data_type),
-            '    </td>'
-            '  </tr>',
-            '  <tr>',
-            '    <td>',
-            '[%s]' % 'x'.join(shape),
             '    </td>'
             '  </tr>',
             '</table>>',

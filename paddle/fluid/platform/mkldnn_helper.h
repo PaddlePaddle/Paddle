@@ -11,10 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
-#include <mkldnn.hpp>
+#include <mkldnn.h>
+#include <vector>
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace platform {
@@ -22,6 +23,7 @@ namespace platform {
 using MKLDNNStream = mkldnn::stream;
 using MKLDNNEngine = mkldnn::engine;
 using MKLDNNMemory = mkldnn::memory;
+using MKLDNNMemoryDescriptor = mkldnn::memory::desc;
 using MKLDNNPrimitive = mkldnn::primitive;
 using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
 
@@ -30,6 +32,44 @@ typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
 typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
 typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
 typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
+
+template <typename Type>
+void* to_void_cast(const Type* t) {
+  return static_cast<void*>(const_cast<Type*>(t));
+}
+
+template <class Type>
+using tf_desc = typename Type::desc;
+
+template <class Type>
+using tf_pd = typename Type::primitive_desc;
+
+template <typename Type, typename Engine, typename... Args>
+std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
+                                                    Args&&... args) {
+  auto desc = tf_desc<Type>(mkldnn::prop_kind::forward, (args)...);
+  auto pd = new tf_pd<Type>(desc, e);
+  return std::shared_ptr<tf_pd<Type>>(pd);
+}
+
+template <typename Type, typename Engine, typename Primitive, typename... Args>
+tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
+                                   Args&&... args) {
+  auto desc = tf_desc<Type>(args...);
+  return tf_pd<Type>(desc, e, p);
+}
+
+inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
+                                          mkldnn::memory::data_type data_type,
+                                          mkldnn::memory::format format) {
+  mkldnn::memory::dims tz = dims;
+  return mkldnn::memory::desc({tz}, data_type, format);
+}
+
+inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
+  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
+  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
+}
 
 }  // namespace platform
 }  // namespace paddle

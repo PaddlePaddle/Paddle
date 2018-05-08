@@ -1,3 +1,0 @@
-# Recurrent Group Tutorial
-
-TBD

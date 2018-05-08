@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -143,7 +144,12 @@ class ParallelDoOp : public framework::OperatorBase {
       PADDLE_ENFORCE(scope.FindVar(param)->IsType<LoDTensor>(),
                      "Only support parameter type as LoDTensor");
       auto &src = scope.FindVar(param)->Get<LoDTensor>();
-      for (size_t i = 0; i < sub_scopes.size(); ++i) {
+
+      auto *sub_scope0 = sub_scopes[0];
+      auto *dst0 = sub_scope0->Var(param)->GetMutable<LoDTensor>();
+      dst0->ShareDataWith(src);
+
+      for (size_t i = 1; i < sub_scopes.size(); ++i) {
         auto &place = places[i];
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
@@ -158,11 +164,14 @@ class ParallelDoOp : public framework::OperatorBase {
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
 
-      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
-        framework::Executor executor(place);
-        executor.Run(*program, cur_scope, block->ID(),
-                     false /*create_local_scope*/);
-      }));
+      workers.emplace_back(
+          framework::Async([program, cur_scope, place, block, place_idx] {
+            // Give the thread an id to distinguish parallel block with same id.
+            platform::RecordThread rt(static_cast<int>(place_idx) + 1);
+            framework::Executor executor(place);
+            executor.Run(*program, cur_scope, block->ID(),
+                         false /*create_local_scope*/);
+          }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -234,11 +243,14 @@ class ParallelDoGradOp : public framework::OperatorBase {
       auto *cur_scope = sub_scopes[i];
 
       // execute
-      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
-        framework::Executor executor(place);
-        executor.Run(*program, cur_scope, block->ID(),
-                     false /*create_local_scope*/);
-      }));
+      workers.emplace_back(
+          framework::Async([program, cur_scope, place, block, i] {
+            // Give the thread an id to distinguish parallel block with same id.
+            platform::RecordThread rt(static_cast<int>(i) + 1);
+            framework::Executor executor(place);
+            executor.Run(*program, cur_scope, block->ID(),
+                         false /*create_local_scope*/);
+          }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -352,7 +364,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kParallelBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kParallelBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
   }

@@ -248,12 +248,15 @@ def _callback_lookup_(op):
                         if o_argu in self.param_grad_names:
                             allreduce_out_name = o_argu + "__nccl_all_reduce__"
                             op_desc = _create_op_desc_(
-                                "ncclAllReduce", {
+                                "ncclReduce",
+                                {
                                     "X": [o_argu],
                                     "Communicator":
                                     ['nccl_com__do_not_change_']
-                                }, {"Out": [allreduce_out_name]},
-                                {"reduction": "ncclSum"})
+                                },
+                                {"Out": [allreduce_out_name]},
+                                {"reduction": "ncclSum",
+                                 "root": 0}, )
                             block.desc.append_op().copy_from(op_desc)
 
                             op_desc = _create_op_desc_(
@@ -457,7 +460,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         "Out": [_append_grad_suffix_(loss.name)]
     }, {"shape": [1],
         "value": 1.0,
-        "dtype": loss.dtype})
+        "dtype": loss.dtype,
+        "force_cpu": False})
     root_block.desc.append_op().copy_from(op_desc)
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
@@ -486,7 +490,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     params_and_grads = []
     for param in parameters:
         if param not in grad_info_map:
-            raise ValueError("param %s is not in map" % param)
+            continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):

@@ -100,7 +100,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     auto x_row_max = EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
         x.maximum(Eigen::DSizes<int, 1>(1))
-            .reshape(Eigen::DSizes<int, 2>(int(batch_size), 1));
+            .reshape(Eigen::DSizes<int, 2>(static_cast<int>(batch_size), 1));
 
     auto x_exps = EigenMatrix<T>::From(*emission_exps);
     x_exps.device(place) =

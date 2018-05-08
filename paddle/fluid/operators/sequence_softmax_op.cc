@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_softmax_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -29,6 +30,29 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    bool runtime_cudnn_support = false;
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    }
+#endif
+    framework::LibraryType library_ = framework::LibraryType::kPlain;
+    if (use_cudnn && runtime_cudnn_support) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
+  }
 };
 
 class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -41,6 +65,17 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor) 1-D or 2-D output LoDTensor with the 2-nd dimension "
               "of length 1.");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Sequence Softmax Operator.
 
@@ -91,18 +126,44 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    bool runtime_cudnn_support = false;
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    }
+#endif
+    framework::LibraryType library_ = framework::LibraryType::kPlain;
+    if (use_cudnn && runtime_cudnn_support) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
+  }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_softmax, ops::SequenceSoftmaxOp,
-            ops::SequenceSoftmaxOpMaker, sequence_softmax_grad,
-            ops::SequenceSoftmaxGradOp);
+REGISTER_OPERATOR(sequence_softmax, ops::SequenceSoftmaxOp,
+                  ops::SequenceSoftmaxOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

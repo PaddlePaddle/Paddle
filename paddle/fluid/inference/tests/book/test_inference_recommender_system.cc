@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -36,25 +36,25 @@ TEST(inference, recommender_system) {
 
   // Use the first data from paddle.dataset.movielens.test() as input
   std::vector<int64_t> user_id_data = {1};
-  SetupTensor<int64_t>(user_id, {batch_size, 1}, user_id_data);
+  SetupTensor<int64_t>(&user_id, {batch_size, 1}, user_id_data);
 
   std::vector<int64_t> gender_id_data = {1};
-  SetupTensor<int64_t>(gender_id, {batch_size, 1}, gender_id_data);
+  SetupTensor<int64_t>(&gender_id, {batch_size, 1}, gender_id_data);
 
   std::vector<int64_t> age_id_data = {0};
-  SetupTensor<int64_t>(age_id, {batch_size, 1}, age_id_data);
+  SetupTensor<int64_t>(&age_id, {batch_size, 1}, age_id_data);
 
   std::vector<int64_t> job_id_data = {10};
-  SetupTensor<int64_t>(job_id, {batch_size, 1}, job_id_data);
+  SetupTensor<int64_t>(&job_id, {batch_size, 1}, job_id_data);
 
   std::vector<int64_t> movie_id_data = {783};
-  SetupTensor<int64_t>(movie_id, {batch_size, 1}, movie_id_data);
+  SetupTensor<int64_t>(&movie_id, {batch_size, 1}, movie_id_data);
 
   std::vector<int64_t> category_id_data = {10, 8, 9};
-  SetupLoDTensor<int64_t>(category_id, {3, 1}, {{0, 3}}, category_id_data);
+  SetupLoDTensor<int64_t>(&category_id, {3, 1}, {{0, 3}}, category_id_data);
 
   std::vector<int64_t> movie_title_data = {1069, 4140, 2923, 710, 988};
-  SetupLoDTensor<int64_t>(movie_title, {5, 1}, {{0, 5}}, movie_title_data);
+  SetupLoDTensor<int64_t>(&movie_title, {5, 1}, {{0, 5}}, movie_title_data);
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&user_id);

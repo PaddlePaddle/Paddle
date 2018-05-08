@@ -14,6 +14,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <typeindex>
 #include <typeinfo>
 
@@ -67,7 +68,7 @@ class Variable {
   // parameter of Variable.
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(T* ptr) : ptr_(ptr), type_(typeid(T)) {}
+    explicit PlaceholderImpl(T* ptr) : ptr_(ptr), type_(typeid(T)) {}
 
     virtual const std::type_info& Type() const { return type_; }
     virtual void* Ptr() const { return static_cast<void*>(ptr_.get()); }
