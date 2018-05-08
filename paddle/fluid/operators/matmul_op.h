@@ -91,7 +91,7 @@ inline framework::Tensor CombineBatchAndN(const DeviceContext& context,
 }
 
 inline void NormalizeTensorShape(framework::Tensor* x,
-                                 const math::MatDim& mat_dim_x) {
+                                 const math::MatDescriptor& mat_dim_x) {
   int64_t h, w;
   h = mat_dim_x.height_;
   w = mat_dim_x.width_;

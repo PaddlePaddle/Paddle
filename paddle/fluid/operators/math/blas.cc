@@ -18,8 +18,9 @@
 namespace paddle {
 namespace operators {
 namespace math {
-MatDim GetMatDim(const framework::DDim& dim, int num_flatten_cols, bool trans) {
-  MatDim retv;
+MatDescriptor GetMatDim(const framework::DDim& dim, int num_flatten_cols,
+                        bool trans) {
+  MatDescriptor retv;
   if (num_flatten_cols > 1) {
     auto flatten_dim = framework::flatten_to_2d(dim, num_flatten_cols);
     retv.height_ = flatten_dim[0];
