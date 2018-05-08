@@ -80,7 +80,9 @@ def inference_program(is_sparse):
 
 
 def train_program(is_sparse):
-    # The declaration of 'next_word' must be after the invoking of inference_program, or the data input order of train program would be [next_word, firstw, secondw, thirdw, forthw], which is not correct.
+    # The declaration of 'next_word' must be after the invoking of inference_program,
+    # or the data input order of train program would be [next_word, firstw, secondw,
+    # thirdw, forthw], which is not correct.
     predict_word = inference_program(is_sparse)
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
