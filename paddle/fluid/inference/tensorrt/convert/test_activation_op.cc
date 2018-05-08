@@ -26,7 +26,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void compare(float input, float expect) {
+void Compare(float input, float expect) {
   framework::Scope scope;
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
@@ -85,8 +85,8 @@ void compare(float input, float expect) {
 }
 
 TEST(OpConverter, ConvertRelu) {
-  compare(1, 1);   // relu(1) = 1
-  compare(-5, 0);  // relu(-5) = 0
+  Compare(1, 1);   // relu(1) = 1
+  Compare(-5, 0);  // relu(-5) = 0
 }
 
 }  // namespace tensorrt
