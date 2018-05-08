@@ -19,6 +19,7 @@ import math
 import distributed_splitter as splitter
 from .. import core
 from ..framework import Program, default_main_program, Variable, Parameter
+from common import UnionFind, delete_ops
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -34,57 +35,6 @@ class VarBlock:
 
     def __str__(self):
         return "%s:%d:%d" % (self.varname, self.offset, self.size)
-
-
-class UnionFind(object):
-    """ Union-find data structure.
-
-    Union-find is a data structure that keeps track of a set of elements partitioned
-    into a number of disjoint (non-overlapping) subsets.
-
-    Reference:
-    https://en.wikipedia.org/wiki/Disjoint-set_data_structure
-
-    Args:
-      elements(list): The initialize element list.
-    """
-
-    def __init__(self, elementes=None):
-        self._parents = []  # index -> parent index
-        self._index = {}  # element -> index
-        self._curr_idx = 0
-        if not elementes:
-            elementes = []
-        for ele in elementes:
-            self._parents.append(self._curr_idx)
-            self._index.update({ele: self._curr_idx})
-            self._curr_idx += 1
-
-    def find(self, x):
-        # Find the root index of given element x,
-        # execute the path compress while findind the root index
-        if not x in self._index:
-            return -1
-        idx = self._index[x]
-        while idx != self._parents[idx]:
-            t = self._parents[idx]
-            self._parents[idx] = self._parents[t]
-            idx = t
-        return idx
-
-    def union(self, x, y):
-        # Union two given element
-        x_root = self.find(x)
-        y_root = self.find(y)
-
-        if x_root == y_root:
-            return
-        self._parents[x_root] = y_root
-
-    def is_connected(self, x, y):
-        # If two given elements have the same root index,
-        # then they are connected.
-        return self.find(x) == self.find(y)
 
 
 def same_or_split_var(p_name, var_name):
@@ -132,16 +82,6 @@ def split_dense_variable(var_list,
             block = VarBlock(var.name, block_id, curr_block_size)
             blocks.append(str(block))
     return blocks
-
-
-def delete_ops(block, ops):
-    try:
-        start = list(block.ops).index(ops[0])
-        end = list(block.ops).index(ops[-1])
-        [block.remove_op(start) for _ in xrange(end - start + 1)]
-    except Exception, e:
-        raise e
-    block.program.sync_with_cpp()
 
 
 class DistributeTranspiler:

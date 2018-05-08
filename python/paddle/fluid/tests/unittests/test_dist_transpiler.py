@@ -1,0 +1,106 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.transpiler.common import delete_ops
+import numpy
+
+
+class TestDistTranspiler(unittest.TestCase):
+    def setUp(self):
+        self.trainer_id = 0
+        self.trainers = 2
+        self.pservers = 2
+        self.pserver_eps = "127.0.0.1:6174,127.0.0.1:6175"
+        self.current_pserver_ep = "127.0.0.1:6174"
+
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'))
+
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        sgd_optimizer = fluid.optimizer.SGD(
+            learning_rate=fluid.layers.exponential_decay(
+                learning_rate=0.01,
+                decay_steps=100000,
+                decay_rate=0.5,
+                staircase=True))
+
+        optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+        return optimize_ops, params_grads
+
+    def test_transpiler(self):
+        expect_trainer = self.get_expect_trainer()
+        trainer = self.get_trainer()
+        pserver = self.get_pserver(self.current_pserver_ep)
+
+        self.assertEqual([op.type for op in trainer.global_block().ops],
+                         [op.type for op in expect_trainer.global_block().ops])
+        self.assertEqual(len(pserver.blocks), 3)
+        # block0: listen_and_serv
+        self.assertEqual([op.type for op in pserver.blocks[0].ops],
+                         ["listen_and_serv"])
+        # block2: optimize pass
+        self.assertEqual([op.type for op in pserver.blocks[2].ops],
+                         ["sum", "scale", "sgd"])
+
+    def get_main_program(self):
+        main = fluid.Program()
+
+        with fluid.program_guard(main):
+            self.net_conf()
+
+        return main
+
+    def get_expect_trainer(self):
+        trainer = fluid.Program()
+        with fluid.program_guard(trainer):
+            optimize_ops, params_grads = self.net_conf()
+
+            layers.Send(self.pserver_eps, [p[1] for p in params_grads],
+                        [p[0] for p in params_grads])
+
+        delete_ops(trainer.global_block(), optimize_ops)
+        return trainer
+
+    def get_trainer(self):
+        return self._transpiler_instance().get_trainer_program()
+
+    def get_pserver(self, ep):
+        return self._transpiler_instance().get_pserver_program(ep)
+
+    def _transpiler_instance(self):
+        main = self.get_main_program()
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            self.trainer_id,
+            program=main,
+            pservers=self.pserver_eps,
+            trainers=self.trainers)
+        return t
+
+
+if __name__ == "__main__":
+    unittest.main()

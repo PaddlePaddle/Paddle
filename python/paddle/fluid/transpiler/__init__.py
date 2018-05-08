@@ -15,8 +15,8 @@ from distribute_transpiler import DistributeTranspiler
 from inference_transpiler import InferenceTranspiler
 from memory_optimization_transpiler import memory_optimize, release_memory
 from distribute_transpiler_simple import SimpleDistributeTranspiler
-
+import common
 __all__ = [
     "DistributeTranspiler", "InferenceTranspiler", "SimpleDistributeTranspiler",
-    "memory_optimize", "release_memory"
+    "memory_optimize", "release_memory", "common"
 ]
