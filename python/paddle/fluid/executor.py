@@ -306,7 +306,9 @@ class Executor(object):
             program = default_main_program()
 
         if not isinstance(program, Program):
-            raise TypeError("executor take Program as arguments.")
+            raise TypeError(
+                "Executor requires Program as its Parameter. But you passed in %s"
+                % (type(program)))
 
         if scope is None:
             scope = global_scope()
