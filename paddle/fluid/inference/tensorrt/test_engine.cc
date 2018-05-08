@@ -82,7 +82,6 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   // It seems tensorrt FC use col-major: [[1.0, 3.3], [1.1, 4.4]]
   // instead of row-major, which is [[1.0, 1.1], [3.3, 4.4]]
   float raw_weight[4] = {1.0, 1.1, 3.3, 4.4};
-  // [1, 2]
   float raw_bias[2] = {1.3, 2.4};
 
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
@@ -97,7 +96,6 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
-  // fill in real data [1.0, 2.0]
   float x_v[2] = {1.0, 2.0};
   engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
   2 * sizeof(float));
