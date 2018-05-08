@@ -34,7 +34,7 @@ void TensorRTEngine::Execute(int batch_size) {
   for (auto& buf : buffers_) {
     PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated");
     PADDLE_ENFORCE_GT(buf.max_size, 0);
-    PADDLE_ENFORCE_EQ(buf.device, DeviceType::GPU);
+    PADDLE_ENFORCE(buf.device == DeviceType::GPU);
   }
   infer_context_->enqueue(batch_size, buffers.data(), *stream_, nullptr);
   cudaStreamSynchronize(*stream_);
@@ -66,7 +66,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_context_.reset(infer_engine_->createExecutionContext());
 
   // allocate GPU buffers.
-  buffers_.resize(buffer_sizes_.size(), nullptr);
+  buffers_.resize(buffer_sizes_.size());
   for (auto& item : buffer_sizes_) {
     if (item.second == 0) {
       auto slot_offset = infer_engine_->getBindingIndex(item.first.c_str());
@@ -153,7 +153,7 @@ void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
   auto& buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer);
   PADDLE_ENFORCE_LE(size, buf.max_size, "buffer is too small");
-  PADDLE_ENFORCE_EQ(buf.device, DeviceType::GPU);
+  PADDLE_ENFORCE(buf.device == DeviceType::GPU);
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
                                        cudaMemcpyHostToDevice, *stream_));
 }
