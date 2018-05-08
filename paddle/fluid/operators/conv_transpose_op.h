@@ -30,12 +30,12 @@ using DDim = framework::DDim;
 // operator implementations can reuse the code.
 class Conv2DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class Conv3DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv3DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class ConvTransposeOp : public framework::OperatorWithKernel {

@@ -343,8 +343,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ListenAndServOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(R"DOC(
 ListenAndServ operator

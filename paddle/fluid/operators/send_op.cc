@@ -92,8 +92,7 @@ class SendOp : public framework::OperatorBase {
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
     AddOutput("Out", "(Tensor) Output tensor to be received from server")
         .AsDuplicable();

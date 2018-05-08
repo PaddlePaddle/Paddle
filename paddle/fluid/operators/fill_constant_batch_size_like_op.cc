@@ -31,8 +31,7 @@ class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
 
 class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
  public:
-  FillConstantBatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : BatchSizeLikeOpMaker(proto, op_checker) {
+  void Make() override {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")

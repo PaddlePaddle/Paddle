@@ -53,8 +53,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 
 class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(Tensor) Tensor "
              "whose input_dim_idx'th dimension specifies the batch_size");
