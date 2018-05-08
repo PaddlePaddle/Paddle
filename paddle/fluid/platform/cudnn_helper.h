@@ -57,15 +57,6 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                  \
-  do {                                                            \
-    cudnnStatus_t status = condition;                             \
-    if (status != CUDNN_STATUS_SUCCESS) {                         \
-      VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
-      PADDLE_THROW("cuDNN call failed");                          \
-    }                                                             \
-  } while (false)
-
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
@@ -182,6 +173,13 @@ class ScopedTensorDescriptor {
                                             const int groups = 1) {
     return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
                       groups);
+  }
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const DataLayout& order, int nbDims,
+                                            const std::vector<int>& dims,
+                                            const std::vector<int>& strides) {
+    PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
+        desc_, CudnnDataType<T>::type, nbDims, dims.data(), strides.data()));
   }
 
  private:
