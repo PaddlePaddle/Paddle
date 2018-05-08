@@ -180,6 +180,31 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
+                                 const MatDescriptor &dim_a,
+                                 const framework::Tensor &mat_b,
+                                 const MatDescriptor &dim_b, T alpha,
+                                 framework::Tensor *mat_out, T beta) const {
+  PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
+                           dim_a.width_, alpha, mat_a.data<T>(),
+                           mat_b.data<T>(), beta, mat_out->data<T>());
+  } else {
+    PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
+                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+    this->template BatchedGEMM<T>(
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
+        mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_, dim_b.stride_);
+  }
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
