@@ -17,9 +17,8 @@ from __future__ import print_function
 import math
 
 import distributed_splitter as splitter
-import framework
-from framework import Program, default_main_program, Variable, Parameter
-from . import core
+from .. import core
+from ..framework import Program, default_main_program, Variable, Parameter
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -133,6 +132,16 @@ def split_dense_variable(var_list,
             block = VarBlock(var.name, block_id, curr_block_size)
             blocks.append(str(block))
     return blocks
+
+
+def delete_ops(block, ops):
+    try:
+        start = list(block.ops).index(ops[0])
+        end = list(block.ops).index(ops[-1])
+        [block.remove_op(start) for _ in xrange(end - start + 1)]
+    except Exception, e:
+        raise e
+    block.program.sync_with_cpp()
 
 
 class DistributeTranspiler:
@@ -317,8 +326,7 @@ class DistributeTranspiler:
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
-        self.origin_program.global_block().delete_ops(self.optimize_ops)
-        self.origin_program.sync_with_cpp()
+        delete_ops(self.origin_program.global_block(), self.optimize_ops)
         # FIXME(typhoonzero): serialize once will fix error occurs when clone.
         self.origin_program.__str__()
         return self.origin_program
@@ -602,8 +610,7 @@ class DistributeTranspiler:
                         attrs={"axis": 0})
 
                     # delete lookup_table_op
-                    program.global_block().delete_ops([op])
-                    program.sync_with_cpp()
+                    delete_ops(program.global_block(), [op])
                     # break for loop
                     break
 

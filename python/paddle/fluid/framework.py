@@ -850,17 +850,6 @@ class Block(object):
         self.desc.remove_op(index, index + 1)
         del self.ops[index]
 
-    def delete_ops(self, ops):
-        # remove from cpp
-        # FIXME(typhoonzero): remove only the first occurrence.
-        try:
-            start = list(self.ops).index(ops[0])
-            end = list(self.ops).index(ops[-1])
-        except Exception, e:
-            raise e
-
-        self.desc.remove_op(start, end + 1)
-
     def slice_ops(self, start, end):
         return self.ops[start:end]
 
@@ -1057,13 +1046,14 @@ class Program(object):
         Returns(Program):
             The cloned Program object.
         """
-        p = Program()
         if for_test:
-            p.desc = core.inference_optimize(self.desc)
+            p = self.inference_optimize()
         else:
+            p = Program()
             p.desc = core.ProgramDesc(self.desc)
-        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-        p.sync_with_cpp()
+            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.sync_with_cpp()
+
         p.copy_param_info_from(self)
         p.copy_data_info_from(self)
         return p
@@ -1103,8 +1093,16 @@ class Program(object):
         return res
 
     def inference_optimize(self):
+        # this is an alternative implement before
+        # core.inference_optimize being fixed.
         res = Program()
-        res.desc = core.inference_optimize(self.desc)
+        res.desc = core.ProgramDesc(self.desc)
+        for i in xrange(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for j in xrange(block.op_size()):
+                op = block.op(j)
+                if op.has_attr('is_test'):
+                    op.set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res

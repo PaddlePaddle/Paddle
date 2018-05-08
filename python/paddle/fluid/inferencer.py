@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import core
-
+import framework
+import executor
+import io
 __all__ = ['Inferencer', ]
 
 
@@ -29,6 +31,15 @@ class Inferencer(object):
         # 4. load params from param_path into scope
         self.scope = core.Scope()
         self.place = place
+        self.startup_program = framework.Program()
+        # TODO: generate the startup_program with network_func
+
+        exe = executor.Executor(place)
+        exe.run(self.startup_program, scope=self.scope)
+
+        if param_path:
+            # load params from param_path into scope
+            io.load_persistables(exe, dirname=param_path)
 
     def infer(self, inputs):
         # run self.program
