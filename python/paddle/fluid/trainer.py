@@ -240,6 +240,8 @@ class Trainer(object):
 
             feeder = data_feeder.DataFeeder(
                 feed_list=feed_var_list, place=self.place)
+            import pdb
+            pdb.set_trace()
             for epoch_id in range(num_epochs):
                 event_handler(BeginEpochEvent(epoch_id))
                 for step_id, data in enumerate(reader()):
