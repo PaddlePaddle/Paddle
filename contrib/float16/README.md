@@ -3,7 +3,10 @@
 Kexin Zhao <zhaokexin01@baidu.com>
 
 ## Introduction
-Working with deep neural networks (DNN) is a two-stage process. First, we train DNN using labeled examples of inputs and desired outputs to obtain the model parameters (weights), then we deploy DNN along with the trained weights to run inference on unknown inputs. Typically, these weights are in float data type, and hence we run inference in float mode using these weights. This post focuses on the discussion of how to use low precision float16 data type to represent these trained weights and run inference in float16 mode as well as the advantages of float16 inference over its float counterpart by showing some experimental results. 
+Deep learning is usually a two-stage work: training and inference. The training stage estimates model parameters (weights) from data.  The inference stage loads the weights and uses them to interpret inputs. Typically, weights are 32-bit float values (float32).  Some new devices, including NVIDIA Volta GPUs, support higher speed computation using 16-bit float values (float16).
+
+This article explains our efforts with PaddlePaddle to train using float32 and to inference using float16. We describe a [*transpiler*](https://github.com/PaddlePaddle/Paddle/blob/a4d3de0071e1f3912230c3ab3f9ac74cf06b093a/doc/fluid/design/motivation/fluid_compiler.md), which converts a PaddlePaddle Fluid model, which, to be precise, should be called a [Fluid *program*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/program.md), into the inference program, and converts the weights from float32 into float16.
+
 
 ## What is float16?
 float16 (or FP16) is a half-precision floating-point format that uses 16 bits in memory to represent a value. The advantage over 32-bit single-precision floating-point format (commonly known as float or float32 data type) is that it requires half the storage and bandwidth at the expense of precision and range. Fortunately, DNN inference has a high tolerance for the loss of precision and range when using float16 to represent the weights, and the inference accuracy will only be minimally affected in most cases, which gives us the opportunity to use float16 data type to speed up the inference.
