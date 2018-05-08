@@ -23,20 +23,21 @@ namespace framework {
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
-  using OpProto = proto::OpProto;
-  using OpAttrChecker = framework::OpAttrChecker;
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
+  virtual void Make() = 0;
 
   virtual ~OpProtoAndCheckerMaker() {
     PADDLE_ENFORCE(validated_, "should call Validate after build");
   }
 
+  void SetProto(proto::OpProto* proto) { proto_ = proto; }
+
+  void SetChecker(OpAttrChecker* attr_checker) { op_checker_ = attr_checker; }
+
   void Validate();
 
  protected:
   struct VariableBuilder {
-    OpProto::Var* var_;
+    proto::OpProto::Var* var_;
 
     VariableBuilder& AsDuplicable() {
       var_->set_duplicable(true);
@@ -76,16 +77,9 @@ class OpProtoAndCheckerMaker {
  private:
   void CheckNoDuplicatedInOutAttrs();
 
-  OpProto* proto_;
+  proto::OpProto* proto_;
   OpAttrChecker* op_checker_;
   bool validated_{false};
 };
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
-};
-
 }  // namespace framework
 }  // namespace paddle

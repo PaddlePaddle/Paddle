@@ -54,8 +54,7 @@ class ElementwiseOpInferVarType : public framework::VarTypeInference {
 
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ElementwiseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() final {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
     AddOutput("Out", "The output of elementwise op.");
@@ -64,12 +63,12 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-    comment_ = R"DOC(
-Limited Elementwise {name} Operator.
+    AddComment(string::Sprintf(R"DOC(
+Limited Elementwise %s Operator.
 
 The equation is:
 
-$${equation}$$
+$$%s$$
 
 $X$ is a tensor of any dimension and the dimensions of tensor $Y$ must be
 smaller than or equal to the dimensions of $X$.
@@ -100,26 +99,13 @@ For example
 Either of the inputs $X$ and $Y$ or none can carry the LoD (Level of Details)
 information. However, the output only shares the LoD information with input $X$.
 
-)DOC";
-    AddComment(comment_);
+)DOC",
+                               GetName(), GetEquation()));
   }
 
  protected:
-  std::string comment_;
-
-  void Replace(std::string* src, std::string from, std::string to) {
-    std::size_t len_from = std::strlen(from.c_str());
-    std::size_t len_to = std::strlen(to.c_str());
-    for (std::size_t pos = src->find(from); pos != std::string::npos;
-         pos = src->find(from, pos + len_to)) {
-      src->replace(pos, len_from, to);
-    }
-  }
-
-  void SetComment(std::string name, std::string equation) {
-    Replace(&comment_, "{name}", name);
-    Replace(&comment_, "{equation}", equation);
-  }
+  virtual std::string GetName() const = 0;
+  virtual std::string GetEquation() const = 0;
 };
 
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
@@ -152,3 +138,16 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 };
 }  // namespace operators
 }  // namespace paddle
+
+#define REGISTER_ELEMWISE_OP(op_type, op_name, equation)                \
+  class __ElemwiseOp##op_type##Maker__                                  \
+      : public ::paddle::operators::ElementwiseOpMaker {                \
+   protected:                                                           \
+    virtual std::string GetName() const { return op_name; }             \
+    virtual std::string GetEquation() const { return equation; }        \
+  };                                                                    \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+                    __ElemwiseOp##op_type##Maker__,                     \
+                    ::paddle::operators::ElementwiseOpInferVarType,     \
+                    ::paddle::framework::DefaultGradOpDescMaker<true>); \
+  REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)

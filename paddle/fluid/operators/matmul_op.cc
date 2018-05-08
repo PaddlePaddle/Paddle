@@ -159,8 +159,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 
 class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MatMulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The first input of MatMul op");
     AddInput("Y", "The second input of MatMul op");
     AddOutput("Out", "The output of MatMul op");

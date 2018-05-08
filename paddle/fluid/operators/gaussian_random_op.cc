@@ -70,8 +70,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GaussianRandomOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "Output matrix of gaussian random op");
 
     AddAttr<std::vector<int>>("shape",

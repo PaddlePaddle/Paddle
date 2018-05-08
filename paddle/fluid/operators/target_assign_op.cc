@@ -65,8 +65,7 @@ class TargetAssignOp : public framework::OperatorWithKernel {
 
 class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TargetAssignOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor), This input is a 3D LoDTensor with shape [M, P, K]. "
              "Some elements in X will be assigned to Out based on the "
