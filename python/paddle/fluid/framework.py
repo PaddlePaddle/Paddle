@@ -1065,6 +1065,7 @@ class Program(object):
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         p.copy_param_info_from(self)
+        p.copy_data_info_from(self)
         return p
 
     def prune(self, targets):
@@ -1177,6 +1178,26 @@ class Program(object):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block().copy_param_info_from(other.global_block())
+
+    def copy_data_info_from(self, other):
+        """
+        Copy the information of data variables from other program.
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("copy_param_info_from should be invoked with "
+                            "Program")
+
+        if len(self.blocks) != len(other.blocks):
+            raise ValueError("copy_param_info_from should be invoked with two "
+                             "program, with represent the same topology")
+        for var in other.global_block().vars.itervalues():
+            if var.is_data:
+                self.global_block().var(var.name).is_data = True
 
     def list_vars(self):
         for each_block in self.blocks:

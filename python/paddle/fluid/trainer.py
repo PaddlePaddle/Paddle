@@ -78,7 +78,6 @@ class Trainer(object):
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
-
             optimizer.minimize(loss)
 
         self.place = Trainer._check_and_get_place(place)
@@ -186,21 +185,10 @@ class Trainer(object):
 
         """
         with self._prog_and_scope_guard():
-            exe = executor.Executor(self.place)
-            if feed_order is None:
-                feed_var_list = [
-                    var
-                    for var in self.train_program.global_block()
-                    .vars.itervalues() if var.is_data
-                ]
-            else:
-                feed_var_list = [
-                    self.train_program.global_block().var(var_name)
-                    for var_name in feed_order
-                ]
-
+            feed_var_list = build_feed_var_list(self.train_program, feed_order)
             feeder = data_feeder.DataFeeder(
                 feed_list=feed_var_list, place=self.place)
+            exe = executor.Executor(self.place)
             for epoch_id in range(num_epochs):
                 event_handler(BeginEpochEvent(epoch_id))
                 for step_id, data in enumerate(reader()):
@@ -211,22 +199,10 @@ class Trainer(object):
 
     def _test_by_executor(self, reader, feed_order, fetch_list):
         with executor.scope_guard(self.scope):
-            if feed_order is None:
-                feed_var_list = [
-                    var
-                    for var in self.train_program.global_block()
-                    .vars.itervalues() if var.is_data
-                ]
-            else:
-                feed_var_list = [
-                    self.train_program.global_block().var(var_name)
-                    for var_name in feed_order
-                ]
-
-            exe = executor.Executor(self.place)
-
+            feed_var_list = build_feed_var_list(self.test_program, feed_order)
             feeder = data_feeder.DataFeeder(
                 feed_list=feed_var_list, place=self.place)
+            exe = executor.Executor(self.place)
             accumulated_loss = 0
             count = 0
             for data in reader():
@@ -237,3 +213,31 @@ class Trainer(object):
                 count += 1
 
             return accumulated_loss / count
+
+
+def build_feed_var_list(program, feed_order):
+    if not isinstance(program, framework.Program):
+        raise TypeError("The 'program' should be an object of Program")
+
+    if feed_order is None:
+        feed_var_list = [
+            var for var in program.global_block().vars.itervalues()
+            if var.is_data
+        ]
+    elif isinstance(feed_order, list):
+        feed_var_list = [
+            program.global_block().var(var_name) for var_name in feed_order
+        ]
+    else:
+        if not isinstance(feed_order, dict):
+            raise TypeError(
+                "The 'feed_order' should be either None, list or dict.")
+        if not sorted(feed_order.values()) == range(len(feed_order)):
+            raise ValueError(
+                "The values of 'feed_order' should be a permutation of [0, len(feed_order))"
+            )
+        sorted_pair_list = sorted(feed_order.items(), key=lambda item: item[1])
+        feed_var_list = [
+            program.global_block().var(pair[0]) for pair in sorted_pair_list
+        ]
+    return feed_var_list

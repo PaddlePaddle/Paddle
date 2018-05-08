@@ -80,8 +80,9 @@ def inference_program(is_sparse):
 
 
 def train_program(is_sparse):
-    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
+    # The declaration of 'next_word' must be after the invoking of inference_program, or the data input order of train program would be [next_word, firstw, secondw, thirdw, forthw], which is not correct.
     predict_word = inference_program(is_sparse)
+    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
     return avg_cost
@@ -97,8 +98,16 @@ def train(use_cuda, is_sparse, save_path):
 
     def event_handler(event):
         # print type(event)
-        if isinstance(event, fluid.EndEpochEvent):
-            avg_cost = trainer.test(reader=test_reader)
+        if isinstance(event, fluid.EndStepEvent):
+            avg_cost = trainer.test(
+                reader=test_reader,
+                feed_order={
+                    'nextw': 4,
+                    'firstw': 0,
+                    'secondw': 1,
+                    'thirdw': 2,
+                    'forthw': 3
+                })
             print(avg_cost)
 
             if avg_cost < 5.0:
