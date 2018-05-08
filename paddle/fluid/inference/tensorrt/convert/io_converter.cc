@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/io_converter.h"
+#include "paddle/fluid/inference/tensorrt/convert/io_converter.h"
 #include <cuda.h>
 #include "paddle/fluid/platform/enforce.h"
 
@@ -50,7 +50,7 @@ class DefaultInputConverter : public EngineInputConverter {
   }
 };
 
-REGISTER_TENSORRT_INPUT_CONVERTER(mul, DefaultInputConverter);
+REGISTER_TENSORRT_INPUT_CONVERTER(default, DefaultInputConverter);
 
 }  // namespace tensorrt
 }  // namespace inference
