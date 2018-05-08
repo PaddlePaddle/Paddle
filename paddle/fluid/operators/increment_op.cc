@@ -1,71 +1,47 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/increment_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
 
-class IncrementInferShape : public framework::InferShapeBase {
+class IncrementOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
+  IncrementOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of IncrementOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of IncrementOp should not be null.");
     PADDLE_ENFORCE_EQ(1, framework::product(ctx->GetInputDim("X")));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-  }
-};
-
-struct IncrementFunctor {
-  IncrementFunctor(const framework::LoDTensor &x, framework::LoDTensor *out,
-                   float value)
-      : x_(x), out_(out), value_(value) {}
-
-  template <typename T>
-  void operator()() const {
-    *out_->data<T>() = *x_.data<T>() + static_cast<T>(value_);
+    ctx->ShareLoD("X", "Out");
   }
 
-  const framework::LoDTensor &x_;
-  framework::LoDTensor *out_;
-  float value_;
-};
-
-class IncrementOp : public framework::OperatorBase {
- public:
-  IncrementOp(const std::string &type, const framework::VariableNameMap &inputs,
-              const framework::VariableNameMap &outputs,
-              const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
-
-    PADDLE_ENFORCE(platform::is_cpu_place(x.place()));
-    out.Resize(x.dims());
-    out.mutable_data(x.place(), x.type());
-    float value = Attr<float>("step");
-    VLOG(10) << Output("Out") << " increase " << Input("X") << " with "
-             << value;
-    framework::VisitDataType(framework::ToDataType(out.type()),
-                             IncrementFunctor(x, &out, value));
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // IncrementOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    return kt;
   }
 };
 
@@ -108,5 +84,10 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementInferShape,
-                  ops::IncrementOpMaker, ops::IncrementGradOpMaker);
+REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
+                  ops::IncrementGradOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    increment, ops::IncrementKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>);

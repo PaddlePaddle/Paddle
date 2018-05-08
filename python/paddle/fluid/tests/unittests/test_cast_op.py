@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid.core as core
 
 
-class TestCastOp(op_test.OpTest):
+class TestCastOp1(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -34,6 +34,37 @@ class TestCastOp(op_test.OpTest):
 
     def test_grad(self):
         self.check_grad(['X'], ['Out'])
+
+
+class TestCastOp2(op_test.OpTest):
+    def setUp(self):
+        ipt = np.random.random(size=[10, 10])
+        # numpy float16 is binded to fluid float16 via uint16
+        self.inputs = {'X': ipt.astype('float16').view(np.uint16)}
+        self.outputs = {'Out': ipt.astype('float32')}
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.FP16),
+            'out_dtype': int(core.VarDesc.VarType.FP32)
+        }
+        self.op_type = 'cast'
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+
+class TestCastOp3(op_test.OpTest):
+    def setUp(self):
+        ipt = np.random.random(size=[10, 10])
+        self.inputs = {'X': ipt.astype('float32')}
+        self.outputs = {'Out': ipt.astype('float16')}
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'out_dtype': int(core.VarDesc.VarType.FP16)
+        }
+        self.op_type = 'cast'
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
 
 
 if __name__ == '__main__':

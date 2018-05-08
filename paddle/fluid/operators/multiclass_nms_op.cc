@@ -173,8 +173,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
   void MultiClassNMS(const framework::ExecutionContext& ctx,
                      const Tensor& scores, const Tensor& bboxes,
-                     std::map<int, std::vector<int>>& indices,
-                     int& num_nmsed_out) const {
+                     std::map<int, std::vector<int>>* indices,
+                     int* num_nmsed_out) const {
     int64_t background_label = ctx.Attr<int>("background_label");
     int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
     int64_t keep_top_k = ctx.Attr<int>("keep_top_k");
@@ -189,15 +189,15 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       if (c == background_label) continue;
       Tensor score = scores.Slice(c, c + 1);
       NMSFast(bboxes, score, score_threshold, nms_threshold, nms_eta, nms_top_k,
-              &(indices[c]));
-      num_det += indices[c].size();
+              &((*indices)[c]));
+      num_det += (*indices)[c].size();
     }
 
-    num_nmsed_out = num_det;
+    *num_nmsed_out = num_det;
     const T* scores_data = scores.data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
       std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
-      for (const auto& it : indices) {
+      for (const auto& it : *indices) {
         int label = it.first;
         const T* sdata = scores_data + label * predict_dim;
         const std::vector<int>& label_indices = it.second;
@@ -220,13 +220,13 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         int idx = score_index_pairs[j].second.second;
         new_indices[label].push_back(idx);
       }
-      new_indices.swap(indices);
-      num_nmsed_out = keep_top_k;
+      new_indices.swap(*indices);
+      *num_nmsed_out = keep_top_k;
     }
   }
 
   void MultiClassOutput(const Tensor& scores, const Tensor& bboxes,
-                        std::map<int, std::vector<int>>& selected_indices,
+                        const std::map<int, std::vector<int>>& selected_indices,
                         Tensor* outs) const {
     int predict_dim = scores.dims()[1];
     auto* scores_data = scores.data<T>();
@@ -273,7 +273,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
       std::map<int, std::vector<int>> indices;
       int num_nmsed_out = 0;
-      MultiClassNMS(ctx, ins_score, ins_boxes, indices, num_nmsed_out);
+      MultiClassNMS(ctx, ins_score, ins_boxes, &indices, &num_nmsed_out);
       all_indices.push_back(indices);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
@@ -324,7 +324,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              " Please note, M is equal to the 1st dimension of BBoxes. ");
     AddAttr<int>(
         "background_label",
-        "(int64_t, defalut: 0) "
+        "(int, defalut: 0) "
         "The index of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(0);

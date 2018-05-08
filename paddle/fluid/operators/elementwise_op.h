@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -38,6 +39,16 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                       "Rank of first input must >= rank of second input.");
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+class ElementwiseOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto x_var = op_desc.Input("X")[0];
+    auto out_var = op_desc.Output("Out")[0];
+    block->Var(out_var)->SetType(block->Var(x_var)->GetType());
   }
 };
 
@@ -96,18 +107,18 @@ information. However, the output only shares the LoD information with input $X$.
  protected:
   std::string comment_;
 
-  void Replace(std::string& src, std::string from, std::string to) {
+  void Replace(std::string* src, std::string from, std::string to) {
     std::size_t len_from = std::strlen(from.c_str());
     std::size_t len_to = std::strlen(to.c_str());
-    for (std::size_t pos = src.find(from); pos != std::string::npos;
-         pos = src.find(from, pos + len_to)) {
-      src.replace(pos, len_from, to);
+    for (std::size_t pos = src->find(from); pos != std::string::npos;
+         pos = src->find(from, pos + len_to)) {
+      src->replace(pos, len_from, to);
     }
   }
 
   void SetComment(std::string name, std::string equation) {
-    Replace(comment_, "{name}", name);
-    Replace(comment_, "{equation}", equation);
+    Replace(&comment_, "{name}", name);
+    Replace(&comment_, "{equation}", equation);
   }
 };
 

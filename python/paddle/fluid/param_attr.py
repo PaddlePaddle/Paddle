@@ -28,13 +28,15 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None):
+                 gradient_clip=None,
+                 do_model_average=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
         self.gradient_clip = gradient_clip
+        self.model_average = do_model_average
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -80,7 +82,8 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'gradient_clip_attr': self.gradient_clip
+            'gradient_clip_attr': self.gradient_clip,
+            'model_average': self.model_average
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -90,7 +93,7 @@ class ParamAttr(object):
 class WeightNormParamAttr(ParamAttr):
     """
     Used for weight normalization. Any field in ParamAttr can also be set here.
-    Besides, an extra field dim can be set to indicate the dimension except 
+    Besides, an extra field dim can be set to indicate the dimension except
     which to normalize.
     """
     # List to record the parameters reparameterized by weight normalization.

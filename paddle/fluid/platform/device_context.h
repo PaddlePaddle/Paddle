@@ -8,11 +8,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
@@ -22,7 +23,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include <mkldnn.hpp>
 #endif
 
 #include "paddle/fluid/platform/enforce.h"
@@ -79,6 +80,12 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
+  /*! \brief  Return compute capability in the device context. */
+  int GetComputeCapability() const;
+
+  /*! \brief  Return the max physical thread count in the device context */
+  int GetMaxPhysicalThreadCount() const;
+
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
@@ -91,15 +98,27 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
+  template <typename Callback>
+  void RecordEvent(cudaEvent_t ev, Callback callback) {
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
+    callback();
+    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
+  }
+
  private:
   CUDAPlace place_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
+  mutable std::recursive_mutex mutex_;
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
+
+  int compute_capability;
+  int multi_process;
+  int max_threads_per_mp;
 };
 
 template <>
@@ -107,6 +126,25 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = CUDADeviceContext;
 };
 
+// Currently, CUDAPinnedDeviceContext is only used to data copying.
+class CUDAPinnedDeviceContext : public DeviceContext {
+ public:
+  CUDAPinnedDeviceContext();
+  explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  CUDAPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
+  using TYPE = CUDAPinnedDeviceContext;
+};
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -114,46 +152,19 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
 
-  /* \brief  Add new element: memory, primitive or primitive desc */
-  template <typename T>
-  void AddElement(const std::string& op_key, const T& value);
-
-  /* \brief  Get existed element: memory, primitive or primitive desc */
-  template <typename T>
-  const T& GetElement(const std::string& op_key) const;
-
-  /* \brief  Get element pool: memory, primitive or primitive desc pool */
-  template <typename T>
-  const std::unordered_map<const std::string, const T, std::hash<std::string>>&
-  GetElementPool() const;
-
   /* \brief  Get the active engine */
-  const MKLDNNEngine& engine() const { return *engine_; }
+  const mkldnn::engine& GetEngine() const { return engine_; }
 
-  /* \brief  Submit primitive to pipeline */
-  void Submit(const MKLDNNPrimitivePtr& p) { pipeline_.push_back(*p); }
+  // Set data to blob (i.e. name/data pair). Create blob if not existing
+  void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
-  /*! \brief  Execute all submitted primitives in pipeline */
-  void Execute(bool block = true);
-
- protected:
-  /*! \brief  Reset the stream to prepare next exectue */
-  void ResetStream();
+  // Find a saved blob. Return nullptr if not found
+  std::shared_ptr<void> GetBlob(const std::string& name) const;
 
  private:
-  std::unordered_map<const std::string, const MKLDNNMemoryPtr,
-                     std::hash<std::string>>
-      memory_pool_;
-  std::unordered_map<const std::string, const MKLDNNPrimitivePtr,
-                     std::hash<std::string>>
-      primitive_pool_;
-  std::unordered_map<const std::string, const MKLDNNPrimitiveDescPtr,
-                     std::hash<std::string>>
-      primitive_desc_pool_;
-  std::vector<MKLDNNPrimitive> pipeline_;
-  MKLDNNStreamPtr stream_;
-  MKLDNNEnginePtr engine_;
-  bool ready_;
+  mkldnn::engine engine_;
+  std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<void>>>
+      p_blobs_;
 };
 #endif
 
@@ -176,7 +187,7 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Get(const platform::Place& place);
+  platform::DeviceContext* Get(const platform::Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -189,19 +200,8 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  constexpr static int LEFT_SHIFT = 8;
-  struct Hash {
-    std::hash<int> hash_;
-    size_t operator()(const platform::Place& place) const {
-      int pre_hash = place.which() << LEFT_SHIFT;
-      if (platform::is_gpu_place(place)) {
-        pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
-      }
-      return hash_(pre_hash);
-    }
-  };
-  std::unordered_map<const platform::Place, const platform::DeviceContext*,
-                     Hash>
+  std::unordered_map<const platform::Place,
+                     std::unique_ptr<platform::DeviceContext>, PlaceHash>
       device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };

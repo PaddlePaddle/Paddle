@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/unpooling.h"

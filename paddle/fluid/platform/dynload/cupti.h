@@ -11,14 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
 #ifdef PADDLE_WITH_CUPTI
+
 #include <cuda.h>
 #include <cupti.h>
 #include <dlfcn.h>
-#include <mutex>
+#include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -36,18 +37,18 @@ extern void *cupti_dso_handle;
  * note: default dynamic linked libs
  */
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                    \
-  struct DynLoad__##__name {                                       \
-    template <typename... Args>                                    \
-    inline CUptiResult CUPTIAPI operator()(Args... args) {         \
-      typedef CUptiResult CUPTIAPI (*cuptiFunc)(Args...);          \
-      std::call_once(cupti_dso_flag,                               \
-                     paddle::platform::dynload::GetCUPTIDsoHandle, \
-                     &cupti_dso_handle);                           \
-      void *p_##__name = dlsym(cupti_dso_handle, #__name);         \
-      return reinterpret_cast<cuptiFunc>(p_##__name)(args...);     \
-    }                                                              \
-  };                                                               \
+#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                            \
+  struct DynLoad__##__name {                                               \
+    template <typename... Args>                                            \
+    inline CUptiResult CUPTIAPI operator()(Args... args) {                 \
+      using cuptiFunc = decltype(&::__name);                               \
+      std::call_once(cupti_dso_flag, []() {                                \
+        cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
+      });                                                                  \
+      void *p_##__name = dlsym(cupti_dso_handle, #__name);                 \
+      return reinterpret_cast<cuptiFunc>(p_##__name)(args...);             \
+    }                                                                      \
+  };                                                                       \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)            \

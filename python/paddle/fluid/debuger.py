@@ -16,6 +16,7 @@ import sys
 import re
 from graphviz import GraphPreviewGenerator
 import proto.framework_pb2 as framework_pb2
+from google.protobuf import text_format
 
 _vartype2str_ = [
     "UNK",
@@ -52,9 +53,11 @@ reprtpl = "{ttype} {name} ({reprs})"
 
 
 def repr_lodtensor(proto):
-    if not proto.lod_tensor: return
-    level = proto.lod_tensor.lod_level
-    reprs = repr_tensor(proto.lod_tensor.tensor)
+    if proto.type.type != framework_pb2.VarType.LOD_TENSOR:
+        return
+
+    level = proto.type.lod_tensor.lod_level
+    reprs = repr_tensor(proto.type.lod_tensor.tensor)
     return reprtpl.format(
         ttype="LoDTensor" if level > 0 else "Tensor",
         name=proto.name,
@@ -62,20 +65,24 @@ def repr_lodtensor(proto):
 
 
 def repr_selected_rows(proto):
-    if not proto.selected_rows: return
+    if proto.type.type != framework_pb2.VarType.SELECTED_ROWS:
+        return
+
     return reprtpl.format(
         ttype="SelectedRows",
         name=proto.name,
-        reprs=repr_tensor(proto.selected_rows))
+        reprs=repr_tensor(proto.type.selected_rows))
 
 
 def repr_tensor_array(proto):
-    if not proto.tensor_array: return
+    if proto.type.type != framework_pb2.VarType.LOD_TENSOR_ARRAY:
+        return
+
     return reprtpl.format(
         ttype="TensorArray",
         name=proto.name,
-        reprs="level=%d, %s" % (proto.tensor_array.lod_level,
-                                repr_tensor(proto.lod_tensor)))
+        reprs="level=%d, %s" % (proto.type.tensor_array.lod_level,
+                                repr_tensor(proto.type.lod_tensor.tensor)))
 
 
 type_handlers = [
@@ -94,7 +101,7 @@ def repr_var(vardesc):
 
 def pprint_program_codes(program_desc):
     reprs = []
-    for block_idx in range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.desc.num_blocks()):
         block_desc = program_desc.block(block_idx)
         block_repr = pprint_block_codes(block_desc)
         reprs.append(block_repr)
@@ -121,7 +128,7 @@ def pprint_block_codes(block_desc, show_backward=False):
 
     if type(block_desc) is not framework_pb2.BlockDesc:
         block_desc = framework_pb2.BlockDesc.FromString(
-            block_desc.serialize_to_string())
+            block_desc.desc.serialize_to_string())
     var_reprs = []
     op_reprs = []
     for var in block_desc.vars:
@@ -231,13 +238,13 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     # draw parameters and args
     vars = {}
     for var in desc.vars:
-        shape = [str(i) for i in var.lod_tensor.tensor.dims]
-        if not shape:
-            shape = ['null']
+        # TODO(gongwb): format the var.type
         # create var
         if var.persistable:
             varn = graph.add_param(
-                var.name, var.type, shape, highlight=need_highlight(var.name))
+                var.name,
+                str(var.type).replace("\n", "<br />", 1),
+                highlight=need_highlight(var.name))
         else:
             varn = graph.add_arg(var.name, highlight=need_highlight(var.name))
         vars[var.name] = varn
@@ -262,4 +269,4 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
         for var in op.outputs:
             add_op_link_var(opn, var, True)
 
-    graph(path, show=True)
+    graph(path, show=False)

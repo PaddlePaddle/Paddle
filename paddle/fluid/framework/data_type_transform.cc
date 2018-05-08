@@ -47,9 +47,16 @@ struct CastDataType {
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
+#ifdef __NVCC__
+    } else if (platform::is_gpu_place(in_.place())) {
+      platform::Transform<platform::CUDADeviceContext> trans;
+      auto* context = static_cast<const platform::CUDADeviceContext*>(ctx_);
+      trans(*context, in_begin, in_end, out_begin,
+            CastDataTypeFunctor<InType, OutType>());
+      context->Wait();
+#endif
     } else {
-      // TODO(dzhwinter): enhance Copy CPU<->GPU with different data type?
-      PADDLE_THROW("Unsupport CPU <-> GPU!");
+      PADDLE_THROW("Unsupported place!");
     }
   }
 };
@@ -65,6 +72,10 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
   auto ctx = pool.Get(in.place());
 
   switch (src_type) {
+    case proto::VarType::FP16:
+      framework::VisitDataType(dst_type,
+                               CastDataType<platform::float16>(in, out, ctx));
+      break;
     case proto::VarType::FP32:
       framework::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));
       break;

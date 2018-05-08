@@ -13,12 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
-int PoolOutputSize(int input_size, int filter_size, int padding, int stride) {
-  int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
+int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
+                   bool ceil_mode) {
+  int output_size;
+  if (!ceil_mode) {
+    output_size = (input_size - filter_size + 2 * padding) / stride + 1;
+  } else {
+    output_size =
+        (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
+  }
   PADDLE_ENFORCE(output_size > 0,
                  "Due to the settings of padding(%d), filter_size(%d) and "
                  "stride(%d), the output size is less than 0, please check "
@@ -38,6 +51,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+  bool ceil_mode = ctx->Attrs().Get<bool>("ceil_mode");
 
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                  "Pooling intput should be 4-D or 5-D tensor.");
@@ -59,8 +73,8 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
   for (size_t i = 0; i < ksize.size(); ++i) {
-    output_shape.push_back(
-        PoolOutputSize(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
+    output_shape.push_back(PoolOutputSize(in_x_dims[i + 2], ksize[i],
+                                          paddings[i], strides[i], ceil_mode));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");
@@ -68,20 +82,18 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
+#endif
 
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
@@ -99,26 +111,28 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
+#endif
 
+  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
+                      "float16 can only be used when CUDNN is used");
+  }
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                 library_);
 }
 
 Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
@@ -167,6 +181,15 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>(
+      "ceil_mode",
+      "(bool, default false) Wether to use the ceil function to calculate "
+      "output height and width. False is the default. If it is set to False, "
+      "the floor function will be used.")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -187,15 +210,20 @@ Parameters(ksize, strides, paddings) are two elements.
 These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
-Example:   
+Example:
   Input:
        X shape: $(N, C, H_{in}, W_{in})$
   Output:
        Out shape: $(N, C, H_{out}, W_{out})$
-  Where
-       $$ 
+  For ceil_mode = false:
+       $$
        H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
+       $$
+  For ceil_mode = true:
+       $$
+       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
 )DOC");
@@ -251,6 +279,15 @@ Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>(
+      "ceil_mode",
+      "(bool, default false) Wether to use the ceil function to calculate "
+      "output height and width. False is the default. If it is set to False, "
+      "the floor function will be used.")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -267,8 +304,8 @@ The pooling3d operation calculates the output based on
 the input, pooling_type, ksize, strides, and paddings parameters.
 Input(X) and output(Out) are in NCDHW format, where N is batch
 size, C is the number of channels, and D, H and W are the depth, height and
-width of the feature, respectively. Parameters(ksize, strides, paddings) 
-are three elements. These three elements represent depth, height and 
+width of the feature, respectively. Parameters(ksize, strides, paddings)
+are three elements. These three elements represent depth, height and
 width, respectively. The input(X) size and output(Out) size may be different.
 
 Example:
@@ -276,11 +313,17 @@ Example:
        X shape: $(N, C, D_{in}, H_{in}, W_{in})$
   Output:
        Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
-  Where
+  For ceil_mode = false:
   $$
        D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
        H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
+  $$
+  For ceil_mode = true:
+  $$
+       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0] + strides[0] -1)}{strides[0]} + 1 \\
+       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
   $$
 
 )DOC");
@@ -290,18 +333,20 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
-            ops::PoolOpGrad);
+REGISTER_OPERATOR(pool2d, ops::PoolOp, ops::Pool2dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
-            ops::PoolOpGrad);
+REGISTER_OPERATOR(pool3d, ops::PoolOp, ops::Pool3dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,

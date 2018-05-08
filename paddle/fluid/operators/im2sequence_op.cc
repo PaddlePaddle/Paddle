@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/im2sequence_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -147,8 +148,9 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
-            im2sequence_grad, ops::Im2SequenceGradOp);
+REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 REGISTER_OP_CPU_KERNEL(
     im2sequence,
     ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, float>);

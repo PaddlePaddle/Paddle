@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/operators/math/math_function.h"
+#include <algorithm>
+#include <vector>
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -127,15 +129,17 @@ class MatMulFunctor {
     CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
     CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
+    auto blas = GetBlas<DeviceContext, T>(context);
+
     if (!batchCount) {
       // regular matrix multiplication
-      gemm<DeviceContext, T>(context, transA, transB, M, N, kA, alpha,
-                             a.data<T>(), b.data<T>(), beta, out->data<T>());
+      blas.GEMM(transA, transB, M, N, kA, alpha, a.data<T>(), b.data<T>(), beta,
+                out->data<T>());
     } else {
       // batched matrix multiplication
-      batched_gemm<DeviceContext, T>(
-          context, transA, transB, M, N, kA, alpha, a.data<T>(), b.data<T>(),
-          beta, out->data<T>(), batchCount, strideA, strideB);
+      blas.BatchedGEMM(transA, transB, M, N, kA, alpha, a.data<T>(),
+                       b.data<T>(), beta, out->data<T>(), batchCount, strideA,
+                       strideB);
     }
   }
 };

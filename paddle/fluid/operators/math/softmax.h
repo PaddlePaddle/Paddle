@@ -33,6 +33,23 @@ class SoftmaxGradFunctor {
                   const framework::Tensor* y_grad, framework::Tensor* x_grad);
 };
 
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class SoftmaxCUDNNFunctor {
+ public:
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor* X, framework::Tensor* Y);
+};
+
+template <typename T>
+class SoftmaxGradCUDNNFunctor {
+ public:
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor* Y, const framework::Tensor* y_grad,
+                  framework::Tensor* x_grad);
+};
+#endif
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

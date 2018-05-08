@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/reduce_op.h"
 
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -122,18 +125,18 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
  protected:
   std::string comment_;
 
-  void Replace(std::string &src, std::string from, std::string to) {
+  void Replace(std::string *src, std::string from, std::string to) {
     std::size_t len_from = std::strlen(from.c_str());
     std::size_t len_to = std::strlen(to.c_str());
-    for (std::size_t pos = src.find(from); pos != std::string::npos;
-         pos = src.find(from, pos + len_to)) {
-      src.replace(pos, len_from, to);
+    for (std::size_t pos = src->find(from); pos != std::string::npos;
+         pos = src->find(from, pos + len_to)) {
+      src->replace(pos, len_from, to);
     }
   }
 
   void SetComment(std::string name, std::string op) {
-    Replace(comment_, "{ReduceOp}", name);
-    Replace(comment_, "{reduce}", op);
+    Replace(&comment_, "{ReduceOp}", name);
+    Replace(&comment_, "{reduce}", op);
   }
 };
 
@@ -173,22 +176,39 @@ class ReduceMinOpMaker : public ReduceOpMaker {
   }
 };
 
+class ReduceProdOpMaker : public ReduceOpMaker {
+ public:
+  ReduceProdOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceProd", "production");
+    AddComment(comment_);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker, reduce_sum_grad,
-            ops::ReduceGradOp);
+REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp);
 
-REGISTER_OP(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
-            reduce_mean_grad, ops::ReduceGradOp);
+REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp);
 
-REGISTER_OP(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_max_grad,
-            ops::ReduceGradOp);
+REGISTER_OPERATOR(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_max_grad, ops::ReduceGradOp);
 
-REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker, reduce_min_grad,
-            ops::ReduceGradOp);
+REGISTER_OPERATOR(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_min_grad, ops::ReduceGradOp);
+
+REGISTER_OPERATOR(reduce_prod, ops::ReduceOp, ops::ReduceProdOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_prod_grad, ops::ReduceGradOp);
 
 #define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)         \
   REGISTER_OP_CPU_KERNEL(reduce_type,                                          \

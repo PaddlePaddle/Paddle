@@ -41,6 +41,6 @@ int main(int argc, char** argv) {
   paddle::memory::Used(paddle::platform::CUDAPlace(0));
 #endif
 
-  paddle::framework::InitDevices();
+  paddle::framework::InitDevices(true);
   return RUN_ALL_TESTS();
 }

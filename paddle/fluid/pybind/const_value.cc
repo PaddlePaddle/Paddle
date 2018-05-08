@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "const_value.h"
+#include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace pybind {
 
-void BindConstValue(pybind11::module& m) {
-  m.def("kEmptyVarName", [] { return framework::kEmptyVarName; });
-  m.def("kTempVarName", [] { return framework::kTempVarName; });
-  m.def("kGradVarSuffix", [] { return framework::kGradVarSuffix; });
-  m.def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
+void BindConstValue(pybind11::module* m) {
+  m->def("kEmptyVarName", [] { return framework::kEmptyVarName; });
+  m->def("kTempVarName", [] { return framework::kTempVarName; });
+  m->def("kGradVarSuffix", [] { return framework::kGradVarSuffix; });
+  m->def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
 }
 
 }  // namespace pybind

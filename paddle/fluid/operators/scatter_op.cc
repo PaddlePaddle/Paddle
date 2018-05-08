@@ -23,24 +23,24 @@ class ScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Ref"),
-                   "Input(Ref) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Index"),
-                   "Input(Index) of ScatterOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ScatterOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ids"),
+                   "Input(Ids) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Updates"),
                    "Input(Updates) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ScatterOp should not be null.");
 
     auto updates_dims = ctx->GetInputDim("Updates");
-    auto ref_dims = ctx->GetInputDim("Ref");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Index").size(), 1,
-                      "Update Index should be 1-D.");
+    auto ref_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Ids").size(), 1,
+                      "Update Ids should be 1-D.");
     PADDLE_ENFORCE_EQ(ref_dims.size(), updates_dims.size(),
-                      "Reference and Updates should have the same shape size");
+                      "Xerence and Updates should have the same shape size");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
-                      ctx->GetInputDim("Index")[0],
-                      "Updates and Index should have same batch-size.");
+                      ctx->GetInputDim("Ids")[0],
+                      "Updates and Ids should have same batch-size.");
     framework::DDim data_dim(updates_dims);
     for (int i = 1; i < data_dim.size(); ++i) {
       PADDLE_ENFORCE_EQ(data_dim[i], updates_dims[i]);
@@ -52,7 +52,7 @@ class ScatterOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Ref")->type()),
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
         ctx.device_context());
   }
 };
@@ -64,14 +64,14 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
-    ctx->SetOutputDim(framework::GradVarName("Ref"), ctx->GetInputDim("Ref"));
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Ref")->type()),
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
         ctx.device_context());
   }
 };
@@ -80,9 +80,8 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ScatterOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Ref", "The source input of scatter op");
-    AddInput("Index",
-             "The index input of scatter op where Ref will be updated");
+    AddInput("X", "The source input of scatter op");
+    AddInput("Ids", "The index input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of updates op");
     AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
@@ -91,8 +90,8 @@ Scatter Operator.
 This operator obtains output by updating the input on selected indices on the first axis:
 
 $$
-Out = Ref \\
-Out[Index] = Ref[Index] + Updates
+Out = X \\
+Out[Ids] = X[Ids] + Updates
 $$
 
 )DOC");
@@ -103,7 +102,8 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, scatter_grad,
-            ops::ScatterGradOp);
+REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

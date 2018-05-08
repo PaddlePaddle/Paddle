@@ -66,7 +66,7 @@ TEST(ProgramDesc, copy_ctor) {
 
   for (size_t i = 0; i < global_block->OpSize(); ++i) {
     auto op_origin = global_block->Op(i);
-    auto op_copy = global_block->Op(i);
+    auto op_copy = global_block_copy->Op(i);
 
     ASSERT_EQ(op_origin->Type(), op_copy->Type());
     ASSERT_EQ(op_origin->Inputs(), op_copy->Inputs());
@@ -131,7 +131,7 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
 
   for (size_t i = 0; i < global_block->OpSize(); ++i) {
     auto op_origin = global_block->Op(i);
-    auto op_restored = global_block->Op(i);
+    auto op_restored = global_block_restored->Op(i);
 
     ASSERT_EQ(op_origin->Type(), op_restored->Type());
     ASSERT_EQ(op_origin->Inputs(), op_restored->Inputs());
