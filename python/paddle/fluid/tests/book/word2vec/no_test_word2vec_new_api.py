@@ -100,7 +100,7 @@ def train(use_cuda, is_sparse, save_path):
 
     def event_handler(event):
         # print type(event)
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, fluid.EndEpochEvent):
             avg_cost = trainer.test(reader=test_reader)
             print(avg_cost)
 
