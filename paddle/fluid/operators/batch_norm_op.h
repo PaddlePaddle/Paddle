@@ -65,6 +65,8 @@ class BatchNormKernel : public framework::OpKernel<T> {
     const auto *bias = ctx.Input<Tensor>("Bias");
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
+    auto y_arr = EigenTensor<T, 2>::From(*y);
+    auto x_arr = EigenTensor<T, 2>::From(*x);
 
     const auto &x_dims = x->dims();
     const int N = x_dims[0];
@@ -87,11 +89,7 @@ class BatchNormKernel : public framework::OpKernel<T> {
       auto inv_std = (var_arr + epsilon).rsqrt() * scale_arr;
       switch (data_layout) {
         case DataLayout::kNCHW: {
-          auto y_arr = EigenTensor<T, 2>::From(
-              *y, framework::make_ddim(sample_size, N * C));
-          auto x_arr = EigenTensor<T, 2>::From(
-              *x, framework::make_ddim(sample_size, N * C));
-          DSizes<2> bcast_nchw(N * C, 1);
+          DSizes<4> bcast_nchw(N * C, 1);
           y_arr.device(*place) = (x_arr - mean_arr.broadcast(bcast_nchw)) *
                                      ((var_arr + epsilon).rsqrt() * scale_arr)
                                          .eval()
@@ -100,7 +98,6 @@ class BatchNormKernel : public framework::OpKernel<T> {
           break;
         }
         case DataLayout::kNHWC: {
-          DSizes<2> bcast_nchw(N * C, 1);
           break;
         }
 
@@ -126,16 +123,15 @@ class BatchNormKernel : public framework::OpKernel<T> {
 
       switch (data_layout) {
         case DataLayout::kNCHW: {
-          auto x_arr = EigenTensor<T, 2>::From(
-              *x, framework::make_ddim(sample_size, N * C));
-          auto x_arr = EigenTensor<T, 2>::From(
-              *x, framework::make_ddim(sample_size, N * C));
+          auto x_arr = EigenTensor<T, 2>::From(*x);
+          auto y_arr = EigenTensor<T, 2>::From(*y);
           DSizes<2> bcast_nchw(N * C, 1);
-          x_arr.sum
+          saved_mean_e.device(*place) = x_arr.sum()
 
-              for (int nc = 0; nc < N * C; ++nc) {
+                                            for (int nc = 0; nc < N * C; ++nc) {
             saved_mean_e(nc % C) += x_arr.col(nc).sum();
           }
+
           saved_mean_e /= N * sample_size;
           for (int nc = 0; nc < N * C; ++nc) {
             saved_variance_e(nc % C) +=
