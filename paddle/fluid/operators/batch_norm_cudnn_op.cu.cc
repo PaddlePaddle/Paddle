@@ -116,7 +116,7 @@ class CUDNNBatchNormKernel : public framework::OpKernel<T> {
     FillTensorDescriptor(*x, is_test, &data_desc_, &bn_param_desc_, &mode_);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    // Run inference mode or training mode depends attribute.
+    // Run inference mode or training mode depends is_test or not.
     if (is_test) {
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");

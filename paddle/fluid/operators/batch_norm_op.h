@@ -26,6 +26,9 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
+template <typename D>
+using DSizes = Eigen::DSizes<Eigen::DenseIndex, D>;
+
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -34,17 +37,17 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-template <typename T>
-using EigenArrayMap =
-    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using ConstEigenArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
-template <typename T>
-using ConstEigenVectorArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
+// template <typename T>
+// using EigenArrayMap =
+//     Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+// template <typename T>
+// using ConstEigenArrayMap =
+//     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+// template <typename T>
+// using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
+// template <typename T>
+// using ConstEigenVectorArrayMap =
+//     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename DeviceContext, typename T>
 class BatchNormKernel : public framework::OpKernel<T> {
@@ -58,11 +61,10 @@ class BatchNormKernel : public framework::OpKernel<T> {
         framework::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<Tensor>("X");
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
     auto *y = ctx.Output<Tensor>("Y");
-    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+    y->mutable_data<T>(ctx.GetPlace());
 
     const auto &x_dims = x->dims();
     const int N = x_dims[0];
@@ -71,25 +73,67 @@ class BatchNormKernel : public framework::OpKernel<T> {
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
-    // alloc memory
-    y->mutable_data<T>(ctx.GetPlace());
-    mean_out->mutable_data<T>(ctx.GetPlace());
-    variance_out->mutable_data<T>(ctx.GetPlace());
-    saved_mean->mutable_data<T>(ctx.GetPlace());
-    saved_variance->mutable_data<T>(ctx.GetPlace());
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto *place = ctx.template device_context<DeviceContext>().eigen_device();
 
-    if (!is_test) {
+    if (is_test) {
+      auto *est_mean = ctx.Input<Tensor>("Mean");
+      auto *est_var = ctx.Input<Tensor>("Variance");
+
+      auto mean_arr = EigenVector<T>::Flatten(*est_mean);
+      auto var_arr = EigenVector<T>::Flatten(*est_var);
+      auto scale_arr = EigenVector<T>::Flatten(*scale);
+      auto bias_arr = EigenVector<T>::Flatten(*bias);
+      auto inv_std = (var_arr + epsilon).rsqrt() * scale_arr;
+      switch (data_layout) {
+        case DataLayout::kNCHW: {
+          auto y_arr = EigenTensor<T, 2>::From(
+              *y, framework::make_ddim(sample_size, N * C));
+          auto x_arr = EigenTensor<T, 2>::From(
+              *x, framework::make_ddim(sample_size, N * C));
+          DSizes<2> bcast_nchw(N * C, 1);
+          y_arr.device(*place) = (x_arr - mean_arr.broadcast(bcast_nchw)) *
+                                     ((var_arr + epsilon).rsqrt() * scale_arr)
+                                         .eval()
+                                         .broadcast(bcast_nchw) +
+                                 bias_arr.broadcast(bcast_nchw);
+          break;
+        }
+        case DataLayout::kNHWC: {
+          DSizes<2> bcast_nchw(N * C, 1);
+          break;
+        }
+
+        default:
+          PADDLE_THROW("Unknown storage order: %d", data_layout);
+      }
+    } else {
+      auto *mean_out = ctx.Output<Tensor>("MeanOut");
+      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       // saved_xx is use just in this batch of data
+      auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+      auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+      mean_out->mutable_data<T>(ctx.GetPlace());
+      variance_out->mutable_data<T>(ctx.GetPlace());
+      saved_mean->mutable_data<T>(ctx.GetPlace());
+      saved_variance->mutable_data<T>(ctx.GetPlace());
+
       auto saved_mean_e = EigenVector<T>::Flatten(*saved_mean);
       auto saved_variance_e = EigenVector<T>::Flatten(*saved_variance);
-      saved_mean_e.setZero();
-      saved_variance_e.setZero();
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(dev_ctx, saved_mean_e);
+      set_zero(dev_ctx, saved_variance_e);
 
       switch (data_layout) {
         case DataLayout::kNCHW: {
           auto x_arr = EigenTensor<T, 2>::From(
               *x, framework::make_ddim(sample_size, N * C));
-          for (int nc = 0; nc < N * C; ++nc) {
+          auto x_arr = EigenTensor<T, 2>::From(
+              *x, framework::make_ddim(sample_size, N * C));
+          DSizes<2> bcast_nchw(N * C, 1);
+          x_arr.sum
+
+              for (int nc = 0; nc < N * C; ++nc) {
             saved_mean_e(nc % C) += x_arr.col(nc).sum();
           }
           saved_mean_e /= N * sample_size;
@@ -129,11 +173,6 @@ class BatchNormKernel : public framework::OpKernel<T> {
     // use SavedMean and SavedVariance to do normalize
     Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
     if (is_test) {
-      auto *est_mean = ctx.Input<Tensor>("Mean");
-      auto *est_var = ctx.Input<Tensor>("Variance");
-
-      auto var_arr = EigenVector<T>::Flatten(*est_var);
-      inv_std = (var_arr + epsilon).sqrt().inverse();
     } else {
       EigenVectorArrayMap<T> saved_inv_std(
           ctx.Output<Tensor>("SavedVariance")->data<T>(), C);
