@@ -42,6 +42,18 @@ TEST_F(DotTester, Build) {
   auto codes = dot->Build();
   // Output the DOT language code, the generated codes are too long to compare
   // the string.
+  //
+  // The output is
+  //
+  // digraph G {
+  //   title="hello"
+  //   node_1
+  //   node_2
+  //   node_0[label="a" shape="box" color="blue"]
+  //   node_0->node_1
+  //   node_1->node_2
+  //   node_0->node_2
+  // } // end G
   LOG(INFO) << '\n' << codes;
 }
 
