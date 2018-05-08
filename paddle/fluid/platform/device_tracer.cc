@@ -11,23 +11,33 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/device_tracer.h"
-#include <google/protobuf/text_format.h>
+
+#include <deque>
 #include <fstream>
 #include <map>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <numeric>
-#include <thread>
+#include <string>
+#include <thread>  // NOLINT
+#include <vector>
+
 #include "glog/logging.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace platform {
 namespace {
+// Current thread's id. Note, we don't distinguish nested threads
+// for now.
+thread_local int cur_thread_id = 0;
+// Tracking the nested block stacks of each thread.
+thread_local std::deque<int> block_id_stack;
+// Tracking the nested event stacks.
+thread_local std::deque<std::string> annotation_stack;
 
-thread_local const char *cur_annotation = nullptr;
 std::once_flag tracer_once_flag;
 DeviceTracer *tracer = nullptr;
 }  // namespace
@@ -117,7 +127,7 @@ void DisableActivity() {
 
 void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
                               size_t *maxNumRecords) {
-  uint8_t *buf = (uint8_t *)malloc(kBufSize + kAlignSize);
+  uint8_t *buf = reinterpret_cast<uint8_t *>(malloc(kBufSize + kAlignSize));
   *size = kBufSize;
   *buffer = ALIGN_BUFFER(buf, kAlignSize);
   *maxNumRecords = 0;
@@ -191,22 +201,37 @@ class DeviceTracerImpl : public DeviceTracer {
     correlations_[id] = anno;
   }
 
-  void AddCPURecords(const char *anno, uint64_t start_ns, uint64_t end_ns) {
+  void AddCPURecords(const std::string &anno, uint64_t start_ns,
+                     uint64_t end_ns, int64_t device_id, int64_t thread_id) {
+    if (anno.empty()) {
+      VLOG(1) << "Empty timeline annotation.";
+      return;
+    }
     std::lock_guard<std::mutex> l(trace_mu_);
     cpu_records_.push_back(
-        CPURecord{anno, start_ns, end_ns,
-                  std::hash<std::thread::id>{}(std::this_thread::get_id())});
+        CPURecord{anno, start_ns, end_ns, device_id, thread_id});
   }
 
   void AddMemRecords(const std::string &name, uint64_t start_ns,
-                     uint64_t end_ns, uint32_t device_id, uint32_t stream_id,
+                     uint64_t end_ns, int64_t device_id, int64_t stream_id,
                      uint32_t correlation_id, uint64_t bytes) {
+    // 0 means timestamp information could not be collected for the kernel.
+    if (start_ns == 0 || end_ns == 0) {
+      VLOG(3) << name << " cannot be traced";
+      return;
+    }
+    std::lock_guard<std::mutex> l(trace_mu_);
     mem_records_.push_back(MemRecord{name, start_ns, end_ns, device_id,
                                      stream_id, correlation_id, bytes});
   }
 
-  void AddKernelRecords(uint64_t start, uint64_t end, uint32_t device_id,
-                        uint32_t stream_id, uint32_t correlation_id) {
+  void AddKernelRecords(uint64_t start, uint64_t end, int64_t device_id,
+                        int64_t stream_id, uint32_t correlation_id) {
+    // 0 means timestamp information could not be collected for the kernel.
+    if (start == 0 || end == 0) {
+      VLOG(3) << correlation_id << " cannot be traced";
+      return;
+    }
     std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.push_back(
         KernelRecord{start, end, device_id, stream_id, correlation_id});
@@ -255,34 +280,37 @@ class DeviceTracerImpl : public DeviceTracer {
         continue;
       }
       auto *event = profile_pb.add_events();
+      event->set_type(proto::Event::GPUKernel);
       event->set_name(correlations_.at(r.correlation_id));
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
-      event->set_stream_id(r.stream_id);
+      event->set_sub_device_id(r.stream_id);
       event->set_device_id(r.device_id);
     }
 
     for (const CPURecord &r : cpu_records_) {
       auto *event = profile_pb.add_events();
+      event->set_type(proto::Event::CPU);
       event->set_name(r.name);
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
-      event->set_stream_id(r.thread_id);
-      event->set_device_id(-1);
+      event->set_sub_device_id(r.thread_id);
+      event->set_device_id(r.device_id);
     }
     for (const MemRecord &r : mem_records_) {
       auto *event = profile_pb.add_events();
+      event->set_type(proto::Event::GPUKernel);
       event->set_name(r.name);
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
-      event->set_stream_id(r.stream_id);
+      event->set_sub_device_id(r.stream_id);
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
-    std::string profile_str;
-    google::protobuf::TextFormat::PrintToString(profile_pb, &profile_str);
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);
+    std::string profile_str;
+    profile_pb.SerializeToString(&profile_str);
     profile_f << profile_str;
     profile_f.close();
     return profile_pb;
@@ -308,8 +336,9 @@ class DeviceTracerImpl : public DeviceTracer {
     if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) &&
         (cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel)) {
       if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-        const std::string anno =
-            cur_annotation ? cur_annotation : cbInfo->symbolName;
+        const std::string anno = !annotation_stack.empty()
+                                     ? annotation_stack.back()
+                                     : cbInfo->symbolName;
         tracer->AddAnnotation(cbInfo->correlationId, anno);
       }
     } else {
@@ -336,14 +365,15 @@ class DeviceTracerDummy : public DeviceTracer {
 
   void AddAnnotation(uint64_t id, const std::string &anno) {}
 
-  void AddCPURecords(const char *anno, uint64_t start_ns, uint64_t end_ns) {}
+  void AddCPURecords(const std::string &anno, uint64_t start_ns,
+                     uint64_t end_ns, int64_t device_id, int64_t thread_id) {}
 
   void AddMemRecords(const std::string &name, uint64_t start_ns,
-                     uint64_t end_ns, uint32_t device_id, uint32_t stream_id,
+                     uint64_t end_ns, int64_t device_id, int64_t stream_id,
                      uint32_t correlation_id, uint64_t bytes) {}
 
-  void AddKernelRecords(uint64_t start, uint64_t end, uint32_t device_id,
-                        uint32_t stream_id, uint32_t correlation_id) {}
+  void AddKernelRecords(uint64_t start, uint64_t end, int64_t device_id,
+                        int64_t stream_id, uint32_t correlation_id) {}
 
   bool IsEnabled() { return false; }
 
@@ -369,11 +399,28 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-void SetCurAnnotation(const char *anno) { cur_annotation = anno; }
+void SetCurAnnotation(const std::string &anno) {
+  annotation_stack.push_back(anno);
+}
 
-void ClearCurAnnotation() { cur_annotation = nullptr; }
+void ClearCurAnnotation() { annotation_stack.pop_back(); }
 
-const char *CurAnnotation() { return cur_annotation; }
+std::string CurAnnotation() {
+  if (annotation_stack.empty()) return "";
+  return annotation_stack.back();
+}
+
+void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }
+
+void ClearCurBlock() { block_id_stack.pop_back(); }
+
+int BlockDepth() { return block_id_stack.size(); }
+
+void SetCurThread(int thread_id) { cur_thread_id = thread_id; }
+
+void ClearCurThread() { cur_thread_id = 0; }
+
+int CurThread() { return cur_thread_id; }
 
 }  // namespace platform
 }  // namespace paddle

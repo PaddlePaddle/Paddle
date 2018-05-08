@@ -13,14 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <string>
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +34,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index_lod, *dst, indexed_src);
+  row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -57,14 +56,12 @@ class GRUKernel : public framework::OpKernel<T> {
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
-    context.ShareLoD("Input", "Hidden");
-
     auto hidden_dims = hidden->dims();
 
     bool is_reverse = context.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    to_batch(dev_ctx, *input, *batch_gate, true, is_reverse);
+    to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
     if (bias) {
       math::RowwiseAdd<DeviceContext, T> add_bias;
@@ -116,7 +113,7 @@ class GRUKernel : public framework::OpKernel<T> {
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
-    to_seq(dev_ctx, *batch_hidden, *hidden);
+    to_seq(dev_ctx, *batch_hidden, hidden);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -177,7 +174,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     bool is_reverse = context.Attr<bool>("is_reverse");
     batch_hidden_grad.set_lod(batch_hidden->lod());
-    to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, false, is_reverse);
+    to_batch(dev_ctx, *hidden_grad, &batch_hidden_grad, false, is_reverse);
 
     math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
@@ -239,7 +236,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
       batch_gate_grad.set_lod(batch_gate->lod());
-      to_seq(dev_ctx, batch_gate_grad, *input_grad);
+      to_seq(dev_ctx, batch_gate_grad, input_grad);
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());

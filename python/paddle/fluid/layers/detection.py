@@ -19,7 +19,6 @@ from layer_function_generator import generate_layer_fn
 from layer_function_generator import autodoc
 from ..layer_helper import LayerHelper
 import tensor
-import ops
 import nn
 import math
 
@@ -58,7 +57,7 @@ def detection_output(loc,
 
     This operation is to get the detection results by performing following
     two steps:
-    
+
     1. Decode input bounding box predictions according to the prior boxes.
     2. Get the final detection results by applying multi-class non maximum
        suppression (NMS).
@@ -129,9 +128,13 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-
-    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    old_shape = scores.shape
+    scores = nn.reshape(x=scores, shape=(-1, old_shape[-1]))
+    scores = nn.softmax(input=scores)
+    scores = nn.reshape(x=scores, shape=old_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
+    scores.stop_gradient = True
+    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -145,29 +148,43 @@ def detection_output(loc,
             'score_threshold': score_threshold,
             'nms_eta': 1.0
         })
+    nmsed_outs.stop_gradient = True
     return nmsed_outs
 
 
 @autodoc()
 def detection_map(detect_res,
                   label,
-                  pos_count=None,
-                  true_pos=None,
-                  false_pos=None,
+                  class_num,
+                  background_label=0,
                   overlap_threshold=0.3,
                   evaluate_difficult=True,
-                  ap_type='integral'):
+                  has_state=None,
+                  input_states=None,
+                  out_states=None,
+                  ap_version='integral'):
     helper = LayerHelper("detection_map", **locals())
 
-    map_out = helper.create_tmp_variable(dtype='float32')
-    accum_pos_count_out = helper.create_tmp_variable(dtype='int32')
-    accum_true_pos_out = helper.create_tmp_variable(dtype='float32')
-    accum_false_pos_out = helper.create_tmp_variable(dtype='float32')
+    def __create_var(type):
+        return helper.create_tmp_variable(dtype=type)
+
+    map_out = __create_var('float32')
+    accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
+    accum_true_pos_out = out_states[1] if out_states else __create_var(
+        'float32')
+    accum_false_pos_out = out_states[2] if out_states else __create_var(
+        'float32')
+
+    pos_count = input_states[0] if input_states else None
+    true_pos = input_states[1] if input_states else None
+    false_pos = input_states[2] if input_states else None
+
     helper.append_op(
         type="detection_map",
         inputs={
             'Label': label,
             'DetectRes': detect_res,
+            'HasState': has_state,
             'PosCount': pos_count,
             'TruePos': true_pos,
             'FalsePos': false_pos
@@ -181,9 +198,10 @@ def detection_map(detect_res,
         attrs={
             'overlap_threshold': overlap_threshold,
             'evaluate_difficult': evaluate_difficult,
-            'ap_type': ap_type
+            'ap_type': ap_version,
+            'class_num': class_num,
         })
-    return map_out, accum_pos_count_out, accum_true_pos_out, accum_false_pos_out
+    return map_out
 
 
 def bipartite_match(dist_matrix,
@@ -444,7 +462,7 @@ def ssd_loss(location,
     num, num_prior, num_class = confidence.shape
 
     def __reshape_to_2d(var):
-        return ops.reshape(x=var, shape=[-1, var.shape[-1]])
+        return nn.reshape(x=var, shape=[-1, var.shape[-1]])
 
     # 1. Find matched boundding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -455,7 +473,8 @@ def ssd_loss(location,
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = ops.reshape(x=gt_label, shape=gt_label.shape + (1, ))
+    gt_label = nn.reshape(x=gt_label, shape=gt_label.shape + (1, ))
+    gt_label.stop_gradient = True
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
     # 2.2. Compute confidence loss.
@@ -463,10 +482,12 @@ def ssd_loss(location,
     confidence = __reshape_to_2d(confidence)
     target_label = tensor.cast(x=target_label, dtype='int64')
     target_label = __reshape_to_2d(target_label)
+    target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
 
     # 3. Mining hard examples
-    conf_loss = ops.reshape(x=conf_loss, shape=(num, num_prior))
+    conf_loss = nn.reshape(x=conf_loss, shape=(num, num_prior))
+    conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
     updated_matched_indices = helper.create_tmp_variable(dtype=dtype)
@@ -534,7 +555,7 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = ops.reshape(x=loss, shape=[-1, num_prior])
+    loss = nn.reshape(x=loss, shape=[-1, num_prior])
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -548,16 +569,16 @@ def multi_box_head(inputs,
                    base_size,
                    num_classes,
                    aspect_ratios,
-                   min_ratio,
-                   max_ratio,
+                   min_ratio=None,
+                   max_ratio=None,
                    min_sizes=None,
                    max_sizes=None,
                    steps=None,
                    step_w=None,
                    step_h=None,
                    offset=0.5,
-                   variance=[0.1, 0.1, 0.1, 0.1],
-                   flip=False,
+                   variance=[0.1, 0.1, 0.2, 0.2],
+                   flip=True,
                    clip=False,
                    kernel_size=1,
                    pad=0,
@@ -600,7 +621,7 @@ def multi_box_head(inputs,
             the inputs[i] will be automatically calculated. Default: None.
        offset(float): Prior boxes center offset. Default: 0.5
        variance(list|tuple): the variances to be encoded in prior boxes.
-            Default:[0.1, 0.1, 0.1, 0.1].
+            Default:[0.1, 0.1, 0.2, 0.2].
        flip(bool): Whether to flip aspect ratios. Default:False.
        clip(bool): Whether to clip out-of-boundary boxes. Default: False.
        kernel_size(int): The kernel size of conv2d. Default: 1.
@@ -654,6 +675,19 @@ def multi_box_head(inputs,
         helper = LayerHelper("prior_box", **locals())
         dtype = helper.input_dtype()
 
+        attrs = {
+            'min_sizes': min_sizes,
+            'aspect_ratios': aspect_ratios,
+            'variances': variance,
+            'flip': flip,
+            'clip': clip,
+            'step_w': step_w,
+            'step_h': step_h,
+            'offset': offset
+        }
+        if len(max_sizes) > 0 and max_sizes[0] > 0:
+            attrs['max_sizes'] = max_sizes
+
         box = helper.create_tmp_variable(dtype)
         var = helper.create_tmp_variable(dtype)
         helper.append_op(
@@ -662,17 +696,9 @@ def multi_box_head(inputs,
                     "Image": image},
             outputs={"Boxes": box,
                      "Variances": var},
-            attrs={
-                'min_sizes': min_sizes,
-                'max_sizes': max_sizes,
-                'aspect_ratios': aspect_ratios,
-                'variances': variance,
-                'flip': flip,
-                'clip': clip,
-                'step_w': step_w,
-                'step_h': step_h,
-                'offset': offset
-            })
+            attrs=attrs, )
+        box.stop_gradient = True
+        var.stop_gradient = True
         return box, var
 
     def _reshape_with_axis_(input, axis=1):
@@ -682,7 +708,7 @@ def multi_box_head(inputs,
         new_shape = [
             -1, reduce(lambda x, y: x * y, input.shape[axis:len(input.shape)])
         ]
-        out = ops.reshape(x=input, shape=new_shape)
+        out = nn.reshape(x=input, shape=new_shape)
         return out
 
     def _is_list_or_tuple_(data):
@@ -700,7 +726,7 @@ def multi_box_head(inputs,
     if num_layer <= 2:
         assert min_sizes is not None and max_sizes is not None
         assert len(min_sizes) == num_layer and len(max_sizes) == num_layer
-    else:
+    elif min_sizes is None and max_sizes is None:
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
@@ -745,9 +771,6 @@ def multi_box_head(inputs,
             min_size = [min_size]
         if not _is_list_or_tuple_(max_size):
             max_size = [max_size]
-        if not (len(max_size) == len(min_size)):
-            raise ValueError(
-                'the length of max_size and min_size should be equal.')
 
         aspect_ratio = []
         if aspect_ratios is not None:
@@ -765,7 +788,7 @@ def multi_box_head(inputs,
 
         num_boxes = box.shape[2]
 
-        # get box_loc
+        # get loc
         num_loc_output = num_boxes * 4
         mbox_loc = nn.conv2d(
             input=input,
@@ -779,10 +802,10 @@ def multi_box_head(inputs,
             mbox_loc.shape[0],
             mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
         ]
-        mbox_loc_flatten = ops.reshape(mbox_loc, shape=new_shape)
+        mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
         mbox_locs.append(mbox_loc_flatten)
 
-        # get conf_loc
+        # get conf
         num_conf_output = num_boxes * num_classes
         conf_loc = nn.conv2d(
             input=input,
@@ -795,7 +818,7 @@ def multi_box_head(inputs,
             conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
             conf_loc.shape[3] / num_classes, num_classes
         ]
-        conf_loc_flatten = ops.reshape(conf_loc, shape=new_shape)
+        conf_loc_flatten = nn.reshape(conf_loc, shape=new_shape)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
@@ -815,4 +838,6 @@ def multi_box_head(inputs,
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
 
+    box.stop_gradient = True
+    var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var

@@ -18,6 +18,7 @@ from tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
+from ..initializer import force_init_on_cpu
 from ops import logical_and, logical_not, logical_or
 
 __all__ = [
@@ -31,7 +32,6 @@ __all__ = [
     'Switch',
     'lod_rank_table',
     'max_sequence_len',
-    'topk',
     'lod_tensor_to_array',
     'array_to_lod_tensor',
     'increment',
@@ -750,43 +750,6 @@ def max_sequence_len(rank_table):
     return res
 
 
-def topk(input, k):
-    """
-    **topk**
-
-    This function performs the operation that selects the k entries in the input
-    vector and outputs their values and indices as vectors. Thus topk_out[j] is
-    the j-th largest entry in input, and its index is topk_indices[j]
-
-    Args:
-        input (Variable|list): The input tensor that has all the data.
-        k (int): The number of top elements that the function will pick.
-
-    Returns:
-        Variable: The variable of type array that contains the k largest entries
-                  from input.
-        Variable: The variable of type array that contains the indices of k
-                  largest entries from input.
-
-    Examples:
-        .. code-block:: python
-
-          x = fluid.layers.data(name='x', shape=[10])
-          k = 5
-          array = fluid.layers.topk(x, k)
-    """
-    helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype='int64')
-    helper.append_op(
-        type='top_k',
-        inputs={'X': [input]},
-        outputs={'Out': [topk_out],
-                 'Indices': [topk_indices]},
-        attrs={'k': k})
-    return topk_out, topk_indices
-
-
 def lod_tensor_to_array(x, table):
     """ Convert a LOD_TENSOR to an LOD_TENSOR_ARRAY.
 
@@ -949,7 +912,7 @@ def create_array(dtype):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, **ignored):
+def less_than(x, y, force_cpu=True, cond=None, **ignored):
     """
     **Less than**
 
@@ -958,6 +921,7 @@ def less_than(x, y, cond=None, **ignored):
     Args:
         x(Variable): First operand of *less_than*
         y(Variable): Second operand of *less_than*
+        force_cpu(Bool|True): The output data will be on CPU if set true.
         cond(Variable|None): Optional output variable to store the result of *less_than*
 
     Returns:
@@ -974,8 +938,11 @@ def less_than(x, y, cond=None, **ignored):
         cond.stop_gradient = True
 
     helper.append_op(
-        type='less_than', inputs={'X': [x],
-                                  'Y': [y]}, outputs={'Out': [cond]})
+        type='less_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs={'force_cpu': force_cpu or force_init_on_cpu()})
     return cond
 
 
@@ -1396,7 +1363,8 @@ class DynamicRNN(object):
                 type='less_than',
                 inputs={'X': self.step_idx,
                         'Y': self.max_seq_len},
-                outputs={'Out': self.cond})
+                outputs={'Out': self.cond},
+                attrs={'force_cpu': True})
 
         input_array = parent_block.create_var(
             name=unique_name.generate('dynamic_rnn_input_array'),
@@ -1445,7 +1413,11 @@ class DynamicRNN(object):
             for new_mem, mem_array in self.mem_link:
                 array_write(x=new_mem, i=self.step_idx, array=mem_array)
 
-            less_than(x=self.step_idx, y=self.max_seq_len, cond=self.cond)
+            less_than(
+                x=self.step_idx,
+                y=self.max_seq_len,
+                force_cpu=True,
+                cond=self.cond)
 
         self.status = DynamicRNN.AFTER_RNN
         for each_array in self.output_array:

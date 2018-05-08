@@ -202,8 +202,9 @@ class CosineOpComplete : public paddle::framework::CosineOp {
 };
 
 TEST(OperatorRegistrar, Test) {
-  using namespace paddle::framework;
-  OperatorRegistrar<CosineOpComplete, CosineOpProtoAndCheckerMaker> reg("cos");
+  paddle::framework::OperatorRegistrar<
+      CosineOpComplete, paddle::framework::CosineOpProtoAndCheckerMaker>
+      reg("cos");
 }
 
 namespace paddle {

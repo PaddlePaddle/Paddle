@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -59,16 +60,13 @@ class ReadOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     framework::ReaderHolder* reader =
-        scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
-    if (!reader->HasNext()) {
-      reader->ReInit();
-      PADDLE_ENFORCE(
-          reader->HasNext(),
-          "Reader can not read the next data even it has been re-initialized.");
-    }
+        detail::Ref(scope.FindVar(Input("Reader")),
+                    "Cannot find reader variable %s", Input("Reader"))
+            .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
+    PADDLE_ENFORCE(!ins.empty(), "There is no next data.");
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
     for (size_t i = 0; i < ins.size(); ++i) {
       auto* out =

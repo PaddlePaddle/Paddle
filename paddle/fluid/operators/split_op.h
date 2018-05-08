@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <chrono>
+#include <chrono>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -41,6 +41,21 @@ class SplitOpKernel : public framework::OpKernel<T> {
                                   in_stride, out_stride[axis]);
       input_offset += out_stride[axis];
     }
+  }
+};
+
+class SplitGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto op = new framework::OpDesc();
+    op->SetType("concat");
+    op->SetInput("X", OutputGrad("Out"));
+    op->SetOutput("Out", InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

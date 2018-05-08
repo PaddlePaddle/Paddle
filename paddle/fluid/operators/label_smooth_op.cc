@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/label_smooth_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -116,8 +117,9 @@ class LabelSmoothGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
-            label_smooth_grad, ops::LabelSmoothGradOp);
+REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
 REGISTER_OP_CPU_KERNEL(
     label_smooth,
     ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, float>,

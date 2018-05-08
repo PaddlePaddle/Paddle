@@ -153,9 +153,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-INSTALLED_VERSION=`pip freeze 2>/dev/null | grep '^paddle' | sed 's/.*==//g'`
+if [ "@WITH_GPU@" == "ON" ]; then
+    PADDLE_NAME="paddlepaddle-gpu"
+else 
+    PADDLE_NAME="paddlepaddle"
+fi
 
-if [ -z ${INSTALLED_VERSION} ]; then
+INSTALLED_VERSION=`pip freeze 2>/dev/null | grep "^${PADDLE_NAME}==" | sed 's/.*==//g'`
+
+if [ -z "${INSTALLED_VERSION}" ]; then
    INSTALLED_VERSION="0.0.0"  # not installed
 fi
 cat <<EOF | python -

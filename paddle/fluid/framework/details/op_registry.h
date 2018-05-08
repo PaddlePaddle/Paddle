@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <tuple>
+#include <vector>
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"

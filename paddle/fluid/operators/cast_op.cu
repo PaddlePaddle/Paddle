@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 template <typename T>
 using CastOpKernel =
@@ -20,4 +21,5 @@ using CastOpKernel =
 
 REGISTER_OP_CUDA_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
                         CastOpKernel<int>, CastOpKernel<int64_t>,
-                        CastOpKernel<bool>);
+                        CastOpKernel<bool>,
+                        CastOpKernel<paddle::platform::float16>);

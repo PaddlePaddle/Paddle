@@ -11,12 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+
 #include <dlfcn.h>
+
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <string>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
@@ -43,6 +45,10 @@ DEFINE_string(nccl_dir, "",
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
+DEFINE_string(
+    tensorrt_dir, "",
+    "Specify path for loading tensorrt library, such as libnvinfer.so.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -65,22 +71,21 @@ static inline std::string join(const std::string& part1,
   return ret;
 }
 
-static inline void GetDsoHandleFromDefaultPath(std::string& dso_path,
-                                               void** dso_handle,
-                                               int dynload_flags) {
+static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
+                                                int dynload_flags) {
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
-  *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
+  void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
 
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
 // bring System Integrity Projection (SIP), if dso_handle
 // is null, search from default package path in Mac OS.
 #if defined(__APPLE__) || defined(__OSX__)
-  if (nullptr == *dso_handle) {
-    dso_path = join("/usr/local/cuda/lib/", dso_path);
-    *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-    if (nullptr == *dso_handle) {
+  if (nullptr == dso_handle) {
+    dso_handle =
+        dlopen(join("/usr/local/cuda/lib/", dso_path).c_str(), dynload_flags);
+    if (nullptr == dso_handle) {
       if (dso_path == "libcudnn.dylib") {
         LOG(WARNING) << "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n "
                         "For instance, sudo tar -xzf "
@@ -91,28 +96,29 @@ static inline void GetDsoHandleFromDefaultPath(std::string& dso_path,
     }
   }
 #endif
+
+  return dso_handle;
 }
 
-static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
-                                              const std::string& dso_name,
-                                              void** dso_handle,
-                                              bool throw_on_error = true) {
+static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
+                                               const std::string& dso_name,
+                                               bool throw_on_error = true) {
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
-  *dso_handle = nullptr;
+  void* dso_handle = nullptr;
 
   std::string dlPath = dso_name;
   if (search_root.empty()) {
-    GetDsoHandleFromDefaultPath(dlPath, dso_handle, dynload_flags);
+    dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
   } else {
     // search xxx.so from custom path
     dlPath = join(search_root, dso_name);
-    *dso_handle = dlopen(dlPath.c_str(), dynload_flags);
+    dso_handle = dlopen(dlPath.c_str(), dynload_flags);
     // if not found, search from default path
-    if (nullptr == *dso_handle) {
+    if (nullptr == dso_handle) {
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
                    << dlerror() << ")";
       dlPath = dso_name;
-      GetDsoHandleFromDefaultPath(dlPath, dso_handle, dynload_flags);
+      dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
     }
   }
   auto error_msg =
@@ -124,70 +130,79 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
   if (throw_on_error) {
-    PADDLE_ENFORCE(nullptr != *dso_handle, error_msg, dlPath, dlerror());
-  } else if (nullptr == *dso_handle) {
+    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, dlerror());
+  } else if (nullptr == dso_handle) {
     LOG(WARNING) << string::Sprintf(error_msg, dlPath, dlerror());
   }
+
+  return dso_handle;
 }
 
-void GetCublasDsoHandle(void** dso_handle) {
+void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #else
-  GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
 }
 
-void GetCUDNNDsoHandle(void** dso_handle) {
+void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", dso_handle,
-                             false);
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
 #else
-  GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle, false);
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false);
 #endif
 }
 
-void GetCUPTIDsoHandle(void** dso_handle) {
+void* GetCUPTIDsoHandle() {
   std::string cupti_path = cupti_lib_path;
   if (!FLAGS_cupti_dir.empty()) {
     cupti_path = FLAGS_cupti_dir;
   }
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(cupti_path, "libcupti.dylib", dso_handle, false);
+  return GetDsoHandleFromSearchPath(cupti_path, "libcupti.dylib", false);
 #else
-  GetDsoHandleFromSearchPath(cupti_path, "libcupti.so", dso_handle, false);
+  return GetDsoHandleFromSearchPath(cupti_path, "libcupti.so", false);
 #endif
 }
 
-void GetCurandDsoHandle(void** dso_handle) {
+void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #else
-  GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
 }
 
-void GetWarpCTCDsoHandle(void** dso_handle) {
+void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
 #else
-  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
 #endif
 }
 
-void GetLapackDsoHandle(void** dso_handle) {
+void* GetLapackDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib");
 #else
-  GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so");
 #endif
 }
 
-void GetNCCLDsoHandle(void** dso_handle) {
+void* GetNCCLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib");
 #else
-  GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so");
+#endif
+}
+
+void* GetTensorRtDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
 #endif
 }
 

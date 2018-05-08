@@ -25,11 +25,6 @@ void *nccl_dso_handle;
 
 NCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
-void LoadNCCLDSO() {
-  platform::call_once(nccl_dso_flag,
-                      [] { GetNCCLDsoHandle(&nccl_dso_handle); });
-}
-
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

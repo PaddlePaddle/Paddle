@@ -11,16 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
+
 #include <Python.h>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "pybind11/pybind11.h"
 
-namespace py = pybind11;
-
 namespace paddle {
 namespace pybind {
-extern void BindConstValue(pybind11::module& m);
+
+void BindConstValue(pybind11::module* m);
+
 }  // namespace pybind
 }  // namespace paddle

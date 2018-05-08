@@ -135,11 +135,12 @@ However the output only shares the LoD with input `X`.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sigmoid_cross_entropy_with_logits,
-            ops::SigmoidCrossEntropyWithLogitsOp,
-            ops::SigmoidCrossEntropyWithLogitsOpMaker,
-            sigmoid_cross_entropy_with_logits_grad,
-            ops::SigmoidCrossEntropyWithLogitsGradOp);
+REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
+                  ops::SigmoidCrossEntropyWithLogitsOp,
+                  ops::SigmoidCrossEntropyWithLogitsOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
+                  ops::SigmoidCrossEntropyWithLogitsGradOp);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsKernel<
                            paddle::platform::CPUDeviceContext, float>);

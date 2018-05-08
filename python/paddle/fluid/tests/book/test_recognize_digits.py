@@ -14,7 +14,7 @@
 from __future__ import print_function
 import argparse
 import paddle.fluid as fluid
-import paddle.v2 as paddle
+import paddle
 import sys
 import numpy
 import unittest
@@ -92,7 +92,7 @@ def train(nn_type,
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 
-    test_program = fluid.default_main_program().clone()
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimize_ops, params_grads = optimizer.minimize(avg_loss)
@@ -157,18 +157,12 @@ def train(nn_type,
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        pserver_endpoints = os.getenv("PSERVERS")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,

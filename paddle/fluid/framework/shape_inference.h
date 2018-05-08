@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"

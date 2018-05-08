@@ -10,7 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sum_op.h"
+
+#include <algorithm>
+#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
@@ -35,7 +39,10 @@ class SumOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
     size_t N = x_dims.size();
-    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
+    if (N == 1) {
+      VLOG(3) << "Warning: sum have only one input, may waste memory";
+    }
 
     framework::DDim in_dim({0});
     for (auto& x_dim : x_dims) {
@@ -76,10 +83,16 @@ class SumOp : public framework::OperatorWithKernel {
           static_cast<framework::proto::VarType::Type>(dtype),
           ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
-      return framework::OpKernelType(
-          framework::ToDataType(
-              x_vars[0]->Get<framework::SelectedRows>().value().type()),
-          ctx.device_context());
+      for (auto& var : x_vars) {
+        auto& value = var->Get<framework::SelectedRows>().value();
+        if (value.IsInitialized()) {
+          return framework::OpKernelType(framework::ToDataType(value.type()),
+                                         ctx.device_context());
+        }
+      }
+      // if input sparse vars are not initialized, use an default kernel type.
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();

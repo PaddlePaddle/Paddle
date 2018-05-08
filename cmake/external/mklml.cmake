@@ -28,13 +28,13 @@ INCLUDE(ExternalProject)
 
 SET(MKLML_PROJECT       "extern_mklml")
 SET(MKLML_VER           "mklml_lnx_2018.0.1.20171007")
-SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.11/${MKLML_VER}.tgz")
+SET(MKLML_URL           "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz")
 SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
 SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 SET(MKLML_DST_DIR       "mklml")
 SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
 SET(MKLML_INSTALL_DIR   ${MKLML_INSTALL_ROOT}/${MKLML_DST_DIR})
-SET(MKLML_ROOT          ${MKLML_INSTALL_DIR}/${MKLML_VER})
+SET(MKLML_ROOT          ${MKLML_INSTALL_DIR})
 SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
 SET(MKLML_LIB_DIR       ${MKLML_ROOT}/lib)
 SET(MKLML_LIB           ${MKLML_LIB_DIR}/libmklml_intel.so)
@@ -46,7 +46,7 @@ INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 FILE(WRITE ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(MKLML)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${MKLML_VER}\n"
+  "install(DIRECTORY ${MKLML_VER}/include ${MKLML_VER}/lib \n"
   "        DESTINATION ${MKLML_DST_DIR})\n")
 
 ExternalProject_Add(

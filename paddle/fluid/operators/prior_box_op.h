@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/transform.h"
@@ -22,23 +24,23 @@ namespace operators {
 
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
-                               std::vector<float>& output_aspect_ratior) {
+                               std::vector<float>* output_aspect_ratior) {
   constexpr float epsilon = 1e-6;
-  output_aspect_ratior.clear();
-  output_aspect_ratior.push_back(1.0f);
+  output_aspect_ratior->clear();
+  output_aspect_ratior->push_back(1.0f);
   for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
     float ar = input_aspect_ratior[i];
     bool already_exist = false;
-    for (size_t j = 0; j < output_aspect_ratior.size(); ++j) {
-      if (fabs(ar - output_aspect_ratior[j]) < epsilon) {
+    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
+      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
         already_exist = true;
         break;
       }
     }
     if (!already_exist) {
-      output_aspect_ratior.push_back(ar);
+      output_aspect_ratior->push_back(ar);
       if (flip) {
-        output_aspect_ratior.push_back(1.0f / ar);
+        output_aspect_ratior->push_back(1.0f / ar);
       }
     }
   }
@@ -51,7 +53,7 @@ struct ClipFunctor {
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -68,7 +70,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto clip = ctx.Attr<bool>("clip");
 
     std::vector<float> aspect_ratios;
-    ExpandAspectRatios(input_aspect_ratio, flip, aspect_ratios);
+    ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
 
     T step_w = static_cast<T>(ctx.Attr<float>("step_w"));
     T step_h = static_cast<T>(ctx.Attr<float>("step_h"));
@@ -97,9 +99,6 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    T inv_img_width = 1.0 / img_width;
-    T inv_img_height = 1.0 / img_height;
-
     auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
     for (int h = 0; h < feature_height; ++h) {
       for (int w = 0; w < feature_width; ++w) {
@@ -109,60 +108,25 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           auto min_size = min_sizes[s];
-          // first prior: aspect_ratio = 1, size = min_size
-          box_width = box_height = min_size;
-          // xmin
-          e_boxes(h, w, idx, 0) = (center_x - box_width * 0.5) * inv_img_width;
-          // ymin
-          e_boxes(h, w, idx, 1) =
-              (center_y - box_height * 0.5) * inv_img_height;
-          // xmax
-          e_boxes(h, w, idx, 2) = (center_x + box_width * 0.5) * inv_img_width;
-          // ymax
-          e_boxes(h, w, idx, 3) =
-              (center_y + box_height * 0.5) * inv_img_height;
-
-          idx++;
-          if (max_sizes.size() > 0) {
-            auto max_size = max_sizes[s];
-            // second prior: aspect_ratio = 1,
-            // size = sqrt(min_size * max_size)
-            box_width = box_height = sqrt(min_size * max_size);
-            // xmin
-            e_boxes(h, w, idx, 0) =
-                (center_x - box_width * 0.5) * inv_img_width;
-            // ymin
-            e_boxes(h, w, idx, 1) =
-                (center_y - box_height * 0.5) * inv_img_height;
-            // xmax
-            e_boxes(h, w, idx, 2) =
-                (center_x + box_width * 0.5) * inv_img_width;
-            // ymax
-            e_boxes(h, w, idx, 3) =
-                (center_y + box_height * 0.5) * inv_img_height;
-            idx++;
-          }
-
-          // rest of priors
+          // priors with different aspect ratios
           for (size_t r = 0; r < aspect_ratios.size(); ++r) {
             float ar = aspect_ratios[r];
-            if (fabs(ar - 1.) < 1e-6) {
-              continue;
-            }
-            box_width = min_size * sqrt(ar);
-            box_height = min_size / sqrt(ar);
-            // xmin
-            e_boxes(h, w, idx, 0) =
-                (center_x - box_width * 0.5) * inv_img_width;
-            // ymin
-            e_boxes(h, w, idx, 1) =
-                (center_y - box_height * 0.5) * inv_img_height;
-            // xmax
-            e_boxes(h, w, idx, 2) =
-                (center_x + box_width * 0.5) * inv_img_width;
-            // ymax
-            e_boxes(h, w, idx, 3) =
-                (center_y + box_height * 0.5) * inv_img_height;
+            box_width = min_size * sqrt(ar) / 2.;
+            box_height = min_size / sqrt(ar) / 2.;
+            e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+            e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+            e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+            e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+            idx++;
+          }
+          if (max_sizes.size() > 0) {
+            auto max_size = max_sizes[s];
+            // square prior with size sqrt(minSize * maxSize)
+            box_width = box_height = sqrt(min_size * max_size) / 2.;
+            e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+            e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+            e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+            e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
             idx++;
           }
         }

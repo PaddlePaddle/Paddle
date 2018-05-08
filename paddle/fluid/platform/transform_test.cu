@@ -18,11 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/transform.h"
 
+namespace {
+
 template <typename T>
 class Scale {
  public:
   explicit Scale(const T& scale) : scale_(scale) {}
-
   HOSTDEVICE T operator()(const T& a) const { return a * scale_; }
 
  private:
@@ -35,11 +36,23 @@ class Multiply {
   HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
 };
 
+}  // namespace
+
+using paddle::memory::Alloc;
+using paddle::memory::Free;
+using paddle::memory::Copy;
+
+using paddle::platform::CPUPlace;
+using paddle::platform::CUDAPlace;
+using paddle::platform::CPUDeviceContext;
+using paddle::platform::CUDADeviceContext;
+
+using paddle::platform::Transform;
+
 TEST(Transform, CPUUnary) {
-  using namespace paddle::platform;
   CPUDeviceContext ctx;
   float buf[4] = {0.1, 0.2, 0.3, 0.4};
-  Transform<paddle::platform::CPUDeviceContext> trans;
+  Transform<CPUDeviceContext> trans;
   trans(ctx, buf, buf + 4, buf, Scale<float>(10));
   for (int i = 0; i < 4; ++i) {
     ASSERT_NEAR(buf[i], static_cast<float>(i + 1), 1e-5);
@@ -47,14 +60,12 @@ TEST(Transform, CPUUnary) {
 }
 
 TEST(Transform, GPUUnary) {
-  using namespace paddle::platform;
-  using namespace paddle::memory;
   CUDAPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
   float cpu_buf[4] = {0.1, 0.2, 0.3, 0.4};
   float* gpu_buf = static_cast<float*>(Alloc(gpu0, sizeof(float) * 4));
   Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf), ctx.stream());
-  Transform<paddle::platform::CUDADeviceContext> trans;
+  Transform<CUDADeviceContext> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, Scale<float>(10));
   ctx.Wait();
   Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf), ctx.stream());
@@ -65,10 +76,8 @@ TEST(Transform, GPUUnary) {
 }
 
 TEST(Transform, CPUBinary) {
-  using namespace paddle::platform;
-  using namespace paddle::memory;
   int buf[4] = {1, 2, 3, 4};
-  Transform<paddle::platform::CPUDeviceContext> trans;
+  Transform<CPUDeviceContext> trans;
   CPUDeviceContext ctx;
   trans(ctx, buf, buf + 4, buf, buf, Multiply<int>());
   for (int i = 0; i < 4; ++i) {
@@ -77,14 +86,12 @@ TEST(Transform, CPUBinary) {
 }
 
 TEST(Transform, GPUBinary) {
-  using namespace paddle::platform;
-  using namespace paddle::memory;
   int buf[4] = {1, 2, 3, 4};
   CUDAPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
   int* gpu_buf = static_cast<int*>(Alloc(gpu0, sizeof(buf)));
   Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx.stream());
-  Transform<paddle::platform::CUDADeviceContext> trans;
+  Transform<CUDADeviceContext> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, gpu_buf, Multiply<int>());
   ctx.Wait();
   Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf), ctx.stream());

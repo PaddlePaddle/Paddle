@@ -13,19 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+#include <string>
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
 #include "gtest/gtest.h"
 
 TEST(Event, CpuElapsedTime) {
   using paddle::platform::Event;
-  using paddle::platform::EventKind;
+  using paddle::platform::EventType;
 
-  Event start_event(EventKind::kPushRange, "test", 0, nullptr);
+  Event start_event(EventType::kPushRange, "test", 0, nullptr);
   EXPECT_TRUE(start_event.has_cuda() == false);
   int counter = 0;
   while (counter != 1000) {
     counter++;
   }
-  Event stop_event(EventKind::kPopRange, "test", 0, nullptr);
+  Event stop_event(EventType::kPopRange, "test", 0, nullptr);
   EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }
 
@@ -35,16 +39,16 @@ TEST(Event, CudaElapsedTime) {
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::CUDAPlace;
   using paddle::platform::Event;
-  using paddle::platform::EventKind;
+  using paddle::platform::EventType;
 
   DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(0));
-  Event start_event(EventKind::kPushRange, "test", 0, dev_ctx);
+  Event start_event(EventType::kPushRange, "test", 0, dev_ctx);
   EXPECT_TRUE(start_event.has_cuda() == true);
   int counter = 0;
   while (counter != 1000) {
     counter++;
   }
-  Event stop_event(EventKind::kPopRange, "test", 0, dev_ctx);
+  Event stop_event(EventType::kPopRange, "test", 0, dev_ctx);
   EXPECT_GT(start_event.CudaElapsedMs(stop_event), 0);
 }
 #endif
@@ -52,7 +56,7 @@ TEST(Event, CudaElapsedTime) {
 TEST(RecordEvent, RecordEvent) {
   using paddle::platform::DeviceContext;
   using paddle::platform::Event;
-  using paddle::platform::EventKind;
+  using paddle::platform::EventType;
   using paddle::platform::RecordEvent;
   using paddle::platform::ProfilerState;
   using paddle::platform::EventSortingKey;
@@ -75,6 +79,7 @@ TEST(RecordEvent, RecordEvent) {
   *  ...
   * PopEvent(evt_name, dev_ctx);
   */
+  LOG(INFO) << "Usage 1: PushEvent & PopEvent";
   for (int loop = 0; loop < 3; ++loop) {
     for (int i = 1; i < 5; ++i) {
       std::string name = "op_" + std::to_string(i);
@@ -93,11 +98,40 @@ TEST(RecordEvent, RecordEvent) {
    *   ...
    * }
    */
+  LOG(INFO) << "Usage 2: RecordEvent";
   for (int i = 1; i < 5; ++i) {
     std::string name = "evs_op_" + std::to_string(i);
     RecordEvent record_event(name, dev_ctx);
     int counter = 1;
     while (counter != i * 1000) counter++;
+  }
+
+  /* Usage 3
+   * {
+   *   RecordEvent record_event(name1, dev_ctx);
+   *   ...
+   *   code to be analyzed
+   *   ...
+   *   {
+   *     RecordEvent nested_record_event(name2, dev_ctx);
+   *     ...
+   *     code to be analyzed
+   *     ...
+   *   }
+   * }
+   */
+  LOG(INFO) << "Usage 3: nested RecordEvent";
+  for (int i = 1; i < 5; ++i) {
+    std::string name = "ano_evs_op_" + std::to_string(i);
+    RecordEvent record_event(name, dev_ctx);
+    int counter = 1;
+    while (counter != i * 100) counter++;
+    {
+      std::string nested_name = "nested_ano_evs_op_" + std::to_string(i);
+      RecordEvent nested_record_event(nested_name, dev_ctx);
+      int nested_counter = 1;
+      while (nested_counter != i * 100) nested_counter++;
+    }
   }
 
   // Bad Usage:
@@ -127,3 +161,13 @@ TEST(RecordEvent, RecordEvent) {
   // Will remove parsing-related code from test later
   DisableProfiler(EventSortingKey::kTotal, "/tmp/profiler");
 }
+
+#ifdef PADDLE_WITH_CUDA
+TEST(TMP, stream_wait) {
+  cudaStream_t stream;
+  cudaStreamCreate(&stream);
+  cudaStreamSynchronize(stream);
+  cudaStreamSynchronize(stream);
+  cudaStreamSynchronize(stream);
+}
+#endif

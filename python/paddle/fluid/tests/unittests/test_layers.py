@@ -32,7 +32,6 @@ class TestBook(unittest.TestCase):
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = layers.mean(cost)
             self.assertIsNotNone(avg_cost)
-            program.append_backward(avg_cost)
 
         print(str(program))
 
@@ -93,8 +92,6 @@ class TestBook(unittest.TestCase):
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(cost)
-
-            program.append_backward(avg_cost)
 
         print(str(program))
 
@@ -181,8 +178,8 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[10], dtype='float32')
             y = layers.data(
-                name='y', shape=[10, 20], dtype='float32', lod_level=1)
-            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
+                name='y', shape=[10, 20], dtype='float32', lod_level=2)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y, ref_level=1))
         print(str(program))
 
     def test_lstm_unit(self):
@@ -220,7 +217,7 @@ class TestBook(unittest.TestCase):
             seq_data = layers.data(
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
             seq = layers.fc(input=seq_data, size=20)
-            self.assertIsNotNone(layers.sequence_softmax(x=seq))
+            self.assertIsNotNone(layers.sequence_softmax(seq))
         print(str(program))
 
     def test_softmax(self):
@@ -228,7 +225,14 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(x=hid))
+            self.assertIsNotNone(layers.softmax(hid))
+        print(str(program))
+
+    def test_lrn(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[6, 2, 2], dtype='float32')
+            self.assertIsNotNone(layers.lrn(data))
         print(str(program))
 
     def test_get_places(self):
@@ -325,6 +329,44 @@ class TestBook(unittest.TestCase):
             y = layers.data(name='label', shape=[4], dtype='float32')
             loss = layers.smooth_l1(x, y)
             self.assertIsNotNone(loss)
+        print(str(program))
+
+    def test_lod_reset(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=2)
+            print(layers.lod_reset(x=x, y=y))
+        print(str(program))
+
+    def test_label_smooth(self):
+        program = Program()
+        with program_guard(program):
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            smooth_label = layers.label_smooth(
+                label=one_hot_label, epsilon=0.1, dtype="float32")
+            self.assertIsNotNone(smooth_label)
+        print(str(program))
+
+    def test_topk(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name="label", shape=[200], dtype="float32")
+            values, indices = layers.topk(data, k=5)
+            self.assertIsNotNone(values)
+            self.assertIsNotNone(indices)
+        print(str(program))
+
+    def test_roi_pool(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            self.assertIsNotNone(output)
         print(str(program))
 
 

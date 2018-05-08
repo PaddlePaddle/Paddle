@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstmp_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -321,8 +322,9 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker, lstmp_grad,
-            ops::LSTMPGradOp);
+REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstmp, ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMPKernel<paddle::platform::CPUDeviceContext, double>);
