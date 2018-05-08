@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/tensorrt/io_converter.h"
+#include "paddle/fluid/inference/tensorrt/convert/io_converter.h"
 
 #include <gtest/gtest.h>
 
@@ -34,7 +34,7 @@ TEST_F(EngineInputConverterTester, DefaultCPU) {
   ASSERT_EQ(cudaMalloc(&buffer, tensor.memory_size()), 0);
 
   cudaStream_t stream;
-  EngineInputConverter::Run("mul", tensor, buffer, tensor.memory_size(),
+  EngineInputConverter::Run("test", tensor, buffer, tensor.memory_size(),
                             &stream);
 }
 
@@ -44,7 +44,7 @@ TEST_F(EngineInputConverterTester, DefaultGPU) {
   ASSERT_EQ(cudaMalloc(&buffer, tensor.memory_size()), 0);
 
   cudaStream_t stream;
-  EngineInputConverter::Run("mul", tensor, buffer, tensor.memory_size(),
+  EngineInputConverter::Run("test", tensor, buffer, tensor.memory_size(),
                             &stream);
 }
 
