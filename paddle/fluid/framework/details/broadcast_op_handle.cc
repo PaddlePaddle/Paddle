@@ -19,14 +19,12 @@
 namespace paddle {
 namespace framework {
 namespace details {
-BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places)
-    : local_scopes_(local_scopes), places_(places) {}
 
 void BroadcastOpHandle::RunImpl() {
-  // the input and output may have dummy var.
-  VarHandle *in_var_handle;
+  if (places_.size() == 1) return;
 
+  // The input and output may have dummy vars.
+  VarHandle *in_var_handle;
   {
     auto in_var_handles = DynamicCast<VarHandle>(inputs_);
     PADDLE_ENFORCE_EQ(in_var_handles.size(), 1,
@@ -55,27 +53,97 @@ void BroadcastOpHandle::RunImpl() {
 
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
-  for (auto *out : out_var_handles) {
-    if (*out == *in_var_handle) {
+  // NOTE: The tensors' Place of input and output must be all on GPU or all on
+  // CPU.
+  for (auto *out_var_handle : out_var_handles) {
+    if (out_var_handle->IsTheSameVar(*in_var_handle)) {
       continue;
     }
-
-    auto &out_p = out->place_;
-    auto *out_var = var_scopes.at(out->scope_idx_)->FindVar(out->name_);
+    auto t_out_p = out_var_handle->place_;
+    auto *out_var = var_scopes.at(out_var_handle->scope_idx_)
+                        ->FindVar(out_var_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(out_var);
-    PADDLE_ENFORCE_EQ(out_p.which(), in_var_handle->place_.which(),
-                      "Places must be all on CPU or all on CUDA.");
-
+    if (platform::is_gpu_place(in_tensor.place())) {
+      PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
+                     "Places of input and output must be all on GPU.");
+    } else {
+      t_out_p = platform::CPUPlace();
+    }
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
-    VariableVisitor::GetMutableTensor(out_var).mutable_data(out_p,
+    VariableVisitor::GetMutableTensor(out_var).mutable_data(t_out_p,
                                                             in_tensor.type());
+  }
 
-    auto dev_ctx = dev_ctxes_.at(out_p);
-    RunAndRecordEvent(out_p, [in_tensor, out_var, dev_ctx, out_p] {
-      paddle::framework::TensorCopy(
-          in_tensor, out_p, *(dev_ctx),
-          &VariableVisitor::GetMutableTensor(out_var));
+  if (platform::is_cpu_place(in_tensor.place())) {
+    for (auto *out_var_handle : out_var_handles) {
+      if (out_var_handle->IsTheSameVar(*in_var_handle)) {
+        continue;
+      }
+      auto &out_p = out_var_handle->place_;
+      auto *out_var = var_scopes.at(out_var_handle->scope_idx_)
+                          ->FindVar(out_var_handle->name_);
+
+      RunAndRecordEvent(out_p, [in_tensor, out_var] {
+        paddle::framework::TensorCopy(
+            in_tensor, platform::CPUPlace(),
+            &VariableVisitor::GetMutableTensor(out_var));
+      });
+    }
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    VarHandle *out_handle = nullptr;
+    int root_id = boost::get<platform::CUDAPlace>(in_tensor.place()).device;
+    std::vector<std::function<void()>> broadcast_calls;
+
+    for (auto out_var_handle : out_var_handles) {
+      Variable *out_var = var_scopes.at(out_var_handle->scope_idx_)
+                              ->FindVar(out_var_handle->name_);
+
+      int dst_id =
+          boost::get<platform::CUDAPlace>(out_var_handle->place_).device;
+
+      auto &nccl_ctx = nccl_ctxs_->at(dst_id);
+
+      void *send_recv_buffer = nullptr;
+      if (root_id == dst_id) {
+        send_recv_buffer = const_cast<void *>(in_tensor.data<void>());
+        out_handle = out_var_handle;
+      } else {
+        send_recv_buffer =
+            VariableVisitor::GetMutableTensor(out_var).mutable_data(
+                out_var_handle->place_);
+      }
+
+      int type = platform::ToNCCLDataType(in_tensor.type());
+      size_t numel = static_cast<size_t>(in_tensor.numel());
+      broadcast_calls.emplace_back(
+          [send_recv_buffer, numel, type, root_id, &nccl_ctx] {
+            PADDLE_ENFORCE(platform::dynload::ncclBcast(
+                send_recv_buffer, numel, static_cast<ncclDataType_t>(type),
+                root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+          });
+    }
+
+    this->RunAndRecordEvent([&] {
+      {
+        platform::NCCLGroupGuard guard;
+        for (auto &call : broadcast_calls) {
+          call();
+        }
+      }
+
+      if (!out_handle->IsTheSameVar(*in_var_handle)) {
+        auto out_var = var_scopes.at(in_var_handle->scope_idx_)
+                           ->FindVar(out_var_handles[0]->name_);
+        paddle::framework::TensorCopy(
+            in_tensor, in_var_handle->place_,
+            *(dev_ctxes_.at(in_var_handle->place_)),
+            &VariableVisitor::GetMutableTensor(out_var));
+      }
     });
+#else
+    PADDLE_THROW("CUDA is not enabled.");
+#endif
   }
 }
 

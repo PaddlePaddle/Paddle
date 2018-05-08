@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-from framework import Program
-from executor import global_scope
-from . import core
+from .. import core
+from ..framework import Program
+from ..executor import global_scope
 
 
 class InferenceTranspiler:

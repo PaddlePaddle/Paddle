@@ -114,5 +114,13 @@ void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
 
+// Test if the profiler is currently enabled.
+bool IsProfileEnabled();
+// Whether the trainer should send profiling state to PS.
+bool ShouldSendProfileState();
+// Mark current process as PS by assigning a lister id.
+void SetProfileListener();
+int64_t ListenerId();
+
 }  // namespace platform
 }  // namespace paddle
