@@ -19,6 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
+struct Buffer;
+enum class DeviceType { UNK = -1, CPU, GPU };
+
 /*
  * EngineBase is the base class of all inference engines. An inference engine
  * takes a paddle program as input, and outputs the result in fluid Tensor
@@ -45,8 +48,19 @@ class EngineBase {
   // Execute the engine, that will run the inference network.
   virtual void Execute(int batch_size) = 0;
 
+  // Return the IO buffer that allocated in engine. It is free to read/write on
+  // the buffer.
+  virtual Buffer& buffer(const std::string& tensor) = 0;
+
   virtual ~EngineBase() {}
 };  // class EngineBase
+
+struct Buffer {
+  void* buffer;
+  int max_size;                        // buffer allocated space.
+  int size;                            // data size.
+  DeviceType device{DeviceType::UNK};  // tells which device this buffer is on.
+};
 
 }  // namespace inference
 }  // namespace paddle
