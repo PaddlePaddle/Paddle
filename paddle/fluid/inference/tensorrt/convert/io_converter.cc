@@ -23,26 +23,42 @@ namespace tensorrt {
 using platform::is_gpu_place;
 using platform::is_cpu_place;
 
-class DefaultInputConverter : public EngineInputConverter {
+class DefaultIOConverter : public EngineIOConverter {
  public:
-  DefaultInputConverter() {}
+  DefaultIOConverter() {}
   // NOTE out is GPU memory.
   virtual void operator()(const LoDTensor& in, void* out,
                           size_t max_size) override {
     PADDLE_ENFORCE(out != nullptr);
-    PADDLE_ENFORCE_LE(in.memory_size(), max_size);
+    PADDLE_ENFORCE(stream_ != nullptr);
     const auto& place = in.place();
+    size_t size = in.memory_size();
+    PADDLE_ENFORCE_LE(size, max_size);
     if (is_cpu_place(place)) {
-      PADDLE_ENFORCE(stream_ != nullptr);
-      PADDLE_ENFORCE_EQ(0,
-                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
-                                        cudaMemcpyHostToDevice, *stream_));
-
+      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out, in.data<float>(), size,
+                                           cudaMemcpyHostToDevice, *stream_));
     } else if (is_gpu_place(place)) {
-      PADDLE_ENFORCE_EQ(0,
-                        cudaMemcpyAsync(out, in.data<float>(), in.memory_size(),
-                                        cudaMemcpyHostToHost, *stream_));
-
+      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out, in.data<float>(), size,
+                                           cudaMemcpyHostToHost, *stream_));
+    } else {
+      PADDLE_THROW("Unknown device for converter");
+    }
+    cudaStreamSynchronize(*stream_);
+  }
+  // NOTE in is GPU memory.
+  virtual void operator()(const void* in, LoDTensor* out,
+                          size_t max_size) override {
+    PADDLE_ENFORCE(in != nullptr);
+    PADDLE_ENFORCE(stream_ != nullptr);
+    const auto& place = out->place();
+    size_t size = out->memory_size();
+    PADDLE_ENFORCE_LE(size, max_size);
+    if (is_cpu_place(place)) {
+      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out->data<float>(), in, size,
+                                           cudaMemcpyDeviceToHost, *stream_));
+    } else if (is_gpu_place(place)) {
+      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out->data<float>(), in, size,
+                                           cudaMemcpyHostToHost, *stream_));
     } else {
       PADDLE_THROW("Unknown device for converter");
     }
@@ -50,7 +66,7 @@ class DefaultInputConverter : public EngineInputConverter {
   }
 };
 
-REGISTER_TENSORRT_INPUT_CONVERTER(default, DefaultInputConverter);
+REGISTER_TENSORRT_IO_CONVERTER(default, DefaultIOConverter);
 
 }  // namespace tensorrt
 }  // namespace inference
