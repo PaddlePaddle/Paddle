@@ -21,7 +21,7 @@ endif()
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
-  # analysis test depends the models that generate by tests/book
+  # analysis test depends the models that generate by python/paddle/fluid/tests/book
   add_subdirectory(analysis)
 endif()
 

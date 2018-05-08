@@ -40,6 +40,8 @@ class DotTester : public ::testing::Test {
 
 TEST_F(DotTester, Build) {
   auto codes = dot->Build();
+  // Output the DOT language code, the generated codes are too long to compare
+  // the string.
   LOG(INFO) << '\n' << codes;
 }
 
