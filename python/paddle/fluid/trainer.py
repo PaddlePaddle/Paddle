@@ -55,6 +55,32 @@ class EndStepEvent(object):
         self.step = step_id
 
 
+def check_and_get_place(place):
+    """
+    Check the type of place or get the default place
+    Args:
+        place(None|core.CUDAPlace|core.CPUPlace): the place that trainer will be executed on.
+
+    Raises:
+        TypeError if the type mismatched.
+
+    Returns:
+        the original place if it is not None.
+        if fluid is compiled with CUDA, returns CUDAPlace(0) by default.
+        Otherwise returns CPUPlace by default.
+    """
+    if place is None:
+        if core.is_compiled_with_cuda():
+            return core.CUDAPlace(0)
+        else:
+            return core.CPUPlace()
+    else:
+        if not isinstance(place, core.CUDAPlace) and not isinstance(
+                place, core.CPUPlace):
+            raise TypeError("Place should be either CUDAPlace or CPUPlace")
+        return place
+
+
 class Trainer(object):
     """
 
@@ -91,7 +117,7 @@ class Trainer(object):
 
             optimize_ops, params_grads = optimizer.minimize(loss)
 
-        self.place = Trainer._check_and_get_place(place)
+        self.place = check_and_get_place(place)
 
         self._dist_transpile_if_necessary(optimize_ops, params_grads)
 
@@ -193,32 +219,6 @@ class Trainer(object):
         exe = executor.Executor(self.place)
         io.save_inference_model(model_path, feed_var_names, self.predict_vars,
                                 exe)
-
-    @staticmethod
-    def _check_and_get_place(place):
-        """
-        Check the type of place or get the default place
-        Args:
-            place(None|core.CUDAPlace|core.CPUPlace): the place that trainer will be executed on.
-
-        Raises:
-            TypeError if the type mismatched.
-
-        Returns:
-            the original place if it is not None.
-            if fluid is compiled with CUDA, returns CUDAPlace(0) by default.
-            Otherwise returns CPUPlace by default.
-        """
-        if place is None:
-            if core.is_compiled_with_cuda():
-                return core.CUDAPlace(0)
-            else:
-                return core.CPUPlace()
-        else:
-            if not isinstance(place, core.CUDAPlace) and not isinstance(
-                    place, core.CPUPlace):
-                raise TypeError("Place should be either CUDAPlace or CPUPlace")
-            return place
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):

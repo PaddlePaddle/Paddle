@@ -16,6 +16,8 @@ import core
 import framework
 import executor
 import io
+from trainer import check_and_get_place
+
 __all__ = ['Inferencer', ]
 
 
@@ -31,9 +33,8 @@ class Inferencer(object):
 
         self.param_path = param_path
         self.scope = core.Scope()
-        self.place = place
 
-        self.exe = executor.Executor(place)
+        self.exe = executor.Executor(check_and_get_place(place))
         with executor.scope_guard(self.scope):
             # load params from param_path into scope
             if param_path is not None:
