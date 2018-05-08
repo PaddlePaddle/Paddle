@@ -75,14 +75,17 @@ class Trainer(object):
         self.train_program = framework.Program()
 
         with framework.program_guard(self.train_program, self.startup_program):
-            loss = program_func()
-            self.test_outputs = loss if isinstance(loss, list) else [loss]
+            program_func_outs = program_func()
+            # Here we assume that the fisrt one of program_func_outs is loss.
+            # It may be incorrect!
+            self.loss = program_func_outs[0] if isinstance(
+                program_func_outs, list) else program_func_outs
             self.test_program = self.train_program.clone()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
 
-            optimize_ops, params_grads = optimizer.minimize(loss)
+            optimize_ops, params_grads = optimizer.minimize(self.loss)
 
         self.place = Trainer._check_and_get_place(place)
 
@@ -180,7 +183,7 @@ class Trainer(object):
                 order in program
         """
 
-        return self._test_by_executor(reader, feed_order, self.test_outputs)
+        return self._test_by_executor(reader, feed_order, [self.loss])
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
