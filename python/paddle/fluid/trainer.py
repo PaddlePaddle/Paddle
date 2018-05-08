@@ -76,7 +76,7 @@ class Trainer(object):
 
         with framework.program_guard(self.train_program, self.startup_program):
             loss = program_func()
-            self.test_output = loss
+            self.test_outputs = loss if isinstance(loss, list) else [loss]
             self.test_program = self.train_program.clone()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
@@ -180,7 +180,7 @@ class Trainer(object):
                 order in program
         """
 
-        return self._test_by_executor(reader, feed_order, [self.test_output])
+        return self._test_by_executor(reader, feed_order, self.test_outputs)
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
