@@ -72,13 +72,16 @@ extern void *cupti_dso_handle;
   __macro(cuptiGetResultString);              \
   __macro(cuptiActivityGetNumDroppedRecords); \
   __macro(cuptiActivityFlushAll);             \
-  __macro(cuptiFinalize);                     \
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
   __macro(cuptiEnableCallback);               \
   __macro(cuptiEnableDomain);
 
 CUPTI_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUPTI_WRAP);
+
+#if CUPTI_API_VERSION > 8
+  DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(cuptiFinalize);
+#endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUPTI_WRAP
 }  // namespace dynload

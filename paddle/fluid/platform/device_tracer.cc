@@ -323,7 +323,10 @@ class DeviceTracerImpl : public DeviceTracer {
     DisableActivity();
     dynload::cuptiUnsubscribe(subscriber_);
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
+#if CUPTI_API_VERSION > 8
+    fprintf(stderr, "!!!!%d\n", CUPTI_API_VERSION);
     PADDLE_ENFORCE(dynload::cuptiFinalize());
+#endif
     enabled_ = false;
   }
 
