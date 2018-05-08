@@ -87,7 +87,9 @@ class TensorRTEngine : public EngineBase {
   // these memory directly for acceleration, for example, output the converted
   // data directly to the buffer to save data copy overhead.
   // NOTE this should be used after calling `FreezeNetwork`.
-  void*& buffer(const std::string& name);
+  Buffer& buffer(const std::string& tensor) override;
+
+  cudaStream_t* stream() { return stream_; }
 
   // Fill an input from CPU memory with name and size.
   void SetInputFromCPU(const std::string& name, void* data, size_t size);
@@ -116,7 +118,7 @@ class TensorRTEngine : public EngineBase {
   cudaStream_t* stream_;
   nvinfer1::ILogger& logger_;
 
-  std::vector<void*> buffers_;
+  std::vector<Buffer> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>

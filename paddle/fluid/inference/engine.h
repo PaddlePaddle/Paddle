@@ -56,7 +56,7 @@ class EngineBase {
 };  // class EngineBase
 
 struct Buffer {
-  void* buffer;
+  void* buffer{nullptr};               // buffer should be allocated only once.
   int max_size;                        // buffer allocated space.
   int size;                            // data size.
   DeviceType device{DeviceType::UNK};  // tells which device this buffer is on.
