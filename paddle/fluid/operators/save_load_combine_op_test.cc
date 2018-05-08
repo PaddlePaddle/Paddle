@@ -22,7 +22,7 @@ limitations under the License. */
 USE_NO_KERNEL_OP(save_combine);
 USE_NO_KERNEL_OP(load_combine);
 
-template <typename T>
+template <typename T, typename U>
 T* CreateForSaveCombineOp(int x, int y, const std::vector<int>& lod_info,
                           std::string var_name,
                           const paddle::platform::CPUPlace& place,
@@ -38,7 +38,8 @@ T* CreateForSaveCombineOp(int x, int y, const std::vector<int>& lod_info,
   tensor->set_lod(*expect_lod);
   T* expect = tensor->mutable_data<T>(place);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
-    expect[i] = static_cast<T>(i);
+    expect[i] = static_cast<T>(
+        static_cast<U>(i));  // For FP16, we intend to do float(float16(i))
   }
   return expect;
 }
@@ -62,7 +63,7 @@ T* GetValuesAfterLoadCombineOp(paddle::framework::LoDTensor* target,
 template <typename T, typename U>
 void CheckValues(T* expect, U* actual, const paddle::framework::LoD& expect_lod,
                  const paddle::framework::LoD& actual_lod, const int& numel) {
-  for (int64_t i = 0; i < numel; ++i) {
+  for (int i = 0; i < numel; ++i) {
     EXPECT_EQ(expect[i], static_cast<T>(actual[i]));
   }
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
@@ -79,29 +80,29 @@ TEST(SaveLoadCombineOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
-  std::vector<int> lod1 = {0, 1, 2, 3};
+  std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
   paddle::framework::LoD expect_lod1;
-  int* expect1 = CreateForSaveCombineOp<int>(10, 10, lod1, "test_var1", place,
-                                             &scope, &expect_lod1);
+  int* expect1 = CreateForSaveCombineOp<int, int>(10, 10, lod1, "test_var1",
+                                                  place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
   paddle::framework::LoD expect_lod2;
-  int* expect2 = CreateForSaveCombineOp<int>(10, 20, lod2, "test_var2", place,
-                                             &scope, &expect_lod2);
+  int* expect2 = CreateForSaveCombineOp<int, int>(10, 20, lod2, "test_var2",
+                                                  place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 2, 3, 20};
   int numel3 = 4000;
   paddle::framework::LoD expect_lod3;
-  int* expect3 = CreateForSaveCombineOp<int>(20, 200, lod3, "test_var3", place,
-                                             &scope, &expect_lod3);
+  int* expect3 = CreateForSaveCombineOp<int, int>(20, 200, lod3, "test_var3",
+                                                  place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
   paddle::framework::LoD expect_lod4;
-  int* expect4 = CreateForSaveCombineOp<int>(20, 50, lod4, "test_var4", place,
-                                             &scope, &expect_lod4);
+  int* expect4 = CreateForSaveCombineOp<int, int>(20, 50, lod4, "test_var4",
+                                                  place, &scope, &expect_lod4);
 
   // Set attributes
   std::string filename = "check_tensor.ls";
@@ -143,29 +144,29 @@ TEST(SaveLoadCombineFP16Op, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
-  std::vector<int> lod1 = {0, 1, 2, 3};
+  std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
   paddle::framework::LoD expect_lod1;
-  float* expect1 = CreateForSaveCombineOp<float>(10, 10, lod1, "test_var1",
-                                                 place, &scope, &expect_lod1);
+  float* expect1 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
   paddle::framework::LoD expect_lod2;
-  float* expect2 = CreateForSaveCombineOp<float>(10, 20, lod2, "test_var2",
-                                                 place, &scope, &expect_lod2);
+  float* expect2 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
-  std::vector<int> lod3 = {0, 1, 2, 3};
-  int numel3 = 2050;
+  std::vector<int> lod3 = {0, 20};
+  int numel3 = 4000;
   paddle::framework::LoD expect_lod3;
-  float* expect3 = CreateForSaveCombineOp<float>(1, 2050, lod3, "test_var3",
-                                                 place, &scope, &expect_lod3);
+  float* expect3 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
   paddle::framework::LoD expect_lod4;
-  float* expect4 = CreateForSaveCombineOp<float>(20, 50, lod4, "test_var4",
-                                                 place, &scope, &expect_lod4);
+  float* expect4 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
   // Set attributes
   std::string filename = "check_tensor_fp16.ls";
@@ -222,7 +223,7 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize({3, 10});
+  tensor->Resize({3, 4000});
   paddle::framework::LoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
