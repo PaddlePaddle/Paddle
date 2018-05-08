@@ -79,6 +79,10 @@ class OperatorBase {
 
   virtual ~OperatorBase() {}
 
+  // Do some preparation in construction phase. It leaves empty by default, free
+  // to overload it and it will be called in the construction function.
+  void Prepare(){};
+
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
@@ -163,7 +167,9 @@ class OperatorBase {
       const ::paddle::framework::VariableNameMap& inputs,  \
       const ::paddle::framework::VariableNameMap& outputs, \
       const paddle::framework::AttributeMap& attrs)        \
-      : parent_cls(type, inputs, outputs, attrs) {}
+      : parent_cls(type, inputs, outputs, attrs) {         \
+    Prepare();                                             \
+  }
 
 class NOP : public OperatorBase {
  public:

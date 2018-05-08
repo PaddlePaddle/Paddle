@@ -12,30 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
-
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/tensorrt_engine_op.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
-namespace operators {
 
-class TensorRTEngineOp : public framework::OperatorWithKernel {
- protected:
-  // Build the engine.
-  void Prepare() {
-    // Call converter, input the BlockDesc and build the network.
-  }
-};
-
-template <typename DeviceContext, typename T>
-class TensorRTEngineKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    // Convert input tensor from fluid to engine.
-    // Execute the engine.
-    // Convert output tensor from engine to fluid.
-  }
-};
-
-}  // namespace operators
+namespace operators {}  // namespace operators
 }  // namespace paddle
