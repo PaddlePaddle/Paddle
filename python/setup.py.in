@@ -68,7 +68,8 @@ packages=['paddle',
           'paddle.fluid',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
-          'paddle.fluid.layers']
+          'paddle.fluid.layers',
+          'paddle.fluid.transpiler']
 
 if '${WITH_FLUID_ONLY}'== 'OFF':
     packages+=['paddle.proto',

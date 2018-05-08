@@ -60,6 +60,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ +\
     'io',
     'initializer',
     'layers',
+    'transpiler'
     'nets',
     'optimizer',
     'learning_rate_decay',
