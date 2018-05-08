@@ -31,13 +31,29 @@ class TestProfiler(unittest.TestCase):
 
         with fluid.program_guard(main_program, startup_program):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
-            hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-            hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
+            hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
+            i = layers.zeros(shape=[1], dtype='int64')
+            counter = fluid.layers.zeros(
+                shape=[1], dtype='int64', force_cpu=True)
+            until = layers.fill_constant([1], dtype='int64', value=10)
+            data_arr = layers.array_write(hidden1, i)
+            cond = fluid.layers.less_than(x=counter, y=until)
+            while_op = fluid.layers.While(cond=cond)
+            with while_op.block():
+                hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
+                layers.array_write(hidden_n, i, data_arr)
+                fluid.layers.increment(x=counter, value=1, in_place=True)
+                layers.less_than(x=counter, y=until, cond=cond)
+
+            hidden_n = layers.array_read(data_arr, i)
+            hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(cost)
-            accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+            batch_size = fluid.layers.create_tensor(dtype='int64')
+            batch_acc = fluid.layers.accuracy(
+                input=predict, label=label, total=batch_size)
 
         optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
         opts = optimizer.minimize(avg_cost, startup_program=startup_program)
@@ -46,7 +62,7 @@ class TestProfiler(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup_program)
 
-        accuracy.reset(exe)
+        pass_acc_calculator = fluid.average.WeightedAverage()
         with profiler.profiler(state, 'total', profile_path) as prof:
             for iter in range(10):
                 if iter == 2:
@@ -57,9 +73,11 @@ class TestProfiler(unittest.TestCase):
                 outs = exe.run(main_program,
                                feed={'x': x,
                                      'y': y},
-                               fetch_list=[avg_cost] + accuracy.metrics)
+                               fetch_list=[avg_cost, batch_acc, batch_size])
                 acc = np.array(outs[1])
-                pass_acc = accuracy.eval(exe)
+                b_size = np.array(outs[2])
+                pass_acc_calculator.add(value=acc, weight=b_size)
+                pass_acc = pass_acc_calculator.eval()
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU')

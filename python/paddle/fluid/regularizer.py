@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import framework
+from . import core
 
 __all__ = [
-    'append_regularization_ops',
-    'L1Decay',
-    'L2Decay',
+    'append_regularization_ops', 'WeightDecayRegularizer', 'L1Decay', 'L2Decay',
+    'L1DecayRegularizer', 'L2DecayRegularizer'
 ]
 
 
@@ -43,16 +43,20 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
+        # If no gradient then we don't need to do anything
+        if grad is None:
+            params_and_grads.append((param, grad))
+            continue
+
         regularization_term = None
         if param.regularizer is not None:
             # Add variable for regularization term in grad block
-            regularization_term = param.regularizer(param, grad.block)
+            regularization_term = param.regularizer(param, grad, grad.block)
         elif regularization is not None:
-            regularization_term = regularization(param, grad.block)
+            regularization_term = regularization(param, grad, grad.block)
 
-        # If no gradient or no regularization specified,
-        # then we don't need to do anything
-        if grad is None or regularization_term is None:
+        # If no regularization specified, then we don't need to do anything
+        if regularization_term is None:
             params_and_grads.append((param, grad))
             continue
 
@@ -82,7 +86,7 @@ class WeightDecayRegularizer(object):
     def __init__(self):
         pass
 
-    def __call__(self, param, block):
+    def __call__(self, param, grad, block):
         """Add corresponding weight decay operations to the network
         """
         raise NotImplementedError()
@@ -102,7 +106,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         super(L2DecayRegularizer, self).__init__()
         self._regularization_coeff = regularization_coeff
 
-    def __call__(self, param, block):
+    def __call__(self, param, grad, block):
         """Add L2 weight decay ops to network
 
         Adds L2 weight decay ops.
@@ -117,8 +121,23 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         """
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
+
         decay = block.create_var(
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
+
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            decay = block.create_var(
+                dtype="float32",
+                shape=param.shape,
+                type=core.VarDesc.VarType.SELECTED_ROWS)
+            block.append_op(
+                type='lookup_table',
+                inputs={'W': param,
+                        'Ids': grad},
+                outputs={'Out': decay},
+                attrs={'is_sparse': True})
+            param = decay
+
         # Append Op to calculate decay
         block.append_op(
             type='scale',
@@ -141,7 +160,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         super(L1DecayRegularizer, self).__init__()
         self._regularization_coeff = regularization_coeff
 
-    def __call__(self, param, block):
+    def __call__(self, param, grad, block):
         """Add L1 weight decay ops to network
 
         Adds L1 weight decay ops.
@@ -158,6 +177,19 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(block, framework.Block)
         decay = block.create_var(
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
+
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            decay = block.create_var(
+                dtype="float32",
+                shape=param.shape,
+                type=core.VarDesc.VarType.SELECTED_ROWS)
+            block.append_op(
+                type='lookup_table',
+                inputs={'W': param,
+                        'Ids': grad},
+                outputs={'Out': decay},
+                attrs={'is_sparse': True})
+
         # Append sign op
         block.append_op(
             type='sign', inputs={"X": param}, outputs={"Out": decay})

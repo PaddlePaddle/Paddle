@@ -158,26 +158,9 @@ class TestDetectionMAP(unittest.TestCase):
                 append_batch_size=False,
                 dtype='float32')
 
-            map_out, accum_pos_count_out, accum_true_pos_out, accum_false_pos_out = layers.detection_map(
-                detect_res=detect_res, label=label)
+            map_out = layers.detection_map(detect_res, label, 21)
             self.assertIsNotNone(map_out)
-            self.assertIsNotNone(accum_pos_count_out)
-            self.assertIsNotNone(accum_true_pos_out)
-            self.assertIsNotNone(accum_false_pos_out)
             self.assertEqual(map_out.shape, (1, ))
-            map_out, accum_pos_count_out2, accum_true_pos_out2, accum_false_pos_out2 = layers.detection_map(
-                detect_res=detect_res, label=label)
-            self.assertIsNotNone(map_out)
-            self.assertIsNotNone(accum_pos_count_out2)
-            self.assertIsNotNone(accum_true_pos_out2)
-            self.assertIsNotNone(accum_false_pos_out2)
-            self.assertEqual(map_out.shape, (1, ))
-            self.assertEqual(accum_pos_count_out.shape,
-                             accum_pos_count_out2.shape)
-            self.assertEqual(accum_true_pos_out.shape,
-                             accum_true_pos_out2.shape)
-            self.assertEqual(accum_false_pos_out.shape,
-                             accum_false_pos_out2.shape)
         print(str(program))
 
 

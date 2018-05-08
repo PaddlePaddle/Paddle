@@ -45,7 +45,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     bool flip = ctx->Attrs().Get<bool>("flip");
 
     std::vector<float> aspect_ratios_vec;
-    ExpandAspectRatios(aspect_ratios, flip, aspect_ratios_vec);
+    ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
     size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
     if (max_sizes.size() > 0) {
@@ -73,7 +73,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 
@@ -111,7 +111,8 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<std::vector<float>>(
         "max_sizes",
-        "(vector<float>) List of max sizes of generated prior boxes.");
+        "(vector<float>) List of max sizes of generated prior boxes.")
+        .SetDefault(std::vector<float>{});
     AddAttr<std::vector<float>>(
         "aspect_ratios",
         "(vector<float>) List of aspect ratios of generated prior boxes.");
@@ -167,7 +168,8 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    prior_box, ops::PriorBoxOpKernel<paddle::platform::CPUPlace, float>,
-    ops::PriorBoxOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OPERATOR(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OP_CPU_KERNEL(prior_box, ops::PriorBoxOpKernel<float>,
+                       ops::PriorBoxOpKernel<double>);

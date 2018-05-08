@@ -22,8 +22,8 @@ from op_test import OpTest
 
 class TestDetectionMAPOp(OpTest):
     def set_data(self):
+        self.class_num = 4
         self.init_test_case()
-
         self.mAP = [self.calc_map(self.tf_pos, self.tf_pos_lod)]
         self.label = np.array(self.label).astype('float32')
         self.detect = np.array(self.detect).astype('float32')
@@ -34,10 +34,12 @@ class TestDetectionMAPOp(OpTest):
                 'int32')
             self.true_pos = np.array(self.true_pos).astype('float32')
             self.false_pos = np.array(self.false_pos).astype('float32')
+            self.has_state = np.array([1]).astype('int32')
 
             self.inputs = {
                 'Label': (self.label, self.label_lod),
                 'DetectRes': (self.detect, self.detect_lod),
+                'HasState': self.has_state,
                 'PosCount': self.class_pos_count,
                 'TruePos': (self.true_pos, self.true_pos_lod),
                 'FalsePos': (self.false_pos, self.false_pos_lod)
@@ -51,7 +53,8 @@ class TestDetectionMAPOp(OpTest):
         self.attrs = {
             'overlap_threshold': self.overlap_threshold,
             'evaluate_difficult': self.evaluate_difficult,
-            'ap_type': self.ap_type
+            'ap_type': self.ap_type,
+            'class_num': self.class_num
         }
 
         self.out_class_pos_count = np.array(self.out_class_pos_count).astype(
@@ -124,12 +127,7 @@ class TestDetectionMAPOp(OpTest):
             return class_pos_count_dict, true_pos_dict, false_pos_dict
 
         def get_output_pos(label_count, true_pos, false_pos):
-            max_label = 0
-            for (label, label_pos_num) in label_count.items():
-                if max_label < label:
-                    max_label = label
-
-            label_number = max_label + 1
+            label_number = self.class_num
 
             out_class_pos_count = []
             out_true_pos_lod = [0]
@@ -168,8 +166,6 @@ class TestDetectionMAPOp(OpTest):
             elif not difficult:
                 label_count[label] += 1
 
-        true_pos = collections.defaultdict(list)
-        false_pos = collections.defaultdict(list)
         for (label, score, tp, fp) in tf_pos:
             true_pos[label].append([score, tp])
             false_pos[label].append([score, fp])
@@ -218,11 +214,16 @@ class TestDetectionMAPOp(OpTest):
 
                 mAP += average_precisions
                 count += 1
-        self.out_class_pos_count, self.out_true_pos, self.out_true_pos_lod, self.out_false_pos, self.out_false_pos_lod = get_output_pos(
-            label_count, true_pos, false_pos)
+        pcnt, tp, tp_lod, fp, fp_lod = get_output_pos(label_count, true_pos,
+                                                      false_pos)
+        self.out_class_pos_count = pcnt
+        self.out_true_pos = tp
+        self.out_true_pos_lod = tp_lod
+        self.out_false_pos = fp
+        self.out_false_pos_lod = fp_lod
         if count != 0:
             mAP /= count
-        return mAP * 100.0
+        return mAP
 
     def setUp(self):
         self.op_type = "detection_map"

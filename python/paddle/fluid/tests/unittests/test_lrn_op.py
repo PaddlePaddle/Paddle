@@ -41,7 +41,7 @@ class TestLRNOp(OpTest):
         mid.fill(self.k)
         for m in range(0, self.N):
             for i in range(0, self.C):
-                for c in range(start, end + 1):
+                for c in range(start, end):
                     ch = i + c
                     if ch < 0 or ch >= self.C:
                         continue

@@ -14,38 +14,53 @@ limitations under the License. */
 
 #pragma once
 
-#include <stddef.h>  // for size_t
+#include <stddef.h>            // for size_t
+#include <condition_variable>  // NOLINT
 #include <typeindex>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
+enum class ChannelAction {
+  SEND = 0,
+  RECEIVE = 1,
+  CLOSE = 2,
+};
+
 // Channel is the abstract class of buffered and un-buffered channels.
 template <typename T>
 class Channel {
  public:
-  virtual bool Send(T*) = 0;
+  virtual bool CanSend() = 0;
+  virtual bool CanReceive() = 0;
+  virtual void Send(T*) = 0;
   virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
+  virtual void Lock() = 0;
+
+  virtual void Unlock() = 0;
+  virtual bool IsClosed() = 0;
   virtual void Close() = 0;
   virtual ~Channel() {}
+
+  virtual void AddToSendQ(const void* referrer, T* data,
+                          std::shared_ptr<std::condition_variable_any> cond,
+                          std::function<bool(ChannelAction)> cb) = 0;
+  virtual void AddToReceiveQ(const void* referrer, T* data,
+                             std::shared_ptr<std::condition_variable_any> cond,
+                             std::function<bool(ChannelAction)> cb) = 0;
+  virtual void RemoveFromSendQ(const void* referrer) = 0;
+  virtual void RemoveFromReceiveQ(const void* referrer) = 0;
 };
 
 // Forward declaration of channel implementations.
-namespace details {
 template <typename T>
-class Buffered;
-template <typename T>
-class UnBuffered;
-}  // namespace details
+class ChannelImpl;
 
 template <typename T>
 Channel<T>* MakeChannel(size_t buffer_size) {
-  if (buffer_size > 0) {
-    return new details::Buffered<T>(buffer_size);
-  }
-  return new details::UnBuffered<T>();
+  return new ChannelImpl<T>(buffer_size);
 }
 
 template <typename T>
@@ -69,30 +84,113 @@ class ChannelHolder {
   }
 
   template <typename T>
-  bool Send(T* data) {
-    if (!IsInitialized()) return false;
-    PADDLE_ENFORCE_EQ(holder_->Type(), std::type_index(typeid(T)));
+  void Send(T* data) {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), std::type_index(typeid(T)),
+        "Channel type is not same as the type of the data being sent");
     // Static cast should be safe because we have ensured that types are same
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    return channel != nullptr ? channel->Send(data) : false;
+    PADDLE_ENFORCE_EQ(channel != nullptr, true, "Channel should not be null.");
+    channel->Send(data);
   }
 
   template <typename T>
   bool Receive(T* data) {
-    if (!IsInitialized()) return false;
-    PADDLE_ENFORCE_EQ(holder_->Type(), std::type_index(typeid(T)));
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), std::type_index(typeid(T)),
+        "Channel type is not same as the type of the data being sent");
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    return channel != nullptr ? channel->Receive(data) : false;
+    PADDLE_ENFORCE_EQ(channel != nullptr, true, "Channel should not be null.");
+    return channel->Receive(data);
+  }
+
+  bool IsClosed() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    return holder_->IsClosed();
+  }
+
+  bool CanSend() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    return holder_->CanSend();
+  }
+
+  bool CanReceive() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    return holder_->CanReceive();
   }
 
   void close() {
-    if (IsInitialized()) holder_->Close();
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    holder_->Close();
+  }
+
+  size_t Cap() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    return holder_->Cap();
+  }
+
+  void Lock() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    holder_->Lock();
+  }
+
+  void Unlock() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    holder_->Unlock();
+  }
+
+  template <typename T>
+  void AddToSendQ(const void* referrer, T* data,
+                  std::shared_ptr<std::condition_variable_any> cond,
+                  std::function<bool(ChannelAction)> cb) {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
+    if (channel != nullptr) {
+      channel->AddToSendQ(referrer, data, cond, cb);
+    }
+  }
+
+  template <typename T>
+  void AddToReceiveQ(const void* referrer, T* data,
+                     std::shared_ptr<std::condition_variable_any> cond,
+                     std::function<bool(ChannelAction)> cb) {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
+    if (channel != nullptr) {
+      channel->AddToReceiveQ(referrer, data, cond, cb);
+    }
+  }
+
+  void RemoveFromSendQ(const void* referrer) {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    holder_->RemoveFromSendQ(referrer);
+  }
+
+  void RemoveFromReceiveQ(const void* referrer) {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    holder_->RemoveFromReceiveQ(referrer);
   }
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
 
   inline const std::type_index Type() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     return holder_->Type();
   }
 
@@ -105,19 +203,78 @@ class ChannelHolder {
     virtual ~Placeholder() {}
     virtual const std::type_index Type() const = 0;
     virtual void* Ptr() const = 0;
+    virtual bool IsClosed() = 0;
+    virtual bool CanSend() = 0;
+    virtual bool CanReceive() = 0;
+    virtual void RemoveFromSendQ(const void* referrer) = 0;
+    virtual void RemoveFromReceiveQ(const void* referrer) = 0;
     virtual void Close() = 0;
+    virtual void Lock() = 0;
+    virtual void Unlock() = 0;
+    virtual size_t Cap() = 0;
   };
 
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(size_t buffer_size) : type_(std::type_index(typeid(T))) {
+    explicit PlaceholderImpl(size_t buffer_size)
+        : type_(std::type_index(typeid(T))) {
       channel_.reset(MakeChannel<T>(buffer_size));
     }
 
     virtual const std::type_index Type() const { return type_; }
+
     virtual void* Ptr() const { return static_cast<void*>(channel_.get()); }
+
+    virtual bool IsClosed() {
+      if (channel_) {
+        return channel_->IsClosed();
+      }
+      return false;
+    }
+
+    virtual bool CanSend() {
+      if (channel_) {
+        return channel_->CanSend();
+      }
+      return false;
+    }
+
+    virtual bool CanReceive() {
+      if (channel_) {
+        return channel_->CanReceive();
+      }
+      return false;
+    }
+
+    virtual void RemoveFromSendQ(const void* referrer) {
+      if (channel_) {
+        channel_->RemoveFromSendQ(referrer);
+      }
+    }
+
+    virtual void RemoveFromReceiveQ(const void* referrer) {
+      if (channel_) {
+        channel_->RemoveFromReceiveQ(referrer);
+      }
+    }
+
     virtual void Close() {
       if (channel_) channel_->Close();
+    }
+
+    virtual size_t Cap() {
+      if (channel_)
+        return channel_->Cap();
+      else
+        return -1;
+    }
+
+    virtual void Lock() {
+      if (channel_) channel_->Lock();
+    }
+
+    virtual void Unlock() {
+      if (channel_) channel_->Unlock();
     }
 
     std::unique_ptr<Channel<T>> channel_;
@@ -131,5 +288,4 @@ class ChannelHolder {
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/fluid/framework/details/buffered_channel.h"
-#include "paddle/fluid/framework/details/unbuffered_channel.h"
+#include "paddle/fluid/framework/channel_impl.h"

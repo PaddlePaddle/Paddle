@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nce_op.h"
 
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -179,7 +181,9 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(nce, ops::NCEOp, ops::NCEOpMaker, nce_grad, ops::NCEOpGrad);
+REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,

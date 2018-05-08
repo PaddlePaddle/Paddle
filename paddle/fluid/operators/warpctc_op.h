@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
@@ -161,7 +162,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                               static_cast<int64_t>(sequence_width)});
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *logits, warpctc_logits,
+        ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
         false);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
@@ -216,13 +217,13 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
     math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *logits_grad,
+        ctx.template device_context<DeviceContext>(), logits_grad,
         *warpctc_grad, norm_by_times);
 
     const T* loss_grad_data = loss_grad->data<T>();
     math::ScaleLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *logits_grad,
-        loss_grad_data);
+        ctx.template device_context<DeviceContext>(), loss_grad_data,
+        logits_grad);
   }
 };
 

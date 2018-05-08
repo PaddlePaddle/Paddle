@@ -15,7 +15,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-import paddle.v2 as paddle
+import paddle
 import contextlib
 import math
 import numpy as np
@@ -213,12 +213,7 @@ def train(word_dict,
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
@@ -274,7 +269,7 @@ def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
         use_cuda,
         parallel=parallel,
         save_dirname=save_dirname)
-    infer(use_cuda, save_dirname)
+    infer(word_dict, use_cuda, save_dirname)
 
 
 class TestUnderstandSentiment(unittest.TestCase):

@@ -1,3 +1,4 @@
+.timestamp
 *.o
 *.a
 .svn

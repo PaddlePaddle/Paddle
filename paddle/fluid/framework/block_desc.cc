@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
+#include <queue>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-
-#include <queue>
 
 namespace paddle {
 namespace framework {
@@ -140,18 +139,19 @@ void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
   ops_.emplace_front(std::move(op_desc));
 }
 
+OpDesc *BlockDesc::InsertOp(size_t index) {
+  need_update_ = true;
+  auto it = ops_.begin() + index;
+  std::unique_ptr<OpDesc> new_op(new OpDesc(this));
+  it = ops_.insert(it, std::move(new_op));
+  return (*it).get();
+}
+
 void BlockDesc::RemoveOp(size_t s, size_t e) {
-  if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
+  if (ops_.begin() + s >= ops_.end() || ops_.begin() + e > ops_.end()) {
     return;
   }
   need_update_ = true;
-  for (auto it = ops_.begin() + s; it != ops_.begin() + e; it++) {
-    auto names = (*it)->InputArgumentNames();
-    for (auto n : names) {
-      // TODO(typhoonzero): delete vars if no other op use it.
-      VLOG(3) << "deleting var " << n;
-    }
-  }
   ops_.erase(ops_.begin() + s, ops_.begin() + e);
 }
 

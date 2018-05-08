@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -26,35 +28,45 @@ class LoDResetKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto* lod_t = ctx.Input<framework::Tensor>("TargetLoD");
+    auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
+
+    out->ShareDataWith(*in);
 
     std::vector<int> level0;
     if (lod_t) {
-      auto* lod = lod_t->data<int>();
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-        framework::Tensor lod_cpu;
-        framework::TensorCopy(*lod_t, platform::CPUPlace(),
-                              ctx.device_context(), &lod_cpu);
-        lod = lod_cpu.data<int>();
+      if (lod_t->lod().size() > 0) {
+        auto y_lod = lod_t->lod();
+        auto last_level = y_lod[y_lod.size() - 1];
+        PADDLE_ENFORCE_EQ((int64_t)(last_level.back()), in->dims()[0],
+                          "Last value of `Y`'s last level LoD should be equal "
+                          "to the first dimension of `X`");
+        out->set_lod(y_lod);
+        return;  // early return, since lod already set
+      } else {
+        auto* lod = lod_t->data<int>();
+        if (platform::is_gpu_place(ctx.GetPlace())) {
+          framework::Tensor lod_cpu;
+          framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
+          lod = lod_cpu.data<int>();
+        }
+        level0 = std::vector<int>(lod, lod + lod_t->numel());
       }
-      level0 = std::vector<int>(lod, lod + lod_t->numel());
     } else {
       level0 = ctx.Attr<std::vector<int>>("target_lod");
     }
 
-    PADDLE_ENFORCE(level0.size() > 1UL,
-                   "The size of target LoD should be greater than 1.");
-    PADDLE_ENFORCE(level0[0] == 0,
-                   "Target LoD should be a vector starting from 0.");
-    PADDLE_ENFORCE(level0.back() == in->dims()[0],
-                   "Target LoD should be a vector end with the "
-                   "first dimension of Input(X).");
+    PADDLE_ENFORCE_GT(level0.size(), 1UL,
+                      "Size of target LoD should be greater than 1.");
+    PADDLE_ENFORCE_EQ(level0[0], 0,
+                      "Target LoD should be a vector starting from 0.");
+    PADDLE_ENFORCE_EQ(level0.back(), in->dims()[0],
+                      "Target LoD should be a vector end with the "
+                      "first dimension of Input(X).");
     for (size_t i = 0; i < level0.size() - 1; ++i) {
       PADDLE_ENFORCE(level0[i + 1] > level0[i],
                      "Target LoD should be an ascending vector.");
     }
 
-    out->ShareDataWith(*in);
     // cast level0 to size_t
     std::vector<size_t> ulevel0(level0.size(), 0);
     std::transform(level0.begin(), level0.end(), ulevel0.begin(),

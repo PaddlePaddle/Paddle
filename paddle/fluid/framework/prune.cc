@@ -14,21 +14,19 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/prune.h"
 
+#include <glog/logging.h>
+
 #include <algorithm>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include <glog/logging.h>
-
 namespace paddle {
 namespace framework {
 
-const std::string kFeedOpType = "feed";
-const std::string kFetchOpType = "fetch";
-const std::string kDropOutOpType = "dropout";
-const std::string kBatchNormOpType = "batch_norm";
+const char kFeedOpType[] = "feed";
+const char kFetchOpType[] = "fetch";
 
 bool HasDependentVar(const proto::OpDesc& op_desc,
                      const std::set<std::string>& dependent_vars) {
@@ -70,7 +68,7 @@ bool HasSubBlock(const proto::OpDesc& op_desc) {
 // the child block to help pruning
 void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
                 int block_id, int parent_block_id,
-                std::set<std::string>& dependent_vars) {
+                std::set<std::string>* dependent_vars) {
   auto& block = input.blocks(block_id);
   auto& ops = block.ops();
 
@@ -92,11 +90,11 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   std::vector<bool> should_run;
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
-    if (IsTarget(op_desc) || HasDependentVar(op_desc, dependent_vars)) {
+    if (IsTarget(op_desc) || HasDependentVar(op_desc, *dependent_vars)) {
       // insert its input to the dependency graph
       for (auto& var : op_desc.inputs()) {
         for (auto& argu : var.arguments()) {
-          dependent_vars.insert(argu);
+          dependent_vars->insert(argu);
         }
       }
       should_run.push_back(true);
@@ -140,7 +138,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
         // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
         // output_block_id is the idx of the current block in the output desc
         prune_impl(input, output, GetSubBlockIndex(*op), output_block_id,
-                   sub_block_dependent_vars);
+                   &sub_block_dependent_vars);
       }
     }
   }
@@ -183,21 +181,16 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
 void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   std::set<std::string> dependent_vars;
   output->clear_blocks();
-  prune_impl(input, output, 0, -1, dependent_vars);
+  prune_impl(input, output, 0, -1, &dependent_vars);
 }
 
-void inference_optimize_impl(const proto::ProgramDesc& input,
-                             proto::ProgramDesc* output, int block_id) {
-  *output = input;
-  auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
+void inference_optimize_impl(proto::ProgramDesc* input, int block_id) {
+  auto* op_field = input->mutable_blocks(block_id)->mutable_ops();
   for (auto& op_desc : *op_field) {
-    if (op_desc.type() == kDropOutOpType ||
-        op_desc.type() == kBatchNormOpType) {
-      for (auto& attr : *op_desc.mutable_attrs()) {
-        if (attr.name() == "is_test") {
-          attr.set_b(true);
-          break;
-        }
+    for (auto& attr : *op_desc.mutable_attrs()) {
+      if (attr.name() == "is_test") {
+        attr.set_b(true);
+        break;
       }
     }
   }
@@ -205,7 +198,12 @@ void inference_optimize_impl(const proto::ProgramDesc& input,
 
 void InferenceOptimize(const proto::ProgramDesc& input,
                        proto::ProgramDesc* output) {
-  inference_optimize_impl(input, output, 0);
+  *output = input;
+  int num_blocks = output->blocks_size();
+  PADDLE_ENFORCE_GT(num_blocks, 0, "ProgramDesc must have at least one block");
+  for (int i = 0; i < num_blocks; ++i) {
+    inference_optimize_impl(output, i);
+  }
 }
 
 }  // namespace framework

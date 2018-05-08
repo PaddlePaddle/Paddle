@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/fluid/operators/math/sequence_padding.h"
 
 namespace paddle {
@@ -61,7 +62,7 @@ template <typename T>
 class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::LoDTensor& seq, framework::Tensor& padding,
+                  const framework::LoDTensor& seq, framework::Tensor* padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
     PADDLE_ENFORCE_GT(lod.size(), 0UL,
@@ -76,7 +77,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "The first dimension of LoDTensor seq should be "
                       "equal to the sum of all sequences's length.");
 
-    auto padding_dims = padding.dims();
+    auto padding_dims = padding->dims();
     PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
                       "The input padding should be a 3-D Tensor of shape "
                       "[max_sequence_length, num_sequences, sequence_width].");
@@ -97,8 +98,8 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "width of sequence in LoDTensor seq.");
 
     if (!norm_by_times && num_sequences == 1UL) {
-      TensorCopy(seq, context.GetPlace(), context, &padding);
-      padding.Resize(padding_dims);
+      TensorCopy(seq, context.GetPlace(), context, padding);
+      padding->Resize(padding_dims);
       return;
     }
 
@@ -117,7 +118,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(grid_dim_x, grid_dim_y);
 
     const T* seq_data = seq.data<T>();
-    T* padding_data = padding.data<T>();
+    T* padding_data = padding->data<T>();
     if (norm_by_times) {
       SequencePaddingKernel<T, 1, 1><<<grid, threads, 0, context.stream()>>>(
           padding_data, const_cast<T*>(seq_data),
@@ -136,16 +137,16 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  framework::LoDTensor& seq, const framework::Tensor& padding,
+                  framework::LoDTensor* seq, const framework::Tensor& padding,
                   bool norm_by_times) {
-    auto lod = seq.lod();
+    auto lod = seq->lod();
     PADDLE_ENFORCE_GT(lod.size(), 0UL,
                       "The lod of LoDTensor seq should not be null.");
 
     const size_t level = 0;
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
 
-    auto seq_dims = seq.dims();
+    auto seq_dims = seq->dims();
     PADDLE_ENFORCE_EQ(seq_dims[0],
                       static_cast<int64_t>(abs_offset_lod[level].back()),
                       "The first dimension of LoDTensor seq should be "
@@ -166,14 +167,14 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "The second dimension of Tensor padding should be "
                       "the number of sequences in LoDTensor seq.");
 
-    const int64_t sequence_width = seq.numel() / seq_dims[0];
+    const int64_t sequence_width = seq->numel() / seq_dims[0];
     PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
                       "The third dimension of Tensor padding should be the "
                       "width of sequence in LoDTensor seq.");
 
     if (!norm_by_times && num_sequences == 1UL) {
-      TensorCopy(padding, context.GetPlace(), context, &seq);
-      seq.Resize(seq_dims);
+      TensorCopy(padding, context.GetPlace(), context, seq);
+      seq->Resize(seq_dims);
       return;
     }
 
@@ -192,7 +193,7 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(grid_dim_x, grid_dim_y);
 
     const T* padding_data = padding.data<T>();
-    T* seq_data = seq.data<T>();
+    T* seq_data = seq->data<T>();
     if (norm_by_times) {
       SequencePaddingKernel<T, 1, 0><<<grid, threads, 0, context.stream()>>>(
           const_cast<T*>(padding_data), seq_data,

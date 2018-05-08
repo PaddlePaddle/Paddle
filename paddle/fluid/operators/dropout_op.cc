@@ -35,7 +35,6 @@ class DropoutOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename AttrType>
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   DropoutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -73,7 +72,6 @@ are set equal to their corresponding inputs.
   }
 };
 
-template <typename AttrType>
 class DropoutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -103,11 +101,11 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker<float>, dropout_grad,
-            ops::DropoutOpGrad<float>);
+REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    dropout,
-    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float, float>);
+    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad,
     ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);

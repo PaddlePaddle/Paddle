@@ -103,9 +103,7 @@ static void BuildVar(const std::string& param_name,
 }
 
 TEST(Operator, CPUtoGPU) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  InitDevices();
+  paddle::framework::InitDevices(true);
 
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
@@ -118,8 +116,9 @@ TEST(Operator, CPUtoGPU) {
 
   auto cpu_op = paddle::framework::OpRegistry::CreateOp(cpu_op_desc);
   // prepare input
-  auto* in_t = scope.Var("IN1")->GetMutable<LoDTensor>();
-  auto* src_ptr = in_t->mutable_data<float>({2, 3}, CPUPlace());
+  auto* in_t = scope.Var("IN1")->GetMutable<paddle::framework::LoDTensor>();
+  auto* src_ptr =
+      in_t->mutable_data<float>({2, 3}, paddle::platform::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {
     src_ptr[i] = static_cast<float>(i);
   }
@@ -128,7 +127,7 @@ TEST(Operator, CPUtoGPU) {
   auto* output = scope.Var("OUT1");
   cpu_op->Run(scope, cpu_place);
 
-  auto* output_ptr = output->Get<LoDTensor>().data<float>();
+  auto* output_ptr = output->Get<paddle::framework::LoDTensor>().data<float>();
   for (int i = 0; i < 2 * 3; ++i) {
     ASSERT_EQ(output_ptr[i], static_cast<float>(i) * 2);
   }
@@ -153,12 +152,14 @@ TEST(Operator, CPUtoGPU) {
   VLOG(3) << "after gpu_op run";
 
   // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
-  DeviceContextPool& pool = DeviceContextPool::Instance();
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(cuda_place);
 
   paddle::framework::Tensor output_tensor;
-  TensorCopy(output2->Get<LoDTensor>(), paddle::platform::CPUPlace(), *dev_ctx,
-             &output_tensor);
+  paddle::framework::TensorCopy(output2->Get<paddle::framework::LoDTensor>(),
+                                paddle::platform::CPUPlace(), *dev_ctx,
+                                &output_tensor);
 
   dev_ctx->Wait();
   float* output2_ptr = output_tensor.data<float>();

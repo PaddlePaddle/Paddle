@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "gather.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "scatter.h"
+#include "paddle/fluid/operators/gather.h"
+#include "paddle/fluid/operators/scatter.h"
 
 namespace paddle {
 namespace operators {
@@ -29,15 +29,15 @@ class ScatterOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "This kernel only runs on CPU.");
-    auto *Ref = ctx.Input<Tensor>("Ref");
-    auto *Index = ctx.Input<Tensor>("Index");
+    auto *X = ctx.Input<Tensor>("X");
+    auto *Ids = ctx.Input<Tensor>("Ids");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
-    // In place output: Out = Ref, Out[Index] += Updates
-    Out->ShareDataWith(*Ref);
+    // In place output: Out = X, Out[Ids] += Updates
+    Out->ShareDataWith(*X);
     // Apply ScatterUpdate: Out[index] += Updates[:]
-    ScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
+    ScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
   }
 };
 
@@ -47,16 +47,16 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "This kernel only runs on CPU.");
-    auto *dRef = ctx.Output<Tensor>(framework::GradVarName("Ref"));
+    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
-    auto *Index = ctx.Input<Tensor>("Index");
+    auto *Ids = ctx.Input<Tensor>("Ids");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    // In place gradient: dRef = dO
-    dRef->ShareDataWith(*dOut);
+    // In place gradient: dX = dO
+    dX->ShareDataWith(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates += dO[Index]
-    CPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
+    // Gradient by Gather: dUpdates += dO[Ids]
+    CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
   }
 };
 

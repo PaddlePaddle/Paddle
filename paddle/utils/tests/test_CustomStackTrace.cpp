@@ -12,10 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <chrono>
-
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
+#include <gflags/gflags.h>  // NOLINT
+#include <gtest/gtest.h>    // NOLINT
 
 #include "paddle/utils/CustomStackTrace.h"
 #include "paddle/utils/Locks.h"
@@ -39,14 +37,10 @@ void testNormalImpl(
   threads.reserve(FLAGS_test_thread_num);
 
   for (int32_t i = 0; i < FLAGS_test_thread_num; ++i) {
-    threads.emplace_back(new std::thread([&tracer,
-                                          &countDown,
-                                          &layerSize,
-                                          &startBarrier,
-                                          &doneBarrier,
-                                          &callback] {
-      callback(tracer, countDown, layerSize, startBarrier, doneBarrier);
-    }));
+    threads.emplace_back(
+        new std::thread([&tracer, &startBarrier, &doneBarrier, &callback] {
+          callback(tracer, countDown, layerSize, startBarrier, doneBarrier);
+        }));
   }
   size_t cntDown = countDown;
   while (cntDown-- > 0) {

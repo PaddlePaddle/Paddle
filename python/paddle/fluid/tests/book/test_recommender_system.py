@@ -16,7 +16,7 @@ import math
 import sys
 import os
 import numpy as np
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
@@ -157,7 +157,7 @@ def train(use_cuda, save_dirname, is_local=True):
     scale_infer, avg_cost = model()
 
     # test program
-    test_program = fluid.default_main_program().clone()
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     sgd_optimizer = SGDOptimizer(learning_rate=0.2)
     optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
@@ -261,12 +261,7 @@ def train(use_cuda, save_dirname, is_local=True):
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,

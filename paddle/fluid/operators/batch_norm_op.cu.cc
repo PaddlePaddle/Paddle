@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/framework/data_layout.h"
-
 #include <cfloat>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -26,6 +26,8 @@ using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
+template <typename T>
+using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 void ExtractNCWHD(const framework::DDim &dims, const DataLayout &data_layout,
                   int *N, int *C, int *H, int *W, int *D) {
@@ -104,29 +106,19 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
+    // Note: PERSISTENT not implemented for inference
     CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
-        bn_param_desc_, data_desc_, mode_));
+        bn_param_desc_, data_desc_, is_test ? CUDNN_BATCHNORM_SPATIAL : mode_));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
     auto *y = ctx.Output<Tensor>("Y");
-    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
 
     // alloc memory
     y->mutable_data<T>(ctx.GetPlace());
-    mean_out->mutable_data<T>(ctx.GetPlace());
-    variance_out->mutable_data<T>(ctx.GetPlace());
-    saved_mean->mutable_data<T>(ctx.GetPlace());
-    saved_variance->mutable_data<T>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, T> functor;
-    functor(dev_ctx, saved_mean, 0);
-    functor(dev_ctx, saved_variance, 0);
 
     auto handle = dev_ctx.cudnn_handle();
 
@@ -147,23 +139,45 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
           CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
           data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
-          bn_param_desc_, scale->template data<T>(), bias->template data<T>(),
-          est_mean->template data<T>(), est_var->template data<T>(), epsilon));
+          bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
+          bias->template data<BatchNormParamType<T>>(),
+          est_mean->template data<BatchNormParamType<T>>(),
+          est_var->template data<BatchNormParamType<T>>(), epsilon));
     } else {
       // Run training mode.
       // obtain running mean and running inv var, and see if we need to
       // initialize them.
+
+      auto *mean_out = ctx.Output<Tensor>("MeanOut");
+      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
+      mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+
+      auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+      auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+      saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+          functor;
+      functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+      functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+
       double this_factor = 1. - momentum;
 
       CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
           handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
           data_desc_, x->template data<T>(), data_desc_,
           y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-          scale->template data<T>(), bias->template data<T>(), this_factor,
-          mean_out->template mutable_data<T>(ctx.GetPlace()),
-          variance_out->template mutable_data<T>(ctx.GetPlace()), epsilon,
-          saved_mean->template mutable_data<T>(ctx.GetPlace()),
-          saved_variance->template mutable_data<T>(ctx.GetPlace())));
+          scale->template data<BatchNormParamType<T>>(),
+          bias->template data<BatchNormParamType<T>>(), this_factor,
+          mean_out->template mutable_data<BatchNormParamType<T>>(
+              ctx.GetPlace()),
+          variance_out->template mutable_data<BatchNormParamType<T>>(
+              ctx.GetPlace()),
+          epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
+                       ctx.GetPlace()),
+          saved_variance->template mutable_data<BatchNormParamType<T>>(
+              ctx.GetPlace())));
     }
 
     // clean when exit.
@@ -270,9 +284,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    batch_norm,
-    ops::BatchNormKernel<paddle::platform::CUDADeviceContext, float>);
+    batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
+    ops::BatchNormKernel<plat::CUDADeviceContext, double>,
+    ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::CUDADeviceContext, float>);
+    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
+    ops::BatchNormGradKernel<plat::CUDADeviceContext, double>);

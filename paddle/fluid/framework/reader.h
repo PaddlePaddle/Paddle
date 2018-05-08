@@ -14,45 +14,30 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
 class ReaderBase {
  public:
-  explicit ReaderBase(const std::vector<DDim>& shapes) : shapes_(shapes) {
-    PADDLE_ENFORCE(!shapes_.empty());
-  }
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
-  virtual bool HasNext() const = 0;
 
   virtual void ReInit() = 0;
 
-  DDim shape(size_t idx) const;
-  std::vector<DDim> shapes() const { return shapes_; }
-  void set_shapes(const std::vector<DDim>& shapes) { shapes_ = shapes; }
-
-  virtual ~ReaderBase() {}
-
- protected:
-  std::vector<DDim> shapes_;
-};
-
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+  virtual ~ReaderBase();
 };
 
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(ReaderBase* reader)
-      : ReaderBase(reader->shapes()), reader_(reader) {
+  explicit DecoratedReader(ReaderBase* reader) : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
-
-  bool HasNext() const override { return reader_->HasNext(); }
 
   void ReInit() override { reader_->ReInit(); }
 
@@ -60,97 +45,34 @@ class DecoratedReader : public ReaderBase {
   ReaderBase* reader_;
 };
 
-// file readers
-
-template <typename T>
-class RandomDataGenerator : public FileReader {
+class FileReader : public ReaderBase {
  public:
-  RandomDataGenerator(const std::vector<DDim>& shapes, float min, float max)
-      : FileReader(shapes), min_(min), max_(max) {
-    PADDLE_ENFORCE_LE(
-        min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
-    unsigned int seed = std::random_device()();
-    engine_.seed(seed);
-    dist_ = std::uniform_real_distribution<float>(min_, max_);
-  }
-
-  void ReadNext(std::vector<LoDTensor>* out) override {
-    out->clear();
-    out->reserve(shapes_.size());
-    for (const DDim& shape : shapes_) {
-      PADDLE_ENFORCE_GE(
-          shape.size(), 2,
-          "The rank of reader's output data should be 2 at least.(Now it's %d)",
-          shape.size());
-      LoDTensor out_tensor;
-      out_tensor.Resize(shape);
-      T* data = out_tensor.mutable_data<T>(platform::CPUPlace());
-      int64_t numel = product(shape);
-      for (int64_t i = 0; i < numel; ++i) {
-        data[i] = dist_(engine_);
-      }
-      out->push_back(out_tensor);
-    }
-  }
-
-  bool HasNext() const override { return true; }
-
-  void ReInit() override { return; }
-
- private:
-  float min_;
-  float max_;
-  std::minstd_rand engine_;
-  std::uniform_real_distribution<float> dist_;
-};
-
-// decorated readers
-
-class ShuffleReader : public DecoratedReader {
- public:
-  ShuffleReader(ReaderBase* reader, int buffer_size)
-      : DecoratedReader(reader), buffer_size_(buffer_size), iteration_pos_(0) {
-    buffer_.reserve(buffer_size);
-  }
+  explicit FileReader(const std::vector<DDim>& dims);
 
   void ReadNext(std::vector<LoDTensor>* out) override;
 
- private:
-  int buffer_size_;
-  std::vector<std::vector<LoDTensor>> buffer_;
-  size_t iteration_pos_;
-};
-
-class BatchReader : public DecoratedReader {
- public:
-  BatchReader(ReaderBase* reader, int batch_size)
-      : DecoratedReader(reader), batch_size_(batch_size) {
-    buffer_.reserve(batch_size_);
-  }
-
-  void ReadNext(std::vector<LoDTensor>* out) override;
+ protected:
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
 
  private:
-  int batch_size_;
-  std::vector<std::vector<LoDTensor>> buffer_;
+  std::vector<DDim> dims_;
 };
 
-// The ReaderHolder is used as readers' unified wrapper,
-// making it easier to access different type readers in Variables.
+// The ReaderHolder is used as reader' unified wrapper,
+// making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
   void Reset(ReaderBase* reader) { reader_.reset(reader); }
 
   ReaderBase* Get() const { return reader_.get(); }
 
-  void ReadNext(std::vector<LoDTensor>* out) { reader_->ReadNext(out); }
-  bool HasNext() const { return reader_->HasNext(); }
-  void ReInit() { reader_->ReInit(); }
-
-  DDim shape(size_t idx) const { return reader_->shape(idx); }
-  std::vector<DDim> shapes() const { return reader_->shapes(); }
-  void set_shapes(const std::vector<DDim>& shapes) {
-    reader_->set_shapes(shapes);
+  void ReadNext(std::vector<LoDTensor>* out) {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->ReadNext(out);
+  }
+  void ReInit() {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->ReInit();
   }
 
  private:

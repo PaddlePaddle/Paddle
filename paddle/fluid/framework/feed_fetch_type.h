@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <string>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 
@@ -22,7 +21,8 @@ namespace framework {
 using FeedFetchType = LoDTensor;
 using FeedFetchList = std::vector<FeedFetchType>;
 
-static const std::string kFeedOpType = "feed";
-static const std::string kFetchOpType = "fetch";
+static const char kFeedOpType[] = "feed";
+static const char kFetchOpType[] = "fetch";
+
 }  // namespace framework
 }  // namespace paddle
