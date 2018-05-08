@@ -21,6 +21,8 @@ endif()
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
+  # analysis test depends the models that generate by tests/book
+  add_subdirectory(analysis)
 endif()
 
 if (TENSORRT_FOUND)
