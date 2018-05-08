@@ -99,15 +99,7 @@ def train(use_cuda, is_sparse, save_path):
     def event_handler(event):
         # print type(event)
         if isinstance(event, fluid.EndStepEvent):
-            avg_cost = trainer.test(
-                reader=test_reader,
-                feed_order={
-                    'nextw': 4,
-                    'firstw': 0,
-                    'secondw': 1,
-                    'thirdw': 2,
-                    'forthw': 3
-                })
+            avg_cost = trainer.test(reader=test_reader)
             print(avg_cost)
 
             if avg_cost < 5.0:
