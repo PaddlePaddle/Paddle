@@ -28,13 +28,13 @@ class NCCLTypeWrapper;
 template <>
 class NCCLTypeWrapper<float> {
  public:
-  static const ncclDataType_t type = ncclFloat;
+  static const rcclDataType_t type = rcclFloat;
 };
 
 template <>
 class NCCLTypeWrapper<double> {
  public:
-  static const ncclDataType_t type = ncclDouble;
+  static const rcclDataType_t type = rcclDouble;
 };
 
 template <typename T>
@@ -48,15 +48,15 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto* comm = ctx.Input<Communicator>("Communicator");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
-    ncclRedOp_t reduction_op_ = ncclSum;
+    rcclRedOp_t reduction_op_ = rcclSum;
     if (reduction == "ncclMin") {
-      reduction_op_ = ncclMin;
+      reduction_op_ = rcclMin;
     } else if (reduction == "ncclMax") {
-      reduction_op_ = ncclMax;
+      reduction_op_ = rcclMax;
     } else if (reduction == "ncclSum") {
-      reduction_op_ = ncclSum;
+      reduction_op_ = rcclSum;
     } else if (reduction == "ncclProd") {
-      reduction_op_ = ncclProd;
+      reduction_op_ = rcclProd;
     } else {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
@@ -66,7 +66,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     VLOG(3) << "gpu : "
             << " invoke allreduce. send " << x->numel() << " recv "
             << out->numel();
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE(platform::dynload::rcclAllReduce(
         x->data<T>(), out->mutable_data<T>(ctx.GetPlace()), out->numel(),
         NCCLTypeWrapper<T>::type, reduction_op_, comm->comms().at(idx),
         ctx.cuda_device_context().stream()));
@@ -88,15 +88,15 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     int root = ctx.Attr<int>("root");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
-    ncclRedOp_t reduction_op_ = ncclSum;
+    rcclRedOp_t reduction_op_ = rcclSum;
     if (reduction == "ncclMin") {
-      reduction_op_ = ncclMin;
+      reduction_op_ = rcclMin;
     } else if (reduction == "ncclMax") {
-      reduction_op_ = ncclMax;
+      reduction_op_ = rcclMax;
     } else if (reduction == "ncclSum") {
-      reduction_op_ = ncclSum;
+      reduction_op_ = rcclSum;
     } else if (reduction == "ncclProd") {
-      reduction_op_ = ncclProd;
+      reduction_op_ = rcclProd;
     } else {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
@@ -111,9 +111,12 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     }
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
-    PADDLE_ENFORCE(platform::dynload::ncclReduce(
+//  ToDo: rcclReduce isn't implmented.
+//  PADDLE_ENFORCE(platform::dynload::rcclReduce(
+    PADDLE_ENFORCE(platform::dynload::rcclAllReduce(
         x->data<T>(), recvbuffer, x->numel(), NCCLTypeWrapper<T>::type,
-        reduction_op_, root, comm->comms().at(idx),
+//      reduction_op_, root, comm->comms().at(idx),
+        reduction_op_, comm->comms().at(idx),
         ctx.cuda_device_context().stream()));
     VLOG(3) << "gpu : " << gpu_id << " finished reduce. send " << x->numel()
             << " recv " << out->numel();
@@ -134,7 +137,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     if (idx == root) {
       auto* x = ctx.Input<LoDTensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE(platform::dynload::rcclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), x->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));
@@ -143,7 +146,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
       auto* out = ctx.Output<LoDTensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
               << framework::product(out->dims());
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE(platform::dynload::rcclBcast(
           out->mutable_data<T>(ctx.GetPlace()), out->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));
