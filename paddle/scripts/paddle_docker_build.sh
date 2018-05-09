@@ -59,7 +59,7 @@ EOL
     if [ ! -d "${HOME}/.ccache" ]; then
         mkdir ${HOME}/.ccache
     fi
-    set -x
+    set -ex
     ${DOCKER_CMD} run -it \
         --name $CONTAINER_ID \
         ${DOCKER_ENV} \
