@@ -13,43 +13,57 @@
 // limitations under the License.
 
 #include "tools/benchmark.h"
+#include "paddle/fluid/framework/init.h"
 
-using paddle::framework;
-using paddle::platform;
+#include "gtest/gtest.h"
 
+using namespace paddle::framework;
+using namespace paddle::platform;
+
+USE_OP(sum);
 void test_mul_op() {
   Scope scope;
   CPUPlace place;
   {
-    auto var = scope->Var("X");
+    auto var = scope.Var("X");
     auto x = var->GetMutable<LoDTensor>();
     x->Resize({10, 10});
     float *expect = x->mutable_data<float>(place);
-    for (int64_t i = 0; i < tensor->numel(); ++i) {
+    for (int64_t i = 0; i < x->numel(); ++i) {
       expect[i] = static_cast<float>(i);
     }
   }
   {
-    auto var = scope->Var("Y");
+    auto var = scope.Var("Y");
     auto x = var->GetMutable<LoDTensor>();
     x->Resize({10, 10});
     float *expect = x->mutable_data<float>(place);
-    for (int64_t i = 0; i < tensor->numel(); ++i) {
+    for (int64_t i = 0; i < x->numel(); ++i) {
       expect[i] = static_cast<float>(i);
     }
   }
 
-  auto out_var = scope->Var("Out");
-  auto out_tensor = out_var->GetMutable<f::LoDTensor>();
+  {
+    auto out_var = scope.Var("Out");
+    out_var->GetMutable<LoDTensor>();
+  }
   AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp(
-      "dropout", {{"X", {"X"}}, {"Y", {"Y"}}}, {{"Out", {"Out"}}}, attrs);
+  auto op = OpRegistry::CreateOp(
+      "sum", {{"X", {"X", "Y"}}}, {{"Out", {"Out"}}}, attrs);
   op->Run(scope, place);
 
   // check output
+  Tensor out;
+  TensorCopySync(scope.Var("Out")->Get<LoDTensor>(), place, &out);
+  float *expect = out.data<float>();
+  for (int64_t i = 0; i < out.numel(); ++i) {
+    // expect[i] = static_cast<float>(i);
+    EXPECT_EQ(expect[i], 2 * static_cast<float>(i));
+  }
 }
 
 int main() {
+  InitDevices(false /* disable p2p*/);
   test_mul_op();
   return 0;
 }

@@ -15,14 +15,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/pybind/pybind.h"  // NOLINT
-#include "paddle/fluid/string/printf.h"
-
 #include "tools/benchmark.h"
 
 namespace paddle {
@@ -34,14 +26,13 @@ inline uint64_t NanoTime() {
   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 
-template <typename DeviceContext, typename T>
-void Benchmark<DeviceContext, T>::Run(const Scope& scope,
-                                      const platform::Place& place) const {}
-
-template <typename DeviceContext, typename T>
-void Benchmark<DeviceContext, T>::Register(const char* op) {
-  PADDLE_ENFORCE(OpInfoMap::Instance().Has(op));
+template <typename DeviceContext>
+void Benchmark<DeviceContext>::Register(const char* op) {
+  auto& op_info = OpInfoMap::Instance().Get(op);
 }
+
+template <typename DeviceContext>
+void Benchmark<DeviceContext>::Run(int iters) const {}
 
 }  // namespace framework
 }  // namespace paddle

@@ -31,19 +31,24 @@ namespace framework {
 // Get current time point in ns.
 inline uint64_t NanoTime();
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext>
 class Benchmark {
  public:
-  explicit Benchmark(const char* name) {}
+  explicit Benchmark(const char* name) : name_(name) {}
   void Register(const char* op);
-  void Run(const Scope&, const platform::Place&) const;
+  void Run(int iters) const;
   // void RunRepeats() const;
 
  private:
   std::string name_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  DeviceContext ctx_;
 };
+
+// NOTE(dzhwinter): benchmark only support OpWithkernel
+#define TEST_OP_CPU(op_name, iters)                    \
+  USE_OP(#op_name);                                    \
+  PADDLE_ENFORCE(OpInfoMap::Instance().Has(#op_name)); \
+  Benchmark<platform::CPUDeviceContext> bench(#op_name);
 
 }  // namespace framework
 }  // namespace paddle
