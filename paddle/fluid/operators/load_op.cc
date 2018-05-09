@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
+#include <iostream>
 
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -51,14 +53,30 @@ class LoadOp : public framework::OperatorBase {
     auto in_dtype = framework::ToDataType(tensor->type());
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
+    std::cout << "In load op: " << std::endl;
+    std::cout << "before conversion block" << std::endl;
+
     if (in_dtype != out_dtype) {
       // convert to float16 tensor
       auto in_kernel_type = framework::OpKernelType(in_dtype, place);
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
       framework::LoDTensor fp16_tensor;
+      // copy LoD info to the new tensor
+      fp16_tensor.set_lod(tensor->lod());
+      std::cout << "before TransDataType" << std::endl;
       framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
                                &fp16_tensor);
+      std::cout << "after TransDataType" << std::endl;
+      // reset output tensor
+      out_var->Clear();
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+      tensor->set_lod(fp16_tensor.lod());
+      std::cout << "before TransDataType" << std::endl;
+      tensor->ShareDataWith(fp16_tensor);
+      std::cout << "after TransDataType" << std::endl;
     }
+
+    std::cout << "Out of load op: " << std::endl;
   }
 };
 
