@@ -19,10 +19,11 @@ import executor
 import data_feeder
 import contextlib
 import io
+import transpiler
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
-import distribute_transpiler
+from transpiler import distribute_transpiler
 
 __all__ = [
     'Trainer',
@@ -208,9 +209,9 @@ class Trainer(object):
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
-        exe = executor.Executor(self.place)
-        io.save_persistables(
-            exe, dirname=param_path, main_program=self.startup_program)
+        with self._prog_and_scope_guard():
+            exe = executor.Executor(self.place)
+            io.save_persistables(exe, dirname=param_path)
 
     def save_inference_model(self, model_path, feed_var_names):
         if not isinstance(feed_var_names, list):

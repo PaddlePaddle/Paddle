@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -427,7 +428,26 @@ int VariableResponse::Parse(Source* source) {
         meta_.set_out_varname(temp);
         break;
       }
-
+      case sendrecv::VariableMessage::kProfileFieldNumber: {
+        bool profiling;
+        if (!input.ReadRaw(reinterpret_cast<void*>(&profiling), 1)) {
+          return tag;
+        }
+        meta_.set_profile(profiling);
+        int64_t listener_id = platform::ListenerId();
+        if (listener_id <= 0) {
+          break;
+        }
+        if (profiling && !platform::IsProfileEnabled()) {
+          platform::EnableProfiler(platform::ProfilerState::kCPU);
+        } else if (!profiling && platform::IsProfileEnabled()) {
+          // TODO(panyx0718): Should we allow to customize file dir.
+          platform::DisableProfiler(
+              platform::EventSortingKey::kDefault,
+              string::Sprintf("/tmp/profile_ps_%lld", listener_id));
+        }
+        break;
+      }
       default: {
         // Unknown tag, return unknown error.
         return -1;
