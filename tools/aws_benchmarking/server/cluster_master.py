@@ -343,9 +343,10 @@ def create_pservers():
 
 def save_metrics_data(str_msg):
     #parse msg
+    logging.info("found metrics data, saving it to csv file")
     global is_metrics_file_created
     metrics_raw = str_msg.split(",")
-    with open(metrics_csv_file_name, 'a') as csvfile:
+    with open(args.log_path + metrics_csv_file_name, 'a') as csvfile:
         csv_fieldnames = []
         csv_write_data = {}
         for metric in metrics_raw:
@@ -363,6 +364,7 @@ def save_metrics_data(str_msg):
             writer.writeheader()
             is_metrics_file_created = True
         writer.writerow(csv_write_data)
+        logging.info("csv file appended")
 
 
 def log_to_file(source, filename):
