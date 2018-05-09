@@ -187,7 +187,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
         // gemm
         Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
         Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-        blas.MatMul(filter_slice, col_matrix, &out_slice);
+        blas.MatMul(filter_slice, false, col_matrix, false, T(1.0), &out_slice,
+                    T(0.0));
       }
     }
   }
@@ -304,7 +305,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
             col_matrix.ShareDataWith(in_grad_slice);
             col_matrix.Resize(col_matrix_shape);
           }
-          blas.MatMul(filter_slice, true, out_grad_slice, false, &col_matrix);
+          blas.MatMul(filter_slice, true, out_grad_slice, false, T(1.0),
+                      &col_matrix, T(0.0));
 
           if (is_expand && data_dim == 2U) {
             col2im(dev_ctx, col, dilations, strides,
@@ -351,8 +353,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
           // gemm
           Tensor filter_grad_slice =
               filter_grad_.Slice(g * out_step, (g + 1) * out_step);
-          blas.MatMul(out_grad_slice, false, col_matrix, true,
-                      &filter_grad_slice);
+          blas.MatMul(out_grad_slice, false, col_matrix, true, T(1.0),
+                      &filter_grad_slice, T(1.0));
         }
       }
     }
