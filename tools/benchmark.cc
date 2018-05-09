@@ -23,6 +23,8 @@
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/string/printf.h"
 
+#include "tools/benchmark.h"
+
 namespace paddle {
 namespace framework {
 
@@ -32,9 +34,12 @@ inline uint64_t NanoTime() {
   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 
-Benchmark::Benchmark(const char* name) : name_(name) {}
+template <typename DeviceContext, typename T>
+void Benchmark<DeviceContext, T>::Run(const Scope& scope,
+                                      const platform::Place& place) const {}
 
-void Benchmark::Register(const char* op) {
+template <typename DeviceContext, typename T>
+void Benchmark<DeviceContext, T>::Register(const char* op) {
   PADDLE_ENFORCE(OpInfoMap::Instance().Has(op));
 }
 
