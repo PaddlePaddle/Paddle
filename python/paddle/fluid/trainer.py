@@ -82,8 +82,7 @@ class Trainer(object):
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
-            # Here we assume that the fisrt one of program_func_outs is loss.
-            # It may be incorrect!
+            # The fisrt element of program_func_outs is loss.
             loss = self.test_outputs[0]
             optimize_ops, params_grads = optimizer.minimize(loss)
 
@@ -257,16 +256,16 @@ class Trainer(object):
             feeder = data_feeder.DataFeeder(
                 feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
-            accumulated_loss = 0
+            accumulated = len(fetch_list) * [0]
             count = 0
             for data in reader():
-                loss, = exe.run(program=self.test_program,
-                                feed=feeder.feed(data),
-                                fetch_list=fetch_list)
-                accumulated_loss += loss[0]
+                outs = exe.run(program=self.test_program,
+                               feed=feeder.feed(data),
+                               fetch_list=fetch_list)
+                accumulated = [x[0] + x[1][0] for x in zip(accumulated, outs)]
                 count += 1
 
-            return accumulated_loss / count
+            return [x / count for x in accumulated]
 
 
 def build_feed_var_list(program, feed_order):
