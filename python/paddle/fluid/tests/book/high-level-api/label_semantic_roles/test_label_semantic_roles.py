@@ -155,11 +155,11 @@ def train(use_cuda, save_path):
         paddle.dataset.conll05.test(), batch_size=BATCH_SIZE)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
+        if isinstance(event, fluid.EndEpochEvent):
+            if (event.epoch % 10) == 0:
                 avg_cost = trainer.test(reader=test_reader)
 
-                print('BatchID {0:04}, Loss {1:2.2}'.format(event.batch_id + 1,
+                print('BatchID {0:04}, Loss {1:2.2}'.format(event.epoch + 1,
                                                             avg_cost))
 
                 if avg_cost > 0.01:  # Low threshold for speeding up CI
