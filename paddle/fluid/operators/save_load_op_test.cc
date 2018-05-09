@@ -127,17 +127,13 @@ TEST(LoadFP16Op, CPU) {
   auto load_var = scope.Var("out_var");
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
-  LOG(INFO) << "before load op run";
   load_op->Run(scope, place);
-  LOG(INFO) << "after load op run";
 
   auto target = load_var->Get<paddle::framework::LoDTensor>();
   paddle::platform::float16* actual = target.data<paddle::platform::float16>();
-  LOG(INFO) << "after target->data";
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], static_cast<float>(actual[i]));
   }
-  LOG(INFO) << "after expect equal";
 
   auto& actual_lod = target.lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
