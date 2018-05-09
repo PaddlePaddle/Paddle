@@ -87,7 +87,7 @@ class TensorRTEngine : public EngineBase {
   // these memory directly for acceleration, for example, output the converted
   // data directly to the buffer to save data copy overhead.
   // NOTE this should be used after calling `FreezeNetwork`.
-  Buffer& buffer(const std::string& tensor) override;
+  Buffer& buffer(const std::string& name) override;
 
   cudaStream_t* stream() { return stream_; }
 
