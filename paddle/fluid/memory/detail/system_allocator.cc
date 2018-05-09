@@ -45,6 +45,11 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
 
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE(cudaMallocHost(&p, size));
+  *index = 1;
+  return p;
+#else
 #ifdef PADDLE_WITH_MKLDNN
   // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
   // memory alignment
@@ -62,13 +67,18 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
   }
 
   return p;
+#endif
 }
 
 void CPUAllocator::Free(void* p, size_t size, size_t index) {
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE(cudaFreeHost(p));
+#else
   if (p != nullptr && index == 1) {
     munlock(p, size);
   }
   free(p);
+#endif
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
