@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include "paddle/fluid/platform/enforce.h"
 
@@ -49,9 +50,15 @@ struct Registry {
     items_[name] = new ItemChild;
   }
 
-  static ItemParent* Lookup(const std::string& name) {
+  static ItemParent* Lookup(const std::string& name,
+                            const std::string& default_name = "") {
     auto it = items_.find(name);
-    if (it == items_.end()) return nullptr;
+    if (it == items_.end()) {
+      if (default_name == "")
+        return nullptr;
+      else
+        return items_.find(default_name)->second;
+    }
     return it->second;
   }
 
