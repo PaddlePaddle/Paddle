@@ -205,7 +205,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   allow_op_delay=False,
                                   feed_dict=None,
                                   seed=None,
-                                  use_parallel_executor=True):
+                                  use_parallel_executor=True,
+                                  balance_parameter_opt_between_cards=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -234,7 +235,11 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
-                    True, loss_name=loss.name, allow_op_delay=allow_op_delay)
+                    True,
+                    loss_name=loss.name,
+                    allow_op_delay=allow_op_delay,
+                    balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+                )
             else:
                 exe = fluid.Executor(place=place)
 
@@ -280,20 +285,27 @@ class TestMNIST(TestParallelExecutorBase):
             fluid.recordio_writer.convert_reader_to_recordio_file(
                 './mnist.recordio', reader, feeder)
 
-    def check_simple_fc_convergence(self):
+    def check_simple_fc_convergence(self, balance_parameter_opt_between_cards):
         self.check_network_convergence(simple_fc_net)
         self.check_network_convergence(simple_fc_net, allow_op_delay=True)
 
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
-            simple_fc_net, feed_dict={"image": img,
-                                      "label": label})
+            simple_fc_net,
+            feed_dict={"image": img,
+                       "label": label},
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+        )
 
     def test_simple_fc(self):
-        self.check_simple_fc_convergence()
+        self.check_simple_fc_convergence(False)
 
-    def check_simple_fc_parallel_accuracy(self):
+    def test_simple_fc_with_new_strategy(self):
+        self.check_simple_fc_convergence(True)
+
+    def check_simple_fc_parallel_accuracy(self,
+                                          balance_parameter_opt_between_cards):
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -307,7 +319,9 @@ class TestMNIST(TestParallelExecutorBase):
             seed=1000,
             feed_dict={"image": img,
                        "label": label},
-            use_parallel_executor=True)
+            use_parallel_executor=True,
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+        )
 
         for p_f in parallel_first_loss:
             self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
@@ -315,18 +329,28 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy()
+        self.check_simple_fc_parallel_accuracy(False)
 
-    def check_batchnorm_fc_convergence(self):
+    def test_simple_fc_parallel_accuracy_with_new_strategy(self):
+        self.check_simple_fc_parallel_accuracy(True)
+
+    def check_batchnorm_fc_convergence(self,
+                                       balance_parameter_opt_between_cards):
         self.check_network_convergence(fc_with_batchnorm)
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
-            fc_with_batchnorm, feed_dict={"image": img,
-                                          "label": label})
+            fc_with_batchnorm,
+            feed_dict={"image": img,
+                       "label": label},
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+        )
 
     def test_batchnorm_fc(self):
-        self.check_batchnorm_fc_convergence()
+        self.check_batchnorm_fc_convergence(False)
+
+    def test_batchnorm_fc_with_new_strategy(self):
+        self.check_batchnorm_fc_convergence(True)
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -348,17 +372,22 @@ class TestResnet(TestParallelExecutorBase):
     #         fluid.recordio_writer.convert_reader_to_recordio_file(
     #             "./flowers.recordio", reader, feeder, compressor=fluid.core.RecordIOWriter.Compressor.NoCompress)
 
-    def check_resnet_convergence(self):
+    def check_resnet_convergence(self, balance_parameter_opt_between_cards):
         import functools
         batch_size = 2
         self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt50Small, batch_size=batch_size),
             iter=20,
-            batch_size=batch_size)
+            batch_size=batch_size,
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+        )
 
     def test_resnet(self):
-        self.check_resnet_convergence()
+        self.check_resnet_convergence(False)
+
+    def test_resnet_with_new_strategy(self):
+        self.check_resnet_convergence(True)
 
 
 class ModelHyperParams(object):
@@ -519,7 +548,7 @@ class TestTransformer(TestParallelExecutorBase):
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
-    def check_network_convergence(self):
+    def check_network_convergence(self, balance_parameter_opt_between_cards):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -539,12 +568,18 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             feed_dict = {'image': image, 'label': label}
 
             train_exe = fluid.ParallelExecutor(
-                use_cuda=True, loss_name=loss.name, main_program=main)
+                use_cuda=True,
+                loss_name=loss.name,
+                main_program=main,
+                balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+            )
 
             test_exe = fluid.ParallelExecutor(
                 use_cuda=True,
                 main_program=test_program,
-                share_vars_from=train_exe)
+                share_vars_from=train_exe,
+                balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+            )
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
@@ -558,8 +593,11 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
 
-    def test_parallel(self):
-        self.check_network_convergence()
+    def test_parallel_testing(self):
+        self.check_network_convergence(False)
+
+    def test_parallel_testing_with_new_strategy(self):
+        self.check_network_convergence(True)
 
 
 import paddle.dataset.conll05 as conll05
@@ -579,7 +617,7 @@ embedding_name = 'emb'
 
 
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
-            is_sparse, **ignored):
+            is_sparse, balance_parameter_opt_between_cards, **ignored):
     # 8 features
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
@@ -648,7 +686,9 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
 
 class TestCRFModel(unittest.TestCase):
-    def check_network_convergence(self, is_sparse):
+    def check_network_convergence(self,
+                                  is_sparse,
+                                  balance_parameter_opt_between_cards=False):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -696,7 +736,11 @@ class TestCRFModel(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup)
 
-            pe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
+            pe = fluid.ParallelExecutor(
+                use_cuda=True,
+                loss_name=avg_cost.name,
+                balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
+            )
 
             feeder = fluid.DataFeeder(
                 feed_list=[
@@ -717,6 +761,14 @@ class TestCRFModel(unittest.TestCase):
 
     def test_update_dense_parameter(self):
         self.check_network_convergence(is_sparse=False)
+
+    def test_update_sparse_parameter_with_new_strategy(self):
+        self.check_network_convergence(
+            is_sparse=False, balance_parameter_opt_between_cards=True)
+
+    def test_update_dense_parameter_with_new_strategy(self):
+        self.check_network_convergence(
+            is_sparse=False, balance_parameter_opt_between_cards=True)
 
 
 # test fetch all the variables of global_block
