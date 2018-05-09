@@ -80,19 +80,21 @@ void ReduceOpHandle::RunImpl() {
   }
 
   if (pre_in_var->IsType<framework::SelectedRows>()) {
-    std::vector<const SelectedRows *> in_selected_rows =
-        GetInputValues<SelectedRows>(in_var_handles, var_scopes);
-
-    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
-                       out_var->GetMutable<framework::SelectedRows>());
+    this->RunAndRecordEvent([&] {
+      std::vector<const SelectedRows *> in_selected_rows =
+          GetInputValues<SelectedRows>(in_var_handles, var_scopes);
+      GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
+                         out_var->GetMutable<framework::SelectedRows>());
+    });
   } else {
     std::vector<const LoDTensor *> lod_tensors =
         GetInputValues<LoDTensor>(in_var_handles, var_scopes);
-
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
-      ReduceLoDTensor func(lod_tensors,
-                           out_var->GetMutable<framework::LoDTensor>());
-      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      this->RunAndRecordEvent([&] {
+        ReduceLoDTensor func(lod_tensors,
+                             out_var->GetMutable<framework::LoDTensor>());
+        VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();

@@ -27,7 +27,7 @@ SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
 
 void SendOpHandle::RunImpl() {
   // Wait input done
-  WaitInputVarGenerated();
+  WaitInputVarGenerated(place_);
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
   // FIXME(wuyi): can not use RunAndRecordEvent here, for it will cause dead
   // lock.
