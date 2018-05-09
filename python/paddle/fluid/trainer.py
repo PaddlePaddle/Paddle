@@ -86,36 +86,33 @@ class Trainer(object):
     """
 
     Args:
-        program_func(callable): A function which will return (loss, predict_vars). The loss must be a scalar.
+        train_func(callable): A function which will return loss. The loss must be a scalar.
+        infer_func(callable): A function which will return predict, used to save inference model
         optimizer(optimizer.Optimizer): The optimizer should be an instance of Optimizer
         place: The device place of this trainer.
     """
 
-    def __init__(self, program_func, optimizer, param_path=None, place=None):
+    def __init__(self,
+                 train_func,
+                 infer_func,
+                 optimizer,
+                 param_path=None,
+                 place=None):
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
-        self.predict_vars = None
+
+        self.infer_func = infer_func
         self.scope = core.Scope()
 
         self.startup_program = framework.Program()
         self.train_program = framework.Program()
 
         with framework.program_guard(self.train_program, self.startup_program):
+            loss = train_func()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
-            out = program_func()
-            if not isinstance(out, tuple) or len(out) != 2:
-                raise ValueError(
-                    "program_func should return tuple(loss, predict_vars)")
-
-            loss = out[0]
-            self.predict_vars = out[1]
-
-            if not isinstance(self.predict_vars, list):
-                raise ValueError("predict_vars should be a list")
-
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = check_and_get_place(place)
@@ -213,13 +210,19 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
-    def save_inference_model(self, model_path, feed_var_names):
-        if not isinstance(feed_var_names, list):
-            raise ValueError("feed_var_names should be a list")
+    def save_inference_model(self, model_path, model_filename=None):
+        inference_program = framework.Program()
+        with framework.program_guard(inference_program):
+            self.infer_func()
+        if model_filename is not None:
+            model_filename = os.path.basename(model_filename)
+        else:
+            model_filename = "__model__"
+        model_filename = os.path.join(model_path, model_filename)
 
-        exe = executor.Executor(self.place)
-        io.save_inference_model(model_path, feed_var_names, self.predict_vars,
-                                exe)
+        with open(model_filename, "wb") as f:
+            f.write(inference_program.desc.serialize_to_string())
+        self.save_params(model_path)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):

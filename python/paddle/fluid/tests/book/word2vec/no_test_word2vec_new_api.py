@@ -99,14 +99,14 @@ def train(use_cuda, is_sparse, save_path):
                 word_dict, N))
 
             if avg_cost < 5.0:
-                trainer.save_inference_model(
-                    save_path, ['firstw', 'secondw', 'thirdw', 'forthw'])
+                trainer.save_inference_model(save_path)
                 return
             if math.isnan(avg_cost):
                 sys.exit("got NaN loss, training failed.")
 
     trainer = fluid.Trainer(
         partial(train_program, is_sparse),
+        inference_program,
         fluid.optimizer.SGD(learning_rate=0.001),
         place=place)
     trainer.train(
