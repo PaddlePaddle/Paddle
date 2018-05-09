@@ -133,7 +133,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <td>--</td>
 </tr>
 <tr>
-<td>server(4threads, 4port):1<br>client(4threads):1</td>
+<td>server(4threads 4port):1<br>client(4threads):1</td>
 <td>300</td>
 <td>62.07</td>
 <td>198.89</td>
@@ -144,6 +144,21 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <td>1516.65</td>
 <td>2626.78</td>
 <td>1820.18</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td>server(4threads 2port):1<br>client(4threads):1</td>
+<td>512</td>
+<td>20.49</td>
+<td>94.40</td>
+<td>257.80</td>
+<td>628.95</td>
+<td>684.16</td>
+<td>1096.59</td>
+<td>1568.67</td>
+<td>1497.70</td>
+<td>1638.02</td>
 <td>--</td>
 <td>--</td>
 </tr>
