@@ -54,7 +54,7 @@ class TestDistTranspiler(unittest.TestCase):
     def test_transpiler(self):
         expect_trainer = self.get_expect_trainer()
         trainer = self.get_trainer()
-        pserver = self.get_pserver(self.current_pserver_ep)
+        pserver, startup = self.get_pserver(self.current_pserver_ep)
 
         self.assertEqual([op.type for op in trainer.global_block().ops],
                          [op.type for op in expect_trainer.global_block().ops])
@@ -65,6 +65,9 @@ class TestDistTranspiler(unittest.TestCase):
         # block2: optimize pass
         self.assertEqual([op.type for op in pserver.blocks[2].ops],
                          ["sum", "scale", "sgd"])
+
+        self.assertEqual([op.type for op in startup.global_block().ops],
+                         ["fill_constant" for i in xrange(4)])
 
     def get_main_program(self):
         main = fluid.Program()
@@ -89,7 +92,10 @@ class TestDistTranspiler(unittest.TestCase):
         return self._transpiler_instance().get_trainer_program()
 
     def get_pserver(self, ep):
-        return self._transpiler_instance().get_pserver_program(ep)
+        t = self._transpiler_instance()
+        pserver = t.get_pserver_program(ep)
+        startup = t.get_startup_program(ep, pserver)
+        return pserver, startup
 
     def _transpiler_instance(self):
         main = self.get_main_program()

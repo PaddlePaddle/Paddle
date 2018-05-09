@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 
 import distributed_splitter as splitter
-from .. import core
+from .. import core, framework
 from ..framework import Program, default_main_program, Variable, Parameter
 
 LOOKUP_TABLE_TYPE = "lookup_table"
