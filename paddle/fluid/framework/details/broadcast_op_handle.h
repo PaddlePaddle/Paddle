@@ -57,7 +57,6 @@ struct BroadcastOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
-  void WaitInputVarGenerated(const VarHandle &in_var);
 
  private:
   const std::vector<Scope *> &local_scopes_;

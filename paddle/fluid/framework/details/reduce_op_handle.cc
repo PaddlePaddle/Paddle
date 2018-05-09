@@ -51,7 +51,7 @@ void ReduceOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
 
   // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated(in_var_handles);
+  WaitInputVarGenerated();
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
@@ -155,17 +155,6 @@ std::vector<const T *> ReduceOpHandle::GetInputValues(
     in_selected_rows.emplace_back(&in_sr);
   }
   return in_selected_rows;
-}
-
-void ReduceOpHandle::WaitInputVarGenerated(
-    const std::vector<VarHandle *> &in_var_handles) {
-  for (auto *in : in_var_handles) {
-    if (in->generated_op_) {
-      for (auto pair : dev_ctxes_) {
-        in->generated_op_->Wait(pair.second);
-      }
-    }
-  }
 }
 
 std::string ReduceOpHandle::Name() const { return "reduce"; }

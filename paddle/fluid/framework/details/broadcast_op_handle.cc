@@ -38,9 +38,7 @@ void BroadcastOpHandle::RunImpl() {
       out_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
 
-  // Wait input done, this Wait is asynchronous operation platform::Place
-  // &in_place;
-  WaitInputVarGenerated(*in_var_handle);
+  WaitInputVarGenerated();
 
   std::vector<const Scope *> var_scopes;
   for (auto *s : local_scopes_) {
@@ -144,14 +142,6 @@ void BroadcastOpHandle::RunImpl() {
 #else
     PADDLE_THROW("CUDA is not enabled.");
 #endif
-  }
-}
-
-void BroadcastOpHandle::WaitInputVarGenerated(const VarHandle &in_var) {
-  if (in_var.generated_op_) {
-    for (auto &pair : dev_ctxes_) {
-      in_var.generated_op_->Wait(pair.second);
-    }
   }
 }
 
