@@ -58,7 +58,6 @@ MKL，MKLML以及MKL-DNN三者关系如下表：
 <td>Proprietary</td>
 <td>Accelerate math processing routines</td>
 </tr>
-
 <tr>
 <td>MKLML</td>
 <td>No</td>
