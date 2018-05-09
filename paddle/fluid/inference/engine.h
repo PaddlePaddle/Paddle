@@ -51,7 +51,7 @@ class EngineBase {
   // Return the IO buffer that allocated in engine. One can read/write directly
   // on the buffer. If the buffer's buffer is nullptr, one can also allocate
   // memory and maintain it outside the engine.
-  virtual Buffer& buffer(const std::string& tensor) = 0;
+  virtual Buffer& buffer(const std::string& name) = 0;
 
   virtual ~EngineBase() {}
 };  // class EngineBase
