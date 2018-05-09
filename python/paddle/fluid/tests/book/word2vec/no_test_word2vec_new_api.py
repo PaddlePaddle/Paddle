@@ -94,13 +94,10 @@ def train(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     def event_handler(event):
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, fluid.EndEpochEvent):
             avg_cost = trainer.test(reader=paddle.dataset.imikolov.test(
                 word_dict, N))
 
-            print("end batch")
-            trainer.save_inference_model(save_path)
-            exit(0)
             if avg_cost < 5.0:
                 trainer.save_inference_model(save_path)
                 return
@@ -142,7 +139,7 @@ def main(use_cuda, is_sparse):
         return
 
     save_path = "word2vec.inference.model"
-    #train(use_cuda, is_sparse, save_path)
+    train(use_cuda, is_sparse, save_path)
     infer(use_cuda, is_sparse, save_path)
 
 
