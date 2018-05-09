@@ -195,6 +195,10 @@ if(WITH_MKLDNN)
     list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB})
 endif()
 
+if(WITH_TESTING)
+  add_subdirectory(tools)
+endif(WITH_TESTING)
+
 if(USE_NNPACK)
     include(external/nnpack)
     list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})

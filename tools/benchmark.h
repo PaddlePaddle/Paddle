@@ -21,9 +21,6 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/pybind/pybind.h"  // NOLINT
-#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
@@ -37,10 +34,10 @@ inline uint64_t NanoTime();
 template <typename DeviceContext, typename T>
 class Benchmark {
  public:
-  explicit Benchmark(const char* name);
+  explicit Benchmark(const char* name) {}
   void Register(const char* op);
-  void Run() const;
-  void RunRepeats() const;
+  void Run(const Scope&, const platform::Place&) const;
+  // void RunRepeats() const;
 
  private:
   std::string name_;

@@ -49,4 +49,7 @@ void test_mul_op() {
   // check output
 }
 
-int main() { return 0; }
+int main() {
+  test_mul_op();
+  return 0;
+}
