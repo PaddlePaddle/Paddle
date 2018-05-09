@@ -1,1 +1,1 @@
-cc_test(test_dot SRCS dot.cc dot.h dot_tester.cc)
+cc_library(dot SRCS dot.cc)
