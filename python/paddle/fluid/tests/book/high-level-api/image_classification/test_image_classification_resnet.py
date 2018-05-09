@@ -19,38 +19,59 @@ import paddle.fluid as fluid
 import numpy
 
 
-def vgg16_bn_drop(input):
-    def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
+def resnet_cifar10(input, depth=32):
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      bias_attr=False):
+        tmp = fluid.layers.conv2d(
             input=input,
-            pool_size=2,
-            pool_stride=2,
-            conv_num_filter=[num_filter] * groups,
-            conv_filter_size=3,
-            conv_act='relu',
-            conv_with_batchnorm=True,
-            conv_batchnorm_drop_rate=dropouts,
-            pool_type='max')
+            filter_size=filter_size,
+            num_filters=ch_out,
+            stride=stride,
+            padding=padding,
+            act=None,
+            bias_attr=bias_attr)
+        return fluid.layers.batch_norm(input=tmp, act=act)
 
-    conv1 = conv_block(input, 64, 2, [0.3, 0])
-    conv2 = conv_block(conv1, 128, 2, [0.4, 0])
-    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0])
-    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
-    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
+    def shortcut(input, ch_in, ch_out, stride):
+        if ch_in != ch_out:
+            return conv_bn_layer(input, ch_out, 1, stride, 0, None)
+        else:
+            return input
 
-    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
-    fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
-    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
-    fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
-    predict = fluid.layers.fc(input=fc2, size=10, act='softmax')
+    def basicblock(input, ch_in, ch_out, stride):
+        tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
+        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
+        short = shortcut(input, ch_in, ch_out, stride)
+        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+
+    def layer_warp(block_func, input, ch_in, ch_out, count, stride):
+        tmp = block_func(input, ch_in, ch_out, stride)
+        for i in range(1, count):
+            tmp = block_func(tmp, ch_out, ch_out, 1)
+        return tmp
+
+    assert (depth - 2) % 6 == 0
+    n = (depth - 2) / 6
+    conv1 = conv_bn_layer(
+        input=input, ch_out=16, filter_size=3, stride=1, padding=1)
+    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    pool = fluid.layers.pool2d(
+        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+    predict = fluid.layers.fc(input=pool, size=10, act='softmax')
     return predict
 
 
 def inference_network():
     data_shape = [3, 32, 32]
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    predict = vgg16_bn_drop(images)
+    predict = resnet_cifar10(images, 32)
     return predict
 
 
@@ -59,8 +80,9 @@ def train_network():
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
-    accuracy = fluid.layers.accuracy(input=predict, label=label)
-    return avg_cost, accuracy
+    # accuracy = fluid.layers.accuracy(input=predict, label=label)
+    # return avg_cost, accuracy
+    return avg_cost
 
 
 def train(use_cuda, save_path):
@@ -76,12 +98,12 @@ def train(use_cuda, save_path):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
+        if isinstance(event, fluid.EndEpochEvent):
+            if (event.epoch % 10) == 0:
                 avg_cost, accuracy = trainer.test(reader=test_reader)
 
                 print('BatchID {1:04}, Loss {2:2.2}, Acc {3:2.2}'.format(
-                    event.batch_id + 1, avg_cost, accuracy))
+                    event.epoch + 1, avg_cost, accuracy))
 
                 if accuracy > 0.01:  # Low threshold for speeding up CI
                     trainer.params.save(save_path)
@@ -93,13 +115,18 @@ def train(use_cuda, save_path):
         optimizer=fluid.optimizer.Adam(learning_rate=0.001),
         place=place,
         event_handler=event_handler)
-    trainer.train(train_reader, EPOCH_NUM, event_handler=event_handler)
+
+    trainer.train(
+        num_epochs=EPOCH_NUM,
+        event_handler=event_handler,
+        reader=train_reader,
+        feed_order=['pixel', 'label'])
 
 
 def infer(use_cuda, save_path):
-    params = fluid.Params(save_path)
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(inference_network, params, place=place)
+    inferencer = fluid.Inferencer(
+        inference_network, save_path=save_path, place=place)
 
     # The input's dimension of conv should be 4-D or 5-D.
     # Use normilized image pixels as input data, which should be in the range
@@ -113,7 +140,7 @@ def infer(use_cuda, save_path):
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_path = "image_classification_vgg.inference.model"
+    save_path = "image_classification_resnet.inference.model"
     train(use_cuda, save_path)
     infer(use_cuda, save_path)
 
