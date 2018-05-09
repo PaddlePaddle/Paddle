@@ -84,7 +84,7 @@ def train_program(is_sparse):
     predict_word = inference_program(is_sparse)[0]
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
-    return avg_cost, [predict_word]
+    return avg_cost
 
 
 def train(use_cuda, is_sparse, save_path):
@@ -94,10 +94,13 @@ def train(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
+        if isinstance(event, fluid.EndStepEvent):
             avg_cost = trainer.test(reader=paddle.dataset.imikolov.test(
                 word_dict, N))
 
+            print("end batch")
+            trainer.save_inference_model(save_path)
+            exit(0)
             if avg_cost < 5.0:
                 trainer.save_inference_model(save_path)
                 return
@@ -106,7 +109,7 @@ def train(use_cuda, is_sparse, save_path):
 
     trainer = fluid.Trainer(
         partial(train_program, is_sparse),
-        inference_program,
+        partial(inference_program, is_sparse),
         fluid.optimizer.SGD(learning_rate=0.001),
         place=place)
     trainer.train(
@@ -115,10 +118,7 @@ def train(use_cuda, is_sparse, save_path):
 
 def infer(use_cuda, is_sparse, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
-        program_func=partial(inference_program, is_sparse),
-        param_path=save_path,
-        place=place)
+    inferencer = fluid.Inferencer(param_path=save_path, place=place)
 
     lod = [0, 1]
     first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
@@ -142,7 +142,7 @@ def main(use_cuda, is_sparse):
         return
 
     save_path = "word2vec.inference.model"
-    train(use_cuda, is_sparse, save_path)
+    #train(use_cuda, is_sparse, save_path)
     infer(use_cuda, is_sparse, save_path)
 
 

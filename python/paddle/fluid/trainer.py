@@ -101,6 +101,8 @@ class Trainer(object):
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
+        if not isinstance(optimizer, opt_module.Optimizer):
+            raise TypeError("The optimizer should be an instance of Optimizer")
 
         self.infer_func = infer_func
         self.scope = core.Scope()
@@ -110,9 +112,6 @@ class Trainer(object):
 
         with framework.program_guard(self.train_program, self.startup_program):
             loss = train_func()
-            if not isinstance(optimizer, opt_module.Optimizer):
-                raise TypeError(
-                    "The optimizer should be an instance of Optimizer")
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = check_and_get_place(place)
@@ -214,6 +213,8 @@ class Trainer(object):
         inference_program = framework.Program()
         with framework.program_guard(inference_program):
             self.infer_func()
+        if not os.path.isdir(model_path):
+            os.makedirs(model_path)
         if model_filename is not None:
             model_filename = os.path.basename(model_filename)
         else:
