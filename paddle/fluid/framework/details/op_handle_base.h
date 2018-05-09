@@ -44,10 +44,14 @@ class OpHandleBase {
 
   void AddOutput(VarHandleBase *out);
 
-  // Wait inputs are generated, this Wait is asynchronous operation.
+  // This method adds the wait events of all the input on all the device
+  // context.
+  // NODE: This Wait is asynchronous operation.
   virtual void WaitInputVarGenerated();
 
-  //  Wait inputs are generated, this Wait is asynchronous operation.
+  // This method adds the wait events of all the input on the specified device
+  // context.
+  // NODE: This Wait is asynchronous operation.
   virtual void WaitInputVarGenerated(const platform::Place &place);
 
   virtual bool NeedWait(VarHandleBase *in_var);
