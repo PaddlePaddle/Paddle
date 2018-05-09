@@ -35,6 +35,7 @@ void TensorRTEngine::Execute(int batch_size) {
     PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated");
     PADDLE_ENFORCE_GT(buf.max_size, 0);
     PADDLE_ENFORCE(buf.device == DeviceType::GPU);
+    buffers.push_back(buf.buffer);
   }
   infer_context_->enqueue(batch_size, buffers.data(), *stream_, nullptr);
   cudaStreamSynchronize(*stream_);
