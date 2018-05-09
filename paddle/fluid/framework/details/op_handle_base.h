@@ -38,11 +38,19 @@ class OpHandleBase {
 
   void Run(bool use_event);
 
-  virtual void Wait(platform::DeviceContext *waited_dev);
+  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
   void AddInput(VarHandleBase *in);
 
   void AddOutput(VarHandleBase *out);
+
+  // Wait inputs are generated, this Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated();
+
+  //  Wait inputs are generated, this Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated(const platform::Place &place);
+
+  virtual bool NeedWait(VarHandleBase *in_var);
 
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
