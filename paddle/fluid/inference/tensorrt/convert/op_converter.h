@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
@@ -32,34 +33,23 @@ class OpConverter {
   OpConverter() {}
   virtual void operator()(const framework::OpDesc& op) {}
 
-  void Execute(const framework::OpDesc& op, TensorRTEngine* engine) {
+  void Run(const framework::OpDesc& op, TensorRTEngine* engine) {
     std::string type = op.Type();
-    auto it = converters_.find(type);
-    PADDLE_ENFORCE(it != converters_.end(), "no OpConverter for optype [%s]",
-                   type);
-    it->second->SetEngine(engine);
-    (*it->second)(op);
-  }
-
-  static OpConverter& Global() {
-    static auto* x = new OpConverter;
-    return *x;
-  }
-
-  template <typename T>
-  void Register(const std::string& key) {
-    converters_[key] = new T;
+    auto* it = Registry<OpConverter>::Lookup(type);
+    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", type);
+    it->SetEngine(engine);
+    (*it)(op);
   }
 
   // convert fluid op to tensorrt layer
   void ConvertOp(const framework::OpDesc& op, TensorRTEngine* engine) {
-    OpConverter::Global().Execute(op, engine);
+    OpConverter::Run(op, engine);
   }
 
   // convert fluid block to tensorrt network
   void ConvertBlock(const framework::BlockDesc& block, TensorRTEngine* engine) {
     for (auto op : block.AllOps()) {
-      OpConverter::Global().Execute(*op, engine);
+      OpConverter::Run(*op, engine);
     }
   }
 
@@ -78,12 +68,12 @@ class OpConverter {
   framework::Scope* scope_{nullptr};
 };
 
-#define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)      \
-  struct trt_##op_type__##_converter {                         \
-    trt_##op_type__##_converter() {                            \
-      OpConverter::Global().Register<Converter__>(#op_type__); \
-    }                                                          \
-  };                                                           \
+#define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)       \
+  struct trt_##op_type__##_converter {                          \
+    trt_##op_type__##_converter() {                             \
+      Registry<OpConverter>::Register<Converter__>(#op_type__); \
+    }                                                           \
+  };                                                            \
   trt_##op_type__##_converter trt_##op_type__##_converter__;
 
 }  // namespace tensorrt

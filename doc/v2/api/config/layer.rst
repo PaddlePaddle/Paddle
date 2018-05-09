@@ -142,7 +142,7 @@ gated_unit
 -----------
 ..  autoclass:: paddle.v2.layer.gated_unit
     :noindex:
-    
+
 Recurrent Layer Group
 =====================
 
@@ -354,7 +354,7 @@ dropout
 --------
 ..  autoclass:: paddle.v2.layer.dropout
     :noindex:
-    
+
 dot_prod
 ---------
 .. autoclass:: paddle.v2.layer.dot_prod
@@ -460,6 +460,11 @@ multi_binary_label_cross_entropy_cost
 ..  autoclass:: paddle.v2.layer.multi_binary_label_cross_entropy_cost
     :noindex:
 
+classification_cost
+-------------------
+.. autoclass:: paddle.v2.layer.classification_cost
+   :noindex:
+
 huber_regression_cost
 -------------------------
 ..  autoclass:: paddle.v2.layer.huber_regression_cost
@@ -534,7 +539,7 @@ detection_output
 ----------------
 ..  autoclass:: paddle.v2.layer.detection_output
     :noindex:
-    
+
 Check Layer
 ============
 
