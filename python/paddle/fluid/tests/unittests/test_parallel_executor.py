@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
+import numpy as np
 import unittest
 
 import paddle.fluid as fluid
@@ -243,7 +243,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             begin = time.time()
             first_loss, = run_executor(
                 exe=exe, feed=feed_dict, fetch_list=[loss.name])
-            first_loss = numpy.array(first_loss)
+            first_loss = np.array(first_loss)
 
             for i in xrange(iter):
                 run_executor(exe=exe, feed=feed_dict, fetch_list=[])
@@ -256,7 +256,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                 print "%.4f Instance per second" % (
                     (batch_size * iter + 2) / (end - begin))
 
-            last_loss = numpy.array(last_loss)
+            last_loss = np.array(last_loss)
 
             print first_loss, last_loss
             # self.assertGreater(first_loss[0], last_loss[0])
@@ -284,8 +284,8 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_network_convergence(simple_fc_net)
         self.check_network_convergence(simple_fc_net, allow_op_delay=True)
 
-        img = numpy.zeros(shape=[32, 784], dtype='float32')
-        label = numpy.ones(shape=[32, 1], dtype='int64')
+        img = np.zeros(shape=[32, 784], dtype='float32')
+        label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             simple_fc_net, feed_dict={"image": img,
                                       "label": label})
@@ -294,8 +294,8 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_convergence()
 
     def check_simple_fc_parallel_accuracy(self):
-        img = numpy.zeros(shape=[32, 784], dtype='float32')
-        label = numpy.ones(shape=[32, 1], dtype='int64')
+        img = np.zeros(shape=[32, 784], dtype='float32')
+        label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
             seed=1000,
@@ -319,8 +319,8 @@ class TestMNIST(TestParallelExecutorBase):
 
     def check_batchnorm_fc_convergence(self):
         self.check_network_convergence(fc_with_batchnorm)
-        img = numpy.zeros(shape=[32, 784], dtype='float32')
-        label = numpy.ones(shape=[32, 1], dtype='int64')
+        img = np.zeros(shape=[32, 784], dtype='float32')
+        label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             fc_with_batchnorm, feed_dict={"image": img,
                                           "label": label})
@@ -402,9 +402,6 @@ class ModelHyperParams(object):
     n_layer = 6
     # dropout rate used by all dropout layers.
     dropout = 0.1
-
-
-import numpy as np
 
 
 def prepare_batch_input(insts, src_pad_idx, trg_pad_idx, n_head):
@@ -533,9 +530,8 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             opt.minimize(loss)
 
             batch_size = 32
-            image = numpy.random.normal(size=(batch_size,
-                                              784)).astype('float32')
-            label = numpy.random.randint(0, 10, (batch_size, 1), dtype="int64")
+            image = np.random.normal(size=(batch_size, 784)).astype('float32')
+            label = np.random.randint(0, 10, (batch_size, 1), dtype="int64")
 
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
@@ -552,12 +548,12 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
-                test_loss = numpy.array(test_loss)
+                test_loss = np.array(test_loss)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
-                train_loss = numpy.array(train_loss)
+                train_loss = np.array(train_loss)
                 self.assertTrue(
-                    numpy.allclose(
+                    np.allclose(
                         train_loss, test_loss, atol=1e-8),
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
@@ -712,7 +708,7 @@ class TestCRFModel(unittest.TestCase):
             data = train_data()
             for i in xrange(10):
                 cur_batch = next(data)
-                print map(numpy.array,
+                print map(np.array,
                           pe.run(feed=feeder.feed(cur_batch),
                                  fetch_list=[avg_cost.name]))[0]
 
@@ -721,6 +717,83 @@ class TestCRFModel(unittest.TestCase):
 
     def test_update_dense_parameter(self):
         self.check_network_convergence(is_sparse=False)
+
+
+# test fetch all the variables of global_block
+
+import paddle.dataset.flowers as flowers
+import math
+
+
+def Lenet(data, class_dim):
+    conv1 = fluid.layers.conv2d(data, 32, 5, 1, act=None)
+    bn1 = fluid.layers.batch_norm(conv1, act='relu')
+    pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
+    conv2 = fluid.layers.conv2d(pool1, 50, 5, 1, act=None)
+    bn2 = fluid.layers.batch_norm(conv2, act='relu')
+    pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
+
+    fc1 = fluid.layers.fc(pool2, size=500, act='relu')
+    fc2 = fluid.layers.fc(fc1, size=class_dim, act='softmax')
+
+    return fc2
+
+
+class TestFetchOp(unittest.TestCase):
+    def parallel_exe(self, train_inputs, seed):
+        main = fluid.Program()
+        startup = fluid.Program()
+        startup.random_seed = seed
+        with fluid.program_guard(main, startup):
+            data = fluid.layers.data(
+                name='image', shape=[3, 224, 224], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            out = Lenet(data, class_dim=102)
+            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = fluid.layers.mean(loss)
+
+            opt = fluid.optimizer.Momentum(
+                learning_rate=0.1,
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+
+            opt.minimize(loss)
+
+            # TODO(zcd): I found that onece the memory optimizer is open,
+            # parallel_exe doesn't fetch some variable, such as conv2d_0.b_0@GRAD,
+            # conv2d_1.b_0@GRAD. Those variables should not be pruned.
+            # fluid.memory_optimize(main)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup)
+
+            feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
+            pe = fluid.ParallelExecutor(
+                use_cuda=True, loss_name=loss.name, main_program=main)
+
+            fetch_list = []
+            all_vars = main.global_block().vars
+            for k, v in all_vars.iteritems():
+                if 'tmp' not in k and k[0] is not '_' or v.persistable:
+                    fetch_list.append(k)
+
+            for data in train_inputs:
+                ret = pe.run(fetch_list, feed=feeder.feed(data))
+                for i in range(len(fetch_list)):
+                    assert not math.isnan(np.sum(ret[i])) and \
+                           not math.isinf(np.sum(ret[i]))
+
+    def test_update_sparse_parameter(self):
+        tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
+        tst_reader_iter = tst_reader()
+
+        iters = 3
+        train_inputs = []
+        for i in range(iters):
+            train_inputs.append(tst_reader_iter.next())
+
+        self.parallel_exe(train_inputs, seed=1)
 
 
 if __name__ == '__main__':
