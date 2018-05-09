@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
-import framework
-from framework import Program, default_main_program, Parameter, Variable
-import backward
-from backward import _rename_arg_
-from . import core
+from .. import core
+from ..framework import Program, default_main_program, Parameter, Variable
+from ..backward import _rename_arg_
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,

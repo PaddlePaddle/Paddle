@@ -44,8 +44,10 @@ class RequestBase;
 
 class AsyncGRPCServer final {
  public:
-  explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
+  explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
+      : address_(address), sync_mode_(sync_mode), ready_(0) {}
 
+  void WaitServerReady();
   void RunSyncUpdate();
 
   // functions to sync server barrier status.
@@ -95,6 +97,7 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
+  const bool sync_mode_;
   framework::Scope *scope_;
   const platform::DeviceContext *dev_ctx_;
 
@@ -116,6 +119,10 @@ class AsyncGRPCServer final {
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
   int selected_port_;
+
+  std::mutex mutex_ready_;
+  std::condition_variable condition_ready_;
+  int ready_;
 };
 
 };  // namespace detail

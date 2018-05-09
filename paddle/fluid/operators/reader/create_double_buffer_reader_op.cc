@@ -168,11 +168,10 @@ void DoubleBufferReader::PrefetchThreadFunc() {
     }
     if (platform::is_gpu_place(place_)) {
       auto& gpu_batch = gpu_tensor_cache_[cached_tensor_id];
-      auto* gpu_ctx = ctxs_[cached_tensor_id].get();
       gpu_batch.resize(cpu_batch.size());
       for (size_t i = 0; i < cpu_batch.size(); ++i) {
-        framework::TensorCopy(cpu_batch[i], place_, *gpu_ctx, &gpu_batch[i],
-                              true);
+        // TODO(fengjiayi): Use asynchronous TensorCopy instead
+        framework::TensorCopySync(cpu_batch[i], place_, &gpu_batch[i]);
         gpu_batch[i].set_lod(cpu_batch[i].lod());
       }
     }

@@ -46,7 +46,6 @@ class EngineBase {
   virtual void Execute(int batch_size) = 0;
 
   virtual ~EngineBase() {}
-
 };  // class EngineBase
 
 }  // namespace inference

@@ -658,10 +658,10 @@ class Operator(object):
 class Block(object):
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
-        self.vars = dict()  # var_name --> var
+        self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = dict()
+        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self.to_string(True)
@@ -847,17 +847,6 @@ class Block(object):
         self.sync_with_cpp()
         self.desc.remove_op(index, index + 1)
         del self.ops[index]
-
-    def delete_ops(self, ops):
-        # remove from cpp
-        # FIXME(typhoonzero): remove only the first occurrence.
-        try:
-            start = list(self.ops).index(ops[0])
-            end = list(self.ops).index(ops[-1])
-        except Exception, e:
-            raise e
-
-        self.desc.remove_op(start, end + 1)
 
     def slice_ops(self, start, end):
         return self.ops[start:end]
@@ -1053,13 +1042,14 @@ class Program(object):
         Returns(Program):
             The cloned Program object.
         """
-        p = Program()
         if for_test:
-            p.desc = core.inference_optimize(self.desc)
+            p = self.inference_optimize()
         else:
+            p = Program()
             p.desc = core.ProgramDesc(self.desc)
-        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-        p.sync_with_cpp()
+            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.sync_with_cpp()
+
         p.copy_param_info_from(self)
         return p
 
@@ -1070,16 +1060,25 @@ class Program(object):
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
-                    if t.op is None:
-                        global_block = self.global_block()
-                        for op in global_block.ops:
-                            if t.name in op.output_arg_names:
-                                t.op = op
-                                break
+                    # After transpiler processing, the op that output this
+                    # variable maybe has been changed, so t.op is not reliable
+                    # and we need to find the current op that generate this
+                    # variable here.
+                    t.op = None
+                    global_block = self.global_block()
+                    for idx, op in enumerate(global_block.ops):
+                        if t.name in op.output_arg_names:
+                            t.op = op
+                            break
+
                     t = t.op
+                    if t is None:
+                        raise ValueError(
+                            "The target variable must have an "
+                            "associated operator that generates it.")
                 else:
-                    raise ValueError(("All targets of prune() can only be "
-                                      "Variable or Operator."))
+                    raise ValueError("All targets of prune() can only be "
+                                     "Variable or Operator.")
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
@@ -1089,8 +1088,16 @@ class Program(object):
         return res
 
     def inference_optimize(self):
+        # this is an alternative implement before
+        # core.inference_optimize being fixed.
         res = Program()
-        res.desc = core.inference_optimize(self.desc)
+        res.desc = core.ProgramDesc(self.desc)
+        for i in xrange(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for j in xrange(block.op_size()):
+                op = block.op(j)
+                if op.has_attr('is_test'):
+                    op.set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res

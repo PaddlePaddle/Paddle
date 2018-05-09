@@ -108,7 +108,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
     EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
   for (size_t i = 0; i < rows2->size(); ++i) {
-    EXPECT_EQ(rows_data2[i], i);
+    EXPECT_EQ(rows_data2[i], static_cast<int64_t>(i));
   }
   EXPECT_EQ(slr2->height(), 1000);
 }

@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/engine.h"
-
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -65,12 +64,12 @@ TEST_F(TensorRTEngineTest, add_layer) {
 
   // fill in real data
   float x_v = 1234;
-  engine_->SetInputFromCPU("x", (void*)&x_v, 1 * sizeof(float));
+  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
+                           1 * sizeof(float));
   LOG(INFO) << "to execute";
   engine_->Execute(1);
 
   LOG(INFO) << "to get output";
-  // void* y_v =
   float y_cpu;
   engine_->GetOutputInCPU("y", &y_cpu, sizeof(float));
 
