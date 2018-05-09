@@ -29,7 +29,8 @@ class ParallelExecutor(object):
                  main_program=None,
                  num_threads=None,
                  allow_op_delay=False,
-                 share_vars_from=None):
+                 share_vars_from=None,
+                 use_default_grad_scale=True):
         """
         ParallelExecutor can run program in parallel.
 
@@ -42,9 +43,14 @@ class ParallelExecutor(object):
                 training.
             allow_op_delay(bool, default False): Whether to delay and buffer
                 some operators together for scheduling or not, which may
-                improve performance in some cases, defalut False.
+                improve performance in some cases, default False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
+            use_default_grad_scale(bool, default True): If set True, a default
+                scale value equal to `1./device_count` would be multiplied to
+                gradients of each device and scaled gradients would be
+                aggregated. Otherwise, a customized scale value should be fed
+                to the network.
 
         Returns:
             A ParallelExecutor object.
@@ -78,7 +84,7 @@ class ParallelExecutor(object):
         else:
             for i in xrange(multiprocessing.cpu_count()):
                 p = core.Place()
-                self._act_places.append(core.CPUPlace(i))
+                self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         assert self._places, "no place for execution"
@@ -87,7 +93,7 @@ class ParallelExecutor(object):
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places)
+                num_threads = len(self._places) * 2
             else:
                 num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())
@@ -122,7 +128,9 @@ class ParallelExecutor(object):
             loss_name if loss_name else '',
             scope,
             local_scopes,
-            allow_op_delay)
+            allow_op_delay,
+            use_default_grad_scale)
+
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):

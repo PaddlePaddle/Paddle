@@ -77,10 +77,10 @@ Training nodes will run your `ENTRYPOINT` script with the following environment 
 Now let's start the training process:
 
 ```bash
-docker run -i -v $HOME/.aws:/root/.aws -v <full path to your pem file>:/root/<key pare name>.pem \
+docker run -i -v $HOME/.aws:/root/.aws -v <full path to your pem file>:/root/<key pair name>.pem \
 putcn/paddle_aws_client \
 --action create \
---key_name <your key pare name> \
+--key_name <your key pair name> \
 --security_group_id <your security group id> \
 --docker_image myreponame/paddle_benchmark \
 --pserver_count 2 \
@@ -154,8 +154,31 @@ Master exposes 4 major services:
 
 ### Parameters
 
-TBD, please refer to client/cluster_launcher.py for now
+ - key_name: required, aws key pair name
+ - security_group_id: required, the security group id associated with your VPC
+ - vpc_id: The VPC in which you wish to run test, if not provided, this tool will use your default VPC.
+ - subnet_id: The Subnet_id in which you wish to run test, if not provided, this tool will create a new sub net to run test.
+ - pserver_instance_type: your pserver instance type, c5.2xlarge by default, which is a memory optimized machine.
+ - trainer_instance_type: your trainer instance type, p2.8xlarge by default, which is a GPU machine with 8 cards.
+ - task_name: the name you want to identify your job, if not provided, this tool will generate one for you.
+ - pserver_image_id: ami id for system image. Please note, although the default one has nvidia-docker installed, pserver is always launched with `docker` instead of `nvidia-docker`, please DO NOT init your training program with GPU place.
+ - pserver_command: pserver start command, format example: python,vgg.py,batch_size:128,is_local:no, which will be translated as `python vgg.py --batch_size 128 --is_local no` when trying to start the training in pserver. "--device CPU" is passed as default.
+ - trainer_image_id: ami id for system image, default one has nvidia-docker ready.
+ - trainer_command: trainer start command. Format is the same as pserver's, "--device GPU" is passed as default.
+ - availability_zone: aws zone id to place ec2 instances, us-east-2a by default.
+ - trainer_count: Trainer count, 1 by default.
+ - pserver_count: Pserver count, 1 by default.
+ - action: create|cleanup|status, "create" by default.
+ - pserver_port: the port for pserver to open service, 5436 by default.
+ - docker_image: the training docker image id.
+ - master_service_port: the port for master to open service, 5436 by default.
+ - master_server_public_ip: the master service ip, this is required when action is not "create"
+ - master_docker_image: master's docker image id, "putcn/paddle_aws_master:latest" by default
+ - no_clean_up: no instance termination when training is finished or failed when this value is set "yes". This is for debug purpose, so that you can inspect into the instances when the process is finished. 
+ 
 
 ### Trouble shooting
 
-TBD
+ 1. How to check logs
+
+    Master log is served at `http://<masterip>:<masterport>/status`, and you can list all the log files from `http://<masterip>:<masterport>/logs`, and access either one of them by `http://<masterip>:<masterport>/log/<logfilename>`

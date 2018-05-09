@@ -63,16 +63,16 @@ void DataTransform(const OpKernelType& expected_kernel_type,
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
-                            Variable& out_var) {
+                            Variable* out_var) {
   if (in_var.IsType<LoDTensor>()) {
     auto& in_lod_tensor = in_var.Get<LoDTensor>();
-    auto* tran_lod_tensor = out_var.GetMutable<LoDTensor>();
+    auto* tran_lod_tensor = out_var->GetMutable<LoDTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
     tran_lod_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<SelectedRows>()) {
     auto& in_selected_rows = in_var.Get<SelectedRows>();
-    auto* trans_selected_rows = out_var.GetMutable<SelectedRows>();
+    auto* trans_selected_rows = out_var->GetMutable<SelectedRows>();
     trans_selected_rows->set_height(in_selected_rows.height());
     trans_selected_rows->set_rows(in_selected_rows.rows());
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);

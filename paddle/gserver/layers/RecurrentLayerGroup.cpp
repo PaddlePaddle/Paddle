@@ -72,7 +72,7 @@ void RecurrentLayerGroup::initSubNetwork(
   setNeedGradient(true);
 
   network_.reset(new RecurrentGradientMachine(config_.name(), rootNetwork));
-  ParamInitCallback cb = [this, rootNetwork](int paramId, Parameter* para) {
+  ParamInitCallback cb = [rootNetwork](int paramId, Parameter* para) {
     para->enableSharedType(
         PARAMETER_VALUE,
         rootNetwork->getParameters()[paramId]->getBuf(PARAMETER_VALUE),

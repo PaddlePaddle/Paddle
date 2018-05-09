@@ -479,6 +479,13 @@ label_smooth
 ..  autofunction:: paddle.fluid.layers.label_smooth
     :noindex:
 
+roi_pool
+---------
+
+..  autofunction:: paddle.fluid.layers.roi_pool
+    :noindex:
+
+    
 ops
 ===
 
@@ -820,3 +827,5 @@ topk
 
 ..  autofunction:: paddle.fluid.layers.topk
     :noindex:
+
+

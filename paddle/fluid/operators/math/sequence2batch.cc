@@ -23,11 +23,11 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor& dst,
+                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
     auto src_dims = src.dims();
-    auto dst_dims = dst.dims();
+    auto dst_dims = dst->dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,
                       "The src must be matrix with rank 2.");
     PADDLE_ENFORCE_EQ(dst_dims.size(), 2UL,
@@ -37,7 +37,7 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
     auto height = dst_dims[0];
     auto width = dst_dims[1];
     auto* src_data = src.data<T>();
-    auto* dst_data = dst.data<T>();
+    auto* dst_data = dst->data<T>();
     for (int i = 0; i < height; ++i) {
       if (is_src_index) {
         memcpy(dst_data + i * width, src_data + index[i] * width,

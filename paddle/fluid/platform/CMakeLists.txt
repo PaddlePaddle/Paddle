@@ -12,7 +12,7 @@ add_custom_command(TARGET profiler_py_proto POST_BUILD
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 if(WITH_GPU)
-  cc_library(enforce SRCS enforce.cc DEPS)
+  nv_library(enforce SRCS enforce.cc)
 else()
   cc_library(enforce SRCS enforce.cc)
 endif()

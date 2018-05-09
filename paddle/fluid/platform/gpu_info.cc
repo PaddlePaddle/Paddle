@@ -127,11 +127,24 @@ void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                  "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
 }
 
-void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
-                   size_t count, cudaStream_t stream) {
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum cudaMemcpyKind kind) {
+  PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
+}
+
+void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
+                        int src_device, size_t count, cudaStream_t stream) {
   PADDLE_ENFORCE(
       cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
-      "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
+      "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeerAsync");
+}
+
+void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
+                       int src_device, size_t count) {
+  PADDLE_ENFORCE(
+      cudaMemcpyPeer(dst, dst_device, src, src_device, count),
+      "cudaMemcpyPeer failed in paddle::platform::GpuMemcpyPeerSync");
 }
 
 void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {

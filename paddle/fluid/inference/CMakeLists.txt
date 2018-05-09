@@ -21,7 +21,10 @@ endif()
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
-  if (TENSORRT_FOUND)
-    add_subdirectory(tensorrt)
-  endif()
+  # analysis test depends the models that generate by python/paddle/fluid/tests/book
+  add_subdirectory(analysis)
+endif()
+
+if (TENSORRT_FOUND)
+  add_subdirectory(tensorrt)
 endif()

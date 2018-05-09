@@ -13,7 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include <string>
 #include <vector>
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -71,6 +76,22 @@ class MulOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ private:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+    }
+#endif
+    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        layout, library);
+  }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -100,6 +121,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddAttr<int>(
         "y_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two,
@@ -154,6 +178,22 @@ class MulGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }
+
+ private:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+    }
+#endif
+    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        layout, library);
+  }
 };
 
 }  // namespace operators
@@ -164,6 +204,8 @@ REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
-    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
+    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -1,7 +1,6 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-
-# When you modify it, please be aware of cudnn-runtime version 
+# When you modify it, please be aware of cudnn-runtime version
 # and libcudnn.so.x in paddle/scripts/docker/build.sh
 FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -24,7 +23,7 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --allow-downgrades \
     git python-pip python-dev openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
@@ -33,7 +32,7 @@ RUN apt-get update && \
     automake locales clang-format swig doxygen cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools libtool && \
+    net-tools libtool ccache && \
     apt-get clean -y
 
 # Install Go and glide
@@ -49,7 +48,11 @@ ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 RUN curl -s -q https://glide.sh/get | sh
 
 # Install TensorRT
-# The unnecessary files has been removed to make the library small. It only contains include and lib now.
+# following TensorRT.tar.gz is not the default official one, we do two miny changes:
+# 1. Remove the unnecessary files to make the library small. TensorRT.tar.gz only contains include and lib now,
+#    and its size is only one-third of the official one.
+# 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
+#    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 RUN wget -qO- http://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
     tar -xz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \

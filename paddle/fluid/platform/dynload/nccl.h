@@ -33,7 +33,7 @@ extern void* nccl_dso_handle;
   struct DynLoad__##__name {                                             \
     template <typename... Args>                                          \
     auto operator()(Args... args) -> decltype(__name(args...)) {         \
-      using nccl_func = decltype(__name(args...)) (*)(Args...);          \
+      using nccl_func = decltype(&::__name);                             \
       std::call_once(nccl_dso_flag, []() {                               \
         nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
       });                                                                \

@@ -226,15 +226,15 @@ static bool has_fetch_operators(
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, const LoDTensor*>& feed_targets,
-                   std::map<std::string, LoDTensor*>& fetch_targets,
+                   std::map<std::string, const LoDTensor*>* feed_targets,
+                   std::map<std::string, LoDTensor*>* fetch_targets,
                    bool create_vars, const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
-      has_feed_operators(program.Block(0), feed_targets, feed_holder_name);
+      has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
   bool has_fetch_ops =
-      has_fetch_operators(program.Block(0), fetch_targets, fetch_holder_name);
+      has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
 
   ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
   if (!has_feed_ops || !has_fetch_ops) {
@@ -250,7 +250,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     feed_holder->SetPersistable(true);
 
     int i = 0;
-    for (auto& feed_target : feed_targets) {
+    for (auto& feed_target : (*feed_targets)) {
       std::string var_name = feed_target.first;
       VLOG(3) << "feed target's name: " << var_name;
 
@@ -273,7 +273,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     fetch_holder->SetPersistable(true);
 
     int i = 0;
-    for (auto& fetch_target : fetch_targets) {
+    for (auto& fetch_target : (*fetch_targets)) {
       std::string var_name = fetch_target.first;
       VLOG(3) << "fetch target's name: " << var_name;
 
@@ -348,8 +348,12 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       }
     }
   }
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
+  } else {
+    // Delete the local scopes created in operators.
+    scope->DropKids();
   }
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
@@ -361,16 +365,16 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
-    std::map<std::string, const LoDTensor*>& feed_targets,
-    std::map<std::string, LoDTensor*>& fetch_targets, bool create_vars,
+    std::map<std::string, const LoDTensor*>* feed_targets,
+    std::map<std::string, LoDTensor*>* fetch_targets, bool create_vars,
     const std::string& feed_holder_name, const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE(
-      has_feed_operators(global_block, feed_targets, feed_holder_name),
+      has_feed_operators(global_block, *feed_targets, feed_holder_name),
       "Program in ExecutorPrepareContext should has feed_ops.");
   PADDLE_ENFORCE(
-      has_fetch_operators(global_block, fetch_targets, fetch_holder_name),
+      has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
       "Program in the prepared context should has fetch_ops.");
 
   // map the data of feed_targets to feed_holder
@@ -378,8 +382,8 @@ void Executor::RunPreparedContext(
     if (op->Type() == kFeedOpType) {
       std::string feed_target_name = op->Output("Out")[0];
       int idx = boost::get<int>(op->GetAttr("col"));
-      SetFeedVariable(scope, *feed_targets[feed_target_name], feed_holder_name,
-                      idx);
+      SetFeedVariable(scope, *(*feed_targets)[feed_target_name],
+                      feed_holder_name, idx);
     }
   }
 
@@ -390,7 +394,7 @@ void Executor::RunPreparedContext(
     if (op->Type() == kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
       int idx = boost::get<int>(op->GetAttr("col"));
-      *fetch_targets[fetch_target_name] =
+      *(*fetch_targets)[fetch_target_name] =
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }

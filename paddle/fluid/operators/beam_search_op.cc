@@ -195,10 +195,9 @@ std::string ItemToString(const BeamSearch::Item &item) {
   return stream.str();
 }
 
-class BeamSearchProtoAndCheckerMaker
-    : public framework::OpProtoAndCheckerMaker {
+class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchProtoAndCheckerMaker(OpProto *proto, OpAttrChecker *op_checker)
+  BeamSearchOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
     AddInput("pre_ids", "ids in previous step");
@@ -222,19 +221,31 @@ class BeamSearchProtoAndCheckerMaker
   }
 };
 
-class BeamSearchInferShape : public framework::InferShapeBase {
+class BeamSearchOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {
     for (const std::string &arg :
          std::vector<std::string>({"pre_ids", "ids", "scores"})) {
-      PADDLE_ENFORCE(context->HasInput(arg),
-                     "BeamSearch need input argument '%s'", arg);
+      PADDLE_ENFORCE(ctx->HasInput(arg), "BeamSearch need input argument '%s'",
+                     arg);
     }
     for (const std::string &arg :
          std::vector<std::string>({"selected_ids", "selected_scores"})) {
-      PADDLE_ENFORCE(context->HasOutput(arg),
+      PADDLE_ENFORCE(ctx->HasOutput(arg),
                      "BeamSearch need output argument '%s'", arg);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>("pre_ids")->type()),
+        platform::CPUPlace());
+    return kt;
   }
 };
 
@@ -254,8 +265,13 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(beam_search, paddle::operators::BeamSearchOp,
-                  paddle::operators::BeamSearchProtoAndCheckerMaker,
-                  paddle::operators::BeamSearchInferShape,
-                  paddle::operators::BeamSearchInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(beam_search, ops::BeamSearchOp, ops::BeamSearchOpMaker,
+                  ops::BeamSearchInferVarType);
+REGISTER_OP_CPU_KERNEL(
+    beam_search,
+    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

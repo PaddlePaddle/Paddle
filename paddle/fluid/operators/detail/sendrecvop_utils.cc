@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -39,10 +40,19 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // parallelism execution, need to know when to free the tensor.
   DestroyCallback destroy_callback = [](void* backing) {};
 
-  void* buf = malloc(1024);
+  auto buffer = std::unique_ptr<char[]>(new char[1024]);
+  void* buf = buffer.get();
+
   void* payload = nullptr;
   size_t payload_size;
   ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
+  // Note: normally the profiler is enabled in 1 trainer, hence only
+  // 1 trainer returns true for ShouldSendProfileState(). It tells PS
+  // servers the trainer's profiling state so that PS can follow the
+  // trainer.
+  if (platform::ShouldSendProfileState()) {
+    e.WriteBool(VarMsg::kProfileFieldNumber, platform::IsProfileEnabled());
+  }
   e.WriteString(VarMsg::kVarnameFieldNumber, name);
   if (var->IsType<framework::LoDTensor>()) {
     e.WriteUint64(VarMsg::kTypeFieldNumber, 0);

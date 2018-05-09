@@ -41,6 +41,8 @@ class SendOp : public framework::OperatorBase {
     std::vector<std::string> endpoints =
         Attr<std::vector<std::string>>("endpoints");
 
+    bool sync_mode = Attr<bool>("sync_mode");
+
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
@@ -64,11 +66,13 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(rpc_client->Wait());
 
-    for (auto& ep : endpoints) {
-      VLOG(3) << "batch barrier, ep: " << ep;
-      rpc_client->AsyncSendBatchBarrier(ep);
+    if (sync_mode) {
+      for (auto& ep : endpoints) {
+        VLOG(3) << "batch barrier, ep: " << ep;
+        rpc_client->AsyncSendBatchBarrier(ep);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
 
     if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
@@ -112,6 +116,7 @@ This operator will send tensor to recv_op at the parameter server.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 

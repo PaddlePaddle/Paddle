@@ -41,22 +41,24 @@ struct IOUSimilarityFunctor {
   IOUSimilarityFunctor(const T* x, const T* y, T* z, int cols)
       : x_(x), y_(y), z_(z), cols_(static_cast<size_t>(cols)) {}
 
-  inline HOSTDEVICE void operator()(size_t row_id) const {
+  inline HOSTDEVICE void operator()(size_t tid) const {
+    size_t row_id = tid / cols_;
+    size_t col_id = tid % cols_;
+
     T x_min1 = x_[row_id * 4];
     T y_min1 = x_[row_id * 4 + 1];
     T x_max1 = x_[row_id * 4 + 2];
     T y_max1 = x_[row_id * 4 + 3];
-    for (size_t i = 0; i < cols_; ++i) {
-      T x_min2 = y_[i * 4];
-      T y_min2 = y_[i * 4 + 1];
-      T x_max2 = y_[i * 4 + 2];
-      T y_max2 = y_[i * 4 + 3];
 
-      T sim = IOUSimilarity(x_min1, y_min1, x_max1, y_max1, x_min2, y_min2,
-                            x_max2, y_max2);
+    T x_min2 = y_[col_id * 4];
+    T y_min2 = y_[col_id * 4 + 1];
+    T x_max2 = y_[col_id * 4 + 2];
+    T y_max2 = y_[col_id * 4 + 3];
 
-      z_[row_id * cols_ + i] = sim;
-    }
+    T sim = IOUSimilarity(x_min1, y_min1, x_max1, y_max1, x_min2, y_min2,
+                          x_max2, y_max2);
+
+    z_[row_id * cols_ + col_id] = sim;
   }
   const T* x_;
   const T* y_;
@@ -81,7 +83,7 @@ class IOUSimilarityKernel : public framework::OpKernel<T> {
                                     out->mutable_data<T>(ctx.GetPlace()), y_n);
 
     platform::ForRange<DeviceContext> for_range(
-        static_cast<const DeviceContext&>(ctx.device_context()), x_n);
+        static_cast<const DeviceContext&>(ctx.device_context()), x_n * y_n);
     for_range(functor);
   }
 };  // namespace operators

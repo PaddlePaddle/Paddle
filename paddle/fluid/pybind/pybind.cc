@@ -502,11 +502,11 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &bcast_vars,
               const ProgramDesc &main_program, const std::string &loss_var_name,
               Scope *scope, std::vector<Scope *> &local_scopes,
-              bool allow_op_delay) {
-             new (&self)
-                 ParallelExecutor(num_threads, use_event, places, params,
-                                  bcast_vars, main_program, loss_var_name,
-                                  scope, local_scopes, allow_op_delay);
+              bool allow_op_delay, bool use_default_grad_scale) {
+             new (&self) ParallelExecutor(
+                 num_threads, use_event, places, params, bcast_vars,
+                 main_program, loss_var_name, scope, local_scopes,
+                 allow_op_delay, use_default_grad_scale);
            })
       .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
