@@ -44,6 +44,8 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
   const platform::NCCLContextMap &nccl_ctxs_;
+
+  void WaitInputVarGenerated();
 };
 
 }  // namespace details

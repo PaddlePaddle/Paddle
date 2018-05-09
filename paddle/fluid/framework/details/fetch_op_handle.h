@@ -47,6 +47,8 @@ struct FetchOpHandle : public OpHandleBase {
   size_t offset_;
   std::vector<Scope *> *local_scopes_;
   std::vector<LoDTensor> tensors_;
+
+  void WaitInputVarGenerated(const platform::DeviceContext *cpu_ctx) const;
 };
 
 }  // namespace details

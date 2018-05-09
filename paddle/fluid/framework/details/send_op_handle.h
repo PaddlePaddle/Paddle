@@ -44,6 +44,8 @@ struct SendOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   const Scope* local_scope_;
   const platform::Place& place_;
+
+  void WaitInputVarGenerated() const;
 };
 
 }  // namespace details

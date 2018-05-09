@@ -40,6 +40,8 @@ struct ComputationOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
   platform::Place place_;
+
+  void WaitInputVarGenerated(const platform::DeviceContext *cur_ctx) const;
 };
 }  // namespace details
 }  // namespace framework

@@ -26,7 +26,15 @@ ComputationOpHandle::ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
       place_(place) {}
 
 void ComputationOpHandle::RunImpl() {
-  auto *cur_ctx = dev_ctxes_[place_];
+  WaitInputVarGenerated(dev_ctxes_[place_]);
+
+  this->RunAndRecordEvent([this] {
+    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
+  });
+}
+
+void ComputationOpHandle::WaitInputVarGenerated(
+    const platform::DeviceContext *cur_ctx) const {
   for (auto *in : inputs_) {
     bool need_wait = in->generated_op_ &&
                      in->generated_op_->DeviceContext(place_) != cur_ctx;
@@ -34,10 +42,6 @@ void ComputationOpHandle::RunImpl() {
       in->generated_op_->Wait(cur_ctx);
     }
   }
-
-  this->RunAndRecordEvent([this] {
-    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
-  });
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }

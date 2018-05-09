@@ -47,12 +47,8 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 void FetchOpHandle::RunImpl() {
   auto cpu_ctx =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-  for (auto *input : inputs_) {
-    auto *var = static_cast<VarHandle *>(input);
-    if (var->generated_op_) {
-      var->generated_op_->Wait(cpu_ctx);
-    }
-  }
+  WaitInputVarGenerated(cpu_ctx);
+
   tensors_.resize(inputs_.size());
   auto *var_handle = static_cast<VarHandle *>(inputs_[0]);
   auto &var_name = var_handle->name_;
@@ -77,6 +73,15 @@ void FetchOpHandle::RunImpl() {
   }
 
   this->WaitAndMergeCPUTensors();
+}
+
+void FetchOpHandle::WaitInputVarGenerated(
+    const platform::DeviceContext *cpu_ctx) const {
+  for (auto *input : inputs_) {
+    if (input->generated_op_) {
+      input->generated_op_->Wait(cpu_ctx);
+    }
+  }
 }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
