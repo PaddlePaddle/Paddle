@@ -17,7 +17,7 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.transpiler.common import delete_ops
+from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import numpy
 
 
