@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+
 #include <sys/time.h>
 #include <time.h>
 #include <algorithm>
 #include <iomanip>
+#include <limits>
 #include <map>
 #include <mutex>  // NOLINT
+#include <random>
 #include <string>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -32,6 +35,9 @@ namespace paddle {
 namespace platform {
 
 struct EventList;
+
+static int64_t profiler_lister_id = 0;
+static bool should_send_profile_state = false;
 
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
@@ -219,13 +225,12 @@ void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enbale profling, since the input state is ",
                  "ProfilerState::kDisabled");
-  PADDLE_ENFORCE(g_state == ProfilerState::kDisabled,
-                 "The profiling state should be disabled when calling ",
-                 "EnableProfiler.");
-  g_state = state;
-  if (g_state == ProfilerState::kAll) {
-    GetDeviceTracer()->Enable();
+  if (state == g_state) {
+    return;
   }
+  g_state = state;
+  should_send_profile_state = true;
+  GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
     // Generate some dummy events first to reduce the startup overhead.
@@ -435,8 +440,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path) {
-  PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
-                 "Can't disable profiling, since it's not starting.");
+  if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_", nullptr);
 
@@ -444,12 +448,25 @@ void DisableProfiler(EventSortingKey sorted_key,
   ParseEvents(all_events, sorted_key);
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
-  if (g_state == ProfilerState::kAll && tracer && tracer->IsEnabled()) {
+  if (tracer->IsEnabled()) {
     tracer->Disable();
     tracer->GenProfile(profile_path);
   }
   g_state = ProfilerState::kDisabled;
+  should_send_profile_state = true;
 }
+
+bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
+bool ShouldSendProfileState() { return should_send_profile_state; }
+
+void SetProfileListener() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist6(
+      1, std::numeric_limits<std::mt19937::result_type>::max());
+  profiler_lister_id = dist6(rng);
+}
+int64_t ListenerId() { return profiler_lister_id; }
 
 }  // namespace platform
 }  // namespace paddle
