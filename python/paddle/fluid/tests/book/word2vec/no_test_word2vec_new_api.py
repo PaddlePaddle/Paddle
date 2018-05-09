@@ -76,12 +76,12 @@ def inference_program(is_sparse):
                               size=HIDDEN_SIZE,
                               act='sigmoid')
     predict_word = fluid.layers.fc(input=hidden1, size=dict_size, act='softmax')
-    return [predict_word]
+    return predict_word
 
 
 def train_program(is_sparse):
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
-    predict_word = inference_program(is_sparse)[0]
+    predict_word = inference_program(is_sparse)
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
     return avg_cost

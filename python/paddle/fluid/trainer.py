@@ -19,7 +19,7 @@ import executor
 import data_feeder
 import contextlib
 import io
-import transpiler
+import unique_name
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
@@ -209,21 +209,14 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
-    def save_inference_model(self, model_path, model_filename=None):
+    def save_inference_model(self, model_path):
         inference_program = framework.Program()
         with framework.program_guard(inference_program):
-            self.infer_func()
-        if not os.path.isdir(model_path):
-            os.makedirs(model_path)
-        if model_filename is not None:
-            model_filename = os.path.basename(model_filename)
-        else:
-            model_filename = "__model__"
-        model_filename = os.path.join(model_path, model_filename)
-
-        with open(model_filename, "wb") as f:
-            f.write(inference_program.desc.serialize_to_string())
-        self.save_params(model_path)
+            with unique_name.guard():
+                predict_var = self.infer_func()
+        predict_var = self.train_program.block(0).var(predict_var.name)
+        exe = executor.Executor(self.place)
+        io.save_inference_model(model_path, [], [predict_var], exe)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
