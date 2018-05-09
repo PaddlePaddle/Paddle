@@ -65,8 +65,9 @@ def train_network(word_dict):
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy
+    # accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    # return avg_cost, accuracy
+    return avg_cost
 
 
 def train(use_cuda, save_path):
@@ -84,12 +85,12 @@ def train(use_cuda, save_path):
         paddle.dataset.imdb.test(word_dict), batch_size=BATCH_SIZE)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
+        if isinstance(event, fluid.EndEpochEvent):
+            if (event.epoch % 10) == 0:
                 avg_cost, accuracy = trainer.test(reader=test_data)
 
                 print('BatchID {1:04}, Loss {2:2.2}, Acc {3:2.2}'.format(
-                    event.batch_id + 1, avg_cost, accuracy))
+                    event.epoch + 1, avg_cost, accuracy))
 
                 if accuracy > 0.01:  # Low threshold for speeding up CI
                     trainer.params.save(save_path)
