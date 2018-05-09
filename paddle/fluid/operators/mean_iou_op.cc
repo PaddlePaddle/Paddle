@@ -21,12 +21,11 @@ template <typename T>
 struct GenConfusionMatrix<paddle::platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const int64_t num_classes, const int64_t count,
-                  const T* predictions, const T* labels, const float* in_cm,
-                  float* out_cm) {
+                  const T* predictions, const T* labels, float* out_cm) {
     int index;
     for (int i = 0; i < count; ++i) {
       index = predictions[i] * num_classes + labels[i];
-      out_cm[index] = in_cm[index] + 1.0f;
+      out_cm[index] += 1.0f;
     }
   }
 };
@@ -65,9 +64,6 @@ class MeanIoUOp : public framework::OperatorWithKernel {
                    "Input (predictions) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("labels"),
                    "Input (labels) of accuracy op should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("in_confusion_matrix"),
-        "Input (in_confusion_matrix) of AccuracyOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("mean_iou"),
                    "Output (mean_iou) of AccuracyOp should not be null.");
     PADDLE_ENFORCE(
@@ -77,19 +73,8 @@ class MeanIoUOp : public framework::OperatorWithKernel {
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
 
-    auto pred_dim = ctx->GetInputDim("predictions");
-    auto labels_dim = ctx->GetInputDim("labels");
-    auto in_cm_dims = ctx->GetInputDim("in_confusion_matrix");
-
-    PADDLE_ENFORCE_EQ(
-        in_cm_dims[0], in_cm_dims[1],
-        "dims[0] should be equal to dims[1] in in_confusion_matrix.");
-    PADDLE_ENFORCE_EQ(
-        in_cm_dims[0], num_classes,
-        "dims[0] of in_confusion_matrix should be equal to num_classes.");
-
     ctx->SetOutputDim("mean_iou", {1});
-    ctx->SetOutputDim("out_confusion_matrix", in_cm_dims);
+    ctx->SetOutputDim("out_confusion_matrix", {num_classes, num_classes});
   }
 
  protected:
@@ -105,15 +90,36 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MeanIoUOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("predictions", "");
-    AddInput("labels", "");
-    AddInput("in_confusion_matrix", "");
-    AddOutput("mean_iou", "");
-    AddOutput("out_confusion_matrix", "");
-    AddAttr<int>("num_classes", "");
+    AddInput("predictions",
+             "A Tensor of prediction results for semantic labels"
+             " with type int32 or int64.");
+    AddInput("labels",
+             "A Tensor of ground truth labels with type int32 or int64."
+             "Its shape should be the same as Input(predictions).");
+    AddInput("in_confusion_matrix",
+             "A list of Tensor with shape "
+             "[num_classes, num_classes]. They are used to collect confusion"
+             "matrix values among batches. Empty list is also valid here.")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput("in_mean_iou",
+             "A list of Tensor that Output(mean_iou) should "
+             "be added to. Empty list is also valid here.")
+        .AsDuplicable()
+        .AsDispensable();
+    AddOutput("mean_iou",
+              "A Tensor representing the"
+              " mean intersection-over-union.");
+    AddOutput(
+        "out_confusion_matrix",
+        "A Tensor with shape "
+        "[num_classes, num_classes]. Input(in_confusion_matrix) will be"
+        " updated by current batch data and output as out_confusion_matrix.");
+    AddAttr<int>("num_classes", "The possible number of labels.");
 
     AddComment(R"DOC(
-Accuracy Operator.
+mean-IOU Operator.
+Mean Intersection-Over-Union is a common evaluation metric for semantic image segmentation, which first computes the IOU for each semantic class and then computes the average over classes. IOU is defined as follows: IOU = true_positive / (true_positive + false_positive + false_negative). The predictions are accumulated in a confusion matrix and mean-IOU is then calculated from it.
 
 )DOC");
   }

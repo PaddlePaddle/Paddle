@@ -22,13 +22,12 @@ template <typename T>
 struct GenConfusionMatrix<paddle::platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const int64_t num_classes, const int64_t count,
-                  const T* predictions, const T* labels, const float* in_cm,
-                  float* out_cm) {
+                  const T* predictions, const T* labels, float* out_cm) {
     int block = 512;
     int grid = (count + block - 1) / block;
     MeanIoUCudaKernel<
         T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        num_classes, count, predictions, labels, in_cm, out_cm);
+        num_classes, count, predictions, labels, out_cm);
   }
 };
 
@@ -63,11 +62,10 @@ struct Diagonal<paddle::platform::CUDADeviceContext, T> {
 template <typename T>
 __global__ void MeanIoUCudaKernel(const int64_t num_classes,
                                   const int64_t count, const T* predictions,
-                                  const T* labels, const float* in_cm,
-                                  float* out_cm) {
+                                  const T* labels, float* out_cm) {
   CUDA_1D_KERNEL_LOOP(i, count) {
     int64_t index = predictions[i] * num_classes + labels[i];
-    out_cm[index] = in_cm[index] + 1.0f;
+    out_cm[index] += 1.0f;
   }
 }
 

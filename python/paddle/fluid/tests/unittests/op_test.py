@@ -330,8 +330,6 @@ class OpTest(unittest.TestCase):
                 actual_t = np.array(actual)
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
-                print "actual_t: %s" % actual_t
-                print "expect_t: %s" % expect_t
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol),
