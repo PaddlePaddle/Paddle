@@ -123,10 +123,13 @@ class ReshapeKernel : public framework::OpKernel<T> {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
 
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
+
     framework::DDim out_dims = out->dims();
 
-    if (ctx.HasInput("Shape")) {
-      auto *shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+    if (shape_tensor) {
       auto *shape_data = shape_tensor->data<int>();
       framework::Tensor cpu_shape_tensor;
       if (platform::is_gpu_place(ctx.GetPlace())) {
