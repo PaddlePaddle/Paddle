@@ -88,6 +88,9 @@ is listed below. These libs must be mounted into the docker container.
 
 Setting NCCL environment variables to turn NCCL switches on and off:
 
+
+| Env Name | Description |
+| --- | --- |
 | NCCL_SOCKET_IFNAME | The RDMA device, e.g. eth2 |
 | NCCL_P2P_DISABLE | Set to 1 to disable P2P transfer between GPUs |
 | NCCL_IB_DISABLE | Set to 1 to disable using RDMA |
