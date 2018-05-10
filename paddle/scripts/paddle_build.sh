@@ -299,7 +299,14 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
+        set +e
         ctest --output-on-failure
+        if [ $? != 0 ]; then
+            set -e
+            ctest --output-on-failure --rerun-failed
+            set +e
+        fi
+        set -e
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
@@ -467,6 +474,7 @@ EOF
 }
 
 function main() {
+    set -e
     local CMD=$1
     init
     case $CMD in
