@@ -60,8 +60,6 @@ struct ReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
-  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
-
   template <typename T>
   std::vector<const T *> GetInputValues(
       const std::vector<VarHandle *> &in_var_handles,
