@@ -18,13 +18,13 @@ import unittest
 import numpy as np
 
 
-class BeamSearchOpTester(unittest.TestCase):
+class HasDataOpTester(unittest.TestCase):
     def setUp(self):
         self.scope = core.Scope()
         self.scope.var('X')
         self.scope.var('Out')
         self.place = core.CUDAPlace(0)
-        x_data = np.array([])
+        x_data = np.array([1])
         x_tensor = self.scope.var('X').get_tensor()
         x_tensor.set(x_data, self.place)
         out_tensor = self.scope.var('Out').get_tensor()
@@ -34,6 +34,18 @@ class BeamSearchOpTester(unittest.TestCase):
         op.run(self.scope, self.place)
         out_tensor = self.scope.find_var('Out').get_tensor()
         print 'output: ', np.array(out_tensor)
+
+
+class HasDataOpFalseTester(HasDataOpTester):
+    def setUp(self):
+        self.scope = core.Scope()
+        self.scope.var('X')
+        self.scope.var('Out')
+        self.place = core.CUDAPlace(0)
+        x_data = np.array([])
+        x_tensor = self.scope.var('X').get_tensor()
+        x_tensor.set(x_data, self.place)
+        out_tensor = self.scope.var('Out').get_tensor()
 
 
 if __name__ == '__main__':

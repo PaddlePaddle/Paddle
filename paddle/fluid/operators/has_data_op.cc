@@ -16,8 +16,6 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
-#include <iostream>
-
 namespace paddle {
 namespace operators {
 
@@ -47,9 +45,7 @@ class HasDataOp : public framework::OperatorWithKernel {
                      "Input(X) of HasDataOp should not be null.");
       PADDLE_ENFORCE(ctx->HasOutput("Out"),
                      "Output(Out) of HasDataOp should not be null.");
-      std::cout << "Before set\n";
       ctx->SetOutputDim("Out", {1});
-      std::cout << "After set\n";
       ctx->ShareLoD("X", "Out");
     }
 
