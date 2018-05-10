@@ -98,7 +98,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
 
   float x_v[2] = {1.0, 2.0};
   engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           2 * sizeof(float));
+  2 * sizeof(float));
   engine_->Execute(1);
 
   LOG(INFO) << "to get output";
