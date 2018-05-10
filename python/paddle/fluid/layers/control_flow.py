@@ -49,6 +49,7 @@ __all__ = [
     'reorder_lod_tensor_by_rank',
     'ParallelDo',
     'Print',
+    'has_data',
 ]
 
 
@@ -1562,3 +1563,33 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                 'RankTable': [rank_table]},
         outputs={'Out': [out]})
     return out
+
+
+def has_data(x, cond=None, **ignored):
+    """
+    **Less than**
+
+    This layer returns the truth value of whether the variable contains data.
+
+    Args:
+        x(Variable): Operand of *has_data*
+        cond(Variable|None): Optional output variable to store the result of *has_data*
+
+    Returns:
+        Variable: The tensor variable storing the output of *has_data*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.has_data(x=label)
+    """
+    helper = LayerHelper("has_data", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='has_data',
+        inputs={'X': [x]},
+        outputs={'Out': [cond]})
+    return cond
