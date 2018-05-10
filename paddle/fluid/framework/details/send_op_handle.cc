@@ -26,8 +26,17 @@ SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
       place_(place) {}
 
 void SendOpHandle::RunImpl() {
+  // TODO(wuyi): need further analysis whether wait VarDummyHandle.
   // Wait input done
-  WaitInputVarGenerated(place_);
+  for (auto *in : inputs_) {
+    auto &p = static_cast<VarHandle *>(in)->place_;
+    if (in->DebugString() == "dummy") {  // HACK
+      continue;
+    }
+    if (in->generated_op_) {
+      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[p]);
+    }
+  }
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
   // FIXME(wuyi): can not use RunAndRecordEvent here, for it will cause dead
   // lock.
