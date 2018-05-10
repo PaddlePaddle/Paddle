@@ -6,6 +6,17 @@ achieve best performace.
 
 ## Prepare Hardwares with RDMA and Multiple GPUs
 
+I'm using two Linux servers each of them is installed with 8 GPUs and
+one 100Gb RDMA card.
+Base environment is:
+
+* OS: CentOS 7.4
+* RDMA device: "Mellanox Technologies MT27700 Family [ConnectX-4]"
+* Kernel version: `4.4.88-1.el7.elrepo.x86_64`
+* Docker version: `1.12.6`
+* Docker storage driver: `overlay2`
+* IP addresses: 192.168.16.30,192.168.16.34
+
 In general, the steps including:
 
 1. Install GPU drivers
@@ -49,13 +60,13 @@ network device.***
    package in it.
 1. Start a docker container and mount GPU driver libs into it (you can
    skip this step if you are using nvidia-docker).
-1. Mount RDMA dirvers and libs into the docker image, also `udaddy` and
-   `ib_write_bw` if needed.
+1. Mount RDMA dirvers and libs into the docker image (see below section),
+   also `udaddy` and `ib_write_bw` if needed.
 1. Mount GPU devices and RDMA devices into the container using `--device`
    or just use privileged mode `--privileged`.
 1. Start the container using host network mode: `--net=host`
 
-### RDMA Library Files Needed to mount
+### RDMA Library Files Needed
 
 Usually, `MLNX_OFED` install latest supported libs under
 `/usr/lib64/mlnx_ofed/valgrind`. Other libs also needed to run RDMA programs
