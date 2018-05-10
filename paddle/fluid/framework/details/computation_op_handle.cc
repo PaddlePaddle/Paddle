@@ -35,7 +35,7 @@ void ComputationOpHandle::RunImpl() {
 
 bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
   bool need_wait =
-      dynamic_cast<VarHandle *>(in_var) && in_var->generated_op_ &&
+      in_var && in_var->generated_op_ &&
       in_var->generated_op_->DeviceContext(place_) != dev_ctxes_[place_];
   return need_wait;
 }

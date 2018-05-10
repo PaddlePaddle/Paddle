@@ -105,7 +105,7 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
 }
 
 bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
-  return dynamic_cast<VarHandle *>(in_var) && in_var->generated_op_;
+  return in_var && in_var->generated_op_;
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
