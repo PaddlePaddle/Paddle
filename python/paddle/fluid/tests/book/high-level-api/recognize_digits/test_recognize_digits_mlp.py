@@ -40,8 +40,9 @@ def train_program():
     predict = inference_program()
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
-    acc = fluid.layers.accuracy(input=predict, label=label)
-    return avg_cost, acc
+    # acc = fluid.layers.accuracy(input=predict, label=label)
+    # return avg_cost, acc
+    return avg_cost
 
 
 def train(use_cuda, save_dirname):
@@ -52,30 +53,30 @@ def train(use_cuda, save_dirname):
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
-            if (event.epoch + 1) % 10 == 0:
-                trainer.save_params(save_dirname)
+            # if (event.epoch + 1) % 10 == 0:
+            trainer.save_params(save_dirname)
 
-                # TODO: Uncomment this part once we are sure that .train is working
-                # test_reader = paddle.batch(
-                #     paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
-                # test_metrics = trainer.test(reader=test_reader)
-                # avg_cost_set = test_metrics[0]
-                # acc_set = test_metrics[1]
-                #
-                # # get test acc and loss
-                # acc = numpy.array(acc_set).mean()
-                # avg_cost = numpy.array(avg_cost_set).mean()
-                #
-                # print("avg_cost: %s" % avg_cost)
-                # print("acc     : %s" % acc)
-                #
-                # if float(acc) > 0.2:  # Smaller value to increase CI speed
-                #     trainer.save_params(save_dirname)
-                # else:
-                #     print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
-                #         event.epoch + 1, float(avg_cost), float(acc)))
-                #     if math.isnan(float(avg_cost)):
-                #         sys.exit("got NaN loss, training failed.")
+            # TODO: Uncomment this part once we are sure that .train is working
+            # test_reader = paddle.batch(
+            #     paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
+            # test_metrics = trainer.test(reader=test_reader)
+            # avg_cost_set = test_metrics[0]
+            # acc_set = test_metrics[1]
+            #
+            # # get test acc and loss
+            # acc = numpy.array(acc_set).mean()
+            # avg_cost = numpy.array(avg_cost_set).mean()
+            #
+            # print("avg_cost: %s" % avg_cost)
+            # print("acc     : %s" % acc)
+            #
+            # if float(acc) > 0.2:  # Smaller value to increase CI speed
+            #     trainer.save_params(save_dirname)
+            # else:
+            #     print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
+            #         event.epoch + 1, float(avg_cost), float(acc)))
+            #     if math.isnan(float(avg_cost)):
+            #         sys.exit("got NaN loss, training failed.")
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -83,7 +84,7 @@ def train(use_cuda, save_dirname):
         batch_size=BATCH_SIZE)
 
     trainer.train(
-        num_epochs=100,
+        num_epochs=1,
         event_handler=event_handler,
         reader=train_reader,
         feed_order=['img', 'label'])
@@ -113,5 +114,5 @@ def main(use_cuda):
 
 
 if __name__ == '__main__':
-    for use_cuda in (False, True):
-        main(use_cuda=use_cuda)
+    # for use_cuda in (False, True):
+    main(use_cuda=False)
