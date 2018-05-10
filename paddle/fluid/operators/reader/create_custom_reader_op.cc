@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -77,29 +78,101 @@ class CreateCustomReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  PADDLE_ENFORCE_EQ(
-      source_var_names_.size(), out->size(),
-      "The size of source_var_names(%d) not equals to the size of 'out'(%d). "
-      "Each element of 'out' must have its own source var in the CustomReader.",
-      source_var_names_.size(), out->size());
-  PADDLE_ENFORCE_EQ(
-      sink_var_names_.size(), out->size(),
-      "The size of sink_var_names(%d) not equals to the size of 'out'(%d). "
-      "Each element of 'out' must have its own sink var in the CustomReader.",
-      sink_var_names_.size(), out->size());
+class CustomReaderInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(!ctx->IsRuntime(),
+                   "'CustomReaderInferShape' should only be invoked during "
+                   "compile time.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "The output decorated reader should not be null.");
+    const auto sink_var_names =
+        ctx->Attrs().Get<std::vector<std::string>>("sink_var_names");
+    std::vector<std::vector<int64_t>> res_dims;
+    std::vector<int32_t> res_lod_levels;
+    for (const std::string& var_name : sink_var_names) {
+      auto* sink_var =
+          boost::get<framework::VarDesc*>(ctx->GetVarPtr(var_name));
+      PADDLE_ENFORCE_NOT_NULL(sink_var);
+      res_dims.emplace_back(sink_var->GetShape());
+      res_lod_levels.push_back(sink_var->GetLoDLevel());
+    }
+    auto* out_reader =
+        boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+    out_reader->SetShapes(res_dims);
+    out_reader->SetLoDLevels(res_lod_levels);
+  }
+};
 
+class CustomReaderInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    framework::VarDesc* out_reader = block->FindVar(op_desc.Output("Out")[0]);
+    PADDLE_ENFORCE_NOT_NULL(out_reader);
+    out_reader->SetType(framework::proto::VarType::READER);
+
+    auto sink_var_names =
+        boost::get<std::vector<std::string>>(op_desc.GetAttr("sink_var_names"));
+    std::vector<framework::proto::VarType::Type> res_data_types;
+    for (const std::string& var_name : sink_var_names) {
+      framework::VarDesc* var = block->FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(var);
+      res_data_types.emplace_back(var->GetDataType());
+    }
+    out_reader->SetDataTypes(res_data_types);
+  }
+};
+
+void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+  out->clear();
+  std::vector<framework::LoDTensor> underlying_outs;
+  reader_->ReadNext(&underlying_outs);
+  if (underlying_outs.empty()) {
+    // There is not next data.
+    return;
+  }
+  PADDLE_ENFORCE(
+      source_var_names_.size() == underlying_outs.size() &&
+          sink_var_names_.size() == underlying_outs.size(),
+      "The size of source_var_names(%d), the size of sink_var_names(%d) and "
+      "the size of underlying_outs(%d) are not consistent. Each feeding "
+      "element must have its own source and sink variable.",
+      source_var_names_.size(), sink_var_names_.size(), underlying_outs.size());
+  // 1. Copy LoDTensors from underlying reader's output to source variables.
   for (size_t i = 0; i < source_var_names_.size(); ++i) {
-    const std::string& var_name = source_var_names_[i];
-    framework::Variable* var = scope_.FindVar(var_name);
+    framework::Variable* var = scope_.FindVar(source_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var, "CustomReader's source variable '%s' doesn't exist.");
-    framework::LoDTensor* tensor = var->GetMutable<framework::loDtensor>();
+    framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+    tensor->ShareDataWith(underlying_outs[i]);
+    tensor->set_lod(underlying_outs[i].lod());
   }
-  // TODO(fengjiayi): 将vector中的数据拷贝到sorce_var和sink_var中
+  // 2. Run the sub-block.
   framework::Executor executor(dev_place_);
+  framework::ProgramDesc* program = sub_block_.Program();
+  framework::Scope* exe_scope = &scope_.NewScope();
+  executor.Run(*program, exe_scope, sub_block_.ID(),
+               false /*create_local_scope*/, true);
+  scope_.DeleteScope(exe_scope);
+  // 3. Copy LoDTensors from sink variables to out.
+  out->resize(sink_var_names_.size());
+  for (size_t i = 0; i < sink_var_names_.size(); ++i) {
+    framework::Variable* var = scope_.FindVar(sink_var_names_[i]);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            "CustomReader's sink variable '%s' doesn't exist.");
+    const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
+    (*out)[i].ShareDataWith(tensor);
+    (*out)[i].set_lod(tensor.lod());
+  }
 }
 
 }  // namespace reader
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators::reader;
+REGISTER_OPERATOR(create_custom_reader, ops::CreateCustomReaderOp,
+                  ops::CreateCustomReaderOpMaker, ops::CustomReaderInferShape,
+                  ops::CustomReaderInferVarType,
+                  paddle::framework::EmptyGradOpMaker)
