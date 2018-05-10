@@ -22,7 +22,7 @@ namespace framework {
 namespace details {
 Checkpoint::Save(const framework::Scope& scope, const platform::Place& place,
                  const std::string& save_dir, const std::string& var_name,
-                 const bool overwrite) {
+                 const bool& overwrite) {
   auto* var = scope.FindVar(var_name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s for save_op",
                  var_name);
