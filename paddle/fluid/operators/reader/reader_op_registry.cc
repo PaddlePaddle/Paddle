@@ -117,6 +117,7 @@ void DecoratedReaderInferShape::operator()(
       boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
   out_reader->SetLoDLevels(in_reader->GetLoDLevels());
 }
+
 void DecoratedReaderInferVarType::operator()(
     const framework::OpDesc& op_desc, framework::BlockDesc* block) const {
   std::string in_reader_name = op_desc.Input("UnderlyingReader")[0];
