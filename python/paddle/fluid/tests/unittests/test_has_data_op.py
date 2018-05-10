@@ -23,7 +23,7 @@ class HasDataOpTester(unittest.TestCase):
         self.scope = core.Scope()
         self.scope.var('X')
         self.scope.var('Out')
-        self.place = core.CUDAPlace(0)
+        self.place = core.CPUPlace()
         x_data = np.array([1])
         x_tensor = self.scope.var('X').get_tensor()
         x_tensor.set(x_data, self.place)
@@ -36,7 +36,7 @@ class HasDataOpTester(unittest.TestCase):
         print 'output: ', np.array(out_tensor)
 
 
-class HasDataOpFalseTester(HasDataOpTester):
+class HasDataOpGPUTester(HasDataOpTester):
     def setUp(self):
         self.scope = core.Scope()
         self.scope.var('X')
