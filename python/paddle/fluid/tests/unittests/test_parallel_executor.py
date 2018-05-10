@@ -748,7 +748,9 @@ class TestFetchOp(unittest.TestCase):
             data = fluid.layers.data(
                 name='image', shape=[3, 224, 224], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            out = lenet(data, class_dim=102)
+
+            out = Lenet(data, class_dim=102)
+
             loss = fluid.layers.cross_entropy(input=out, label=label)
             loss = fluid.layers.mean(loss)
 
