@@ -24,7 +24,7 @@ class Checkpoint {
  public:
   static void Save(const framework::Scope& scope, const platform::Place& place,
                    const std::string& save_dir, const std::string& var_name,
-                   const bool overwrite);
+                   const bool& overwrite);
 
   static void Load();
 }
