@@ -463,7 +463,7 @@ void SetProfileListener() {
   std::mt19937 rng;
   rng.seed(std::random_device()());
   std::uniform_int_distribution<std::mt19937::result_type> dist6(
-      1, std::numeric_limits<int64_t>::max());
+      1, std::numeric_limits<std::mt19937::result_type>::max());
   profiler_lister_id = dist6(rng);
 }
 int64_t ListenerId() { return profiler_lister_id; }
