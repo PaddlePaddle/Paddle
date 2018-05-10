@@ -16,7 +16,6 @@ limitations under the License. */
 #include <math.h>
 #include <type_traits>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
