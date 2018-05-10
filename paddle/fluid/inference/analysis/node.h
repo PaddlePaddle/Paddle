@@ -145,7 +145,7 @@ class Function;
 class Value : public Node {
  public:
   enum class DataType { kInt32, kInt64, kFloat32, kFloat64 };
-  using Dims = std::vector<int16>;
+  using Dims = std::vector<int>;
 
   void SetDataType(DataType data_type) { data_type_ = data_type; }
   DataType data_type() const { return data_type_; }
