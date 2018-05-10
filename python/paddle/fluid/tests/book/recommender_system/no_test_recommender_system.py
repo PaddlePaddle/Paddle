@@ -26,16 +26,6 @@ from functools import partial
 IS_SPARSE = True
 USE_GPU = False
 BATCH_SIZE = 256
-FEEDING_MAP = {
-    'user_id': 0,
-    'gender_id': 1,
-    'age_id': 2,
-    'job_id': 3,
-    'movie_id': 4,
-    'category_id': 5,
-    'movie_title': 6,
-    'score': 7
-}
 
 
 def get_usr_combined_features():
@@ -147,21 +137,7 @@ def get_mov_combined_features():
     return mov_combined_features
 
 
-def train_network():
-    usr_combined_features = get_usr_combined_features()
-    mov_combined_features = get_mov_combined_features()
-
-    inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
-    scale_infer = layers.scale(x=inference, scale=5.0)
-
-    label = layers.data(name='score', shape=[1], dtype='float32')
-    square_cost = layers.square_error_cost(input=scale_infer, label=label)
-    avg_cost = layers.mean(square_cost)
-
-    return avg_cost, scale_infer
-
-
-def inference_network():
+def inference_program():
     usr_combined_features = get_usr_combined_features()
     mov_combined_features = get_mov_combined_features()
 
@@ -169,6 +145,17 @@ def inference_network():
     scale_infer = layers.scale(x=inference, scale=5.0)
 
     return scale_infer
+
+
+def train_program():
+
+    scale_infer = inference_program()
+
+    label = layers.data(name='score', shape=[1], dtype='float32')
+    square_cost = layers.square_error_cost(input=scale_infer, label=label)
+    avg_cost = layers.mean(square_cost)
+
+    return avg_cost, scale_infer
 
 
 def func_feed(feeding, data):
@@ -220,11 +207,11 @@ def train(use_cuda, save_path):
         paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
+        if isinstance(event, fluid.EndEpochEvent):
+            if (event.epoch % 10) == 0:
                 avg_cost = trainer.test(reader=test_reader)
 
-                print('BatchID {0:04}, Loss {1:2.2}'.format(event.batch_id + 1,
+                print('BatchID {0:04}, Loss {1:2.2}'.format(event.epoch + 1,
                                                             avg_cost))
 
                 if avg_cost > 0.01:  # Low threshold for speeding up CI
@@ -233,7 +220,7 @@ def train(use_cuda, save_path):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.2)
-    trainer = fluid.Trainer(train_network, optimizer=sgd_optimizer, place=place)
+    trainer = fluid.Trainer(train_program, optimizer=sgd_optimizer, place=place)
     trainer.train(
         train_reader,
         EPOCH_NUM,
@@ -244,7 +231,7 @@ def train(use_cuda, save_path):
 def infer(use_cuda, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        inference_network, param_path=save_path, place=place)
+        inference_program, param_path=save_path, place=place)
 
     def create_lod_tensor(data, lod=None):
         tensor = fluid.LoDTensor()
