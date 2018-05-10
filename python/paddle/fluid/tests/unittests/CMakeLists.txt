@@ -14,6 +14,11 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
 endif(NOT WITH_DISTRIBUTE)
 
+list(REMOVE_ITEM TEST_OPS test_elementwise_gradient_op)
+list(REMOVE_ITEM TEST_OPS test_conv2d_op)
+list(REMOVE_ITEM TEST_OPS test_conv3d_op)
+list(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184 
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -79,7 +84,7 @@ endif(WITH_FAST_BUNDLE_TEST)
 #
 py_test_modules(test_sequence_expand MODULES test_sequence_expand)
 # tests with high overhead
-py_test_modules(test_parallel_executor MODULES test_parallel_executor)
+# py_test_modules(test_parallel_executor MODULES test_parallel_executor)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)
