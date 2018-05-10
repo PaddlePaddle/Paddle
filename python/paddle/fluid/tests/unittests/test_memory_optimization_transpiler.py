@@ -18,7 +18,7 @@ import unittest
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.transpiler.memory_optimization_transpiler import memory_optimize
+from paddle.fluid.transpiler import memory_optimize
 
 
 class TestControlFlowGraph(unittest.TestCase):
