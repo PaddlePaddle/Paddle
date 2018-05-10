@@ -32,8 +32,8 @@ class GaussianRandomBatchSizeLikeOp : public BatchSizeLikeOp {
 };
 
 class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
- public:
-  void Make() override {
+ protected:
+  void Apply() override {
     AddAttr<float>("mean",
                    "(float, default 0.0) "
                    "mean of random tensor.")

@@ -32,8 +32,8 @@ class UniformRandomBatchSizeLikeOp : public BatchSizeLikeOp {
 };
 
 class UniformRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
- public:
-  void Make() override {
+ protected:
+  void Apply() override {
     AddComment(R"DOC(
 Uniform random operator
 
