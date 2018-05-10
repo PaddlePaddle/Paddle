@@ -14,7 +14,7 @@
 
 import math
 import unittest
-from paddle.fluid.distribute_transpiler import split_dense_variable
+from paddle.fluid.transpiler.distribute_transpiler import split_dense_variable
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import random
