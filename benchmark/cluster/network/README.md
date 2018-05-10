@@ -16,6 +16,31 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 - What's the benchmark of GPU direct? Is it high cost-effective?
 
 ## Hardware Infomation
+```
+driver: mlx5_core
+version: 4.3-1.0.1
+firmware-version: 12.17.1010 (MT_2140110033)
+bus-info: 0000:82:00.0
+supports-statistics: yes
+supports-test: yes
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: yes
+```
+
+NOTE: this config will cause performancy decay:
+
+```
+driver: mlx5_core
+version: 3.0-1 (January 2015)
+firmware-version: 12.17.1010
+bus-info: 0000:82:00.0
+supports-statistics: yes
+supports-test: no
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: no
+```
 
 
 ## iperf
@@ -71,7 +96,9 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 <table>
 <thead>
 <tr>
-<th> </th>
+<th>server</th>
+<th>port</th>
+<th>client</th>
 <th>loop times</th>
 <th>4K</th>
 <th>16K</th>
@@ -88,77 +115,87 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 </thead>
 <tbody>
 <tr>
-<td>pserver(4threads):1<br>client(4threads):1</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
 <td>300</td>
-<td>17.49</td>
-<td>134.57</td>
-<td>195.92</td>
-<td>332.66</td>
-<td>601.70</td>
-<td>438.08</td>
-<td>689.00</td>
-<td>812.12</td>
-<td>1026.10</td>
-<td>1101.00</td>
-<td>318.85</td>
-</tr>
-<tr>
-<td>server(2threads):4<br>client(1threads):4</td>
-<td>512</td>
-<td>51</td>
-<td>201</td>
-<td>400</td>
-<td>731</td>
-<td>1267</td>
-<td>1924</td>
-<td>2673</td>
-<td>2622</td>
-<td>3235</td>
+<td>42.77</td>
+<td>242.27</td>
+<td>375.31</td>
+<td>422.04</td>
+<td>460.51</td>
+<td>723.10</td>
+<td>1121.15</td>
+<td>724.99</td>
+<td>1272.53</td>
 <td>--</td>
 <td>--</td>
 </tr>
 <tr>
-<td>server(2threads):4<br>client(4threads):1</td>
-<td>512</td>
-<td>72.67</td>
-<td>166.40</td>
-<td>445.62</td>
-<td>841.86</td>
-<td>1042.73</td>
-<td>1612.82</td>
-<td>2639.38</td>
-<td>2483.70</td>
-<td>2714.72</td>
-<td>--</td>
-<td>--</td>
-</tr>
-<tr>
-<td>server(4threads 4port):1<br>client(4threads):1</td>
+<td>1</td>
+<td>4</td>
+<td>1</td>
 <td>300</td>
-<td>62.07</td>
-<td>198.89</td>
-<td>301.83</td>
-<td>445.66</td>
-<td>1076.86</td>
-<td>1494.12</td>
-<td>1516.65</td>
-<td>2626.78</td>
-<td>1820.18</td>
+<td>64.96</td>
+<td>327.71</td>
+<td>689.90</td>
+<td>1374.64</td>
+<td>2162.38</td>
+<td>1585.05</td>
+<td>3299.54</td>
+<td>2413.42</td>
+<td>3053.73</td>
 <td>--</td>
 <td>--</td>
 </tr>
 <tr>
-<td>server(4threads 2port):1<br>client(4threads):1</td>
-<td>512</td>
-<td>20.49</td>
-<td>94.40</td>
-<td>257.80</td>
-<td>628.95</td>
-<td>684.16</td>
-<td>1096.59</td>
-<td>1568.67</td>
-<td>1497.70</td>
-<td>1638.02</td>
+<td>1</td>
+<td>2</td>
+<td>1</td>
+<td>300</td>
+<td>66.30</td>
+<td>328.59</td>
+<td>388.92</td>
+<td>486.26</td>
+<td>1510.74</td>
+<td>1527.20</td>
+<td>1807.75</td>
+<td>1986.17</td>
+<td>1793.20</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1</td>
+<td>1</td>
+<td>300</td>
+<td>57.35</td>
+<td>419.05</td>
+<td>829.98</td>
+<td>1640.64</td>
+<td>1842.19</td>
+<td>2322.42</td>
+<td>2505.90</td>
+<td>2747.26</td>
+<td>2826.74</td>
+<td>--</td>
+<td>--</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1</td>
+<td>4</td>
+<td>300</td>
+<td>167</td>
+<td>625</td>
+<td>1136</td>
+<td>1923</td>
+<td>2586</td>
+<td>3296</td>
+<td>3614</td>
+<td>3973</td>
+<td>3864</td>
 <td>--</td>
 <td>--</td>
 </tr>
