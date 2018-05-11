@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/sequence_padding.h"
 
 namespace paddle {
 namespace operators {
@@ -23,39 +24,68 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
-// @TODO clean code
+template <typename DeviceContext, typename T>
+struct CopyFunctor {
+  LoDTensor* lod_tensor_;
+  LoDTensor* pad_tensor_;
+  const LoD& ref_lod_;
+  const DeviceContext& ctx_;
+  bool is_lod_to_pad_;
+
+  CopyFunctor(LoDTensor* lod_tensor, const LoD& ref_lod, LoDTensor* pad_tensor,
+              const DeviceContext& ctx, bool is_lod_to_pad)
+      : lod_tensor_(lod_tensor),
+        pad_tensor_(pad_tensor),
+        ref_lod_(ref_lod),
+        ctx_(ctx),
+        is_lod_to_pad_(is_lod_to_pad) {}
+
+  void operator()() const {
+    /*
+    auto seq_num = ref_lod_.size() - 1;
+    auto max_len = pad_tensor_->dims()[0] / seq_num;
+
+    PADDLE_ENFORCE_EQ(max_len * seq_num, pad_tensor_->dims()[0],
+                      "First dimension of padded tensor should be equal to "
+                      "maximum sequence length mulplied by sequence number.");
+
+    for (size_t i = 1; i < ref_lod_.size(); ++i) {
+      auto seq_start = ref_lod_[i - 1];
+      auto seq_end = ref_lod_[i];
+      auto pad_start = (i - 1) * max_len;
+      auto pad_end = pad_start + (seq_end - seq_start);
+      auto sub_lod_tensor = lod_tensor_->Slice(seq_start, seq_end);
+      auto sub_pad_tensor = pad_tensor_->Slice(pad_start, pad_end);
+      if (is_lod_to_pad_) {
+        framework::TensorCopy(sub_lod_tensor, ctx.GetPlace(), &sub_pad_tensor);
+      } else {
+        framework::TensorCopy(sub_pad_tensor, ctx.GetPlace(), &sub_lod_tensor);
+      }
+    }
+    */
+  }
+};
+
 template <typename DeviceContext, typename T>
 class SequencePadOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x_ptr = ctx.Input<LoDTensor>("X");
+    /*
+    auto* x = ctx.Input<LoDTensor>("X");
     auto* out_ptr = ctx.Output<LoDTensor>("Out");
 
     out_ptr->mutable_data<T>(ctx.GetPlace());
 
+    // Resize();
+
     T pad_value = static_cast<T>(ctx.Attr<float>("pad_value"));
+
+    math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), *x, *, false);
 
     math::SetConstant<DeviceContext, T> set_func;
     set_func(ctx.template device_context<DeviceContext>(), out_ptr, pad_value);
-
-    auto& x_lod = x_ptr->lod();
-    auto& x_last_level_lod = x_lod[x_lod.size() - 1];
-    auto seq_num = x_last_level_lod.size() - 1;
-    auto max_len = out_ptr->dims()[0] / seq_num;
-
-    PADDLE_ENFORCE_EQ(max_len * seq_num, out_ptr->dims()[0],
-                      "First dimension of `Out` should be equal to "
-                      "maximum length mulplied by sequence number.");
-
-    for (size_t i = 1; i < x_last_level_lod.size(); ++i) {
-      auto x_start = x_last_level_lod[i - 1];
-      auto x_end = x_last_level_lod[i];
-      auto out_start = (i - 1) * max_len;
-      auto out_end = out_start + (x_end - x_start);
-      auto x_sub_tensor = x_ptr->Slice(x_start, x_end);
-      auto out_sub_tensor = out_ptr->Slice(out_start, out_end);
-      framework::TensorCopy(x_sub_tensor, ctx.GetPlace(), &out_sub_tensor);
-    }
+    */
   }
 };
 
@@ -63,33 +93,26 @@ template <typename DeviceContext, typename T>
 class SequencePadGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    /*
     auto* x_ptr = ctx.Input<LoDTensor>("X");
     auto* g_out_ptr = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* g_x_ptr = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
     math::SetConstant<DeviceContext, T> set_func;
-    set_func(ctx.template device_context<DeviceContext>(), g_x_ptr,
+    set_func(ctx.template device_context<DeviceContext>(),
+             g_x_ptr,
              static_cast<T>(0));
 
     auto& x_lod = x_ptr->lod();
     auto& x_last_level_lod = x_lod[x_lod.size() - 1];
-    auto seq_num = x_last_level_lod.size() - 1;
-    int64_t max_len = g_out_ptr->dims()[0] / seq_num;
 
-    PADDLE_ENFORCE_EQ(max_len * seq_num, g_out_ptr->dims()[0],
-                      "First dimension of `Out` should be equal to "
-                      "maximum length mulplied by sequence number.");
-
-    for (size_t i = 1; i < x_last_level_lod.size(); ++i) {
-      auto x_start = x_last_level_lod[i - 1];
-      auto x_end = x_last_level_lod[i];
-      auto out_start = (i - 1) * max_len;
-      auto out_end = out_start + (x_end - x_start);
-
-      auto g_out_sub = g_out_ptr->Slice(out_start, out_end);
-      auto g_x_sub = g_x_ptr->Slice(x_start, x_end);
-      framework::TensorCopy(g_x_sub, ctx.GetPlace(), &g_out_sub);
-    }
+    CopyFunctor copy_func<DeviceContext, T>(g_out_ptr,
+                                            x_last_level_lod,
+                                            g_x_ptr,
+                                            ctx,
+                                            false);
+    copy_func();
+    */
   }
 };
 
