@@ -19,8 +19,8 @@ namespace framework {
 
 struct DataTypeMap {
   std::unordered_map<std::type_index, proto::VarType::Type> cpp_to_proto_;
-  std::unordered_map<proto::VarType::Type, std::type_index> proto_to_cpp_;
-  std::unordered_map<proto::VarType::Type, std::string> proto_to_str_;
+  std::unordered_map<int, std::type_index> proto_to_cpp_;
+  std::unordered_map<int, std::string> proto_to_str_;
   std::unordered_map<std::type_index, size_t> cpp_to_size_;
 };
 
@@ -29,9 +29,10 @@ static DataTypeMap g_data_type_map_;
 template <typename T>
 static inline void RegisterType(proto::VarType::Type proto_type,
                                 const std::string &name) {
-  g_data_type_map_.proto_to_cpp_.emplace(proto_type, typeid(T));
+  g_data_type_map_.proto_to_cpp_.emplace(static_cast<int>(proto_type),
+                                         typeid(T));
   g_data_type_map_.cpp_to_proto_.emplace(typeid(T), proto_type);
-  g_data_type_map_.proto_to_str_.emplace(proto_type, name);
+  g_data_type_map_.proto_to_str_.emplace(static_cast<int>(proto_type), name);
   g_data_type_map_.cpp_to_size_.emplace(typeid(T), sizeof(T));
 }
 
@@ -63,7 +64,7 @@ proto::VarType::Type ToDataType(std::type_index type) {
 
 std::type_index ToTypeIndex(proto::VarType::Type type) {
   std::call_once(register_once_flag_, RegisterAllTypes);
-  auto it = g_data_type_map_.proto_to_cpp_.find(type);
+  auto it = g_data_type_map_.proto_to_cpp_.find(static_cast<int>(type));
   if (it != g_data_type_map_.proto_to_cpp_.end()) {
     return it->second;
   }
@@ -73,7 +74,7 @@ std::type_index ToTypeIndex(proto::VarType::Type type) {
 
 std::string DataTypeToString(const proto::VarType::Type type) {
   std::call_once(register_once_flag_, RegisterAllTypes);
-  auto it = g_data_type_map_.proto_to_str_.find(type);
+  auto it = g_data_type_map_.proto_to_str_.find(static_cast<int>(type));
   if (it != g_data_type_map_.proto_to_str_.end()) {
     return it->second;
   }
