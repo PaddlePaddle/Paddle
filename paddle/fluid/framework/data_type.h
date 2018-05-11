@@ -17,6 +17,7 @@ limitations under the License. */
 #include <typeindex>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
+
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -24,6 +25,7 @@ namespace framework {
 
 extern proto::VarType::Type ToDataType(std::type_index type);
 extern std::type_index ToTypeIndex(proto::VarType::Type type);
+
 template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   switch (type) {
@@ -51,6 +53,7 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
 }
 
 extern std::string DataTypeToString(const proto::VarType::Type type);
+extern size_t SizeOfType(std::type_index type);
 inline std::ostream& operator<<(std::ostream& out,
                                 const proto::VarType::Type& type) {
   out << DataTypeToString(type);
