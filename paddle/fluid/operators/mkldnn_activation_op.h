@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -61,9 +63,9 @@ class MKLDNNActivationGradKernel
 };
 
 namespace {  // NOLINT
-framework::OpKernelType GetKernelType(
-    const framework::ExecutionContext& ctx,
-    const framework::OperatorWithKernel& oper) {
+framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
+                                      const framework::OperatorWithKernel& oper,
+                                      const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
@@ -73,7 +75,7 @@ framework::OpKernelType GetKernelType(
 #endif
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
       ctx.GetPlace(), layout, library);
 }
 }  // anonymous namespace
@@ -89,7 +91,7 @@ class ActivationWithMKLDNNOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this);
+    return GetKernelType(ctx, *this, "X");
   }
 };
 
@@ -103,7 +105,7 @@ class ActivationWithMKLDNNOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this);
+    return GetKernelType(ctx, *this, "Out");
   }
 };
 
