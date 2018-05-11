@@ -101,7 +101,6 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
                                   framework::Scope *recv_scope,
                                   framework::BlockDesc *prefetch_block) const {
   auto fan_in = Attr<int>("Fanin");
-  auto checkpoint = Attr<std::string>("Checkpoint");
 
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
@@ -189,17 +188,6 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     for (auto &var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
-
-    /******************** CHECK POINT ***********************/
-    std::vector<std::string> all_vars = recv_scope.LocalVarNames();
-
-    std::vector<std::string>::iterator it;
-    for (it = all_vars.begin(); it != all_vars.end(); it++) {
-      VLOG(2) << "Checkpoint Var: " << *it;
-      break;
-    }
-
-    /******************** CHECK POINT ***********************/
 
     rpc_service_->SetCond(1);
     // FIXME(typhoonzero): use another condition to sync wait clients get.
