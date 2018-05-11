@@ -483,8 +483,7 @@ class DistributeTranspiler:
                 "Fanin": self.trainer_num,
                 "PrefetchBlock": prefetch_block,
                 "sync_mode": self.sync_mode,
-                "grad_to_block_id": grad_to_block_id,
-                "Checkpoint": "/tmp/tangwei_ckpt/"
+                "grad_to_block_id": grad_to_block_id
             })
 
         pserver_program.sync_with_cpp()
