@@ -115,7 +115,7 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
 
-  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
   auto* input = infer_network_->addInput(name.c_str(), dtype, dim);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] * AccumDims(dim);
@@ -128,7 +128,7 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(int offset) {
   auto name = ibuffer_name(offset);
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
-  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
   auto* x = infer_network_->getInput(offset);
   x->setName(name);
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
@@ -168,7 +168,7 @@ void TensorRTEngine::DeclareOutput(int offset) {
   auto name = obuffer_name(offset);
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
-  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
   auto* x = infer_network_->getInput(offset);
   x->setName(name.c_str());
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
