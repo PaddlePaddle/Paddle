@@ -29,7 +29,33 @@ void TensorRTEngine::Build(const DescType& paddle_model) {
   PADDLE_ENFORCE(false, "not implemented");
 }
 
+void TensorRTEngine::BuildFromONNX(const std::string& model_dir,
+                                   const std::string& model_file) {
+  infer_builder_.reset(createInferBuilder(logger_));
+  infer_ptr<nvonnxparser::IOnnxConfig> config(createInferBuilder(logger_));
+  config->setModelFileName(AbsPath(model_dir, model_file).c_str());
+  infer_ptr<nvonnxparser::IONNXParser> parser(createONNXParser(*config));
+  if (!parser->parse(AbsPath(model_dir, model_file)).c_str(),
+      nvinfer1::DataType::kFLOAT) {
+    logger_.log(nvinfer1::ILogger::Severity::kERROR,
+                "failed to parse ONNX file");
+    exit(EXIT_FAILURE);
+  }
+  if (!parser->convertToTRTNetwork()) {
+    logger_.log(nvinfer1::ILogger::Severity::kERROR,
+                "ERROR, failed to convert ONNX network into TRT network.");
+    exit(EXIT_FAILURE);
+  }
+  infer_network_.reset(parser->getTRTNetwork());
+  // Get input and output.
+  for (int i = 0; i < infer_network_->getNbInputs(); i++) {
+    auto* in = infer_network_->getInput(i);
+    auto dims = AccumDims(in->getDimensions());
+  }
+}
+
 void TensorRTEngine::Execute(int batch_size) {
+  // TODO(Superjomn) consider to make buffers not a temp variable and resuable.
   std::vector<void*> buffers;
   for (auto& buf : buffers_) {
     PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated");
@@ -97,6 +123,19 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   return input;
 }
 
+nvinfer1::ITensor* TensorRTEngine::DeclareInput(int offset) {
+  // This is a trick to reuse some facility of the manual network building.
+  auto name = ibuffer_name(offset);
+  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
+                    name);
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  auto* x = infer_network_->getInput(offset);
+  x->setName(name);
+  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
+                        AccumDims(x->getDimensions());
+  return x;
+}
+
 void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                                    const std::string& name) {
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
@@ -124,6 +163,18 @@ void TensorRTEngine::DeclareOutput(const std::string& name) {
   buffer_sizes_[name] = 0;
 }
 
+void TensorRTEngine::DeclareOutput(int offset) {
+  // This is a trick to reuse some facility of the manual network building.
+  auto name = obuffer_name(offset);
+  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
+                    name);
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  auto* x = infer_network_->getInput(offset);
+  x->setName(name.c_str());
+  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
+      AccumDims(x->getDimensions());
+}
+
 void* TensorRTEngine::GetOutputInGPU(const std::string& name) {
   return buffer(name).buffer;
 }
@@ -142,6 +193,15 @@ void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
 }
 
 Buffer& TensorRTEngine::buffer(const std::string& name) {
+  PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
+  auto it = buffer_sizes_.find(name);
+  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  auto slot_offset = infer_engine_->getBindingIndex(name.c_str());
+  return buffers_[slot_offset];
+}
+
+Buffer &TensorRTEngine::ibuffer(int offset) {
+  auto name = ibuffer_name(offset);
   PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
   auto it = buffer_sizes_.find(name);
   PADDLE_ENFORCE(it != buffer_sizes_.end());

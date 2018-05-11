@@ -60,7 +60,9 @@ extern void* tensorrt_dso_handle;
 
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
-  __macro(createInferRuntime_INTERNAL);
+  __macro(createInferRuntime_INTERNAL);     \
+  __macro(createONNXConfig_INTERNAL);       \
+  __macro(createONNXParser_INTERNAL);
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
 

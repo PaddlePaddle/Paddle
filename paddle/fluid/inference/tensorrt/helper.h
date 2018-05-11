@@ -15,6 +15,8 @@
 #pragma once
 
 #include <NvInfer.h>
+#include <NvOnnxConfig.h>
+#include <NvOnnxParser.h>
 #include <cuda.h>
 #include <glog/logging.h>
 #include "paddle/fluid/platform/dynload/tensorrt.h"
@@ -54,6 +56,15 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IRuntime*>(
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
+static nvonnxparser::IOnnxConfig* createONNXConfig() {
+  return static_cast<nvonnxparser::IOnnxConfig*>(
+      dy::createONNXConfig_INTERNAL());
+}
+static nvonnxparser::IONNXParser* createONNXParser(
+    const nvonnxparser::IOnnxConfig& config) {
+  return static_cast<nvonnxparser::IONNXParser*>(
+      dy::createONNXParser_INTERNAL(config));
+}
 
 // A logger for create TensorRT infer builder.
 class NaiveLogger : public nvinfer1::ILogger {
@@ -82,6 +93,58 @@ class NaiveLogger : public nvinfer1::ILogger {
 
   ~NaiveLogger() override {}
 };
+
+std::string AbsPath(const std::string& dir, const std::string& file) {
+  return dir + "/" + file;
+}
+
+// Load ONNX model and translate to TensorRT format.
+void OnnxToGIEModel(const std::string& directory, const std::string& model_file,
+                    unsigned int max_batch_size,
+                    nvinfer1::IHostMemory*& gie_model_stream,
+                    nvinfer1::ILogger* logger) {
+  // create the builder
+  nvinfer1::IBuilder* builder = createInferBuilder(*logger);
+
+  nvonnxparser::IOnnxConfig* config = createONNXConfig();
+  config->setModelFileName(AbsPath(directory, model_file).c_str());
+
+  nvonnxparser::IONNXParser* parser = createONNXParser(*config);
+
+  // Optional - uncomment below lines to view network layer information
+  // config->setPrintLayerInfo(true);
+  // parser->reportParsingInfo();
+
+  if (!parser->parse(AbsPath(directory, model_file).c_str(),
+                     nvinfer1::DataType::kFLOAT)) {
+    std::string msg("failed to parse onnx file");
+    logger->log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+
+  if (!parser->convertToTRTNetwork()) {
+    std::string msg("ERROR, failed to convert onnx network into TRT network");
+    logger->log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  nvinfer1::INetworkDefinition* network = parser->getTRTNetwork();
+
+  // Build the engine
+  builder->setMaxBatchSize(max_batch_size);
+  builder->setMaxWorkspaceSize(1 << 20);
+
+  nvinfer1::ICudaEngine* engine = builder->buildCudaEngine(*network);
+  assert(engine);
+
+  // we don't need the network any more, and we can destroy the parser
+  network->destroy();
+  parser->destroy();
+
+  // serialize the engine, then close everything down
+  gie_model_stream = engine->serialize();
+  engine->destroy();
+  builder->destroy();
+}
 
 }  // namespace tensorrt
 }  // namespace inference

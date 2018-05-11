@@ -29,8 +29,53 @@ namespace tensorrt {
 /*
  * TensorRT Engine.
  *
- * There are two alternative ways to use it, one is  to build from a paddle
- * protobuf model, another way is to manully construct the network.
+ * There are two alternative ways to use it:
+ *   1. manually build the network by add layers, we call it the manual way,
+ *   2. Load from an ONNX model, we call it the ONNX way.
+ *
+ * The manual way:
+ *
+ * // Init
+ * TensorRTEngine engine(...);
+ * engine.InitNetwork();
+ *
+ * // Add layers one by one
+ * TRT_ENGINE_ADD_LAYER
+ *
+ * engine.DeclareInput("x", ...)
+ * engine.DeclareOutput("y", ...)
+ * engine.FreezeNetwork();  // end network building
+ *
+ * // Ready to predict for any times.
+ *
+ * // Set input data.
+ * cudaMemCpy(buffer(in), ...)
+ *
+ * engine.Execute();
+ *
+ * // Get output data.
+ * cudaMemCpy(..., buffer(out), ...)
+ *
+ * The ONNX way:
+ *
+ * TensorRTEngine engine(...);
+ * // Load model from ONNX.
+ * engine.BuildFromONNX(...);
+ *
+ * for (int i = 0; i < num_inputs; i++) engine.DeclareInput(i);
+ * for (int i = 0; i < num_outputs; i++) engine.DeclareOutput(i);
+ *
+ * engine.FreezeNetwork(); // Network building finished.
+ *
+ * // Ready to predict for any times.
+ *
+ * // Set input data.
+ * cudaMemCpy(buffer(in), ...)
+ *
+ * engine.Execute();
+ *
+ * // Get output data.
+ * for (int i = 0; i < num_outputs; i++) cudaMemCpy(..., buffer(i), ...)
  */
 class TensorRTEngine : public EngineBase {
  public:
@@ -60,6 +105,10 @@ class TensorRTEngine : public EngineBase {
   // TODO(Superjomn) implement it later when graph segmentation is supported.
   void Build(const DescType& paddle_model) override;
 
+  // Build the TensorRT engine with an ONNX model.
+  void BuildFromONNX(const std::string& model_dir,
+                     const std::string& model_file);
+
   void Execute(int batch_size) override;
 
   // Initialize the inference network, so that TensorRT layers can add to this
@@ -72,22 +121,39 @@ class TensorRTEngine : public EngineBase {
   // environment.
   void FreezeNetwork();
 
-  // Add an input and set its name, data type and dimention.
+  // Add an input and set its name, data type and dimention. This should be used
+  // in network manual building.
   nvinfer1::ITensor* DeclareInput(const std::string& name,
                                   nvinfer1::DataType dtype,
                                   const nvinfer1::Dims& dim);
+
+  // Collect the input ITensor's information after the network is already built.
+  // It can be used in loading ONNX or other existing network.
+  nvinfer1::ITensor* DeclareInput(int offset);
+
   // Set the offset-th output from a layer as the network's output, and set its
   // name.
   void DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Collect the output ITensor's information after the network is already
+  // built. It can be used in loading ONNX model or other existing network.
+  void DeclareOutput(int offset);
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
-  // data directly to the buffer to save data copy overhead.
+  // data directly to the buffer to save data copy overhead. This method can
+  // only be used in manual network building where the inputs and outputs are
+  // manually declared with an unique name.
   // NOTE this should be used after calling `FreezeNetwork`.
   Buffer& buffer(const std::string& name) override;
+
+  // The ibuffer, obuffer returns the offset-th input/output of the network.
+  // There are used in loading directly from an existing model because the input
+  // and output doesn't have unique names, and can only be identified by offset.
+  Buffer& ibuffer(int offset);
+  Buffer& obuffer(int offsert);
 
   cudaStream_t* stream() { return stream_; }
 
@@ -110,6 +176,16 @@ class TensorRTEngine : public EngineBase {
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
+ protected:
+  // Get an input buffer's string id.
+  std::string ibuffer_name(int offset) const {
+    return "in-" + std::to_string(offset);
+  }
+  // Get an output buffer's string id.
+  std::string obuffer_name(int offset) const {
+    return "out-" + std::to_string(offset);
+  }
+
  private:
   // the max batch size
   int max_batch_;
@@ -131,6 +207,9 @@ class TensorRTEngine : public EngineBase {
   };
   template <typename T>
   using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
+  // The following members is declared for different Builds, for each kind of
+  // Build method, not all these members are used.
+  infer_ptr<nvinfer1::IRuntime> infer_runtime_;
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
