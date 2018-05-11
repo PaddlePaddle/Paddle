@@ -21,6 +21,7 @@ struct DataTypeMap {
   std::unordered_map<std::type_index, proto::VarType::Type> cpp_to_proto_;
   std::unordered_map<proto::VarType::Type, std::type_index> proto_to_cpp_;
   std::unordered_map<proto::VarType::Type, std::string> proto_to_str_;
+  std::unordered_map<std::type_index, size_t> cpp_to_size_;
 };
 
 static DataTypeMap g_data_type_map_;
@@ -31,11 +32,13 @@ static inline void RegisterType(proto::VarType::Type proto_type,
   g_data_type_map_.proto_to_cpp_.emplace(proto_type, typeid(T));
   g_data_type_map_.cpp_to_proto_.emplace(typeid(T), proto_type);
   g_data_type_map_.proto_to_str_.emplace(proto_type, name);
+  g_data_type_map_.cpp_to_size_.emplace(typeid(T), sizeof(T));
 }
 
 static int RegisterAllTypes() {
 #define RegType(cc_type, proto_type) RegisterType<cc_type>(proto_type, #cc_type)
 
+  // NOTE: Add your customize type here.
   RegType(platform::float16, proto::VarType::FP16);
   RegType(float, proto::VarType::FP32);
   RegType(double, proto::VarType::FP64);
@@ -76,6 +79,15 @@ std::string DataTypeToString(const proto::VarType::Type type) {
   }
   PADDLE_THROW("Not support proto::VarType::Type(%d) as tensor type",
                static_cast<int>(type));
+}
+
+size_t SizeOfType(std::type_index type) {
+  std::call_once(register_once_flag_, RegisterAllTypes);
+  auto it = g_data_type_map_.cpp_to_size_.find(type);
+  if (it != g_data_type_map_.cpp_to_size_.end()) {
+    return it->second;
+  }
+  PADDLE_THROW("Not support %s as tensor type", type.name());
 }
 
 }  // namespace framework
