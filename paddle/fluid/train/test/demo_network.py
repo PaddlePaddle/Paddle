@@ -14,10 +14,11 @@
 
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.distribute_transpiler import delete_ops
+from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 
 
 def train_network():
+    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -41,3 +42,6 @@ def save_program_desc(network_func):
         f.write(startup_program.desc.serialize_to_string())
     with open("train_program", "w") as f:
         f.write(train_program.desc.serialize_to_string())
+
+
+save_program_desc(train_network)
