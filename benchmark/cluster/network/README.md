@@ -16,6 +16,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 - What's the benchmark of GPU direct? Is it high cost-effective?
 
 ## Hardware Infomation
+### Network card
 ```
 driver: mlx5_core
 version: 4.3-1.0.1
@@ -42,50 +43,33 @@ supports-register-dump: no
 supports-priv-flags: no
 ```
 
+### CPU 
+
+```
+Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+```
+
 
 ## iperf
 - Refrence: 
 
 [iperf3 at 40Gbps and above](https://fasterdata.es.net/performance-testing/network-troubleshooting-tools/iperf/multi-stream-iperf3/)
 
-- Results:
-	
-<table>
-<thead>
-<tr>
-<th>client </th>
-<th>time</th>
-<th>speed<br>(Gbits/sec)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>s1</td>
-<td>37.00-38.00</td>
-<td>10.2</td>
-</tr>
-<tr>
-<td>s2</td>
-<td>37.00-38.00</td>
-<td>14.1</td>
-</tr>
-<tr>
-<td>s3</td>
-<td>37.00-38.00</td>
-<td>10.4</td>
-</tr>
-<tr>
-<td>s4</td>
-<td>37.00-38.00</td>
-<td>11.1</td>
-</tr>
-<tr>
-<td>total</td>
-<td></td>
-<td>45.8</td>
-</tr>
-</tbody>
-</table>
+- iperf2: 84Gb - 94Gb
+ 
+```
+[  4]  0.0-10.0 sec  9.64 GBytes  8.28 Gbits/sec
+[  3]  0.0-10.0 sec  10.1 GBytes  8.65 Gbits/sec
+[  5]  0.0-10.0 sec  9.95 GBytes  8.55 Gbits/sec
+[  6]  0.0-10.0 sec  9.50 GBytes  8.16 Gbits/sec
+[  9]  0.0-10.0 sec  9.56 GBytes  8.21 Gbits/sec
+[  8]  0.0-10.0 sec  11.1 GBytes  9.51 Gbits/sec
+[  7]  0.0-10.0 sec  12.3 GBytes  10.6 Gbits/sec
+[ 11]  0.0-10.0 sec  13.7 GBytes  11.7 Gbits/sec
+[ 12]  0.0-10.0 sec  13.4 GBytes  11.5 Gbits/sec
+[ 10]  0.0-10.0 sec  10.3 GBytes  8.86 Gbits/sec
+[SUM]  0.0-10.0 sec   110 GBytes  94.0 Gbits/sec
+```
 
 ## BRPC
 
@@ -205,80 +189,78 @@ supports-priv-flags: no
 
 **Notice: GRPC client consume more than 10GB memory in this test when buffer size >= 4MB. And it seems that GRPC creates many threads background.**
 
+### Conclution:
+We can start more pserver process to get more fast train speed.
+
 
 ## ib\_read\_bw
 ## MPI 
-### With TCP protocal
-<table>
-<thead>
-<tr>
-<th>Buffer size </th>
-<th>4K</th>
-<th>16K</th>
-<th>32K</th>
-<th>64K</th>
-<th>128K</th>
-<th>256K</th>
-<th>512K</th>
-<th>1M</th>
-<th>2M</th>
-<th>4M</th>
-<th>8M</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>server(4threads)<br>client(4threads)</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr></tbody>
-</table>
 
-### With RDMA
-<table>
-<thead>
-<tr>
-<th>Buffer size </th>
-<th>4K</th>
-<th>16K</th>
-<th>32K</th>
-<th>64K</th>
-<th>128K</th>
-<th>256K</th>
-<th>512K</th>
-<th>1M</th>
-<th>2M</th>
-<th>4M</th>
-<th>8M</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>server(4threads)<br>client(4threads)</td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td>  </td>
-<td> </td>
-<td> </td>
-<td> </td>
-<td> </td>
-</tr>
-<tr></tbody>
-</table>
+code: [MVAPICH: MPI over InfiniBand, Omni-Path, Ethernet/iWARP, and RoCE](http://mvapich.cse.ohio-state.edu/benchmarks/)
+
+### With TCP protocal: by hanqing
+
+Single thread + single link?
+
+```
+# OSU MPI-CUDA Bandwidth Test v5.4.1
+# Send Buffer on HOST (H) and Receive Buffer on HOST (H)
+# Size      Bandwidth (MB/s)
+1                       0.41
+2                       0.81
+4                       1.60
+8                       3.03
+16                      6.63
+32                     12.49
+64                     22.89
+128                    48.93
+256                    78.92
+512                   177.38
+1024                  325.69
+2048                  588.07
+4096                  979.27
+8192                 1578.38
+16384                2565.40
+32768                2491.85
+65536                3344.32
+131072               3877.29
+262144               4344.95
+524288               4542.15
+1048576              4420.13
+2097152              4369.98
+4194304              4199.28
+```
+
+### With RDMA: by hanqing
+
+
+```
+# Send Buffer on DEVICE (D) and Receive Buffer on DEVICE (D)
+# Size      Bandwidth (MB/s)
+1                       0.08
+2                       0.16
+4                       0.31
+8                       0.62
+16                      1.23
+32                      2.51
+64                      4.96
+128                     9.89
+256                    19.91
+512                    40.94
+1024                   81.97
+2048                  162.98
+4096                  302.72
+8192                  555.64
+16384                1454.73
+32768                2949.01
+65536                5035.35
+131072               4910.93
+262144               6172.67
+524288               7676.30
+1048576              8453.93
+2097152              8897.36
+4194304              9170.23
+```
 
 ### With RADMA + GPU direct
 <table>
