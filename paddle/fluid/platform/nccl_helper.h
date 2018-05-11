@@ -21,6 +21,8 @@
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#define NCCL_ID_VARNAME "NCCLID"
+
 namespace paddle {
 namespace platform {
 
@@ -76,7 +78,7 @@ struct NCCLContextMap {
 
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
-                          size_t node_count = 0, size_t trainer_id = 0) {
+                          size_t num_trainers = 0, size_t trainer_id = 0) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
     for (auto &p : places) {
@@ -94,16 +96,14 @@ struct NCCLContextMap {
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if pass nccl_id here, can assume we are doing multi node training
     if (nccl_id == nullptr) {
-      {
-        std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-        PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
-            comms.get(), static_cast<int>(order_.size()), order_.data()));
-      }
+      std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
+      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+          comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
-      PADDLE_ENFORCE_GT(node_count, 0);
+      PADDLE_ENFORCE_GT(num_trainers, 0);
       // TODO(wuyi): need to ensure each node have same number of GPUs
       {
-        int nranks = node_count * order_.size();
+        int nranks = num_trainers * order_.size();
         NCCLGroupGuard gurad;
         for (auto &gpu_id : order_) {
           int rank = trainer_id * order_.size() + gpu_id;

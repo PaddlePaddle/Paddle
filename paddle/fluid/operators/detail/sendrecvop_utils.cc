@@ -162,8 +162,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   if (var->IsType<ncclUniqueId>()) {
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                               NCCL_UNIQUE_ID_BYTES);
-    ncclUniqueId* uid = var->GetMutable<ncclUniqueId>();
-    e.WriteRawBytes(std::string(uid->internal, NCCL_UNIQUE_ID_BYTES));
+    ncclUniqueId& uid = var->Get<ncclUniqueId>();
+    e.WriteRawBytes(std::string(uid.internal, NCCL_UNIQUE_ID_BYTES));
 
     // for serialize NCCL_ID
     ::grpc::Slice slices(e.size());
