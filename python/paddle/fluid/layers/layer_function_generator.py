@@ -113,7 +113,7 @@ def generate_layer_fn(op_type):
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError("Only one non intermediate output operator can be",
-                         "automatically generated.")
+                         "automatically generated. {0}".format(op_type))
 
     if not_intermediate_outputs[0].duplicable:
         raise ValueError(

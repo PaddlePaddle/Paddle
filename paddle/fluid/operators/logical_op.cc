@@ -21,8 +21,7 @@ namespace operators {
 template <typename OpComment>
 class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BinaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X",
              string::Sprintf("(LoDTensor) Left hand operand of %s operator",
@@ -45,8 +44,7 @@ Each element of Out is calculated by %s
 template <typename OpComment>
 class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UnaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
                                   comment.type));

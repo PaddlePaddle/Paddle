@@ -60,8 +60,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
 
 class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BoxCoderOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "PriorBox",
         "(Tensor, default Tensor<float>) "
