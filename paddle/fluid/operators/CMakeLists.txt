@@ -229,7 +229,6 @@ op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
-op_library(ckpt_save_op DEPS lod_tensor)
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
@@ -243,6 +242,7 @@ op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
+op_library(ckpt_save_op DEPS lod_tensor)
 op_library(concat_op DEPS concat)
 
 # FIXME(thuan): Move CSP operators to paddle/fluid/framework/operators/concurrency
