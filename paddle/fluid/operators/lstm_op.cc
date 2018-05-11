@@ -103,8 +103,7 @@ class LSTMOp : public framework::OperatorWithKernel {
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LSTMOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(LoDTensor) the first input is a LodTensor, which support "
              "variable-time length input sequence. The underlying tensor in "

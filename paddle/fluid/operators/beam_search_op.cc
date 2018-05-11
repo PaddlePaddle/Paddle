@@ -197,8 +197,7 @@ std::string ItemToString(const BeamSearch::Item &item) {
 
 class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     // inputs and outputs stored in proto
     AddInput("pre_ids", "ids in previous step");
     AddInput("ids", "a LoDTensor of shape of [None,k]");

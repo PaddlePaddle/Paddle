@@ -209,8 +209,7 @@ class TensorPrintOp : public framework::OperatorBase {
 
 class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PrintOpProtoAndCheckMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("In", "Input tensor to be displayed.");
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
