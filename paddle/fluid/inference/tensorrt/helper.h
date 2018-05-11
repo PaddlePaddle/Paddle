@@ -57,15 +57,13 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
 static nvonnxparser::IOnnxConfig* createONNXConfig() {
-  // return static_cast<nvonnxparser::IOnnxConfig*>(
-  //     dy::createONNXConfig_INTERNAL());
-  return nullptr;
+  return static_cast<nvonnxparser::IOnnxConfig*>(
+      dy::createONNXConfig_INTERNAL());
 }
 static nvonnxparser::IONNXParser* createONNXParser(
     const nvonnxparser::IOnnxConfig& config) {
-  // return static_cast<nvonnxparser::IONNXParser*>(
-  //     dy::createONNXParser_INTERNAL(config));
-  return nullptr;
+  return static_cast<nvonnxparser::IONNXParser*>(
+      dy::createONNXParser_INTERNAL(config));
 }
 
 // A logger for create TensorRT infer builder.
@@ -96,15 +94,16 @@ class NaiveLogger : public nvinfer1::ILogger {
   ~NaiveLogger() override {}
 };
 
-std::string AbsPath(const std::string& dir, const std::string& file) {
+static std::string AbsPath(const std::string& dir, const std::string& file) {
   return dir + "/" + file;
 }
 
 // Load ONNX model and translate to TensorRT format.
-void OnnxToGIEModel(const std::string& directory, const std::string& model_file,
-                    unsigned int max_batch_size,
-                    nvinfer1::IHostMemory*& gie_model_stream,
-                    nvinfer1::ILogger* logger) {
+static void OnnxToGIEModel(const std::string& directory,
+                           const std::string& model_file,
+                           unsigned int max_batch_size,
+                           nvinfer1::IHostMemory*& gie_model_stream,
+                           nvinfer1::ILogger* logger) {
   // create the builder
   nvinfer1::IBuilder* builder = createInferBuilder(logger);
 
