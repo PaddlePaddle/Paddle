@@ -22,86 +22,137 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                                 \
-  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
+#define CUDA_1D_KERNEL_LOOP(i, n)                              \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
 
-template <typename T, int block>
-__global__ void MeanIoUCUDAKernel(const int64_t num_classes,
-                                  const int64_t count, const T* predictions,
-                                  const T* labels, float* out_cm,
-                                  float* matrixes_data) {
-  int64_t out_cm_size = num_classes * num_classes;
-  for (int64_t i = threadIdx.x; i < count; i += block) {
-    int64_t index =
-        threadIdx.x * out_cm_size + predictions[i] * num_classes + labels[i];
-    matrixes_data[index] += 1.0f;
+template <typename T>
+__global__ void CountCUDAKernel(const int num_classes, const int count,
+                                const T* predictions, const T* labels,
+                                int* wrong, int* correct) {
+  extern __shared__ int blcok_cache[];
+  int* wrong_c = blcok_cache;
+  int* correct_c = blcok_cache + num_classes;
+  // init cache
+  for (int i = threadIdx.x; i < num_classes * 2; i += blockDim.x) {
+    blcok_cache[i] = 0;
   }
   __syncthreads();
-  float result;
-  for (int64_t i = threadIdx.x; i < out_cm_size; i += block) {
-    result = 0.0f;
-    for (int64_t j = i; j < block * out_cm_size; j += out_cm_size) {
-      result += matrixes_data[j];
+
+  T pred;
+  T label;
+  CUDA_1D_KERNEL_LOOP(i, count) {
+    pred = predictions[i];
+    label = labels[i];
+    if (pred == label) {
+      atomicAdd(correct_c + pred, 1);
+    } else {
+      atomicAdd(wrong_c + pred, 1);
+      atomicAdd(wrong_c + label, 1);
     }
-    out_cm[i] += result;
+  }
+  __syncthreads();
+
+  for (int i = threadIdx.x; i < num_classes; i += blockDim.x) {
+    atomicAdd(wrong + i, wrong_c[i]);
+    atomicAdd(correct + i, correct_c[i]);
+  }
+}
+
+__global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
+                                     int* correct, float* ious,
+                                     int* valid_count) {
+  __shared__ int valid_count_c;
+  if (threadIdx.x == 0) {
+    valid_count_c = 0;
+  }
+  __syncthreads();
+  CUDA_1D_KERNEL_LOOP(i, num_classes) {
+    int wrong_n = wrong[i];
+    int correct_n = correct[i];
+    int denominator = wrong_n + correct_n;
+    if (denominator > 0) {
+      atomicAdd(&valid_count_c, 1);
+      ious[i] = static_cast<float>(correct_n) / denominator;
+    }
+  }
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    atomicAdd(valid_count, valid_count_c);
   }
 }
 
 template <typename T>
-__global__ void ReplaceCUDAKernel(const int64_t n, T* data, T target, T value) {
-  CUDA_1D_KERNEL_LOOP(i, n) {
-    if (data[i] == target) {
-      data[i] = value;
+class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
+                       .eigen_device();
+    // get input and output tensor
+    auto* predictions = ctx.Input<Tensor>("predictions");
+    auto* labels = ctx.Input<Tensor>("labels");
+    auto* out_mean_iou = ctx.Output<Tensor>("out_mean_iou");
+    auto* out_wrong = ctx.Output<Tensor>("out_wrong");
+    auto* out_correct = ctx.Output<Tensor>("out_correct");
+    int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
+
+    // get data ptr
+    const T* predictions_data = predictions->data<T>();
+    const T* labels_data = labels->data<T>();
+    int* out_wrong_data = out_wrong->mutable_data<int>(ctx.GetPlace());
+    int* out_correct_data = out_correct->mutable_data<int>(ctx.GetPlace());
+    float* out_mean_iou_data =
+        out_mean_iou->mutable_data<float>(ctx.GetPlace());
+
+    // get eigen tensor
+    auto out_mean_iou_t = EigenTensor<float, 1>::From(*out_mean_iou);
+    auto out_wrong_t = EigenTensor<int, 1>::From(*out_wrong);
+    auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
+
+    // Tmp tensor
+    Tensor valid_count;
+    int* valid_count_data = valid_count.mutable_data<int>({1}, ctx.GetPlace());
+    auto valid_count_t = EigenTensor<int, 1>::From(valid_count);
+    Tensor ious;
+    float* ious_data = ious.mutable_data<float>(
+        {static_cast<int64_t>(num_classes)}, ctx.GetPlace());
+    auto ious_t = EigenTensor<float, 1>::From(ious);
+
+    // init out_wrong, out_correct and out_mean_iou
+    out_wrong_t.device(place) = out_wrong_t.constant(0);
+    out_correct_t.device(place) = out_correct_t.constant(0);
+    valid_count_t.device(place) = valid_count_t.constant(0);
+    out_mean_iou_t.device(place) = out_mean_iou_t.constant(0.0f);
+
+    // collect pre wrong, correct and mean_iou
+    auto in_mean_ious = ctx.MultiInput<Tensor>("in_mean_iou");
+    for (int i = 0; i < in_mean_ious.size(); ++i) {
+      out_mean_iou_t.device(place) +=
+          EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
-  }
-}
-
-template <typename T>
-__global__ void DiagonalCUDAKernel(int64_t n, T* matrix, T* diagonal) {
-  CUDA_1D_KERNEL_LOOP(i, n) { diagonal[i] = matrix[i * (n + 1)]; }
-}
-
-template <typename T>
-struct GenConfusionMatrix<paddle::platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const int64_t num_classes, const int64_t count,
-                  const T* predictions, const T* labels, float* out_cm) {
+    auto in_wrongs = ctx.MultiInput<Tensor>("in_wrongs");
+    for (int i = 0; i < in_wrongs.size(); ++i) {
+      out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
+    }
+    auto in_corrects = ctx.MultiInput<Tensor>("in_corrects");
+    for (int i = 0; i < in_corrects.size(); ++i) {
+      out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
+    }
+    // compute
+    auto stream = ctx.cuda_device_context().stream();
     int block = PADDLE_CUDA_NUM_THREADS;
-    Tensor matrixes;
-    float* matrixes_data = matrixes.mutable_data<float>(
-        {block, num_classes, num_classes}, ctx.GetPlace());
-    math::SetConstant<paddle::platform::CUDADeviceContext, float> constant;
-    constant(ctx.template device_context<paddle::platform::CUDADeviceContext>(),
-             &matrixes, 0.0f);
-
-    MeanIoUCUDAKernel<T, PADDLE_CUDA_NUM_THREADS><<<
-        1, block, 0, ctx.cuda_device_context().stream()>>>(
-        num_classes, count, predictions, labels, out_cm, matrixes_data);
-  }
-};
-
-template <typename T>
-struct Replace<paddle::platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx, const int64_t n,
-                  T* data, T target, T value) {
-    int block = 512;
-    int grid = (n + block - 1) / block;
-    ReplaceCUDAKernel<
-        T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        n, data, target, value);
-  }
-};
-
-template <typename T>
-struct Diagonal<paddle::platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx, int64_t n, T* matrix,
-                  T* diagonal) {
-    int block = 512;
-    int grid = (n + block - 1) / block;
-    DiagonalCUDAKernel<
-        T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(n, matrix,
-                                                                   diagonal);
+    int grid = (predictions->numel() + block - 1) / block;
+    int cache_size = (num_classes * 2 + 1) * sizeof(int);
+    CountCUDAKernel<T><<<grid, block, cache_size, stream>>>(
+        num_classes, predictions->numel(), predictions_data, labels_data,
+        out_wrong_data, out_correct_data);
+    ctx.device_context().Wait();
+    grid = (num_classes + block - 1) / block;
+    ComputeIoUCUDAKernel<<<grid, block, 0, stream>>>(
+        num_classes, out_wrong_data, out_correct_data, ious_data,
+        valid_count_data);
+    ctx.device_context().Wait();
+    out_mean_iou_t.device(place) += ious_t.sum() / valid_count_t.cast<float>();
   }
 };
 
@@ -109,6 +160,5 @@ struct Diagonal<paddle::platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    mean_iou, ops::MeanIoUKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::MeanIoUKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(mean_iou, ops::MeanIoUCUDAOpKernel<int>,
+                        ops::MeanIoUKernel<int64_t>);

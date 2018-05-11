@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,64 +17,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct GenConfusionMatrix<paddle::platform::CPUDeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const int64_t num_classes, const int64_t count,
-                  const T* predictions, const T* labels, float* out_cm) {
-    int index;
-    for (int i = 0; i < count; ++i) {
-      index = predictions[i] * num_classes + labels[i];
-      out_cm[index] += 1.0f;
-    }
-  }
-};
-
-template <typename T>
-struct Replace<paddle::platform::CPUDeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx, const int64_t n,
-                  T* data, T target, T value) {
-    for (int i = 0; i < n; ++i) {
-      if (data[i] == target) {
-        data[i] = value;
-      }
-    }
-  }
-};
-
-template <typename T>
-struct Diagonal<paddle::platform::CPUDeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx, int64_t n, T* matrix,
-                  T* diagonal) {
-    int64_t stride = n + 1;
-    int64_t index = 0;
-    for (int64_t i = 0; i < n; ++i) {
-      diagonal[i] = matrix[index];
-      index += stride;
-    }
-  }
-};
-
 class MeanIoUOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("predictions"),
-                   "Input (predictions) of accuracy op should not be null.");
+                   "Input (predictions) of MeanIoU op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("labels"),
-                   "Input (labels) of accuracy op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("mean_iou"),
-                   "Output (mean_iou) of AccuracyOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("out_confusion_matrix"),
-        "Output (out_confusion_matrix) of AccuracyOp should not be null.");
+                   "Input (labels) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("out_mean_iou"),
+                   "Output (out_mean_iou) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("out_wrong"),
+                   "Output (out_wrong) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("out_correct"),
+                   "Output (out_wrong) of MeanIoU op should not be null.");
 
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
 
-    ctx->SetOutputDim("mean_iou", {1});
-    ctx->SetOutputDim("out_confusion_matrix", {num_classes, num_classes});
+    ctx->SetOutputDim("out_mean_iou", {1});
+    ctx->SetOutputDim("out_wrong", {num_classes});
+    ctx->SetOutputDim("out_correct", {num_classes});
   }
 
  protected:
@@ -96,10 +60,17 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("labels",
              "A Tensor of ground truth labels with type int32 or int64."
              "Its shape should be the same as Input(predictions).");
-    AddInput("in_confusion_matrix",
+    AddInput("in_wrongs",
              "A list of Tensor with shape "
-             "[num_classes, num_classes]. They are used to collect confusion"
-             "matrix values among batches. Empty list is also valid here.")
+             "[num_classes]. They are used to collect wrong number among "
+             "batches. Empty list is also valid here.")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput(
+        "in_corrects",
+        "A list of Tensor with shape "
+        "[num_classes]. They are used to collect correct number among batches. "
+        "Empty list is also valid here.")
         .AsDuplicable()
         .AsDispensable();
     AddInput("in_mean_iou",
@@ -107,14 +78,11 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
              "be added to. Empty list is also valid here.")
         .AsDuplicable()
         .AsDispensable();
-    AddOutput("mean_iou",
+    AddOutput("out_mean_iou",
               "A Tensor representing the"
               " mean intersection-over-union.");
-    AddOutput(
-        "out_confusion_matrix",
-        "A Tensor with shape "
-        "[num_classes, num_classes]. Input(in_confusion_matrix) will be"
-        " updated by current batch data and output as out_confusion_matrix.");
+    AddOutput("out_wrong", "A Tensor with shape [num_classes]. ");
+    AddOutput("out_correct", "A Tensor with shape [num_classes]. ");
     AddAttr<int>("num_classes", "The possible number of labels.");
 
     AddComment(R"DOC(
@@ -131,6 +99,5 @@ Mean Intersection-Over-Union is a common evaluation metric for semantic image se
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mean_iou, ops::MeanIoUOp, ops::MeanIoUOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    mean_iou, ops::MeanIoUKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MeanIoUKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(mean_iou, ops::MeanIoUKernel<int>,
+                       ops::MeanIoUKernel<int64_t>);
