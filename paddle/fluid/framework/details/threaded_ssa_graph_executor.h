@@ -23,6 +23,7 @@
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 
 namespace paddle {
@@ -58,6 +59,21 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   bool allow_op_delay_;
+
+  void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+                       OpHandleBase *op_instance) const;
+
+  void InsertPendingVar(std::unordered_set<VarHandleBase *> *pending_vars,
+                        BlockingQueue<VarHandleBase *> *ready_vars,
+                        VarHandleBase *var) const;
+
+  void InsertFetchOps(
+      const std::vector<std::string> &fetch_tensors,
+      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+      std::unordered_set<VarHandleBase *> *pending_vars,
+      BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
 };
 
 }  // namespace details

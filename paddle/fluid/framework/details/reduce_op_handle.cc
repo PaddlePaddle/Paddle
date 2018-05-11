@@ -51,7 +51,7 @@ void ReduceOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
 
   // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated(in_var_handles);
+  WaitInputVarGenerated();
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
@@ -80,19 +80,21 @@ void ReduceOpHandle::RunImpl() {
   }
 
   if (pre_in_var->IsType<framework::SelectedRows>()) {
-    std::vector<const SelectedRows *> in_selected_rows =
-        GetInputValues<SelectedRows>(in_var_handles, var_scopes);
-
-    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
-                       out_var->GetMutable<framework::SelectedRows>());
+    this->RunAndRecordEvent([&] {
+      std::vector<const SelectedRows *> in_selected_rows =
+          GetInputValues<SelectedRows>(in_var_handles, var_scopes);
+      GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
+                         out_var->GetMutable<framework::SelectedRows>());
+    });
   } else {
     std::vector<const LoDTensor *> lod_tensors =
         GetInputValues<LoDTensor>(in_var_handles, var_scopes);
-
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
-      ReduceLoDTensor func(lod_tensors,
-                           out_var->GetMutable<framework::LoDTensor>());
-      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      this->RunAndRecordEvent([&] {
+        ReduceLoDTensor func(lod_tensors,
+                             out_var->GetMutable<framework::LoDTensor>());
+        VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
@@ -155,17 +157,6 @@ std::vector<const T *> ReduceOpHandle::GetInputValues(
     in_selected_rows.emplace_back(&in_sr);
   }
   return in_selected_rows;
-}
-
-void ReduceOpHandle::WaitInputVarGenerated(
-    const std::vector<VarHandle *> &in_var_handles) {
-  for (auto *in : in_var_handles) {
-    if (in->generated_op_) {
-      for (auto pair : dev_ctxes_) {
-        in->generated_op_->Wait(pair.second);
-      }
-    }
-  }
 }
 
 std::string ReduceOpHandle::Name() const { return "reduce"; }

@@ -26,6 +26,7 @@ SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
       place_(place) {}
 
 void SendOpHandle::RunImpl() {
+  // TODO(wuyi): need further analysis whether wait VarDummyHandle.
   // Wait input done
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
@@ -33,7 +34,7 @@ void SendOpHandle::RunImpl() {
       continue;
     }
     if (in->generated_op_) {
-      in->generated_op_->Wait(dev_ctxes_[p]);
+      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[p]);
     }
   }
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
