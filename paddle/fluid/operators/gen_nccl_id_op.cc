@@ -102,8 +102,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GenNCCLIdOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
 GenNCCLId operator
