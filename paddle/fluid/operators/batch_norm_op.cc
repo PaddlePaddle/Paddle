@@ -126,8 +126,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
 
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "")

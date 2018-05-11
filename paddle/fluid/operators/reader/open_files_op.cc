@@ -185,9 +185,8 @@ class OpenFilesOp : public framework::OperatorBase {
 };
 
 class OpenFilesOpMaker : public FileReaderMakerBase {
- public:
-  OpenFilesOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : FileReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<std::vector<std::string>>("file_names", "Files to be read.");
     AddAttr<int>("thread_num", "The maximal concurrent prefetch thread number.")
         .GreaterThan(0);
@@ -196,7 +195,7 @@ class OpenFilesOpMaker : public FileReaderMakerBase {
     AddComment(R"DOC(
       OpenFiles Operator
 
-      An OpenFilesOp creates a MultiFileReader, which is able to 
+      An OpenFilesOp creates a MultiFileReader, which is able to
       read data multi-threaded from multiple files.
     )DOC");
   }
