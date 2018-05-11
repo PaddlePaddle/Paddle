@@ -105,8 +105,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
 
 class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupSparseTableOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("W",
              "(SelectedRows) The input represents embedding table, "
              "which is a learnable parameter.");
