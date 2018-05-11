@@ -42,8 +42,7 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
 
 class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IOUSimilarityOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor, default LoDTensor<float>) "
              "Box list X is a 2-D LoDTensor with shape [N, 4] holds N boxes, "
