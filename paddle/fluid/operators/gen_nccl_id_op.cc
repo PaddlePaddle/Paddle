@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace operators {
