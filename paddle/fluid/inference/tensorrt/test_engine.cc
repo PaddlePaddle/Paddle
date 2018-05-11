@@ -77,6 +77,37 @@ TEST_F(TensorRTEngineTest, add_layer) {
   ASSERT_EQ(y_cpu, x_v * 2 + 3);
 }
 
+TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
+  // Weight in CPU memory.
+  // It seems tensorrt FC use col-major: [[1.0, 3.3], [1.1, 4.4]]
+  // instead of row-major, which is [[1.0, 1.1], [3.3, 4.4]]
+  float raw_weight[4] = {1.0, 1.1, 3.3, 4.4};
+  float raw_bias[2] = {1.3, 2.4};
+
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
+  TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 2);
+  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+                                  nvinfer1::DimsCHW{1, 2, 1});
+  auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, 2,
+                                        weight.get(), bias.get());
+  PADDLE_ENFORCE(fc_layer != nullptr);
+
+  engine_->DeclareOutput(fc_layer, 0, "y");
+  engine_->FreezeNetwork();
+  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
+
+  float x_v[2] = {1.0, 2.0};
+  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
+  2 * sizeof(float));
+  engine_->Execute(1);
+
+  LOG(INFO) << "to get output";
+  float y_cpu[2] = {-1., -1.};
+  engine_->GetOutputInCPU("y", &y_cpu[0], sizeof(float) * 2);
+  ASSERT_EQ(y_cpu[0], 4.5);
+  ASSERT_EQ(y_cpu[1], 14.5);
+}
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

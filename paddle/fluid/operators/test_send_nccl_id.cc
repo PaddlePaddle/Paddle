@@ -64,7 +64,7 @@ void StartServer() {
 TEST(SendNcclId, Normal) {
   std::thread server_thread(StartServer);
   // wait server to start
-  sleep(2);
+  rpc_service.WaitServerReady();
 
   f::Scope scope;
   p::CPUPlace place;
