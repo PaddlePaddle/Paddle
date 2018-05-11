@@ -57,7 +57,6 @@ struct BroadcastOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
-  void WaitInputVarGenerated(const VarHandle &in_var);
 
  private:
   const std::vector<Scope *> &local_scopes_;
@@ -65,6 +64,9 @@ struct BroadcastOpHandle : public OpHandleBase {
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
+
+  void InitOutputValue(const VarHandle &in_var_handle,
+                       const std::vector<VarHandle *> &out_var_handles) const;
 };
 }  // namespace details
 }  // namespace framework

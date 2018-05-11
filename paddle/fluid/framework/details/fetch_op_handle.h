@@ -33,7 +33,7 @@ struct FetchOpHandle : public OpHandleBase {
 
   ~FetchOpHandle();
 
-  void Wait(platform::DeviceContext *waited_dev) override;
+  void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) override;
 
   void WaitAndMergeCPUTensors() const;
 
@@ -41,6 +41,8 @@ struct FetchOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  virtual void WaitInputVarGenerated(const platform::Place &place);
 
  private:
   FeedFetchList *data_;
