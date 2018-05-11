@@ -299,14 +299,7 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        set +e
         ctest --output-on-failure
-        if [ $? != 0 ]; then
-            set -e
-            ctest --output-on-failure --rerun-failed
-            set +e
-        fi
-        set -e
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
@@ -405,7 +398,7 @@ function gen_dockerfile() {
 
     cat <<EOF
     ========================================
-    Generate /paddle/build/Dockerfile ...
+    Generate ${PADDLE_ROOT}/build/Dockerfile ...
     ========================================
 EOF
 
@@ -429,7 +422,7 @@ EOF
         CMD='"true"'
     fi
 
-    cat >> /paddle/build/Dockerfile <<EOF
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update &&\
@@ -443,8 +436,14 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
-    ADD go/cmd/pserver/pserver /usr/bin/
-    ADD go/cmd/master/master /usr/bin/
+EOF
+    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+        ADD go/cmd/pserver/pserver /usr/bin/
+        ADD go/cmd/master/master /usr/bin/
+EOF
+    fi
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
@@ -474,7 +473,6 @@ EOF
 }
 
 function main() {
-    set -e
     local CMD=$1
     init
     case $CMD in
