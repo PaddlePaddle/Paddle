@@ -161,7 +161,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
-    math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+    math::PaddingLoDTensorFunctor<DeviceContext, T, math::LENGTH_BATCH_WIDTH>()(
         ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
         false);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
@@ -216,7 +216,8 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
-    math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+    math::UnpaddingLoDTensorFunctor<DeviceContext, T,
+                                    math::LENGTH_BATCH_WIDTH>()(
         ctx.template device_context<DeviceContext>(), logits_grad,
         *warpctc_grad, norm_by_times);
 
