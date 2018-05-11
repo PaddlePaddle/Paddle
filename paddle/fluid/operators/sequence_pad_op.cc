@@ -32,7 +32,11 @@ class SequencePadOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims.size(), 2,
                       "Only support 2-D tensor, rank of Input(X) should be 2.");
 
-    auto out_dims = x_dims;
+    int lod_level = ctx->Attrs().Get<int>("lod_level");
+
+    int64_t max_len = -1;
+    int64_t seq_num = -1;
+    int x_lod_size = -1;
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
@@ -40,27 +44,31 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
       auto& x_lod = x_var->Get<LoDTensor>().lod();
 
-      PADDLE_ENFORCE_GE(x_lod.size(), 1,
-                        "Input(X) should be sequences containing lod.");
+      x_lod_size = x_lod.size();
 
-      auto last_level_lod = x_lod[x_lod.size() - 1];
-      size_t max_len = 0;
+      auto x_abs_offset = framework::ToAbsOffset(x_lod)[lod_level];
 
-      for (size_t i = 1; i < last_level_lod.size(); ++i) {
-        auto seq_len = last_level_lod[i] - last_level_lod[i - 1];
+      PADDLE_ENFORCE_EQ(x_dims[0], static_cast<int64_t>(x_abs_offset.back()),
+                        "The first dimension of `X` should be equal to sum "
+                        "of all sequences' length.");
+
+      seq_num = x_abs_offset.size() - 1;
+
+      for (size_t i = 1; i <= seq_num; ++i) {
+        int64_t seq_len = x_abs_offset[i] - x_abs_offset[i - 1];
         max_len = max_len < seq_len ? seq_len : max_len;
       }
-
-      out_dims[0] = max_len * (last_level_lod.size() - 1);
     } else {
       framework::VarDesc* x_desc =
           boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
-      PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1,
-                        "Input(X) should be sequences containing lod.");
-      out_dims[0] = -1;
+      x_lod_size = x_desc->GetLoDLevel();
     }
 
-    ctx->SetOutputDim("Out", out_dims);
+    PADDLE_ENFORCE(lod_level >= 0 && lod_level < x_lod_size,
+                   "Invalid `lod_level` which should be at least 0 and less "
+                   "than maximum lod level of `X`");
+
+    ctx->SetOutputDim("Out", {seq_num, max_len, x_dims[1]});
   }
 
  protected:
@@ -84,9 +92,11 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) Output variable which would be a common tensor "
               "without lod. Each sequence would be padded to the maximum "
               "length.");
+    AddAttr<float>("lod_level",
+                   "(int, default 0) Specify which level lod to referred to.");
     AddAttr<float>("pad_value",
-                   "(float, default 0.0) Value to be padded "
-                   "to the end of each sequence.");
+                   "(float, default 0.0) Specify which value to be padded to "
+                   "the end of each sequence.");
     AddComment(R"DOC(
 
     )DOC");
