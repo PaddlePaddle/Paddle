@@ -309,8 +309,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
 class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiClassNMSOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("BBoxes",
              "(Tensor) A 3-D Tensor with shape [N, M, 4] represents the "
              "predicted locations of M bounding bboxes, N is the batch size. "

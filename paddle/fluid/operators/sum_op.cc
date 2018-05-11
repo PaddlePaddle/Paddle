@@ -112,8 +112,7 @@ class SumOp : public framework::OperatorWithKernel {
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor) The output tensor of sum operator.");

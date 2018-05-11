@@ -53,17 +53,16 @@ class CreateThreadedReaderOp : public framework::OperatorBase {
 };
 
 class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateThreadedReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddComment(R"DOC(
       CreateThreadedReader Operator
 
-      This operator creates a threaded reader. A threaded reader's 
-      'ReadNext()' can be invoked by several threads at the same 
-      time. 
-      When the attribute 'safe_mode' is true, the threaded reader's 
-      'ReInit()' is disabled to avoid unexpected bugs in multi-thread 
+      This operator creates a threaded reader. A threaded reader's
+      'ReadNext()' can be invoked by several threads at the same
+      time.
+      When the attribute 'safe_mode' is true, the threaded reader's
+      'ReInit()' is disabled to avoid unexpected bugs in multi-thread
       environment.
     )DOC");
   }

@@ -210,15 +210,15 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
         }
 
         if (wt == WIRETYPE_LENGTH_DELIMITED) {
-          int length = 0;
-          if (!input->ReadVarintSizeAsInt(&length)) {
+          int num_bytes = 0;
+          if (!input->ReadVarintSizeAsInt(&num_bytes)) {
             return tag;
           }
-
-          for (int i = 0; i < length; i++) {
+          int start_pos = input->CurrentPosition();
+          while (input->CurrentPosition() - start_pos < num_bytes) {
             uint64_t v;
             if (!input->ReadVarint64(&v)) {
-              return false;
+              return tag;
             }
             lod->push_back(v);
           }
@@ -275,8 +275,8 @@ int VariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kTypeFieldNumber: {
-        uint64_t v;
-        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+        uint32_t v;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint32(&v)) {
           return tag;
         }
 
@@ -284,8 +284,8 @@ int VariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kDataTypeFieldNumber: {
-        uint64_t v = 0;
-        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+        uint32_t v = 0;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint32(&v)) {
           return tag;
         }
 
@@ -305,11 +305,12 @@ int VariableResponse::Parse(Source* source) {
 
         // packed
         if (wt == WIRETYPE_LENGTH_DELIMITED) {
-          int length = 0;
-          if (!input.ReadVarintSizeAsInt(&length)) {
+          int num_bytes = 0;
+          if (!input.ReadVarintSizeAsInt(&num_bytes)) {
             return tag;
           }
-          for (int i = 0; i < length; i++) {
+          int start_pos = input.CurrentPosition();
+          while (input.CurrentPosition() - start_pos < num_bytes) {
             uint64_t v;
             if (!input.ReadVarint64(&v)) {
               return tag;
@@ -318,7 +319,6 @@ int VariableResponse::Parse(Source* source) {
           }
           break;
         }
-
         return tag;
       }
       case sendrecv::VariableMessage::kLodLevelFieldNumber: {
@@ -372,9 +372,9 @@ int VariableResponse::Parse(Source* source) {
                            meta_.varname() != "",
                        "meta info should be got first!");
 
-        int length = 0;
+        int num_bytes = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
-            !ReadVarintSizeAsInt(&input, &length)) {
+            !ReadVarintSizeAsInt(&input, &num_bytes)) {
           return tag;
         }
 
@@ -382,14 +382,14 @@ int VariableResponse::Parse(Source* source) {
         if (meta_.type() == sendrecv::LOD_TENSOR) {
           PADDLE_ENFORCE(meta_.lod_size() >= 0,
                          "lod info should be got first!");
-          if (!CopyLodTensorData(&input, *dev_ctx_, dims, length)) {
+          if (!CopyLodTensorData(&input, *dev_ctx_, dims, num_bytes)) {
             return tag;
           }
           break;
         }
 
         if (meta_.type() == sendrecv::SELECTED_ROWS) {
-          if (!CopySelectRowsTensorData(&input, *dev_ctx_, dims, length)) {
+          if (!CopySelectRowsTensorData(&input, *dev_ctx_, dims, num_bytes)) {
             return tag;
           }
           break;
@@ -403,13 +403,13 @@ int VariableResponse::Parse(Source* source) {
                            meta_.varname() != "",
                        "meta info should be got first!");
 
-        int length = 0;
+        int num_bytes = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
-            !ReadVarintSizeAsInt(&input, &length)) {
+            !ReadVarintSizeAsInt(&input, &num_bytes)) {
           return tag;
         }
 
-        if (!CopySelectRowsData(&input, *dev_ctx_, length)) {
+        if (!CopySelectRowsData(&input, *dev_ctx_, num_bytes)) {
           return tag;
         }
         break;

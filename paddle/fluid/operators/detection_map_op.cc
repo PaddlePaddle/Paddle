@@ -78,8 +78,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
 
 class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DetectionMAPOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("DetectRes",
              "(LoDTensor) A 2-D LoDTensor with shape [M, 6] represents the "
              "detections. Each row has 6 values: "

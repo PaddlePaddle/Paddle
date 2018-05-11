@@ -58,8 +58,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupTableOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("W",
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");

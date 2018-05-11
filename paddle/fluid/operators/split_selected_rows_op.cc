@@ -19,8 +19,7 @@ namespace operators {
 
 class SplitSelectedRowsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitSelectedRowsOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input SelectedRows.");
     AddOutput("Out", "The outputs of the input SelectedRows.").AsDuplicable();
     AddAttr<std::vector<int>>("height_sections",

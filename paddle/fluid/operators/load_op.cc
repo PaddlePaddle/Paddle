@@ -73,8 +73,7 @@ class LoadOp : public framework::OperatorBase {
 
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoadOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "(Tensor) The tensor need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
