@@ -108,8 +108,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConditionalBlockOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The conditional variable of this operator. If X is empty, the "
              "whole sub-block will not be executed.")

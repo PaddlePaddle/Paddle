@@ -84,9 +84,8 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
 };
 
 class CreateRandomDataGeneratorOpMaker : public FileReaderMakerBase {
- public:
-  CreateRandomDataGeneratorOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : FileReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<float>("min", "The lower bound of reader's uniform distribution.");
     AddAttr<float>("max", "The upper bound of reader's uniform distribution.");
     AddComment(R"DOC(

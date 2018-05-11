@@ -37,8 +37,7 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
 class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceEraseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(2-D LoDTensor with the 2nd dim. equal to 1) "
              "Input LoDTensor of SequenceEraseOp.");

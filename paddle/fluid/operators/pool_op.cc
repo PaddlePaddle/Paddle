@@ -135,8 +135,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
                                  library_);
 }
 
-Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Pool2dOpMaker::Make() {
   AddInput(
       "X",
       "(Tensor) The input tensor of pooling operator. "
@@ -229,8 +228,7 @@ Example:
 )DOC");
 }
 
-Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Pool3dOpMaker::Make() {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW, where N is batch size, C is "
