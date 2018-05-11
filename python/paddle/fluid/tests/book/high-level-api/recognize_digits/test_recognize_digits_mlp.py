@@ -49,12 +49,16 @@ def train(use_cuda, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
-    trainer = fluid.Trainer(train_program, place=place, optimizer=optimizer)
+    trainer = fluid.Trainer(
+        train_func=train_program,
+        infer_func=inference_program,
+        place=place,
+        optimizer=optimizer)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
             # if (event.epoch + 1) % 10 == 0:
-            trainer.save_params(save_dirname)
+            trainer.save_inference_model(save_dirname)
 
             # TODO: Uncomment this part once we are sure that .train is working
             # test_reader = paddle.batch(
@@ -90,19 +94,18 @@ def train(use_cuda, save_dirname):
         feed_order=['img', 'label'])
 
 
-# def infer(use_cuda, save_dirname=None):
-#     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-#
-#     inferencer = fluid.Inferencer(
-#         inference_program, param_path=save_dirname, place=place)
-#
-#     batch_size = 1
-#     tensor_img = numpy.random.uniform(-1.0, 1.0,
-#                                       [batch_size, 1, 28, 28]).astype("float32")
-#
-#     results = inferencer.infer({'img': tensor_img})
-#
-#     print("infer results: ", results[0])
+def infer(use_cuda, save_dirname=None):
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+    inferencer = fluid.Inferencer(param_path=save_dirname, place=place)
+
+    batch_size = 1
+    tensor_img = numpy.random.uniform(-1.0, 1.0,
+                                      [batch_size, 1, 28, 28]).astype("float32")
+
+    results = inferencer.infer({'img': tensor_img})
+
+    print("infer results: ", results[0])
 
 
 def main(use_cuda):
@@ -110,7 +113,7 @@ def main(use_cuda):
 
     # call train() with is_local argument to run distributed train
     train(use_cuda=use_cuda, save_dirname=save_dirname)
-    # infer(use_cuda=use_cuda, save_dirname=save_dirname)
+    infer(use_cuda=use_cuda, save_dirname=save_dirname)
 
 
 if __name__ == '__main__':
