@@ -15,6 +15,8 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 
+USE_NO_KERNEL_OP(ckpt_save)
+
 TEST(CkptSaveOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
