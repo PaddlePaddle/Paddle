@@ -105,40 +105,40 @@ def __initialize_meta_info__():
     if MOVIE_INFO is None:
         pattern = re.compile(r'^(.*)\((\d+)\)$')
         with zipfile.ZipFile(file=fn) as package:
-            for info in package.infolist():
-                assert isinstance(info, zipfile.ZipInfo)
-                MOVIE_INFO = dict()
-                title_word_set = set()
-                categories_set = set()
-                with package.open('ml-1m/movies.dat') as movie_file:
-                    for i, line in enumerate(movie_file):
-                        movie_id, title, categories = line.strip().split('::')
-                        categories = categories.split('|')
-                        for c in categories:
-                            categories_set.add(c)
-                        title = pattern.match(title).group(1)
-                        MOVIE_INFO[int(movie_id)] = MovieInfo(
-                            index=movie_id, categories=categories, title=title)
-                        for w in title.split():
-                            title_word_set.add(w.lower())
+            assert package.getinfo('ml-1m/movies.dat') and package.getinfo(
+                'ml-1m/users.dat')
+            MOVIE_INFO = dict()
+            title_word_set = set()
+            categories_set = set()
+            with package.open('ml-1m/movies.dat') as movie_file:
+                for i, line in enumerate(movie_file):
+                    movie_id, title, categories = line.strip().split('::')
+                    categories = categories.split('|')
+                    for c in categories:
+                        categories_set.add(c)
+                    title = pattern.match(title).group(1)
+                    MOVIE_INFO[int(movie_id)] = MovieInfo(
+                        index=movie_id, categories=categories, title=title)
+                    for w in title.split():
+                        title_word_set.add(w.lower())
 
-                global MOVIE_TITLE_DICT
-                MOVIE_TITLE_DICT = dict()
-                for i, w in enumerate(title_word_set):
-                    MOVIE_TITLE_DICT[w] = i
+            global MOVIE_TITLE_DICT
+            MOVIE_TITLE_DICT = dict()
+            for i, w in enumerate(title_word_set):
+                MOVIE_TITLE_DICT[w] = i
 
-                global CATEGORIES_DICT
-                CATEGORIES_DICT = dict()
-                for i, c in enumerate(categories_set):
-                    CATEGORIES_DICT[c] = i
+            global CATEGORIES_DICT
+            CATEGORIES_DICT = dict()
+            for i, c in enumerate(categories_set):
+                CATEGORIES_DICT[c] = i
 
-                global USER_INFO
-                USER_INFO = dict()
-                with package.open('ml-1m/users.dat') as user_file:
-                    for line in user_file:
-                        uid, gender, age, job, _ = line.strip().split("::")
-                        USER_INFO[int(uid)] = UserInfo(
-                            index=uid, gender=gender, age=age, job_id=job)
+            global USER_INFO
+            USER_INFO = dict()
+            with package.open('ml-1m/users.dat') as user_file:
+                for line in user_file:
+                    uid, gender, age, job, _ = line.strip().split("::")
+                    USER_INFO[int(uid)] = UserInfo(
+                        index=uid, gender=gender, age=age, job_id=job)
     return fn
 
 
