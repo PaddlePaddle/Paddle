@@ -155,7 +155,7 @@ into offsets
    3  2+3 4+5 1+9 2+10 3+12
 ```
 
-so we know that the first sentence is from word 0 to word 3, and the second sentence from work 3 to word 5.
+so we know that the first sentence is from word 0 to word 3, and the second sentence from word 3 to word 5.
 
 Similarly, the lengths in the top level LoD
 
