@@ -268,6 +268,11 @@ foreach(src ${READER_LIBRARY})
     set(OP_LIBRARY ${src} ${OP_LIBRARY})
 endforeach()
 
+add_subdirectory(detection)
+foreach(src ${DETECTION_LIBRARY})
+    set(OP_LIBRARY ${src} ${OP_LIBRARY})
+endforeach()
+
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
