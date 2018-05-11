@@ -98,7 +98,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
 
   float x_v[2] = {1.0, 2.0};
   engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-  2 * sizeof(float));
+                           2 * sizeof(float));
   engine_->Execute(1);
 
   LOG(INFO) << "to get output";
@@ -106,6 +106,15 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   engine_->GetOutputInCPU("y", &y_cpu[0], sizeof(float) * 2);
   ASSERT_EQ(y_cpu[0], 4.5);
   ASSERT_EQ(y_cpu[1], 14.5);
+}
+
+TEST_F(TensorRTEngineTest, load_onnx_model) {
+  // fix latter.
+  std::string fit_a_line_model = "./1.model";
+  engine_->BuildFromONNX(fit_a_line_model);
+  engine_->DeclareInput(0);
+  engine_->DeclareOutput(0);
+  engine_->FreezeNetwork();
 }
 
 }  // namespace tensorrt

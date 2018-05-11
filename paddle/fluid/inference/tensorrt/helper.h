@@ -57,13 +57,15 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
 static nvonnxparser::IOnnxConfig* createONNXConfig() {
-  return static_cast<nvonnxparser::IOnnxConfig*>(
-      dy::createONNXConfig_INTERNAL());
+  // return static_cast<nvonnxparser::IOnnxConfig*>(
+  //     dy::createONNXConfig_INTERNAL());
+  return nullptr;
 }
 static nvonnxparser::IONNXParser* createONNXParser(
     const nvonnxparser::IOnnxConfig& config) {
-  return static_cast<nvonnxparser::IONNXParser*>(
-      dy::createONNXParser_INTERNAL(config));
+  // return static_cast<nvonnxparser::IONNXParser*>(
+  //     dy::createONNXParser_INTERNAL(config));
+  return nullptr;
 }
 
 // A logger for create TensorRT infer builder.
@@ -104,12 +106,12 @@ void OnnxToGIEModel(const std::string& directory, const std::string& model_file,
                     nvinfer1::IHostMemory*& gie_model_stream,
                     nvinfer1::ILogger* logger) {
   // create the builder
-  nvinfer1::IBuilder* builder = createInferBuilder(*logger);
+  nvinfer1::IBuilder* builder = createInferBuilder(logger);
 
   nvonnxparser::IOnnxConfig* config = createONNXConfig();
   config->setModelFileName(AbsPath(directory, model_file).c_str());
 
-  nvonnxparser::IONNXParser* parser = createONNXParser(*config);
+  nvonnxparser::IONNXParser* parser = tensorrt::createONNXParser(*config);
 
   // Optional - uncomment below lines to view network layer information
   // config->setPrintLayerInfo(true);

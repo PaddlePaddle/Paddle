@@ -80,18 +80,7 @@ namespace tensorrt {
 class TensorRTEngine : public EngineBase {
  public:
   // Weight is model parameter.
-  class Weight {
-   public:
-    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
-      w_.type = dtype;
-      w_.values = value;
-      w_.count = num_elem;
-    }
-    const nvinfer1::Weights& get() { return w_; }
-
-   private:
-    nvinfer1::Weights w_;
-  };
+  class Weight;
 
   TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
@@ -106,8 +95,7 @@ class TensorRTEngine : public EngineBase {
   void Build(const DescType& paddle_model) override;
 
   // Build the TensorRT engine with an ONNX model.
-  void BuildFromONNX(const std::string& model_dir,
-                     const std::string& model_file);
+  void BuildFromONNX(const std::string& model_path);
 
   void Execute(int batch_size) override;
 
@@ -175,6 +163,19 @@ class TensorRTEngine : public EngineBase {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
+
+  class Weight {
+   public:
+    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
+      w_.type = dtype;
+      w_.values = value;
+      w_.count = num_elem;
+    }
+    const nvinfer1::Weights& get() { return w_; }
+
+   private:
+    nvinfer1::Weights w_;
+  };
 
  protected:
   // Get an input buffer's string id.

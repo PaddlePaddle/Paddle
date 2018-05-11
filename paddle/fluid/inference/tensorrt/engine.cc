@@ -26,17 +26,16 @@ namespace inference {
 namespace tensorrt {
 
 void TensorRTEngine::Build(const DescType& paddle_model) {
-  PADDLE_ENFORCE(false, "not implemented");
+  PADDLE_THROW("not implemented");
 }
 
-void TensorRTEngine::BuildFromONNX(const std::string& model_dir,
-                                   const std::string& model_file) {
-  infer_builder_.reset(createInferBuilder(logger_));
-  infer_ptr<nvonnxparser::IOnnxConfig> config(createInferBuilder(logger_));
-  config->setModelFileName(AbsPath(model_dir, model_file).c_str());
-  infer_ptr<nvonnxparser::IONNXParser> parser(createONNXParser(*config));
-  if (!parser->parse(AbsPath(model_dir, model_file)).c_str(),
-      nvinfer1::DataType::kFLOAT) {
+void TensorRTEngine::BuildFromONNX(const std::string& model_path) {
+  infer_builder_.reset(createInferBuilder(&logger_));
+  auto* config = tensorrt::createONNXConfig();
+  config->setModelFileName(model_path.c_str());
+  infer_ptr<nvonnxparser::IONNXParser> parser(
+      tensorrt::createONNXParser(*config));
+  if (!parser->parse(model_path.c_str(), nvinfer1::DataType::kFLOAT)) {
     logger_.log(nvinfer1::ILogger::Severity::kERROR,
                 "failed to parse ONNX file");
     exit(EXIT_FAILURE);
@@ -49,8 +48,10 @@ void TensorRTEngine::BuildFromONNX(const std::string& model_dir,
   infer_network_.reset(parser->getTRTNetwork());
   // Get input and output.
   for (int i = 0; i < infer_network_->getNbInputs(); i++) {
-    auto* in = infer_network_->getInput(i);
-    auto dims = AccumDims(in->getDimensions());
+    DeclareInput(i);
+  }
+  for (int i = 0; i < infer_network_->getNbOutputs(); i++) {
+    DeclareOutput(i);
   }
 }
 
@@ -130,7 +131,7 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(int offset) {
                     name);
   PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
   auto* x = infer_network_->getInput(offset);
-  x->setName(name);
+  x->setName(name.c_str());
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
                         AccumDims(x->getDimensions());
   return x;
@@ -172,7 +173,7 @@ void TensorRTEngine::DeclareOutput(int offset) {
   auto* x = infer_network_->getInput(offset);
   x->setName(name.c_str());
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
-      AccumDims(x->getDimensions());
+                        AccumDims(x->getDimensions());
 }
 
 void* TensorRTEngine::GetOutputInGPU(const std::string& name) {
@@ -200,7 +201,7 @@ Buffer& TensorRTEngine::buffer(const std::string& name) {
   return buffers_[slot_offset];
 }
 
-Buffer &TensorRTEngine::ibuffer(int offset) {
+Buffer& TensorRTEngine::ibuffer(int offset) {
   auto name = ibuffer_name(offset);
   PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
   auto it = buffer_sizes_.find(name);
