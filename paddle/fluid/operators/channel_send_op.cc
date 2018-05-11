@@ -57,8 +57,7 @@ class ChannelSendOp : public framework::OperatorBase {
 
 class ChannelSendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChannelSendOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(Channel,
              "(Channel) A variable which \"sends\" the passed in value to "
              "a listening receiver.")
