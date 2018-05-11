@@ -99,23 +99,23 @@ def train(use_cuda, save_path):
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
-            if (event.epoch % 10) == 0:
-                avg_cost, accuracy = trainer.test(reader=test_reader)
-
-                print('BatchID {1:04}, Loss {2:2.2}, Acc {3:2.2}'.format(
-                    event.epoch + 1, avg_cost, accuracy))
-
-                if accuracy > 0.01:  # Low threshold for speeding up CI
-                    trainer.params.save(save_path)
-                    return
+            trainer.save_inference_model(save_path)
+            # if (event.batch_id % 10) == 0:
+            #     avg_cost, accuracy = trainer.test(reader=test_reader)
+            #
+            #     print('BatchID {1:04}, Loss {2:2.2}, Acc {3:2.2}'.format(
+            #         event.batch_id + 1, avg_cost, accuracy))
+            #
+            #     if accuracy > 0.01:  # Low threshold for speeding up CI
+            #         trainer.params.save(save_path)
+            #         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
         train_network,
+        inference_network,
         optimizer=fluid.optimizer.Adam(learning_rate=0.001),
-        place=place,
-        event_handler=event_handler)
-
+        place=place)
     trainer.train(
         num_epochs=EPOCH_NUM,
         event_handler=event_handler,
@@ -125,8 +125,8 @@ def train(use_cuda, save_path):
 
 def infer(use_cuda, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
-        inference_network, save_path=save_path, place=place)
+
+    inferencer = fluid.Inferencer(param_path=save_path, place=place)
 
     # The input's dimension of conv should be 4-D or 5-D.
     # Use normilized image pixels as input data, which should be in the range
