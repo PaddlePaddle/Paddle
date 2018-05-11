@@ -52,9 +52,11 @@ void eltwise_forward(const ExecContext &ctx, mkldnn::algorithm algorithm,
                                                mkldnn::memory::format::nchw);
 
   // create memory primitives
-  auto src_memory =
+  auto src_memory = std::make_shared<mkldnn::memory>(
       mkldnn::memory({data_md, mkldnn_engine},
-                     static_cast<void *>(const_cast<float *>(src_data)));
+                     static_cast<void *>(const_cast<float *>(src_data))));
+  // save source memory to device context to be referred in backward path
+  dev_ctx.SetBlob("InputX@eltwise_pd", src_memory);
   auto dst_memory =
       mkldnn::memory({data_md, mkldnn_engine},
                      static_cast<void *>(const_cast<float *>(dst_data)));
@@ -69,7 +71,7 @@ void eltwise_forward(const ExecContext &ctx, mkldnn::algorithm algorithm,
       forward_desc, mkldnn_engine);
   dev_ctx.SetBlob(key_eltwise_pd, forward_pd);
 
-  auto eltwise = mkldnn::eltwise_forward(*forward_pd, src_memory, dst_memory);
+  auto eltwise = mkldnn::eltwise_forward(*forward_pd, *src_memory, dst_memory);
 
   // push primitive to stream and wait until it's executed
   std::vector<mkldnn::primitive> pipeline = {eltwise};
@@ -83,8 +85,7 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
   const auto &mkldnn_engine = dev_ctx.GetEngine();
 
   // get buffers
-  const auto *x = ctx.template Input<Tensor>("X");
-  const auto *src = x->template data<T>();
+  const auto *x = ctx.template Input<Tensor>("Out");
 
   auto *dout = ctx.template Input<Tensor>(framework::GradVarName("Out"));
   const auto *diff_dst = dout->template data<T>();
@@ -103,9 +104,11 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
                      : platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
                                                mkldnn::memory::format::nchw);
 
+  // retrieve source memory from device context
+  const std::shared_ptr<void> src_memory = dev_ctx.GetBlob("InputX@eltwise_pd");
+  auto *p_src_memory = static_cast<mkldnn::memory *>(src_memory.get());
+
   // create memory primitives
-  auto src_memory = mkldnn::memory(
-      {data_md, mkldnn_engine}, static_cast<void *>(const_cast<float *>(src)));
   auto diff_src_memory =
       mkldnn::memory({data_md, mkldnn_engine},
                      static_cast<void *>(const_cast<float *>(diff_src)));
@@ -128,8 +131,8 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
   auto eltwise_bwd_prim_desc = mkldnn::eltwise_backward::primitive_desc(
       backward_desc, mkldnn_engine, *p_forward_pd);
 
-  auto eltwise_bwd = mkldnn::eltwise_backward(eltwise_bwd_prim_desc, src_memory,
-                                              diff_dst_memory, diff_src_memory);
+  auto eltwise_bwd = mkldnn::eltwise_backward(
+      eltwise_bwd_prim_desc, *p_src_memory, diff_dst_memory, diff_src_memory);
 
   // push primitive to stream and wait until it's executed
   std::vector<mkldnn::primitive> pipeline = {eltwise_bwd};
