@@ -64,8 +64,7 @@ class SplitByrefOp : public framework::OperatorWithKernel {
 
 class SplitByrefOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitByrefOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
         .AsDuplicable();

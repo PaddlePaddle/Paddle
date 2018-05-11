@@ -79,8 +79,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 
 class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PriorBoxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(Tensor, default Tensor<float>), "
              "the input feature data of PriorBoxOp, The layout is NCHW.");
