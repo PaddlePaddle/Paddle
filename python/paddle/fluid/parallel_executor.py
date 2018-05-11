@@ -31,7 +31,7 @@ class ParallelExecutor(object):
                  allow_op_delay=False,
                  share_vars_from=None,
                  use_default_grad_scale=True,
-                 num_nodes=0,
+                 num_trainers=0,
                  trainer_id=0):
         """
         ParallelExecutor can run program in parallel.
@@ -53,10 +53,10 @@ class ParallelExecutor(object):
                 gradients of each device and scaled gradients would be
                 aggregated. Otherwise, a customized scale value should be fed
                 to the network.
-            num_nodes(int, default 0): If greater than 0, NCCL will be
+            num_trainers(int, default 0): If greater than 0, NCCL will be
                 initialized with multpile rank of nodes, each node should have
                 same number of GPUs. Distributed training will be enabled then.
-            trainer_id(int, default 0): Must use together with num_nodes.
+            trainer_id(int, default 0): Must use together with num_trainers.
                 trainer_id is the "rank" of current node starts from 0.
 
         Returns:
@@ -137,7 +137,7 @@ class ParallelExecutor(object):
             local_scopes,
             allow_op_delay,
             use_default_grad_scale,
-            num_nodes,
+            num_trainers,
             trainer_id)
         self.scope = scope
 

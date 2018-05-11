@@ -80,7 +80,7 @@ ParallelExecutor::ParallelExecutor(
 
 // Bcast Parameters to all GPUs
 #ifdef PADDLE_WITH_CUDA
-  auto *nccl_id_var = scope->FindVar("NCCLID");
+  auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
   ncclUniqueId *nccl_id = nullptr;
   if (nccl_id_var != nullptr) {
     nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
