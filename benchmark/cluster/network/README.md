@@ -222,9 +222,6 @@ Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
 
 **Notice: GRPC client consume more than 10GB memory in this test when buffer size >= 4MB. And it seems that GRPC creates many threads background.**
 
-### Conclution:
-We can start more pserver process to get more fast train speed.
-
 
 ## ib\_read\_bw
 ## MPI 
