@@ -57,8 +57,7 @@ class WriteToArrayOp : public ArrayOp {
 
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WriteToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
     AddInput(
         "I",
@@ -148,8 +147,7 @@ class ReadFromArrayOp : public ArrayOp {
 
 class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadFromArrayProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(TensorArray) the array will be read from.");
     AddInput("I",
              "(Tensor) the subscript index in tensor array. The number of "
