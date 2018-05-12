@@ -36,7 +36,7 @@ struct ComputationOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
-  virtual bool NeedWait(VarHandleBase *in_var);
+  bool NeedWait(VarHandleBase *in_var) override;
 
  private:
   std::unique_ptr<OperatorBase> op_;
