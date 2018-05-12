@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/string/printf.h"
 
 USE_NO_KERNEL_OP(listen_and_serv);
@@ -36,7 +37,7 @@ namespace string = paddle::string;
 
 std::unique_ptr<detail::AsyncGRPCServer> rpc_service;
 
-void StartServer() {
+void StartServer(std::atomic<bool>* initialized) {
   f::Scope scope;
   p::CPUPlace place;
   scope.Var(NCCL_ID_VARNAME);
@@ -54,6 +55,7 @@ void StartServer() {
 
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service.get()));
+  *initialized = true;
   rpc_service->SetCond(0);
   auto recv = rpc_service->Get();
   LOG(INFO) << "got nccl id and stop server...";
@@ -62,9 +64,13 @@ void StartServer() {
 }
 
 TEST(SendNcclId, Normal) {
-  std::thread server_thread(StartServer);
+  std::atomic<bool> initialized{false};
+  std::thread server_thread(StartServer, &initialized);
+  while (!initialized) {
+  }
   // wait server to start
-  rpc_service.WaitServerReady();
+  // sleep(2);
+  rpc_service->WaitServerReady();
 
   f::Scope scope;
   p::CPUPlace place;
