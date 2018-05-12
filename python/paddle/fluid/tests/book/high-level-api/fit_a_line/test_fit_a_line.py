@@ -32,11 +32,18 @@ test_reader = paddle.batch(
     batch_size=BATCH_SIZE)
 
 
+def inference_program():
+    x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(13))
+    y_predict = paddle.layer.fc(input=x,
+                                size=1,
+                                act=paddle.activation.Linear())
+    return y_predict
+
+
 # train
 def linear():
-    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-    y_predict = fluid.layers.fc(input=x, size=1, act=None)
+    y_predict = inference_program()
 
     loss = fluid.layers.square_error_cost(input=y_predict, label=y)
     avg_loss = fluid.layers.mean(loss)
@@ -48,7 +55,10 @@ def train(use_cuda, save_dirname, is_local):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        linear, optimizer=fluid.optimizer.SGD(learning_rate=0.001), place=place)
+        train_func=linear,
+        infer_func=inference_program,
+        place=place,
+        optimizer=fluid.optimizer.SGD(learning_rate=0.001))
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):

@@ -8,4 +8,3 @@ endforeach()
 
 add_subdirectory(fit_a_line)
 add_subdirectory(recognize_digits)
-
