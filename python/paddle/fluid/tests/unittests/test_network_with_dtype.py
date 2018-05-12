@@ -24,7 +24,7 @@ BATCH_SIZE = 20
 
 
 class TestNetWithDtype(unittest.TestCase):
-    def setUp(self):
+    def set_network(self):
         self.dtype = "float64"
         self.init_dtype()
         self.x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
@@ -55,12 +55,14 @@ class TestNetWithDtype(unittest.TestCase):
         pass
 
     def test_cpu(self):
+        self.set_network()
         place = fluid.CPUPlace()
         self.run_net_on_place(place)
 
     def test_gpu(self):
         if not core.is_compiled_with_cuda():
             return
+        self.set_network()
         place = fluid.CUDAPlace(0)
         self.run_net_on_place(place)
 

@@ -19,7 +19,7 @@ import executor
 import data_feeder
 import contextlib
 import io
-import transpiler
+import unique_name
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
@@ -56,26 +56,62 @@ class EndStepEvent(object):
         self.step = step_id
 
 
+def check_and_get_place(place):
+    """
+    Check the type of place or get the default place
+    Args:
+        place(None|core.CUDAPlace|core.CPUPlace): the place that trainer will be executed on.
+
+    Raises:
+        TypeError if the type mismatched.
+
+    Returns:
+        the original place if it is not None.
+        if fluid is compiled with CUDA, returns CUDAPlace(0) by default.
+        Otherwise returns CPUPlace by default.
+    """
+    if place is None:
+        if core.is_compiled_with_cuda():
+            return core.CUDAPlace(0)
+        else:
+            return core.CPUPlace()
+    else:
+        if not isinstance(place, core.CUDAPlace) and not isinstance(
+                place, core.CPUPlace):
+            raise TypeError("Place should be either CUDAPlace or CPUPlace")
+        return place
+
+
 class Trainer(object):
     """
 
     Args:
-        program_func(callable): A function which will return loss. The loss must be a scaler.
+        train_func(callable): A function which will return loss. The loss must be a scalar.
+        infer_func(callable): A function which will return predict, used to save inference model
         optimizer(optimizer.Optimizer): The optimizer should be an instance of Optimizer
         place: The device place of this trainer.
     """
 
-    def __init__(self, program_func, optimizer, param_path=None, place=None):
+    def __init__(self,
+                 train_func,
+                 infer_func,
+                 optimizer,
+                 param_path=None,
+                 place=None):
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
+        if not isinstance(optimizer, opt_module.Optimizer):
+            raise TypeError("The optimizer should be an instance of Optimizer")
+
+        self.infer_func = infer_func
         self.scope = core.Scope()
 
         self.startup_program = framework.Program()
         self.train_program = framework.Program()
 
         with framework.program_guard(self.train_program, self.startup_program):
-            program_func_outs = program_func()
+            program_func_outs = train_func()
             self.test_outputs = program_func_outs if isinstance(
                 program_func_outs, list) else [program_func_outs]
             self.test_program = self.train_program.clone()
@@ -86,9 +122,9 @@ class Trainer(object):
             loss = self.test_outputs[0]
             optimize_ops, params_grads = optimizer.minimize(loss)
 
-        self.place = Trainer._check_and_get_place(place)
+        self.place = check_and_get_place(place)
 
-        self.dist_transpile_if_necessary(optimize_ops, params_grads)
+        self._dist_transpile_if_necessary(optimize_ops, params_grads)
 
         # 2. move the default_main_program to self.program and run the
         # default_startup program on an empty core.Scope()
@@ -101,7 +137,7 @@ class Trainer(object):
             # load params from param_path into scope
             io.load_persistables(exe, dirname=param_path)
 
-    def dist_transpile_if_necessary(self, optimize_ops, params_grads):
+    def _dist_transpile_if_necessary(self, optimize_ops, params_grads):
         if "PADDLE_TRAINING_ROLE" not in os.environ:
             return
 
@@ -190,31 +226,14 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
-    @staticmethod
-    def _check_and_get_place(place):
-        """
-        Check the type of place or get the default place
-        Args:
-            place(None|core.CUDAPlace|core.CPUPlace): the place that trainer will be executed on.
-
-        Raises:
-            TypeError if the type mismatched.
-
-        Returns:
-            the original place if it is not None.
-            if fluid is compiled with CUDA, returns CUDAPlace(0) by default.
-            Otherwise returns CPUPlace by default.
-        """
-        if place is None:
-            if core.is_compiled_with_cuda():
-                return core.CUDAPlace(0)
-            else:
-                return core.CPUPlace()
-        else:
-            if not isinstance(place, core.CUDAPlace) and not isinstance(
-                    place, core.CPUPlace):
-                raise TypeError("Place should be either CUDAPlace or CPUPlace")
-            return place
+    def save_inference_model(self, model_path):
+        inference_program = framework.Program()
+        with framework.program_guard(inference_program):
+            with unique_name.guard():
+                predict_var = self.infer_func()
+        predict_var = self.train_program.block(0).var(predict_var.name)
+        exe = executor.Executor(self.place)
+        io.save_inference_model(model_path, [], [predict_var], exe)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):

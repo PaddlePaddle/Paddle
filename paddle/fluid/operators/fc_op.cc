@@ -72,8 +72,7 @@ framework::OpKernelType FCOpGrad::GetExpectedKernelType(
       layout, library);
 }
 
-FCOpMaker::FCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void FCOpMaker::Make() {
   AddInput("Input", "(Tensor) The input tensor of fully connected operator. ");
   AddInput("W", "(Tensor), The second input tensor of fc op.");
   AddOutput("Out", "(Tensor) The output tensor of fully connected operator. ");
