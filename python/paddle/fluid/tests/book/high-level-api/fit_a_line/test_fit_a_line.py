@@ -40,7 +40,7 @@ def inference_program():
     return y_predict
 
 
-# train
+
 def linear():
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
     y_predict = inference_program()
