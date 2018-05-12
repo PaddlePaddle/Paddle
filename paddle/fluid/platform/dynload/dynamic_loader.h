@@ -26,7 +26,6 @@ void* GetWarpCTCDsoHandle();
 void* GetLapackDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
-void* GetTensorRtParserDsoHandle();
 
 }  // namespace dynload
 }  // namespace platform

@@ -30,29 +30,23 @@ void TensorRTEngine::Build(const DescType& paddle_model) {
 }
 
 void TensorRTEngine::BuildFromONNX(const std::string& model_path) {
+  PADDLE_ENFORCE(IsFileExists(model_path));
   infer_builder_.reset(createInferBuilder(&logger_));
-  auto* config = tensorrt::createONNXConfig();
-  config->setModelFileName(model_path.c_str());
-  infer_ptr<nvonnxparser::IONNXParser> parser(
-      tensorrt::createONNXParser(*config));
-  if (!parser->parse(model_path.c_str(), nvinfer1::DataType::kFLOAT)) {
-    logger_.log(nvinfer1::ILogger::Severity::kERROR,
-                "failed to parse ONNX file");
-    exit(EXIT_FAILURE);
-  }
-  if (!parser->convertToTRTNetwork()) {
-    logger_.log(nvinfer1::ILogger::Severity::kERROR,
-                "ERROR, failed to convert ONNX network into TRT network.");
-    exit(EXIT_FAILURE);
-  }
-  infer_network_.reset(parser->getTRTNetwork());
-  // Get input and output.
-  for (int i = 0; i < infer_network_->getNbInputs(); i++) {
-    DeclareInput(i);
-  }
-  for (int i = 0; i < infer_network_->getNbOutputs(); i++) {
-    DeclareOutput(i);
-  }
+  nvinfer1::IHostMemory* model;
+  OnnxToGIEModel("", model_path, max_batch_, model, &logger_);
+  infer_runtime_.reset(createInferRuntime(&logger_));
+  VLOG(4) << "build engine";
+  infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
+      model->data(), model->size(), nullptr));
+  if (model) model->destroy();
+  VLOG(4) << "create context";
+  PADDLE_ENFORCE(infer_engine_ != nullptr);
+  infer_context_.reset(infer_engine_->createExecutionContext());
+
+  PADDLE_ENFORCE_GT(infer_engine_->getNbBindings(), 0,
+                    "model do not have any inputs or outputs");
+  DetectInputsAndOutputs();
+  FreezeNetwork();
 }
 
 void TensorRTEngine::Execute(int batch_size) {
@@ -88,11 +82,17 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
 
-  infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
-  PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
+  if (!infer_engine_) {
+    VLOG(4) << "build cuda engine";
+    infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
+    PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
 
-  infer_context_.reset(infer_engine_->createExecutionContext());
+    VLOG(4) << "create execution context";
+    infer_context_.reset(infer_engine_->createExecutionContext());
+  }
 
+  VLOG(4) << "allocate gpu buffers";
+  PADDLE_ENFORCE(!buffer_sizes_.empty());
   // allocate GPU buffers.
   buffers_.resize(buffer_sizes_.size());
   for (auto& item : buffer_sizes_) {
@@ -102,6 +102,7 @@ void TensorRTEngine::FreezeNetwork() {
                         infer_engine_->getBindingDataType(slot_offset))] *
                     AccumDims(infer_engine_->getBindingDimensions(slot_offset));
     }
+    PADDLE_ENFORCE_GT(item.second, 0);
     auto& buf = buffer(item.first);
     CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
     PADDLE_ENFORCE_EQ(0, cudaMalloc(&buf.buffer, item.second));
@@ -123,6 +124,21 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   TensorRTEngine::SetITensor(name, input);
   return input;
 }
+
+// nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name) {
+//   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
+//                     name);
+
+//   auto* x = TensorRTEngine::GetITensor(name);
+//   PADDLE_ENFORCE(x != nullptr);
+//   // output->setName(name.c_str());
+//   infer_network_->
+//       markInput(*x);
+//   // output buffers' size can only be decided latter, set zero here to mark
+//   this
+//   // and will reset latter.
+//   buffer_sizes_[name] = 0;
+// }
 
 nvinfer1::ITensor* TensorRTEngine::DeclareInput(int offset) {
   // This is a trick to reuse some facility of the manual network building.
@@ -157,7 +173,7 @@ void TensorRTEngine::DeclareOutput(const std::string& name) {
 
   auto* output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
-  output->setName(name.c_str());
+  // output->setName(name.c_str());
   infer_network_->markOutput(*output);
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
@@ -174,6 +190,16 @@ void TensorRTEngine::DeclareOutput(int offset) {
   x->setName(name.c_str());
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
                         AccumDims(x->getDimensions());
+}
+
+void TensorRTEngine::DetectInputsAndOutputs() {
+  for (int i = 0; i < infer_engine_->getNbBindings(); ++i) {
+    const auto* name = infer_engine_->getBindingName(i);
+    const auto& dims = infer_engine_->getBindingDimensions(i);
+    buffer_sizes_[name] = AccumDims(dims);
+    VLOG(4) << "get ONNX model input/output: " << name
+            << " dims: " << buffer_sizes_[name];
+  }
 }
 
 void* TensorRTEngine::GetOutputInGPU(const std::string& name) {

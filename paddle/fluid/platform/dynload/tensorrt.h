@@ -29,8 +29,6 @@ namespace dynload {
 
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
-extern std::once_flag tensorrt_parser_dso_flag;
-extern void* tensorrt_parser_dso_handle;
 
 #ifdef PADDLE_USE_DSO
 
@@ -67,42 +65,6 @@ extern void* tensorrt_parser_dso_handle;
   __macro(createInferRuntime_INTERNAL);
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
-
-// It is trival to define a macro for this, and the Args... with const reference
-// is hard to deal with. Here just manully write the definition for better
-// human-readability.
-struct DynLoad__createONNXConfig_INTERNAL {
-  nvonnxparser::IOnnxConfig* operator()() {
-    using func = nvonnxparser::IOnnxConfig* (*)();
-    std::call_once(tensorrt_parser_dso_flag, []() {
-      tensorrt_parser_dso_handle =
-          paddle::platform::dynload::GetTensorRtParserDsoHandle();
-      PADDLE_ENFORCE(tensorrt_dso_handle, "load tensorrt so failed");
-    });
-    void* p = dlsym(tensorrt_parser_dso_handle, "createONNXConfig");
-    PADDLE_ENFORCE(p, "load %s failed", "createInferBuilder");
-    return reinterpret_cast<func>(p)();
-  }
-};
-
-struct DynLoad__createONNXParser_INTERNAL {
-  nvonnxparser::IONNXParser* operator()(
-      const nvonnxparser::IOnnxConfig& config) {
-    using func =
-        nvonnxparser::IONNXParser* (*)(const nvonnxparser::IOnnxConfig&);
-    std::call_once(tensorrt_parser_dso_flag, []() {
-      tensorrt_parser_dso_handle =
-          paddle::platform::dynload::GetTensorRtParserDsoHandle();
-      PADDLE_ENFORCE(tensorrt_dso_handle, "load tensorrt so failed");
-    });
-    void* p = dlsym(tensorrt_parser_dso_handle, "createONNXParser");
-    PADDLE_ENFORCE(p, "load %s failed", "createInferBuilder");
-    return reinterpret_cast<func>(p)(config);
-  }
-};
-
-extern DynLoad__createONNXConfig_INTERNAL createONNXConfig_INTERNAL;
-extern DynLoad__createONNXParser_INTERNAL createONNXParser_INTERNAL;
 
 }  // namespace dynload
 }  // namespace platform

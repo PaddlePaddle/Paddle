@@ -62,17 +62,12 @@ namespace tensorrt {
  * // Load model from ONNX.
  * engine.BuildFromONNX(...);
  *
- * for (int i = 0; i < num_inputs; i++) engine.DeclareInput(i);
- * for (int i = 0; i < num_outputs; i++) engine.DeclareOutput(i);
- *
- * engine.FreezeNetwork(); // Network building finished.
- *
  * // Ready to predict for any times.
  *
  * // Set input data.
  * cudaMemCpy(buffer(in), ...)
  *
- * engine.Execute();
+ * engine.Execute(batch_size);
  *
  * // Get output data.
  * for (int i = 0; i < num_outputs; i++) cudaMemCpy(..., buffer(i), ...)
@@ -119,6 +114,8 @@ class TensorRTEngine : public EngineBase {
   // It can be used in loading ONNX or other existing network.
   nvinfer1::ITensor* DeclareInput(int offset);
 
+  nvinfer1::ITensor* DeclareInput(const std::string& name);
+
   // Set the offset-th output from a layer as the network's output, and set its
   // name.
   void DeclareOutput(const nvinfer1::ILayer* layer, int offset,
@@ -128,6 +125,10 @@ class TensorRTEngine : public EngineBase {
   // Collect the output ITensor's information after the network is already
   // built. It can be used in loading ONNX model or other existing network.
   void DeclareOutput(int offset);
+
+  // Detect inputs and outputs from an existing TensorRT Network load from ONNX
+  // or some other formats, prepare buffer for them.
+  void DetectInputsAndOutputs();
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted

@@ -19,16 +19,11 @@ namespace platform {
 namespace dynload {
 
 std::once_flag tensorrt_dso_flag;
-std::once_flag tensorrt_parser_dso_flag;
 void *tensorrt_dso_handle;
-void *tensorrt_parser_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 TENSORRT_RAND_ROUTINE_EACH(DEFINE_WRAP);
-
-DynLoad__createONNXConfig_INTERNAL createONNXConfig_INTERNAL;
-DynLoad__createONNXParser_INTERNAL createONNXParser_INTERNAL;
 
 }  // namespace dynload
 }  // namespace platform

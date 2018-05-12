@@ -159,12 +159,3 @@ void GetLapackDsoHandle(void** dso_handle) {
   GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so", dso_handle);
 #endif
 }
-
-void GetTensorRtDsoHandle(void** dso_handle) {
-#if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(
-      FLAGS_tensorrt_dir, "libnvinfer.dylib", dso_handle);
-#else
-  GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so", dso_handle);
-#endif
-}

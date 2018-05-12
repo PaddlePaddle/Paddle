@@ -19,6 +19,7 @@
 #include <NvOnnxParser.h>
 #include <cuda.h>
 #include <glog/logging.h>
+#include <fstream>
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -57,13 +58,11 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
 static nvonnxparser::IOnnxConfig* createONNXConfig() {
-  return static_cast<nvonnxparser::IOnnxConfig*>(
-      dy::createONNXConfig_INTERNAL());
+  return nvonnxparser::createONNXConfig();
 }
 static nvonnxparser::IONNXParser* createONNXParser(
     const nvonnxparser::IOnnxConfig& config) {
-  return static_cast<nvonnxparser::IONNXParser*>(
-      dy::createONNXParser_INTERNAL(config));
+  return nvonnxparser::createONNXParser(config);
 }
 
 // A logger for create TensorRT infer builder.
@@ -145,6 +144,13 @@ static void OnnxToGIEModel(const std::string& directory,
   gie_model_stream = engine->serialize();
   engine->destroy();
   builder->destroy();
+}
+
+static bool IsFileExists(const std::string& path) {
+  auto f = std::ifstream(path.c_str());
+  if (!f.is_open()) return false;
+  f.close();
+  return true;
 }
 
 }  // namespace tensorrt
