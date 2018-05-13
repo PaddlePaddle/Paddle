@@ -103,8 +103,21 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
 
   bool IsSparseGradient(
-      const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+      const std::unordered_map<std::string, VarDesc *> &all_vars,
       const std::string &og) const;
+
+  void FuseReduceOpHandles(
+      const std::unordered_map<std::string, VarDesc *> &all_vars,
+      SSAGraph *result) const;
+
+  void CreateReduceBlockOp(
+      SSAGraph *result, const int root_id, const std::string &reduce_var_name,
+      const std::unordered_set<VarHandle *> &inputs,
+      const std::unordered_set<VarHandle *> &outputs) const;
+
+  void RemoveOps(
+      const std::vector<std::unordered_set<OpHandleBase *>> &reduce_op_handles,
+      SSAGraph *result) const;
 };
 }  // namespace details
 }  // namespace framework

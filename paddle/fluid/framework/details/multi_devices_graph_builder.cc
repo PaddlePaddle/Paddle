@@ -15,6 +15,7 @@
 #include <utility>
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/reduce_blockop_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
@@ -113,9 +114,9 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(const OpDesc &op,
 
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
-  std::unordered_map<std::string, proto::VarType::Type> var_types;
+  std::unordered_map<std::string, VarDesc *> all_vars;
   for (auto *var : program.Block(0).AllVars()) {
-    var_types[var->Name()] = var->GetType();
+    all_vars[var->Name()] = var;
   }
 
   auto graph = new SSAGraph();
@@ -172,7 +173,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
                   og.substr(0, og.size() - strlen(kGradVarSuffix)));
               cur_device_id = (cur_device_id + 1) % places_.size();
             } else {
-              if (IsSparseGradient(var_types, og)) {
+              if (IsSparseGradient(all_vars, og)) {
                 CreateReduceOp(&result, og, 0);
                 CreateBroadcastOp(&result, og, 0);
               } else {
@@ -192,6 +193,10 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       CreateBroadcastOp(&result, bcast_name, dev_id);
     }
   }
+
+  // Fuse reduce operation
+  FuseReduceOpHandles(all_vars, &result);
+
   /*
     Dependency graph has been constructed. However, there are still data
     harzaeds need to be handled.
@@ -212,11 +217,158 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   return std::unique_ptr<SSAGraph>(graph);
 }
 
+// Fuse reduce operation
+void MultiDevSSAGraphBuilder::FuseReduceOpHandles(
+    const std::unordered_map<std::string, VarDesc *> &all_vars,
+    SSAGraph *result) const {
+  std::vector<std::unordered_set<OpHandleBase *>> reduce_op_handles;
+  std::vector<std::unordered_set<VarHandle *>> input_set_of_reduce_op;
+  std::vector<std::unordered_set<VarHandle *>> output_set_of_reduce_op;
+  reduce_op_handles.resize(this->places_.size());
+  input_set_of_reduce_op.resize(this->places_.size());
+  output_set_of_reduce_op.resize(this->places_.size());
+
+  bool has_reduce_op = false;
+  // First, collect all the reduce_ops
+  // Only fuse the reduce_ops whose outputs' type is proto::VarType::LOD_TENSOR
+  // and output's place is on GPU .
+  for (size_t i = 0; i < result->ops_.size(); ++i) {
+    ReduceOpHandle *reduce_op =
+        dynamic_cast<ReduceOpHandle *>(result->ops_[i].get());
+    if (reduce_op) {
+      auto out_var_handle = dynamic_cast<VarHandle *>(reduce_op->Outputs()[0]);
+      PADDLE_ENFORCE_NOT_NULL(out_var_handle);
+      if (all_vars.at(out_var_handle->name_)->GetType() !=
+              proto::VarType::LOD_TENSOR ||
+          platform::is_cpu_place(out_var_handle->place_)) {
+        continue;
+      }
+      size_t dev_id = out_var_handle->scope_idx_;
+      reduce_op_handles.at(dev_id).insert(result->ops_[i].get());
+      for (auto in : reduce_op->Inputs()) {
+        input_set_of_reduce_op.at(dev_id).insert(dynamic_cast<VarHandle *>(in));
+      }
+      output_set_of_reduce_op.at(dev_id).insert(out_var_handle);
+      has_reduce_op = true;
+    }
+  }
+  if (!has_reduce_op) return;
+
+  // Second, alloc continuous address and create new reduce_op
+  for (size_t dev_id = 0; dev_id < reduce_op_handles.size(); ++dev_id) {
+    // AllocateContinuousAddress
+    auto out_var_handles = output_set_of_reduce_op[dev_id];
+    if (out_var_handles.size() == 0) continue;
+
+    platform::Place run_place = (*out_var_handles.begin())->place_;
+    proto::VarType::Type out0_var_data_type =
+        all_vars.at((*out_var_handles.begin())->name_)->GetDataType();
+
+    int64_t total_numel = 0;
+    for (auto out_var_handle : out_var_handles) {
+      auto var_desc = all_vars.at(out_var_handle->name_);
+
+      PADDLE_ENFORCE_EQ(out0_var_data_type, var_desc->GetDataType());
+      PADDLE_ENFORCE_EQ(run_place, out_var_handle->place_);
+
+      auto dim = framework::make_ddim(var_desc->GetShape());
+      int64_t numel = framework::product(dim);
+      PADDLE_ENFORCE_GT(numel, 0);
+      total_numel += numel;
+    }
+
+    auto reduce_var_name = string::Sprintf("REDUCEBLOCK_DATA_%d", dev_id);
+    for (size_t k = 0; k < this->places_.size(); ++k) {
+      // Allocate gradients space
+      auto reduce_t = this->local_scopes_.at(k)
+                          ->Var(reduce_var_name)
+                          ->GetMutable<LoDTensor>();
+      PADDLE_ENFORCE(platform::is_gpu_place(this->places_[k]));
+
+      reduce_t->Resize(make_ddim({total_numel}))
+          .mutable_data(this->places_[k],
+                        framework::ToTypeIndex(out0_var_data_type));
+
+      VLOG(8) << this->places_[k] << " " << reduce_var_name
+              << " total_numel: " << total_numel;
+
+      int64_t s = 0;
+      for (auto out : out_var_handles) {
+        LoDTensor *tensor =
+            this->local_scopes_.at(k)->Var(out->name_)->GetMutable<LoDTensor>();
+
+        int64_t mem_size = framework::product(
+            framework::make_ddim(all_vars.at(out->name_)->GetShape()));
+        tensor->ShareDataWith(reduce_t->Slice(s, s + mem_size));
+
+        VLOG(8) << out->name_ << " mem_size:" << mem_size << " s:" << s
+                << " e:" << s + mem_size;
+
+        s += mem_size;
+      }
+    }
+    CreateReduceBlockOp(result, dev_id, reduce_var_name,
+                        input_set_of_reduce_op.at(dev_id),
+                        output_set_of_reduce_op.at(dev_id));
+  }
+  RemoveOps(reduce_op_handles, result);
+}
+
+void MultiDevSSAGraphBuilder::RemoveOps(
+    const std::vector<std::unordered_set<OpHandleBase *>> &reduce_op_handles,
+    SSAGraph *result) const {
+  for (auto iter = result->ops_.begin(); iter != result->ops_.end();) {
+    bool remove_op = false;
+    for (size_t j = 0; j < reduce_op_handles.size(); ++j) {
+      if (reduce_op_handles[j].count((*iter).get())) {
+        for (auto in_var : (*iter)->Inputs()) {
+          in_var->pending_ops_.erase(in_var->pending_ops_.find((*iter).get()));
+        }
+        iter = result->ops_.erase(iter);
+        remove_op = true;
+        break;
+      }
+    }
+    if (!remove_op) {
+      iter++;
+    }
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateReduceBlockOp(
+    SSAGraph *result, const int root_id, const std::string &reduce_var_name,
+    const std::unordered_set<VarHandle *> &inputs,
+    const std::unordered_set<VarHandle *> &outputs) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(new ReduceBlockOpHandle(
+      local_scopes_, places_, reduce_var_name, root_id, nccl_ctxs_));
+#else
+  result->ops_.emplace_back(new ReduceBlockOpHandle(local_scopes_, places_,
+                                                    reduce_var_name, root_id));
+#endif
+  auto *op_handle = result->ops_.back().get();
+
+#ifndef PADDLE_WITH_CUDA
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+  }
+#endif
+
+  for (auto input : inputs) {
+    op_handle->AddInput(input);
+  }
+  for (auto output : outputs) {
+    op_handle->AddOutput(output);
+  }
+}
+
 bool MultiDevSSAGraphBuilder::IsSparseGradient(
-    const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+    const std::unordered_map<std::string, VarDesc *> &all_vars,
     const std::string &og) const {
-  PADDLE_ENFORCE(var_types.count(og) != 0);
-  if (var_types.at(og) == proto::VarType::SELECTED_ROWS) {
+  PADDLE_ENFORCE(all_vars.count(og) != 0);
+  if (all_vars.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
     return true;
   }
   return false;
