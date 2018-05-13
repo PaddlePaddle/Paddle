@@ -20,11 +20,11 @@ namespace paddle {
 namespace operators {
 
 class TensorRTEngineOp : public framework::OperatorWithKernel {
+ public:
+  TensorRTEngineOp() = default;
  protected:
   // Build the engine.
-  void Prepare() {
-    // Call converter, input the BlockDesc and build the network.
-  }
+  void Prepare();
 };
 
 template <typename DeviceContext, typename T>
