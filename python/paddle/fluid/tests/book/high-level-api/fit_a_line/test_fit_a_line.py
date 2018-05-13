@@ -33,7 +33,7 @@ test_reader = paddle.batch(
 
 
 def inference_program():
-    x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(13))
+    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y_predict = paddle.layer.fc(input=x, size=1, act=paddle.activation.Linear())
     return y_predict
 
