@@ -52,7 +52,7 @@ class Node {
   // Cast to a subclass type, Function for example.
   template <typename Subclass>
   Subclass &As() {
-    return *reinterpret_cast<Subclass *>(this);
+    return *dynamic_cast<Subclass *>(this);
   }
 
   // Formatted representation of this Node.
@@ -105,16 +105,19 @@ class Node {
     template <typename T>
     T &As() {
       // init storage in the first usage.
-      if (data.empty()) {
-        LOG(INFO) << "resize data to " << sizeof(T);
-        data.resize(sizeof(T));
+      if (data_.empty()) {
+        VLOG(4) << "resize data to " << sizeof(T);
+        type_hash_ = typeid(T).hash_code();
+        data_.resize(sizeof(T));
       }
-      PADDLE_ENFORCE_EQ(data.size(), sizeof(T), "Node attr type recast error");
-      return *reinterpret_cast<T *>(&data[0]);
+      PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(), "type not matched");
+      PADDLE_ENFORCE_EQ(data_.size(), sizeof(T), "Node attr type recast error");
+      return *reinterpret_cast<T *>(&data_[0]);
     }
 
    private:
-    std::string data;
+    std::string data_;
+    size_t type_hash_{std::numeric_limits<size_t>::max()};
   };
 
   virtual ~Node() {}
