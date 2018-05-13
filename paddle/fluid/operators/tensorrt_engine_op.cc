@@ -13,20 +13,53 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace operators {
 
-void paddle::operators::TensorRTEngineOp::Prepare() {
+template <typename DeviceContext, typename T>
+void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
+    const framework::ExecutionContext &context) const {
   // Get the ProgramDesc and pass to convert.
-  const auto& block = Attr<framework::proto::BlockDesc>("subgraph");
-  auto max_batch = Attr<int>("max_batch");
-  auto max_workspace = Attr<int>("max_workspace");
-  inference::tensorrt::TensorRTEngine engine(max_batch, max_workspace, nullptr);
-  inference::tensorrt::OpConverter::Global().ConvertBlock(block, &engine);
+  const auto &block = context.Attr<framework::proto::BlockDesc>("subgraph");
+  max_batch_ = context.Attr<int>("max_batch");
+  auto max_workspace = context.Attr<int>("max_workspace");
+  engine_.reset(new inference::tensorrt::TensorRTEngine(
+      max_batch_, max_workspace, nullptr));
+  inference::tensorrt::OpConverter::Global().ConvertBlock(block, engine_.get());
+  engine_->FreezeNetwork();
 }
+
+class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  TensorRTEngineOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("Xs", "A list of inputs.").AsDuplicable();
+    AddOutput("Ys", "A list of outputs").AsDuplicable();
+    AddAttr<framework::proto::BlockDesc>("subgraph", "the subgraph");
+  }
+};
+
+class TensorRTEngineInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {}
+};
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(tensorrt_engine, ops::TensorRTEngineOp,
+                  ops::TensorRTEngineOpMaker, TensorRTEngineOpMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    tensorrt_engine,
+    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int64_t>);
