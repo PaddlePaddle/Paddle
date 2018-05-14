@@ -319,7 +319,7 @@ class DistributeTranspiler:
             type="checkpoint_save",
             inputs={"X": send_outputs},
             attrs={"overwrite": True,
-                   "file_path": "/workspace/ckpt/"})
+                   "dir": "/workspace/ckpt/"})
 
         # step4: Concat the parameters splits together after recv.
         for varname, splited_var in param_var_mapping.iteritems():
