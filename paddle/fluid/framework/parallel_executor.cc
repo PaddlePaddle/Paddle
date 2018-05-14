@@ -52,13 +52,13 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
 }
 
 ParallelExecutor::ParallelExecutor(
-    size_t num_threads, bool use_event,
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay,
-    bool use_default_grad_scale, bool balance_parameter_opt_between_cards)
+    Scope *scope, const std::vector<Scope *> &local_scopes,
+    bool use_default_grad_scale, bool balance_parameter_opt_between_cards,
+    const ExecutionStrategy &exec_strategy)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -103,8 +103,7 @@ ParallelExecutor::ParallelExecutor(
   auto graph = builder.Build(main_program);
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      num_threads, use_event, member_->local_scopes_, places, std::move(graph),
-      allow_op_delay));
+      exec_strategy, member_->local_scopes_, places, std::move(graph)));
 
   // Step 3. Create vars in each scope;
   for (auto *var : main_program.Block(0).AllVars()) {

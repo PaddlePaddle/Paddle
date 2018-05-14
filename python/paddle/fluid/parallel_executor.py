@@ -19,7 +19,9 @@ import executor
 import warnings
 import sys
 
-__all__ = ['ParallelExecutor']
+__all__ = ['ParallelExecutor', 'ExecutionStrategy']
+
+ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 
 
 class ParallelExecutor(object):
@@ -27,11 +29,11 @@ class ParallelExecutor(object):
                  use_cuda,
                  loss_name=None,
                  main_program=None,
-                 num_threads=None,
-                 allow_op_delay=False,
                  share_vars_from=None,
                  use_default_grad_scale=True,
-                 balance_parameter_opt_between_cards=False):
+                 balance_parameter_opt_between_cards=False,
+                 exec_strategy=None,
+                 **kwargs):
         """
         ParallelExecutor can run program in parallel.
 
@@ -40,11 +42,6 @@ class ParallelExecutor(object):
             loss_name(str, default None): The loss name must set in training.
             main_program(Program, default None): The program that need to run,
                 if not provided, then default_main_program will be used.
-            num_threads(int, default None): How many threads are used for
-                training.
-            allow_op_delay(bool, default False): Whether to delay and buffer
-                some operators together for scheduling or not, which may
-                improve performance in some cases, default False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
             use_default_grad_scale(bool, default True): If set True, a default
@@ -76,6 +73,16 @@ class ParallelExecutor(object):
               train_loss, = train_exe.run([loss.name], feed=feed_dict)
               test_loss, = test_exe.run([loss.name], feed=feed_dict)
         """
+        if len(kwargs) != 0:
+            err_msg = ""
+            for key in kwargs:
+                if key in dir(ExecutionStrategy):
+                    err_msg += \
+                        "Setting {0} by constructor is deprecated. Use " \
+                        "strategy=ExecutionStrategy(); strategy.{0}=xxx; " \
+                        "pe=ParallelExecutor(exec_strategy=strategy) " \
+                        "instead.\n "
+            raise ValueError(err_msg)
 
         self._places = []
         self._act_places = []
@@ -93,13 +100,20 @@ class ParallelExecutor(object):
                 self._places.append(p)
         assert self._places, "no place for execution"
 
-        if num_threads is None:
+        if exec_strategy is None:
+            exec_strategy = ExecutionStrategy()
+            if use_cuda:
+                exec_strategy.use_event = True
+            else:
+                exec_strategy.use_event = False
+
+        if exec_strategy.num_threads == 0:
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places) * 2
+                exec_strategy.num_threads = len(self._places) * 2
             else:
-                num_threads = min(
+                exec_strategy.num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())
 
         main = main_program
@@ -120,21 +134,14 @@ class ParallelExecutor(object):
         ]
 
         self.executor = core.ParallelExecutor(
-            num_threads,
-            True if use_cuda else False,  # use_event
             self._places,
             set([
                 p.name for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(self.persistable_vars),
-            main.desc,
-            loss_name if loss_name else '',
-            scope,
-            local_scopes,
-            allow_op_delay,
-            use_default_grad_scale,
-            balance_parameter_opt_between_cards)
+            set(self.persistable_vars), main.desc, loss_name
+            if loss_name else '', scope, local_scopes, use_default_grad_scale,
+            balance_parameter_opt_between_cards, exec_strategy)
 
         self.scope = scope
 
