@@ -90,28 +90,14 @@ def infer(use_cuda, save_dirname=None):
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    inferencer = fluid.Inferencer(param_path=save_dirname, place=place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
-        # data using feed operators), and the fetch_targets (variables that
-        # we want to obtain data from using fetch operators).
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    batch_size = 10
+    tensor_x = numpy.random.uniform(0, 10,
+                                    [batch_size, 13]).astype("float32")
 
-        # The input's dimension should be 2-D and the second dim is 13
-        # The input data should be >= 0
-        batch_size = 10
-        tensor_x = numpy.random.uniform(0, 10,
-                                        [batch_size, 13]).astype("float32")
-        assert feed_target_names[0] == 'x'
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_x},
-                          fetch_list=fetch_targets)
-        print("infer shape: ", results[0].shape)
-        print("infer results: ", results[0])
+    results = inferencer.infer({'x': tensor_x})
+    print("infer results: ", results[0])
 
 
 def main(use_cuda, is_local=True):
@@ -122,8 +108,7 @@ def main(use_cuda, is_local=True):
     save_dirname = "fit_a_line.inference.model"
 
     train(use_cuda, save_dirname, is_local)
-    # inferencer.infer() NOT merged yet
-    #infer(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
 
 
 class TestFitALine(unittest.TestCase):
