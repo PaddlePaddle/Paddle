@@ -242,7 +242,7 @@ op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
-op_library(ckpt_save_op DEPS lod_tensor)
+op_library(checkpoint_save_op DEPS lod_tensor)
 op_library(concat_op DEPS concat)
 
 # FIXME(thuan): Move CSP operators to paddle/fluid/framework/operators/concurrency
@@ -278,6 +278,6 @@ cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_sea
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
-cc_test(ckpt_save_op_test SRCS ckpt_save_op_test.cc DEPS ckpt_save_op)
+cc_test(checkpoint_save_op_test SRCS checkpoint_save_op_test.cc DEPS checkpoint_save_op)
 nv_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)
