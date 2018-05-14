@@ -15,9 +15,9 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-USE_NO_KERNEL_OP(ckpt_save)
+USE_NO_KERNEL_OP(checkpoint_save)
 
-TEST(CkptSaveOp, CPU) {
+TEST(CheckpointSaveOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
@@ -41,6 +41,6 @@ TEST(CkptSaveOp, CPU) {
   attrs.insert({"file_path", std::string("tensor.save")});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
-      "ckpt_save", {{"X", {"test_var"}}}, {}, attrs);
+      "checkpoint_save", {{"X", {"test_var"}}}, {}, attrs);
   save_op->Run(scope, place);
 }
