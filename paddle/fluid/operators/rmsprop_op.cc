@@ -63,8 +63,7 @@ class RmspropOp : public framework::OperatorWithKernel {
 
 class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RmspropOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter value that has to be updated.");

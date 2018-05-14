@@ -16,31 +16,42 @@ import core
 import framework
 import executor
 import io
+from trainer import check_and_get_place
+
 __all__ = ['Inferencer', ]
 
 
 class Inferencer(object):
-    def __init__(self, network_func, param_path=None, place=None):
-        # 1. we need to generate a framework.Program by calling
-        # network_func. Reference: fluid.program_guard in test_word2vec.py
-
-        # 2. move the default_main_program to self.program.
-
-        # 3. run the default_startup program.
-
-        # 4. load params from param_path into scope
+    def __init__(self, param_path, place=None):
+        """
+        :param param_path: the path where the inference model is saved by fluid.io.save_inference_model
+        :param place: place to do the inference
+        """
+        self.param_path = param_path
         self.scope = core.Scope()
-        self.place = place
-        self.startup_program = framework.Program()
-        # TODO: generate the startup_program with network_func
 
-        exe = executor.Executor(place)
-        exe.run(self.startup_program, scope=self.scope)
-
-        if param_path:
+        self.exe = executor.Executor(check_and_get_place(place))
+        with executor.scope_guard(self.scope):
             # load params from param_path into scope
-            io.load_persistables(exe, dirname=param_path)
+            [self.inference_program, _,
+             self.fetch_targets] = io.load_inference_model(
+                 executor=self.exe, dirname=param_path)
 
-    def infer(self, inputs):
-        # run self.program
-        pass
+    def infer(self, inputs, return_numpy=True):
+        """
+        :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
+        to get the predict value
+        :param return_numpy: if return numpy value for row tensor
+        :return: the predict value of the inference model
+        """
+        if not isinstance(inputs, dict):
+            raise ValueError(
+                "inputs should be a map of {'input_name': input_var}")
+
+        with executor.scope_guard(self.scope):
+            results = self.exe.run(self.inference_program,
+                                   feed=inputs,
+                                   fetch_list=self.fetch_targets,
+                                   return_numpy=return_numpy)
+
+        return results

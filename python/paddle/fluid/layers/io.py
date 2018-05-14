@@ -78,8 +78,8 @@ def data(name,
         dtype=dtype,
         type=type,
         stop_gradient=stop_gradient,
-        lod_level=lod_level)
-    data_var.is_data = True
+        lod_level=lod_level,
+        is_data=True)
     return data_var
 
 
