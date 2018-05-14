@@ -98,8 +98,7 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
 
 class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ROIPoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor), "
              "the input of ROIPoolOp. "

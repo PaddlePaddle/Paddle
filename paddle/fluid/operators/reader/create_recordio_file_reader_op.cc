@@ -76,9 +76,8 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
 };
 
 class CreateRecordIOReaderOpMaker : public FileReaderMakerBase {
- public:
-  CreateRecordIOReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : FileReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<std::string>("filename", "The filename of record io reader");
     AddComment(R"DOC(
       CreateRecordIOReader Operator

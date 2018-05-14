@@ -45,8 +45,7 @@ class AssignValueOp : public framework::OperatorWithKernel {
 
 class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AssignValueOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "(Tensor) Output tensor of assign_value operator.");
     AddAttr<std::vector<int>>("shape",
                               "(vector<int>) "

@@ -117,8 +117,7 @@ class SaveOp : public framework::OperatorBase {
 
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SaveOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor ) Input tensor to be saved");
     AddComment(R"DOC(
 Save operator

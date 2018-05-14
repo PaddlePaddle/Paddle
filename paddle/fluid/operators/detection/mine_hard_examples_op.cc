@@ -253,8 +253,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
 class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MineHardExamplesOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "ClsLoss",
         "(Tensor, default Tensor<float>), The classification loss with shape "

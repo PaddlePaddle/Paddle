@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/matmul_op.h"
+#include "paddle/fluid/operators/detection/iou_similarity_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>);
+    iou_similarity,
+    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, double>);
