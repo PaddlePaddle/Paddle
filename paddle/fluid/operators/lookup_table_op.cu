@@ -181,7 +181,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       hipLaunchKernelGGL((LookupTableGrad<
           T, 128, 8,
           8>), dim3(grids), dim3(threads), 0, dev_ctx.stream(),
-          d_table, d_output, ids, N, K, D);
+          d_table, d_output, ids, int64_t(N), int64_t(K), int64_t(D));
     }
   }
 };

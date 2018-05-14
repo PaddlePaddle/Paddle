@@ -85,7 +85,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
 
     hipLaunchKernelGGL((AccuracyCudaKernel<
         PADDLE_CUDA_NUM_THREADS>), dim3(1), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream,
-        num_samples, infer_width, indices_data, label_data, correct_data,
+        num_samples, int(infer_width), indices_data, label_data, correct_data,
         accuracy_data, total_data);
   }
 };

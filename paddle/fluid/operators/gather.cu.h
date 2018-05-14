@@ -71,7 +71,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   int grid = (n + block - 1) / block;
 
   hipLaunchKernelGGL((GatherCUDAKernel<T>), dim3(grid), dim3(block), 0, reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream(), 
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, p_index, p_output, size_t(index_size), size_t(slice_size));
 }
 
 }  // namespace operators

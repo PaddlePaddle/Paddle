@@ -125,9 +125,9 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         auto x1 = x1_t->data<int64_t>() + hyp_lod[num];
         auto x2 = x2_t->data<int64_t>() + ref_lod[num];
 
-        hipLaunchKernelGGL((FillFirstColumn<T>), dim3(1 + m / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, m, n);
+        hipLaunchKernelGGL((FillFirstColumn<T>), dim3(1 + m / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, int(m), int(n));
 
-        hipLaunchKernelGGL((FillFirstRow<T>), dim3(1 + n / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, n);
+        hipLaunchKernelGGL((FillFirstRow<T>), dim3(1 + n / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, int(n));
         // Compute the elements of distance matrix in the anti-diagonal diretion
         for (int64_t slice = 2; slice < m + n + 1; ++slice) {
           int z_m = slice < m + 1 ? 0 : slice - m;
@@ -137,9 +137,9 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
           // the start index at which computes from
           int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
           hipLaunchKernelGGL((Levenshtein<T>), dim3(1 + (size - 1) / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, x1, x2,
-                                                                 m, n, start);
+                                                                 int(m), int(n), start);
         }
-        hipLaunchKernelGGL((SetOutput<T>), dim3(1), dim3(1), 0, stream, out + num, dist, m, n, normalized);
+        hipLaunchKernelGGL((SetOutput<T>), dim3(1), dim3(1), 0, stream, out + num, dist, int(m), int(n), int(normalized));
       }
     }
   }
