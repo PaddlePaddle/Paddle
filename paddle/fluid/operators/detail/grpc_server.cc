@@ -282,8 +282,9 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
     VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
-  RequestSend* send = new RequestSend(&service_, cq_send_.get(), sync_mode_,
-                                      scope_, &var_recv_queue_, dev_ctx_);
+  std::unique_ptr<RequestSend> send(
+      new RequestSend(&service_, cq_send_.get(), sync_mode_,
+                      scope_, &var_recv_queue_, dev_ctx_));
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 
@@ -293,8 +294,9 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
     VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
     return;
   }
-  RequestGet* get = new RequestGet(&service_, cq_get_.get(), sync_mode_, scope_,
-                                   dev_ctx_, &var_get_queue_);
+  std::unique_ptr<RequestGet> get(
+      new RequestGet(&service_, cq_get_.get(), sync_mode_, scope_,
+                     dev_ctx_, &var_get_queue_));
   VLOG(4) << "Create RequestGet status:" << get->Status();
 }
 
@@ -304,9 +306,9 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
     VLOG(3) << "shutdown, do not TryToRegisterNewPrefetchOne";
     return;
   }
-  RequestPrefetch* prefetch =
+  std::unique_ptr<RequestPrefetch> prefetch(
       new RequestPrefetch(&service_, cq_prefetch_.get(), sync_mode_, scope_,
-                          dev_ctx_, executor_, program_, prefetch_ctx_);
+                          dev_ctx_, executor_, program_, prefetch_ctx_));
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
