@@ -49,6 +49,8 @@ class Node {
 
   Node() = default;
 
+  struct Attr;
+
   // Cast to a subclass type, Function for example.
   template <typename Subclass>
   Subclass &As() {
@@ -68,10 +70,7 @@ class Node {
 
   // Get an additional attribute and convert it to T data type. NOTE this will
   // silently create a new attribute if not exists.
-  template <typename T>
-  T &attr(const std::string &name) {
-    return attrs_[name].As<T>();
-  }
+  Attr &attr(const std::string &name) { return attrs_[name]; }
 
   int id() const { return id_; }
 
@@ -102,6 +101,13 @@ class Node {
     // Attr attr;
     // T data;
     // attr.data.assign((char*)data, sizeof(data));
+
+    bool &Bool() { return As<bool>(); }
+    float &Float() { return As<float>(); }
+    int32_t &Int32() { return As<int32_t>(); }
+    int64_t &Int64() { return As<int64_t>(); }
+
+   private:
     template <typename T>
     T &As() {
       // init storage in the first usage.
