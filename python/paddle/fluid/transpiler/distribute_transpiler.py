@@ -207,6 +207,11 @@ class DistributeTranspiler:
         self.pserver_endpoints = pserver_endpoints
         self.optimize_ops, params_grads = self._get_optimize_pass()
 
+        # is_chief (no.0 triner) for checkpoint
+        # the no.0 trainer will save all variables and its own reader offset to checkpoint
+        # other trianers will save its own reader offset to checkpoint
+        self.is_chief = trainer_id == 0
+
         # process lookup_table_op
         # 1. check all lookup_table_op is distributed
         # 2. check all lookup_table_op share the same table.
@@ -309,6 +314,13 @@ class DistributeTranspiler:
                 "epmap": eplist,
                 "sync_mode": self.sync_mode
             })
+
+        program.global_block().append_op(
+            type="checkpoint_save",
+            inputs={"X": send_outputs},
+            attrs={"overwrite": True,
+                   "file_path": "/workspace/ckpt/"})
+
         # step4: Concat the parameters splits together after recv.
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:

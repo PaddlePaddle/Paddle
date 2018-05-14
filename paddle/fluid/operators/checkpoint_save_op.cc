@@ -68,19 +68,16 @@ class CheckpointSaveOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto filename = Attr<std::string>("file_path");
+    auto dir = Attr<std::string>("dir");
     auto overwrite = Attr<bool>("overwrite");
 
-    bool is_present = FileExists(filename);
+    bool is_present = FileExists(dir);
     if (is_present && !overwrite) {
       PADDLE_THROW("%s exists!, cannot save_combine to it when overwrite=false",
-                   filename, overwrite);
+                   dir, overwrite);
     }
 
-    MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
+    MkDirRecursively(dir.c_str());
 
     auto inp_var_names = Inputs("X");
     PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
@@ -92,6 +89,10 @@ class CheckpointSaveOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < inp_var_names.size(); i++) {
       auto *var = scope.FindVar(inp_var_names[i]);
+      std::string var_file;
+      var_file.append(dir);
+      var_file.append("/");
+      var_file.append(inp_var_names[i]);
 
       PADDLE_ENFORCE(var != nullptr,
                      "Cannot find variable %s for save_combine_op",
@@ -103,23 +104,10 @@ class CheckpointSaveOp : public framework::OperatorBase {
       auto &tensor = var->Get<framework::LoDTensor>();
       // Serialize tensors one by one
 
-      // Check types to see if a fp16 transformation is required
-      auto in_dtype = framework::ToDataType(tensor.type());
-      auto out_dtype = in_dtype;
-
-      if (in_dtype != out_dtype) {
-        auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-        auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-        framework::LoDTensor out;
-        // copy LoD info to the new tensor
-        out.set_lod(tensor.lod());
-        framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(fout, out, dev_ctx);
-      } else {
-        framework::SerializeToStream(fout, tensor, dev_ctx);
-      }
+      std::ofstream fout(var_file);
+      framework::SerializeToStream(fout, tensor, dev_ctx);
+      fout.close();
     }
-    fout.close();
   }
 };
 
