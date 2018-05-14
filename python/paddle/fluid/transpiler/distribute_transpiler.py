@@ -93,10 +93,7 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def split_dense_variable(var_list,
-                         pserver_count,
-                         min_block_size=1024,
-                         max_block_size=1048576):
+def split_dense_variable(var_list, service_count, min_block_size=16384):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
@@ -104,26 +101,25 @@ def split_dense_variable(var_list,
 
     We need to have a minimal block size so that the calculations in
     the parameter server side can gain better performance. By default
-    minimum block size is 1024. The max block size is used to prevent
-    very large blocks that may cause send error.
+    minimum block size is 1024. 
 
     Args:
         var_list (list): List of variables.
-        pserver_count (int): Numel of pservers.
+        service_count (int): Numel of pserver services. A pserver may have two
+            listening ports.
         min_block_size (int): Minimum splitted block size.
-        max_blockk_size(int): Maxmum splitted block size.
     Returns:
         blocks (list[(varname, block_id, current_block_size)]): A list 
             of VarBlocks. Each VarBlock specifies a shard of the var.
     """
     blocks = []
     for var in var_list:
-        split_count = pserver_count
+        split_count = service_count
         var_numel = reduce(lambda x, y: x * y, var.shape)
         max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
         if max_pserver_count == 0:
             max_pserver_count = 1
-        if max_pserver_count < pserver_count:
+        if max_pserver_count < service_count:
             split_count = max_pserver_count
         block_size = int(math.ceil(var_numel / float(split_count)))
 
