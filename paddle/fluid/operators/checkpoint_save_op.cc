@@ -30,6 +30,9 @@ namespace operators {
 // TODO(sidgoyal78): These function are needed by other files (save_op), move
 // them to paddle::filesystem namespace. (as noted by yuyang18 in save_op).
 constexpr char kSEP = '/';
+// write empty file named _SUCCESS
+const char SUCCESS[] = "_SUCCESS";
+
 static bool FileExists(const std::string &filepath) {
   struct stat buffer;
   return (stat(filepath.c_str(), &buffer) == 0);
@@ -73,8 +76,11 @@ class CheckpointSaveOp : public framework::OperatorBase {
 
     bool is_present = FileExists(dir);
     if (is_present && !overwrite) {
-      PADDLE_THROW("%s exists!, cannot save_combine to it when overwrite=false",
-                   dir, overwrite);
+      return;
+      // todo(tangwei) judge the folder is exist
+      // PADDLE_THROW("%s exists!, cannot save_combine to it when
+      // overwrite=false",
+      //              dir, overwrite);
     }
 
     MkDirRecursively(dir.c_str());
@@ -108,6 +114,13 @@ class CheckpointSaveOp : public framework::OperatorBase {
       framework::SerializeToStream(fout, tensor, dev_ctx);
       fout.close();
     }
+
+    std::string success;
+    success.append(dir);
+    success.append("/");
+    success.append(SUCCESS);
+    std::ofstream fout(success);
+    fout.close();
   }
 };
 
