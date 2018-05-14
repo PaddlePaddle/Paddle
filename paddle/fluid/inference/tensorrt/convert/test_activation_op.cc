@@ -74,13 +74,13 @@ void Compare(const std::string op_type, float input, float expect) {
 
   // convert LoDTensor to ITensor
   size_t size = x_tensor->memory_size();
-  EngineIOConverter::ConvertInput(op_type, *x_tensor, engine->buffer("X"), size,
-                                  &stream);
+  EngineIOConverter::ConvertInput(op_type, *x_tensor,
+                                  engine->buffer("X").buffer, size, &stream);
   // run tensorrt Outp
   engine->Execute(1);
   // convert ITensor to LoDTensor
-  EngineIOConverter::ConvertOutput(op_type, engine->buffer("Out"), out_tensor,
-                                   size, &stream);
+  EngineIOConverter::ConvertOutput(op_type, engine->buffer("Out").buffer,
+                                   out_tensor, size, &stream);
   // get tensorrt output
   std::vector<float> out2;
   framework::TensorToVector(*out_tensor, ctx, &out2);
