@@ -197,7 +197,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
         hipLaunchKernelGGL((GPUROIPoolBackward<
             T>), dim3(blocks), dim3(threads), 0, ctx.cuda_device_context().stream(),
             output_grad_size, rois->data<int64_t>(), out_grad->data<T>(),
-            argmax->data<int64_t>(), rois_num, spatial_scale, channels, height,
+            argmax->data<int64_t>(), int(rois_num), spatial_scale, channels, height,
             width, pooled_height, pooled_width,
             x_grad->mutable_data<T>(ctx.GetPlace()));
       }

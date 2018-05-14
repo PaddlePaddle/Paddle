@@ -131,11 +131,11 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     if (code_type == BoxCodeType::kEncodeCenterSize) {
       hipLaunchKernelGGL((EncodeCenterSizeKernel<T>), dim3(grid), dim3(block), 0, device_ctx.stream(), 
-          prior_box_data, prior_box_var_data, target_box_data, row, col, len,
+          prior_box_data, prior_box_var_data, target_box_data, int(row), int(col), int(len),
           output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       hipLaunchKernelGGL((DecodeCenterSizeKernel<T>), dim3(grid), dim3(block), 0, device_ctx.stream(), 
-          prior_box_data, prior_box_var_data, target_box_data, row, col, len,
+          prior_box_data, prior_box_var_data, target_box_data, int(row), int(col), int(len),
           output);
     }
   }

@@ -89,14 +89,14 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
       hipLaunchKernelGGL((SoftCrossEntropyGradientKernel<T>), dim3(grid), dim3(block), 0, stream, 
-          dx_data, dy_data, x_data, label_data, batch_size, class_num);
+          dx_data, dy_data, x_data, label_data, int(batch_size), int(class_num));
     } else {
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(dev_ctx, dx, 0);
       auto* label_data = label->data<int64_t>();
       grid = (batch_size + block - 1) / block;
       hipLaunchKernelGGL((CrossEntropyGradientKernel<T>), dim3(grid), dim3(block), 0, stream, 
-          dx_data, dy_data, x_data, label_data, batch_size, class_num);
+          dx_data, dy_data, x_data, label_data, int(batch_size), int(class_num));
     }
   }
 };
