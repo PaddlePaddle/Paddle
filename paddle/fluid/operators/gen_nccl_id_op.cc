@@ -75,7 +75,6 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-
     detail::AsyncGRPCServer rpc_service(endpoint, true);
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
