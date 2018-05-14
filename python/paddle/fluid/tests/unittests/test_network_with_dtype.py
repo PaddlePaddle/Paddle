@@ -27,12 +27,15 @@ class TestNetWithDtype(unittest.TestCase):
     def set_network(self):
         self.dtype = "float64"
         self.init_dtype()
-        self.x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
-        self.y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
-        y_predict = fluid.layers.fc(input=self.x, size=1, act=None)
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            self.x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
+            self.y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
+            y_predict = fluid.layers.fc(input=self.x, size=1, act=None)
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=self.y)
-        avg_cost = fluid.layers.mean(cost)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=self.y)
+            avg_cost = fluid.layers.mean(cost)
+        self.program = main
         self.fetch_list = [avg_cost]
 
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
@@ -45,7 +48,7 @@ class TestNetWithDtype(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         for data in train_reader():
-            exe.run(fluid.default_main_program(),
+            exe.run(self.program,
                     feed=feeder.feed(data),
                     fetch_list=self.fetch_list)
             # the main program is runable, the datatype is fully supported
@@ -68,7 +71,7 @@ class TestNetWithDtype(unittest.TestCase):
 
 
 # TODO(dzhwinter): make sure the fp16 is runable
-# class TestFloat16(SimpleNet):
+# class TestFloat16(TestNetWithDtype):
 #     def init_dtype(self):
 #         self.dtype = "float16"
 
