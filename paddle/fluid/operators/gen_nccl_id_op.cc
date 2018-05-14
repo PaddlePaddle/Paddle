@@ -83,8 +83,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_service_->SetProgram(&empty_program);
     rpc_service_->SetExecutor(&executor);
 
-    server_thread_.reset(new std::thread(
-        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service_)));
+    std::thread server_thread(
+        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service_));
     rpc_service_->SetCond(0);
     VLOG(3) << "start getting nccl id from trainer 0...";
     auto recv = rpc_service_->Get();
@@ -92,13 +92,12 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_service_->ShutDown();
     VLOG(3) << "rpc server stopped";
     // TODO(wuyi): reinit nccl communicators
-    server_thread_->join();
+    server_thread.join();
     delete rpc_service_;
   }
 
  protected:
   mutable detail::AsyncGRPCServer* rpc_service_ = nullptr;
-  mutable std::shared_ptr<std::thread> server_thread_;
 };
 
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {

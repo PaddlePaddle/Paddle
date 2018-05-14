@@ -41,6 +41,7 @@ class ParallelExecutor {
                             const std::string& loss_var_name, Scope* scope,
                             const std::vector<Scope*>& local_scopes,
                             bool allow_op_delay, bool use_default_grad_scale,
+                            bool balance_parameter_opt_between_cards,
                             size_t num_trainers = 0, size_t trainer_id = 0);
 
   ~ParallelExecutor();
