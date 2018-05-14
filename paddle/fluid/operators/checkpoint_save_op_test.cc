@@ -38,7 +38,7 @@ TEST(CheckpointSaveOp, CPU) {
   }
 
   paddle::framework::AttributeMap attrs;
-  attrs.insert({"file_path", std::string("tensor.save")});
+  attrs.insert({"dir", std::string("tensor/ckpt")});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "checkpoint_save", {{"X", {"test_var"}}}, {}, attrs);
