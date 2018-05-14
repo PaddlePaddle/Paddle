@@ -116,6 +116,7 @@ class OpTest(unittest.TestCase):
         '''Fix random seeds to remove randomness from tests'''
         cls._np_rand_state = np.random.get_state()
         cls._py_rand_state = random.getstate()
+        cls.outputs = {}
 
         np.random.seed(123)
         random.seed(124)
@@ -184,7 +185,7 @@ class OpTest(unittest.TestCase):
         outs, _ = self._calc_output(place)
         return outs
 
-    def _calc_output(self, place):
+    def _calc_output(self, place, parallel=False):
 
         program = Program()
         block = program.global_block()
@@ -202,7 +203,14 @@ class OpTest(unittest.TestCase):
 
         feed_map = self.feed_var(inputs, place)
 
-        exe = Executor(place)
+        if parallel:
+            use_cuda = False
+            if isinstance(place, fluid.CUDAPlace(0)):
+                use_cuda = True
+            executor = fluid.ParallelExecutor(
+                use_cuda=use_cuda, loss_name=loss.name, main_program=program)
+        else:
+            executor = Executor(place)
         outs = exe.run(program,
                        feed=feed_map,
                        fetch_list=fetch_list,
@@ -384,7 +392,12 @@ class OpTest(unittest.TestCase):
             input.dtype = np.uint16
         return input
 
-    def _get_gradient(self, input_to_check, place, output_names, no_grad_set):
+    def _get_gradient(self,
+                      input_to_check,
+                      place,
+                      output_names,
+                      no_grad_set,
+                      parallel=False):
         prog = Program()
         block = prog.global_block()
         self._append_ops(block)
@@ -396,7 +409,14 @@ class OpTest(unittest.TestCase):
         feed_dict = self.feed_var(inputs, place)
 
         fetch_list = [g for p, g in param_grad_list]
-        executor = Executor(place)
+        if parallel:
+            use_cuda = False
+            if isinstance(place, fluid.CUDAPlace(0)):
+                use_cuda = True
+            executor = fluid.ParallelExecutor(
+                use_cuda=use_cuda, loss_name=loss.name, main_program=program)
+        else:
+            executor = Executor(place)
         return map(np.array,
                    executor.run(prog, feed_dict, fetch_list,
                                 return_numpy=False))

@@ -90,9 +90,15 @@ def set_input(scope, op, inputs, place):
 def append_input_output(block, op_proto, np_list, is_input):
     '''Insert VarDesc and generate Python variable instance'''
     proto_list = op_proto.inputs if is_input else op_proto.outputs
+    dtype = "float32"
 
     def create_var(block, name, np_list, var_proto):
-        dtype = "float32"
+        global dtype
+        # FIXME: the output data type, shape shoud be infered by input.
+        # but the datatype is not worked. Now we store input dtype and used in
+        # creating output variables.
+        if not is_input:
+            return block.create_var(dtype=dtype, name=name)
         if name not in np_list:
             assert var_proto.intermediate, "{} not found".format(name)
             shape = None

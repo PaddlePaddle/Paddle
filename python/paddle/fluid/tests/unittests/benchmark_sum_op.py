@@ -16,11 +16,12 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-# from benchmark import BenchmarkSuite
+from benchmark import BenchmarkSuite
 from op_test import OpTest
 
 
-class TestSumOp(OpTest):
+# class TestSumOp(OpTest):
+class TestSumOp(BenchmarkSuite):
     def setUp(self):
         self.op_type = "sum"
         x0 = np.random.random((3, 4)).astype('float32')
@@ -37,9 +38,8 @@ class TestSumOp(OpTest):
     def test_check_output(self):
         self.check_output(atol=1e-8)
 
-    # def test_check_output_grad(self):
-    #     place = fluid.CPUPlace()
-    #     self.appends_ops_and_run(place, parallel=False)
+    def test_timeit_output(self):
+        self.timeit_output()
 
 
 if __name__ == "__main__":
