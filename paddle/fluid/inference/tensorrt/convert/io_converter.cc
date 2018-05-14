@@ -58,7 +58,7 @@ class DefaultIOConverter : public EngineIOConverter {
                                            cudaMemcpyDeviceToHost, *stream_));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out->data<float>(), in, size,
-                                           cudaMemcpyHostToHost, *stream_));
+                                           cudaMemcpyDeviceToDevice, *stream_));
     } else {
       PADDLE_THROW("Unknown device for converter");
     }
@@ -66,6 +66,7 @@ class DefaultIOConverter : public EngineIOConverter {
   }
 };
 
+// fluid LodTensor <-> tensorrt ITensor
 REGISTER_TENSORRT_IO_CONVERTER(default, DefaultIOConverter);
 
 }  // namespace tensorrt
