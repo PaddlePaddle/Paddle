@@ -29,9 +29,9 @@ cd paddle/tools/manylinux1
 REPO=[yourrepo] ./build_all.sh
 ```
 
-## Build PaddlePaddle by the spcified Python ABI
+## Build PaddlePaddle for the different Python ABIs
 
-Choice one of the following Python ABI and set the correct environment variables.
+Choose one of the following Python ABI and set the correct environment variables.
 
 - cp27-cp27m
 
