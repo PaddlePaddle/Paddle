@@ -670,7 +670,7 @@ public:
   struct desc {
     friend struct memory;
     /// The underlying C API data structure.
-    tttttt data;
+    mkldnn_memory_desc_t data;
 
     /// Constructs a memory descriptor.
     ///
@@ -690,8 +690,8 @@ public:
 
     /// Constructs a memory descriptor from a C API data structure.
     ///
-    /// @param adata A C API #tttttt structure.
-    desc(const tttttt &adata) : data(adata) {}
+    /// @param adata A C API #mkldnn_memory_desc_t structure.
+    desc(const mkldnn_memory_desc_t &adata) : data(adata) {}
   };
 
   /// A memory primitive descriptor.
@@ -825,7 +825,7 @@ inline memory null_memory(engine eng) {
 inline bool is_null_memory(const const_mkldnn_primitive_t &aprimitive) {
   const_mkldnn_primitive_desc_t aprimitive_pd;
   mkldnn_primitive_get_primitive_desc(aprimitive, &aprimitive_pd);
-  const tttttt *aprimitive_md =
+  const mkldnn_memory_desc_t *aprimitive_md =
       mkldnn_primitive_desc_query_memory_d(aprimitive_pd);
 
   return ((aprimitive_md != nullptr) && (aprimitive_md->ndims == 0));
