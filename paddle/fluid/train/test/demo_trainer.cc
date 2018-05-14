@@ -16,7 +16,11 @@
 #include "paddle/fluid/platform/place.h"
 
 int main() {
-  auto cpu_place = paddle::platform::CPUPlace();
-  auto executor = paddle::framework::Executor(cpu_place);
+  const auto cpu_place = paddle::platform::CPUPlace();
+  std::cout << std::type_index(typeid(cpu_place)).name() << std::endl;
+  //  auto executor = paddle::framework::Executor(cpu_place);
+  paddle::framework::Executor executor(cpu_place);
+  paddle::framework::Scope scope;
+  std::cout << std::type_index(typeid(scope)).name() << std::endl;
   return 0;
 }
