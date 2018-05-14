@@ -196,8 +196,7 @@ class ParallelDoOp : public framework::OperatorBase {
 
 class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ParallelDoOpProtoMaker(OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kInputs, "").AsDuplicable();
     AddInput(kParameters, "").AsDuplicable();
     AddInput(kPlaces, "");
@@ -364,7 +363,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kParallelBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kParallelBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
   }

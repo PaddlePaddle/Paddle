@@ -21,26 +21,16 @@ namespace reader {
 
 class ThreadedReader : public framework::DecoratedReader {
  public:
-  ThreadedReader(ReaderBase* reader, bool safe_mode)
-      : DecoratedReader(reader), safe_mode_(safe_mode) {}
+  explicit ThreadedReader(ReaderBase* reader) : DecoratedReader(reader) {}
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     std::lock_guard<std::mutex> lock(mutex_);
     reader_->ReadNext(out);
   }
 
-  void ReInit() override {
-    if (safe_mode_) {
-      PADDLE_THROW(
-          "ThreadedReader::ReInit() is disabled when 'safe_mode' is true.");
-    }
-    VLOG(5) << "ThreadedReader::ReInit() is invoked! It might be buggy in "
-               "multi-thread environment.";
-    reader_->ReInit();
-  }
+  void ReInit() override { reader_->ReInit(); }
 
  private:
-  bool safe_mode_;
   std::mutex mutex_;
 };
 
@@ -58,27 +48,21 @@ class CreateThreadedReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    bool safe_mode = Attr<bool>("safe_mode");
-    out->Reset(new ThreadedReader(underlying_reader.Get(), safe_mode));
+    out->Reset(new ThreadedReader(underlying_reader.Get()));
   }
 };
 
 class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateThreadedReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
-    AddAttr<bool>("safe_mode",
-                  "When 'safe_mode' is true, 'ReInit()' is disabled to avoid "
-                  "unexpected bugs in multi-thread environment.")
-        .SetDefault(true);
+ protected:
+  void Apply() override {
     AddComment(R"DOC(
       CreateThreadedReader Operator
 
-      This operator creates a threaded reader. A threaded reader's 
-      'ReadNext()' can be invoked by several threads at the same 
-      time. 
-      When the attribute 'safe_mode' is true, the threaded reader's 
-      'ReInit()' is disabled to avoid unexpected bugs in multi-thread 
+      This operator creates a threaded reader. A threaded reader's
+      'ReadNext()' can be invoked by several threads at the same
+      time.
+      When the attribute 'safe_mode' is true, the threaded reader's
+      'ReInit()' is disabled to avoid unexpected bugs in multi-thread
       environment.
     )DOC");
   }

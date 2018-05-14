@@ -23,10 +23,10 @@ import random
 import time
 
 import numpy
-import paddle.v2 as paddle
-import paddle.v2.dataset.imdb as imdb
+import paddle
+import paddle.dataset.imdb as imdb
 import paddle.fluid as fluid
-from paddle.v2 import batch
+import paddle.batch as batch
 import paddle.fluid.profiler as profiler
 
 

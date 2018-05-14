@@ -77,8 +77,7 @@ class LoadCombineOp : public framework::OperatorBase {
 
 class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoadCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput(
         "Out",
         "(vector) The output LoDTensors that will be read from the input file.")

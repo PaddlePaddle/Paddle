@@ -20,6 +20,7 @@ import time
 import threading
 import logging
 import copy
+import csv
 
 import netaddr
 import boto3
@@ -137,6 +138,12 @@ parser.add_argument(
     '--master_server_ip', type=str, default="", help="master server private ip")
 
 parser.add_argument(
+    '--metric_data_identifier',
+    type=str,
+    default="**metrics_data: ",
+    help="key string to identify metrics data")
+
+parser.add_argument(
     '--no_clean_up',
     type=str2bool,
     default=False,
@@ -154,6 +161,11 @@ logging.basicConfig(
     format='%(asctime)s %(message)s')
 
 log_files = ["master.log"]
+
+metrics = {}
+
+metrics_csv_file_name = "metrics.csv"
+is_metrics_file_created = False
 
 
 def create_subnet():
@@ -329,12 +341,42 @@ def create_pservers():
         cleanup(args.task_name)
 
 
+def save_metrics_data(str_msg):
+    #parse msg
+    logging.info("found metrics data, saving it to csv file")
+    global is_metrics_file_created
+    metrics_raw = str_msg.split(",")
+    with open(args.log_path + metrics_csv_file_name, 'a') as csvfile:
+        csv_fieldnames = []
+        csv_write_data = {}
+        for metric in metrics_raw:
+            metric_data = metric.split("=")
+            metric_key = metric_data[0].strip()
+            metric_val = float(metric_data[1].strip())
+            if not metric_key in metrics:
+                metrics[metric_key] = []
+            metric_repo = metrics[metric_key]
+            metric_repo.append(metric_val)
+            csv_fieldnames.append(metric_key)
+            csv_write_data[metric_key] = metric_val
+        writer = csv.DictWriter(csvfile, fieldnames=csv_fieldnames)
+        if not is_metrics_file_created:
+            writer.writeheader()
+            is_metrics_file_created = True
+        writer.writerow(csv_write_data)
+        logging.info("csv file appended")
+
+
 def log_to_file(source, filename):
     if not filename in log_files:
         log_files.append(filename)
     with open(args.log_path + filename, "a") as log_file:
         for line in iter(source.readline, ""):
             log_file.write(line)
+            if (line.startswith(args.metric_data_identifier)):
+                #found key data, trying to add to csv
+                line = line.replace(args.metric_data_identifier, "")
+                save_metrics_data(line)
 
 
 def parse_command(command_raw, defaults={}):
@@ -640,6 +682,7 @@ def start_server(args):
             elif request_path == "/cleanup":
                 self._set_headers()
                 logging.info("Received request to cleanup cluster")
+                args.no_clean_up = False
                 cleanup(args.task_name)
                 self.wfile.write("cleanup in progress")
 

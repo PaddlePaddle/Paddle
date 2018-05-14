@@ -108,8 +108,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConditionalBlockOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The conditional variable of this operator. If X is empty, the "
              "whole sub-block will not be executed.")
@@ -227,7 +226,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
     grad_op->SetOutput(framework::GradVarName("Params"),
                        InputGrad("Params", false));
-    grad_op->SetBlockAttr("sub_block", *this->grad_block_[0]);
+    grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition", GetAttr("is_scalar_condition"));
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }

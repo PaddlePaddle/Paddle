@@ -66,8 +66,7 @@ class SendVarsOp : public framework::OperatorBase {
 
 class SendVarsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendVarsOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
         .AsDuplicable();
     AddOutput("RPCClient",

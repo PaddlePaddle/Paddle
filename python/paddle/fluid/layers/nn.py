@@ -79,6 +79,7 @@ __all__ = [
     'lrn',
     'pad',
     'label_smooth',
+    'roi_pool',
 ]
 
 
@@ -87,6 +88,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_cudnn=False,
        use_mkldnn=False,
        act=None,
        is_test=False,
@@ -159,67 +161,37 @@ def fc(input,
     dtype = helper.input_dtype()
 
     mul_results = []
-    if use_mkldnn:
-        tmp = helper.create_tmp_variable(dtype)
-        input_shape = input.shape
+    for input_var, param_attr in helper.iter_inputs_and_params():
+        input_shape = input_var.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
 
         w = helper.create_parameter(
-            attr=helper.param_attr,
-            shape=param_shape,
-            dtype=dtype,
-            is_bias=False)
-        if bias_attr is None or bias_attr is False:
-            bias_attr = False
-        else:
-            bias_attr = True
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+        tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
-            type="fc",
-            inputs={"Input": input,
-                    "W": w},
+            type="mul",
+            inputs={"X": input_var,
+                    "Y": w},
             outputs={"Out": tmp},
             attrs={
-                "use_mkldnn": use_mkldnn,
-                "is_test": is_test,
-                "bias_attr": bias_attr
+                "x_num_col_dims": num_flatten_dims,
+                "y_num_col_dims": 1,
+                "use_mkldnn": use_mkldnn
             })
-        return helper.append_activation(tmp)
+        mul_results.append(tmp)
+
+    if len(mul_results) == 1:
+        pre_bias = mul_results[0]
     else:
-        for input_var, param_attr in helper.iter_inputs_and_params():
-            input_shape = input_var.shape
-            param_shape = [
-                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-            ] + [size]
-
-            w = helper.create_parameter(
-                attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-            tmp = helper.create_tmp_variable(dtype)
-            helper.append_op(
-                type="mul",
-                inputs={"X": input_var,
-                        "Y": w},
-                outputs={"Out": tmp},
-                attrs={
-                    "x_num_col_dims": num_flatten_dims,
-                    "y_num_col_dims": 1,
-                })
-            mul_results.append(tmp)
-
-        if len(mul_results) == 1:
-            pre_bias = mul_results[0]
-        else:
-            pre_bias = helper.create_tmp_variable(dtype)
-            helper.append_op(
-                type="sum",
-                inputs={"X": mul_results},
-                outputs={"Out": pre_bias})
-        # add bias
-        pre_activation = helper.append_bias_op(
-            pre_bias, dim_start=num_flatten_dims)
-        # add activation
-        return helper.append_activation(pre_activation)
+        pre_bias = helper.create_tmp_variable(dtype)
+        helper.append_op(
+            type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
+    # add bias
+    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
+    # add activation
+    return helper.append_activation(pre_activation)
 
 
 def embedding(input,
@@ -1525,6 +1497,7 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
+               use_mkldnn=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -1603,9 +1576,12 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={"momentum": momentum,
-               "epsilon": epsilon,
-               "is_test": is_test})
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            "use_mkldnn": use_mkldnn
+        })
 
     return helper.append_activation(batch_norm_out)
 
@@ -3733,8 +3709,8 @@ def label_smooth(label,
                  name=None):
     """
     Label smoothing is a mechanism to regularize the classifier layer and is
-    called label-smoothing regularization (LSR). 
-    
+    called label-smoothing regularization (LSR).
+
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
     cause overfitting and reduce the ability of the model to adapt. Label
@@ -3758,10 +3734,10 @@ def label_smooth(label,
         prior_dist(Variable): The prior distribution to be used to smooth
                               labels. If not provided, an uniform distribution
                               is used. The shape of :attr:`prior_dist` should
-                              be :math:`(1, class\_num)`. 
+                              be :math:`(1, class\_num)`.
         epsilon(float): The weight used to mix up the original ground-truth
                         distribution and the fixed distribution.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, 
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
                                                   float_64, int etc.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -3789,3 +3765,53 @@ def label_smooth(label,
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)})
     return smooth_label
+
+
+def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+    """
+    Region of interest pooling (also known as RoI pooling) is to perform 
+        is to perform max pooling on inputs of nonuniform sizes to obtain
+        fixed-size feature maps (e.g. 7*7).
+    The operator has three steps: 
+        1. Dividing each region proposal into equal-sized sections with 
+           the pooled_width and pooled_height 
+        2. Finding the largest value in each section 
+        3. Copying these max values to the output buffer
+
+    Args:
+        input (Variable): The input for ROI pooling.
+        rois (Variable): ROIs (Regions of Interest) to pool over. It should
+                         be a 2-D one level LoTensor of shape [num_rois, 4].
+                         The layout is [x1, y1, x2, y2], where (x1, y1)
+                         is the top left coordinates, and (x2, y2) is the 
+                         bottom right coordinates. The num_rois is the 
+                         total number of ROIs in this batch data.
+        pooled_height (integer): The pooled output height. Default: 1
+        pooled_width (integer): The pooled output width. Default: 1
+        spatial_scale (float): Multiplicative spatial scale factor. To
+                               translate ROI coords from their input scale
+                               to the scale used when pooling. Default: 1.0
+
+    Returns:
+        pool_out (Variable): The output is a 4-D tensor of the shape 
+                             (num_rois, channels, pooled_h, pooled_w).
+
+    Examples:
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+    """
+    helper = LayerHelper('roi_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+    argmaxes = helper.create_tmp_variable(dtype='int32')
+    helper.append_op(
+        type="roi_pool",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": pool_out,
+                 "Argmax": argmaxes},
+        attrs={
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "spatial_scale": spatial_scale
+        })
+    return pool_out

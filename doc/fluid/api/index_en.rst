@@ -16,3 +16,4 @@ Fluid
     profiler.rst
     regularizer.rst
     io.rst
+    data.rst

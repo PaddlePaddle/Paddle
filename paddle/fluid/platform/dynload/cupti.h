@@ -41,7 +41,7 @@ extern void *cupti_dso_handle;
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
     inline CUptiResult CUPTIAPI operator()(Args... args) {                 \
-      typedef CUptiResult CUPTIAPI (*cuptiFunc)(Args...);                  \
+      using cuptiFunc = decltype(&::__name);                               \
       std::call_once(cupti_dso_flag, []() {                                \
         cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
       });                                                                  \

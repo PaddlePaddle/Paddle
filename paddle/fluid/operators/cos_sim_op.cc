@@ -62,8 +62,7 @@ class CosSimOp : public framework::OperatorWithKernel {
 
 class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CosSimOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The 1st input of cos_sim op.");
     AddInput("Y", "The 2nd input of cos_sim op.");
     AddOutput("Out", "The output of cos_sim op.");

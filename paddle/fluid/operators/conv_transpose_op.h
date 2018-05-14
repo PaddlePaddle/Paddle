@@ -16,8 +16,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 
 namespace paddle {
@@ -30,12 +30,12 @@ using DDim = framework::DDim;
 // operator implementations can reuse the code.
 class Conv2DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class Conv3DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv3DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class ConvTransposeOp : public framework::OperatorWithKernel {
@@ -118,6 +118,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(context.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, output, static_cast<T>(0));
 
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
@@ -134,9 +135,8 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
       // col_matrix = filter * input_batch
       // of shape (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
-      math::matmul<DeviceContext, T>(dev_ctx, filter, true, input_batch, false,
-                                     static_cast<T>(1.0), &col_matrix,
-                                     static_cast<T>(0.0));
+      blas.MatMul(filter, true, input_batch, false, static_cast<T>(1.0),
+                  &col_matrix, static_cast<T>(0.0));
 
       if (data_dim == 2U) {
         // col2im: col_matrix -> dy
@@ -213,6 +213,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // im2col + gemm (similar to conv-forward)
     // input need to compute gradient
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     if (input_grad || filter_grad) {
       Tensor col;
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -267,9 +268,8 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, c * k_d * k_h * k_w) * (c * k_d * k_h * k_w, d * h * w) -> (m,
           // d, h, w)
-          math::matmul<DeviceContext, T>(
-              dev_ctx, filter, false, col_matrix, false, static_cast<T>(1.0),
-              &input_grad_batch, static_cast<T>(0.0));
+          blas.MatMul(filter, false, col_matrix, false, static_cast<T>(1.0),
+                      &input_grad_batch, static_cast<T>(0.0));
         }
         if (filter_grad) {
           // input batch
@@ -279,9 +279,8 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, d * h * w) * (d * h * w, c * k_d * k_h * k_w) -> (m, c * k_d *
           // k_h * k_w)
-          math::matmul<DeviceContext, T>(dev_ctx, in_batch, false, col_matrix,
-                                         true, static_cast<T>(1.0),
-                                         &filter_grad_, static_cast<T>(1.0));
+          blas.MatMul(in_batch, false, col_matrix, true, static_cast<T>(1.0),
+                      &filter_grad_, static_cast<T>(1.0));
         }
       }
     }

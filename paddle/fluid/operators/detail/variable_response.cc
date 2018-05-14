@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -114,7 +115,7 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto* tensor = InitVar()->GetMutable<framework::LoDTensor>();
+  auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
 
   framework::LoD lod;
@@ -150,7 +151,7 @@ bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto* slr = InitVar()->GetMutable<framework::SelectedRows>();
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
@@ -172,7 +173,7 @@ bool VariableResponse::CopySelectRowsTensorData(
 bool VariableResponse::CopySelectRowsData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, int length) {
-  auto* slr = InitVar()->GetMutable<framework::SelectedRows>();
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->mutable_rows()->resize(length /
                               framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
@@ -209,15 +210,15 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
         }
 
         if (wt == WIRETYPE_LENGTH_DELIMITED) {
-          int length = 0;
-          if (!input->ReadVarintSizeAsInt(&length)) {
+          int num_bytes = 0;
+          if (!input->ReadVarintSizeAsInt(&num_bytes)) {
             return tag;
           }
-
-          for (int i = 0; i < length; i++) {
+          int start_pos = input->CurrentPosition();
+          while (input->CurrentPosition() - start_pos < num_bytes) {
             uint64_t v;
             if (!input->ReadVarint64(&v)) {
-              return false;
+              return tag;
             }
             lod->push_back(v);
           }
@@ -274,8 +275,8 @@ int VariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kTypeFieldNumber: {
-        uint64_t v;
-        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+        uint32_t v;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint32(&v)) {
           return tag;
         }
 
@@ -283,8 +284,8 @@ int VariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kDataTypeFieldNumber: {
-        uint64_t v = 0;
-        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+        uint32_t v = 0;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint32(&v)) {
           return tag;
         }
 
@@ -304,11 +305,12 @@ int VariableResponse::Parse(Source* source) {
 
         // packed
         if (wt == WIRETYPE_LENGTH_DELIMITED) {
-          int length = 0;
-          if (!input.ReadVarintSizeAsInt(&length)) {
+          int num_bytes = 0;
+          if (!input.ReadVarintSizeAsInt(&num_bytes)) {
             return tag;
           }
-          for (int i = 0; i < length; i++) {
+          int start_pos = input.CurrentPosition();
+          while (input.CurrentPosition() - start_pos < num_bytes) {
             uint64_t v;
             if (!input.ReadVarint64(&v)) {
               return tag;
@@ -317,7 +319,6 @@ int VariableResponse::Parse(Source* source) {
           }
           break;
         }
-
         return tag;
       }
       case sendrecv::VariableMessage::kLodLevelFieldNumber: {
@@ -371,9 +372,9 @@ int VariableResponse::Parse(Source* source) {
                            meta_.varname() != "",
                        "meta info should be got first!");
 
-        int length = 0;
+        int num_bytes = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
-            !ReadVarintSizeAsInt(&input, &length)) {
+            !ReadVarintSizeAsInt(&input, &num_bytes)) {
           return tag;
         }
 
@@ -381,14 +382,14 @@ int VariableResponse::Parse(Source* source) {
         if (meta_.type() == sendrecv::LOD_TENSOR) {
           PADDLE_ENFORCE(meta_.lod_size() >= 0,
                          "lod info should be got first!");
-          if (!CopyLodTensorData(&input, *dev_ctx_, dims, length)) {
+          if (!CopyLodTensorData(&input, *dev_ctx_, dims, num_bytes)) {
             return tag;
           }
           break;
         }
 
         if (meta_.type() == sendrecv::SELECTED_ROWS) {
-          if (!CopySelectRowsTensorData(&input, *dev_ctx_, dims, length)) {
+          if (!CopySelectRowsTensorData(&input, *dev_ctx_, dims, num_bytes)) {
             return tag;
           }
           break;
@@ -402,13 +403,13 @@ int VariableResponse::Parse(Source* source) {
                            meta_.varname() != "",
                        "meta info should be got first!");
 
-        int length = 0;
+        int num_bytes = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
-            !ReadVarintSizeAsInt(&input, &length)) {
+            !ReadVarintSizeAsInt(&input, &num_bytes)) {
           return tag;
         }
 
-        if (!CopySelectRowsData(&input, *dev_ctx_, length)) {
+        if (!CopySelectRowsData(&input, *dev_ctx_, num_bytes)) {
           return tag;
         }
         break;
@@ -427,7 +428,26 @@ int VariableResponse::Parse(Source* source) {
         meta_.set_out_varname(temp);
         break;
       }
-
+      case sendrecv::VariableMessage::kProfileFieldNumber: {
+        bool profiling;
+        if (!input.ReadRaw(reinterpret_cast<void*>(&profiling), 1)) {
+          return tag;
+        }
+        meta_.set_profile(profiling);
+        int64_t listener_id = platform::ListenerId();
+        if (listener_id <= 0) {
+          break;
+        }
+        if (profiling && !platform::IsProfileEnabled()) {
+          platform::EnableProfiler(platform::ProfilerState::kCPU);
+        } else if (!profiling && platform::IsProfileEnabled()) {
+          // TODO(panyx0718): Should we allow to customize file dir.
+          platform::DisableProfiler(
+              platform::EventSortingKey::kDefault,
+              string::Sprintf("/tmp/profile_ps_%lld", listener_id));
+        }
+        break;
+      }
       default: {
         // Unknown tag, return unknown error.
         return -1;

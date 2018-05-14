@@ -57,7 +57,8 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay)
+    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay,
+    bool use_default_grad_scale, bool balance_parameter_opt_between_cards)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -73,7 +74,7 @@ ParallelExecutor::ParallelExecutor(
     member_->own_local_scope = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(local_scopes[i]);
+      member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
     }
   }
 
@@ -90,12 +91,14 @@ ParallelExecutor::ParallelExecutor(
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           member_->nccl_ctxs_.get());
+  details::MultiDevSSAGraphBuilder builder(
+      member_->places_, loss_var_name, params, member_->local_scopes_,
+      member_->nccl_ctxs_.get(), use_default_grad_scale,
+      balance_parameter_opt_between_cards);
 #else
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_);
+  details::MultiDevSSAGraphBuilder builder(
+      member_->places_, loss_var_name, params, member_->local_scopes_,
+      use_default_grad_scale, balance_parameter_opt_between_cards);
 #endif
   auto graph = builder.Build(main_program);
 

@@ -22,6 +22,8 @@
 
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
+#include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 
 namespace paddle {
@@ -29,46 +31,6 @@ namespace framework {
 class Scope;
 
 namespace details {
-
-template <typename T>
-class BlockingQueue {
- public:
-  void Push(const T &item) {
-    {
-      std::lock_guard<std::mutex> g(mutex_);
-      q_.emplace_back(item);
-    }
-    cv_.notify_one();
-  }
-
-  template <typename U>
-  void Extend(const U &items) {
-    {
-      std::lock_guard<std::mutex> g(mutex_);
-      for (auto &item : items) {
-        q_.emplace_back(item);
-      }
-    }
-    cv_.notify_all();
-  }
-
-  std::deque<T> PopAll(size_t ms, bool *timeout) {
-    auto time =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(ms);
-    std::unique_lock<std::mutex> lock(mutex_);
-    *timeout = !cv_.wait_until(lock, time, [this] { return !q_.empty(); });
-    std::deque<T> ret;
-    if (!*timeout) {
-      std::swap(ret, q_);
-    }
-    return ret;
-  }
-
- private:
-  std::mutex mutex_;
-  std::condition_variable cv_;
-  std::deque<T> q_;
-};
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
@@ -97,6 +59,21 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   bool allow_op_delay_;
+
+  void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+                       OpHandleBase *op_instance) const;
+
+  void InsertPendingVar(std::unordered_set<VarHandleBase *> *pending_vars,
+                        BlockingQueue<VarHandleBase *> *ready_vars,
+                        VarHandleBase *var) const;
+
+  void InsertFetchOps(
+      const std::vector<std::string> &fetch_tensors,
+      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+      std::unordered_set<VarHandleBase *> *pending_vars,
+      BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
 };
 
 }  // namespace details

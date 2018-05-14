@@ -34,7 +34,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
     auto operator()(Args... args) -> decltype(__name(args...)) {           \
-      using cudnn_func = decltype(__name(args...)) (*)(Args...);           \
+      using cudnn_func = decltype(&::__name);                              \
       std::call_once(cudnn_dso_flag, []() {                                \
         cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
       });                                                                  \

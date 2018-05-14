@@ -25,12 +25,22 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// A SSA graph used by parallel executor.
 struct SSAGraph {
+  // all variable in each devices.
+  // The outside vector is the device vector. Each element of this vector is a
+  // map from variable name to variables. The variables, who have the same name,
+  // will have a different version. The offset in the
+  // `std::vector<std::unique_ptr<VarHandle>>` is the version of varaibles.
   std::vector<
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
       vars_;
+
   // aux variables to represent dependency. Useful to resolve data hazard.
   std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
+
+  // all operators. NOTE that even we use a vector here, the operators is
+  // unordered.
   std::vector<std::unique_ptr<OpHandleBase>> ops_;
 };
 

@@ -51,7 +51,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
 
   ::grpc::ByteBuffer msg;
   operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
-  EXPECT_GT(msg.Length(), 0);
+  EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
   std::vector<::grpc::Slice> slices;
@@ -84,7 +84,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(false, &scope, &ctx);
+  operators::detail::VariableResponse resp(&scope, &ctx);
   EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
@@ -108,7 +108,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
     EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
   for (size_t i = 0; i < rows2->size(); ++i) {
-    EXPECT_EQ(rows_data2[i], i);
+    EXPECT_EQ(rows_data2[i], static_cast<int64_t>(i));
   }
   EXPECT_EQ(slr2->height(), 1000);
 }
@@ -117,11 +117,11 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // serialize var to ByteBuffer
   framework::Variable var;
   auto* tensor = var.GetMutable<framework::LoDTensor>();
-  tensor->Resize(framework::make_ddim({4, 8, 4, 2}));
+  tensor->Resize(framework::make_ddim({512, 8, 4, 2}));
   framework::LoD lod;
   lod.push_back(framework::Vector<size_t>({1, 3, 8}));
   tensor->set_lod(lod);
-  int tensor_numel = 4 * 8 * 4 * 2;
+  int tensor_numel = 512 * 8 * 4 * 2;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
   tensor->mutable_data<float>(place);
@@ -129,7 +129,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
 
   ::grpc::ByteBuffer msg;
   operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
-  EXPECT_GT(msg.Length(), 0);
+  EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
   std::vector<::grpc::Slice> slices;
@@ -142,7 +142,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   EXPECT_TRUE(varmsg.ParseFromString(tmp));
   EXPECT_EQ(varmsg.varname(), "myvar");
   EXPECT_EQ(varmsg.type(), 0);
-  EXPECT_EQ(varmsg.dims()[0], 4);
+  EXPECT_EQ(varmsg.dims()[0], 512);
   EXPECT_EQ(varmsg.dims()[1], 8);
   EXPECT_EQ(varmsg.dims()[2], 4);
   EXPECT_EQ(varmsg.dims()[3], 2);
@@ -171,7 +171,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(false, &scope, &ctx);
+  operators::detail::VariableResponse resp(&scope, &ctx);
   if (from_type == 0) {
     EXPECT_EQ(resp.Parse(msg), 0);
   } else {

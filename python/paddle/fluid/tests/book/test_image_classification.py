@@ -189,12 +189,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
@@ -244,7 +239,7 @@ def infer(use_cuda, save_dirname=None):
         assert len(results[0]) == len(transpiler_results[0])
         for i in range(len(results[0])):
             np.testing.assert_almost_equal(
-                results[0][i], transpiler_results[0][i], decimal=6)
+                results[0][i], transpiler_results[0][i], decimal=5)
 
         print("infer results: ", results[0])
 

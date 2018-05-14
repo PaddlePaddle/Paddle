@@ -20,7 +20,7 @@ import numpy as np
 import argparse
 import time
 
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 

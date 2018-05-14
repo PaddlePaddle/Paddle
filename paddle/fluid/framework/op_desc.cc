@@ -205,8 +205,8 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
-void OpDesc::SetBlockAttr(const std::string &name, BlockDesc &block) {
-  this->attrs_[name] = &block;
+void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
+  this->attrs_[name] = block;
   need_update_ = true;
 }
 

@@ -35,15 +35,25 @@ struct TestBroadcastOpHandle {
   std::unique_ptr<OpHandleBase> op_handle_;
   std::vector<std::unique_ptr<VarHandleBase>> vars_;
   std::vector<p::Place> gpu_list_;
+  bool use_gpu_;
+#ifdef PADDLE_WITH_CUDA
+  std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
+#endif
 
   void WaitAll() {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
+#ifdef PADDLE_WITH_CUDA
+    if (nccl_ctxs_) {
+      nccl_ctxs_->WaitAll();
+    }
+#endif
   }
 
   void InitCtxOnGpu(bool use_gpu) {
-    if (use_gpu) {
+    use_gpu_ = use_gpu;
+    if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
@@ -57,6 +67,7 @@ struct TestBroadcastOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CUDADeviceContext(p));
       }
+      nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
@@ -67,6 +78,9 @@ struct TestBroadcastOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
+#ifdef PADDLE_WITH_CUDA
+      nccl_ctxs_.reset(nullptr);
+#endif
     }
   }
 
@@ -82,7 +96,21 @@ struct TestBroadcastOpHandle {
     }
     param_scopes_[input_scope_idx]->Var("input");
 
-    op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_));
+    if (use_gpu_) {
+#ifdef PADDLE_WITH_CUDA
+      op_handle_.reset(
+          new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#else
+      PADDLE_THROW("CUDA is not support.");
+#endif
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      op_handle_.reset(
+          new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#else
+      op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_));
+#endif
+    }
 
     auto* in_var_handle =
         new VarHandle(1, input_scope_idx, "input", gpu_list_[input_scope_idx]);
@@ -97,7 +125,9 @@ struct TestBroadcastOpHandle {
     op_handle_->AddInput(dummy_var_handle);
 
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
+      if (!use_gpu_) {
+        op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
+      }
       VarHandle* out_var_handle = new VarHandle(2, j, "out", gpu_list_[j]);
       vars_.emplace_back(out_var_handle);
       op_handle_->AddOutput(out_var_handle);
@@ -139,7 +169,7 @@ struct TestBroadcastOpHandle {
       PADDLE_ENFORCE_EQ(out_tensor.lod(), lod, "lod is not equal.");
 
       f::Tensor result_tensor;
-      f::TensorCopy(out_tensor, cpu_place, *(ctxs_[j]), &result_tensor);
+      f::TensorCopySync(out_tensor, cpu_place, &result_tensor);
       float* ct = result_tensor.mutable_data<float>(cpu_place);
 
       for (int64_t i = 0; i < f::product(kDims); ++i) {
@@ -185,7 +215,7 @@ struct TestBroadcastOpHandle {
       }
 
       f::Tensor result_tensor;
-      f::TensorCopy(rt, cpu_place, *(ctxs_[j]), &result_tensor);
+      f::TensorCopySync(rt, cpu_place, &result_tensor);
       float* ct = result_tensor.data<float>();
 
       for (int64_t i = 0; i < f::product(kDims); ++i) {

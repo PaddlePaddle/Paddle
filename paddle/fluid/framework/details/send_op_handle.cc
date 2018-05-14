@@ -26,15 +26,21 @@ SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
       place_(place) {}
 
 void SendOpHandle::RunImpl() {
+  // TODO(wuyi): need further analysis whether wait VarDummyHandle.
   // Wait input done
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
     if (in->DebugString() == "dummy") {  // HACK
       continue;
     }
-    in->generated_op_->Wait(dev_ctxes_[p]);
+    if (in->generated_op_) {
+      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[p]);
+    }
   }
-  this->RunAndRecordEvent([&] { op_->Run(*local_scope_, place_); });
+  auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  // FIXME(wuyi): can not use RunAndRecordEvent here, for it will cause dead
+  // lock.
+  op_->Run(*tmp_scope, place_);
 }
 
 std::string SendOpHandle::Name() const { return "send"; }

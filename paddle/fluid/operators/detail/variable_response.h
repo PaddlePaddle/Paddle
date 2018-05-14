@@ -36,13 +36,20 @@ namespace detail {
 
 class VariableResponse {
  public:
-  VariableResponse(bool use_local_scope, const framework::Scope* scope,
-                   const platform::DeviceContext* dev_ctx)
-      : use_local_scope_(use_local_scope), scope_(scope), dev_ctx_(dev_ctx) {
-    local_scope_ = &scope->NewScope();
+  VariableResponse(const framework::Scope* scope,
+                   const platform::DeviceContext* dev_ctx,
+                   bool create_scope = false)
+      : scope_(scope), dev_ctx_(dev_ctx), create_scope_(create_scope) {
+    if (create_scope) {
+      local_scope_ = &scope->NewScope();
+    }
   }
 
-  virtual ~VariableResponse() { scope_->DeleteScope(local_scope_); }
+  virtual ~VariableResponse() {
+    if (create_scope_) {
+      scope_->DeleteScope(local_scope_);
+    }
+  }
 
   // return:
   // 0:ok.
@@ -58,22 +65,17 @@ class VariableResponse {
 
   const framework::Scope& GetLocalScope() const { return *local_scope_; }
 
+  framework::Scope* GetMutableLocalScope() const { return local_scope_; }
+
   inline std::string Varname() { return meta_.varname(); }
   inline std::string OutVarname() { return meta_.out_varname(); }
 
   // should call parse first.
   framework::Variable* GetVar() {
-    return local_scope_->FindVar(meta_.varname());
-  }
-
-  framework::Variable* InitVar() {
-    if (use_local_scope_) {
-      bool has_var = (scope_->FindVar(meta_.varname()) != nullptr);
-      PADDLE_ENFORCE(has_var);
+    if (create_scope_) {
       return local_scope_->Var(meta_.varname());
-    } else {
-      return scope_->FindVar(meta_.varname());
     }
+    return scope_->FindVar(meta_.varname());
   }
 
  private:
@@ -89,10 +91,10 @@ class VariableResponse {
                          const framework::DDim& dims, int length);
 
  private:
-  bool use_local_scope_ = false;
   const framework::Scope* scope_;
-  framework::Scope* local_scope_ = nullptr;
   const platform::DeviceContext* dev_ctx_;
+  bool create_scope_ = false;
+  framework::Scope* local_scope_ = nullptr;
   // only Skeleton
   sendrecv::VariableMessage meta_;
 };

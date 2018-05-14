@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import numpy.random as random
 import sys
 import math
 from op_test import OpTest
@@ -25,14 +26,27 @@ class TestIOUSimilarityOp(OpTest):
 
     def setUp(self):
         self.op_type = "iou_similarity"
-        self.boxes1 = np.array(
-            [[4.0, 3.0, 7.0, 5.0], [5.0, 6.0, 10.0, 7.0]]).astype('float32')
-        self.boxes2 = np.array([[3.0, 4.0, 6.0, 8.0], [14.0, 14.0, 15.0, 15.0],
-                                [0.0, 0.0, 20.0, 20.0]]).astype('float32')
-        self.output = np.array(
-            [[2.0 / 16.0, 0, 6.0 / 400.0],
-             [1.0 / 16.0, 0.0, 5.0 / 400.0]]).astype('float32')
-
+        self.boxes1 = random.rand(2, 4).astype('float32')
+        self.boxes2 = random.rand(3, 4).astype('float32')
+        self.output = random.rand(2, 3).astype('float32')
+        for row in range(self.boxes1.shape[0]):
+            for col in range(self.boxes2.shape[0]):
+                xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
+                xmin2, ymin2, xmax2, ymax2 = self.boxes2[col]
+                area1 = (ymax1 - ymin1) * (xmax1 - xmin1)
+                area2 = (ymax2 - ymin2) * (xmax2 - xmin2)
+                inter_xmax = min(xmax1, xmax2)
+                inter_ymax = min(ymax1, ymax2)
+                inter_xmin = max(xmin1, xmin2)
+                inter_ymin = max(ymin1, ymin2)
+                inter_height = inter_ymax - inter_ymin
+                inter_width = inter_xmax - inter_xmin
+                inter_height = max(inter_height, 0)
+                inter_width = max(inter_width, 0)
+                inter_area = inter_width * inter_height
+                union_area = area1 + area2 - inter_area
+                sim_score = inter_area / union_area
+                self.output[row, col] = sim_score
         self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
 
         self.outputs = {'Out': self.output}
