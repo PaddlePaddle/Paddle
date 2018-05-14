@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_type.h"
+#include <stdint.h>
+#include <mutex>  // NOLINT
+#include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace framework {
