@@ -17,80 +17,51 @@ import paddle.fluid as fluid
 import contextlib
 import numpy
 import unittest
-import math
-import sys
-import os
+
+# train reader
+BATCH_SIZE = 20
+
+train_reader = paddle.batch(
+    paddle.reader.shuffle(
+        paddle.dataset.uci_housing.train(), buf_size=500),
+    batch_size=BATCH_SIZE)
 
 
-def train(use_cuda, save_dirname, is_local):
+# train
+def linear(use_cuda, save_dirname, is_local):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
+    global y_predict
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
-
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
-
-    BATCH_SIZE = 20
-
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.uci_housing.train(), buf_size=500),
-        batch_size=BATCH_SIZE)
-
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-
-    def train_loop(main_program):
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-        exe.run(fluid.default_startup_program())
-
-        PASS_NUM = 100
-        for pass_id in range(PASS_NUM):
-            for data in train_reader():
-                avg_loss_value, = exe.run(main_program,
-                                          feed=feeder.feed(data),
-                                          fetch_list=[avg_cost])
-                print(avg_loss_value)
-                if avg_loss_value[0] < 10.0:
-                    if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, ['x'],
-                                                      [y_predict], exe)
-                    return
-                if math.isnan(float(avg_loss_value)):
-                    sys.exit("got NaN loss, training failed.")
-        raise AssertionError("Fit a line cost is too large, {0:2.2}".format(
-            avg_loss_value[0]))
-
-    if is_local:
-        train_loop(fluid.default_main_program())
-    else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
-        eplist = []
-        for ip in pserver_ips.split(","):
-            eplist.append(':'.join([ip, port]))
-        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
-        current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
-        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
-        if training_role == "PSERVER":
-            pserver_prog = t.get_pserver_program(current_endpoint)
-            pserver_startup = t.get_startup_program(current_endpoint,
-                                                    pserver_prog)
-            exe.run(pserver_startup)
-            exe.run(pserver_prog)
-        elif training_role == "TRAINER":
-            train_loop(t.get_trainer_program())
+    loss = fluid.layers.cross_entropy(y_predict, y)
+    return loss
 
 
+def train(use_cuda, save_dirname, is_local):
+    trainer = fluid.Trainer(linear, optimizer=fluid.optimizer.SGD())
+
+    def event_handler(event):
+        if isinstance(event, fluid.EndIteration):
+            print event.metrics
+
+        elif isinstance(event, fluid.EndPass):
+            test_metrics = trainer.test(
+                reader=paddle.dataset.uci_housing.test())
+            print test_metrics
+
+            if test_metrics[0] < 10.0:
+                if save_dirname is not None:
+                    fluid.io.save_inference_model(save_dirname, ['x'],
+                                                  [y_predict])
+            return
+
+    trainer.train(reader=paddle.dataset.uci_housing.train(), num_pass=100)
+
+
+# infer
 def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
