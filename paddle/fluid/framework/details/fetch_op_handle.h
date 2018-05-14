@@ -42,7 +42,7 @@ struct FetchOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
-  virtual void WaitInputVarGenerated(const platform::Place &place);
+  void WaitInputVarGenerated(const platform::Place &place) override;
 
  private:
   FeedFetchList *data_;
