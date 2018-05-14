@@ -97,7 +97,8 @@ def train(use_cuda, save_dirname):
             #     if math.isnan(float(avg_cost)):
             #         sys.exit("got NaN loss, training failed.")
         elif isinstance(event, fluid.EndStepEvent):
-            print("Step {0}, Epoch {1}".format(event.step, event.epoch))
+            print("Step {0}, Epoch {1} Metrics {2}".format(
+                event.step, event.epoch, map(numpy.array, event.metrics)))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
