@@ -62,52 +62,5 @@ class MKLDNNActivationGradKernel
   }
 };
 
-namespace {  // NOLINT
-framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
-                                      const framework::OperatorWithKernel& oper,
-                                      const std::string& name) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library = framework::LibraryType::kMKLDNN;
-  }
-#endif
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
-      ctx.GetPlace(), layout, library);
-}
-}  // anonymous namespace
-
-class ActivationWithMKLDNNOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this, "X");
-  }
-};
-
-class ActivationWithMKLDNNOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this, "Out");
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
