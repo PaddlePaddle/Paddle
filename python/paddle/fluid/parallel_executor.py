@@ -31,6 +31,7 @@ class ParallelExecutor(object):
                  allow_op_delay=False,
                  share_vars_from=None,
                  use_default_grad_scale=True,
+                 balance_parameter_opt_between_cards=False,
                  num_trainers=0,
                  trainer_id=0):
         """
@@ -53,6 +54,9 @@ class ParallelExecutor(object):
                 gradients of each device and scaled gradients would be
                 aggregated. Otherwise, a customized scale value should be fed
                 to the network.
+            balance_parameter_opt_between_cards(bool, default True): Whether
+                updating different gradients on different cards. Currently, it
+                is not recommended.
             num_trainers(int, default 0): If greater than 0, NCCL will be
                 initialized with multpile rank of nodes, each node should have
                 same number of GPUs. Distributed training will be enabled then.
@@ -137,6 +141,7 @@ class ParallelExecutor(object):
             local_scopes,
             allow_op_delay,
             use_default_grad_scale,
+            balance_parameter_opt_between_cards,
             num_trainers,
             trainer_id)
         self.scope = scope

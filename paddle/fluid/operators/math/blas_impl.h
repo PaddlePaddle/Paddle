@@ -172,9 +172,9 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
                        c_array.data(), &ldc, 1 /* group_count */, &batchCount);
 #else
   for (int k = 0; k < batchCount; ++k) {
-    const float *Ak = &A[k * strideA];
-    const float *Bk = &B[k * strideB];
-    float *Ck = &C[k * M * N];
+    auto *Ak = &A[k * strideA];
+    auto *Bk = &B[k * strideB];
+    auto *Ck = &C[k * M * N];
     this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
   }
 #endif
