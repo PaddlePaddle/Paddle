@@ -106,7 +106,7 @@ def split_dense_variable(var_list, service_count, min_block_size=16384):
     Args:
         var_list (list): List of variables.
         service_count (int): Numel of pserver services. A pserver may have two
-            listening ports.
+            or more listening ports.
         min_block_size (int): Minimum splitted block size.
     Returns:
         blocks (list[(varname, block_id, current_block_size)]): A list 
