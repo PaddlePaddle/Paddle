@@ -48,7 +48,7 @@ def linear():
     return avg_loss
 
 
-def train(use_cuda, save_dirname, is_local):
+def train(use_cuda, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
@@ -101,14 +101,14 @@ def infer(use_cuda, save_dirname=None):
     print("infer results: ", results[0])
 
 
-def main(use_cuda, is_local=True):
+def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname, is_local)
+    train(use_cuda, save_dirname)
     infer(use_cuda, save_dirname)
 
 
