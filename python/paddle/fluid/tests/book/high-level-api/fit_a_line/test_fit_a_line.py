@@ -70,8 +70,7 @@ def infer(use_cuda, save_dirname=None):
     inferencer = fluid.Inferencer(param_path=save_dirname, place=place)
 
     batch_size = 10
-    tensor_x = numpy.random.uniform(0, 10,
-                                    [batch_size, 13]).astype("float32")
+    tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
 
     results = inferencer.infer({'x': tensor_x})
     print("infer results: ", results[0])
