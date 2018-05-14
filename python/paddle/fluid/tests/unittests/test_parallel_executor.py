@@ -796,5 +796,42 @@ class TestFetchOp(unittest.TestCase):
         self.parallel_exe(train_inputs, seed=1)
 
 
+class TestFeedParallel(unittest.TestCase):
+    def test_main(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        startup.random_seed = 1
+        with fluid.scope_guard(fluid.core.Scope()):
+            with fluid.program_guard(main, startup):
+                data = fluid.layers.data(
+                    name='image', shape=[3, 224, 224], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                out = Lenet(data, class_dim=102)
+                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = fluid.layers.mean(loss)
+                opt = fluid.optimizer.Momentum(
+                    learning_rate=0.1,
+                    momentum=0.9,
+                    regularization=fluid.regularizer.L2Decay(1e-4))
+
+                opt.minimize(loss)
+        place = fluid.CUDAPlace(0)
+        feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
+        reader = feeder.decorate_reader(
+            paddle.batch(
+                flowers.train(), batch_size=16), multi_devices=True)
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        pe = fluid.ParallelExecutor(
+            use_cuda=True, loss_name=loss.name, main_program=main)
+
+        for batch_id, data in enumerate(reader()):
+            loss_np = np.array(pe.run(feed=data, fetch_list=[loss.name])[0])
+            print batch_id, loss_np
+            if batch_id == 2:
+                break
+
+
 if __name__ == '__main__':
     unittest.main()
