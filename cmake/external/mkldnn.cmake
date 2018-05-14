@@ -56,6 +56,7 @@ ExternalProject_Add(
     GIT_TAG             "v0.14"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
+    PATCH_COMMAND       "sed -i 's/mkldnn_memory_desc_t zero\{\}/mkldnn_memory_desc_t zero/g' ${MKLDNN_SOURCES_DIR}/src/extern_mkldnn/include/mkldnn.hpp"
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
     CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}
