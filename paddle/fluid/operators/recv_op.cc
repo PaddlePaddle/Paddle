@@ -56,8 +56,7 @@ class RecvOp : public framework::OperatorBase {
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
     AddOutput("RPCClient",
               "(RPCClient) The RPC client object which is"
