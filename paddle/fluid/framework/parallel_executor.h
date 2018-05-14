@@ -17,53 +17,55 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-
 namespace paddle {
 namespace framework {
 
 class ParallelExecutorPrivate;
 
+using details::ExecutionStrategy;
+
 class ParallelExecutor {
   DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
 
  public:
-  explicit ParallelExecutor(size_t num_threads, bool use_event,
-                            const std::vector<platform::Place>& places,
-                            const std::unordered_set<std::string>& params,
-                            const std::unordered_set<std::string>& bcast_vars,
-                            const ProgramDesc& main_program,
-                            const std::string& loss_var_name, Scope* scope,
-                            const std::vector<Scope*>& local_scopes,
-                            bool allow_op_delay, bool use_default_grad_scale,
-                            bool balance_parameter_opt_between_cards);
+  explicit ParallelExecutor(const std::vector<platform::Place> &places,
+                            const std::unordered_set<std::string> &params,
+                            const std::unordered_set<std::string> &bcast_vars,
+                            const ProgramDesc &main_program,
+                            const std::string &loss_var_name, Scope *scope,
+                            const std::vector<Scope *> &local_scopes,
+                            bool use_default_grad_scale,
+                            bool balance_parameter_opt_between_cards,
+                            const ExecutionStrategy &exec_strategy);
 
   ~ParallelExecutor();
 
-  std::vector<Scope*>& GetLocalScopes();
+  std::vector<Scope *> &GetLocalScopes();
 
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
    * size of local scopes.
    */
   void FeedTensorsIntoLocalScopes(
-      const std::vector<std::unordered_map<std::string, LoDTensor>>& tensors);
+      const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors);
 
   void FeedAndSplitTensorIntoLocalScopes(
-      const std::unordered_map<std::string, LoDTensor>& tensors);
+      const std::unordered_map<std::string, LoDTensor> &tensors);
 
-  void Run(const std::vector<std::string>& fetch_tensors,
-           const std::string& fetched_var_name);
+  void Run(const std::vector<std::string> &fetch_tensors,
+           const std::string &fetched_var_name);
 
-  void BCastParamsToGPUs(const std::unordered_set<std::string>& vars) const;
+  void BCastParamsToGPUs(const std::unordered_set<std::string> &vars) const;
 
  private:
-  ParallelExecutorPrivate* member_;
+  ParallelExecutorPrivate *member_;
 };
 
 }  // namespace framework

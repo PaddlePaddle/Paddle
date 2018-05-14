@@ -494,22 +494,33 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
 
-  py::class_<ParallelExecutor>(m, "ParallelExecutor")
-      .def("__init__",
-           [](ParallelExecutor &self, size_t num_threads, bool use_event,
-              const std::vector<platform::Place> &places,
-              const std::unordered_set<std::string> &params,
-              const std::unordered_set<std::string> &bcast_vars,
-              const ProgramDesc &main_program, const std::string &loss_var_name,
-              Scope *scope, std::vector<Scope *> &local_scopes,
-              bool allow_op_delay, bool use_default_grad_scale,
-              bool balance_parameter_opt_between_cards) {
-             new (&self) ParallelExecutor(
-                 num_threads, use_event, places, params, bcast_vars,
-                 main_program, loss_var_name, scope, local_scopes,
-                 allow_op_delay, use_default_grad_scale,
-                 balance_parameter_opt_between_cards);
-           })
+  py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
+  py::class_<ExecutionStrategy>(pe, "ExecutionStrategy")
+      .def(py::init())
+      .def_property(
+          "num_threads",
+          [](const ExecutionStrategy &self) { return self.num_threads_; },
+          [](ExecutionStrategy &self, size_t num_threads) {
+            self.num_threads_ = num_threads;
+          })
+      .def_property(
+          "use_event",
+          [](const ExecutionStrategy &self) { return self.use_event_; },
+          [](ExecutionStrategy &self, bool use_event) {
+            self.use_event_ = use_event;
+          })
+      .def_property(
+          "allow_op_delay",
+          [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
+          [](ExecutionStrategy &self, bool allow_op_delay) {
+            self.allow_op_delay_ = allow_op_delay;
+          });
+
+  pe.def(py::init<const std::vector<platform::Place> &,
+                  const std::unordered_set<std::string> &,
+                  const std::unordered_set<std::string> &, const ProgramDesc &,
+                  const std::string &, Scope *, std::vector<Scope *> &, bool,
+                  bool, const ExecutionStrategy &>())
       .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element

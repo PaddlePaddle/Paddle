@@ -232,14 +232,14 @@ class TestParallelExecutorBase(unittest.TestCase):
             place = fluid.CUDAPlace(0)
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
-
+            exec_strategy = fluid.ExecutionStrategy()
+            exec_strategy.allow_op_delay = allow_op_delay
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
                     True,
                     loss_name=loss.name,
-                    allow_op_delay=allow_op_delay,
-                    balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-                )
+                    balance_parameter_opt_between_cards=balance_parameter_opt_between_cards,
+                    exec_strategy=exec_strategy)
             else:
                 exe = fluid.Executor(place=place)
 
