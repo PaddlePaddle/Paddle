@@ -66,7 +66,8 @@ def train(use_cuda, save_dirname):
         train_func=train_program,
         infer_func=inference_program,
         place=place,
-        optimizer=optimizer)
+        optimizer=optimizer,
+        parallel=True)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
@@ -95,6 +96,8 @@ def train(use_cuda, save_dirname):
             #         event.epoch + 1, float(avg_cost), float(acc)))
             #     if math.isnan(float(avg_cost)):
             #         sys.exit("got NaN loss, training failed.")
+        elif isinstance(event, fluid.EndStepEvent):
+            print("Step {0}, Epoch {1}".format(event.step, event.epoch))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -132,4 +135,4 @@ def main(use_cuda):
 
 if __name__ == '__main__':
     # for use_cuda in (False, True):
-    main(use_cuda=False)
+    main(use_cuda=True)
