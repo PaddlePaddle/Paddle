@@ -75,29 +75,29 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    rpc_service_ = new detail::AsyncGRPCServer(endpoint, true);
+
+    detail::AsyncGRPCServer rpc_service(endpoint, true);
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
-    rpc_service_->SetScope(scope);
-    rpc_service_->SetDevCtx(&dev_ctx);
-    rpc_service_->SetProgram(&empty_program);
-    rpc_service_->SetExecutor(&executor);
+    rpc_service.SetScope(scope);
+    rpc_service.SetDevCtx(&dev_ctx);
+    rpc_service.SetProgram(&empty_program);
+    rpc_service.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service_));
-    rpc_service_->SetCond(0);
+        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
+    rpc_service.SetCond(0);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    auto recv = rpc_service_->Get();
+    auto recv = rpc_service.Get();
     VLOG(3) << "got nccl id and stop server...";
-    rpc_service_->ShutDown();
+    rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";
     // TODO(wuyi): reinit nccl communicators
     server_thread.join();
-    delete rpc_service_;
   }
 
- protected:
-  mutable detail::AsyncGRPCServer* rpc_service_ = nullptr;
+  //  protected:
+  // mutable detail::AsyncGRPCServer* rpc_service_ = nullptr;
 };
 
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {

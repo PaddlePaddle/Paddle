@@ -78,7 +78,7 @@ struct NCCLContextMap {
 
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
-                          size_t num_trainers = 0, size_t trainer_id = 0) {
+                          size_t num_trainers = 1, size_t trainer_id = 0) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
     for (auto &p : places) {
@@ -100,7 +100,7 @@ struct NCCLContextMap {
       PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
-      PADDLE_ENFORCE_GT(num_trainers, 0);
+      PADDLE_ENFORCE_GT(num_trainers, 1);
       // TODO(wuyi): need to ensure each node have same number of GPUs
       {
         int nranks = num_trainers * order_.size();

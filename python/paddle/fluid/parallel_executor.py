@@ -32,7 +32,7 @@ class ParallelExecutor(object):
                  share_vars_from=None,
                  use_default_grad_scale=True,
                  balance_parameter_opt_between_cards=False,
-                 num_trainers=0,
+                 num_trainers=1,
                  trainer_id=0):
         """
         ParallelExecutor can run program in parallel.
@@ -57,7 +57,7 @@ class ParallelExecutor(object):
             balance_parameter_opt_between_cards(bool, default True): Whether
                 updating different gradients on different cards. Currently, it
                 is not recommended.
-            num_trainers(int, default 0): If greater than 0, NCCL will be
+            num_trainers(int, default 1): If greater than 1, NCCL will be
                 initialized with multpile rank of nodes, each node should have
                 same number of GPUs. Distributed training will be enabled then.
             trainer_id(int, default 0): Must use together with num_trainers.
