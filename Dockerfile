@@ -78,6 +78,7 @@ RUN pip install --upgrade pip==9.0.3 && \
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
+    pip install easydict
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
