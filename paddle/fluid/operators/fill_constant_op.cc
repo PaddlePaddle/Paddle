@@ -59,8 +59,7 @@ class FillConstantOp : public framework::OperatorBase {
 
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillConstantOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")

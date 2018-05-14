@@ -90,8 +90,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
 class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() final {
     AddInput("X",
              "(Tensor) The input tensor. Tensors with rank at most 6 are "
              "supported.");
@@ -111,78 +110,20 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "If true, output a scalar reduced along all dimensions.")
         .SetDefault(false);
-    comment_ = R"DOC(
-{ReduceOp} Operator.
+    AddComment(string::Sprintf(R"DOC(
+%s Operator.
 
-This operator computes the {reduce} of input tensor along the given dimension. 
+This operator computes the %s of input tensor along the given dimension.
 The result tensor has 1 fewer dimension than the input unless keep_dim is true.
 If reduce_all is true, just reduce along all dimensions and output a scalar.
 
-)DOC";
-    AddComment(comment_);
+)DOC",
+                               GetOpType(), GetName()));
   }
 
  protected:
-  std::string comment_;
-
-  void Replace(std::string *src, std::string from, std::string to) {
-    std::size_t len_from = std::strlen(from.c_str());
-    std::size_t len_to = std::strlen(to.c_str());
-    for (std::size_t pos = src->find(from); pos != std::string::npos;
-         pos = src->find(from, pos + len_to)) {
-      src->replace(pos, len_from, to);
-    }
-  }
-
-  void SetComment(std::string name, std::string op) {
-    Replace(&comment_, "{ReduceOp}", name);
-    Replace(&comment_, "{reduce}", op);
-  }
-};
-
-class ReduceSumOpMaker : public ReduceOpMaker {
- public:
-  ReduceSumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : ReduceOpMaker(proto, op_checker) {
-    SetComment("ReduceSum", "sum");
-    AddComment(comment_);
-  }
-};
-
-class ReduceMeanOpMaker : public ReduceOpMaker {
- public:
-  ReduceMeanOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : ReduceOpMaker(proto, op_checker) {
-    SetComment("ReduceMean", "mean");
-    AddComment(comment_);
-  }
-};
-
-class ReduceMaxOpMaker : public ReduceOpMaker {
- public:
-  ReduceMaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : ReduceOpMaker(proto, op_checker) {
-    SetComment("ReduceMax", "max");
-    AddComment(comment_);
-  }
-};
-
-class ReduceMinOpMaker : public ReduceOpMaker {
- public:
-  ReduceMinOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : ReduceOpMaker(proto, op_checker) {
-    SetComment("ReduceMin", "min");
-    AddComment(comment_);
-  }
-};
-
-class ReduceProdOpMaker : public ReduceOpMaker {
- public:
-  ReduceProdOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : ReduceOpMaker(proto, op_checker) {
-    SetComment("ReduceProd", "production");
-    AddComment(comment_);
-  }
+  virtual std::string GetName() const = 0;
+  virtual std::string GetOpType() const = 0;
 };
 
 }  // namespace operators
@@ -190,25 +131,21 @@ class ReduceProdOpMaker : public ReduceOpMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp);
+#define REGISTER_REDUCE_OP(op_name)                                        \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {                 \
+   protected:                                                              \
+    virtual std::string GetName() const { return #op_name; }               \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; }   \
+  };                                                                       \
+  REGISTER_OPERATOR(reduce_##op_name, ops::ReduceOp, __##op_name##Maker__, \
+                    paddle::framework::DefaultGradOpDescMaker<true>);      \
+  REGISTER_OPERATOR(reduce_##op_name##_grad, ops::ReduceGradOp)
 
-REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp);
-
-REGISTER_OPERATOR(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(reduce_max_grad, ops::ReduceGradOp);
-
-REGISTER_OPERATOR(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(reduce_min_grad, ops::ReduceGradOp);
-
-REGISTER_OPERATOR(reduce_prod, ops::ReduceOp, ops::ReduceProdOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(reduce_prod_grad, ops::ReduceGradOp);
+REGISTER_REDUCE_OP(sum);
+REGISTER_REDUCE_OP(mean);
+REGISTER_REDUCE_OP(max);
+REGISTER_REDUCE_OP(min);
+REGISTER_REDUCE_OP(prod);
 
 #define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)         \
   REGISTER_OP_CPU_KERNEL(reduce_type,                                          \

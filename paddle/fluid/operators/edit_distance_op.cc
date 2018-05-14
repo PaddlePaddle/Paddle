@@ -49,8 +49,7 @@ class EditDistanceOp : public framework::OperatorWithKernel {
 
 class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  EditDistanceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Hyps",
              "(2-D LoDTensor<int64_t>, 2nd dim. equal to 1) "
              "The indices for hypothesis strings.");
