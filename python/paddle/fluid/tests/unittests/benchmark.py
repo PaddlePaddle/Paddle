@@ -15,16 +15,34 @@
 import numpy as np
 import unittest
 import random
+import time
 
 import paddle.fluid as fluid
-from paddle.fluid.backward import append_backward
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder
-from testsuite import create_op, set_input, append_input_output, as_lodtensor, append_loss_ops
+# from paddle.fluid.backward import append_backward
+# from paddle.fluid.op import Operator
+# from paddle.fluid.executor import Executor
+# from paddle.fluid.framework import Program, OpProtoHolder
+# from testsuite import create_op, set_input, append_input_output, as_lodtensor, append_loss_ops
+from op_test import OpTest
 
 
-class BenchmarkSuite(unittest.TestCase):
+class BenchmarkSuite(OpTest):
+    def timeit_function(self, callback, iters, *args):
+        assert iters != 0, "Iters should >= 1"
+        start = time.time()
+        for i in range(iters):
+            callback(place, *args)
+            elapse = time.time() - start
+        return elapse / iters
+
+    def timeit_output(self, iters=100, place):
+        return self.timeit_function(self.calc_output, iters, place)
+
+    def timeit_grad(self, place, iters=100):
+        pass
+
+
+class BenchmarkSuite2(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''
@@ -94,7 +112,7 @@ class BenchmarkSuite(unittest.TestCase):
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
 
-    def appends_ops_and_run(self, place, parallel=False):
+    def get_output_with_place(self, place, parallel=False):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -112,8 +130,14 @@ class BenchmarkSuite(unittest.TestCase):
                 use_cuda=use_cuda, loss_name=loss.name, main_program=program)
         else:
             executor = Executor(place)
-        return map(np.array,
-                   executor.run(program,
-                                feed_dict,
-                                fetch_list,
-                                return_numpy=False))
+        outs = executor.run(program, feed_dict, fetch_list, return_numpy=True)
+
+    def assert_allclose(self, outs, fetch_list, atol):
+        pass
+
+    def check_output(self, atol):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_output_with_place(place, atol)
