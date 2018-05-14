@@ -50,7 +50,7 @@ class NCCLGroupGuard {
   }
 
   inline ~NCCLGroupGuard() {
-    PADDLE_ENFORCE(dynload::ncclGroupEnd());
+    CHECK_EQ(dynload::ncclGroupEnd(), ncclSuccess);
     NCCLMutex().unlock();
   }
 };

@@ -37,31 +37,26 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale,
-    bool balance_parameter_opt_between_cards)
+    platform::NCCLContextMap *nccl_ctxs, const BuildStrategy &strategy)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
       nccl_ctxs_(nccl_ctxs),
-      balance_parameter_opt_between_cards_(
-          balance_parameter_opt_between_cards) {
+      strategy_(strategy) {
 #else
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale,
-    bool balance_parameter_opt_between_cards)
+    const std::vector<Scope *> &local_scopes, const BuildStrategy &strategy)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
-      balance_parameter_opt_between_cards_(
-          balance_parameter_opt_between_cards) {
+      strategy_(strategy) {
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
   }
-  use_default_grad_scale_ = use_default_grad_scale;
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
@@ -146,7 +141,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       CreateComputationalOps(&result, *op, 1);
     } else if (IsScaleLossOp(*op)) {
       // user can customize loss@grad if not use_default_grad_scale_
-      if (use_default_grad_scale_) {
+      if (strategy_.gradient_scale_ !=
+          BuildStrategy::GradientScaleStrategy::kCustomized) {
         CreateScaleLossGradOp(&result);
       }
       is_forwarding = false;
@@ -165,19 +161,22 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         // broadcast, and each gradient is only broadcast once.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            if (balance_parameter_opt_between_cards_) {
-              CreateReduceOp(&result, og, cur_device_id);
-              var_name_on_devices[cur_device_id].emplace(og);
-              bcast_var_name_set[cur_device_id].emplace(
-                  og.substr(0, og.size() - strlen(kGradVarSuffix)));
-              cur_device_id = (cur_device_id + 1) % places_.size();
-            } else {
-              if (IsSparseGradient(var_types, og)) {
-                CreateReduceOp(&result, og, 0);
-                CreateBroadcastOp(&result, og, 0);
-              } else {
-                InsertNCCLAllReduceOp(&result, og);
-              }
+            switch (strategy_.reduce_) {
+              case BuildStrategy::ReduceStrategy::kReduce:
+                CreateReduceOp(&result, og, cur_device_id);
+                var_name_on_devices[cur_device_id].emplace(og);
+                bcast_var_name_set[cur_device_id].emplace(
+                    og.substr(0, og.size() - strlen(kGradVarSuffix)));
+                cur_device_id = (cur_device_id + 1) % places_.size();
+                break;
+              case BuildStrategy::ReduceStrategy::kAllReduce:
+                if (IsSparseGradient(var_types, og)) {
+                  CreateReduceOp(&result, og, 0);
+                  CreateBroadcastOp(&result, og, 0);
+                } else {
+                  InsertNCCLAllReduceOp(&result, og);
+                }
+                break;
             }
           }
         }
@@ -303,7 +302,7 @@ bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
 int MultiDevSSAGraphBuilder::GetOpDeviceID(
     const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
     const OpDesc &op) const {
-  if (!balance_parameter_opt_between_cards_) {
+  if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <paddle/fluid/framework/details/build_strategy.h>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -29,6 +30,7 @@ namespace framework {
 
 class ParallelExecutorPrivate;
 
+using details::BuildStrategy;
 using details::ExecutionStrategy;
 
 class ParallelExecutor {
@@ -41,9 +43,8 @@ class ParallelExecutor {
                             const ProgramDesc &main_program,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
-                            bool use_default_grad_scale,
-                            bool balance_parameter_opt_between_cards,
-                            const ExecutionStrategy &exec_strategy);
+                            const ExecutionStrategy &exec_strategy,
+                            const BuildStrategy &build_strategy);
 
   ~ParallelExecutor();
 
