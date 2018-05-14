@@ -84,9 +84,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
       layout_, library_);
 }
 
-Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
-                                               OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv2DTransposeOpMaker::Make() {
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution transpose operator. "
@@ -168,9 +166,7 @@ Example:
 )DOC");
 }
 
-Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
-                                               OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv3DTransposeOpMaker::Make() {
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator."
            "The format of input tensor is NCDHW. Where N is batch size, C is "

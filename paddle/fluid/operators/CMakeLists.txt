@@ -166,6 +166,8 @@ function(op_library TARGET)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
         file(APPEND ${pybind_file} "USE_OP(relu);\n")
+      elseif(${TARGET} STREQUAL "reduce")
+        file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()
@@ -265,6 +267,11 @@ file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KER
 
 add_subdirectory(reader)
 foreach(src ${READER_LIBRARY})
+    set(OP_LIBRARY ${src} ${OP_LIBRARY})
+endforeach()
+
+add_subdirectory(detection)
+foreach(src ${DETECTION_LIBRARY})
     set(OP_LIBRARY ${src} ${OP_LIBRARY})
 endforeach()
 
