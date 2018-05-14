@@ -75,6 +75,7 @@ def train(use_cuda, save_dirname, is_local):
                     # NOT clear yet
                     # fluid.io.save_inference_model(save_dirname, ['x'], [y_predict])
                     # trainer.save_params(save_dirname)
+                    # https://github.com/PaddlePaddle/Paddle/pull/10445
                     trainer.save_inference_model(save_dirname)
             return
 
