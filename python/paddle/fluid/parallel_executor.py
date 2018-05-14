@@ -19,9 +19,10 @@ import executor
 import warnings
 import sys
 
-__all__ = ['ParallelExecutor', 'ExecutionStrategy']
+__all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
+BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
 class ParallelExecutor(object):
@@ -30,9 +31,8 @@ class ParallelExecutor(object):
                  loss_name=None,
                  main_program=None,
                  share_vars_from=None,
-                 use_default_grad_scale=True,
-                 balance_parameter_opt_between_cards=False,
                  exec_strategy=None,
+                 build_strategy=None,
                  **kwargs):
         """
         ParallelExecutor can run program in parallel.
@@ -81,7 +81,16 @@ class ParallelExecutor(object):
                         "Setting {0} by constructor is deprecated. Use " \
                         "strategy=ExecutionStrategy(); strategy.{0}=xxx; " \
                         "pe=ParallelExecutor(exec_strategy=strategy) " \
-                        "instead.\n "
+                        "instead.\n ".format(key)
+                elif key in dir(BuildStrategy):
+                    err_msg += \
+                        "Setting {0} by constructor is deprecated. Use " \
+                        "strategy=BuildStrategy(); See help(" \
+                        "paddle.fluid.ParallelExecutor.BuildStrategy) \n".format(
+                            key)
+                else:
+                    err_msg += "Setting {0} by constructor is deprecated. Use strategy.\n".format(
+                        key)
             raise ValueError(err_msg)
 
         self._places = []
@@ -116,6 +125,9 @@ class ParallelExecutor(object):
                 exec_strategy.num_threads = min(
                     len(self._places) * 2, multiprocessing.cpu_count())
 
+        if build_strategy is None:
+            build_strategy = BuildStrategy()
+
         main = main_program
         main = main if main else framework.default_main_program()
         scope = executor.global_scope()
@@ -139,9 +151,8 @@ class ParallelExecutor(object):
                 p.name for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(self.persistable_vars), main.desc, loss_name
-            if loss_name else '', scope, local_scopes, use_default_grad_scale,
-            balance_parameter_opt_between_cards, exec_strategy)
+            set(self.persistable_vars), main.desc, loss_name if loss_name else
+            '', scope, local_scopes, exec_strategy, build_strategy)
 
         self.scope = scope
 

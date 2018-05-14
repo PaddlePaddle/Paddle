@@ -494,6 +494,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
 
+  // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy>(pe, "ExecutionStrategy")
       .def(py::init())
@@ -515,12 +516,38 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
           });
+  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
+
+  py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
+      .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
+      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce);
+  py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
+                                                  "GradientScaleStrategy")
+      .value("CoeffNumDevice",
+             BuildStrategy::GradientScaleStrategy::kCoeffNumDevice)
+      .value("One", BuildStrategy::GradientScaleStrategy::kOne)
+      .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
+
+  build_strategy.def(py::init())
+      .def_property(
+          "reduce_strategy",
+          [](const BuildStrategy &self) { return self.reduce_; },
+          [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
+            self.reduce_ = strategy;
+          })
+      .def_property(
+          "gradient_scale_strategy",
+          [](const BuildStrategy &self) { return self.gradient_scale_; },
+          [](BuildStrategy &self,
+             BuildStrategy::GradientScaleStrategy strategy) {
+            self.gradient_scale_ = strategy;
+          });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
-                  const std::string &, Scope *, std::vector<Scope *> &, bool,
-                  bool, const ExecutionStrategy &>())
+                  const std::string &, Scope *, std::vector<Scope *> &,
+                  const ExecutionStrategy &, const BuildStrategy &>())
       .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element

@@ -52,12 +52,14 @@ import clip
 import profiler
 import unique_name
 import recordio_writer
-from parallel_executor import ParallelExecutor, ExecutionStrategy
+import parallel_executor
+from parallel_executor import *
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
-          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + [
+          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+          parallel_executor.__all__ + [
               'io',
               'initializer',
               'layers',
@@ -79,8 +81,6 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
               'profiler',
               'unique_name',
               'recordio_writer',
-              'ParallelExecutor',
-              'ExecutionStrategy',
           ]
 
 

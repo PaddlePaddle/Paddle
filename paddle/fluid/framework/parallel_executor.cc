@@ -57,8 +57,7 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes,
-    bool use_default_grad_scale, bool balance_parameter_opt_between_cards,
-    const ExecutionStrategy &exec_strategy)
+    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -93,12 +92,11 @@ ParallelExecutor::ParallelExecutor(
 #ifdef PADDLE_WITH_CUDA
   details::MultiDevSSAGraphBuilder builder(
       member_->places_, loss_var_name, params, member_->local_scopes_,
-      member_->nccl_ctxs_.get(), use_default_grad_scale,
-      balance_parameter_opt_between_cards);
+      member_->nccl_ctxs_.get(), build_strategy);
 #else
-  details::MultiDevSSAGraphBuilder builder(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      use_default_grad_scale, balance_parameter_opt_between_cards);
+  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
+                                           params, member_->local_scopes_,
+                                           build_strategy);
 #endif
   auto graph = builder.Build(main_program);
 
