@@ -364,6 +364,13 @@ class Operator(object):
     Block. Users can use the build in instructions to describe their neural
     network.
     """
+    OP_WITHOUT_KERNEL_SET = {
+        'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
+        'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
+        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
+        'ncclInit', 'channel_create', 'channel_close', 'channel_send',
+        'channel_recv', 'select'
+    }
 
     def __init__(self,
                  block,
@@ -482,16 +489,12 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
-            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select'
-        }
-        if type not in no_kernel_op_set:
+        if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+
+    def has_kernel(self, op_type):
+        return op_type not in self.OP_WITHOUT_KERNEL_SET
 
     def to_string(self, throw_on_error):
         """
@@ -716,7 +719,9 @@ class Block(object):
 
     def var(self, name):
         if not isinstance(name, basestring):
-            raise TypeError()
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
