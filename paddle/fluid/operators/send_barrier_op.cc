@@ -57,8 +57,7 @@ class SendBarrierOp : public framework::OperatorBase {
 
 class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendBarrierOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddOutput("RPCClient",
               "(RPCClient) The RPC client object which is"
               "initialized at most once.");

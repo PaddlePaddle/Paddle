@@ -106,8 +106,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                                  library);
 }
 
-Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv2DOpMaker::Make() {
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -200,8 +199,7 @@ $$
 )DOC");
 }
 
-Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv3DOpMaker::Make() {
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "

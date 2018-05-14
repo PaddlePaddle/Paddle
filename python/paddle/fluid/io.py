@@ -263,6 +263,9 @@ def get_inference_program(target_vars, main_program=None):
 def prepend_feed_ops(inference_program,
                      feed_target_names,
                      feed_holder_name='feed'):
+    if len(feed_target_names) == 0:
+        return
+
     global_block = inference_program.global_block()
     feed_var = global_block.create_var(
         name=feed_holder_name,
@@ -323,9 +326,10 @@ def save_inference_model(dirname,
     if isinstance(feeded_var_names, basestring):
         feeded_var_names = [feeded_var_names]
     else:
-        if not (bool(feeded_var_names) and all(
-                isinstance(name, basestring) for name in feeded_var_names)):
-            raise ValueError("'feed_var_names' should be a list of str.")
+        if len(feeded_var_names) > 0:
+            if not (bool(feeded_var_names) and all(
+                    isinstance(name, basestring) for name in feeded_var_names)):
+                raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
