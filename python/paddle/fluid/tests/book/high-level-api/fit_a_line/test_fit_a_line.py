@@ -74,7 +74,8 @@ def train(use_cuda, save_dirname, is_local):
                 if save_dirname is not None:
                     # NOT clear yet
                     # fluid.io.save_inference_model(save_dirname, ['x'], [y_predict])
-                    trainer.save_params(save_dirname)
+                    # trainer.save_params(save_dirname)
+                    trainer.save_inference_model(save_dirname)
             return
 
     trainer.train(
@@ -131,3 +132,4 @@ class TestFitALine(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
