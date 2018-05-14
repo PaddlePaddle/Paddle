@@ -92,12 +92,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";
-    // TODO(wuyi): reinit nccl communicators
     server_thread.join();
   }
-
-  //  protected:
-  // mutable detail::AsyncGRPCServer* rpc_service_ = nullptr;
 };
 
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
