@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 USE_NO_KERNEL_OP(checkpoint_save)
+USE_NO_KERNEL_OP(checkpoint_load)
 
 TEST(CheckpointSaveOp, CPU) {
   paddle::framework::Scope scope;
@@ -37,10 +38,27 @@ TEST(CheckpointSaveOp, CPU) {
     expect[i] = static_cast<float>(paddle::platform::float16(i));
   }
 
+  scope.Var("SERIAL_NUMBER");
+
   paddle::framework::AttributeMap attrs;
-  attrs.insert({"dir", std::string("tensor/ckpt")});
+  attrs.insert({"dir", std::string("ckpt")});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
-      "checkpoint_save", {{"X", {"test_var"}}}, {}, attrs);
+      "checkpoint_save", {{"X", {"test_var"}}}, {{"Serial", {"SERIAL_NUMBER"}}},
+      attrs);
+  save_op->Run(scope, place);
+}
+
+TEST(CheckpointLoadOp, CPU) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace place;
+
+  scope.Var("test_var");
+
+  paddle::framework::AttributeMap attrs;
+  attrs.insert({"dir", std::string("ckpt")});
+
+  auto save_op =
+      paddle::framework::OpRegistry::CreateOp("checkpoint_load", {}, {}, attrs);
   save_op->Run(scope, place);
 }

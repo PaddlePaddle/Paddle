@@ -36,14 +36,6 @@ static bool FileExists(const std::string &filepath) {
   return (stat(filepath.c_str(), &buffer) == 0);
 }
 
-static std::string DirName(const std::string &filepath) {
-  auto pos = filepath.rfind(kSEP);
-  if (pos == std::string::npos) {
-    return "";
-  }
-  return filepath.substr(0, pos);
-}
-
 class CheckpointLoadOp : public framework::OperatorBase {
  public:
   CheckpointLoadOp(const std::string &type,
