@@ -139,8 +139,9 @@ TEST(SaveLoadCombineOp, CPU) {
   CheckValues<int, int>(expect4, actual4, expect_lod4, actual_lod4, numel4);
 }
 
-// FP16 version of SaveLoadCombineOp Test
-TEST(SaveLoadCombineFP16Op, CPU) {
+// FP16 version of SaveLoadCombineOp Test, only altering the saving aspect
+// to save as FP16.
+TEST(SaveCombineFP16Op, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
@@ -169,7 +170,7 @@ TEST(SaveLoadCombineFP16Op, CPU) {
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
   // Set attributes
-  std::string filename = "check_tensor_fp16.ls";
+  std::string filename = "check_tensor_fp16_save.ls";
   paddle::framework::AttributeMap attrs;
   attrs.insert({"file_path", std::string(filename)});
   attrs.insert({"save_as_fp16", true});
@@ -191,6 +192,89 @@ TEST(SaveLoadCombineFP16Op, CPU) {
       "load_combine", {},
       {{"Out", {"out_var1", "out_var2", "out_var3", "out_var4"}}}, attrs);
   load_combine_op->Run(scope, place);
+
+  paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
+  paddle::platform::float16* actual1 =
+      GetValuesAfterLoadCombineOp<paddle::platform::float16>(target1, scope,
+                                                             &actual_lod1);
+  paddle::platform::float16* actual2 =
+      GetValuesAfterLoadCombineOp<paddle::platform::float16>(target2, scope,
+                                                             &actual_lod2);
+  paddle::platform::float16* actual3 =
+      GetValuesAfterLoadCombineOp<paddle::platform::float16>(target3, scope,
+                                                             &actual_lod3);
+  paddle::platform::float16* actual4 =
+      GetValuesAfterLoadCombineOp<paddle::platform::float16>(target4, scope,
+                                                             &actual_lod4);
+
+  CheckValues<float, paddle::platform::float16>(expect1, actual1, expect_lod1,
+                                                actual_lod1, numel1);
+  CheckValues<float, paddle::platform::float16>(expect2, actual2, expect_lod2,
+                                                actual_lod2, numel2);
+  CheckValues<float, paddle::platform::float16>(expect3, actual3, expect_lod3,
+                                                actual_lod3, numel3);
+  CheckValues<float, paddle::platform::float16>(expect4, actual4, expect_lod4,
+                                                actual_lod4, numel4);
+}
+
+// FP16 version of SaveLoadCombineOp Test, only altering the loading aspect
+// to load tensors with FP16 precision.
+TEST(LoadCombineFP16Op, CPU) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace place;
+
+  std::vector<int> lod1 = {0, 1, 2, 3, 10};
+  int numel1 = 100;
+  paddle::framework::LoD expect_lod1;
+  float* expect1 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
+
+  std::vector<int> lod2 = {0, 2, 5, 10};
+  int numel2 = 200;
+  paddle::framework::LoD expect_lod2;
+  float* expect2 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
+
+  std::vector<int> lod3 = {0, 20};
+  int numel3 = 4000;
+  paddle::framework::LoD expect_lod3;
+  float* expect3 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
+
+  std::vector<int> lod4 = {0, 1, 20};
+  int numel4 = 1000;
+  paddle::framework::LoD expect_lod4;
+  float* expect4 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+      20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
+
+  // Set attributes
+  std::string filename = "check_tensor_fp16_load.ls";
+  paddle::framework::AttributeMap attrs;
+  attrs.insert({"file_path", std::string(filename)});
+
+  // Run the save_combine_op
+  auto save_combine_op = paddle::framework::OpRegistry::CreateOp(
+      "save_combine",
+      {{"X", {"test_var1", "test_var2", "test_var3", "test_var4"}}}, {}, attrs);
+  save_combine_op->Run(scope, place);
+
+  // Set up output vars
+  auto load_var1 = scope.Var("out_var1");
+  auto load_var2 = scope.Var("out_var2");
+  auto load_var3 = scope.Var("out_var3");
+  auto load_var4 = scope.Var("out_var4");
+
+  attrs.insert({"load_as_fp16", true});
+  // Run the load_combine_op
+  auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
+      "load_combine", {},
+      {{"Out", {"out_var1", "out_var2", "out_var3", "out_var4"}}}, attrs);
+  load_combine_op->Run(scope, place);
+
+  auto* target1 = load_var1->GetMutable<paddle::framework::LoDTensor>();
+  auto* target2 = load_var2->GetMutable<paddle::framework::LoDTensor>();
+  auto* target3 = load_var3->GetMutable<paddle::framework::LoDTensor>();
+  auto* target4 = load_var4->GetMutable<paddle::framework::LoDTensor>();
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   paddle::platform::float16* actual1 =
