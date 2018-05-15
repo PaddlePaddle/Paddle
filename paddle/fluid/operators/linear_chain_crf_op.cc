@@ -19,8 +19,7 @@ namespace operators {
 
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LinearChainCRFOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Emission",
              "(LoDTensor, default LoDTensor<float>) "
              "A 2-D LoDTensor with shape [N x D], where N is the size of the "

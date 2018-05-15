@@ -59,8 +59,7 @@ class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
 
 class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "");
     AddOutput("Out", "");
     AddAttr<int>("dtype",
@@ -117,8 +116,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 class RNNMemoryHelperGradOpInfoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperGradOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(framework::GradVarName("Out"), "");
     AddInput("X", "");
     AddInput("Out", "");
