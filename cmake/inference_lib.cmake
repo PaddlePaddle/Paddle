@@ -70,6 +70,12 @@ copy(glog_lib
   DSTS ${dst_dir} ${dst_dir}/lib
 )
 
+set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/boost")
+copy(boost_lib
+  SRCS ${BOOST_INCLUDE_DIR}
+  DSTS ${dst_dir}
+)
+
 if(NOT PROTOBUF_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
     copy(protobuf_lib
