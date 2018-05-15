@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
@@ -60,8 +59,8 @@ class EngineBase {
 
 struct Buffer {
   void* buffer{nullptr};               // buffer should be allocated only once.
-  int max_size;                        // buffer allocated space.
-  int size;                            // data size.
+  size_t max_size;                     // buffer allocated space.
+  size_t size;                         // data size.
   DeviceType device{DeviceType::UNK};  // tells which device this buffer is on.
 };
 

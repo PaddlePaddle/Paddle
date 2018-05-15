@@ -469,7 +469,7 @@ class DistributeTranspiler:
         def __append_optimize_op__(op, block, grad_to_block_id):
             if self._is_opt_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         default_main_program())
+                                         self.origin_program)
             else:
                 self._append_pserver_non_opt_ops(block, op)
 

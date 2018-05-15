@@ -12,23 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#pragma once
 
 namespace paddle {
 namespace inference {
-namespace tensorrt {
+namespace analysis {
 
-class Conv2dOpConverter : public OpConverter {
- public:
-  Conv2dOpConverter() {}
-  void operator()(const framework::proto::OpDesc& op) override {
-    LOG(INFO)
-        << "convert a fluid conv2d op to tensorrt conv layer without bias";
-  }
-};
+enum class Device { CPU, GPU };
 
-REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
-
-}  // namespace tensorrt
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
