@@ -67,8 +67,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
-  bool IsScaleLossGradOp(const OpDesc &op) const;
-
   void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
 
   /**
