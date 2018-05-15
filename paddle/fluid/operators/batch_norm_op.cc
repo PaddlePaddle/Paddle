@@ -110,17 +110,18 @@ class BatchNormOp : public framework::OperatorWithKernel {
                                          ctx.Input<Tensor>("Variance")->type()),
                       "Variance input should be of float type");
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
+    if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library_);
+                                   library);
   }
 };
 
@@ -366,18 +367,18 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       PADDLE_THROW("can't find Y@GRAD");
     }
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
+    if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library_);
+        layout, library);
   }
 };
 

@@ -22,6 +22,43 @@
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_MKLDNN
+using MkldnnFormat = mkldnn::memory::format;
+using MkldnnDataType = mkldnn::memory::data_type;
+
+inline MkldnnFormat to_mkldnn_format(const DataLayout& layout) {
+  switch (layout) {
+  case DataLayout::kNHWC:
+    return MkldnnFormat::nhwc;
+  case DataLayout::kNCHW:
+    return MkldnnFormat::nchw;
+  default:
+    PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
+                 DataLayoutToString(layout));
+  }
+}
+
+inline DataLayout to_paddle_layout(const MkldnnFormat& format) {
+  switch (format) {
+  case MkldnnFormat::nhwc:
+    return DataLayout::kNHWC;
+  case MkldnnFormat::nchw:
+    return DataLayout::kNCHW;
+  default:
+    PADDLE_THROW("Fail to convert MKLDNN format to paddle layout");
+  }
+}
+
+inline MkldnnDataType to_mkldnn_data_type(const std::type_index type) {
+  // Fix me: to be implemented
+  return MkldnnDataType::f32;
+}
+
+void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
+                     const OpKernelType& expected_kernel_type, const Tensor& in,
+                     Tensor* out);
+#endif
+
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
