@@ -47,6 +47,7 @@ class AsyncGRPCServer final {
   explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
       : address_(address), sync_mode_(sync_mode), ready_(0) {}
 
+  ~AsyncGRPCServer() {}
   void WaitServerReady();
   void RunSyncUpdate();
 

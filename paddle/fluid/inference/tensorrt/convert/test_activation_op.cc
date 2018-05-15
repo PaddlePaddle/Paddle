@@ -49,7 +49,7 @@ void Compare(float input, float expect) {
   op_desc.SetInput("X", {"X"});
   op_desc.SetOutput("Out", {"Out"});
 
-  auto relu_op = framework::OpRegistry::CreateOp(op_desc);
+  auto relu_op = framework::OpRegistry::CreateOp(*op_desc.Proto());
 
   // run fluid op
   relu_op->Run(scope, place);
@@ -65,7 +65,7 @@ void Compare(float input, float expect) {
                        nvinfer1::DimsCHW{1, 1, 1});
 
   OpConverter op_converter;
-  op_converter.ConvertOp(op_desc, engine);
+  op_converter.ConvertOp(*op_desc.Proto(), engine);
 
   engine->DeclareOutput("Out");
   engine->FreezeNetwork();
