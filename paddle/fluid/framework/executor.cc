@@ -353,7 +353,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     scope->DeleteScope(local_scope);
   } else {
     // Delete the local scopes created in operators.
-    scope->DropKids();
+    // scope->DropKids();
   }
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
