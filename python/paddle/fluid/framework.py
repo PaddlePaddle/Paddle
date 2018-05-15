@@ -402,6 +402,19 @@ class Operator(object):
         self.block = block
         self.desc = desc
         self.attrs = attrs
+        if self.attrs is None:
+            self.attrs = dict()
+        del attrs
+
+        op_maker = core.op_proto_and_checker_maker
+
+        if op_maker.kOpRoleAttrName() not in self.attrs:
+            self.attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
+        if len(self.block.program.op_role_var
+               ) != 0 and op_maker.kOpRoleVarAttrName() not in self.attrs:
+            self.attrs[op_maker.kOpRoleVarAttrName(
+            )] = self.block.program.op_role_var
+
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -467,21 +480,23 @@ class Operator(object):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        if attrs is not None:
-            if not isinstance(attrs, dict):
+        if self.attrs is not None:
+            if not isinstance(self.attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (attr_name not in attrs) or (attrs[attr_name] is None):
+                if (attr_name not in self.attrs) or (
+                        self.attrs[attr_name] is None):
                     continue
-                if isinstance(attrs[attr_name], Block):
-                    self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
-                elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                        isinstance(attrs[attr_name], core.ProgramDesc):
+                if isinstance(self.attrs[attr_name], Block):
+                    self.desc.set_block_attr(attr_name,
+                                             self.attrs[attr_name].desc)
+                elif isinstance(self.attrs[attr_name], core.BlockDesc) or \
+                        isinstance(self.attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
-                        attr_name, attrs[attr_name].serialize_to_string())
+                        attr_name, self.attrs[attr_name].serialize_to_string())
                 else:
-                    self.desc.set_attr(attr_name, attrs[attr_name])
+                    self.desc.set_attr(attr_name, self.attrs[attr_name])
 
         self.desc.check_attrs()
         no_kernel_op_set = {
@@ -609,6 +624,10 @@ class Operator(object):
 
         """
         return self.desc.attr_type(name)
+
+    def set_attr(self, name, val):
+        self.attrs[name] = val
+        self.desc.set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -1000,6 +1019,33 @@ class Program(object):
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
         self._seed = 0
+        self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
+        self._op_role_var = ""
+
+    @property
+    def op_role(self):
+        return self._current_role
+
+    @op_role.setter
+    def set_op_role(self, role):
+        self._current_role = role
+
+    @property
+    def op_role_var(self):
+        return self._op_role_var
+
+    @op_role_var.setter
+    def set_op_role_var(self, var_name):
+        self._op_role_var = var_name
+
+    @contextlib.contextmanager
+    def optimized_guard(self, var):
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Optimize
+        self._op_role_var = var.name if isinstance(var, Variable) else var
+        yield
+        self._op_role_var = ""
+        self._current_role = OpRole.Forward
 
     def __str__(self):
         return self.to_string(True)
