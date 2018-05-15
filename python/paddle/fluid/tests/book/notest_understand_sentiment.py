@@ -170,7 +170,7 @@ def train(word_dict,
         assert save_dirname is None
 
     adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
-    optimize_ops, params_grads = adagrad.minimize(cost)
+    adagrad.minimize(cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(

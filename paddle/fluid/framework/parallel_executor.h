@@ -44,7 +44,8 @@ class ParallelExecutor {
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy);
+                            const BuildStrategy &build_strategy,
+                            size_t num_trainers = 1, size_t trainer_id = 0);
 
   ~ParallelExecutor();
 
