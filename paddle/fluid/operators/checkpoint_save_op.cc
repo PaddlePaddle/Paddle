@@ -27,8 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// TODO(sidgoyal78): These function are needed by other files (save_op), move
-// them to paddle::filesystem namespace. (as noted by yuyang18 in save_op).
 constexpr char kSEP = '/';
 // write empty file named _SUCCESS
 const char SUCCESS[] = "_SUCCESS";
@@ -82,7 +80,14 @@ class CheckpointSaveOp : public framework::OperatorBase {
       // overwrite=false",
       //              dir, overwrite);
     }
+    MkDirRecursively(dir.c_str());
 
+    auto serial_var_name = Output("Serial");
+    auto *serial_var = scope.FindVar(serial_var_name);
+    std::string *serial_num = serial_var->GetMutable<std::string>();
+    serial_num->append("0");
+    dir.append("/");
+    dir.append(serial_num);
     MkDirRecursively(dir.c_str());
 
     auto inp_var_names = Inputs("X");
@@ -93,6 +98,7 @@ class CheckpointSaveOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
+    // todo (tangwei) made it async
     for (size_t i = 0; i < inp_var_names.size(); i++) {
       auto *var = scope.FindVar(inp_var_names[i]);
       std::string var_file;
@@ -132,19 +138,20 @@ class CheckpointSaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(vector) Input LoDTensors that need to be saved together in a file.")
         .AsDuplicable();
+    AddOutput("Serial", "the serial number");
     AddComment(R"DOC(
-SaveCombine operator
+CheckpointSave operator
 
 This operator will serialize and write a list of input LoDTensor variables 
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
-                  "(boolean, default true)"
-                  "Overwrite the output file if it exists.")
-        .SetDefault(true);
+                  "(boolean, default false)"
+                  "Delete the output dir if it exists.")
+        .SetDefault(false);
 
     AddAttr<std::string>(
-        "file_path",
+        "dir",
         "(string)"
         "The \"file_path\" where the LoDTensor variables will be saved.")
         .AddCustomChecker(
