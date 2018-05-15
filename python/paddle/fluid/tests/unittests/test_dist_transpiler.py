@@ -30,10 +30,10 @@ class TestDistTranspiler(unittest.TestCase):
         self.current_pserver_ep = "127.0.0.1:6174"
 
     def net_conf(self):
-        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
 
         y_predict = fluid.layers.fc(input=x,
-                                    size=1,
+                                    size=1000,
                                     act=None,
                                     param_attr=fluid.ParamAttr(name='fc_w'))
 
@@ -41,33 +41,35 @@ class TestDistTranspiler(unittest.TestCase):
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(
-            learning_rate=fluid.layers.exponential_decay(
-                learning_rate=0.01,
-                decay_steps=100000,
-                decay_rate=0.5,
-                staircase=True))
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
 
         optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
         return optimize_ops, params_grads
 
     def test_transpiler(self):
-        expect_trainer = self.get_expect_trainer()
         trainer = self.get_trainer()
         pserver, startup = self.get_pserver(self.current_pserver_ep)
 
         self.assertEqual([op.type for op in trainer.global_block().ops],
-                         [op.type for op in expect_trainer.global_block().ops])
+                         self.get_expect_trainer_ops())
+
         self.assertEqual(len(pserver.blocks), 3)
         # block0: listen_and_serv
         self.assertEqual([op.type for op in pserver.blocks[0].ops],
                          ["listen_and_serv"])
         # block2: optimize pass
-        self.assertEqual([op.type for op in pserver.blocks[2].ops],
+        self.assertEqual([op.type for op in pserver.blocks[1].ops],
                          ["sum", "scale", "sgd"])
 
-        self.assertEqual([op.type for op in startup.global_block().ops],
-                         ["fill_constant" for i in xrange(4)])
+        # confirm startup program
+
+        self.assertEqual([op.type for op in startup.global_block().ops], [
+            "fill_constant", "fill_constant", "uniform_random", "uniform_random"
+        ])
+
+        # the variable #fc_w will be split into two blocks 
+        fc_w_var = startup.global_block().var("fc_w.block1")
+        self.assertEqual(fc_w_var.shape, (500, 1000))
 
     def get_main_program(self):
         main = fluid.Program()
@@ -77,16 +79,15 @@ class TestDistTranspiler(unittest.TestCase):
 
         return main
 
-    def get_expect_trainer(self):
+    def get_expect_trainer_ops(self):
         trainer = fluid.Program()
+
         with fluid.program_guard(trainer):
             optimize_ops, params_grads = self.net_conf()
 
-            layers.Send(self.pserver_eps, [p[1] for p in params_grads],
-                        [p[0] for p in params_grads])
-
         delete_ops(trainer.global_block(), optimize_ops)
-        return trainer
+        return [op.type for op in trainer.global_block().ops
+                ] + ["split_byref", "send", "concat"]
 
     def get_trainer(self):
         return self._transpiler_instance().get_trainer_program()

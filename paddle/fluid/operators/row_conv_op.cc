@@ -76,8 +76,7 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
 class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RowConvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor), the input(X) is a LodTensor, which supports "
              "variable time-length input sequences. The underlying tensor "

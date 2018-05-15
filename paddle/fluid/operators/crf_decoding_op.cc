@@ -18,8 +18,7 @@ namespace paddle {
 namespace operators {
 class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CRFDecodingOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Emission",
              "(LoDTensor, default: LoDTensor<float>). A LoDTensor with shape "
              "[N x D] where N is the size of the mini-batch and D is the total "

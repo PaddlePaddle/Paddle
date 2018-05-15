@@ -18,7 +18,9 @@ import math
 
 import distributed_splitter as splitter
 from .. import core, framework
-from ..framework import Program, default_main_program, Variable, Parameter
+from ..framework import Program, default_main_program, \
+                        default_startup_program, \
+                        Variable, Parameter, grad_var_name
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -153,43 +155,43 @@ class DistributeTranspiler:
                   split_method=splitter.round_robin,
                   sync_mode=True):
         """
-            Transpile the program to distributed data-parallelism programs.
-            The main_program will be transformed to use a remote parameter server
-            to do parameter optimization. And the optimization graph will be put
-            into a parameter server program.
+        Transpile the program to distributed data-parallelism programs.
+        The main_program will be transformed to use a remote parameter server
+        to do parameter optimization. And the optimization graph will be put
+        into a parameter server program.
 
-            Use different methods to split trainable variables to different
-            parameter servers.
+        Use different methods to split trainable variables to different
+        parameter servers.
 
-            Steps to transpile trainer:
-            1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
-            2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
-            3. modify trainer program add split_op to each grad variable.
-            4. append send_op to send splited variables to server and fetch
-               params(splited blocks or origin param) from server.
-            5. append concat_op to merge splited blocks to update local weights.
+        Steps to transpile trainer:
+        1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
+        2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
+        3. modify trainer program add split_op to each grad variable.
+        4. append send_op to send splited variables to server and fetch
+            params(splited blocks or origin param) from server.
+        5. append concat_op to merge splited blocks to update local weights.
 
-            Steps to transpile pserver:
-            1. create new program for parameter server.
-            2. create params and grad variables that assigned to current server instance.
-            3. create a sub-block in the server side program
-            4. append ops that should run on current server instance.
-            5. add listen_and_serv op
+        Steps to transpile pserver:
+        1. create new program for parameter server.
+        2. create params and grad variables that assigned to current server instance.
+        3. create a sub-block in the server side program
+        4. append ops that should run on current server instance.
+        5. add listen_and_serv op
 
-            :param trainer_id: one unique id for each trainer in a job.
-            :type trainer_id: int
-            :param program: program to transpile, default is default_main_program
-            :type program: Program
-            :param pservers: parameter server endpoints like "m1:6174,m2:6174"
-            :type pservers: string
-            :param trainers: total number of workers/trainers in the job
-            :type trainers: int
-            :param split_method: A function to determin how to split variables
-                to different servers equally.
-            :type split_method: function
-            :type sync_mode: boolean default True
-            :param sync_mode: if sync_mode is set True, it means that dist transpiler
-            will transpile the program into sync_mode pserver and trainer program.
+        :param trainer_id: one unique id for each trainer in a job.
+        :type trainer_id: int
+        :param program: program to transpile, default is default_main_program
+        :type program: Program
+        :param pservers: parameter server endpoints like "m1:6174,m2:6174"
+        :type pservers: string
+        :param trainers: total number of workers/trainers in the job
+        :type trainers: int
+        :param split_method: A function to determin how to split variables
+            to different servers equally.
+        :type split_method: function
+        :type sync_mode: boolean default True
+        :param sync_mode: if sync_mode is set True, it means that dist transpiler
+        will transpile the program into sync_mode pserver and trainer program.
         """
         assert (callable(split_method))
         if program is None:
@@ -244,7 +246,7 @@ class DistributeTranspiler:
             ]
             grad_list = [
                 grad for grad in grad_list
-                if grad.name != framework.grad_var_name(self.table_name)
+                if grad.name != grad_var_name(self.table_name)
             ]
             self.table_param_grad = [
                 param_grad for param_grad in params_grads
@@ -415,7 +417,7 @@ class DistributeTranspiler:
         def __append_optimize_op__(op, block, grad_to_block_id):
             if self._is_opt_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         default_main_program())
+                                         self.origin_program)
             else:
                 self._append_pserver_non_opt_ops(block, op)
 
@@ -494,7 +496,7 @@ class DistributeTranspiler:
         were split to several blocks.
         """
         s_prog = Program()
-        orig_s_prog = framework.default_startup_program()
+        orig_s_prog = default_startup_program()
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):
@@ -619,7 +621,7 @@ class DistributeTranspiler:
         # 2. add split_ids_op and send_vars_op to send gradient to pservers
         # there should only be one table_name
         all_ops = program.global_block().ops
-        table_grad_name = framework.grad_var_name(self.table_name)
+        table_grad_name = grad_var_name(self.table_name)
         for op in all_ops:
             if table_grad_name in op.output_arg_names:
                 op_index = list(all_ops).index(op)
@@ -692,7 +694,7 @@ class DistributeTranspiler:
             persistable=True)
         grad_var = _clone_var(
             pserver_program.global_block(),
-            self.origin_program.global_block().vars[framework.grad_var_name(
+            self.origin_program.global_block().vars[grad_var_name(
                 self.table_name)],
             persistable=False)
 

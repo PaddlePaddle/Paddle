@@ -182,8 +182,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
 
 class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BipartiteMatchOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "DistMat",
         "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
