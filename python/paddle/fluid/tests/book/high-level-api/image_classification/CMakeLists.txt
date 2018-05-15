@@ -1,7 +1,2 @@
-file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
-string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-
-# default test
-foreach(src ${TEST_OPS})
-    py_test(${src} SRCS ${src}.py)
-endforeach()
+py_test(test_image_classification_resnet SRCS test_image_classification_resnet.py)
+py_test(test_image_classification_vgg SRCS test_image_classification_vgg.py)
