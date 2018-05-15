@@ -70,7 +70,7 @@ copy(glog_lib
   DSTS ${dst_dir} ${dst_dir}/lib
 )
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/boost/include")
+set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/boost/")
 copy(boost_lib
   SRCS ${BOOST_INCLUDE_DIR}/boost
   DSTS ${dst_dir}
