@@ -55,5 +55,22 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
+void OpProtoAndCheckerMaker::CheckReuseVars() {
+  std::unordered_set<std::string> names;
+  for (auto& input : proto_->inputs()) {
+    names.insert(name);
+  }
+  auto checker = [&](const std::string& name, const std::string& reused) {
+    PADDLE_ENFORCE(
+        names.count(name),
+        "Output [%s] reuse Input [%s], but the input is not registered.", name,
+        reused);
+  } for (auto& output : proto_->outputs()) {
+    if (output.has_reuse()) {
+      checker(output, output.reuse());
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
