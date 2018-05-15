@@ -762,16 +762,16 @@ class TestCRFModel(unittest.TestCase):
     def test_update_dense_parameter(self):
         self.check_network_convergence(is_sparse=False)
 
-    def test_update_sparse_parameter_with_new_strategy(self):
-        self.check_network_convergence(
-            is_sparse=False, balance_parameter_opt_between_cards=True)
+    # def test_update_sparse_parameter_with_new_strategy(self):
+    #     self.check_network_convergence(
+    #         is_sparse=True, balance_parameter_opt_between_cards=True)
+    #
+    # def test_update_dense_parameter_with_new_strategy(self):
+    #     self.check_network_convergence(
+    #         is_sparse=False, balance_parameter_opt_between_cards=True)
 
-    def test_update_dense_parameter_with_new_strategy(self):
-        self.check_network_convergence(
-            is_sparse=False, balance_parameter_opt_between_cards=True)
+    # test fetch all the variables of global_block
 
-
-# test fetch all the variables of global_block
 
 import paddle.dataset.flowers as flowers
 import math
