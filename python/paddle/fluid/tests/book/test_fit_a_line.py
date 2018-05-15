@@ -134,13 +134,11 @@ def main(use_cuda, is_local=True):
 class TestFitALine(unittest.TestCase):
     def test_cpu(self):
         with self.program_scope_guard():
-            with fluid.unique_name.guard():
-                main(use_cuda=False)
+            main(use_cuda=False)
 
     def test_cuda(self):
         with self.program_scope_guard():
-            with fluid.unique_name.guard():
-                main(use_cuda=True)
+            main(use_cuda=True)
 
     @contextlib.contextmanager
     def program_scope_guard(self):
