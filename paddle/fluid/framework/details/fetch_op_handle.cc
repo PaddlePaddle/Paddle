@@ -44,6 +44,12 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
   data_->at(offset_).MergeLoDTensor(tensors_ptr, platform::CPUPlace());
 }
 
+template <typename T, typename... ARGS>
+inline T &Ref(T *ptr, ARGS &&... args) {
+  PADDLE_ENFORCE(ptr != nullptr, args...);
+  return *ptr;
+}
+
 void FetchOpHandle::RunImpl() {
   WaitInputVarGenerated(platform::CPUPlace());
 
@@ -56,8 +62,11 @@ void FetchOpHandle::RunImpl() {
   PADDLE_ENFORCE_EQ(inputs_.size(), scopes.size());
   for (size_t i = 0; i < scopes.size(); ++i) {
     auto &scope = scopes[i];
-    auto *var =
-        scope->FindVar(kLocalExecScopeName)->Get<Scope *>()->FindVar(var_name);
+    auto *var = Ref(Ref(scope->FindVar(kLocalExecScopeName), "Cannot find %s",
+                        kLocalExecScopeName)
+                        .Get<Scope *>(),
+                    "Cannot get scope")
+                    .FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
                             var_name);
     auto &t = var->Get<framework::LoDTensor>();
