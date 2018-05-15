@@ -19,27 +19,61 @@ import paddle.fluid as fluid
 from benchmark import BenchmarkSuite
 from op_test import OpTest
 
+# This is a demo op test case for operator benchmarking and high resolution number stability alignment.
 
-# class TestSumOp(OpTest):
+
 class TestSumOp(BenchmarkSuite):
     def setUp(self):
         self.op_type = "sum"
-        x0 = np.random.random((3, 4)).astype('float32')
-        x1 = np.random.random((3, 4)).astype('float32')
-        x2 = np.random.random((3, 4)).astype('float32')
+        self.customize_testcase()
+        self.customize_fetch_list()
 
-        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-        # self.outputs = {"Out": x0 + x1 + x2}
-        self.custom_testcase()
-
-    def custom_testcase(self):
+    def customize_fetch_list(self):
+        """
+        customize fetch list, configure the wanted variables.
+        >>> self.fetch_list = ["Out"]
+        """
         pass
 
+    def customize_testcase(self):
+        # a test case
+        x0 = np.random.random((300, 400)).astype('float32')
+        x1 = np.random.random((300, 400)).astype('float32')
+        x2 = np.random.random((300, 400)).astype('float32')
+
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+        # NOTE: if the output is empty, then it will autofilled by benchmarkSuite.
+        # self.outputs = {"Out": x0 + x1 + x2}
+
     def test_check_output(self):
+        """
+        compare the output with customized output. In this case,
+        you should set the correct output by hands.
+        >>> self.outputs = {"Out": x0 + x1 + x2}
+        """
         self.check_output(atol=1e-8)
 
+    def test_output_stability(self):
+        # compare the cpu gpu output in high resolution.
+        self.check_output_stability()
+
     def test_timeit_output(self):
-        self.timeit_output()
+        """
+        perf the op, time cost will be averged in iters.
+        output example
+        >>> One pass of (sum_op) at CPUPlace cost 0.000461330413818
+        >>> One pass of (sum_op) at CUDAPlace(0) cost 0.000556070804596
+        """
+        self.timeit_output(iters=100)
+
+    def test_timeit_grad(self):
+        """
+        perf the op gradient, time cost will be averged in iters.
+        output example
+        >>> One pass of (sum_grad_op) at CPUPlace cost 0.00279935121536
+        >>> One pass of (sum_grad_op) at CUDAPlace(0) cost 0.00500632047653
+        """
+        self.timeit_grad(iters=100)
 
 
 if __name__ == "__main__":

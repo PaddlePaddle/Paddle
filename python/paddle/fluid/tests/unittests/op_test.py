@@ -191,16 +191,8 @@ class OpTest(unittest.TestCase):
         block = program.global_block()
         self._append_ops(block)
 
-        fetch_list = []
         inputs = self._get_inputs(block)
         outputs = self._get_outputs(block)
-        for var_name, var in outputs.iteritems():
-            if isinstance(var, list):
-                for v in var:
-                    fetch_list.append(v)
-            else:
-                fetch_list.append(var)
-
         feed_map = self.feed_var(inputs, place)
 
         if parallel:
@@ -211,10 +203,25 @@ class OpTest(unittest.TestCase):
                 use_cuda=use_cuda, loss_name=loss.name, main_program=program)
         else:
             executor = Executor(place)
-        outs = exe.run(program,
-                       feed=feed_map,
-                       fetch_list=fetch_list,
-                       return_numpy=False)
+
+        fetch_list = getattr(self, "fetch_list", [])
+        # if the fetch_list is customized by user, we use it directly.
+        # if not, fill the fetch_list by the user configured outputs in test.
+        if len(fetch_list) == 0:
+            for var_name, var in outputs.iteritems():
+                if isinstance(var, list):
+                    for v in var:
+                        fetch_list.append(v)
+                else:
+                    fetch_list.append(var)
+        # if the fetch_list still empty, fill the fetch_list by the operator output.
+        if len(fetch_list) == 0:
+            for out_name, out_dup in Operator.get_op_outputs(self.op_type):
+                fetch_list.append(str(out_name))
+        outs = executor.run(program,
+                            feed=feed_map,
+                            fetch_list=fetch_list,
+                            return_numpy=False)
         return outs, fetch_list
 
     def check_output_with_place(self, place, atol):
@@ -270,17 +277,19 @@ class OpTest(unittest.TestCase):
                                          "Output (" + out_name +
                                          ") has different lod at " + str(place))
 
-    def check_output(self, atol=1e-5):
-        places = [core.CPUPlace()]
+    def _get_places(self):
+        places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
             places.append(core.CUDAPlace(0))
+        return places
+
+    def check_output(self, atol=1e-5):
+        places = self._get_places()
         for place in places:
             self.check_output_with_place(place, atol)
 
     def check_output_customized(self, checker):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
-            places.append(core.CUDAPlace(0))
+        places = self._get_places()
         for place in places:
             outs = self.calc_output(place)
             outs = [np.array(out) for out in outs]
@@ -313,9 +322,7 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
-            places.append(core.CUDAPlace(0))
+        places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
