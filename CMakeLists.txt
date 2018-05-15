@@ -25,7 +25,6 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 
-find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
     find_package(CUDA QUIET)
 endif(NOT CMAKE_CROSSCOMPILING)
@@ -226,5 +225,7 @@ if(WITH_PYTHON)
 endif()
 
 if(WITH_DOC)
+    find_package(Sphinx REQUIRED)
+    find_python_module(recommonmark REQUIRED)
     add_subdirectory(doc)
 endif()

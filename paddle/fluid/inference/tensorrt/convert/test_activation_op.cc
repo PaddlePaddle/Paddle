@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/tensorrt/convert/io_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -26,7 +27,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void Compare(float input, float expect) {
+void Compare(const std::string op_type, float input, float expect) {
   framework::Scope scope;
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
@@ -35,6 +36,7 @@ void Compare(float input, float expect) {
   auto x_var = scope.Var("X");
   auto x_tensor = x_var->GetMutable<framework::LoDTensor>();
   x_tensor->Resize({1, 1});
+  x_tensor->mutable_data<float>(place);
   std::vector<float> init;
   init.push_back(input);
   framework::TensorFromVector(init, ctx, x_tensor);
@@ -45,14 +47,15 @@ void Compare(float input, float expect) {
   out_tensor->mutable_data<float>(place);
 
   framework::OpDesc op_desc;
-  op_desc.SetType("relu");
+  op_desc.SetType(op_type);
   op_desc.SetInput("X", {"X"});
   op_desc.SetOutput("Out", {"Out"});
 
-  auto relu_op = framework::OpRegistry::CreateOp(*op_desc.Proto());
+  auto op = framework::OpRegistry::CreateOp(*op_desc.Proto());
 
   // run fluid op
-  relu_op->Run(scope, place);
+  op->Run(scope, place);
+  // get fluid output
   std::vector<float> out1;
   framework::TensorToVector(*out_tensor, ctx, &out1);
 
@@ -63,21 +66,28 @@ void Compare(float input, float expect) {
   engine->InitNetwork();
   engine->DeclareInput("X", nvinfer1::DataType::kFLOAT,
                        nvinfer1::DimsCHW{1, 1, 1});
-
+  // convert op
   OpConverter op_converter;
   op_converter.ConvertOp(*op_desc.Proto(), engine);
 
   engine->DeclareOutput("Out");
   engine->FreezeNetwork();
-  engine->SetInputFromCPU("X", &input, 1 * sizeof(float));
 
-  // run tensorrt op
+  // convert LoDTensor to ITensor
+  size_t size = x_tensor->memory_size();
+  EngineIOConverter::ConvertInput(op_type, *x_tensor,
+                                  engine->buffer("X").buffer, size, &stream);
+  // run tensorrt Outp
   engine->Execute(1);
+  // convert ITensor to LoDTensor
+  EngineIOConverter::ConvertOutput(op_type, engine->buffer("Out").buffer,
+                                   out_tensor, size, &stream);
+  // get tensorrt output
+  std::vector<float> out2;
+  framework::TensorToVector(*out_tensor, ctx, &out2);
 
-  float out2;
-  engine->GetOutputInCPU("Out", &out2, 1 * sizeof(float));
-
-  ASSERT_EQ(out1[0], out2);
+  // compare
+  ASSERT_EQ(out1[0], out2[0]);
   ASSERT_EQ(out1[0], expect);
 
   delete engine;
@@ -85,8 +95,8 @@ void Compare(float input, float expect) {
 }
 
 TEST(OpConverter, ConvertRelu) {
-  Compare(1, 1);   // relu(1) = 1
-  Compare(-5, 0);  // relu(-5) = 0
+  Compare("relu", 1, 1);   // relu(1) = 1
+  Compare("relu", -5, 0);  // relu(-5) = 0
 }
 
 }  // namespace tensorrt

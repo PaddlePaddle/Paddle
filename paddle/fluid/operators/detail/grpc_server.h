@@ -47,6 +47,7 @@ class AsyncGRPCServer final {
   explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
       : address_(address), sync_mode_(sync_mode), ready_(0) {}
 
+  ~AsyncGRPCServer() {}
   void WaitServerReady();
   void RunSyncUpdate();
 
@@ -63,8 +64,9 @@ class AsyncGRPCServer final {
 
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
-  void SetPrefetchPreparedCtx(framework::ExecutorPrepareContext *prepared) {
-    prefetch_ctx_ = prepared;
+  void SetPrefetchPreparedCtx(
+      std::unique_ptr<framework::ExecutorPrepareContext> prepared) {
+    prefetch_ctx_.reset(prepared.release());
   }
 
   int GetSelectedPort() const { return selected_port_; }
@@ -115,7 +117,7 @@ class AsyncGRPCServer final {
   std::unique_ptr<std::thread> t_get_;
   std::unique_ptr<std::thread> t_prefetch_;
 
-  framework::ExecutorPrepareContext *prefetch_ctx_;
+  std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
   int selected_port_;
