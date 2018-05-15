@@ -33,7 +33,7 @@ def train(use_cuda, save_dirname, is_local):
     avg_cost = fluid.layers.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 20
 

@@ -175,7 +175,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
             decay_steps=100000,
             decay_rate=0.5,
             staircase=True))
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
