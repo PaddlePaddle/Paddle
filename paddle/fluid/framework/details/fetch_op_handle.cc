@@ -53,6 +53,7 @@ void FetchOpHandle::RunImpl() {
   platform::CPUPlace cpu;
   auto &scopes = *local_scopes_;
 
+  PADDLE_ENFORCE_EQ(inputs_.size(), scopes.size());
   for (size_t i = 0; i < scopes.size(); ++i) {
     auto &scope = scopes[i];
     auto *var =
