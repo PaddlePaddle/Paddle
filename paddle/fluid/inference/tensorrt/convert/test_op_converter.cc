@@ -29,7 +29,7 @@ TEST(OpConverter, ConvertBlock) {
   conv2d_op->SetType("conv2d");
 
   OpConverter converter;
-  converter.ConvertBlock(*block, nullptr /*TensorRTEngine*/);
+  converter.ConvertBlock(*block->Proto(), nullptr /*TensorRTEngine*/);
 }
 
 }  // namespace tensorrt

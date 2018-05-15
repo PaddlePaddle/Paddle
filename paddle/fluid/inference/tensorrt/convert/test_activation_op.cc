@@ -51,7 +51,7 @@ void Compare(const std::string op_type, float input, float expect) {
   op_desc.SetInput("X", {"X"});
   op_desc.SetOutput("Out", {"Out"});
 
-  auto op = framework::OpRegistry::CreateOp(op_desc);
+  auto op = framework::OpRegistry::CreateOp(*op_desc.Proto());
 
   // run fluid op
   op->Run(scope, place);
@@ -68,7 +68,8 @@ void Compare(const std::string op_type, float input, float expect) {
                        nvinfer1::DimsCHW{1, 1, 1});
   // convert op
   OpConverter op_converter;
-  op_converter.ConvertOp(op_desc, engine);
+  op_converter.ConvertOp(*op_desc.Proto(), engine);
+
   engine->DeclareOutput("Out");
   engine->FreezeNetwork();
 

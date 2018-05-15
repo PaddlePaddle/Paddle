@@ -39,7 +39,7 @@ class DefaultIOConverter : public EngineIOConverter {
                                            cudaMemcpyHostToDevice, *stream_));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out, in.data<float>(), size,
-                                           cudaMemcpyHostToHost, *stream_));
+                                           cudaMemcpyDeviceToDevice, *stream_));
     } else {
       PADDLE_THROW("Unknown device for converter");
     }
