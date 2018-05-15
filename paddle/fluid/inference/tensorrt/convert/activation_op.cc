@@ -21,15 +21,18 @@ namespace tensorrt {
 class ReluOpConverter : public OpConverter {
  public:
   ReluOpConverter() {}
-  void operator()(const framework::OpDesc& op) override {
+  void operator()(const framework::proto::OpDesc& op) override {
+    // Here the two nullptr looks strange, that's because the
+    // framework::OpDesc's constructor is strange.
+    framework::OpDesc op_desc(op, nullptr, nullptr);
     LOG(INFO) << "convert a fluid relu op to tensorrt activation layer whose "
                  "type is Relu";
     const nvinfer1::ITensor* input_tensor =
-        engine_->GetITensor(op.Input("X")[0]);
+        engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
         nvinfer1::ActivationType::kRELU);
-    engine_->SetITensor(op.Output("Out")[0], layer->getOutput(0));
+    engine_->SetITensor(op_desc.Output("Out")[0], layer->getOutput(0));
   }
 };
 
