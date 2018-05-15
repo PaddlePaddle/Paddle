@@ -534,7 +534,10 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
         if g.op is None:
             raise ValueError("Unexpected branch")
-        g.op.set_attr(op_role_var_attr_name, p.name)
+        attr_val = [p.name]
+        if g.op.has_attr(op_role_var_attr_name):
+            attr_val.extend(g.op.attr(op_role_var_attr_name))
+        g.op.set_attr(op_role_var_attr_name, attr_val)
 
     return params_and_grads
 

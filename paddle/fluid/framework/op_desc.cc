@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
@@ -249,6 +250,13 @@ void OpDesc::RenameOutput(const std::string &old_name,
     std::replace(output.second.begin(), output.second.end(), old_name,
                  new_name);
   }
+
+  auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (it != attrs_.end()) {
+    auto &op_vars = boost::get<std::vector<std::string>>(it->second);
+    std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
+  }
+
   need_update_ = true;
 }
 

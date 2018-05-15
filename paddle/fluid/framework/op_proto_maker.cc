@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -69,8 +70,9 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
            static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kLoss) |
                static_cast<int>(OpRole::kBackward)});
-  AddAttr<std::string>(OpRoleVarAttrName(), "Optimized for variable")
-      .SetDefault("");
+  AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
+                                    "Optimized for variable")
+      .SetDefault({});
 
   Validate();
 }
