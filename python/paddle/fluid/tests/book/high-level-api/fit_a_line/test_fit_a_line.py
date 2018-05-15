@@ -48,11 +48,11 @@ def linear():
     return avg_loss
 
 
-def train(train_func, use_cuda, save_dirname):
+def train(use_cuda, train_program, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        train_func=train_func,
+        train_func=train_program,
         place=place,
         optimizer=fluid.optimizer.SGD(learning_rate=0.001))
 
@@ -82,7 +82,7 @@ def train(train_func, use_cuda, save_dirname):
 
 
 # infer
-def infer(inference_program, use_cuda, save_dirname=None):
+def infer(use_cuda, inference_program, save_dirname=None):
     if save_dirname is None:
         return
 
@@ -104,8 +104,8 @@ def main(use_cuda):
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(linear, use_cuda, save_dirname)
-    infer(inference_program, use_cuda, save_dirname)
+    train(use_cuda, linear, save_dirname)
+    infer(use_cuda, inference_program, save_dirname)
 
 
 class TestFitALine(unittest.TestCase):

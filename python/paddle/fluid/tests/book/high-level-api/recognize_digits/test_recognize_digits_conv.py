@@ -66,7 +66,6 @@ def train(use_cuda, train_program, save_dirname):
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
-            # TODO: Uncomment this part once we are sure that .train is working
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
             test_metrics = trainer.test(reader=test_reader)
