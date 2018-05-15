@@ -27,7 +27,7 @@ TEST(OpKernelType, ToString) {
                               LibraryType::kCUDNN);
 
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type),
-            "data_type[float32]:data_layout[NCHW]:place[CPUPlace]:library_type["
+            "data_type[float]:data_layout[NCHW]:place[CPUPlace]:library_type["
             "CUDNN]");
 }
 

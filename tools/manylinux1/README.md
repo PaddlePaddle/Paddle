@@ -28,3 +28,38 @@ git clone https://github.com/paddlepaddle/paddle
 cd paddle/tools/manylinux1
 REPO=[yourrepo] ./build_all.sh
 ```
+
+## Build PaddlePaddle for the different Python ABIs
+
+Choose one of the following Python ABI and set the correct environment variables.
+
+- cp27-cp27m
+
+  ```bash
+  export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+  export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
+  export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
+        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
+        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+  ```
+
+- cp27-cp27mu
+
+  ```bash
+  export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+  export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
+  export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
+        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
+        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+  ```
+
+And then add the `PYTHON_FLAGS` as your cmake flags:
+
+```bash
+cmake ..
+  ${PYTHON_FLAGS} \
+  -DWITH_GPU=OFF \
+  ...
+```
+
+You can find more details about cmake flags at [here](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/build_from_source_en.html#appendix-build-options)
