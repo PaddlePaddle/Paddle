@@ -192,6 +192,10 @@ class ExecutionContext {
     return op_.Attr<T>(name);
   }
 
+  bool HasInput(const std::string& name) const { return op_.HasInputs(name); }
+
+  bool HasOutput(const std::string& name) const { return op_.HasOutputs(name); }
+
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
   }
