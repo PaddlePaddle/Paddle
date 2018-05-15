@@ -29,8 +29,7 @@ class HasDataOpKernel : public framework::OpKernel<T> {
     auto* output = context.Output<framework::LoDTensor>("Out");
     size_t mem_size = input->memory_size();
 
-    auto* output_data =
-      output->mutable_data<bool>(platform::CPUPlace());
+    auto* output_data = output->mutable_data<bool>(platform::CPUPlace());
     if (mem_size > 0) {
       output_data[0] = true;
     } else {

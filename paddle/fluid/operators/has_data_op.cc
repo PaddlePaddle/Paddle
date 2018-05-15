@@ -52,8 +52,7 @@ class HasDataOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("X")->type()),
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         platform::CPUPlace());
     return kt;
   }

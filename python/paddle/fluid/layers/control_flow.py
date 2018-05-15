@@ -1588,8 +1588,5 @@ def has_data(x, cond=None, **ignored):
         cond = helper.create_tmp_variable(dtype='bool')
         cond.stop_gradient = True
 
-    helper.append_op(
-        type='has_data',
-        inputs={'X': [x]},
-        outputs={'Out': [cond]})
+    helper.append_op(type='has_data', inputs={'X': [x]}, outputs={'Out': [cond]})
     return cond
