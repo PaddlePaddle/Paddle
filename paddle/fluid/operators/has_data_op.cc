@@ -21,8 +21,7 @@ namespace operators {
 
 class HasDataOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HasDataOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     // inputs and outputs stored in proto
     AddInput("X", "(LoDTensor) the LoDTensor to check");
     AddOutput("Out", "(LoDTensor) the ouput of has_data_op");
