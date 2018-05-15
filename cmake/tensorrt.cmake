@@ -9,7 +9,7 @@ find_path(TENSORRT_INCLUDE_DIR NvInfer.h
     NO_DEFAULT_PATH
 )
 
-find_library(TENSORRT_LIBRARY NAMES libnvinfer.so libnvinfer.a
+find_library(TENSORRT_LIBRARY NAMES libnvinfer.so libnvinfer.a libnvparsers.so libnvparsers.a
     PATHS ${TENSORRT_ROOT} ${TENSORRT_ROOT}/lib
     $ENV{TENSORRT_ROOT} $ENV{TENSORRT_ROOT}/lib
     NO_DEFAULT_PATH

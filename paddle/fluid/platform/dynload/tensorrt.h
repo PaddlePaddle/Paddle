@@ -14,6 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+#include <NvOnnxConfig.h>
+#include <NvOnnxParser.h>
 #include <dlfcn.h>
 
 #include <mutex>  // NOLINT

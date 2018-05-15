@@ -206,6 +206,14 @@ void* GetTensorRtDsoHandle() {
 #endif
 }
 
+void* GetTensorRtParserDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvparsers.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvparsers.so");
+#endif
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

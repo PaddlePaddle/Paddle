@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <memory>
 
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -28,7 +29,7 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ASSERT_EQ(0, cudaStreamCreate(&stream_));
-    engine_ = new TensorRTEngine(1, 1 << 10, &stream_);
+    engine_ = new TensorRTEngine(20, 1 << 10, &stream_);
     engine_->InitNetwork();
   }
 
@@ -106,6 +107,46 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   engine_->GetOutputInCPU("y", &y_cpu[0], sizeof(float) * 2);
   ASSERT_EQ(y_cpu[0], 4.5);
   ASSERT_EQ(y_cpu[1], 14.5);
+}
+
+TEST_F(TensorRTEngineTest, load_onnx_official_mnist_model) {
+  // fix latter.
+  std::string fit_a_line_model = "/chunwei/build_dir/Paddle/mnist.onnx";
+  // std::string fit_a_line_model = "/chunwei/build_dir/Paddle/build/1.onnx";
+  engine_->BuildFromONNX(fit_a_line_model);
+  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
+  const std::string input_name = "Input3";
+  const std::string output_name = "Plus214_Output_0";
+  auto& ibuffer = engine_->buffer(input_name);
+  auto& obuffer = engine_->buffer(output_name);
+  const size_t input_dim = 784;
+  const size_t output_dim = 10;
+  ASSERT_EQ(ibuffer.size, input_dim);
+  ASSERT_EQ(obuffer.size, output_dim);
+  ASSERT_TRUE(ibuffer.device == DeviceType::GPU);
+  ASSERT_TRUE(obuffer.device == DeviceType::GPU);
+
+  const size_t batch_size = 10;
+  std::unique_ptr<float> idata(new float[input_dim * batch_size]);
+  std::unique_ptr<float> odata(new float[output_dim * batch_size]);
+
+  for (size_t i = 0; i < input_dim * batch_size; i++) {
+    *(idata.get() + i) = i;
+  }
+  cudaMemcpyAsync((void*)ibuffer.buffer, (void*)(idata.get()),
+                  input_dim * batch_size * sizeof(float),
+                  cudaMemcpyHostToDevice, stream_);
+  engine_->Execute(batch_size);
+  cudaMemcpyAsync((void*)(odata.get()), (void*)obuffer.buffer,
+                  output_dim * sizeof(float), cudaMemcpyDeviceToHost, stream_);
+
+  for (size_t i = 0; i < batch_size; i++) {
+    std::stringstream ss;
+    for (int j = 0; j < 10; j++) {
+      ss << *(i * output_dim + odata.get() + j) << " ";
+    }
+    LOG(INFO) << ss.str();
+  }
 }
 
 }  // namespace tensorrt

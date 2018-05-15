@@ -26,10 +26,31 @@ namespace inference {
 namespace tensorrt {
 
 void TensorRTEngine::Build(const DescType& paddle_model) {
-  PADDLE_ENFORCE(false, "not implemented");
+  PADDLE_THROW("not implemented");
+}
+
+void TensorRTEngine::BuildFromONNX(const std::string& model_path) {
+  PADDLE_ENFORCE(IsFileExists(model_path));
+  infer_builder_.reset(createInferBuilder(&logger_));
+  nvinfer1::IHostMemory* model;
+  OnnxToGIEModel("", model_path, max_batch_, model, &logger_);
+  infer_runtime_.reset(createInferRuntime(&logger_));
+  VLOG(4) << "build engine";
+  infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
+      model->data(), model->size(), nullptr));
+  if (model) model->destroy();
+  VLOG(4) << "create context";
+  PADDLE_ENFORCE(infer_engine_ != nullptr);
+  infer_context_.reset(infer_engine_->createExecutionContext());
+
+  PADDLE_ENFORCE_GT(infer_engine_->getNbBindings(), 0,
+                    "model do not have any inputs or outputs");
+  DetectInputsAndOutputs();
+  FreezeNetwork();
 }
 
 void TensorRTEngine::Execute(int batch_size) {
+  // TODO(Superjomn) consider to make buffers not a temp variable and resuable.
   std::vector<void*> buffers;
   for (auto& buf : buffers_) {
     PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated");
@@ -61,11 +82,17 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
 
-  infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
-  PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
+  if (!infer_engine_) {
+    VLOG(4) << "build cuda engine";
+    infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
+    PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
 
-  infer_context_.reset(infer_engine_->createExecutionContext());
+    VLOG(4) << "create execution context";
+    infer_context_.reset(infer_engine_->createExecutionContext());
+  }
 
+  VLOG(4) << "allocate gpu buffers";
+  PADDLE_ENFORCE(!buffer_sizes_.empty());
   // allocate GPU buffers.
   buffers_.resize(buffer_sizes_.size());
   for (auto& item : buffer_sizes_) {
@@ -75,6 +102,7 @@ void TensorRTEngine::FreezeNetwork() {
                         infer_engine_->getBindingDataType(slot_offset))] *
                     AccumDims(infer_engine_->getBindingDimensions(slot_offset));
     }
+    PADDLE_ENFORCE_GT(item.second, 0);
     auto& buf = buffer(item.first);
     CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
     PADDLE_ENFORCE_EQ(0, cudaMalloc(&buf.buffer, item.second));
@@ -89,12 +117,40 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
 
-  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
   auto* input = infer_network_->addInput(name.c_str(), dtype, dim);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] * AccumDims(dim);
   TensorRTEngine::SetITensor(name, input);
   return input;
+}
+
+// nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name) {
+//   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
+//                     name);
+
+//   auto* x = TensorRTEngine::GetITensor(name);
+//   PADDLE_ENFORCE(x != nullptr);
+//   // output->setName(name.c_str());
+//   infer_network_->
+//       markInput(*x);
+//   // output buffers' size can only be decided latter, set zero here to mark
+//   this
+//   // and will reset latter.
+//   buffer_sizes_[name] = 0;
+// }
+
+nvinfer1::ITensor* TensorRTEngine::DeclareInput(int offset) {
+  // This is a trick to reuse some facility of the manual network building.
+  auto name = ibuffer_name(offset);
+  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
+                    name);
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
+  auto* x = infer_network_->getInput(offset);
+  x->setName(name.c_str());
+  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
+                        AccumDims(x->getDimensions());
+  return x;
 }
 
 void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
@@ -117,11 +173,33 @@ void TensorRTEngine::DeclareOutput(const std::string& name) {
 
   auto* output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
-  output->setName(name.c_str());
+  // output->setName(name.c_str());
   infer_network_->markOutput(*output);
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
   buffer_sizes_[name] = 0;
+}
+
+void TensorRTEngine::DeclareOutput(int offset) {
+  // This is a trick to reuse some facility of the manual network building.
+  auto name = obuffer_name(offset);
+  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
+                    name);
+  PADDLE_ENFORCE(infer_network_ != nullptr, "should InitNetwork first");
+  auto* x = infer_network_->getInput(offset);
+  x->setName(name.c_str());
+  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(x->getType())] *
+                        AccumDims(x->getDimensions());
+}
+
+void TensorRTEngine::DetectInputsAndOutputs() {
+  for (int i = 0; i < infer_engine_->getNbBindings(); ++i) {
+    const auto* name = infer_engine_->getBindingName(i);
+    const auto& dims = infer_engine_->getBindingDimensions(i);
+    buffer_sizes_[name] = AccumDims(dims);
+    VLOG(4) << "get ONNX model input/output: " << name
+            << " dims: " << buffer_sizes_[name];
+  }
 }
 
 void* TensorRTEngine::GetOutputInGPU(const std::string& name) {
@@ -142,6 +220,15 @@ void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
 }
 
 Buffer& TensorRTEngine::buffer(const std::string& name) {
+  PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
+  auto it = buffer_sizes_.find(name);
+  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  auto slot_offset = infer_engine_->getBindingIndex(name.c_str());
+  return buffers_[slot_offset];
+}
+
+Buffer& TensorRTEngine::ibuffer(int offset) {
+  auto name = ibuffer_name(offset);
   PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
   auto it = buffer_sizes_.find(name);
   PADDLE_ENFORCE(it != buffer_sizes_.end());
