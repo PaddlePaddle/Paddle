@@ -92,14 +92,16 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
 
     if (unk_dim_idx != -1) {
-      output_shape[unk_dim_idx] = -in_size / capacity;
-      // in_size < 0 and is un-determinate in compile time, skip the check,
-      // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
-      // capacity = -24, in_size = -8, output_shape[0] = 0
-      // the following check will fail.
       if (in_size > 0) {
+        // in_size < 0 and is un-determinate in compile time, skip the check,
+        // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
+        // capacity = -24, in_size = -8, output_shape[0] = 0
+        // the following check will fail.
+        output_shape[unk_dim_idx] = -in_size / capacity;
         PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
                           "Invalid shape is given.");
+      } else {
+        output_shape[unk_dim_idx] = -1;
       }
     } else {
       PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
@@ -122,7 +124,10 @@ class ReshapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
-    auto *shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
 
     framework::DDim out_dims = out->dims();
 
