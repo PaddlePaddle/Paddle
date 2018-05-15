@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 
 import distributed_splitter as splitter
-from .. import core
+from .. import core, framework
 from ..framework import Program, default_main_program, \
                         default_startup_program, \
                         Variable, Parameter, grad_var_name
@@ -423,7 +423,7 @@ class DistributeTranspiler:
         def __append_optimize_op__(op, block, grad_to_block_id):
             if self._is_opt_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         default_main_program())
+                                         self.origin_program)
             else:
                 self._append_pserver_non_opt_ops(block, op)
 
