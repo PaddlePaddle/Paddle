@@ -125,7 +125,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimize_ops, params_grads = optimizer.minimize(avg_cost)
+    optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
     PASS_NUM = 1
