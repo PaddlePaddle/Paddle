@@ -55,5 +55,25 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
+void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
+                                        OpAttrChecker* attr_checker) {
+  proto_ = proto;
+  op_checker_ = attr_checker;
+  Make();
+
+  AddAttr<int>(OpRoleAttrName(), "The role of this operator")
+      .InEnum(
+          {static_cast<int>(OpRole::kForward),
+           static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize),
+           static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
+           static_cast<int>(OpRole::kLoss) |
+               static_cast<int>(OpRole::kBackward)});
+  AddAttr<std::string>(OpRoleVarAttrName(), "Optimized for variable")
+      .SetDefault("");
+
+  Validate();
+}
+
 }  // namespace framework
 }  // namespace paddle
