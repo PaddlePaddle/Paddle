@@ -71,6 +71,35 @@ Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
 [SUM]  0.0-10.0 sec   110 GBytes  94.0 Gbits/sec
 ```
 
+## evpp
+
+[Code](https://github.com/Qihoo360/evpp/tree/master/benchmark/throughput)
+
+- server: benchmark_pingpong_server 9099 12
+- client: benchmark_pingpong_client 192.168.16.30 9099 12 1048976 12 10
+
+```
+W0515 03:08:56.568994    98 client.cc:127] name=./benchmark_pingpong_client 88730614724 total bytes read
+W0515 03:08:56.569007    98 client.cc:128] name=./benchmark_pingpong_client 1215539 total messages read
+W0515 03:08:56.569015    98 client.cc:129] name=./benchmark_pingpong_client 72996.9 average message size
+W0515 03:08:56.569452    98 client.cc:130] name=./benchmark_pingpong_client 8462.01 MiB/s throughput
+```
+
+## muduo
+- server: ./pingpong_server 0.0.0.1 9912 16
+- client: ./pingpong_client 192.168.16.30 9912 16 1048976 16 10
+
+```
+20180515 03:07:13.052579Z    66 INFO  pid = 66, tid = 66 - client.cc:199
+20180515 03:07:13.081942Z    67 WARN  all connected - client.cc:125
+20180515 03:07:23.052766Z    66 WARN  stop - client.cc:162
+20180515 03:07:23.062692Z    82 WARN  all disconnected - client.cc:133
+20180515 03:07:23.062721Z    82 WARN  90249274920 total bytes read - client.cc:143
+20180515 03:07:23.062728Z    82 WARN  1293237 total messages read - client.cc:144
+20180515 03:07:23.062734Z    82 WARN  69785.5651516 average message size - client.cc:145
+20180515 03:07:23.062751Z    82 WARN  8606.84155655 MiB/s throughput - client.cc:147
+```
+
 ## BRPC
 
 ## GRPC 
