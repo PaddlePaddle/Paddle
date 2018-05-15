@@ -20,6 +20,7 @@ namespace framework {
 void OpProtoAndCheckerMaker::Validate() {
   validated_ = true;
   CheckNoDuplicatedInOutAttrs();
+  CheckReuseVars();
 }
 
 OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(
@@ -58,16 +59,17 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
 void OpProtoAndCheckerMaker::CheckReuseVars() {
   std::unordered_set<std::string> names;
   for (auto& input : proto_->inputs()) {
-    names.insert(name);
+    names.insert(input.name());
   }
   auto checker = [&](const std::string& name, const std::string& reused) {
     PADDLE_ENFORCE(
-        names.count(name),
+        names.count(reused),
         "Output [%s] reuse Input [%s], but the input is not registered.", name,
         reused);
-  } for (auto& output : proto_->outputs()) {
+  };
+  for (auto& output : proto_->outputs()) {
     if (output.has_reuse()) {
-      checker(output, output.reuse());
+      checker(output.name(), output.reuse());
     }
   }
 }

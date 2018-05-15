@@ -56,7 +56,10 @@ class OpProtoAndCheckerMaker {
       return *this;
     }
 
-    VariableBuilder &Reuse(const std::string &name) { var_->set_reuse(name); }
+    VariableBuilder &Reuse(const std::string &name) {
+      var_->set_reuse(name);
+      return *this;
+    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);

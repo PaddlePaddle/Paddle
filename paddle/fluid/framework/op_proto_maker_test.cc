@@ -51,3 +51,24 @@ TEST(ProtoMaker, DuplicatedInOut) {
   proto_maker.Make();
   ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
 }
+
+class TestInplaceProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "input of test op");
+    AddOutput("XOut", "output of test op").Reuse("X");
+    AddOutput("NoOut", "output of test op").Reuse("NotExists");
+  }
+};
+
+TEST(ProtoMaker, InplaceOutput) {
+  using paddle::framework::proto::OpProto;
+  using paddle::framework::OpAttrChecker;
+  OpProto op_proto;
+  OpAttrChecker op_checker;
+  TestInplaceProtoMaker proto_maker;
+  proto_maker.SetProto(&op_proto);
+  proto_maker.SetChecker(&op_checker);
+  proto_maker.Make();
+  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
+}
