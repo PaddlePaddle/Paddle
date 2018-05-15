@@ -67,8 +67,8 @@ struct float16;
 }  // namespace platform
 }  // namespace paddle
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace platform {
