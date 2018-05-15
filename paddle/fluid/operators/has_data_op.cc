@@ -40,23 +40,23 @@ class HasDataOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-    void InferShape(framework::InferShapeContext *ctx) const override {
-      PADDLE_ENFORCE(ctx->HasInput("X"),
-                     "Input(X) of HasDataOp should not be null.");
-      PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                     "Output(Out) of HasDataOp should not be null.");
-      ctx->SetOutputDim("Out", {1});
-      ctx->ShareLoD("X", "Out");
-    }
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of HasDataOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of HasDataOp should not be null.");
+    ctx->SetOutputDim("Out", {1});
+    ctx->ShareLoD("X", "Out");
+  }
 
-    framework::OpKernelType GetExpectedKernelType(
-        const framework::ExecutionContext &ctx) const override {
-      framework::OpKernelType kt = framework::OpKernelType(
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::LoDTensor>("X")->type()),
         platform::CPUPlace());
-      return kt;
-    }
+    return kt;
+  }
 };
 
 }  // namespace operators
@@ -66,8 +66,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(has_data, ops::HasDataOp, ops::HasDataOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    has_data,
-    ops::HasDataOpKernel<paddle::platform::CPUDeviceContext, float>,
+    has_data, ops::HasDataOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::HasDataOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::HasDataOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::HasDataOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
