@@ -27,7 +27,7 @@ struct BuildStrategy {
     kCustomized = 2,
   };
 
-  ReduceStrategy reduce_{ReduceStrategy::kReduce};
+  ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
 };
 
