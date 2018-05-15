@@ -88,5 +88,67 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   out->set_layout(expected_kernel_type.data_layout_);
 }
 
+#ifdef PADDLE_WITH_MKLDNN
+using mkldnn::memory;
+using mkldnn::primitive;
+using mkldnn::reorder;
+
+void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
+                           const OpKernelType& expected_kernel_type,
+                           const Tensor& in, Tensor* out) {
+  auto in_layout = kernel_type_for_var.data_layout_;
+  auto out_layout = expected_kernel_type.data_layout_;
+
+  PADDLE_ENFORCE(in_layout == DataLayout::kMKLDNN &&
+                 out_layout != DataLayout::kMKLDNN,
+    "TransDataLayoutMkldnn only support transfrom from MKLDNN to non-MKLDNN");
+
+  PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
+                 in.format() != memory::format::any,
+                 "Input tensor should have specified memory format");
+
+  // Set default as NCHW in case not specified
+  out_layout = out_layout == DataLayout::kAnyLayout ?
+               DataLayout::kNCHW : out_layout;
+
+  auto& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext *>(
+                              pool.Get(expected_kernel_type.place_));
+  auto& cpu_engine = dev_ctx->GetEngine();
+
+  std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
+  std::vector<int> out_tz = in_tz;
+
+  memory::data_type in_type = to_mkldnn_data_type(in.type());
+  memory::data_type out_type = in_type;
+
+  memory::format in_format = in.format();
+  memory::format out_format = to_mkldnn_format(out_layout);
+
+  // Fix me: here "float" should be template type T
+  auto in_data = in.data<float>();
+
+  // output tensor has the same dims as input. Reorder don't change dims
+  out->Resize(in.dims());
+
+  auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
+
+  auto in_memory = memory({{{in_tz}, in_type, in_format}, cpu_engine},
+                     reinterpret_cast<void*>(const_cast<float*>(in_data)));
+  auto out_memory = memory({{{out_tz}, out_type, out_format}, cpu_engine},
+                           out_data);
+
+  // create reoder primitive and execute it
+  primitive reorder_prim = reorder(in_memory, out_memory);
+  std::vector<primitive> pipeline;
+  pipeline.push_back(reorder_prim);
+  mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+
+  out->set_layout(out_layout);
+  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
+  out->set_format(memory::format::format_undef);
+}
+#endif
+
 }  // namespace framework
 }  // namespace paddle
