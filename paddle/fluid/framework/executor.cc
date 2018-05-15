@@ -321,7 +321,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars) {
+                                  bool create_local_scope, bool create_vars,
+                                  bool drop_scope_kids) {
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -351,6 +352,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
+  } else if (drop_scope_kids) {
+    scope->DropKids();
+  } else {
+    // need to call scop->DropKids() after this function call
   }
 
   if (FLAGS_benchmark) {

@@ -58,13 +58,14 @@ static void ParallelExecuteBlocks(
           int run_block = idx;  // thread local
           try {
             executor->RunPreparedContext(prepared[run_block].get(), scope,
-                                         false, false);
+                                         false, false, false);
           } catch (std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
         }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+  scope->DropKids();
 }
 
 std::atomic_int ListenAndServOp::selected_port_{0};
