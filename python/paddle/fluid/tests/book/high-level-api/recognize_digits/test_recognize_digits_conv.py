@@ -69,7 +69,7 @@ def train(use_cuda, train_program, save_dirname):
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
             test_metrics = trainer.test(
-		reader=test_reader, feed_order=['img', 'label'])
+                reader=test_reader, feed_order=['img', 'label'])
             avg_cost_set = test_metrics[0]
             acc_set = test_metrics[1]
 
