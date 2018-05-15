@@ -764,7 +764,7 @@ class TestCRFModel(unittest.TestCase):
 
     def test_update_sparse_parameter_with_new_strategy(self):
         self.check_network_convergence(
-            is_sparse=False, balance_parameter_opt_between_cards=True)
+            is_sparse=True, balance_parameter_opt_between_cards=True)
 
     def test_update_dense_parameter_with_new_strategy(self):
         self.check_network_convergence(
@@ -836,7 +836,7 @@ class TestFetchOp(unittest.TestCase):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
 
-    def test_update_sparse_parameter(self):
+    def test_fetch_op(self):
         tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
         tst_reader_iter = tst_reader()
 
