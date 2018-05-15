@@ -124,7 +124,10 @@ class ReshapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
-    auto *shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
 
     framework::DDim out_dims = out->dims();
 
