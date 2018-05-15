@@ -1,4 +1,4 @@
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 
 cc_library(paddle_fluid_api
     SRCS io.cc
