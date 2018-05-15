@@ -160,6 +160,7 @@ class Variable(object):
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
+                 is_data=False,
                  **kwargs):
         self.block = block
         self.error_clip = error_clip
@@ -238,6 +239,7 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
         self.stop_gradient = stop_gradient
+        self.is_data = is_data
 
     def __str__(self):
         return self.to_string(True)
@@ -475,7 +477,7 @@ class Operator(object):
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
                 elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                   isinstance(attrs[attr_name], core.ProgramDesc):
+                        isinstance(attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
                 else:
@@ -487,7 +489,7 @@ class Operator(object):
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
             'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select'
+            'channel_send', 'channel_recv', 'select', 'gen_nccl_id'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -978,7 +980,8 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -986,7 +989,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         return ret_var
 
 
@@ -1051,6 +1055,7 @@ class Program(object):
             p.sync_with_cpp()
 
         p.copy_param_info_from(self)
+        p.copy_data_info_from(self)
         return p
 
     def prune(self, targets):
@@ -1171,6 +1176,26 @@ class Program(object):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block().copy_param_info_from(other.global_block())
+
+    def copy_data_info_from(self, other):
+        """
+        Copy the information of data variables from other program.
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("copy_param_info_from should be invoked with "
+                            "Program")
+
+        if len(self.blocks) != len(other.blocks):
+            raise ValueError("copy_param_info_from should be invoked with two "
+                             "program, with represent the same topology")
+        for var in other.global_block().vars.itervalues():
+            if var.is_data:
+                self.global_block().var(var.name).is_data = True
 
     def list_vars(self):
         for each_block in self.blocks:

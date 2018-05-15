@@ -53,10 +53,7 @@ std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
   return std::unique_ptr<framework::ReaderBase>(reader);
 }
 
-FileReaderMakerBase::FileReaderMakerBase(
-    framework::OpProtoAndCheckerMaker::OpProto* op_proto,
-    framework::OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(op_proto, op_checker) {
+void FileReaderMakerBase::Make() {
   AddOutput("Out", "(ReaderHolder) The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
   AddAttr<std::vector<int>>(
@@ -68,6 +65,7 @@ FileReaderMakerBase::FileReaderMakerBase(
       "It means the reader will generate two data each time,"
       "whose shapes are [2,3,4] and [5,6] respectively.");
   AddAttr<std::vector<int>>("lod_levels", "The LoD levels of each data.");
+  Apply();
 }
 
 void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
@@ -127,13 +125,11 @@ void DecoratedReaderInferVarType::operator()(
   out_reader->SetDataTypes(in_reader->GetDataTypes());
 }
 
-DecoratedReaderMakerBase::DecoratedReaderMakerBase(
-    framework::OpProtoAndCheckerMaker::OpProto* op_proto,
-    framework::OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(op_proto, op_checker) {
+void DecoratedReaderMakerBase::Make() {
   AddInput("UnderlyingReader",
            "(ReaderHolder) The underlying reader for creating a batch reader.");
   AddOutput("Out", "(ReaderHolder) The created batch reader.");
+  Apply();
 }
 
 }  // namespace reader

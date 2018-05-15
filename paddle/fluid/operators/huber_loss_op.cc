@@ -45,8 +45,7 @@ class HuberLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input value of huber loss op."
              "X is a 2-D tensor with shape [batch_size, 1].");
