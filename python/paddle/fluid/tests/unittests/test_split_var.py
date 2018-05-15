@@ -51,13 +51,13 @@ class TestSplitVar(unittest.TestCase):
 
         self.check_split_output(shapes, expected_sizes, 1024)
 
-    def test_check_output_16k(self):
+    def test_check_output_8k(self):
         shapes = [[3, 5], [1024], [28, 784], [8, 1020], [800, 10],
                   [6, 33, 33, 33]]
-        expected_sizes = [[15], [1024], [21952], [8160], [8000],
+        expected_sizes = [[15], [1024], [10976, 10976], [8160], [8000],
                           [35937, 35937, 35937, 35937, 35937, 35937]]
 
-        self.check_split_output(shapes, expected_sizes, 16384)
+        self.check_split_output(shapes, expected_sizes, 8192)
 
 
 if __name__ == '__main__':
