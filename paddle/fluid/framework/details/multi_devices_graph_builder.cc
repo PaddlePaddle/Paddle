@@ -163,8 +163,13 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       if (!is_forwarding && places_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
-        for (auto &og : op->OutputArgumentNames()) {
-          if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
+        if (static_cast<bool>(boost::get<int>(op->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                              static_cast<int>(OpRole::kBackward))) {
+          auto &backward_vars = boost::get<std::vector<std::string>>(
+              op->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+
+          for (auto &og : backward_vars) {
             if (balance_parameter_opt_between_cards_) {
               CreateReduceOp(&result, og, cur_device_id);
               var_name_on_devices[cur_device_id].emplace(og);
@@ -399,11 +404,11 @@ void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
-  // FIXME(yy): Do not hard code like this
-  return op.OutputArgumentNames().size() == 1 &&
-         op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
+  return boost::get<int>(
+             op.GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+         (static_cast<int>(OpRole::kBackward) |
+          static_cast<int>(OpRole::kLoss));
 }
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
