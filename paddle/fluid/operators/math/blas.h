@@ -46,6 +46,50 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+/**
+ * Matrix Descriptor of a memory buffer.
+ *
+ * It is used for Blas::MatMul. MatMul operator can be batched.
+ * if Mat A is [BatchSize, H, W], Mat B is [BatchSize, H, W]. It will be a
+ * `batch_size` times of GEMM. The batched GEMM could be faster base on the
+ * implementation of the blas library. The batch size could be zero. If any
+ * matrix of `matmul` has a batch size, the will be a batched GEMM, too. e.g.,
+ * Mat A is [BatchSize, H1, W2], and Mat B [H2, W2], The result matrix wil be
+ * [BatchSize, H1, W2]
+ *
+ * The boolean flag, `trans`, describe the memory is the transpose of matrix or
+ * not. If the trans is true, the last two dims of matrix are transposed. The
+ * memory layout of the matrix is [Width, Height] or [BatchSize, Width, Height].
+ *
+ * The MatDescriptor is not only the dimension or shape of a matrix, it also
+ * contains the layout, stride of matrix. It is clearer to have a structure than
+ * reuse `DDim`.
+ */
+struct MatDescriptor {
+  int64_t height_;
+  int64_t width_;
+  int64_t stride_{0};
+  int64_t batch_size_{0};
+  bool trans_;
+};
+
+/**
+ * Create Matrix Descriptor from a tensor dim, num_flatten_cols, and transpose
+ * flag
+ *
+ * @param tensor_dim: The dimension of the tensor. The rank of this dimension
+ * must larger than 1.
+ *
+ * @param num_flatten_cols:  Reshape a tensor to a matrix. The matrix's first
+ * dimension(column length) will be the product of tensor's first `num_col_dims`
+ * dimensions. If num_flatten_cols is zero, the first N-2 dimension will be the
+ * batch_size of descriptor.
+ *
+ * @param trans: True if the matrix is transposed.
+ */
+extern MatDescriptor CreateMatrixDescriptor(const framework::DDim& tensor_dim,
+                                            int num_flatten_cols, bool trans);
+
 template <typename DeviceContext>
 class Blas {
  public:
@@ -89,6 +133,11 @@ class Blas {
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
+
+  template <typename T>
+  void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
+              const framework::Tensor& mat_b, const MatDescriptor& dim_b,
+              T alpha, framework::Tensor* mat_out, T beta) const;
 
  private:
   const DeviceContext& context_;

@@ -111,8 +111,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
 
 class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape [N x D],"
              " where N is the batch size and D is the number of classes. "

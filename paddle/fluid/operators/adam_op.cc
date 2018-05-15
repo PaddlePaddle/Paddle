@@ -80,8 +80,7 @@ class AdamOp : public framework::OperatorWithKernel {
 
 class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdamOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("LearningRate", "(Tensor) Learning rate");

@@ -28,7 +28,7 @@ namespace paddle {
  */
 
 class PriorBoxLayer : public Layer {
-public:
+public:  // NOLINT
   explicit PriorBoxLayer(const LayerConfig& config) : Layer(config) {}
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
@@ -36,7 +36,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override {}
 
-protected:
+protected:  // NOLINT
   int numPriors_;
   std::vector<int> minSize_;
   std::vector<int> maxSize_;
@@ -109,11 +109,18 @@ void PriorBoxLayer::forward(PassType passType) {
         real boxWidth = minSize;
         real boxHeight = minSize;
 
-        // priors with different aspect ratios
-        for (size_t r = 0; r < aspectRatio_.size(); r++) {
-          real ar = aspectRatio_[r];
-          boxWidth = minSize * sqrt(ar);
-          boxHeight = minSize / sqrt(ar);
+        // first prior: aspect_ratio == 1.0, compatible to old logic
+        tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
+        tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
+        tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
+        tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
+        // set the variance.
+        for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
+
+        if (maxSize_.size() > 0) {
+          // square prior with size sqrt(minSize * maxSize)
+          real maxSize = maxSize_[s];
+          boxWidth = boxHeight = sqrt(minSize * maxSize);
           tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
           tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
           tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
@@ -122,10 +129,14 @@ void PriorBoxLayer::forward(PassType passType) {
           for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
         }
 
-        if (maxSize_.size() > 0) {
-          // square prior with size sqrt(minSize * maxSize)
-          real maxSize = maxSize_[s];
-          boxWidth = boxHeight = sqrt(minSize * maxSize);
+        // priors with different aspect ratios
+        for (size_t r = 0; r < aspectRatio_.size(); r++) {
+          real ar = aspectRatio_[r];
+          if (fabs(ar - 1.0) < 1e-6) {
+            continue;
+          }
+          boxWidth = minSize * sqrt(ar);
+          boxHeight = minSize / sqrt(ar);
           tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
           tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
           tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
