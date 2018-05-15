@@ -12,15 +12,83 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <fstream>
+
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
+#include "paddle/fluid/pybind/pybind.h"
+
+namespace paddle {
+namespace train {
+
+void ReadBinaryFile(const std::string& filename, std::string* contents) {
+  std::ifstream fin(filename, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  fin.seekg(0, std::ios::end);
+  contents->clear();
+  contents->resize(fin.tellg());
+  fin.seekg(0, std::ios::beg);
+  fin.read(&(contents->at(0)), contents->size());
+  fin.close();
+}
+
+std::unique_ptr<paddle::framework::ProgramDesc> Load(
+    paddle::framework::Executor* executor, const std::string& model_filename) {
+  VLOG(3) << "loading model from " << model_filename;
+  std::string program_desc_str;
+  ReadBinaryFile(model_filename, &program_desc_str);
+
+  std::unique_ptr<paddle::framework::ProgramDesc> main_program(
+      new paddle::framework::ProgramDesc(program_desc_str));
+  return main_program;
+}
+
+}  // namespace train
+}  // namespace paddle
+
 int main() {
+  std::vector<int> devices = {0};
+  paddle::framework::InitDevices(false);
+
   const auto cpu_place = paddle::platform::CPUPlace();
-  std::cout << std::type_index(typeid(cpu_place)).name() << std::endl;
-  //  auto executor = paddle::framework::Executor(cpu_place);
+  //  paddle::platform::CPUDeviceContext ctx(cpu_place);
+
   paddle::framework::Executor executor(cpu_place);
   paddle::framework::Scope scope;
-  std::cout << std::type_index(typeid(scope)).name() << std::endl;
+  auto startup_program =
+      paddle::train::Load(&executor,
+                          "/Users/qiaolongfei/project/paddle/paddle/fluid/"
+                          "train/test/startup_program");
+  auto train_program =
+      paddle::train::Load(&executor,
+                          "/Users/qiaolongfei/project/paddle/paddle/fluid/"
+                          "train/test/train_program");
+  executor.Run(*startup_program.get(), &scope, 0);
+
+  // prepare data
+  auto x_var = scope.Var("x");
+  auto x_tensor = x_var->GetMutable<paddle::framework::LoDTensor>();
+  x_tensor->Resize({2, 13});
+
+  auto x_data = x_tensor->mutable_data<float>(cpu_place);
+  for (int i = 0; i < 2 * 13; ++i) {
+    x_data[i] = static_cast<float>(i);
+  }
+
+  auto y_var = scope.Var("y");
+  auto y_tensor = y_var->GetMutable<paddle::framework::LoDTensor>();
+  y_tensor->Resize({2, 1});
+  auto y_data = y_tensor->mutable_data<float>(cpu_place);
+  for (int i = 0; i < 2 * 1; ++i) {
+    y_data[i] = static_cast<float>(i);
+  }
+
+  executor.Run(*train_program.get(), &scope, 0, false, true);
   return 0;
 }
