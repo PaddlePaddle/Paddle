@@ -220,15 +220,6 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
-    # def save_inference_model(self, model_path):
-    #     inference_program = framework.Program()
-    #     with framework.program_guard(inference_program):
-    #         with unique_name.guard():
-    #             predict_var = self.infer_func()
-    #     predict_var = self.train_program.block(0).var(predict_var.name)
-    #     exe = executor.Executor(self.place)
-    #     io.save_inference_model(model_path, [], [predict_var], exe)
-
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
         with framework.program_guard(
