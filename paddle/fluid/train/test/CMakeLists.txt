@@ -11,9 +11,10 @@ set(PADDLE_LIB "${PROJECT_SOURCE_DIR}/lib")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")
 include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
-include_directories("${PADDLE_LIB}/third_party/install/boost/boost_1_41_0")
 include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
 include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
+
+include_directories("${PADDLE_LIB}/third_party//boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
 
 link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
