@@ -61,6 +61,13 @@ class CheckpointLoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   CheckpointLoadOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddComment(R"DOC(
+CheckpointLoad operator
+
+This operator will serialize and write a list of input LoDTensor variables 
+to a file on disk.
+)DOC");
+
     AddAttr<std::string>(
         "dir",
         "(string)"

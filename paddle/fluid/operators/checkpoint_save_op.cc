@@ -180,7 +180,7 @@ class CheckpointSaveOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send_vars, ops::CheckpointSaveOp,
+REGISTER_OPERATOR(checkpoint_save, ops::CheckpointSaveOp,
                   paddle::framework::EmptyGradOpMaker,
                   ops::CheckpointSaveOpProtoMaker,
                   ops::CheckpointSaveOpVarTypeInference,
