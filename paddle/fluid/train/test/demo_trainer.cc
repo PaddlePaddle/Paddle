@@ -51,7 +51,6 @@ std::unique_ptr<paddle::framework::ProgramDesc> Load(
 }  // namespace paddle
 
 int main() {
-  std::vector<int> devices = {0};
   paddle::framework::InitDevices(false);
 
   const auto cpu_place = paddle::platform::CPUPlace();
@@ -60,6 +59,16 @@ int main() {
   paddle::framework::Scope scope;
   auto startup_program = paddle::train::Load(&executor, "startup_program");
   auto train_program = paddle::train::Load(&executor, "main_program");
+
+  std::string loss_name = "";
+  for (auto op_desc : train_program->Block(0).AllOps()) {
+    if (op_desc->Type() == "mean") {
+      loss_name = op_desc->Output("Out")[0];
+      break;
+    }
+  }
+
+  PADDLE_ENFORCE_NE(loss_name, "", "loss not found");
 
   // init all parameters
   executor.Run(*startup_program.get(), &scope, 0);
@@ -82,8 +91,13 @@ int main() {
     y_data[i] = static_cast<float>(i);
   }
 
+  auto loss_var = scope.Var(loss_name);
+
   for (int i = 0; i < 10; ++i) {
     executor.Run(*train_program.get(), &scope, 0, false, true);
+    std::cout << "loss: "
+              << loss_var->Get<paddle::framework::LoDTensor>().data<float>()[0]
+              << std::endl;
   }
   return 0;
 }
