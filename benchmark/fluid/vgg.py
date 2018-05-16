@@ -188,7 +188,9 @@ def main():
             loss, acc, weight = train_exe.run(
                 feed={"pixel": img_data,
                       "label": y_data},
-                fetch_list=[avg_cost.name, batch_acc.name, batch_size_tensor.name])
+                fetch_list=[
+                    avg_cost.name, batch_acc.name, batch_size_tensor.name
+                ])
             accuracy.add(value=np.array(np.mean(acc)), weight=np.mean(weight))
             iters += 1
             num_samples += len(y_data)
