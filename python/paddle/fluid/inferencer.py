@@ -13,29 +13,35 @@
 # limitations under the License.
 
 import core
-import framework
+
 import executor
+import framework
 import io
+import unique_name
 from trainer import check_and_get_place
 
 __all__ = ['Inferencer', ]
 
 
 class Inferencer(object):
-    def __init__(self, param_path, place=None):
+    def __init__(self, infer_func, param_path, place=None):
         """
-        :param param_path: the path where the inference model is saved by fluid.io.save_inference_model
+        :param infer_func: a function that will return predict Variable
+        :param param_path: the path where the inference model is saved by fluid.io.save_params
         :param place: place to do the inference
         """
         self.param_path = param_path
         self.scope = core.Scope()
 
+        self.inference_program = framework.Program()
+        with framework.program_guard(self.inference_program):
+            with unique_name.guard():
+                self.predict_var = infer_func()
+
         self.exe = executor.Executor(check_and_get_place(place))
         with executor.scope_guard(self.scope):
             # load params from param_path into scope
-            [self.inference_program, _,
-             self.fetch_targets] = io.load_inference_model(
-                 executor=self.exe, dirname=param_path)
+            io.load_params(self.exe, param_path, self.inference_program)
 
     def infer(self, inputs, return_numpy=True):
         """
@@ -51,7 +57,7 @@ class Inferencer(object):
         with executor.scope_guard(self.scope):
             results = self.exe.run(self.inference_program,
                                    feed=inputs,
-                                   fetch_list=self.fetch_targets,
+                                   fetch_list=[self.predict_var],
                                    return_numpy=return_numpy)
 
         return results

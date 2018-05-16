@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -36,15 +37,13 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
                           platform::NCCLContextMap *nccl_ctxs,
-                          bool use_default_grad_scale,
-                          bool balance_parameter_opt_between_cards);
+                          const BuildStrategy &strategy);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool use_default_grad_scale,
-                          bool balance_parameter_opt_between_cards);
+                          const BuildStrategy &strategy);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -62,8 +61,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
-  bool balance_parameter_opt_between_cards_;
-  bool use_default_grad_scale_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
@@ -118,6 +115,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void RemoveOps(
       const std::vector<std::unordered_set<OpHandleBase *>> &reduce_op_handles,
       SSAGraph *result) const;
+
+ private:
+  BuildStrategy strategy_;
 };
 }  // namespace details
 }  // namespace framework
