@@ -504,6 +504,7 @@ function main() {
         ;;
       capi)
         cmake_gen ${PYTHON_ABI:-""}
+        build
         gen_capi_package
         ;;
       fluid_inference_lib)
