@@ -58,7 +58,7 @@ TEST(CheckpointLoadOp, CPU) {
   paddle::framework::AttributeMap attrs;
   attrs.insert({"dir", std::string("ckpt")});
 
-  auto save_op =
-      paddle::framework::OpRegistry::CreateOp("checkpoint_load", {}, {}, attrs);
+  auto save_op = paddle::framework::OpRegistry::CreateOp(
+      "checkpoint_load", {{"X", {"test_var"}}}, {}, attrs);
   save_op->Run(scope, place);
 }
