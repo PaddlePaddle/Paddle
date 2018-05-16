@@ -87,12 +87,12 @@ class CheckpointLoadOp : public framework::OperatorBase {
       VLOG(3) << "ready to load var: " << inp_var_names[i];
 
       auto &tensor = var->Get<framework::LoDTensor>();
-
       std::ifstream fin(var_file);
       PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
                      var_file);
-      DeserializeFromStream(fin, tensor, *dev_ctx);
+      DeserializeFromStream(fin, tensor, dev_ctx);
       fin.close();
+
       VLOG(3) << " load var: " << inp_var_names[i] << " finished";
     }
   }
