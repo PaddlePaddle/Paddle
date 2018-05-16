@@ -179,9 +179,13 @@ def run_benchmark(model, args):
             outs = train_exe.run(
                 feed={"pixel": img_data,
                       "label": y_data},
-                fetch_list=[avg_cost.name, batch_acc.name, batch_size_tensor.name]
+                fetch_list=[
+                    avg_cost.name, batch_acc.name, batch_size_tensor.name
+                ]
             )  # The accuracy is the accumulation of batches, but not the current batch.
-            accuracy.update(value=np.array(np.mean(outs[1])), weight=np.mean(np.array(outs[2])))
+            accuracy.update(
+                    value=np.array(np.mean(outs[1])), 
+                    weight=np.mean(np.array(outs[2])))
             iters += 1
             num_samples += len(y_data)
             loss = np.mean(np.array(outs[0]))
