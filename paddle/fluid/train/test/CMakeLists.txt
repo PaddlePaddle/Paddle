@@ -14,7 +14,7 @@ include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
 include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
 include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
-include_directories("${PADDLE_LIB}/third_party//boost")
+include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
 
 link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
