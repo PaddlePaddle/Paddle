@@ -5,15 +5,21 @@ Throughput is the main feature of our choice of a framework. And We need framewo
    - Compared with the delay,we are more concerned with the throughput of the framework.   
    - Benchmark of framework maybe not true in our envirionment as they said.
    - It's not useful if we can't make use of a framework's potential: we maybe not expert of the framework.
-   -  
 
 ### Some common questions:
 - Can data transformation use TCP protocol use full of a 100Gb network?
-    - Is RDMA necessary?
-    - Is MPI(MPI Send and MPI Receive) necessary?
+	- Yep. Iperf can reach 94Gb/s even in docker.It seems that there's 10% lower than on host.
+	- Note that: this will use many CPU cores to get this throughput.
+- Is RDMA necessary?
+	- Yep. We can use it to get high throughput with low CPU usage than use tcp. 
+- Is MPI(MPI Send and MPI Receive) necessary?
+  - MPI's tcp performance is not better than other tcp library. And so we can use it's 
+    RDMA and GDR(gpu direct) wrapper.
 - What's the TCP program's throughput upper limit?
     - How to tune the TCP program's throughput?
+    	- It's a complicated questions.TODO.
 - What's the benchmark of GPU direct? Is it high cost-effective?
+    - TODO.
 
 ## Hardware Infomation
 ### Network card
