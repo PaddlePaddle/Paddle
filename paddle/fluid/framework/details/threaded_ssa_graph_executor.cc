@@ -110,7 +110,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       pending_vars.erase(ready_var);
       for (auto *op : ready_var->pending_ops_) {
         auto &deps = pending_ops[op];
-        --deps;
+        for (auto *in_var : op->Inputs()) {
+          if (in_var == ready_var) --deps;
+        }
         if (deps == 0) {
           if (op->IsMultiDeviceTransfer() && strategy_.allow_op_delay_) {
             delayed_ops.insert(op);
