@@ -148,4 +148,10 @@ copy(string_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
 )
 
+set(module "pybind")
+copy(pybind_lib
+  SRCS ${src_dir}/${module}/pybind.h
+  DSTS ${dst_dir}/${module}
+)
+
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 
