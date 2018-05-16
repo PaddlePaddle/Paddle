@@ -14,21 +14,34 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/is_empty_op.h"
 
 namespace paddle {
 namespace operators {
 
-constexpr char kInput[] = "X";
-constexpr char kOutput[] = "Out";
+// constexpr char kInput[] = "X";
+// constexpr char kOutput[] = "Out";
 
-class IsEmptyOp : public framework::OperatorBase {
+class IsEmptyOp : public framework::OperatorWithKernel {
  public:
-  IsEmptyOp(const std::string &type, const framework::VariableNameMap &inputs,
-            const framework::VariableNameMap &outputs,
-            const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of IsEmptyOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of IsEmptyOp should not be null.");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        platform::CPUPlace());
+    return kt;
+  }
+/*
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     // get input
@@ -44,9 +57,10 @@ class IsEmptyOp : public framework::OperatorBase {
     out_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
         framework::product(tensor.dims()) == 0;
   }
+*/
 };
 
-class IsEmptyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+class IsEmptyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kInput, "(Tensor) Tensor which is to be checked.");
@@ -62,5 +76,11 @@ It will just return product(tensor.ddims()) > 0;
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(is_empty, paddle::operators::IsEmptyOp,
-                             paddle::operators::IsEmptyOpProtoMaker);
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(is_empty, ops::IsEmptyOp, ops::IsEmptyOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    is_empty, ops::IsEmptyOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::IsEmptyOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::IsEmptyOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::IsEmptyOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
