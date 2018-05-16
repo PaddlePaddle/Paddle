@@ -30,7 +30,8 @@ class TestNetWithDtype(unittest.TestCase):
 
     def run_net_on_place(self, place):
         main = fluid.Program()
-        with fluid.program_guard(main):
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
             x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
             y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -44,7 +45,7 @@ class TestNetWithDtype(unittest.TestCase):
             paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe.run(startup)
         for data in train_reader():
             exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
             # the main program is runable, the datatype is fully supported
