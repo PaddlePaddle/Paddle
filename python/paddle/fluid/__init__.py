@@ -44,42 +44,44 @@ import transpiler
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
-from transpiler import DistributeTranspiler, SimpleDistributeTranspiler, InferenceTranspiler, memory_optimize, release_memory, QuantizeTranspiler
+from transpiler import DistributeTranspiler, SimpleDistributeTranspiler, \
+    InferenceTranspiler, memory_optimize, release_memory,QuantizeTranspiler
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
 import clip
 import profiler
 import unique_name
 import recordio_writer
-from parallel_executor import ParallelExecutor
+import parallel_executor
+from parallel_executor import *
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ +\
-          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + [
-    'io',
-    'initializer',
-    'layers',
-    'transpiler'
-    'nets',
-    'optimizer',
-    'learning_rate_decay',
-    'backward',
-    'regularizer',
-    'LoDTensor',
-    'CPUPlace',
-    'CUDAPlace',
-    'CUDAPinnedPlace',
-    'Tensor',
-    'ParamAttr',
-    'WeightNormParamAttr',
-    'DataFeeder',
-    'clip',
-    'profiler',
-    'unique_name',
-    'recordio_writer',
-    'ParallelExecutor',
-]
+__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
+          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+          parallel_executor.__all__ + [
+              'io',
+              'initializer',
+              'layers',
+              'transpiler'
+              'nets',
+              'optimizer',
+              'learning_rate_decay',
+              'backward',
+              'regularizer',
+              'LoDTensor',
+              'CPUPlace',
+              'CUDAPlace',
+              'CUDAPinnedPlace',
+              'Tensor',
+              'ParamAttr',
+              'WeightNormParamAttr',
+              'DataFeeder',
+              'clip',
+              'profiler',
+              'unique_name',
+              'recordio_writer',
+          ]
 
 
 def __bootstrap__():

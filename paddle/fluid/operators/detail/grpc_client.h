@@ -57,7 +57,9 @@ void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
-  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) { context_ = NULL; }
+  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
+    context_ = nullptr;
+  }
 
   virtual ~BaseProcessor() {}
 
@@ -105,7 +107,7 @@ class SendProcessor : public BaseProcessor {
 
   ::grpc::GenericStub stub_g_;
   ::grpc::ByteBuffer reply_;
-  RequestSendCallBack response_call_back_ = NULL;
+  RequestSendCallBack response_call_back_ = nullptr;
 };
 
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>

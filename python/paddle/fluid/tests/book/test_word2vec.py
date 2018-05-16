@@ -101,7 +101,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         avg_cost = fluid.layers.mean(pd())
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
