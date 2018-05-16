@@ -13,17 +13,35 @@
 # limitations under the License.
 
 import collections
+import copy
 
 from ..framework import Program
 
 _QUANTIZABLE_OP_TYPES = ['conv2d', 'depthwise_conv2d', 'mul']
-_INPUT_KEYS = [['Input', 'Filter'], ['Input', 'Filter'], ['Input', 'Filter']]
+
+
+def _quantized_var_name(var_name):
+    """
+    Return quantized variable name for the input `var_name`.
+    """
+    return "%s.quantized" % (var_name)
+
+
+def _dequantized_var_name(var_name):
+    """
+    Return dequantized variable name for the input `var_name`.
+    """
+    return "%s.dequantized" % (var_name)
 
 
 class QuantizeTranspiler(object):
+    """
+    TODO(qingqing): add comments
+    """
+
     def transpile(self,
                   program,
-                  is_train,
+                  is_inference=False,
                   weight_bits=8,
                   activation_bits=8,
                   quant_delay=0):
@@ -31,51 +49,94 @@ class QuantizeTranspiler(object):
         if not isinstance(program, Program):
             raise TypeError("program should be as Program type")
 
-        self.program = program
-        self.is_train = is_train
+        self.is_inference = is_inference
         self.weight_bits = weight_bits
         self.activation_bits = activation_bits
         self.quant_delay = quant_delay
-        # {string:bool} map is used to marked which variable has been quantizied.
-        self.quanted_vars = collections.OrderedDict()
 
-        if self.is_train:
-            transpile_for_training()
+        if not self.is_inference:
+            self._training_transpile(program)
         else:
-            transpile_for_testing()
+            self._inference_transpile(program)
 
-    def transpile_for_training(self):
+    def _training_transpile(self, program):
+        """
+        TODO(qingqing): add comments
+        """
+        # marked the variable which has been quantized and dequantized.
+        dequanted_vars = [
+            collections.OrderedDict() for _ in range(len(program.blocks))
+        ]
+        grad_op_types = ['%s_grad' % (type) for type in _QUANTIZABLE_OP_TYPES]
+
+        def _transpile_forward(block, op):
+            idx = block.ops.index(op)
+            block_id = block.idx
+            # insert quant op and dequant op
+            for name in op.input_arg_names:
+                if name in dequanted_vars[block_id]:
+                    dequant_var = dequanted_vars[block_id][name]
+                else:
+                    var = block.var(name)
+                    quant_var = self._insert_quant_op(block, idx, var)
+                    dequant_var = self._insert_dequant_op(block, idx + 1,
+                                                          quant_var)
+                    dequanted_vars[block_id][name] = dequant_var
+                # rename the forward op inputs
+                op.rename_input(name, dequant_var.name)
+
+        def _transpile_backward(block, op):
+            block_id = block.idx
+            no_dequanted_input_vars = True
+            for name in op.input_arg_names:
+                if name in dequanted_vars[block_id]:
+                    dequant_var = dequanted_vars[block_id][name]
+                    op.rename_input(name, dequant_var.name)
+                    no_dequanted_input_vars = False
+            if no_dequanted_input_vars:
+                raise ValueError("There is no dequanted inputs for op %s." %
+                                 (op.type))
+
         for block in program.blocks:
-            for i, op in enumerate(block.ops):
+            ops = list(block.ops)
+            block_id = block.idx
+            for op in ops:
+                # rewrite the forward ProgramDes
                 if op.type in _QUANTIZABLE_OP_TYPES:
-                    inputs = _INPUT_KEYS[_QUANTIZABLE_OP_TYPES.index(op.type)]
-                    self._insert_quant(block, i, op, inputs)
-                    self._insert_dequant(block, i, op, inputs)
+                    _transpile_forward(block, op)
+                # rewrite the forward ProgramDes
+                # rename the backward op inputs
+                if op.type in grad_op_types:
+                    _transpile_backward(block, op)
 
-    def _insert_quant_op(self, block, idx, op, inputs):
-        for key in inputs:
-            var = block.var(op.input(key)[0])
-            if self.quanted_vars[var.name]:
-                continue
-            # quant_var = block.create_var(name="%s.quanted" % (var.name),
-            #                             type=var.type,
-            #                             hape=var.shape,
-            #                             dtype=var.dtype)
-            # insert fake_quantize_op, which is a in-place op
-            # since the fake_quantize_op is not implemented now,
-            # use tanh op for testing
-            quant_op = block.insert_op(
-                idx, type="cos", inputs={"X": var}, outputs={"Out": var})
-            self.quanted_vars[var.name] = True
+    def _insert_quant_op(self, block, idx, var):
+        """
+        TODO(qingqing): add comments
+        """
+        quant_var = block.create_var(
+            name=_quantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype)
+        # insert fake_quantize_op
+        # since the fake_quantize_op is not implemented now,
+        # use tanh op for testing
+        quant_op = block.insert_op(
+            idx, type="cos", inputs={"X": var}, outputs={"Out": quant_var})
+        return quant_var
 
-    def _insert_dequant_op(self, block, idx, op, inputs):
-        for key in inputs:
-            var = block.var(op.input(key)[0])
-            if self.quanted_vars[var.name]:
-                continue
-            # insert fake_dequantize_op, which is a in-place op
-            # since the fake_dequantize_op is not implemented now,
-            # use relu op for testing
-            dequant_op = block.insert_op(
-                idx + 1, type="sin", inputs={"X": var}, outputs={"Out": var})
-            self.quanted_vars[var.name] = True
+    def _insert_dequant_op(self, block, idx, var):
+        """
+        TODO(qingqing): add comments
+        """
+        dequant_var = block.create_var(
+            name=_dequantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype)
+        # insert fake_dequantize_op
+        # since the fake_dequantize_op is not implemented now,
+        # use relu op for testing
+        dequant_op = block.insert_op(
+            idx, type="sin", inputs={"X": var}, outputs={"Out": dequant_var})
+        return dequant_var
