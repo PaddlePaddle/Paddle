@@ -8,8 +8,7 @@ Throughput is the main feature of our choice of a framework. And We need framewo
 
 ### Some common questions:
 - Can data transformation use TCP protocol use full of a 100Gb network?
-	- Yep. Iperf can reach 94Gb/s even in docker.It seems that there's 10% lower than on host.
-	- Note that: this will use many CPU cores to get this throughput.
+	- Yep. Iperf can reach 94Gb/s even in docker.	- Note that: this will use many CPU cores to get this throughput.
 - Is RDMA necessary?
 	- Yep. We can use it to get high throughput with low CPU usage than use tcp. 
 - Is MPI(MPI Send and MPI Receive) necessary?
@@ -138,26 +137,6 @@ W0515 03:08:56.569452    98 client.cc:130] name=./benchmark_pingpong_client 8462
 ## BRPC
 
 [Code is here](https://github.com/Tuvie/brpc/tree/master/benchmark)
-
-Need to be confirmed.
-
-On host:
-
-```
-1KB     171  MB/s     
-2KB     330  MB/s
-4KB     648  MB/s   
-8KB     1166 MB/s    
-16KB    2451 MB/s    
-32KB    4550 MB/s    
-64KB    6397 MB/s    
-128KB   9653 MB/s    
-256KB   11110 MB/s    
-512KB   11507 MB/s    
-1MB     11715 MB/s
-```
-
-In docker container:
 
 ```
 loops=300 thread_num=22 attachment_size=1KB throughput=153.502MB/s
