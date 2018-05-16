@@ -80,24 +80,29 @@ def inference_program(is_sparse):
 
 
 def train_program(is_sparse):
-    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
+    # The declaration of 'next_word' must be after the invoking of inference_program,
+    # or the data input order of train program would be [next_word, firstw, secondw,
+    # thirdw, forthw], which is not correct.
     predict_word = inference_program(is_sparse)
+    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
     cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
     avg_cost = fluid.layers.mean(cost)
     return avg_cost
 
 
-def train(use_cuda, is_sparse, save_path):
+def train(use_cuda, train_program, save_path):
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
+    test_reader = paddle.batch(
+        paddle.dataset.imikolov.test(word_dict, N), BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     def event_handler(event):
-        print type(event)
         if isinstance(event, fluid.EndEpochEvent):
-            avg_cost = trainer.test(reader=paddle.dataset.imikolov.test(
-                word_dict, N))
+            outs = trainer.test(reader=test_reader)
+            avg_cost = outs[0]
+            print("loss= ", avg_cost)
 
             if avg_cost < 5.0:
                 trainer.save_params(save_path)
@@ -106,41 +111,40 @@ def train(use_cuda, is_sparse, save_path):
                 sys.exit("got NaN loss, training failed.")
 
     trainer = fluid.Trainer(
-        partial(train_program, is_sparse),
-        fluid.optimizer.SGD(learning_rate=0.001),
-        place=place)
+        train_program, fluid.optimizer.SGD(learning_rate=0.001), place=place)
     trainer.train(
-        reader=train_reader, num_epochs=100, event_handler=event_handler)
+        reader=train_reader, num_epochs=1, event_handler=event_handler)
 
 
-def infer(use_cuda, is_sparse, save_path):
+def infer(use_cuda, inference_program, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        partial(inference_program, is_sparse),
-        param_path=save_path,
-        place=place)
+        infer_func=inference_program, param_path=save_path, place=place)
 
     lod = [0, 1]
     first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     second_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    result = inferencer.infer({
-        'firstw': first_word,
-        'secondw': second_word,
-        'thirdw': third_word,
-        'forthw': fourth_word
-    })
-    print(result)
+
+    result = inferencer.infer(
+        {
+            'firstw': first_word,
+            'secondw': second_word,
+            'thirdw': third_word,
+            'forthw': fourth_word
+        },
+        return_numpy=False)
+    print(np.array(result[0]))
 
 
 def main(use_cuda, is_sparse):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
-    save_path = "word2vec.inference.model"
-    train(use_cuda, is_sparse, save_path)
-    infer(use_cuda, is_sparse, save_path)
+    save_path = "word2vec.params"
+    train(use_cuda, partial(train_program, is_sparse), save_path)
+    infer(use_cuda, partial(inference_program, is_sparse), save_path)
 
 
 if __name__ == '__main__':

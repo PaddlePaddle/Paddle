@@ -398,7 +398,7 @@ function gen_dockerfile() {
 
     cat <<EOF
     ========================================
-    Generate /paddle/build/Dockerfile ...
+    Generate ${PADDLE_ROOT}/build/Dockerfile ...
     ========================================
 EOF
 
@@ -422,7 +422,7 @@ EOF
         CMD='"true"'
     fi
 
-    cat >> /paddle/build/Dockerfile <<EOF
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update &&\
@@ -436,8 +436,14 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
-    ADD go/cmd/pserver/pserver /usr/bin/
-    ADD go/cmd/master/master /usr/bin/
+EOF
+    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+        ADD go/cmd/pserver/pserver /usr/bin/
+        ADD go/cmd/master/master /usr/bin/
+EOF
+    fi
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
@@ -467,6 +473,7 @@ EOF
 }
 
 function main() {
+    set -e
     local CMD=$1
     init
     case $CMD in
@@ -497,6 +504,7 @@ function main() {
         ;;
       capi)
         cmake_gen ${PYTHON_ABI:-""}
+        build
         gen_capi_package
         ;;
       fluid_inference_lib)

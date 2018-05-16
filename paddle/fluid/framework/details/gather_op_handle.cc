@@ -55,7 +55,7 @@ void GatherOpHandle::RunImpl() {
                  "Currently, gather_op only can gather SelectedRows.");
 
   // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated(in_var_handles);
+  WaitInputVarGenerated();
 
   auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
   std::vector<int64_t> out_rows;
@@ -109,17 +109,6 @@ void GatherOpHandle::RunImpl() {
       s = e;
     }
   });
-}
-
-void GatherOpHandle::WaitInputVarGenerated(
-    const std::vector<VarHandle *> &in_var_handles) {
-  for (auto *in : in_var_handles) {
-    if (in->generated_op_) {
-      for (auto pair : dev_ctxes_) {
-        in->generated_op_->Wait(pair.second);
-      }
-    }
-  }
 }
 
 std::string GatherOpHandle::Name() const { return "gather"; }

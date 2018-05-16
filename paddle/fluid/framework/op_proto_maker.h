@@ -14,56 +14,57 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
-
 namespace paddle {
 namespace framework {
 
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
-  using OpProto = proto::OpProto;
-  using OpAttrChecker = framework::OpAttrChecker;
-  OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : proto_(proto), op_checker_(op_checker) {}
+  virtual void Make() = 0;
 
   virtual ~OpProtoAndCheckerMaker() {
-    PADDLE_ENFORCE(validated_, "should call Validate after build");
+    CHECK(validated_) << "should call Validate after build";
   }
+
+  void SetProto(proto::OpProto *proto) { proto_ = proto; }
+
+  void SetChecker(OpAttrChecker *attr_checker) { op_checker_ = attr_checker; }
 
   void Validate();
 
  protected:
   struct VariableBuilder {
-    OpProto::Var* var_;
+    proto::OpProto::Var *var_;
 
-    VariableBuilder& AsDuplicable() {
+    VariableBuilder &AsDuplicable() {
       var_->set_duplicable(true);
       return *this;
     }
 
-    VariableBuilder& AsIntermediate() {
+    VariableBuilder &AsIntermediate() {
       var_->set_intermediate(true);
       return *this;
     }
 
-    VariableBuilder& AsDispensable() {
+    VariableBuilder &AsDispensable() {
       var_->set_dispensable(true);
       return *this;
     }
   };
 
-  VariableBuilder AddInput(const std::string& name, const std::string& comment);
+  VariableBuilder AddInput(const std::string &name, const std::string &comment);
 
-  VariableBuilder AddOutput(const std::string& name,
-                            const std::string& comment);
+  VariableBuilder AddOutput(const std::string &name,
+                            const std::string &comment);
 
   template <typename T>
-  TypedAttrChecker<T>& AddAttr(const std::string& name,
-                               const std::string& comment,
+  TypedAttrChecker<T> &AddAttr(const std::string &name,
+                               const std::string &comment,
                                bool generated = false) {
-    auto* attr = proto_->add_attrs();
+    auto *attr = proto_->add_attrs();
     attr->set_name(name);
     attr->set_comment(comment);
     attr->set_generated(generated);
@@ -71,21 +72,14 @@ class OpProtoAndCheckerMaker {
     return op_checker_->AddAttrChecker<T>(name);
   }
 
-  void AddComment(const std::string& comment) { proto_->set_comment(comment); }
+  void AddComment(const std::string &comment) { proto_->set_comment(comment); }
 
  private:
   void CheckNoDuplicatedInOutAttrs();
 
-  OpProto* proto_;
-  OpAttrChecker* op_checker_;
+  proto::OpProto *proto_;
+  OpAttrChecker *op_checker_;
   bool validated_{false};
 };
-
-class NOPMaker : public OpProtoAndCheckerMaker {
- public:
-  NOPMaker(OpProto* proto, framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {}
-};
-
 }  // namespace framework
 }  // namespace paddle

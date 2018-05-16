@@ -29,8 +29,7 @@ class CumOp : public framework::OperatorWithKernel {
 
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CumsumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of Cumsum operator");
     AddOutput("Out", "Output of Cumsum operator");
     AddAttr<int>("axis",

@@ -322,8 +322,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // prepare for prefetch
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
   auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
-  rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
-  prefetch_prepared.release();
+  rpc_service_->SetPrefetchPreparedCtx(std::move(prefetch_prepared));
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
@@ -343,8 +342,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ListenAndServOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(R"DOC(
 ListenAndServ operator

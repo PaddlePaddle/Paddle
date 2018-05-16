@@ -77,8 +77,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
