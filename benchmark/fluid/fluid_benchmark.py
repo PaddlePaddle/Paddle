@@ -187,7 +187,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
               (num_samples, train_elapsed, examples_per_sec))
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
         # evaluation
-        if args.with_test:
+        if args.with_test and batch_acc != None:
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -234,7 +234,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         examples_per_sec = num_samples / train_elapsed
         print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
               (num_samples, train_elapsed, examples_per_sec))
-        if args.with_test:
+        if args.with_test and batch_acc != None:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
