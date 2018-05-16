@@ -11,48 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+
+#include "paddle/fluid/operators/uniform_random_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
-
-// It seems that Eigen::Tensor::random in GPU will SEGFAULT.
-// Use std::random and thrust::random(thrust is a std library in CUDA) to
-// implement uniform random.
-template <typename T>
-class CPUUniformRandomKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    framework::Tensor* tensor = nullptr;
-    auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      auto shape = ctx.Attr<std::vector<int>>("shape");
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
-      tensor->Resize(framework::make_ddim(shape));
-    } else {
-      PADDLE_THROW(
-          "uniform_random_op's output only"
-          "supports SelectedRows and Tensor");
-    }
-    T* data = tensor->mutable_data<T>(ctx.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
-    std::uniform_real_distribution<T> dist(
-        static_cast<T>(ctx.Attr<float>("min")),
-        static_cast<T>(ctx.Attr<float>("max")));
-    int64_t size = tensor->numel();
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(engine);
-    }
-  }
-};
 
 class UniformRandomOp : public framework::OperatorWithKernel {
  public:
@@ -140,9 +104,9 @@ REGISTER_OPERATOR(uniform_random, paddle::operators::UniformRandomOp,
                   paddle::framework::EmptyGradOpMaker,
                   paddle::operators::UniformRandomOpVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(uniform_random,
-                       paddle::operators::CPUUniformRandomKernel<float>,
-                       paddle::operators::CPUUniformRandomKernel<double>);
-REGISTER_OP_CPU_KERNEL(uniform_random_batch_size_like,
-                       paddle::operators::CPUUniformRandomKernel<float>,
-                       paddle::operators::CPUUniformRandomKernel<double>);
+template <typename T>
+using Kernel =
+    paddle::operators::UniformRandomKernel<paddle::platform::CPUDeviceContext,
+                                           T>;
+
+REGISTER_OP_CPU_KERNEL(uniform_random, Kernel<float>, Kernel<double>);
