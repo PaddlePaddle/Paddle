@@ -52,7 +52,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     // stub context
     SendProcessor* s = new SendProcessor(ch);
     s->Prepare(var_h, time_out);
-    s->response_call_back_ = NULL;
+    s->response_call_back_ = nullptr;
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
