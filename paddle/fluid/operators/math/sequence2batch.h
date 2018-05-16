@@ -64,17 +64,21 @@ class LoDTensor2BatchFunctor {
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
       auto lods = batch->lod();
-      PADDLE_ENFORCE_GT(lods.size(), 2UL);
-      PADDLE_ENFORCE_EQ(lods[1].size(),
-                        static_cast<size_t>(lod_tensor.dims()[0]));
+      PADDLE_ENFORCE_GT(lods.size(), 2UL,
+                        "The LoD of LoDTensor should inlcude at least 2-level "
+                        "sequence information.");
+      PADDLE_ENFORCE_EQ(
+          lods[1].size(), static_cast<size_t>(lod_tensor.dims()[0]),
+          "The LoD information should be consistent with the dims.");
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
       to_batch(context, lod_tensor, lods[1], batch, true);
       return;
     }
 
     auto lods = lod_tensor.lod();
-    auto lod = lods[0];
     PADDLE_ENFORCE_EQ(lods.size(), 1UL, "Only support one level sequence now.");
+
+    auto lod = lods[0];
 
     std::vector<SeqInfo> seq_info;
     for (size_t seq_id = 0; seq_id < lod.size() - 1; ++seq_id) {
@@ -157,9 +161,12 @@ class Batch2LoDTensorFunctor {
                   const framework::LoDTensor& batch,
                   framework::LoDTensor* lod_tensor) const {
     auto in_lod = batch.lod();
-    PADDLE_ENFORCE_GT(in_lod.size(), 2UL);
-    PADDLE_ENFORCE_EQ(in_lod[1].size(),
-                      static_cast<size_t>(lod_tensor->dims()[0]));
+    PADDLE_ENFORCE_GT(in_lod.size(), 2UL,
+                      "The LoD of LoDTensor should inlcude at least 2-level "
+                      "sequence information.");
+    PADDLE_ENFORCE_EQ(
+        in_lod[1].size(), static_cast<size_t>(lod_tensor->dims()[0]),
+        "The LoD information should be consistent with the dims.");
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
     to_seq(context, batch, in_lod[1], lod_tensor, false);
   }
