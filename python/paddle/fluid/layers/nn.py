@@ -2080,11 +2080,11 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the sum is performed. If
+        dim (list|int|None): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
-            the dimension to reduce is :math:`rank + dim`.
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2108,6 +2108,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_sum',
         inputs={'X': input},
@@ -2126,11 +2128,11 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the mean is computed. If
+        dim (list|int|None): The dimensions along which the mean is computed. If
             :attr:`None`, compute the mean over all elements of :attr:`input`
             and return a Tensor variable with a single element, otherwise
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2154,6 +2156,8 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_mean',
         inputs={'X': input},
@@ -2172,11 +2176,11 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the maximum is computed.
+        dim (list|int|None): The dimension along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2200,6 +2204,8 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_max',
         inputs={'X': input},
@@ -2218,11 +2224,11 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the minimum is computed.
+        dim (list|int|None): The dimensions along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2246,6 +2252,8 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_min',
         inputs={'X': input},
@@ -2264,11 +2272,11 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the product is performed. If
+        dim (list|int|None): The dimensions along which the product is performed. If
             :attr:`None`, multipy all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
-            the dimension to reduce is :math:`rank + dim`.
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2293,6 +2301,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_prod',
         inputs={'X': input},
@@ -3769,13 +3779,13 @@ def label_smooth(label,
 
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform 
+    Region of interest pooling (also known as RoI pooling) is to perform
         is to perform max pooling on inputs of nonuniform sizes to obtain
         fixed-size feature maps (e.g. 7*7).
-    The operator has three steps: 
-        1. Dividing each region proposal into equal-sized sections with 
-           the pooled_width and pooled_height 
-        2. Finding the largest value in each section 
+    The operator has three steps:
+        1. Dividing each region proposal into equal-sized sections with
+           the pooled_width and pooled_height
+        2. Finding the largest value in each section
         3. Copying these max values to the output buffer
 
     Args:
@@ -3783,8 +3793,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         rois (Variable): ROIs (Regions of Interest) to pool over. It should
                          be a 2-D one level LoTensor of shape [num_rois, 4].
                          The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the 
-                         bottom right coordinates. The num_rois is the 
+                         is the top left coordinates, and (x2, y2) is the
+                         bottom right coordinates. The num_rois is the
                          total number of ROIs in this batch data.
         pooled_height (integer): The pooled output height. Default: 1
         pooled_width (integer): The pooled output width. Default: 1
@@ -3793,11 +3803,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                                to the scale used when pooling. Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape 
+        pool_out (Variable): The output is a 4-D tensor of the shape
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -3815,3 +3825,19 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+def dice_loss(input, label, epsilon=0.001):
+    """
+    **Dice loss Layer**
+    """
+    helper = LayerHelper('dice_loss', **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+
+    label = reshape(lable, shape)
+    label = one_hot(label, depth=num_classes)
+    inse = reduce_sum(input * label, dims=0)
+
+    dice_denominator = reduce_sum(input, dims=0) + reduce_sum(label, dims=0)
+    dice_score = (inse * 2 + epsilon) / (dice_denominator + epsilon)
+    return reduce_mean(dice_score)

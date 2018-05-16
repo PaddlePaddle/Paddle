@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/reduce_op.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -34,11 +35,14 @@ class ReduceOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
-    int dim = ctx->Attrs().Get<int>("dim");
-    if (dim < 0) dim = x_rank + dim;
-    PADDLE_ENFORCE_LT(
-        dim, x_rank,
-        "The dim should be in the range [-rank(input), rank(input)).");
+    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    for (size_t i = 0; i < dims.size(); ++i) {
+      if (dims[i] < 0) dims[i] = x_rank + dims[i];
+      PADDLE_ENFORCE_LT(
+          dims[i], x_rank,
+          "The dim should be in the range [-rank(input), rank(input)).");
+    }
+    sort(dims.begin(), dims.end());
     bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
     bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
     if (reduce_all) {
@@ -49,14 +53,20 @@ class ReduceOp : public framework::OperatorWithKernel {
         ctx->SetOutputDim("Out", {1});
     } else {
       auto dims_vector = vectorize(x_dims);
-      if (keep_dim || x_rank == 1) {
-        dims_vector[dim] = 1;
+      if (keep_dim) {
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = 1;
+        }
       } else {
-        dims_vector.erase(dims_vector.begin() + dim);
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = -1;
+        }
+        dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), -1),
+                          dims_vector.end());
       }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
-      if (dim != 0) {
+      if (dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
         ctx->ShareLoD("X", /*->*/ "Out");
       }
@@ -75,11 +85,14 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
-    int dim = ctx->Attrs().Get<int>("dim");
-    if (dim < 0) dim = x_rank + dim;
-    PADDLE_ENFORCE_LT(
-        dim, x_rank,
-        "The dim should be in the range [-rank(input), rank(input)).");
+    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    for (size_t i = 0; i < dims.size(); ++i) {
+      if (dims[i] < 0) dims[i] = x_rank + dims[i];
+      PADDLE_ENFORCE_LT(
+          dims[i], x_rank,
+          "The dim should be in the range [-rank(input), rank(input)).");
+    }
+    sort(dims.begin(), dims.end());
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
@@ -95,13 +108,13 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input tensor. Tensors with rank at most 6 are "
              "supported.");
     AddOutput("Out", "(Tensor) The result tensor.");
-    AddAttr<int>(
+    AddAttr<std::vector<int>>(
         "dim",
-        "(int, default 0) The dimension to reduce. "
+        "(list<int>, default {0}) The dimensions to reduce. "
         "Must be in the range [-rank(input), rank(input)). "
-        "If `dim < 0`, the dim to reduce is `rank + dim`. "
+        "If `dim[i] < 0`, the dims[i] to reduce is `rank + dims[i]`. "
         "Note that reducing on the first dim will make the LoD info lost.")
-        .SetDefault(0);
+        .SetDefault({0});
     AddAttr<bool>("keep_dim",
                   "(bool, default false) "
                   "If true, retain the reduced dimension with length 1.")
