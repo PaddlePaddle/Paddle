@@ -150,6 +150,7 @@ class ReduceKernel : public framework::OpKernel<T> {
       HANDLE_DIM(3, 2);
       HANDLE_DIM(3, 1);
       HANDLE_DIM(2, 1);
+      HANDLE_DIM(1, 1);
     }
   }
 
