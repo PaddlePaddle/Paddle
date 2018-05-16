@@ -66,6 +66,7 @@ list(REMOVE_ITEM TEST_OPS test_fetch_var)
 list(REMOVE_ITEM TEST_OPS test_parallel_op)
 list(REMOVE_ITEM TEST_OPS test_dynrnn_static_input)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
+list(REMOVE_ITEM TEST_OPS test_network_with_dtype)
 
 # tests that can be bundled together in one python process for speed.
 if(WITH_FAST_BUNDLE_TEST)
@@ -83,6 +84,7 @@ py_test_modules(test_parallel_executor MODULES test_parallel_executor)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)
+py_test_modules(test_network_with_dtype MODULES test_network_with_dtype)
 
 # tests that need to be run in separate process.
 py_test_modules(test_multihead_attention MODULES test_multihead_attention)
