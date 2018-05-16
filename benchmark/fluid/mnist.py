@@ -184,7 +184,7 @@ def run_benchmark(model, args):
                 ]
             )  # The accuracy is the accumulation of batches, but not the current batch.
             accuracy.update(
-                value=np.array(np.mean(outs[1])), 
+                value=np.array(np.mean(outs[1])),
                 weight=np.mean(np.array(outs[2])))
             iters += 1
             num_samples += len(y_data)
