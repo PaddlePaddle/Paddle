@@ -12,15 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/is_empty_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/is_empty_op.h"
 
 namespace paddle {
 namespace operators {
-
-// constexpr char kInput[] = "X";
-// constexpr char kOutput[] = "Out";
 
 class IsEmptyOp : public framework::OperatorWithKernel {
  public:
@@ -41,23 +38,6 @@ class IsEmptyOp : public framework::OperatorWithKernel {
         platform::CPUPlace());
     return kt;
   }
-/*
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    // get input
-    auto *var = scope.FindVar(Input(kInput));
-    PADDLE_ENFORCE_NOT_NULL(var);
-    auto &tensor = var->Get<framework::LoDTensor>();
-    // get output
-    auto *out = scope.FindVar(Output(kOutput));
-    PADDLE_ENFORCE_NOT_NULL(out);
-    auto *out_tensor = out->GetMutable<framework::LoDTensor>();
-
-    out_tensor->Resize({1});
-    out_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
-        framework::product(tensor.dims()) == 0;
-  }
-*/
 };
 
 class IsEmptyOpMaker : public framework::OpProtoAndCheckerMaker {
