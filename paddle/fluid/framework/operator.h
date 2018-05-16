@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
