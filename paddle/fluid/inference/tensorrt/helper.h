@@ -26,6 +26,7 @@ namespace tensorrt {
 
 namespace dy = paddle::platform::dynload;
 
+/*
 static size_t AccumDims(nvinfer1::Dims dims) {
   size_t num = dims.nbDims == 0 ? 0 : 1;
   for (int i = 0; i < dims.nbDims; i++) {
@@ -34,6 +35,7 @@ static size_t AccumDims(nvinfer1::Dims dims) {
   }
   return num;
 }
+ */
 
 // TensorRT data type to size
 const int kDataTypeSize[] = {
