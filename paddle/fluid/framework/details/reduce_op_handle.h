@@ -16,6 +16,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -34,13 +35,20 @@ namespace details {
 struct ReduceOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
+  const size_t dst_scope_id_;
 
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
-                 const platform::NCCLContextMap *nccl_ctxs)
-      : local_scopes_(local_scopes), places_(places), nccl_ctxs_(nccl_ctxs) {
+                 const platform::NCCLContextMap *nccl_ctxs,
+                 const size_t dst_scope_id = -1,
+                 const std::string var_name = "")
+      : local_scopes_(local_scopes),
+        places_(places),
+        dst_scope_id_(dst_scope_id),
+        nccl_ctxs_(nccl_ctxs),
+        var_name_(var_name) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
         dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
@@ -49,9 +57,16 @@ struct ReduceOpHandle : public OpHandleBase {
   }
 #else
   ReduceOpHandle(const std::vector<Scope *> &local_scopes,
-                 const std::vector<platform::Place> &places)
-      : local_scopes_(local_scopes), places_(places) {}
+                 const std::vector<platform::Place> &places,
+                 const size_t dst_scope_id = -1,
+                 const std::string var_name = "")
+      : local_scopes_(local_scopes),
+        places_(places),
+        dst_scope_id_(dst_scope_id),
+        var_name_(var_name) {}
 #endif
+
+  const std::string var_name_;
 
   std::string Name() const override;
 
@@ -60,10 +75,25 @@ struct ReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<const LoDTensor *> GetGroupValues();
+
   template <typename T>
   std::vector<const T *> GetInputValues(
       const std::vector<VarHandle *> &in_var_handles,
-      const std::vector<const Scope *> &var_scopes) const;
+      const std::vector<const Scope *> &var_scopes);
+
+  void ReduceGroup(const std::vector<VarHandle *> &out_var_handles,
+                   const std::vector<const Scope *> &var_scopes);
+
+  void ReduceInput(const std::vector<VarHandle *> &in_var_handles,
+                   const std::vector<VarHandle *> &out_var_handles,
+                   const std::vector<const Scope *> &var_scopes);
+
+#ifdef PADDLE_WITH_CUDA
+  void NCCLReduce(const std::vector<const LoDTensor *> &lod_tensors,
+                  const size_t dst_dev_id, Variable *out_var,
+                  std::vector<std::function<void()>> *nccl_reduce_calls);
+#endif
 };
 
 }  // namespace details
