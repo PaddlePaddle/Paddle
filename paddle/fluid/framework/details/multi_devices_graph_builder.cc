@@ -37,25 +37,26 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs, bool use_default_grad_scale)
+    platform::NCCLContextMap *nccl_ctxs, const BuildStrategy &strategy)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
-      nccl_ctxs_(nccl_ctxs) {
+      nccl_ctxs_(nccl_ctxs),
+      strategy_(strategy) {
 #else
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, bool use_default_grad_scale)
+    const std::vector<Scope *> &local_scopes, const BuildStrategy &strategy)
     : loss_var_name_(loss_var_name),
       places_(places),
-      local_scopes_(local_scopes) {
+      local_scopes_(local_scopes),
+      strategy_(strategy) {
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
   }
-  use_default_grad_scale_ = use_default_grad_scale;
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
@@ -124,6 +125,12 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   // Find "send" op first for split is in front of send.
   OpDesc *send_op = GetSendOpDesc(program);
 
+  size_t cur_device_id = 0;
+  std::vector<std::unordered_set<std::string>> var_name_on_devices;
+  std::vector<std::unordered_set<std::string>> bcast_var_name_set;
+  var_name_on_devices.resize(places_.size());
+  bcast_var_name_set.resize(places_.size());
+
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
     if (op->Type() == "send") {
@@ -134,22 +141,42 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       CreateComputationalOps(&result, *op, 1);
     } else if (IsScaleLossOp(*op)) {
       // user can customize loss@grad if not use_default_grad_scale_
-      if (use_default_grad_scale_) {
+      if (strategy_.gradient_scale_ !=
+          BuildStrategy::GradientScaleStrategy::kCustomized) {
         CreateScaleLossGradOp(&result);
       }
       is_forwarding = false;
     } else {
-      CreateComputationalOps(&result, *op, places_.size());
+      int op_dev_id = GetOpDeviceID(var_name_on_devices, *op);
+      if (op_dev_id == -1) {  // var on all device
+        CreateComputationalOps(&result, *op, places_.size());
+      } else {
+        CreateComputationalOp(&result, *op, op_dev_id);
+        for (auto &var_name : op->OutputArgumentNames()) {
+          var_name_on_devices[op_dev_id].emplace(var_name);
+        }
+      }
       if (!is_forwarding && places_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            if (IsSparseGradient(var_types, og)) {
-              CreateReduceOp(&result, og, 0);
-              CreateBroadcastOp(&result, og, 0);
-            } else {
-              InsertNCCLAllReduceOp(&result, og);
+            switch (strategy_.reduce_) {
+              case BuildStrategy::ReduceStrategy::kReduce:
+                CreateReduceOp(&result, og, cur_device_id);
+                var_name_on_devices[cur_device_id].emplace(og);
+                bcast_var_name_set[cur_device_id].emplace(
+                    og.substr(0, og.size() - strlen(kGradVarSuffix)));
+                cur_device_id = (cur_device_id + 1) % places_.size();
+                break;
+              case BuildStrategy::ReduceStrategy::kAllReduce:
+                if (IsSparseGradient(var_types, og)) {
+                  CreateReduceOp(&result, og, 0);
+                  CreateBroadcastOp(&result, og, 0);
+                } else {
+                  InsertNCCLAllReduceOp(&result, og);
+                }
+                break;
             }
           }
         }
@@ -157,6 +184,13 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     }
   }
 
+  // Insert BCast Ops
+  for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
+    auto &to_bcast_set = bcast_var_name_set[dev_id];
+    for (auto &bcast_name : to_bcast_set) {
+      CreateBroadcastOp(&result, bcast_name, dev_id);
+    }
+  }
   /*
     Dependency graph has been constructed. However, there are still data
     harzaeds need to be handled.
@@ -263,6 +297,26 @@ bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
     og_has_been_broadcast->insert(og);
   }
   return is_pg_once;
+}
+
+int MultiDevSSAGraphBuilder::GetOpDeviceID(
+    const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
+    const OpDesc &op) const {
+  if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
+    return -1;
+  }
+
+  int var_dev_id = -1;
+  for (auto &var_name : op.InputArgumentNames()) {
+    if (var_dev_id != -1) break;
+    for (size_t i = 0; i < var_name_on_devices.size(); ++i) {
+      if (var_name_on_devices[i].count(var_name)) {
+        var_dev_id = static_cast<int>(i);
+        break;
+      }
+    }
+  }
+  return var_dev_id;
 }
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {

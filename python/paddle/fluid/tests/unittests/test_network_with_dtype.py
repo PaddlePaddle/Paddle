@@ -27,27 +27,27 @@ class TestNetWithDtype(unittest.TestCase):
     def setUp(self):
         self.dtype = "float64"
         self.init_dtype()
-        self.x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
-        self.y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
-        y_predict = fluid.layers.fc(input=self.x, size=1, act=None)
-
-        cost = fluid.layers.square_error_cost(input=y_predict, label=self.y)
-        avg_cost = fluid.layers.mean(cost)
-        self.fetch_list = [avg_cost]
-
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-        sgd_optimizer.minimize(avg_cost)
 
     def run_net_on_place(self, place):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
+            y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = fluid.layers.mean(cost)
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_cost)
+
+        fetch_list = [avg_cost]
         train_reader = paddle.batch(
             paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
-        feeder = fluid.DataFeeder(place=place, feed_list=[self.x, self.y])
+        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe.run(startup)
         for data in train_reader():
-            exe.run(fluid.default_main_program(),
-                    feed=feeder.feed(data),
-                    fetch_list=self.fetch_list)
+            exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
             # the main program is runable, the datatype is fully supported
             break
 
@@ -66,7 +66,7 @@ class TestNetWithDtype(unittest.TestCase):
 
 
 # TODO(dzhwinter): make sure the fp16 is runable
-# class TestFloat16(SimpleNet):
+# class TestFloat16(TestNetWithDtype):
 #     def init_dtype(self):
 #         self.dtype = "float16"
 
