@@ -268,7 +268,9 @@ def run_benchmark(model, args):
             loss, acc, weight = train_exe.run(
                 feed={'data': image,
                       'label': label},
-                fetch_list=[avg_cost.name, batch_acc.name, batch_size_tensor.name])
+                fetch_list=[
+                    avg_cost.name, batch_acc.name, batch_size_tensor.name
+                ])
             iters += 1
             num_samples += len(label)
             accuracy.add(value=np.array(np.mean(acc)), weight=np.mean(weight))
