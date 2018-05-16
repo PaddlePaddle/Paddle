@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -52,8 +53,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 
 class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() final {
     AddInput("Input",
              "(Tensor) Tensor "
              "whose input_dim_idx'th dimension specifies the batch_size");
@@ -67,7 +67,11 @@ class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("output_dim_idx",
                  "(int, default 0) The index of output's batch size dimension")
         .SetDefault(0);
+    Apply();
   }
+
+ protected:
+  virtual void Apply() = 0;
 };
 
 }  // namespace operators

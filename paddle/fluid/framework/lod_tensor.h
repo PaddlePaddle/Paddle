@@ -15,6 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -29,6 +32,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+
+namespace recordio {
+class Writer;
+class Scanner;
+}
+
 namespace framework {
 
 /*
@@ -136,6 +145,7 @@ class LoDTensor : public Tensor {
     return (lod_)[level].size() - 1;
   }
 
+  // Split LoDTensor and copy to each place specified in places.
   std::vector<LoDTensor> SplitLoDTensor(
       const std::vector<platform::Place> places) const;
 
@@ -208,6 +218,13 @@ void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
+
+extern void WriteToRecordIO(recordio::Writer* writer,
+                            const std::vector<LoDTensor>& tensor,
+                            const platform::DeviceContext& dev_ctx);
+
+extern std::vector<LoDTensor> ReadFromRecordIO(
+    recordio::Scanner* scanner, const platform::DeviceContext& dev_ctx);
 
 }  // namespace framework
 }  // namespace paddle

@@ -18,43 +18,54 @@ limitations under the License. */
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T, typename AttrType>
+template <typename T>
 __global__ void RandomGenerator(const size_t n, const int seed,
-                                const AttrType dropout_prob, const T* src,
+                                const float dropout_prob, const T* src,
                                 T* mask_data, T* dst) {
   thrust::minstd_rand rng;
   rng.seed(seed);
-  thrust::uniform_real_distribution<AttrType> dist(0, 1);
+  thrust::uniform_real_distribution<float> dist(0, 1);
 
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = 0;
+
+  T mask;
+  T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
-    if (dist(rng) < dropout_prob) {
-      mask_data[idx] = static_cast<T>(0);
+    T s = src[idx];
+    if (step_size == 0) {
+      rng.discard(idx);
+      step_size = blockDim.x * gridDim.x;
     } else {
-      mask_data[idx] = static_cast<T>(1);
+      rng.discard(step_size);
     }
-    dst[idx] = mask_data[idx] * src[idx];
+    if (dist(rng) < dropout_prob) {
+      mask = static_cast<T>(0);
+    } else {
+      mask = static_cast<T>(1);
+    }
+    dest = s * mask;
+    mask_data[idx] = mask;
+    dst[idx] = dest;
   }
 }
 
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
-template <typename Place, typename T, typename AttrType>
+template <typename Place, typename T>
 class GPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
     y->mutable_data<T>(context.GetPlace());
-    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
-
-    auto X = EigenMatrix<T>::Reshape(*x, 1);
-    auto Y = EigenMatrix<T>::Reshape(*y, 1);
+    float dropout_prob = context.Attr<float>("dropout_prob");
 
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
@@ -70,11 +81,13 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x->numel() + threads - 1) / threads;
-      RandomGenerator<T, AttrType><<<grid, threads, 0,
-                                     context.cuda_device_context().stream()>>>(
+      RandomGenerator<
+          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data);
     } else {
-      Y.device(place) = X * (1.0f - dropout_prob);
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }
 };
@@ -83,9 +96,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    dropout,
-    ops::GPUDropoutKernel<paddle::platform::CUDADeviceContext, float, float>);
-REGISTER_OP_CUDA_KERNEL(
-    dropout_grad,
-    ops::DropoutGradKernel<paddle::platform::CUDADeviceContext, float>);
+    dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(dropout_grad,
+                        ops::DropoutGradKernel<plat::CUDADeviceContext, float>);

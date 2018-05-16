@@ -26,19 +26,38 @@
 
 依据是否包含kernel，可以将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorWithKernel`，后者继承自`OperatorBase`。本教程主要介绍带Kernel的Op如何写，简单总结Op需要包含的内容如下：
 
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>定义位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpProtoMake定义 </td>
+<td>`.cc`文件，Backward Op不需要定义OpProtoMake </td>
+</tr>
+<tr>
+<td>Op定义 </td>
+<td> `.cc`文件</td>
+</tr>
+<tr>
+<td>Kernel实现 </td>
+<td> CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。</td>
+</tr>
+<tr>
+<td>注册Op </td>
+<td> Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中</td>
+</tr>
+</tbody>
+</table>
 
- 内容            | 定义位置
---------------  | :----------------------
-OpProtoMake定义  | `.cc`文件，Backward Op不需要定义OpProtoMake
-Op定义           | `.cc`文件
-Kernel实现       | CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。
-注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中
+
+实现新的op都添加至目录[paddle/fluid/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/fluid/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**
 
 
-实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**
-
-
-下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
+下面以矩阵乘操作，即[MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc)为例来介绍如何写带Kernel的Operator。
 
 
 ## 实现C++类
@@ -66,17 +85,17 @@ The equation is: Out = X * Y
 };
 ```
 
-[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)继承自`framework::OpProtoAndCheckerMaker`，构造函数含有2个参数：
+[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc#L76-L127)继承自`framework::OpProtoAndCheckerMaker`，构造函数含有2个参数：
 
    - `framework::OpProto` ： 前者存储Op的输入输出和参数属性，将用于Python API接口的生成。
    - `framework::OpAttrChecker` ：后者用于检查参数属性的合法性。
 
 构造函数里通过`AddInput`添加输入参数，通过`AddOutput`添加输出参数，通过`AddComment`添加Op的注释。这些函数会将对应内容添加到`OpProto`中。
 
-上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守[命名规范](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md)。
+上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守[命名规范](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/name_convention.md)。
 
 
-再以[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37)为例：
+再以[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/scale_op.cc#L38-L55)为例：
 
 ```cpp
 template <typename AttrType>
@@ -84,21 +103,21 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ScaleOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input tensor of scale operator.").NotInGradient();
-    AddOutput("Out", "The output tensor of scale operator.").NotInGradient();
-    AddComment(R"DOC(Scale operator
-The equation is: Out = scale*X
+    AddInput("X", "(Tensor) Input tensor of scale operator.");
+    AddOutput("Out", "(Tensor) Output tensor of scale operator.");
+    AddComment(R"DOC(
+Scale operator
+$$Out = scale*X$$
 )DOC");
-    AddAttr<AttrType>("scale", "scale of scale operator.").SetDefault(1.0);
+    AddAttr<AttrType>("scale",
+                      "(float, default 1.0)"
+                      "The scaling factor of the scale operator.")
+        .SetDefault(1.0);
   }
 };
 ```
 
-这个例子有两处不同：
-
-- `AddInput("X","...").NotInGradient()` : 表示`X`这个输入不参与`ScaleOp`对应的梯度Op计算之中，如果Op的某个输入不参与反向梯度的计算，请显示地调用`.NotInGradient()`进行设置。
-
-- `AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
+这个例子有`AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
 
 
 ### 定义Operator类
@@ -128,7 +147,7 @@ class MulOp : public framework::OperatorWithKernel {
 };
 ```
 
-[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22)继承自`OperatorWithKernel`。`public`成员：
+[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc#L22)继承自`OperatorWithKernel`。`public`成员：
 
 ```cpp
 using framework::OperatorWithKernel::OperatorWithKernel;
@@ -154,7 +173,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 `MulKernel`继承自`framework::OpKernel`，带有下面两个模板参数:
 
-- `typename DeviceContext`: 表示设备类型，不同设备(CPU、CUDA)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+- `typename DeviceContext`: 表示设备类型，不同设备(CPU、CUDA)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.h#L43)。
 
 - `typename T` : 表示数据类型，如`float`, `double`等。
 
@@ -182,10 +201,9 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 需要注意：**不同设备(CPU、CUDA)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
 
-`MulOp`的CPU、CUDA实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+`MulOp`的CPU、CUDA实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.h#L43)。
 
-为了使`OpKernel`的计算过程书写更加简单，并且CPU、CUDA的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
-
+为了使`OpKernel`的计算过程书写更加简单，并且CPU、CUDA的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/use_eigen_cn.md)。
 
 到此，前向Op实现完成。接下来，需要在`.cc`文件中注册该op和kernel。
 反向Op类的定义，反向OpKernel的定义与前向Op类似，这里不再赘述。**但需注意反向Op没有`ProtoMaker`**。
@@ -196,7 +214,9 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
     ```cpp
     namespace ops = paddle::operators;
-    REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+    REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>)
+    REGISTER_OPERATOR(mul_grad, ops::MulGradOp)
     REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
     REGISTER_OP_CPU_KERNEL(mul_grad,
                   ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
@@ -204,8 +224,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
    在上面的代码中：
 
-    - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`。
-    - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
+    - `REGISTER_OPERATOR` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`。
     - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulGradKernel`类。
 
 
@@ -236,7 +255,7 @@ make mul_op
 
 ## 实现单元测试
 
-单测包括对比前向Op不同设备(CPU、CUDA)的实现、对比反向OP不同设备(CPU、CUDA)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
+单测包括对比前向Op不同设备(CPU、CUDA)的实现、对比反向OP不同设备(CPU、CUDA)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/unittests/test_mul_op.py)。
 
 ### 前向Operator单测
 
@@ -296,7 +315,7 @@ Op单元测试继承自`OpTest`。各项更加具体的单元测试在`TestMulOp
 
 ### 编译和执行
 
-`python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
+`python/paddle/fluid/tests/unittests/` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
 
 请注意，**不同于Op的编译测试，运行单元测试测时需要编译整个工程**，并且编译时需要打开`WITH_TESTING`, 即`cmake paddle_dir -DWITH_TESTING=ON`。编译成功后，执行下面的命令来运行单元测试：
 
@@ -312,7 +331,6 @@ ctest -R test_mul_op
 
 ## 注意事项
 
-- 为每个Op创建单独的`*_op.h`（如有）、`*_op.cc`和`*_op.cu`（如有）。不允许一个文件中包含多个Op，这将会导致编译出错。
-- 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OP(B, ...)`等，这将会导致单元测试出错。
+- 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OPERATOR(B, ...)`等，这将会导致单元测试出错。
 - 如果Op没有实现CUDA Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
 - 如果多个Op依赖一些共用的函数，可以创建非`*_op.*`格式的文件来存放，如`gather.h`文件。

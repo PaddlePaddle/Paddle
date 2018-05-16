@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/logical_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -20,8 +21,7 @@ namespace operators {
 template <typename OpComment>
 class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BinaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X",
              string::Sprintf("(LoDTensor) Left hand operand of %s operator",
@@ -44,8 +44,7 @@ Each element of Out is calculated by %s
 template <typename OpComment>
 class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UnaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
                                   comment.type));

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -20,7 +21,7 @@ namespace math {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatFunctor<platform::CPUDeviceContext, T> {
@@ -44,7 +45,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
       out_cols += t_cols;
       input_cols[i] = t_cols;
     }
-    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
     for (int k = 0; k < out_rows; ++k) {
@@ -63,31 +64,31 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatGradFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const int axis,
-                  std::vector<framework::Tensor>& outputs) {
+                  std::vector<framework::Tensor>* outputs) {
     // TODO(zcd): Add input data validity checking
-    int num = outputs.size();
+    int num = outputs->size();
 
     int input_rows = 1;
-    auto dim_0 = outputs[0].dims();
+    auto dim_0 = outputs->at(0).dims();
     for (int i = 0; i < axis; ++i) {
       input_rows *= dim_0[i];
     }
     int input_cols = 0;
 
-    std::vector<int64_t> output_cols(outputs.size());
+    std::vector<int64_t> output_cols(outputs->size());
     for (int i = 0; i < num; ++i) {
-      int t_cols = outputs[i].numel() / input_rows;
+      int t_cols = outputs->at(i).numel() / input_rows;
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
-    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
     for (int k = 0; k < input_rows; ++k) {
@@ -95,7 +96,7 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
       int col_idx = 0;
       for (int j = 0; j < num; ++j) {
         int col_len = output_cols[j];
-        T* dst_ptr = outputs[j].data<T>() + k * col_len;
+        T* dst_ptr = outputs->at(j).data<T>() + k * col_len;
         memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
                      sizeof(T) * col_len);
         col_idx += col_len;

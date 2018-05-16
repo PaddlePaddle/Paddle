@@ -10,7 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sum_op.h"
+
+#include <algorithm>
+#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
@@ -35,7 +39,10 @@ class SumOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
     size_t N = x_dims.size();
-    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
+    if (N == 1) {
+      VLOG(3) << "Warning: sum have only one input, may waste memory";
+    }
 
     framework::DDim in_dim({0});
     for (auto& x_dim : x_dims) {
@@ -105,8 +112,7 @@ class SumOp : public framework::OperatorWithKernel {
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor) The output tensor of sum operator.");

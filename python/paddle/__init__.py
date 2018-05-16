@@ -14,8 +14,14 @@
 try:
     from version import full_version as __version__
     from version import commit as __git_commit__
+
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not 
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
+
+import reader
+import dataset
+import batch
+batch = batch.batch

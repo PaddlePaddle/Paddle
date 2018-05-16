@@ -248,12 +248,15 @@ def _callback_lookup_(op):
                         if o_argu in self.param_grad_names:
                             allreduce_out_name = o_argu + "__nccl_all_reduce__"
                             op_desc = _create_op_desc_(
-                                "ncclAllReduce", {
+                                "ncclReduce",
+                                {
                                     "X": [o_argu],
                                     "Communicator":
                                     ['nccl_com__do_not_change_']
-                                }, {"Out": [allreduce_out_name]},
-                                {"reduction": "ncclSum"})
+                                },
+                                {"Out": [allreduce_out_name]},
+                                {"reduction": "ncclSum",
+                                 "root": 0}, )
                             block.desc.append_op().copy_from(op_desc)
 
                             op_desc = _create_op_desc_(
@@ -477,6 +480,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     program.current_block_idx = current_block_idx
     program.sync_with_cpp()
+    # FIXME(zcd): prevent loss.grad optimized by mem_opt.
+    loss.block.var(_append_grad_suffix_(loss.name)).persistable = True
 
     if parameter_list is not None:
         parameters = parameter_list

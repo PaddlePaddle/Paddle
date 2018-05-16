@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <tuple>
+#include <vector>
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -92,7 +95,10 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
-    auto maker = T(info->proto_, info->checker_);
+    T maker;
+    maker.SetProto(info->proto_);
+    maker.SetChecker(info->checker_);
+    maker.Make();
     maker.Validate();
     info->proto_->set_type(op_type);
     PADDLE_ENFORCE(

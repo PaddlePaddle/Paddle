@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <functional>
-#include <future>
-#include <mutex>
+#include <future>  // NOLINT
+#include <mutex>   // NOLINT
 #include <queue>
-#include <thread>
+#include <thread>  // NOLINT
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -28,10 +28,28 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+struct ExceptionHandler {
+  mutable std::future<std::unique_ptr<platform::EnforceNotMet>> future_;
+  explicit ExceptionHandler(
+      std::future<std::unique_ptr<platform::EnforceNotMet>>&& f)
+      : future_(std::move(f)) {}
+  void operator()() const {
+    auto ex = this->future_.get();
+    if (ex != nullptr) {
+      LOG(FATAL) << "The exception is thrown inside the thread pool. You "
+                    "should use RunAndGetException to handle the exception.\n"
+                    "The default exception handler is LOG(FATAL)."
+                 << ex->what();
+    }
+  }
+};
+
 // ThreadPool maintains a queue of tasks, and runs them using a fixed
 // number of threads.
 class ThreadPool {
  public:
+  explicit ThreadPool(int num_threads);
+
   using Task = std::packaged_task<std::unique_ptr<platform::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
@@ -85,25 +103,7 @@ class ThreadPool {
   void Wait();
 
  private:
-  struct ExceptionHandler {
-    mutable std::future<std::unique_ptr<platform::EnforceNotMet>> future_;
-    explicit ExceptionHandler(
-        std::future<std::unique_ptr<platform::EnforceNotMet>>&& f)
-        : future_(std::move(f)) {}
-    void operator()() const {
-      auto ex = this->future_.get();
-      if (ex != nullptr) {
-        LOG(FATAL) << "The exception is thrown inside the thread pool. You "
-                      "should use RunAndGetException to handle the exception.\n"
-                      "The default exception handler is LOG(FATAL)."
-                   << ex->what();
-      }
-    }
-  };
-
   DISABLE_COPY_AND_ASSIGN(ThreadPool);
-
-  explicit ThreadPool(int num_threads);
 
   // If the task queue is empty and avaialbe is equal to the number of
   // threads, means that all tasks are completed.  Note: this function
@@ -135,12 +135,28 @@ class ThreadPool {
   std::condition_variable completed_;
 };
 
+class ThreadPoolIO : ThreadPool {
+ public:
+  static ThreadPool* GetInstanceIO();
+  static void InitIO();
+
+ private:
+  // NOTE: threadpool in base will be inhereted here.
+  static std::unique_ptr<ThreadPool> io_threadpool_;
+  static std::once_flag io_init_flag_;
+};
+
 // Run a function asynchronously.
 // NOTE: The function must return void. If the function need to return a value,
 // you can use lambda to capture a value pointer.
 template <typename Callback>
 std::future<void> Async(Callback callback) {
   return ThreadPool::GetInstance()->Run(callback);
+}
+
+template <typename Callback>
+std::future<void> AsyncIO(Callback callback) {
+  return ThreadPoolIO::GetInstanceIO()->Run(callback);
 }
 
 }  // namespace framework

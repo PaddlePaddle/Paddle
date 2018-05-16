@@ -1,11 +1,8 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,12 +10,33 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/float16.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
+
+/* Use ugly global variable, for the using in python layer side
+   Please refer to the layer_helper.py and get the details.
+ */
+static std::unordered_set<std::string> InplaceOpSet = {
+    "sigmoid", "exp",        "relu",  "tanh",      "sqrt",         "ceil",
+    "floor",   "reciprocal", "relu6", "soft_relu", "hard_sigmoid",
+};
+
+static bool IsInplace(std::string op) { return InplaceOpSet.count(op); }
 
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
@@ -55,7 +73,6 @@ class ActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<framework::Tensor>("X");
     auto* Out = context.Input<framework::Tensor>("Out");
     auto* dOut =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -63,7 +80,6 @@ class ActivationGradKernel
     dX->mutable_data<T>(context.GetPlace());
 
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
-    auto x = framework::EigenVector<T>::Flatten(*X);
     auto out = framework::EigenVector<T>::Flatten(*Out);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
     auto* place =
@@ -73,7 +89,16 @@ class ActivationGradKernel
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
-    functor(*place, x, out, dout, dx);
+    bool inplace = functor.Inplace();
+    if (!inplace) {
+      auto* X = context.Input<framework::Tensor>("X");
+      auto x = framework::EigenVector<T>::Flatten(*X);
+      functor(*place, x, out, dout, dx);
+    } else {
+      VLOG(10) << " Inplace activation ";
+      auto x = framework::EigenVector<T>::Flatten(*dX);
+      functor(*place, x, out, dout, dx);
+    }
   }
 };
 
@@ -84,6 +109,14 @@ struct BaseActivationFunctor {
   using AttrPair = std::vector<std::pair<const char*, float*>>;
 
   AttrPair GetAttrs() { return AttrPair(); }
+
+  /* NOTE(*): Output reuse X memory if X is not dependented by its Gradient.
+     For example, sigmoid op's gradient didn't involve x, so its output can
+     reuse
+     input memory. But abs op's gradient use x, it can not be inplaced.
+     gradient did use x.
+   */
+  bool Inplace() const { return false; }
 };
 
 // sigmoid(x) = 1 / (1 + exp(-x))
@@ -97,6 +130,7 @@ struct SigmoidFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("sigmoid"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -151,6 +185,7 @@ struct ExpFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ExpGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("exp"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -169,10 +204,11 @@ struct ReluFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ReluGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("relu"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (x > static_cast<T>(0)).template cast<T>();
+    dx.device(d) = dout * (out > static_cast<T>(0)).template cast<T>();
   }
 };
 
@@ -187,6 +223,7 @@ struct TanhFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct TanhGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("tanh"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -292,6 +329,7 @@ struct SqrtFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SqrtGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("sqrt"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -311,10 +349,11 @@ struct CeilFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ZeroGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("ceil"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = static_cast<T>(0) / x;
+    dx.device(d) = static_cast<T>(0) / out;
   }
 };
 
@@ -324,6 +363,68 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.floor();
+  }
+};
+
+template <typename T>
+struct Sine {
+  HOSTDEVICE T operator()(const T& val) const { return sin(val); }
+};
+
+template <>
+struct Sine<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(sin(static_cast<float>(val)));
+  }
+};
+
+template <typename T>
+struct Cosine {
+  HOSTDEVICE T operator()(const T& val) const { return cos(val); }
+};
+
+template <>
+struct Cosine<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(cos(static_cast<float>(val)));
+  }
+};
+
+// cosine'(x) = -sin(x)
+template <typename T>
+struct CosGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = -dout * x.unaryExpr(Sine<T>());
+  }
+};
+
+// cosine(x) = cos(x)
+template <typename T>
+struct CosFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Cosine<T>());
+  }
+};
+
+// sine'(x) = cos(x)
+template <typename T>
+struct SinGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * x.unaryExpr(Cosine<T>());
+  }
+};
+
+// sine(x) = sin(x)
+template <typename T>
+struct SinFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Sine<T>());
   }
 };
 
@@ -365,6 +466,7 @@ struct ReciprocalFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
+  bool Inplace() const { return IsInplace("reciprocal"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -464,12 +566,14 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
+  bool Inplace() const { return IsInplace("relu6"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout *
-                   ((x > static_cast<T>(0)) * (x < static_cast<T>(threshold)))
-                       .template cast<T>();
+    dx.device(d) =
+        dout *
+        ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+            .template cast<T>();
   }
 };
 
@@ -544,11 +648,12 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
+  bool Inplace() const { return IsInplace("soft_relu"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto tmp = static_cast<T>(threshold);
-    auto temp = ((x > -tmp) * (x < tmp)).template cast<T>().eval();
+    auto temp = ((out > -tmp) * (out < tmp)).template cast<T>().eval();
     dx.device(d) = dout * (static_cast<T>(1) - (-out).exp()) * temp;
   }
 };
@@ -724,7 +829,7 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"slope", &slope}, {"offset", &offset}};
   }
-
+  bool Inplace() { return IsInplace("hard_sigmoid"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -779,6 +884,8 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
   __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
   __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
+  __macro(cos, CosFunctor, CosGradFunctor);                          \
+  __macro(sin, SinFunctor, SinGradFunctor);                          \
   __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \

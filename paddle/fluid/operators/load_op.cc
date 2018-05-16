@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
 
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -29,6 +31,9 @@ class LoadOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    platform::RecordEvent record_event(Type(), dev_ctx);
+
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
@@ -41,30 +46,42 @@ class LoadOp : public framework::OperatorBase {
 
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-    DeserializeFromStream(fin, tensor, dev_ctx);
+    DeserializeFromStream(fin, tensor, *dev_ctx);
 
-    if (platform::is_gpu_place(place)) {
-      // copy CPU to GPU
-      framework::LoDTensor cpu_tensor;
-      cpu_tensor.ShareDataWith(*tensor);
-      cpu_tensor.set_lod(tensor->lod());
+    auto load_as_fp16 = Attr<bool>("load_as_fp16");
+    auto in_dtype = framework::ToDataType(tensor->type());
+    auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
-      // reset tensor
+    if (in_dtype != out_dtype) {
+      // convert to float16 tensor
+      auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+      auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+      framework::LoDTensor fp16_tensor;
+      // copy LoD info to the new tensor
+      fp16_tensor.set_lod(tensor->lod());
+      framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
+                               &fp16_tensor);
+
+      // reset output tensor
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
-      tensor->set_lod(cpu_tensor.lod());
-      TensorCopy(cpu_tensor, place, dev_ctx, tensor);
+      tensor->set_lod(fp16_tensor.lod());
+      tensor->ShareDataWith(fp16_tensor);
     }
   }
 };
 
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoadOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "(Tensor) The tensor need to be loaded");
+    AddAttr<bool>(
+        "load_as_fp16",
+        "(boolean, default false)"
+        "If true, the tensor will be first loaded and then "
+        "converted to float16 data type. Otherwise, the tensor will be "
+        "directly loaded without data type conversion.")
+        .SetDefault(false);
     AddAttr<std::string>("file_path",
                          "(string) "
                          "Variable will be loaded from \"file_path\".")

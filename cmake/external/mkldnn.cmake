@@ -36,7 +36,8 @@ MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/lib to runtime path")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/lib")
 
-INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR})
+INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
+INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include mkldnn.h
 
 IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
     SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
@@ -44,22 +45,25 @@ IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
 ELSE()
     MESSAGE(FATAL_ERROR "Should enable MKLML when build MKLDNN")
 ENDIF()
-
-SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} -Wno-error=strict-overflow")
-SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} -Wno-error=strict-overflow")
+SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-unused-result")
+SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
+SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
-    GIT_TAG             "v0.11"
+    GIT_TAG             "v0.14"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
+    # Patch MKLDNN to compile with gcc 4.8, the related issue is in intel/mkl-dnn#237.
+    PATCH_COMMAND       ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/patches/mkldnn.hpp ${MKLDNN_SOURCES_DIR}/src/extern_mkldnn/include/mkldnn.hpp
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
     CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}
     CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
     CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
+    CMAKE_ARGS          -DWITH_TEST=OFF -DWITH_EXAMPLE=OFF
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )

@@ -13,54 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
-
-template <typename... T>
-struct SizeOfTypeFunctor;
-
-template <typename T>
-struct SizeOfTypeFunctor<T> {
-  size_t operator()(std::type_index type) const {
-    if (typeid(T).hash_code() == type.hash_code()) {
-      return sizeof(T);
-    } else {
-      return 0UL;
-    }
-  }
-};
-
-template <>
-struct SizeOfTypeFunctor<> {
-  size_t operator()(std::type_index type) const { return 0UL; }
-};
-
-template <typename HEAD, typename... TAIL>
-struct SizeOfTypeFunctor<HEAD, TAIL...> {
-  size_t operator()(std::type_index type) const {
-    SizeOfTypeFunctor<HEAD> head;
-    size_t head_size = head(type);
-    if (head_size != 0) {
-      return head_size;
-    }
-    SizeOfTypeFunctor<TAIL...> tail;
-    return tail(type);
-  }
-};
-
-static inline size_t SizeOfType(std::type_index type) {
-  SizeOfTypeFunctor<int, float, double, int16_t, int64_t, bool, size_t,
-                    platform::float16>
-      functor;
-  size_t size = functor(type);
-  PADDLE_ENFORCE(size != 0UL, "Cannot get size of type %s", type.name());
-  return size;
-}
-
+extern size_t SizeOfType(std::type_index type);
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
@@ -117,10 +77,10 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
-  PADDLE_ENFORCE_GT(
-      numel(), 0,
-      "When calling this method, the Tensor's numel must be larger than zero. "
-      "Please check Tensor::Resize has been called first.");
+  PADDLE_ENFORCE_GE(numel(), 0,
+                    "When calling this method, the Tensor's numel must be "
+                    "equal or larger than zero. "
+                    "Please check Tensor::Resize has been called first.");
   int64_t size = numel() * SizeOfType(type);
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
@@ -128,13 +88,20 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
     if (platform::is_cpu_place(place)) {
       holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size, type));
-    } else if (platform::is_gpu_place(place)) {
+    } else if (platform::is_gpu_place(place) ||
+               platform::is_cuda_pinned_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+      PADDLE_THROW(
+          "CUDAPlace or CUDAPinnedPlace is not supported in CPU-only mode.");
     }
 #else
-      holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
-          boost::get<platform::CUDAPlace>(place), size, type));
+      if (platform::is_gpu_place(place)) {
+        holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
+            boost::get<platform::CUDAPlace>(place), size, type));
+      } else if (platform::is_cuda_pinned_place(place)) {
+        holder_.reset(new PlaceholderImpl<platform::CUDAPinnedPlace>(
+            boost::get<platform::CUDAPinnedPlace>(place), size, type));
+      }
     }
 #endif
     offset_ = 0;
@@ -145,7 +112,7 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
 
 inline void* Tensor::mutable_data(platform::Place place) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
-                 "Cannot invoke mutable data if current hold nothing");
+                 "Cannot invoke mutable data if current hold nothing.");
   return mutable_data(place, holder_->type());
 }
 

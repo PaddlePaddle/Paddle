@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>
+#include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -56,11 +56,11 @@ class GoOp : public framework::OperatorBase {
 
     // TODO(varunarora): Consider moving this root scope lookup to scope.h.
     const framework::Scope *root_scope = &scope;
-    const framework::Scope *parent_scope = &(root_scope->parent());
+    const framework::Scope *parent_scope = root_scope->parent();
 
     while (parent_scope != nullptr) {
       root_scope = parent_scope;
-      parent_scope = &(parent_scope->parent());
+      parent_scope = parent_scope->parent();
     }
 
     framework::BlockDesc *block = Attr<framework::BlockDesc *>(kBlock);
@@ -89,8 +89,7 @@ class GoOp : public framework::OperatorBase {
 
 class GoOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GoOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kX,
              "A set of variables, which are required by operators inside the "
              "block of Go Op.")

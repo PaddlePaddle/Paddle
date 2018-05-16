@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
+
+#include <string>
+#include <vector>
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -70,29 +74,39 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
+  framework::LibraryType library{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kCUDNN;
+    library = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
+  if (library == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
+    library = framework::LibraryType::kMKLDNN;
   }
 #endif
 
+  auto input_data_type =
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type());
+  auto filter_data_type =
+      framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
+  PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+                    "input and filter data type should be consistent");
+
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
+                      "float16 can only be used when CUDNN is used");
+  }
+
   std::string data_format = ctx.Attr<std::string>("data_format");
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  framework::DataLayout layout = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                 library);
 }
 
-Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv2DOpMaker::Make() {
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -185,8 +199,7 @@ $$
 )DOC");
 }
 
-Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv3DOpMaker::Make() {
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -320,14 +333,17 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv2d, ops::ConvOp, ops::Conv2DOpMaker, conv2d_grad,
-            ops::ConvOpGrad);
+REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
-REGISTER_OP(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-            depthwise_conv2d_grad, ops::ConvOpGrad);
-REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
-            ops::ConvOpGrad);
+REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 
 // depthwise conv kernel
 // TODO(xingzhaolong): neon kernel for mobile

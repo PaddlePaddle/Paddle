@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -82,9 +84,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
       layout_, library_);
 }
 
-Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
-                                               OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv2DTransposeOpMaker::Make() {
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution transpose operator. "
@@ -166,9 +166,7 @@ Example:
 )DOC");
 }
 
-Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
-                                               OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Conv3DTransposeOpMaker::Make() {
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator."
            "The format of input tensor is NCDHW. Where N is batch size, C is "
@@ -296,8 +294,10 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(conv2d_transpose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
-            conv2d_transpose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
+                  ops::Conv2DTransposeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
@@ -309,8 +309,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
 
-REGISTER_OP(conv3d_transpose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
-            conv3d_transpose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
+                  ops::Conv3DTransposeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose,

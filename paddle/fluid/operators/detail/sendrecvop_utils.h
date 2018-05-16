@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <sys/time.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
@@ -32,24 +34,25 @@ namespace detail {
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
+#define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
+
+static int64_t GetTimestamp() {
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
 
 typedef void (*DestroyCallback)(void*);
 
-void SerializeToMessage(const std::string& name, const framework::Variable* var,
-                        const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg);
-
-void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
-                            const platform::DeviceContext& ctx,
-                            framework::Variable* var);
-
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg);
+                           ::grpc::ByteBuffer* msg,
+                           const std::string& out_varname = std::string());
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
-                               framework::Variable* var);
+                               const framework::Scope* scope,
+                               framework::Variable** var);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {

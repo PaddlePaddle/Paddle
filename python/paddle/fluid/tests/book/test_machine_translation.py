@@ -14,7 +14,7 @@
 import contextlib
 
 import numpy as np
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as pd
@@ -118,12 +118,12 @@ def decoder_decode(context, is_sparse):
             is_sparse=is_sparse)
 
         # use rnn unit to update rnn
-        current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
+        current_state = pd.fc(input=[pre_state_expanded, pre_ids_emb],
                               size=decoder_size,
                               act='tanh')
-
+        current_state_with_lod = pd.lod_reset(x=current_state, y=pre_score)
         # use score to do beam search
-        current_score = pd.fc(input=current_state,
+        current_score = pd.fc(input=current_state_with_lod,
                               size=target_dict_dim,
                               act='softmax')
         topk_scores, topk_indices = pd.topk(current_score, k=50)
@@ -181,8 +181,11 @@ def train_main(use_cuda, is_sparse, is_local=True):
     cost = pd.cross_entropy(input=rnn_out, label=label)
     avg_cost = pd.mean(cost)
 
-    optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
-    optimize_ops, params_grads = optimizer.minimize(avg_cost)
+    optimizer = fluid.optimizer.Adagrad(
+        learning_rate=1e-4,
+        regularization=fluid.regularizer.L2DecayRegularizer(
+            regularization_coeff=0.1))
+    optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -228,12 +231,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,

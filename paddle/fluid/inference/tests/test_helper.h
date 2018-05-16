@@ -11,59 +11,60 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
 
-#include <time.h>
+#include <map>
+#include <random>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/profiler.h"
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor& input,
-                 paddle::framework::DDim dims,
-                 T lower,
-                 T upper) {
-  srand(time(0));
-  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
-  for (int i = 0; i < input.numel(); ++i) {
-    input_ptr[i] =
-        (static_cast<T>(rand()) / static_cast<T>(RAND_MAX)) * (upper - lower) +
-        lower;
+void SetupTensor(paddle::framework::LoDTensor* input,
+                 paddle::framework::DDim dims, T lower, T upper) {
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
+
+  T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
+  for (int i = 0; i < input->numel(); ++i) {
+    input_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
   }
 }
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor& input,
-                 paddle::framework::DDim dims,
-                 std::vector<T>& data) {
+void SetupTensor(paddle::framework::LoDTensor* input,
+                 paddle::framework::DDim dims, const std::vector<T>& data) {
   CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
-  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
-  memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
+  T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
+  memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor& input,
-                    paddle::framework::LoD& lod,
-                    T lower,
-                    T upper) {
-  input.set_lod(lod);
+void SetupLoDTensor(paddle::framework::LoDTensor* input,
+                    const paddle::framework::LoD& lod, T lower, T upper) {
+  input->set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
   SetupTensor<T>(input, {dim, 1}, lower, upper);
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor& input,
+void SetupLoDTensor(paddle::framework::LoDTensor* input,
                     paddle::framework::DDim dims,
-                    paddle::framework::LoD lod,
-                    std::vector<T>& data) {
+                    const paddle::framework::LoD lod,
+                    const std::vector<T>& data) {
   const size_t level = lod.size() - 1;
   CHECK_EQ(dims[0], static_cast<int64_t>((lod[level]).back()));
-  input.set_lod(lod);
+  input->set_lod(lod);
   SetupTensor<T>(input, dims, data);
 }
 
 template <typename T>
-void CheckError(paddle::framework::LoDTensor& output1,
-                paddle::framework::LoDTensor& output2) {
+void CheckError(const paddle::framework::LoDTensor& output1,
+                const paddle::framework::LoDTensor& output2) {
   // Check lod information
   EXPECT_EQ(output1.lod(), output2.lod());
 
@@ -88,12 +89,55 @@ void CheckError(paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
-template <typename Place>
+std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
+    paddle::framework::Executor* executor, paddle::framework::Scope* scope,
+    const std::string& dirname, const bool is_combined = false) {
+  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
+  if (is_combined) {
+    // All parameters are saved in a single file.
+    // Hard-coding the file names of program and parameters in unittest.
+    // The file names should be consistent with that used in Python API
+    //  `fluid.io.save_inference_model`.
+    std::string prog_filename = "__model_combined__";
+    std::string param_filename = "__params_combined__";
+    inference_program =
+        paddle::inference::Load(executor, scope, dirname + "/" + prog_filename,
+                                dirname + "/" + param_filename);
+  } else {
+    // Parameters are saved in separate files sited in the specified
+    // `dirname`.
+    inference_program = paddle::inference::Load(executor, scope, dirname);
+  }
+  return inference_program;
+}
+
+std::vector<std::vector<int64_t>> GetFeedTargetShapes(
+    const std::string& dirname, const bool is_combined = false) {
+  auto place = paddle::platform::CPUPlace();
+  auto executor = paddle::framework::Executor(place);
+  auto* scope = new paddle::framework::Scope();
+
+  auto inference_program = InitProgram(&executor, scope, dirname, is_combined);
+  auto& global_block = inference_program->Block(0);
+
+  const std::vector<std::string>& feed_target_names =
+      inference_program->GetFeedTargetNames();
+  std::vector<std::vector<int64_t>> feed_target_shapes;
+  for (size_t i = 0; i < feed_target_names.size(); ++i) {
+    auto* var = global_block.FindVar(feed_target_names[i]);
+    std::vector<int64_t> var_shape = var->GetShape();
+    feed_target_shapes.push_back(var_shape);
+  }
+
+  delete scope;
+  return feed_target_shapes;
+}
+
+template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
-                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
-                   const int repeat = 1,
-                   const bool is_combined = false) {
+                   const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
+                   const int repeat = 1, const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -124,24 +168,7 @@ void TestInference(const std::string& dirname,
     paddle::platform::RecordEvent record_event(
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
-
-    if (is_combined) {
-      // All parameters are saved in a single file.
-      // Hard-coding the file names of program and parameters in unittest.
-      // The file names should be consistent with that used in Python API
-      //  `fluid.io.save_inference_model`.
-      std::string prog_filename = "__model_combined__";
-      std::string param_filename = "__params_combined__";
-      inference_program =
-          paddle::inference::Load(executor,
-                                  *scope,
-                                  dirname + "/" + prog_filename,
-                                  dirname + "/" + param_filename);
-    } else {
-      // Parameters are saved in separate files sited in the specified
-      // `dirname`.
-      inference_program = paddle::inference::Load(executor, *scope, dirname);
-    }
+    inference_program = InitProgram(&executor, scope, dirname, is_combined);
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
@@ -169,8 +196,23 @@ void TestInference(const std::string& dirname,
 
   // 6. Run the inference program
   {
+    if (!CreateVars) {
+      // If users don't want to create and destroy variables every time they
+      // run, they need to set `create_vars` to false and manually call
+      // `CreateVariables` before running.
+      executor.CreateVariables(*inference_program, scope, 0);
+    }
+
     // Ignore the profiling results of the first run
-    executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+    std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
+    if (PrepareContext) {
+      ctx = executor.Prepare(*inference_program, 0);
+      executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
+                                  &fetch_targets, CreateVars);
+    } else {
+      executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
+                   CreateVars);
+    }
 
     // Enable the profiler
     paddle::platform::EnableProfiler(state);
@@ -181,7 +223,15 @@ void TestInference(const std::string& dirname,
           "run_inference",
           paddle::platform::DeviceContextPool::Instance().Get(place));
 
-      executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+      if (PrepareContext) {
+        // Note: if you change the inference_program, you need to call
+        // executor.Prepare() again to get a new ExecutorPrepareContext.
+        executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
+                                    &fetch_targets, CreateVars);
+      } else {
+        executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
+                     CreateVars);
+      }
     }
 
     // Disable the profiler and print the timing information

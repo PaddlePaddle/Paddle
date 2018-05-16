@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -80,6 +81,38 @@ class TestDropoutOp5(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestFP16DropoutOp(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.init_test_case()
+
+        x = np.random.random(self.input_size).astype("float16")
+        out = x * (1.0 - self.prob)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {
+            'dropout_prob': self.prob,
+            'fix_seed': self.fix_seed,
+            'is_test': True
+        }
+        self.outputs = {'Out': out}
+
+    def init_test_case(self):
+        self.input_size = [32, 64]
+        self.prob = 0.35
+        self.fix_seed = True
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
+            self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+
+
+class TestFP16DropoutOp2(TestFP16DropoutOp):
+    def init_test_case(self):
+        self.input_size = [32, 64, 3]
+        self.prob = 0.75
+        self.fix_seed = False
 
 
 if __name__ == '__main__':

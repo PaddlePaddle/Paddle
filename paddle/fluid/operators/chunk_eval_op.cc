@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/chunk_eval_op.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -64,8 +66,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
 
 class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChunkEvalOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Inference",
              "(Tensor, default: Tensor<int64_t>). "
              "Predictions from the network.");

@@ -48,8 +48,7 @@ def as_numpy(tensor):
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
     if len(lod) > 0:
-        raise RuntimeError(
-            "Some of your featched tensors hold LoD information. \
+        raise RuntimeError("Some of your fetched tensors hold LoD information. \
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
@@ -152,7 +151,7 @@ def fetch_var(name, scope=None, return_numpy=True):
         scope = global_scope()
     assert isinstance(scope, core.Scope)
 
-    var = global_scope().find_var(name)
+    var = scope.find_var(name)
     assert var is not None, (
         "Cannot find " + name + " in scope. Perhaps you need to make the"
         " variable persistable by using var.persistable = True in your"
@@ -180,60 +179,95 @@ def get_program_cache_key(feed, fetch_list):
 
 
 class Executor(object):
-    def __init__(self, places):
-        if not isinstance(places, list) and not isinstance(places, tuple):
-            places = [places]
-
-        act_places = []
-        for each in places:
-            p = core.Place()
-            p.set_place(each)
-            act_places.append(p)
-
-        # TODO(dzhwinter) : only use the first place
-        self.executor = core.Executor(act_places[0])
-        self.places = places
+    def __init__(self, place):
+        self.place = place
+        p = core.Place()
+        p.set_place(place)
+        self.executor = core.Executor(p)
         self.program_caches = dict()
 
-    def aslodtensor(self, data):
-        def accumulate(data):
-            if not isinstance(data, list):
-                return 1
-            return sum([accumulate(sub) for sub in data])
+    def as_lodtensor(self, data):
+        if isinstance(data, list):
+            raise RuntimeError("Some of your feed data hold LoD information. \
+                They can not be completely cast from a list of Python \
+                ndarray to LoDTensor. Please convert data to LoDTensor \
+                directly before feeding the data.\
+                ")
+        # single tensor case
+        tensor = core.LoDTensor()
+        tensor.set(data, self.place)
+        return tensor
 
-        def parselod(data):
-            seq_lens = [accumulate(seq) for seq in data]
-            cur_len = 0
-            lod = [cur_len]
-            for l in seq_lens:
-                cur_len += l
-                lod.append(cur_len)
-            return lod
+    def _get_program_cache(self, program_cache_key):
+        return self.program_caches.get(program_cache_key, None)
 
-        assert len(self.places) != 0
-        if not isinstance(data, list):
-            # pure tensor case
-            tensor = core.LoDTensor()
-            tensor.set(data, self.places[0])
-            return tensor
+    def _add_program_cache(self, program_cache_key, program):
+        self.program_caches[program_cache_key] = program
+
+    def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
+                            fetch_var_name):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
         else:
-            raise RuntimeError("Current implementation lacks unittests")
-            # lodtensor case
-            lod = []
-            if not isinstance(data[0], list):
-                lod.append(parselod(data))
-                flattened_data = np.concatenate(data, axis=0).astype("int64")
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True)
+
+        if fetch_var_name in global_block.vars:
+            fetch_var = global_block.var(fetch_var_name)
+        else:
+            fetch_var = global_block.create_var(
+                name=fetch_var_name,
+                type=core.VarDesc.VarType.FETCH_LIST,
+                persistable=True)
+
+        # prepend feed operators
+        if not has_feed_operators(global_block, feed, feed_var_name):
+            for i, name in enumerate(feed):
+                out = global_block.var(name)
+                global_block.prepend_op(
+                    type='feed',
+                    inputs={'X': [feed_var]},
+                    outputs={'Out': [out]},
+                    attrs={'col': i})
+
+        # append fetch_operators
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
+            for i, var in enumerate(fetch_list):
+                assert isinstance(var, Variable) or isinstance(var, str), (
+                    "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
+                global_block.append_op(
+                    type='fetch',
+                    inputs={'X': [var]},
+                    outputs={'Out': [fetch_var]},
+                    attrs={'col': i})
+
+        return tmp_program
+
+    def _feed_data(self, program, feed, feed_var_name, scope):
+        # feed var to framework
+        for op in program.global_block().ops:
+            if op.desc.type() == 'feed':
+                feed_target_name = op.desc.output('Out')[0]
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = self.as_lodtensor(cur_feed)
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
-                while isinstance(data[0], list):
-                    lod.append(parselod(seq))
-                    flattened_data = [item for seq in data for item in seq]
-                    data = flattened_data
-                flattened_data = np.concatenate(data, axis=0).astype("int64")
-            flattened_data = flattened_data.reshape([len(flattened_data), 1])
-            tensor = core.LoDTensor()
-            tensor.set(flattened_data, self.places[0])
-            tensor.set_lod(lod)
-            return tensor
+                break
+
+    def _fetch_data(self, fetch_list, fetch_var_name, scope):
+        outs = [
+            core.get_fetch_variable(scope, fetch_var_name, i)
+            for i in xrange(len(fetch_list))
+        ]
+        return outs
 
     def run(self,
             program=None,
@@ -265,92 +299,46 @@ class Executor(object):
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
-            raise TypeError("feed should be a map")
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s" %
+                (type(feed)))
         if fetch_list is None:
             fetch_list = []
-
         if program is None:
             program = default_main_program()
 
         if not isinstance(program, Program):
-            raise TypeError()
+            raise TypeError(
+                "Executor requires Program as its Parameter. But you passed in %s"
+                % (type(program)))
 
         if scope is None:
             scope = global_scope()
 
-        program_cache = None
-        program_cache_key = get_program_cache_key(feed, fetch_list)
-
+        cache_key = get_program_cache_key(feed, fetch_list)
         if use_program_cache:
-            # find program cache by cache_key
-            program_cache = self.program_caches.get(program_cache_key, None)
-            # TODO(qiao): Should check program_cache and program are exactly the same.
+            cached_program = self._get_program_cache(cache_key)
+            if cached_program is None:
+                cached_program = self._add_feed_fetch_ops(
+                    program=program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name)
+                self._add_program_cache(cache_key, cached_program)
+            program = cached_program
         else:
-            self.program_caches.pop(program_cache_key, None)
+            self.program_caches.pop(cache_key, None)
+            program = self._add_feed_fetch_ops(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name)
 
-        if program_cache is None:
-            program_cache = program.clone()
-
-            if use_program_cache:
-                self.program_caches[program_cache_key] = program_cache
-
-            global_block = program_cache.global_block()
-
-            if feed_var_name in global_block.vars:
-                feed_var = global_block.var(feed_var_name)
-            else:
-                feed_var = global_block.create_var(
-                    name=feed_var_name,
-                    type=core.VarDesc.VarType.FEED_MINIBATCH,
-                    persistable=True)
-
-            if fetch_var_name in global_block.vars:
-                fetch_var = global_block.var(fetch_var_name)
-            else:
-                fetch_var = global_block.create_var(
-                    name=fetch_var_name,
-                    type=core.VarDesc.VarType.FETCH_LIST,
-                    persistable=True)
-
-            # prepend feed operators
-            if not has_feed_operators(global_block, feed, feed_var_name):
-                for i, name in enumerate(feed):
-                    out = global_block.var(name)
-                    global_block.prepend_op(
-                        type='feed',
-                        inputs={'X': [feed_var]},
-                        outputs={'Out': [out]},
-                        attrs={'col': i})
-
-            # append fetch_operators
-            if not has_fetch_operators(global_block, fetch_list,
-                                       fetch_var_name):
-                for i, var in enumerate(fetch_list):
-                    assert isinstance(var, Variable) or isinstance(var, str), (
-                        "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
-                    global_block.append_op(
-                        type='fetch',
-                        inputs={'X': [var]},
-                        outputs={'Out': [fetch_var]},
-                        attrs={'col': i})
-
-        # feed var to framework
-        for op in program_cache.global_block().ops:
-            if op.desc.type() == 'feed':
-                feed_target_name = op.desc.output('Out')[0]
-                cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.aslodtensor(cur_feed)
-                idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
-            else:
-                break
-
-        self.executor.run(program_cache.desc, scope, 0, True, True)
-        outs = [
-            core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in xrange(len(fetch_list))
-        ]
+        self._feed_data(program, feed, feed_var_name, scope)
+        self.executor.run(program.desc, scope, 0, True, True)
+        outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
         return outs

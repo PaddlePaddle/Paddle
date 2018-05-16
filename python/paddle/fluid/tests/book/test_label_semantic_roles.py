@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
-import numpy as np
-import paddle.v2 as paddle
-import paddle.v2.dataset.conll05 as conll05
-import paddle.fluid as fluid
-from paddle.fluid.initializer import init_on_cpu
 import contextlib
+import math
+import numpy as np
+import os
 import time
 import unittest
-import os
+
+import paddle
+import paddle.dataset.conll05 as conll05
+import paddle.fluid as fluid
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -77,7 +76,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        fluid.layers.fc(input=emb, size=hidden_dim) for emb in emb_layers
+        fluid.layers.fc(input=emb, size=hidden_dim, act='tanh')
+        for emb in emb_layers
     ]
 
     hidden_0 = fluid.layers.sums(input=hidden_0_layers)
@@ -94,8 +94,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
     for i in range(1, depth):
         mix_hidden = fluid.layers.sums(input=[
-            fluid.layers.fc(input=input_tmp[0], size=hidden_dim),
-            fluid.layers.fc(input=input_tmp[1], size=hidden_dim)
+            fluid.layers.fc(input=input_tmp[0], size=hidden_dim, act='tanh'),
+            fluid.layers.fc(input=input_tmp[1], size=hidden_dim, act='tanh')
         ])
 
         lstm = fluid.layers.dynamic_lstm(
@@ -109,8 +109,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
         input_tmp = [mix_hidden, lstm]
 
     feature_out = fluid.layers.sums(input=[
-        fluid.layers.fc(input=input_tmp[0], size=label_dict_len),
-        fluid.layers.fc(input=input_tmp[1], size=label_dict_len)
+        fluid.layers.fc(input=input_tmp[0], size=label_dict_len, act='tanh'),
+        fluid.layers.fc(input=input_tmp[1], size=label_dict_len, act='tanh')
     ])
 
     return feature_out
@@ -171,11 +171,11 @@ def train(use_cuda, save_dirname=None, is_local=True):
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(
         learning_rate=fluid.layers.exponential_decay(
-            learning_rate=0.0001,
+            learning_rate=0.01,
             decay_steps=100000,
             decay_rate=0.5,
             staircase=True))
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
@@ -233,7 +233,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
                         print("second per batch: " + str((time.time(
                         ) - start_time) / batch_id))
                     # Set the threshold low to speed up the CI test
-                    if float(pass_precision) > 0.05:
+                    if float(pass_precision) > 0.01:
                         if save_dirname is not None:
                             # TODO(liuyiqun): Change the target to crf_decode
                             fluid.io.save_inference_model(save_dirname, [
@@ -259,12 +259,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,

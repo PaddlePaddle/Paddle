@@ -21,7 +21,7 @@ limitations under the License. */
 #include <mkl_vml_functions.h>
 #endif
 
-#if defined(PADDLE_USE_ATLAS) || defined(PADDLE_USE_VECLIB)
+#if defined(PADDLE_USE_VECLIB)
 extern "C" {
 #include <cblas.h>
 #include <clapack.h>

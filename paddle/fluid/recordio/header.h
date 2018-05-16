@@ -19,8 +19,6 @@
 namespace paddle {
 namespace recordio {
 
-// Default ChunkSize
-constexpr size_t kDefaultMaxChunkSize = 32 * 1024 * 1024;
 // MagicNumber for memory checking
 constexpr uint32_t kMagicNumber = 0x01020304;
 
@@ -39,19 +37,21 @@ enum class Compressor : uint32_t {
 
 // Header is the metadata of Chunk
 class Header {
-public:
+ public:
   Header();
   Header(uint32_t num, uint32_t sum, Compressor ct, uint32_t cs);
 
   void Write(std::ostream& os) const;
-  void Parse(std::istream& is);
+
+  // returns true if OK, false if eof
+  bool Parse(std::istream& is);
 
   uint32_t NumRecords() const { return num_records_; }
   uint32_t Checksum() const { return checksum_; }
   Compressor CompressType() const { return compressor_; }
   uint32_t CompressSize() const { return compress_size_; }
 
-private:
+ private:
   uint32_t num_records_;
   uint32_t checksum_;
   Compressor compressor_;

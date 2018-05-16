@@ -14,29 +14,25 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __CUDACC__
-#ifdef __CUDACC_VER_MAJOR__
-// CUDA 9 define `__CUDACC_VER__` as a warning message, manually define
-// __CUDACC_VER__ instead.
+// Boost 1.41.0 requires __CUDACC_VER__, but in CUDA 9 __CUDACC_VER__
+// is removed, so we have to manually define __CUDACC_VER__ instead.
+// For details, please refer to
+// https://github.com/PaddlePaddle/Paddle/issues/6626
+#if defined(__CUDACC__) && defined(__CUDACC_VER_MAJOR__)
 #undef __CUDACC_VER__
-
-#define __CUDACC_VER__                                         \
-  (__CUDACC_VER_MAJOR__ * 10000 + __CUDACC_VER_MINOR__ * 100 + \
-   __CUDACC_VER_BUILD__)
+#define __CUDACC_VER__                                  \
+  __CUDACC_VER_BUILD__ + __CUDACC_VER_MAJOR__ * 10000 + \
+      __CUDACC_VER_MINOR__ * 100
 #endif
 
-#endif
+#include "boost/config.hpp"
 
-#include <boost/config.hpp>
-
-#ifdef PADDLE_WITH_CUDA
-
-// Because boost's variadic templates has bug on nvcc, boost will disable
-// variadic template support when GPU enabled on nvcc.
-// Define BOOST_NO_CXX11_VARIADIC_TEMPLATES on gcc/clang to generate same
-// function symbols.
-//
+// Because Boost 1.41.0's variadic templates has bug on nvcc, boost
+// will disable variadic template support in NVCC mode.  Define
+// BOOST_NO_CXX11_VARIADIC_TEMPLATES on gcc/clang to generate same
+// function symbols.  For details,
 // https://github.com/PaddlePaddle/Paddle/issues/3386
+#ifdef PADDLE_WITH_CUDA
 #ifndef BOOST_NO_CXX11_VARIADIC_TEMPLATES
 #define BOOST_NO_CXX11_VARIADIC_TEMPLATES
 #endif

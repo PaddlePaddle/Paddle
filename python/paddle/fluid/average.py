@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import warnings
 """
     Class of all kinds of Average.
 
@@ -21,6 +22,8 @@ import numpy as np
     modify NN model's configuration. They are completely 
     wrappers of Python functions.
 """
+
+__all__ = ["WeightedAverage"]
 
 
 def _is_number_(var):
@@ -34,6 +37,9 @@ def _is_number_or_matrix_(var):
 
 class WeightedAverage(object):
     def __init__(self):
+        warnings.warn(
+            "The %s is deprecated, please use fluid.metrics.Accuracy instead." %
+            (self.__class__.__name__), Warning)
         self.reset()
 
     def reset(self):

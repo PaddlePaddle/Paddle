@@ -19,8 +19,7 @@ namespace operators {
 template <typename AttrType>
 class NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of norm operator. "
@@ -85,8 +84,9 @@ class NormOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(norm, ops::NormOp, ops::NormOpMaker<float>, norm_grad,
-            ops::NormOpGrad);
+REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     norm, ops::NormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::NormKernel<paddle::platform::CPUDeviceContext, double, float>);

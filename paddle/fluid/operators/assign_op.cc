@@ -56,6 +56,7 @@ class AssignFunctor {
  private:
   void copy_tensor(const framework::LoDTensor &lod_tensor,
                    framework::LoDTensor *out) const {
+    if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
     TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
@@ -93,8 +94,7 @@ class AssignOp : public framework::OperatorBase {
 
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AssignOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
              "could be LoDTensor, SelectedRows or LoDTensorArray.")

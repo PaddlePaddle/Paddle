@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstm_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -102,8 +103,7 @@ class LSTMOp : public framework::OperatorWithKernel {
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LSTMOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(LoDTensor) the first input is a LodTensor, which support "
              "variable-time length input sequence. The underlying tensor in "
@@ -272,7 +272,9 @@ class LSTMGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lstm, ops::LSTMOp, ops::LSTMOpMaker, lstm_grad, ops::LSTMGradOp);
+REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMKernel<paddle::platform::CPUDeviceContext, double>);

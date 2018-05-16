@@ -100,8 +100,7 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
 
 class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxPool2dWithIndexOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of pooling operator. "
@@ -177,8 +176,7 @@ Example:
 
 class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxPool3dWithIndexOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input tensor of pooling operator. "
              "The format of input tensor is NCDHW, where N is batch size, C is "
@@ -258,9 +256,10 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
-            ops::MaxPool2dWithIndexOpMaker, max_pool2d_with_index_grad,
-            ops::MaxPoolWithIndexOpGrad);
+REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
+                  ops::MaxPool2dWithIndexOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index,
@@ -272,11 +271,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
-                                    int>)
+                                    int>);
 
-REGISTER_OP(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
-            ops::MaxPool3dWithIndexOpMaker, max_pool3d_with_index_grad,
-            ops::MaxPoolWithIndexOpGrad);
+REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
+                  ops::MaxPool3dWithIndexOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index,
@@ -288,4 +288,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
-                                    int>)
+                                    int>);

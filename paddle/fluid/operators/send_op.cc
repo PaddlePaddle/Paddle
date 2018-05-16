@@ -12,34 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <future>  // NOLINT
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
-#include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/send_recv_util.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
-static bool NeedSend(const framework::Scope& scope,
-                     const std::string& varname) {
-  auto* var = scope.FindVar(varname);
-  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
-                          varname);
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().IsInitialized();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().rows().size() > 0UL;
-  } else {
-    PADDLE_THROW(
-        "Variable type in send side should be in "
-        "[LodTensor, SelectedRows]");
-  }
-  return false;
-}
 
 class SendOp : public framework::OperatorBase {
  public:
@@ -56,8 +41,13 @@ class SendOp : public framework::OperatorBase {
     std::vector<std::string> endpoints =
         Attr<std::vector<std::string>>("endpoints");
 
+    bool sync_mode = Attr<bool>("sync_mode");
+
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
+
+    // For profiling
+    platform::RecordEvent record_event(Type(), &ctx);
 
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
@@ -76,16 +66,24 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(rpc_client->Wait());
 
-    for (auto& ep : endpoints) {
-      VLOG(3) << "batch barrier, ep: " << ep;
-      rpc_client->AsyncSendBatchBarrier(ep);
+    if (sync_mode) {
+      for (auto& ep : endpoints) {
+        VLOG(3) << "batch barrier, ep: " << ep;
+        rpc_client->AsyncSendBatchBarrier(ep);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
 
     if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
-        VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+        VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
         rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
+      // tell pservers that current trainer have called fetch
+      for (auto& ep : endpoints) {
+        VLOG(2) << "send fetch barrier, ep: " << ep;
+        rpc_client->AsyncSendFetchBarrier(ep);
       }
       PADDLE_ENFORCE(rpc_client->Wait());
     }
@@ -94,8 +92,7 @@ class SendOp : public framework::OperatorBase {
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
     AddOutput("Out", "(Tensor) Output tensor to be received from server")
         .AsDuplicable();
@@ -118,6 +115,7 @@ This operator will send tensor to recv_op at the parameter server.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 

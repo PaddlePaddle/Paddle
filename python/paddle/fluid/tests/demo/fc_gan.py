@@ -19,7 +19,7 @@ import os
 import matplotlib
 import numpy
 
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 
 matplotlib.use('Agg')

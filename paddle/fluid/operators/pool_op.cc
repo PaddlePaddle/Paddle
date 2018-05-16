@@ -124,15 +124,18 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
+  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
+                      "float16 can only be used when CUDNN is used");
+  }
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                 library_);
 }
 
-Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Pool2dOpMaker::Make() {
   AddInput(
       "X",
       "(Tensor) The input tensor of pooling operator. "
@@ -225,8 +228,7 @@ Example:
 )DOC");
 }
 
-Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Pool3dOpMaker::Make() {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW, where N is batch size, C is "
@@ -329,18 +331,20 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
-            ops::PoolOpGrad);
+REGISTER_OPERATOR(pool2d, ops::PoolOp, ops::Pool2dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
-            ops::PoolOpGrad);
+REGISTER_OPERATOR(pool3d, ops::PoolOp, ops::Pool3dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,

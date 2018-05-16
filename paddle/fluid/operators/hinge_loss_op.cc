@@ -46,8 +46,7 @@ class HingeLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HingeLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HingeLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Logits",
              "The input value (Logits) of Hinge loss op."
              "Logits is a 2-D tensor with shape [batch_size, 1].");
@@ -103,8 +102,9 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
-            hinge_loss_grad, ops::HingeLossGradOp);
+REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss,
     ops::HingeLossKernel<paddle::platform::CPUDeviceContext, float>);

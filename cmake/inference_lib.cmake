@@ -1,7 +1,22 @@
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set_property(GLOBAL PROPERTY FLUID_MODULES "")
 # find all fluid modules is used for paddle fluid static library
 function(find_fluid_modules TARGET_NAME)
   get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
   string(FIND "${__target_path}" "fluid" pos)
   if(pos GREATER 1)
     get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
@@ -55,6 +70,12 @@ copy(glog_lib
   DSTS ${dst_dir} ${dst_dir}/lib
 )
 
+set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/boost/")
+copy(boost_lib
+  SRCS ${BOOST_INCLUDE_DIR}/boost
+  DSTS ${dst_dir}
+)
+
 if(NOT PROTOBUF_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
     copy(protobuf_lib
@@ -69,6 +90,29 @@ if(NOT CBLAS_FOUND)
       SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
       DSTS ${dst_dir} ${dst_dir}
     )
+elseif (WITH_MKLML)
+    set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mklml")
+    copy(mklml_lib
+      SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
+      DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+    )
+endif()
+
+if(NOT MOBILE_INFERENCE AND NOT RPI)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappy")
+  copy(snappy_lib
+    SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
+
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappystream")
+  copy(snappystream_lib
+    SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
+
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/zlib")
+  copy(zlib_lib
+    SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
 endif()
 
 # paddle fluid module

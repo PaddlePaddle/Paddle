@@ -19,8 +19,7 @@ namespace operators {
 
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LinearChainCRFOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Emission",
              "(LoDTensor, default LoDTensor<float>) "
              "A 2-D LoDTensor with shape [N x D], where N is the size of the "
@@ -256,8 +255,10 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(linear_chain_crf, ops::LinearChainCRFOp, ops::LinearChainCRFOpMaker,
-            linear_chain_crf_grad, ops::LinearChainCRFGradOp);
+REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
+                  ops::LinearChainCRFOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,

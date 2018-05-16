@@ -14,21 +14,40 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/io.h"
 
+#include <algorithm>
 #include <fstream>
+#include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/pybind/pybind.h"
+
+DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
+DEFINE_bool(init_p2p, false, "Whether to init p2p.");
 
 namespace paddle {
 namespace inference {
 
-void ReadBinaryFile(const std::string& filename, std::string& contents) {
+void Init(const std::vector<std::string> argv) {
+  framework::InitGflags(argv);
+  // init devices
+  std::vector<int> devices;
+  std::string token;
+  std::istringstream tokenStream(FLAGS_devices);
+  while (std::getline(tokenStream, token, ',')) {
+    devices.push_back(std::stoi(token));
+  }
+  framework::InitDevices(FLAGS_init_p2p, devices);
+}
+
+void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
   fin.seekg(0, std::ios::end);
-  contents.clear();
-  contents.resize(fin.tellg());
+  contents->clear();
+  contents->resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&contents[0], contents.size());
+  fin.read(&(contents->at(0)), contents->size());
   fin.close();
 }
 
@@ -41,8 +60,7 @@ bool IsPersistable(const framework::VarDesc* var) {
   return false;
 }
 
-void LoadPersistables(framework::Executor& executor,
-                      framework::Scope& scope,
+void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename) {
@@ -87,18 +105,18 @@ void LoadPersistables(framework::Executor& executor,
     op->CheckAttrs();
   }
 
-  executor.Run(*load_program, &scope, 0, true, true);
+  executor->Run(*load_program, scope, 0, true, true);
 
   delete load_program;
 }
 
-std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
-                                             framework::Scope& scope,
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
   VLOG(3) << "loading model from " << model_filename;
-  ReadBinaryFile(model_filename, program_desc_str);
+  ReadBinaryFile(model_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -108,13 +126,11 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
 }
 
 std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor& executor,
-    framework::Scope& scope,
-    const std::string& prog_filename,
-    const std::string& param_filename) {
+    framework::Executor* executor, framework::Scope* scope,
+    const std::string& prog_filename, const std::string& param_filename) {
   std::string model_filename = prog_filename;
   std::string program_desc_str;
-  ReadBinaryFile(model_filename, program_desc_str);
+  ReadBinaryFile(model_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));

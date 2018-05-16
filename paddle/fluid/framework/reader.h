@@ -14,40 +14,28 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
 class ReaderBase {
  public:
-  explicit ReaderBase(const std::vector<DDim>& shapes) : shapes_(shapes) {
-    PADDLE_ENFORCE(!shapes_.empty());
-  }
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
 
   virtual void ReInit() = 0;
 
-  DDim shape(size_t idx) const;
-  std::vector<DDim> shapes() const { return shapes_; }
-  void set_shapes(const std::vector<DDim>& shapes) { shapes_ = shapes; }
-
-  virtual ~ReaderBase() {}
-
- protected:
-  std::vector<DDim> shapes_;
-};
-
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+  virtual ~ReaderBase();
 };
 
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(ReaderBase* reader)
-      : ReaderBase(reader->shapes()), reader_(reader) {
+  explicit DecoratedReader(ReaderBase* reader) : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
@@ -55,6 +43,19 @@ class DecoratedReader : public ReaderBase {
 
  protected:
   ReaderBase* reader_;
+};
+
+class FileReader : public ReaderBase {
+ public:
+  explicit FileReader(const std::vector<DDim>& dims);
+
+  void ReadNext(std::vector<LoDTensor>* out) override;
+
+ protected:
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+
+ private:
+  std::vector<DDim> dims_;
 };
 
 // The ReaderHolder is used as reader' unified wrapper,
@@ -72,19 +73,6 @@ class ReaderHolder {
   void ReInit() {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->ReInit();
-  }
-
-  DDim shape(size_t idx) const {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
-    return reader_->shape(idx);
-  }
-  std::vector<DDim> shapes() const {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
-    return reader_->shapes();
-  }
-  void set_shapes(const std::vector<DDim>& shapes) {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->set_shapes(shapes);
   }
 
  private:

@@ -12,17 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
-
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/memory/memory.h"
-
 #include <stdint.h>
 #include <string.h>
 #include <algorithm>
 #include <iterator>
+
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
+
+#include "paddle/fluid/recordio/scanner.h"
+#include "paddle/fluid/recordio/writer.h"
 
 namespace paddle {
 namespace framework {
@@ -289,6 +292,33 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   }
   // the 3st filed, Tensor
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
+}
+
+void WriteToRecordIO(recordio::Writer *writer,
+                     const std::vector<LoDTensor> &tensor,
+                     const platform::DeviceContext &dev_ctx) {
+  std::stringstream buffer;
+  size_t sz = tensor.size();
+  buffer.write(reinterpret_cast<const char *>(&sz), sizeof(uint32_t));
+  for (auto &each : tensor) {
+    SerializeToStream(buffer, each, dev_ctx);
+  }
+  writer->Write(buffer.str());
+}
+
+std::vector<LoDTensor> ReadFromRecordIO(
+    recordio::Scanner *scanner, const platform::DeviceContext &dev_ctx) {
+  std::vector<LoDTensor> result;
+  if (scanner->HasNext()) {
+    std::istringstream sin(scanner->Next());
+    uint32_t sz;
+    sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
+    result.resize(sz);
+    for (uint32_t i = 0; i < sz; ++i) {
+      DeserializeFromStream(sin, &result[i], dev_ctx);
+    }
+  }
+  return result;
 }
 
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(

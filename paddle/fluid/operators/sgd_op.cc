@@ -35,28 +35,46 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
-    // TODO(qijun): check dimensions of Param and Grad at complie
-    // and run time.
+    // TODO(qijun): check dimensions of Param and Grad at compile
+    // and runtime.
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("Param")->type()),
-        ctx.GetPlace());
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+};
+
+class SGDOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto input_var = op_desc.Input("Param")[0];
+    for (auto& out_var : op_desc.Output("ParamOut")) {
+      if (block->FindRecursiveOrCreateVar(input_var).GetType() ==
+          framework::proto::VarType::SELECTED_ROWS) {
+        block->FindRecursiveOrCreateVar(out_var).SetType(
+            framework::proto::VarType::SELECTED_ROWS);
+      } else {
+        block->FindRecursiveOrCreateVar(out_var).SetType(
+            framework::proto::VarType::LOD_TENSOR);
+      }
+    }
   }
 };
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Param", "(Tensor) Input parameter");
+  void Make() override {
+    AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddOutput("ParamOut",
+              "(Tensor or SelectedRows, same with Param) "
+              "Output parameter, should share the same memory with Param");
     AddComment(R"DOC(
 
 SGD operator
@@ -73,5 +91,6 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OPERATOR(sgd, ops::SGDOp, ops::SGDOpMaker,
+                  paddle::framework::EmptyGradOpMaker, ops::SGDOpInferVarType);
 REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<float>, ops::SGDOpKernel<double>);

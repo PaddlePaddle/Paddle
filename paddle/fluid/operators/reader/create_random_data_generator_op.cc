@@ -19,11 +19,11 @@ namespace operators {
 namespace reader {
 
 template <typename T>
-class RandomDataGenerator : public framework::FileReader {
+class RandomDataGenerator : public framework::ReaderBase {
  public:
   RandomDataGenerator(const std::vector<framework::DDim>& shapes, float min,
                       float max)
-      : FileReader(shapes), min_(min), max_(max) {
+      : framework::ReaderBase(), min_(min), max_(max), shapes_(shapes) {
     PADDLE_ENFORCE_LE(
         min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
     unsigned int seed = std::random_device()();
@@ -57,6 +57,7 @@ class RandomDataGenerator : public framework::FileReader {
   float max_;
   std::minstd_rand engine_;
   std::uniform_real_distribution<float> dist_;
+  std::vector<framework::DDim> shapes_;
 };
 
 template <typename T>
@@ -71,7 +72,7 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
     PADDLE_ENFORCE_EQ(std::accumulate(ranks.begin(), ranks.end(), 0),
-                      int(shape_concat.size()),
+                      static_cast<int>(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
     std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
@@ -83,9 +84,8 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
 };
 
 class CreateRandomDataGeneratorOpMaker : public FileReaderMakerBase {
- public:
-  CreateRandomDataGeneratorOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : FileReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<float>("min", "The lower bound of reader's uniform distribution.");
     AddAttr<float>("max", "The upper bound of reader's uniform distribution.");
     AddComment(R"DOC(

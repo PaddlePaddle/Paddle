@@ -26,9 +26,11 @@ namespace paddle {
 namespace framework {
 
 std::once_flag gflags_init_flag;
+std::once_flag p2p_init_flag;
 
-void InitGflags(std::vector<std::string> &argv) {
+void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
+    argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
     std::string line;
@@ -42,13 +44,52 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-void InitDevices() {
-  /*Init all avaiable devices by default */
+void InitP2P(std::vector<int> devices) {
+#ifdef PADDLE_WITH_CUDA
+  std::call_once(p2p_init_flag, [&]() {
+    int count = devices.size();
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j < count; ++j) {
+        if (devices[i] == devices[j]) continue;
+        int can_acess = -1;
+        PADDLE_ENFORCE(
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]),
+            "Failed to test P2P access.");
+        if (can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
+                       << " to " << devices[j];
+        } else {
+          cudaSetDevice(devices[i]);
+          cudaDeviceEnablePeerAccess(devices[j], 0);
+        }
+      }
+    }
+  });
+#endif
+}
 
+void InitDevices(bool init_p2p) {
+  /*Init all available devices by default */
+  std::vector<int> devices;
+#ifdef PADDLE_WITH_CUDA
+  try {
+    int count = platform::GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+  }
+#else
+  LOG(WARNING)
+      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
+#endif
+  InitDevices(init_p2p, devices);
+}
+
+void InitDevices(bool init_p2p, const std::vector<int> devices) {
   std::vector<platform::Place> places;
-  places.emplace_back(platform::CPUPlace());
   int count = 0;
-
 #ifdef PADDLE_WITH_CUDA
   try {
     count = platform::GetCUDADeviceCount();
@@ -60,10 +101,17 @@ void InitDevices() {
       << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
 #endif
 
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(platform::CUDAPlace(i));
+  for (size_t i = 0; i < devices.size(); ++i) {
+    if (devices[i] >= count || devices[i] < 0) {
+      LOG(WARNING) << "Invalid devices id.";
+      continue;
+    }
+    places.emplace_back(platform::CUDAPlace(devices[i]));
   }
-
+  if (init_p2p) {
+    InitP2P(devices);
+  }
+  places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
 }
 

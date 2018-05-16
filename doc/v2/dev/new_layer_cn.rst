@@ -16,7 +16,7 @@
 
 下图是一个全连接层的示意图。在全连接层中，每个输出节点都连接到所有的输入节点上。
 
-..  image:: FullyConnected.jpg
+..  image:: src/FullyConnected.jpg
     :align: center
     :scale: 60 %
 

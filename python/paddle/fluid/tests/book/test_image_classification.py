@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import contextlib
 import math
@@ -22,10 +22,17 @@ import sys
 import numpy
 import unittest
 import os
+import numpy as np
 
 
 def resnet_cifar10(input, depth=32):
-    def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      bias_attr=False):
         tmp = fluid.layers.conv2d(
             input=input,
             filter_size=filter_size,
@@ -33,7 +40,7 @@ def resnet_cifar10(input, depth=32):
             stride=stride,
             padding=padding,
             act=None,
-            bias_attr=False)
+            bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
@@ -44,7 +51,7 @@ def resnet_cifar10(input, depth=32):
 
     def basicblock(input, ch_in, ch_out, stride):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
-        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None)
+        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
         return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
 
@@ -118,7 +125,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimize_ops, params_grads = optimizer.minimize(avg_cost)
+    optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -182,12 +189,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
@@ -219,12 +221,31 @@ def infer(use_cuda, save_dirname=None):
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
+        # Use inference_transpiler to speedup
+        inference_transpiler_program = inference_program.clone()
+        t = fluid.InferenceTranspiler()
+        t.transpile(inference_transpiler_program, place)
+
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
+
+        transpiler_results = exe.run(inference_transpiler_program,
+                                     feed={feed_target_names[0]: tensor_img},
+                                     fetch_list=fetch_targets)
+
+        assert len(results[0]) == len(transpiler_results[0])
+        for i in range(len(results[0])):
+            np.testing.assert_almost_equal(
+                results[0][i], transpiler_results[0][i], decimal=5)
+
         print("infer results: ", results[0])
+
+        fluid.io.save_inference_model(save_dirname, feed_target_names,
+                                      fetch_targets, exe,
+                                      inference_transpiler_program)
 
 
 def main(net_type, use_cuda, is_local=True):

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/compare_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -20,8 +21,7 @@ namespace operators {
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CompareOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X",
              string::Sprintf("(LoDTensor) the left hand operand of %s operator",
@@ -29,6 +29,11 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", string::Sprintf(
                       "(LoDTensor) the right hand operand of %s operator",
                       comment.type));
+    AddAttr<bool>("force_cpu",
+                  "(bool, default false) Force fill output variable to cpu "
+                  "memory. Otherwise, fill output variable to the running "
+                  "device")
+        .SetDefault(false);
     AddOutput("Out", string::Sprintf(
                          "(LoDTensor) n-dim bool tensor. Each element is %s",
                          comment.equation));
@@ -75,7 +80,9 @@ class CompareOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    bool force_cpu = ctx.Attr<bool>("force_cpu");
+    kt.place_ = force_cpu ? platform::CPUPlace()
+                          : ctx.Input<framework::LoDTensor>("X")->place();
     return kt;
   }
 };

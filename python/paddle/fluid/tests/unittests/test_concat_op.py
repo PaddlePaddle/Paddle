@@ -20,19 +20,35 @@ from op_test import OpTest
 class TestConcatOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
-        x0 = np.random.random((2, 1, 4, 5)).astype('float32')
-        x1 = np.random.random((2, 2, 4, 5)).astype('float32')
-        x2 = np.random.random((2, 3, 4, 5)).astype('float32')
-        axis = 1
-        self.inputs = {'X': [('x0', x0), ('x1', x1), ('x2', x2)]}
-        self.attrs = {'axis': axis}
-        self.outputs = {'Out': np.concatenate((x0, x1, x2), axis=axis)}
+        self.init_test_data()
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.axis)
+        }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
+
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 1, 4, 5)).astype('float32')
+        self.x1 = np.random.random((2, 2, 4, 5)).astype('float32')
+        self.x2 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.axis = 1
+
+
+class TestConcatOp2(OpTest):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x1 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x2 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.axis = 1
 
 
 if __name__ == '__main__':

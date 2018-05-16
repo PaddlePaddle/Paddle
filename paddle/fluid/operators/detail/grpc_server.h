@@ -14,31 +14,41 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <thread>  // NOLINT
+#include <utility>
+
+#include "grpc++/grpc++.h"
+#include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
-
+#include "paddle/fluid/operators/detail/grpc_service.h"
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
-
-#include <grpc++/grpc++.h>
-#include <grpc/support/log.h>
-#include <thread>
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
+typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
+    ReceivedMessage;
+typedef framework::BlockingQueue<ReceivedMessage> ReceivedQueue;
+
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 class RequestBase;
 
-class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
+class AsyncGRPCServer final {
  public:
-  explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
+  explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
+      : address_(address), sync_mode_(sync_mode), ready_(0) {}
 
+  ~AsyncGRPCServer() {}
+  void WaitServerReady();
   void RunSyncUpdate();
 
   // functions to sync server barrier status.
@@ -50,34 +60,53 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
-  const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
+  void SetProgram(framework::ProgramDesc *program) { program_ = program; }
 
-  void Push(const MessageWithName &msg) { this->var_recv_queue_.Push(msg); }
+  void SetExecutor(framework::Executor *executor) { executor_ = executor; }
+
+  void SetPrefetchPreparedCtx(
+      std::unique_ptr<framework::ExecutorPrepareContext> prepared) {
+    prefetch_ctx_.reset(prepared.release());
+  }
+
+  int GetSelectedPort() const { return selected_port_; }
+
+  const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
+
+  void Push(const std::string &msg_name) {
+    this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
+  }
 
   void ShutDown();
 
  protected:
-  void HandleRequest(grpc::ServerCompletionQueue *cq, std::string cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue *cq,
+                     const std::string &cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
+  void TryToRegisterNewPrefetchOne();
   void ShutdownQueue();
 
  private:
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_prefetch_;
 
-  sendrecv::SendRecvService::AsyncService service_;
-  std::unique_ptr<grpc::Server> server_;
+  GrpcService::AsyncService service_;
+  std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
+  const bool sync_mode_;
   framework::Scope *scope_;
   const platform::DeviceContext *dev_ctx_;
+
   // received variable from RPC, operators fetch variable from this queue.
-  SimpleBlockQueue<MessageWithName> var_recv_queue_;
-  SimpleBlockQueue<char> var_get_queue_;
+  framework::BlockingQueue<MessageWithName> var_get_queue_;
+  // client send variable to this queue.
+  ReceivedQueue var_recv_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;
@@ -86,6 +115,16 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
+  std::unique_ptr<std::thread> t_prefetch_;
+
+  std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
+  framework::ProgramDesc *program_;
+  framework::Executor *executor_;
+  int selected_port_;
+
+  std::mutex mutex_ready_;
+  std::condition_variable condition_ready_;
+  int ready_;
 };
 
 };  // namespace detail

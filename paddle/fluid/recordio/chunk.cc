@@ -14,43 +14,64 @@
 
 #include "paddle/fluid/recordio/chunk.h"
 
+#include <zlib.h>
+#include <algorithm>
 #include <memory>
 #include <sstream>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "snappystream.hpp"
-#include "zlib.h"
 
 namespace paddle {
 namespace recordio {
 constexpr size_t kMaxBufSize = 1024;
 
+/**
+ * Read Stream by a fixed sized buffer.
+ * @param in input stream
+ * @param limit read at most `limit` bytes from input stream. 0 means no limit
+ * @param callback A function object with (const char* buf, size_t size) -> void
+ * as its type.
+ */
 template <typename Callback>
-static void ReadStreamByBuf(std::istream& in, int limit, Callback callback) {
+static void ReadStreamByBuf(std::istream& in, size_t limit, Callback callback) {
   char buf[kMaxBufSize];
   std::streamsize actual_size;
   size_t counter = 0;
-  do {
-    auto actual_max =
-        limit > 0 ? std::min(limit - counter, kMaxBufSize) : kMaxBufSize;
-    actual_size = in.readsome(buf, actual_max);
+  size_t actual_max;
+  while (!in.eof() ||
+         (limit != 0 && counter >= limit)) {  // End of file or reach limit
+    actual_max =
+        limit != 0 ? std::min(limit - counter, kMaxBufSize) : kMaxBufSize;
+    in.read(buf, actual_max);
+    actual_size = in.gcount();
     if (actual_size == 0) {
       break;
     }
     callback(buf, actual_size);
-    if (limit > 0) {
+    if (limit != 0) {
       counter += actual_size;
     }
-  } while (actual_size == kMaxBufSize);
+  }
+  in.clear();  // unset eof state
 }
 
+/**
+ * Copy stream in to another stream
+ */
 static void PipeStream(std::istream& in, std::ostream& os) {
-  ReadStreamByBuf(
-      in, -1, [&os](const char* buf, size_t len) { os.write(buf, len); });
+  ReadStreamByBuf(in, 0,
+                  [&os](const char* buf, size_t len) { os.write(buf, len); });
 }
-static uint32_t Crc32Stream(std::istream& in, int limit = -1) {
-  auto crc = crc32(0, nullptr, 0);
+
+/**
+ * Calculate CRC32 from an input stream.
+ */
+static uint32_t Crc32Stream(std::istream& in, size_t limit = 0) {
+  uint32_t crc = static_cast<uint32_t>(crc32(0, nullptr, 0));
   ReadStreamByBuf(in, limit, [&crc](const char* buf, size_t len) {
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(buf), len);
+    crc = static_cast<uint32_t>(crc32(crc, reinterpret_cast<const Bytef*>(buf),
+                                      static_cast<uInt>(len)));
   });
   return crc;
 }
@@ -85,28 +106,29 @@ bool Chunk::Write(std::ostream& os, Compressor ct) const {
     compressed_stream.reset();
   }
 
-  auto end_pos = sout.tellg();
+  sout.seekg(0, std::ios::end);
+  uint32_t len = static_cast<uint32_t>(sout.tellg());
   sout.seekg(0, std::ios::beg);
-  uint32_t len = static_cast<uint32_t>(end_pos - sout.tellg());
   uint32_t crc = Crc32Stream(sout);
-  sout.seekg(0, std::ios::beg);
-
   Header hdr(static_cast<uint32_t>(records_.size()), crc, ct, len);
   hdr.Write(os);
+  sout.seekg(0, std::ios::beg);
+  sout.clear();
   PipeStream(sout, os);
   return true;
 }
 
-void Chunk::Parse(std::istream& sin) {
+bool Chunk::Parse(std::istream& sin) {
   Header hdr;
-  hdr.Parse(sin);
+  bool ok = hdr.Parse(sin);
+  if (!ok) {
+    return ok;
+  }
   auto beg_pos = sin.tellg();
-  auto crc = Crc32Stream(sin, hdr.CompressSize());
+  uint32_t crc = Crc32Stream(sin, hdr.CompressSize());
   PADDLE_ENFORCE_EQ(hdr.Checksum(), crc);
-
   Clear();
-
-  sin.seekg(beg_pos, std::ios::beg);
+  sin.seekg(beg_pos, sin.beg);
   std::unique_ptr<std::istream> compressed_stream;
   switch (hdr.CompressType()) {
     case Compressor::kNoCompress:
@@ -126,8 +148,10 @@ void Chunk::Parse(std::istream& sin) {
     std::string buf;
     buf.resize(rec_len);
     stream.read(&buf[0], rec_len);
+    PADDLE_ENFORCE_EQ(rec_len, stream.gcount());
     Add(buf);
   }
+  return true;
 }
 
 }  // namespace recordio

@@ -17,7 +17,7 @@ limitations under the License. */
 //       file and did some modifications so that we can send gRPC
 //       requests without too much copying of the tensor data.
 
-#include "bytebuffer_stream.h"
+#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 
 namespace paddle {
 namespace operators {

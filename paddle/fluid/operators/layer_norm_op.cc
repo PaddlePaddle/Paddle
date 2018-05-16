@@ -61,8 +61,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
 class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LayerNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) The input tensor.");
     AddInput("Scale",
              "(Tensor, optional) Scale is a 1-dimensional tensor of size "
@@ -162,8 +161,9 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
-            layer_norm_grad, ops::LayerNormGradOp);
+REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);

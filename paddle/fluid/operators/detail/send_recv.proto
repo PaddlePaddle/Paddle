@@ -21,6 +21,8 @@ service SendRecvService {
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
   // Argument VariableMessage for GetVariable should only contain varname.
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
+  // pre-fetch variable by given variable name and Ids
+  rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.
@@ -30,8 +32,12 @@ service SendRecvService {
 enum VarType {
   LOD_TENSOR = 0;
   SELECTED_ROWS = 1;
+  NCCL_ID = 2;
 }
 
+// NOTICE(gongwb):don't modify this proto if you are not
+//   not familar with how we serialize in sendrecvop_utils.h
+//   and deserilize it in  variable_response.h.
 message VariableMessage {
   enum Type {
     // Pod Types
@@ -45,7 +51,6 @@ message VariableMessage {
   }
 
   message LodData { repeated int64 lod_data = 1; }
-
   string varname = 1;
   // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
   VarType type = 2;
@@ -57,10 +62,18 @@ message VariableMessage {
   // lod details:
   int64 lod_level = 5;
   repeated LodData lod = 6;
+  // selected_rows height, aka. original dim0
+  int64 slr_height = 7;
   // tensor data
-  bytes serialized = 7;
+  bytes serialized = 8;
   // selected_rows data
-  bytes rows = 8;
+  bytes rows = 9;
+  // Look up table block execution output variable name.
+  string out_varname = 10;
+  // If true, the ps server will start profiling, the ps
+  // server stops profiling and generates a profile to /tmp/profile_ps_*
+  // when profile switches from true to false.
+  bool profile = 11;
 }
 
 message VoidMessage {}

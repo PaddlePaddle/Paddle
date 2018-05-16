@@ -67,8 +67,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GatherOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of gather op");
@@ -100,7 +99,8 @@ Out = [[3, 4],
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(gather, ops::GatherOp, ops::GatherOpMaker, gather_grad,
-            ops::GatherGradOp);
+REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>);

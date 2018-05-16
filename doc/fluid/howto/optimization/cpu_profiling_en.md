@@ -14,7 +14,7 @@ the profiling and tuning of
 1. the Python code and
 1. the mixture of Python and C++ code.
 
-## Profiling the Python Code
+# Profiling the Python Code
 
 ### Generate the Performance Profiling File
 
@@ -57,14 +57,40 @@ port, we will see the output like the following:
 where each line corresponds to Python function, and the meaning of
 each column is as follows:
 
-| column | meaning |
-| --- | --- |
-| ncalls | the number of calls into a function |
-| tottime | the total execution time of the function, not including the execution time of other functions called by the function |
-| percall | tottime divided by ncalls |
-| cumtime | the total execution time of the function, including the execution time of other functions being called |
-| percall | cumtime divided by ncalls |
-| filename:lineno(function) | where the function is defined |
+<table>
+<thead>
+<tr>
+<th>column</th>
+<th>meaning </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> ncalls</td>
+<td> the number of calls into a function</td>
+</tr>
+<tr>
+<td>tottime</td>
+<td> the total execution time of the function, not including the execution time of other functions called by the function</td>
+</tr>
+<tr>
+<td> percall </td>
+<td> tottime divided by ncalls</td>
+</tr>
+<tr>
+<td> cumtime</td>
+<td> the total execution time of the function, including the execution time of other functions being called</td>
+</tr>
+<tr>
+<td> percall</td>
+<td> cumtime divided by ncalls</td>
+</tr>
+<tr>
+<td> filename:lineno(function) </td>
+<td> where the function is define </td>
+</tr>
+</tbody>
+</table>
 
 ### Identify Performance Bottlenecks
 
@@ -81,7 +107,7 @@ focus on. We can sort above profiling file by tottime:
 
 We can see that the most time-consuming function is the `built-in
 method run`, which is a C++ function in `libpaddle.so`.  We will
-explain how to profile C++ code in the next section.  At this 
+explain how to profile C++ code in the next section.  At this
 moment, let's look into the third function `sync_with_cpp`, which is a
 Python function.  We can click it to understand more about it:
 

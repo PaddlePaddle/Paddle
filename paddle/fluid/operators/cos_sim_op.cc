@@ -62,8 +62,7 @@ class CosSimOp : public framework::OperatorWithKernel {
 
 class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CosSimOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The 1st input of cos_sim op.");
     AddInput("Y", "The 2nd input of cos_sim op.");
     AddOutput("Out", "The output of cos_sim op.");
@@ -153,8 +152,9 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(cos_sim, ops::CosSimOp, ops::CosSimOpMaker, cos_sim_grad,
-            ops::CosSimOpGrad);
+REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
     cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

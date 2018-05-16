@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import re
 from collections import defaultdict
-
+from paddle.fluid.framework import Program
 import framework
 import layers
 from backward import append_backward
@@ -23,8 +23,14 @@ from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
 from clip import append_gradient_clip_ops, error_clip_callback
+from contextlib import contextmanager
 
-__all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
+__all__ = [
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
+    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'Adadelta', 'ModelAverage',
+    'Optimizer'
+]
 
 
 class Optimizer(object):
@@ -41,6 +47,8 @@ class Optimizer(object):
             raise TypeError("learning rate should be float or Variable")
         self.regularization = regularization
         self._learning_rate = learning_rate
+        # the learning rate type should be inferenced from loss
+        self._dtype = None
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
@@ -71,7 +79,7 @@ class Optimizer(object):
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(self._learning_rate),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             persistable=True)
 
     def global_learning_rate(self, program=None):
@@ -119,7 +127,12 @@ class Optimizer(object):
         """
         pass
 
-    def _add_accumulator(self, name, param, dtype=None, fill_value=0.0):
+    def _add_accumulator(self,
+                         name,
+                         param,
+                         dtype=None,
+                         fill_value=0.0,
+                         shape=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -133,17 +146,19 @@ class Optimizer(object):
                 param.name in self._accumulators[name]):
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
-
+        if shape == None:
+            shape = param.shape
         assert isinstance(self.helper, LayerHelper)
         var = self.helper.create_global_variable(
             name=unique_name.generate(name),
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
-            shape=param.shape)
+            shape=shape)
         self.helper.set_variable_initializer(
             var, initializer=Constant(value=float(fill_value)))
         self._accumulators[name][param.name] = var
+        return var
 
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
@@ -187,6 +202,7 @@ class Optimizer(object):
 
         # Create any accumulators
         program = loss.block.program
+        self._dtype = loss.dtype
         with program_guard(program, startup_program):
             global_block = framework.default_main_program().global_block()
             start = len(global_block.ops)
@@ -222,6 +238,8 @@ class Optimizer(object):
         """
         params_grads = append_backward(loss, parameter_list, no_grad_set,
                                        [error_clip_callback])
+
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         params_grads = append_gradient_clip_ops(params_grads)
 
@@ -376,7 +394,7 @@ class AdamOptimizer(Optimizer):
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -385,7 +403,7 @@ class AdamOptimizer(Optimizer):
 
         self._beta2_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta2_pow_acc'),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -478,7 +496,7 @@ class AdamaxOptimizer(Optimizer):
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -578,6 +596,205 @@ class DecayedAdagradOptimizer(Optimizer):
         return decayed_adagrad_op
 
 
+class AdadeltaOptimizer(Optimizer):
+    """
+    **Adadelta Optimizer**
+    Simple Adadelta optimizer with average squared grad state and
+    average squared update state.
+    The details of adadelta please refer to this
+    `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD
+    <http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf>`_.
+
+    ..  math::
+
+        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2 \\\\
+        learning\\_rate &= sqrt( ( E(dx_{t-1}^2) + \\epsilon ) / ( \\
+                          E(g_t^2) + \\epsilon ) ) \\\\
+        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\\_rate)^2
+
+    Args:
+        learning_rate(float): global leraning rate
+        rho(float): rho in equation
+        epsilon(float): epsilon in equation
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adadelta(
+                learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
+            _, params_grads = optimizer.minimize(cost)
+    """
+
+    _avg_squared_grad_acc_str = "_avg_squared_grad"
+    _avg_squared_update_acc_str = "_avg_squared_update"
+
+    def __init__(self, learning_rate, epsilon=1.0e-6, rho=0.95, **kwargs):
+        if learning_rate is None:
+            raise ValueError("learning_rate is not set.")
+        if epsilon is None:
+            raise ValueError("epsilon is not set.")
+        if rho is None:
+            raise ValueError("rho is not set.")
+        super(AdadeltaOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        self.type = "adadelta"
+        self._epsilon = epsilon
+        self._rho = rho
+
+    def _create_accumulators(self, block, parameters):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        for p in parameters:
+            self._add_accumulator(self._avg_squared_grad_acc_str, p)
+            self._add_accumulator(self._avg_squared_update_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        avg_squared_grad_acc = self._get_accumulator(
+            self._avg_squared_grad_acc_str, param_and_grad[0])
+        avg_squared_update_acc = self._get_accumulator(
+            self._avg_squared_update_acc_str, param_and_grad[0])
+
+        # Create the adadelta optimizer op
+        adadelta_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "AvgSquaredGrad": avg_squared_grad_acc,
+                "AvgSquaredUpdate": avg_squared_update_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "AvgSquaredGradOut": avg_squared_grad_acc,
+                "AvgSquaredUpdateOut": avg_squared_update_acc
+            },
+            attrs={"epsilon": self._epsilon,
+                   "rho": self._rho})
+
+        return adadelta_op
+
+
+class RMSPropOptimizer(Optimizer):
+    """
+    Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
+    rate method. The original slides proposed RMSProp: Slide 29 of
+    http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
+
+    The original equation is as follows:
+
+    ..  math::
+
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+
+        w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
+
+    The first equation calculates moving average of the squared gradient for
+    each weight. Then dividing the gradient by :math: `sqrt{v(w,t)}`.
+
+    In some cases, adding a momentum term :math: `\\beta` is beneficial.
+    In our implementation, Nesterov momentum is used:
+
+    ..  math::
+
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) +
+            \\epsilon}} \\nabla Q_{i}(w)
+
+        w & = w - v(w, t)
+
+    where, :math: `\\rho` is a hyperparameter and typical values are 0.9, 0.95
+    and so on. :math: `beta` is the momentum term. :math: `\\epsilon` is a
+    smoothing term to avoid division by zero, usually set somewhere in range
+    from 1e-4 to 1e-8.
+
+
+    Args:
+        learning_rate(float): global leraning rate.
+        rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
+        epsilon(float): :math: `\\epsilon` in equation is smoothing term to
+            avoid division by zero, set 1e-6 by default.
+        momentum(float): :math: `\\beta` in equation is the momentum term,
+            set 0.0 by default.
+
+    Raises:
+        ValueError: If learning_rate, rho, epsilon, momentum are None.
+
+    Examples:
+          .. code-block:: python
+
+              optimizer = fluid.optimizer.RMSProp(0.0001)
+              _, params_grads = optimizer.minimize(cost)
+    """
+
+    _momentum_acc_str = "momentum"
+    _mean_square_acc_str = "mean_square"
+
+    def __init__(self,
+                 learning_rate,
+                 rho=0.95,
+                 epsilon=1.0e-6,
+                 momentum=0.0,
+                 **kwargs):
+        super(RMSPropOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        if learning_rate is None:
+            raise ValueError("learning_rate is not set.")
+        if rho is None:
+            raise ValueError("rho is not set.")
+        if epsilon is None:
+            raise ValueError("epsilon is not set.")
+        if momentum is None:
+            raise ValueError("momentum is not set.")
+
+        self.type = "rmsprop"
+        self._rho = rho
+        self._epsilon = epsilon
+        self._momentum = momentum
+
+    def _create_accumulators(self, block, parameters):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        for p in parameters:
+            self._add_accumulator(self._momentum_acc_str, p)
+            self._add_accumulator(self._mean_square_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        momentum_acc = self._get_accumulator(self._momentum_acc_str,
+                                             param_and_grad[0])
+        mean_square_acc = self._get_accumulator(self._mean_square_acc_str,
+                                                param_and_grad[0])
+        rmsprop_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": momentum_acc,
+                "MeanSquare": mean_square_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "MomentOut": momentum_acc,
+                "MeanSquareOut": mean_square_acc
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "decay": self._rho,
+                "momentum": self._momentum
+            })
+
+        return rmsprop_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -592,3 +809,160 @@ Adagrad = AdagradOptimizer
 Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
+Adadelta = AdadeltaOptimizer
+RMSProp = RMSPropOptimizer
+
+
+class ModelAverage(Optimizer):
+    """Accumulate the average of parameters whtin sliding window. The average
+    result will be saved in temporary variables which can be applied to
+    parameter variables of current model by calling 'apply()' method. And the
+    'restore()' method is used to restored the parameter values of current model.
+
+    The size of average window is determined by average_window_rate,
+    min_average_window, max_average_window and current update times.
+
+    Args:
+        average_window_rate: The rate of average window.
+        params_grads: A list of parameter-grad variable pairs.
+        min_average_window: The minimum size of average window.
+        max_average_window: The maximum size of average window.
+
+    Examples:
+        ...
+        optimizer = fluid.optimizer.Momentum()
+        _, params_grads = optimizer.minimize(cost)
+        model_average = fluid.optimizer.ModelAverage(params_grads, 0.15,
+                                                min_average_window=10000,
+                                                max_average_window=20000)
+        for pass_id in range(args.pass_num):
+            for data in train_reader():
+                exe.run(fluid.default_main_program()...)
+
+            with model_average.apply(exe):
+                for data in test_reader():
+                    exe.run(inference_program...)
+    """
+
+    def __init__(self,
+                 average_window_rate,
+                 params_grads=None,
+                 min_average_window=10000,
+                 max_average_window=10000,
+                 **kwargs):
+        super(ModelAverage, self).__init__(0.0, **kwargs)
+        self.average_window = average_window_rate
+        self.min_average_window = min_average_window
+        self.max_average_window = max_average_window
+
+        self.params_grads = [] if params_grads is None else params_grads
+        params = {}
+        for param, grad in self.params_grads:
+            if param.do_model_average != False:
+                params[param.name] = (param, grad)
+        for param in framework.default_main_program().global_block(
+        ).all_parameters():
+            if param.name not in params and param.do_model_average != False:
+                grad = param.block.create_var(
+                    name=unique_name.generate(".".join([param.name, 'tmp'])),
+                    dtype=param.dtype,
+                    persistable=False,
+                    stop_gradient=True)
+                params[param.name] = (param, grad)
+        self.params_grads = params.values()
+
+        for param, grad in self.params_grads:
+            self._append_average_accumulate_op(param)
+
+        self.apply_program = Program()
+        block = self.apply_program.global_block()
+        with program_guard(main_program=self.apply_program):
+            for param_grad in self.params_grads:
+                self._add_average_apply_op(block, param_grad)
+
+        self.restore_program = Program()
+        block = self.restore_program.global_block()
+        with program_guard(main_program=self.restore_program):
+            for param_grad in self.params_grads:
+                self._add_average_restore_op(block, param_grad)
+
+    def _add_average_apply_op(self, block, param_grad):
+        param = block.clone_variable(param_grad[0])
+        grad = block.clone_variable(param_grad[1])
+        sum_1 = block.clone_variable(self._get_accumulator('sum_1', param))
+        sum_2 = block.clone_variable(self._get_accumulator('sum_2', param))
+        sum_3 = block.clone_variable(self._get_accumulator('sum_3', param))
+        num_accumulates = block.clone_variable(
+            self._get_accumulator('num_accumulates', param))
+        old_num_accumulates = block.clone_variable(
+            self._get_accumulator('old_num_accumulates', param))
+        num_updates = block.clone_variable(
+            self._get_accumulator('num_updates', param))
+        # backup param value to grad
+        layers.assign(input=param, output=grad)
+        # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
+        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
+        sum = layers.sum(x=[sum_1, sum_2, sum_3])
+        tmp = layers.cast(
+            x=tmp, dtype='float32' if self._dtype == None else self._dtype)
+        sum = layers.cast(
+            x=sum, dtype='float32' if self._dtype == None else self._dtype)
+        layers.elementwise_div(x=sum, y=tmp, out=param)
+
+    def _add_average_restore_op(self, block, param_grad):
+        param = block.clone_variable(param_grad[0])
+        grad = block.clone_variable(param_grad[1])
+        layers.assign(input=grad, output=param)
+
+    def _append_average_accumulate_op(self, param):
+        self.helper = LayerHelper("average_accumulate")
+        sum_1 = self._add_accumulator('sum_1', param)
+        sum_2 = self._add_accumulator('sum_2', param)
+        sum_3 = self._add_accumulator('sum_3', param)
+        num_accumulates = self._add_accumulator(
+            'num_accumulates', param, dtype='int64', shape=[1])
+        old_num_accumulates = self._add_accumulator(
+            'old_num_accumulates', param, dtype='int64', shape=[1])
+        num_updates = self._add_accumulator(
+            'num_updates', param, dtype='int64', shape=[1])
+
+        self.helper.append_op(
+            type='average_accumulates',
+            inputs={
+                "param": param,
+                "in_sum_1": sum_1,
+                "in_sum_2": sum_2,
+                "in_sum_3": sum_3,
+                "in_num_accumulates": num_accumulates,
+                "in_old_num_accumulates": old_num_accumulates,
+                "in_num_updates": num_updates
+            },
+            outputs={
+                "out_sum_1": sum_1,
+                "out_sum_2": sum_2,
+                "out_sum_3": sum_3,
+                "out_num_accumulates": num_accumulates,
+                "out_old_num_accumulates": old_num_accumulates,
+                "out_num_updates": num_updates,
+            },
+            attrs={
+                "average_window": self.average_window,
+                "min_average_window": self.min_average_window,
+                "max_average_window": self.max_average_window,
+            })
+
+    @contextmanager
+    def apply(self, executor, need_restore=True):
+        """Apply average values to parameters of current model.
+        """
+        executor.run(self.apply_program)
+        try:
+            yield
+        finally:
+            if need_restore:
+                self.restore(executor)
+
+    def restore(self, executor):
+        """Restore parameter values of current model.
+        """
+        executor.run(self.restore_program)

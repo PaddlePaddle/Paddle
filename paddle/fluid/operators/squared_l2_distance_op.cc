@@ -56,8 +56,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
 class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquaredL2DistanceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) Input of SquaredL2DistanceOp.");
     AddInput("Y", "(Tensor) Target of SquaredL2DistanceOp.");
     AddOutput("sub_result",
@@ -109,9 +108,10 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(squared_l2_distance, ops::SquaredL2DistanceOp,
-            ops::SquaredL2DistanceOpMaker, squared_l2_distance_grad,
-            ops::SquaredL2DistanceGradOp);
+REGISTER_OPERATOR(squared_l2_distance, ops::SquaredL2DistanceOp,
+                  ops::SquaredL2DistanceOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
     ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);

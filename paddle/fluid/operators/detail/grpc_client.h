@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <grpc++/grpc++.h>
-#include <grpc/support/log.h>
 #include <time.h>
-#include <chrono>
+
+#include <chrono>  // NOLINT
 #include <ctime>
 #include <functional>
 #include <iostream>
@@ -25,12 +24,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "grpc++/generic/generic_stub.h"
+#include "grpc++/grpc++.h"
+#include "grpc++/support/byte_buffer.h"
+#include "grpc++/support/slice.h"
+#include "grpc/support/log.h"
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
 
 namespace paddle {
 namespace operators {
@@ -49,17 +53,15 @@ struct VarHandle {
   }
 };
 
-void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& msg);
+void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
-class ClientBase {
+class BaseProcessor {
  public:
-  explicit ClientBase(std::shared_ptr<grpc::Channel> ch) {
-    stub_ = sendrecv::SendRecvService::NewStub(ch);
-    context_ = NULL;
+  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
+    context_ = nullptr;
   }
 
-  virtual ~ClientBase() {}
+  virtual ~BaseProcessor() {}
 
   virtual void Prepare(const VarHandle& var_info, int64_t time_out) {
     context_.reset(new grpc::ClientContext());
@@ -82,18 +84,18 @@ class ClientBase {
 
   virtual void Process() = 0;
 
-  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
   VarHandle var_h_;
 };
 
-typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
+typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestSendCallBack;
 
-class SendProcessor : public ClientBase {
+class SendProcessor : public BaseProcessor {
  public:
-  explicit SendProcessor(std::shared_ptr<grpc::Channel> ch) : ClientBase(ch) {}
+  explicit SendProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~SendProcessor() {}
 
@@ -103,16 +105,18 @@ class SendProcessor : public ClientBase {
     }
   }
 
-  sendrecv::VoidMessage reply_;
-  RequestSendCallBack response_call_back_ = NULL;
+  ::grpc::GenericStub stub_g_;
+  ::grpc::ByteBuffer reply_;
+  RequestSendCallBack response_call_back_ = nullptr;
 };
 
-typedef std::function<void(const VarHandle&, const sendrecv::VariableMessage&)>
+typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestGetCallBack;
 
-class GetProcessor : public ClientBase {
+class GetProcessor : public BaseProcessor {
  public:
-  explicit GetProcessor(std::shared_ptr<grpc::Channel> ch) : ClientBase(ch) {}
+  explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~GetProcessor() {}
 
@@ -122,19 +126,37 @@ class GetProcessor : public ClientBase {
     }
   }
 
-  sendrecv::VariableMessage reply_;
+  ::grpc::ByteBuffer reply_;
+  ::grpc::GenericStub stub_g_;
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
-class BatchBarrierProcessor : public ClientBase {
+class BatchBarrierProcessor : public BaseProcessor {
  public:
   explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : ClientBase(ch) {}
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~BatchBarrierProcessor() {}
 
   virtual void Process() {}
   sendrecv::VoidMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
+};
+
+class FetchBarrierProcessor : public BaseProcessor {
+ public:
+  explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
+
+  virtual ~FetchBarrierProcessor() {}
+
+  virtual void Process() {}
+  sendrecv::VariableMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class RPCClient {
@@ -151,7 +173,17 @@ class RPCClient {
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
 
-  bool AsyncSendBatchBarrier(const std::string& ep,
+  bool AsyncPrefetchVariable(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& in_var_name,
+                             const std::string& out_var_name,
+                             int64_t time_out = 600 * 1000);
+
+  void AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = 600 * 1000);
+
+  void AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = 600 * 1000);
 
   bool Wait();

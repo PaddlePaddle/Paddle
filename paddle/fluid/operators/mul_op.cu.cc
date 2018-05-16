@@ -13,9 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    mul, ops::MulKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    mul_grad, ops::MulGradKernel<paddle::platform::CUDADeviceContext, float>);
+namespace plat = paddle::platform;
+REGISTER_OP_CUDA_KERNEL(mul, ops::MulKernel<plat::CUDADeviceContext, float>,
+                        ops::MulKernel<plat::CUDADeviceContext, double>,
+                        ops::MulKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(mul_grad,
+                        ops::MulGradKernel<plat::CUDADeviceContext, float>,
+                        ops::MulGradKernel<plat::CUDADeviceContext, double>);

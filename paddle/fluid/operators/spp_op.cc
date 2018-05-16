@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/spp_op.h"
+#include <string>
+#include <vector>
 namespace paddle {
 namespace operators {
 
 class SppOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SppOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of spp operator. "
@@ -90,7 +91,9 @@ class SppOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(spp, ops::SppOp, ops::SppOpMaker, spp_grad, ops::SppOpGrad);
+REGISTER_OPERATOR(spp, ops::SppOp, ops::SppOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(spp_grad, ops::SppOpGrad);
 REGISTER_OP_CPU_KERNEL(
     spp, ops::SppKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SppKernel<paddle::platform::CPUDeviceContext, double>);

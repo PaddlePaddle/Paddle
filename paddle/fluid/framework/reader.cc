@@ -16,14 +16,24 @@
 
 namespace paddle {
 namespace framework {
+ReaderBase::~ReaderBase() {}
 
-DDim ReaderBase::shape(size_t idx) const {
-  PADDLE_ENFORCE_LT(
-      idx, shapes_.size(),
-      "Cannot get the %d'th shape, 'shapes_' only has %d elements.", idx,
-      shapes_.size());
-  return shapes_[idx];
+FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+
+void FileReader::ReadNext(std::vector<LoDTensor> *out) {
+  ReadNextImpl(out);
+  if (out->empty()) {
+    return;
+  }
+  for (size_t i = 0; i < dims_.size(); ++i) {
+    auto &actual = out->at(i).dims();
+    auto &expect = dims_[i];
+
+    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
+    for (int j = 0; j < actual.size(); ++j) {
+      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
+    }
+  }
 }
-
 }  // namespace framework
 }  // namespace paddle

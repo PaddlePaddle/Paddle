@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <list>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -51,18 +52,18 @@ class Scope {
   /// Create a variable with a scope-unique name.
   Variable* Var(std::string* name = nullptr);
 
-  void EraseVars(std::vector<std::string>& var_names);
+  void EraseVars(const std::vector<std::string>& var_names);
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   Variable* FindVar(const std::string& name) const;
 
-  const Scope& parent() const { return *parent_; }
+  const Scope* parent() const { return parent_; }
 
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
-  void DeleteScope(Scope* scope);
+  void DeleteScope(Scope* scope) const;
 
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
@@ -88,6 +89,9 @@ class Scope {
   Scope const* parent_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(Scope);
+
+ private:
+  mutable std::mutex mutex_;
 };
 }  // namespace framework
 }  // namespace paddle

@@ -8,7 +8,7 @@ PaddlePaddle 用户一般通过调用 Python API 编写深度学习程序。大�
 * Python 与 C++ 混合代码的性能分析
 
 
-## Python代码的性能分析
+# Python代码的性能分析
 
 ### 生成性能分析文件
 
@@ -42,14 +42,40 @@ cprofilev -a 0.0.0.0 -p 3214 -f profile.out main.py
 
 每一列的含义是:
 
-| 列名 | 含义 |
-| --- | --- |
-| ncalls | 函数的调用次数 |
-| tottime | 函数实际使用的总时间。该时间去除掉本函数调用其他函数的时间 |
-| percall | tottime的每次调用平均时间 |
-| cumtime | 函数总时间。包含这个函数调用其他函数的时间 |
-| percall | cumtime的每次调用平均时间 |
-| filename:lineno(function) | 文件名, 行号，函数名 |
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>含义 </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> ncalls</td>
+<td> 函数的调用次数</td>
+</tr>
+<tr>
+<td>tottime</td>
+<td> 函数实际使用的总时间。该时间去除掉本函数调用其他函数的时间</td>
+</tr>
+<tr>
+<td> percall </td>
+<td> tottime的每次调用平均时间</td>
+</tr>
+<tr>
+<td> cumtime</td>
+<td> 函数总时间。包含这个函数调用其他函数的时间</td>
+</tr>
+<tr>
+<td> percall</td>
+<td> cumtime的每次调用平均时间</td>
+</tr>
+<tr>
+<td> filename:lineno(function) </td>
+<td> 文件名, 行号，函数名 </td>
+</tr>
+</tbody>
+</table>
 
 
 ### 寻找性能瓶颈

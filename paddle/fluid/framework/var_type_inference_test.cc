@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/var_type_inference.h"
+#include <string>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -23,8 +24,7 @@ namespace framework {
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "");
     AddComment("");

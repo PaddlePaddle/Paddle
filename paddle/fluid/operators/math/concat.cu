@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/concat.h"
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -66,68 +68,66 @@ __global__ void KernelConcat(T** inputs, const int* input_cols, int col_size,
 }
 
 template <typename T>
-__global__ void KernelConcat(T** inputs, const int input_col,
-                             const int output_rows, const int output_cols,
-                             T* output) {
+__global__ void KernelConcat(T** inputs_data, const int fixed_in_col,
+                             const int out_rows, const int out_cols,
+                             T* output_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  double inv_input_col = 1.0 / input_col;
-  for (; tid_x < output_cols; tid_x += blockDim.x * gridDim.x) {
-    int split = tid_x * inv_input_col;
-    int in_offset = tid_x - split * input_col;
-    T* input_ptr = inputs[split];
+  for (; tid_x < out_cols; tid_x += blockDim.x * gridDim.x) {
+    int split = tid_x * 1.0 / fixed_in_col;
+    int in_offset = tid_x - split * fixed_in_col;
+    T* input_ptr = inputs_data[split];
     int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
-    for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y) {
-      output[tid_y * output_cols + tid_x] =
-          input_ptr[tid_y * input_col + in_offset];
+    for (; tid_y < out_rows; tid_y += blockDim.y * gridDim.y) {
+      output_data[tid_y * out_cols + tid_x] =
+          input_ptr[tid_y * fixed_in_col + in_offset];
     }
   }
 }
 
 template <typename T>
-__global__ void KernelConcatGrad(const T* input, const int input_row,
-                                 const int input_col, const int* output_cols,
-                                 int col_size, T** outputs) {
+__global__ void KernelConcatGrad(const T* input_data, const int in_row,
+                                 const int in_col, const int* out_cols,
+                                 int out_cols_size, T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int segment = upper_bound<int>(output_cols, col_size, tid_x) - 1;
-  int curr_offset = output_cols[segment];
+  int segment = upper_bound<int>(out_cols, out_cols_size, tid_x) - 1;
+  int curr_offset = out_cols[segment];
   int curr_segment = segment;
-  for (; tid_x < input_col; tid_x += blockDim.x * gridDim.x) {
+  for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
     T curr_col_offset;
-    while ((curr_col_offset = output_cols[curr_segment + 1]) <= tid_x) {
+    while ((curr_col_offset = out_cols[curr_segment + 1]) <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
     }
 
     int local_col = tid_x - curr_offset;
     int segment_width = curr_col_offset - curr_offset;
-    T* output_ptr = outputs[curr_segment];
+    T* output_ptr = outputs_data[curr_segment];
     int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
-    for (; tid_y < input_row; tid_y += blockDim.y * gridDim.y)
+    for (; tid_y < in_row; tid_y += blockDim.y * gridDim.y)
       output_ptr[tid_y * segment_width + local_col] =
-          input[tid_y * input_col + tid_x];
+          input_data[tid_y * in_col + tid_x];
   }
 }
 
 template <typename T>
-__global__ void KernelConcatGrad(const T* input, const int input_row,
-                                 const int input_col, const int output_cols,
-                                 T** outputs) {
+__global__ void KernelConcatGrad(const T* input_data, const int in_row,
+                                 const int in_col, const int fixed_out_col,
+                                 T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  double inv_input_col = 1.0 / input_col;
-  for (; tid_x < input_col; tid_x += blockDim.x * gridDim.x) {
-    int split = tid_x * inv_input_col;
-    int in_offset = tid_x - split * input_col;
-    T* output_ptr = outputs[split];
+  for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
+    int split = tid_x / fixed_out_col;
+    int in_offset = tid_x - split * fixed_out_col;
+    T* output_ptr = outputs_data[split];
     int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
-    for (; tid_y < input_row; tid_y += blockDim.y * gridDim.y)
-      output_ptr[tid_y * output_cols + in_offset] =
-          input[tid_y * input_col + tid_x];
+    for (; tid_y < in_row; tid_y += blockDim.y * gridDim.y)
+      output_ptr[tid_y * fixed_out_col + in_offset] =
+          input_data[tid_y * in_col + tid_x];
   }
 }
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatFunctor<platform::CUDADeviceContext, T> {
@@ -136,41 +136,40 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
                   const std::vector<framework::Tensor>& input, const int axis,
                   framework::Tensor* output) {
     // TODO(zcd): Add input data validity checking
-    int num = input.size();
-    int rows = 1;
+    int in_num = input.size();
+    int in_row = 1;
     auto dim_0 = input[0].dims();
     for (int i = 0; i < axis; ++i) {
-      rows *= dim_0[i];
+      in_row *= dim_0[i];
     }
-    int cols = input[0].numel() / rows;
-    int out_rows = rows, out_cols = 0;
+    int in_col = input[0].numel() / in_row;
+    int out_row = in_row, out_col = 0;
 
-    framework::Vector<int16_t> inputs_data(num * sizeof(T*) / 2);
-    framework::Vector<int> inputs_cols(num + 1);
-    inputs_cols[0] = 0;
+    framework::Vector<int16_t> inputs_data(in_num * sizeof(T*) / 2);
+    framework::Vector<int> inputs_col(in_num + 1);
     T** inputs_ptr = reinterpret_cast<T**>(inputs_data.data());
 
+    inputs_col[0] = 0;
     bool sameShape = true;
-    for (int i = 0; i < num; ++i) {
-      int t_cols = input[i].numel() / rows;
+    for (int i = 0; i < in_num; ++i) {
+      int t_cols = input[i].numel() / in_row;
       if (sameShape) {
-        if (t_cols != cols) sameShape = false;
+        if (t_cols != in_col) sameShape = false;
       }
-      out_cols += t_cols;
-      inputs_cols[i + 1] = out_cols;
+      out_col += t_cols;
+      inputs_col[i + 1] = out_col;
       inputs_ptr[i] = const_cast<T*>(input[i].data<T>());
     }
 
-    T** ins_gpu =
+    T** dev_ins_data =
         reinterpret_cast<T**>(inputs_data.CUDAMutableData(context.GetPlace()));
-    const int* ins_col_gpu = inputs_cols.CUDAData(context.GetPlace());
 
     // computation
     // set the thread block and grid according to CurrentDeviceId
     const int kThreadsPerBlock = 1024;
     int block_cols = kThreadsPerBlock;
-    if (out_cols < kThreadsPerBlock) {  // block_cols is aligned by 32.
-      block_cols = ((out_cols + 31) >> 5) << 5;
+    if (out_col < kThreadsPerBlock) {  // block_cols is aligned by 32.
+      block_cols = ((out_col + 31) >> 5) << 5;
     }
     int block_rows = kThreadsPerBlock / block_cols;
     dim3 block_size = dim3(block_cols, block_rows, 1);
@@ -179,68 +178,68 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
 
     int grid_cols =
-        std::min((out_cols + block_cols - 1) / block_cols, max_blocks);
+        std::min((out_col + block_cols - 1) / block_cols, max_blocks);
     int grid_rows =
-        std::min(max_blocks / grid_cols, std::max(out_rows / block_rows, 1));
+        std::min(max_blocks / grid_cols, std::max(out_row / block_rows, 1));
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
       KernelConcat<<<grid_size, block_size, 0, context.stream()>>>(
-          ins_gpu, cols, out_rows, out_cols, output->data<T>());
+          dev_ins_data, in_col, out_row, out_col, output->data<T>());
     } else {
+      const int* dev_ins_col_data = inputs_col.CUDAData(context.GetPlace());
       KernelConcat<<<grid_size, block_size, 0, context.stream()>>>(
-          ins_gpu, ins_col_gpu, static_cast<int>(inputs_cols.size()), out_rows,
-          out_cols, output->data<T>());
+          dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col.size()),
+          out_row, out_col, output->data<T>());
     }
   }
 };
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatGradFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, const int axis,
-                  std::vector<framework::Tensor>& outputs) {
+                  std::vector<framework::Tensor>* outputs) {
     // TODO(zcd): Add input data validity checking
-    int num = outputs.size();
-    int input_row = 1;
-    auto dim_0 = outputs[0].dims();
+    int o_num = outputs->size();
+    int out_row = 1;
+    auto dim_0 = outputs->at(0).dims();
     for (int i = 0; i < axis; ++i) {
-      input_row *= dim_0[i];
+      out_row *= dim_0[i];
     }
 
-    int output_col_0 = outputs[0].numel() / input_row;
-    int input_col = 0;
+    int out_col = outputs->at(0).numel() / out_row;
+    int in_col = 0, in_row = out_row;
     bool sameShape = true;
 
-    framework::Vector<int16_t> outputs_data(num * sizeof(T*) / 2);
-    framework::Vector<int> outputs_cols(num + 1);
-    outputs_cols[0] = 0;
+    framework::Vector<int16_t> outputs_data(o_num * sizeof(T*) / 2);
+    framework::Vector<int> outputs_cols(o_num + 1);
     T** outputs_ptr = reinterpret_cast<T**>(outputs_data.data());
 
-    for (int i = 0; i < num; ++i) {
-      int t_col = outputs[i].numel() / input_row;
+    outputs_cols[0] = 0;
+    for (int i = 0; i < o_num; ++i) {
+      int t_col = outputs->at(i).numel() / out_row;
       if (sameShape) {
-        if (t_col != output_col_0) sameShape = false;
+        if (t_col != out_col) sameShape = false;
       }
-      input_col += t_col;
-      outputs_cols[i + 1] = input_col;
-      outputs_ptr[i] = outputs[i].data<T>();
+      in_col += t_col;
+      outputs_cols[i + 1] = in_col;
+      outputs_ptr[i] = outputs->at(i).data<T>();
     }
 
-    T** outs_gpu =
+    T** dev_out_gpu_data =
         reinterpret_cast<T**>(outputs_data.CUDAMutableData(context.GetPlace()));
-    const int* outs_col_gpu = outputs_cols.CUDAData(context.GetPlace());
 
     // computation
     const int kThreadsPerBlock = 1024;
     int block_cols = kThreadsPerBlock;
-    if (input_col < kThreadsPerBlock) {  // block_cols is aligned by 32.
-      block_cols = ((input_col + 31) >> 5) << 5;
+    if (in_col < kThreadsPerBlock) {  // block_cols is aligned by 32.
+      block_cols = ((in_col + 31) >> 5) << 5;
     }
     int block_rows = kThreadsPerBlock / block_cols;
     dim3 block_size = dim3(block_cols, block_rows, 1);
@@ -249,18 +248,19 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
     int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
 
     int grid_cols =
-        std::min((input_col + block_cols - 1) / block_cols, max_blocks);
+        std::min((in_col + block_cols - 1) / block_cols, max_blocks);
     int grid_rows =
-        std::min(max_blocks / grid_cols, std::max(input_row / block_rows, 1));
+        std::min(max_blocks / grid_cols, std::max(out_row / block_rows, 1));
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
       KernelConcatGrad<<<grid_size, block_size, 0, context.stream()>>>(
-          input.data<T>(), input_row, input_col, output_col_0, outs_gpu);
+          input.data<T>(), in_row, in_col, out_col, dev_out_gpu_data);
     } else {
+      const int* dev_outs_col_data = outputs_cols.CUDAData(context.GetPlace());
       KernelConcatGrad<<<grid_size, block_size, 0, context.stream()>>>(
-          input.data<T>(), input_row, input_col, outs_col_gpu,
-          static_cast<int>(outputs_cols.size()), outs_gpu);
+          input.data<T>(), in_row, in_col, dev_outs_col_data,
+          static_cast<int>(outputs_cols.size()), dev_out_gpu_data);
     }
   }
 };

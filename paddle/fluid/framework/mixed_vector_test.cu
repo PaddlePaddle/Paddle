@@ -104,3 +104,11 @@ TEST(mixed_vector, ForEach) {
   for (auto& v : tmp) {
   }
 }
+
+TEST(mixed_vector, Reserve) {
+  paddle::framework::Vector<int> vec;
+  vec.reserve(1);
+  vec.push_back(0);
+  vec.push_back(0);
+  vec.push_back(0);
+}

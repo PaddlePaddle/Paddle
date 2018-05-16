@@ -14,25 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
-
-namespace paddle {
-namespace operators {
-
-class ElementwiseMulOpMaker : public ElementwiseOpMaker {
- public:
-  ElementwiseMulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Mul", "Out = X \\odot\\ Y");
-    AddComment(comment_);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseMulOpMaker,
-            elementwise_mul_grad, ops::ElementwiseOpGrad);
+REGISTER_ELEMWISE_OP(elementwise_mul, "Mul", "Out = X \\odot\\ Y");
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
