@@ -26,4 +26,16 @@ link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 
 add_executable(demo_trainer demo_trainer.cc)
 
-target_link_libraries(demo_trainer ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a glog gflags protobuf snappy snappystream z cblas)
+IF(APPLE)
+  SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load -framework CoreFoundation -framework Security")
+ELSE(APPLE)
+  SET(ARCHIVE_START "-Wl,--whole-archive")
+  SET(ARCHIVE_END "-Wl,--no-whole-archive")
+ENDIF(APPLE)
+
+target_link_libraries(demo_trainer
+        ${MACOS_LD_FLAGS}
+        ${ARCHIVE_START}
+        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a
+        ${ARCHIVE_END}
+        glog gflags protobuf snappy snappystream z cblas)

@@ -14,7 +14,7 @@
 
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.transpiler.distribute_transpiler import delete_ops
+from paddle.fluid.backward import append_backward
 
 
 def train_network():
@@ -25,9 +25,7 @@ def train_network():
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
     avg_cost = fluid.layers.mean(cost)
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
-    return optimize_ops, params_grads
+    append_backward(avg_cost)
 
 
 def save_program_desc(network_func):
@@ -35,8 +33,7 @@ def save_program_desc(network_func):
     train_program = framework.Program()
 
     with framework.program_guard(train_program, startup_program):
-        optimize_ops, params_grads = network_func()
-        delete_ops(train_program.global_block(), optimize_ops)
+        network_func()
 
     with open("startup_program", "w") as f:
         f.write(startup_program.desc.serialize_to_string())

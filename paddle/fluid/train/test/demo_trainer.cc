@@ -22,8 +22,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/pybind/pybind.h"
-
 namespace paddle {
 namespace train {
 
