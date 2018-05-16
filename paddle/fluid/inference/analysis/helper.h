@@ -24,6 +24,15 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+template <typename Vec>
+int AccuDims(Vec &&vec, int size) {
+  int res = 1;
+  for (int i = 0; i < size; i++) {
+    res *= std::forward<Vec>(vec)[i];
+  }
+  return res;
+}
+
 template <typename IteratorT>
 class iterator_range {
   IteratorT begin_, end_;

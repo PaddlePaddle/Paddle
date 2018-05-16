@@ -20,21 +20,14 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-template <typename Vec>
-int AccuDims(const Vec& vec, int size) {
-  int res = 1;
-  for (int i = 0; i < size; i++) {
-    res *= vec[i];
-  }
-  return res;
-}
 
 /*
  * Get a random float value between [low, high]
@@ -63,7 +56,7 @@ class TRTConvertValidation {
   }
 
   // Declare a Variable with random initialization.
-  virtual void DeclVar(const std::string& name, const nvinfer1::Dims& dims) {
+  void DeclVar(const std::string& name, const nvinfer1::Dims& dims) {
     framework::Scope scope;
     platform::CUDAPlace place;
     platform::CUDADeviceContext ctx(place);
@@ -76,14 +69,15 @@ class TRTConvertValidation {
     x_tensor->Resize(framework::make_ddim(dim_vec));
     // Random init data.
     auto* data = x_tensor->mutable_data<float>(place);
-    for (int i = 0; i < AccuDims<int*>(dims.d, dims.nbDims); i++) {
+    for (int i = 0; i < analysis::AccuDims<const int*>(dims.d, dims.nbDims);
+         i++) {
       data[i] = random(0.0, 1.0);
     }
     // Declare TRT inputs.
     engine_->DeclareInput(name, nvinfer1::DataType::kFLOAT, dims);
   }
 
-  virtual void SetOp(const framework::proto::OpDesc& desc) {
+  void SetOp(const framework::proto::OpDesc& desc) {
     op_ = framework::OpRegistry::CreateOp(desc);
 
     OpConverter op_converter;
@@ -101,8 +95,9 @@ class TRTConvertValidation {
       PADDLE_ENFORCE(var);
       auto tensor = var->GetMutable<framework::LoDTensor>();
       engine_->SetInputFromCPU(
-          input, static_cast<void*>(tensor->data()),
-          sizeof(float) * AccuDims(tensor->dims(), tensor->dims().size()));
+          input, static_cast<void*>(tensor->data<float>()),
+          sizeof(float) *
+              analysis::AccuDims(tensor->dims(), tensor->dims().size()));
     }
   }
 
@@ -122,7 +117,7 @@ class TRTConvertValidation {
       auto tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
       // Compare two output
-      for (int i = 0; i < fluid_out.size(); i++) {
+      for (size_t i = 0; i < fluid_out.size(); i++) {
         EXPECT_TRUE(std::abs(fluid_out[i] - trt_out[i]) < 0.01);
       }
     }

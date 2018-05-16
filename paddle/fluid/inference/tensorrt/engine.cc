@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <glog/logging.h>
 #include <string>
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -71,9 +72,10 @@ void TensorRTEngine::FreezeNetwork() {
   for (auto& item : buffer_sizes_) {
     if (item.second == 0) {
       auto slot_offset = infer_engine_->getBindingIndex(item.first.c_str());
+      auto dims = infer_engine_->getBindingDimensions(slot_offset);
       item.second = kDataTypeSize[static_cast<int>(
                         infer_engine_->getBindingDataType(slot_offset))] *
-                    AccumDims(infer_engine_->getBindingDimensions(slot_offset));
+                    analysis::AccuDims(dims.d, dims.nbDims);
     }
     auto& buf = buffer(item.first);
     CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
@@ -85,14 +87,15 @@ void TensorRTEngine::FreezeNetwork() {
 
 nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
                                                 nvinfer1::DataType dtype,
-                                                const nvinfer1::Dims& dim) {
+                                                const nvinfer1::Dims& dims) {
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
 
   PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
-  auto* input = infer_network_->addInput(name.c_str(), dtype, dim);
+  auto* input = infer_network_->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
-  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] * AccumDims(dim);
+  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] *
+                        analysis::AccuDims(dims.d, dims.nbDims);
   TensorRTEngine::SetITensor(name, input);
   return input;
 }
