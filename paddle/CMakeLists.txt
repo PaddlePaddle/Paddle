@@ -24,6 +24,6 @@ if(NOT WITH_FLUID_ONLY)
 endif()
 
 add_subdirectory(testing)
-if(NOT MOBILE_INFERENCE AND NOT RPI)
+if(NOT MOBILE_INFERENCE AND NOT RPI AND NOT WITH_C_API)
   add_subdirectory(fluid)
 endif()
