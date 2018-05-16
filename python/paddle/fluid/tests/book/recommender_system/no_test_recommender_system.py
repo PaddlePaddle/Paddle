@@ -155,7 +155,7 @@ def train_program():
     square_cost = layers.square_error_cost(input=scale_infer, label=label)
     avg_cost = layers.mean(square_cost)
 
-    return avg_cost, scale_infer
+    return [avg_cost, scale_infer]
 
 
 def func_feed(feeding, data):
@@ -186,9 +186,9 @@ def func_feed(feeding, data):
     return feed_tensors
 
 
-def train(use_cuda, save_path):
-    EPOCH_NUM = 1
-
+def train(use_cuda, train_program, save_path):
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    optimizer = fluid.optimizer.SGD(learning_rate=0.2)
     feeding_map = {
         'user_id': 0,
         'gender_id': 1,
@@ -199,36 +199,52 @@ def train(use_cuda, save_path):
         'movie_title': 6,
         'score': 7
     }
+
+    trainer = fluid.Trainer(
+        train_func=train_program, place=place, optimizer=optimizer)
+
+    feed_order = [
+        'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id', 'category_id',
+        'movie_title', 'score'
+    ]
+
+    def event_handler(event):
+        if isinstance(event, fluid.EndEpochEvent):
+            test_reader = paddle.batch(
+                paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
+            avg_cost_set = trainer.test(
+                reader=test_reader, feed_order=feed_order)
+
+            # get avg cost
+            avg_cost = numpy.array(avg_cost_set).mean()
+
+            print("avg_cost: %s" % avg_cost)
+
+            if float(avg_cost) < 6.0:  # Smaller value to increase CI speed
+                trainer.save_params(save_dirname)
+            else:
+                print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                                                              float(avg_cost)))
+                if math.isnan(float(avg_cost)):
+                    sys.exit("got NaN loss, training failed.")
+
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.movielens.train(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    test_reader = paddle.batch(
-        paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
 
-    def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
-            if (event.epoch % 10) == 0:
-                avg_cost = trainer.test(reader=test_reader)
-
-                print('BatchID {0:04}, Loss {1:2.2}'.format(event.epoch + 1,
-                                                            avg_cost))
-
-                if avg_cost > 0.01:  # Low threshold for speeding up CI
-                    trainer.save_params(save_path)
-                    return
-
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.2)
-    trainer = fluid.Trainer(train_program, optimizer=sgd_optimizer, place=place)
     trainer.train(
-        train_reader,
-        EPOCH_NUM,
+        num_epochs=1,
         event_handler=event_handler,
+        reader=train_reader,
+        feed_order=[
+            'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id',
+            'category_id', 'movie_title', 'score'
+        ],
         data_feed_handler=partial(func_feed, feeding_map))
 
 
-def infer(use_cuda, save_path):
+def infer(use_cuda, inference_program, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
         inference_program, param_path=save_path, place=place)
@@ -277,8 +293,11 @@ def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     save_path = "recommender_system.inference.model"
-    train(use_cuda, save_path)
-    infer(use_cuda, save_path)
+    train(use_cuda=use_cuda, train_program=train_program, save_path=save_path)
+    infer(
+        use_cuda=use_cuda,
+        inference_program=inference_program,
+        save_path=save_path)
 
 
 if __name__ == '__main__':
