@@ -1,0 +1,2 @@
+py_test(test_image_classification_resnet SRCS test_image_classification_resnet.py)
+py_test(test_image_classification_vgg SRCS test_image_classification_vgg.py)
