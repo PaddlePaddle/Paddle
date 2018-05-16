@@ -150,7 +150,7 @@ copy(string_lib
 
 set(module "pybind")
 copy(pybind_lib
-  SRCS ${src_dir}/${module}/pybind.h
+  SRCS ${CMAKE_CURRENT_BINARY_DIR}/paddle/fluid/${module}/pybind.h
   DSTS ${dst_dir}/${module}
 )
 
