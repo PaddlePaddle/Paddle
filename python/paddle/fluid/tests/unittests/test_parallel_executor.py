@@ -232,14 +232,18 @@ class TestParallelExecutorBase(unittest.TestCase):
             place = fluid.CUDAPlace(0)
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
+            exec_strategy = fluid.ExecutionStrategy()
+            exec_strategy.allow_op_delay = allow_op_delay
+
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce if balance_parameter_opt_between_cards else fluid.BuildStrategy.ReduceStrategy.AllReduce
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
                     True,
                     loss_name=loss.name,
-                    allow_op_delay=allow_op_delay,
-                    balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-                )
+                    exec_strategy=exec_strategy,
+                    build_strategy=build_strategy)
             else:
                 exe = fluid.Executor(place=place)
 
@@ -548,7 +552,7 @@ class TestTransformer(TestParallelExecutorBase):
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
-    def check_network_convergence(self, balance_parameter_opt_between_cards):
+    def check_network_convergence(self, build_strategy=None):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -571,15 +575,13 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 use_cuda=True,
                 loss_name=loss.name,
                 main_program=main,
-                balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-            )
+                build_strategy=build_strategy)
 
             test_exe = fluid.ParallelExecutor(
                 use_cuda=True,
                 main_program=test_program,
                 share_vars_from=train_exe,
-                balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-            )
+                build_strategy=build_strategy)
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
@@ -594,10 +596,14 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                     str(test_loss))
 
     def test_parallel_testing(self):
-        self.check_network_convergence(False)
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+        self.check_network_convergence(build_strategy)
 
     def test_parallel_testing_with_new_strategy(self):
-        self.check_network_convergence(True)
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.check_network_convergence(build_strategy)
 
 
 import paddle.dataset.conll05 as conll05
@@ -617,7 +623,7 @@ embedding_name = 'emb'
 
 
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
-            is_sparse, balance_parameter_opt_between_cards, **ignored):
+            is_sparse, **ignored):
     # 8 features
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
@@ -686,9 +692,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
 
 class TestCRFModel(unittest.TestCase):
-    def check_network_convergence(self,
-                                  is_sparse,
-                                  balance_parameter_opt_between_cards=False):
+    def check_network_convergence(self, is_sparse, build_strategy=None):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -739,8 +743,7 @@ class TestCRFModel(unittest.TestCase):
             pe = fluid.ParallelExecutor(
                 use_cuda=True,
                 loss_name=avg_cost.name,
-                balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-            )
+                build_strategy=build_strategy)
 
             feeder = fluid.DataFeeder(
                 feed_list=[
@@ -756,19 +759,29 @@ class TestCRFModel(unittest.TestCase):
                           pe.run(feed=feeder.feed(cur_batch),
                                  fetch_list=[avg_cost.name]))[0]
 
-    def test_update_sparse_parameter(self):
-        self.check_network_convergence(is_sparse=True)
-
-    def test_update_dense_parameter(self):
-        self.check_network_convergence(is_sparse=False)
-
-    def test_update_sparse_parameter_with_new_strategy(self):
+    def test_update_sparse_parameter_all_reduce(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
         self.check_network_convergence(
-            is_sparse=True, balance_parameter_opt_between_cards=True)
+            is_sparse=True, build_strategy=build_strategy)
 
-    def test_update_dense_parameter_with_new_strategy(self):
+    def test_update_dense_parameter_all_reduce(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
         self.check_network_convergence(
-            is_sparse=False, balance_parameter_opt_between_cards=True)
+            is_sparse=False, build_strategy=build_strategy)
+
+    def test_update_sparse_parameter_reduce(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.check_network_convergence(
+            is_sparse=True, build_strategy=build_strategy)
+
+    def test_update_dense_parameter_reduce(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.check_network_convergence(
+            is_sparse=False, build_strategy=build_strategy)
 
 
 # test fetch all the variables of global_block
