@@ -5,7 +5,7 @@ cc_library(paddle_fluid_api
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
 # Create static library
-get_property(fluid_modules GLOBAL PROPERTY FLUID_CORE_MODULES)
+get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 cc_library(paddle_fluid DEPS ${fluid_modules})
 
 # Create shared library
