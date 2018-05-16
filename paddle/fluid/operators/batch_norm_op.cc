@@ -149,13 +149,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization");
+    AddOutput("Y", "result after normalization").Reuse("X");
     AddOutput("MeanOut",
               "Share memory with Mean. "
-              "Store the global mean when training");
+              "Store the global mean when training")
+        .Reuse("Mean");
     AddOutput("VarianceOut",
               "Share memory with Variance. "
-              "Store the global Variance when training");
+              "Store the global Variance when training")
+        .Reuse("Variance");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
               "will apply to output when training")

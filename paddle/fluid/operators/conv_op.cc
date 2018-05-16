@@ -122,7 +122,8 @@ void Conv2DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
-            "The format of output tensor is also NCHW.");
+            "The format of output tensor is also NCHW.")
+      .Reuse("Input");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -217,7 +218,8 @@ void Conv3DOpMaker::Make() {
            "input image channels divided by the groups.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
-            "The format of output tensor is also NCDHW.");
+            "The format of output tensor is also NCDHW.")
+      .Reuse("Input");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "

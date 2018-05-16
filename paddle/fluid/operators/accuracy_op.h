@@ -25,7 +25,7 @@ template <typename DeviceContext, typename T>
 class AccuracyKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Out");
+    auto* inference = ctx.Input<Tensor>("Input");
     auto* indices = ctx.Input<Tensor>("Indices");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");

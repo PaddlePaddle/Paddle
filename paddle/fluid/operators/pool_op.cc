@@ -147,7 +147,8 @@ void Pool2dOpMaker::Make() {
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
-            "and W is the width of the feature.");
+            "and W is the width of the feature.")
+      .Reuse("X");
 
   AddAttr<std::string>("pooling_type",
                        "(string), pooling type, can be \"max\" for max-pooling "
@@ -240,7 +241,8 @@ void Pool3dOpMaker::Make() {
             "The format of output tensor is also NCDHW, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "
-            "width of the feature, respectively.");
+            "width of the feature, respectively.")
+      .Reuse("X");
 
   AddAttr<std::string>("pooling_type",
                        "(string) Pooling type, can be \"max\" for max-pooling "
