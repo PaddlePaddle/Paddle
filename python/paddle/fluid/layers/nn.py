@@ -80,6 +80,7 @@ __all__ = [
     'pad',
     'label_smooth',
     'roi_pool',
+    'dice_loss',
 ]
 
 
@@ -3769,13 +3770,13 @@ def label_smooth(label,
 
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform 
+    Region of interest pooling (also known as RoI pooling) is to perform
         is to perform max pooling on inputs of nonuniform sizes to obtain
         fixed-size feature maps (e.g. 7*7).
-    The operator has three steps: 
-        1. Dividing each region proposal into equal-sized sections with 
-           the pooled_width and pooled_height 
-        2. Finding the largest value in each section 
+    The operator has three steps:
+        1. Dividing each region proposal into equal-sized sections with
+           the pooled_width and pooled_height
+        2. Finding the largest value in each section
         3. Copying these max values to the output buffer
 
     Args:
@@ -3783,8 +3784,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         rois (Variable): ROIs (Regions of Interest) to pool over. It should
                          be a 2-D one level LoTensor of shape [num_rois, 4].
                          The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the 
-                         bottom right coordinates. The num_rois is the 
+                         is the top left coordinates, and (x2, y2) is the
+                         bottom right coordinates. The num_rois is the
                          total number of ROIs in this batch data.
         pooled_height (integer): The pooled output height. Default: 1
         pooled_width (integer): The pooled output width. Default: 1
@@ -3793,11 +3794,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                                to the scale used when pooling. Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape 
+        pool_out (Variable): The output is a 4-D tensor of the shape
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -3815,3 +3816,39 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+def dice_loss(input, label, num_classes, reduce_dim=[1, 2, 3], epsilon=0.00001):
+    """
+    **Dice loss Layer**
+    Dice loss for comparing the similarity of two batch of data,
+    usually be used for binary image segmentation i.e. labels are binary.
+    The value between 0 to 1, 1 means totally match.
+
+    Args:
+        input (Variable): The predictions with shape [batch_size, ... , num_classes].
+        label (Variable): The groud truth with shape [batch_szie, ... , 1].
+        num_classes (integer): The number of target classes.
+        reduce_dim (list<int>): The dimensions to be reduced. It should be set to input.shape[1:].
+                                Default: [1,2,3]
+        epsilon (float): The epsilon will be added to the numerator and denominator.
+                         If both input and label are empty, it makes sure dice is 1.
+                         Default: 0.00001
+
+    Returns:
+        dice_loss (Variable): The dice loss.
+
+    Examples:
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+    """
+    helper = LayerHelper('dice_loss', **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    label = one_hot(label, depth=num_classes)
+    inse = reduce_sum(input * label, dim=reduce_dim)
+
+    dice_denominator = reduce_sum(
+        input, dim=reduce_dim) + reduce_sum(
+            label, dim=reduce_dim)
+    dice_score = (inse * 2 + epsilon) / (dice_denominator + epsilon)
+    return reduce_mean(dice_score)
