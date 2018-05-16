@@ -169,6 +169,7 @@ def main():
 
     iters, num_samples, start_time = 0, 0, time.time()
     accuracy = fluid.average.WeightedAverage()
+    train_exe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
     for pass_id in range(args.pass_num):
         accuracy.reset()
         train_accs = []
@@ -184,14 +185,15 @@ def main():
             y_data = np.array(map(lambda x: x[1], data)).astype("int64")
             y_data = y_data.reshape([-1, 1])
 
-            loss, acc, weight = exe.run(
-                fluid.default_main_program(),
+            loss, acc, weight = train_exe.run(
                 feed={"pixel": img_data,
                       "label": y_data},
-                fetch_list=[avg_cost, batch_acc, batch_size_tensor])
-            accuracy.add(value=acc, weight=weight)
+                fetch_list=[avg_cost.name, batch_acc.name, batch_size_tensor.name])
+            accuracy.add(value=np.array(np.mean(acc)), weight=np.mean(weight))
             iters += 1
             num_samples += len(y_data)
+            loss = np.mean(np.array(loss))
+            acc = np.mean(np.array(acc))
             print(
                 "Pass = %d, Iter = %d, Loss = %f, Accuracy = %f" %
                 (pass_id, iters, loss, acc)
