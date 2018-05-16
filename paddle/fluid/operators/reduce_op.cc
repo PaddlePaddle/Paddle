@@ -58,11 +58,13 @@ class ReduceOp : public framework::OperatorWithKernel {
           dims_vector[dims[i]] = 1;
         }
       } else {
+        const int DEL_FLAG = -2;
         for (size_t i = 0; i < dims.size(); ++i) {
-          dims_vector[dims[i]] = -1;
+          dims_vector[dims[i]] = DEL_FLAG;
         }
-        dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), -1),
-                          dims_vector.end());
+        dims_vector.erase(
+            remove(dims_vector.begin(), dims_vector.end(), DEL_FLAG),
+            dims_vector.end());
       }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);

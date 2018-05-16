@@ -171,15 +171,17 @@ class ReduceKernel : public framework::OpKernel<T> {
     }
     // construct the squeezed output tensor
     bool keep_dim = context.Attr<bool>("keep_dim");
-    DDim squeezed_dims = output->dims();
-    auto dims_vector = vectorize(squeezed_dims);
+    DDim out_dims = output->dims();
     if (keep_dim && x_rank > 1) {
+      int DEL_FLAG = -2;
+      auto dims_vector = vectorize(out_dims);
       for (size_t i = 0; i < dims.size(); ++i) {
-        dims_vector[dims[i]] = -1;
+        dims_vector[dims[i]] = DEL_FLAG;
       }
-      dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), -1),
-                        dims_vector.end());
-      squeezed_dims = framework::make_ddim(dims_vector);
+      dims_vector.erase(
+          remove(dims_vector.begin(), dims_vector.end(), DEL_FLAG),
+          dims_vector.end());
+      out_dims = framework::make_ddim(dims_vector);
     }
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
@@ -189,7 +191,7 @@ class ReduceKernel : public framework::OpKernel<T> {
       auto out = EigenScalar<T>::From(*output);
       functor(place, &x, &out, reduce_dim);
     } else {
-      auto out = EigenTensor<T, (D - R_D)>::From(*output, squeezed_dims);
+      auto out = EigenTensor<T, (D - R_D)>::From(*output, out_dims);
       functor(place, &x, &out, reduce_dim);
     }
   }

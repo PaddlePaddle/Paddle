@@ -2115,7 +2115,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2163,7 +2163,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2211,7 +2211,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2259,7 +2259,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2308,7 +2308,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
