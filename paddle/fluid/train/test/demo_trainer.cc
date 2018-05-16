@@ -55,18 +55,13 @@ int main() {
   paddle::framework::InitDevices(false);
 
   const auto cpu_place = paddle::platform::CPUPlace();
-  //  paddle::platform::CPUDeviceContext ctx(cpu_place);
 
   paddle::framework::Executor executor(cpu_place);
   paddle::framework::Scope scope;
-  auto startup_program =
-      paddle::train::Load(&executor,
-                          "/Users/qiaolongfei/project/paddle/paddle/fluid/"
-                          "train/test/startup_program");
-  auto train_program =
-      paddle::train::Load(&executor,
-                          "/Users/qiaolongfei/project/paddle/paddle/fluid/"
-                          "train/test/train_program");
+  auto startup_program = paddle::train::Load(&executor, "startup_program");
+  auto train_program = paddle::train::Load(&executor, "main_program");
+
+  // init all parameters
   executor.Run(*startup_program.get(), &scope, 0);
 
   // prepare data
@@ -87,6 +82,8 @@ int main() {
     y_data[i] = static_cast<float>(i);
   }
 
-  executor.Run(*train_program.get(), &scope, 0, false, true);
+  for (int i = 0; i < 10; ++i) {
+    executor.Run(*train_program.get(), &scope, 0, false, true);
+  }
   return 0;
 }

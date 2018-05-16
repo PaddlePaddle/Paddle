@@ -37,7 +37,7 @@ def save_program_desc(network_func):
 
     with open("startup_program", "w") as f:
         f.write(startup_program.desc.serialize_to_string())
-    with open("train_program", "w") as f:
+    with open("main_program", "w") as f:
         f.write(train_program.desc.serialize_to_string())
 
 
