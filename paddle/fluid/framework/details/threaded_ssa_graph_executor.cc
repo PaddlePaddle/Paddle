@@ -18,18 +18,17 @@ namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
-    size_t num_threads, bool use_event,
-    const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    std::unique_ptr<SSAGraph> &&graph, bool allow_op_delay)
+    std::unique_ptr<SSAGraph> &&graph)
     : SSAGraphExecutor(std::move(graph)),
-      pool_(num_threads >= 2 ? new ::ThreadPool(num_threads) : nullptr),
+      pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
+                                       : nullptr),
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      use_event_(use_event),
       running_ops_(0),
-      allow_op_delay_(allow_op_delay) {}
+      strategy_(strategy) {}
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
@@ -86,7 +85,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     //
     // NOTE: DelayedOps have a lower priority. It will be scheduled after all
     // ready_ops have been performed.
-    if (ready_ops.empty() && allow_op_delay_ && running_ops_ == 0) {
+    if (ready_ops.empty() && strategy_.allow_op_delay_ && running_ops_ == 0) {
       run_all_ops(delayed_ops);
     } else {
       run_all_ops(ready_ops);
@@ -113,7 +112,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         auto &deps = pending_ops[op];
         --deps;
         if (deps == 0) {
-          if (op->IsMultiDeviceTransfer() && allow_op_delay_) {
+          if (op->IsMultiDeviceTransfer() && strategy_.allow_op_delay_) {
             delayed_ops.insert(op);
           } else {
             ready_ops.insert(op);
@@ -191,7 +190,7 @@ void ThreadedSSAGraphExecutor::RunOp(
   auto op_run = [ready_var_q, op, this] {
     try {
       VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-      op->Run(use_event_);
+      op->Run(strategy_.use_event_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
