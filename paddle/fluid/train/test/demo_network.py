@@ -14,10 +14,9 @@
 
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.backward import append_backward
 
 
-def train_network():
+def train_network(with_optimize):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
@@ -25,7 +24,11 @@ def train_network():
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
     avg_cost = fluid.layers.mean(cost)
 
-    append_backward(avg_cost)
+    if with_optimize:
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.00001)
+        sgd_optimizer.minimize(avg_cost)
+    else:
+        fluid.backward.append_backward(avg_cost)
 
 
 def save_program_desc(network_func):
@@ -33,7 +36,7 @@ def save_program_desc(network_func):
     train_program = framework.Program()
 
     with framework.program_guard(train_program, startup_program):
-        network_func()
+        network_func(with_optimize=False)
 
     with open("startup_program", "w") as f:
         f.write(startup_program.desc.serialize_to_string())
