@@ -37,10 +37,10 @@ class TestNetWithDtype(unittest.TestCase):
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = fluid.layers.mean(cost)
-        fetch_list = [avg_cost]
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_cost)
 
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-        sgd_optimizer.minimize(avg_cost)
+        fetch_list = [avg_cost]
         train_reader = paddle.batch(
             paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
