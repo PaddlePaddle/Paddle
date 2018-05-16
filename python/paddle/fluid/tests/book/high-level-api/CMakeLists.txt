@@ -6,4 +6,5 @@ foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
 
+add_subdirectory(fit_a_line)
 add_subdirectory(recognize_digits)
