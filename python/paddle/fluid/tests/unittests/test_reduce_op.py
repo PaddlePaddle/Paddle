@@ -17,33 +17,35 @@ import numpy as np
 from op_test import OpTest
 
 
-#class TestSumOp(OpTest):
-#    def setUp(self):
-#        self.op_type = "reduce_sum"
-#        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
-#        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-#
-#    def test_check_output(self):
-#        self.check_output()
-#
-#    def test_check_grad(self):
-#        self.check_grad(['X'], 'Out')
-#
-#
-#class TestMeanOp(OpTest):
-#    def setUp(self):
-#        self.op_type = "reduce_mean"
-#        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
-#        self.attrs = {'dim': [1]}
-#        self.outputs = {'Out': self.inputs['X'].mean(axis=tuple(self.attrs['dim']))}
-#
-#    def test_check_output(self):
-#        self.check_output()
-#
-#    def test_check_grad(self):
-#        self.check_grad(['X'], 'Out')
-#
-#
+class TestSumOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestMeanOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_mean"
+        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
+        self.attrs = {'dim': [1]}
+        self.outputs = {
+            'Out': self.inputs['X'].mean(axis=tuple(self.attrs['dim']))
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestMaxOp(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
