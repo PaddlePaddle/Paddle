@@ -98,6 +98,14 @@ elseif (WITH_MKLML)
     )
 endif()
 
+if(WITH_MKLDNN)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/")
+  copy(mkldnn_lib
+    SRCS ${MKLDNN_INSTALL_DIR}
+    DSTS ${dst_dir}
+  )
+endif()
+
 if(NOT MOBILE_INFERENCE AND NOT RPI)
   set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappy")
   copy(snappy_lib
