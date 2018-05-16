@@ -92,19 +92,13 @@ class Trainer(object):
         place: The device place of this trainer.
     """
 
-    def __init__(self,
-                 train_func,
-                 infer_func,
-                 optimizer,
-                 param_path=None,
-                 place=None):
+    def __init__(self, train_func, optimizer, param_path=None, place=None):
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
         if not isinstance(optimizer, opt_module.Optimizer):
             raise TypeError("The optimizer should be an instance of Optimizer")
 
-        self.infer_func = infer_func
         self.scope = core.Scope()
 
         self.startup_program = framework.Program()
@@ -225,15 +219,6 @@ class Trainer(object):
         with self._prog_and_scope_guard():
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
-
-    def save_inference_model(self, model_path):
-        inference_program = framework.Program()
-        with framework.program_guard(inference_program):
-            with unique_name.guard():
-                predict_var = self.infer_func()
-        predict_var = self.train_program.block(0).var(predict_var.name)
-        exe = executor.Executor(self.place)
-        io.save_inference_model(model_path, [], [predict_var], exe)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
