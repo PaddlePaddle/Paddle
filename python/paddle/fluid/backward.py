@@ -498,6 +498,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     program.current_block_idx = current_block_idx
     program.sync_with_cpp()
+    # FIXME(zcd): prevent loss.grad optimized by mem_opt.
+    loss.block.var(_append_grad_suffix_(loss.name)).persistable = True
 
     if parameter_list is not None:
         parameters = parameter_list
