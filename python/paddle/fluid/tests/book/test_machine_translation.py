@@ -185,7 +185,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
         learning_rate=1e-4,
         regularization=fluid.regularizer.L2DecayRegularizer(
             regularization_coeff=0.1))
-    optimize_ops, params_grads = optimizer.minimize(avg_cost)
+    optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(

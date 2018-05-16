@@ -13,54 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
-
-template <typename... T>
-struct SizeOfTypeFunctor;
-
-template <typename T>
-struct SizeOfTypeFunctor<T> {
-  size_t operator()(std::type_index type) const {
-    if (typeid(T).hash_code() == type.hash_code()) {
-      return sizeof(T);
-    } else {
-      return 0UL;
-    }
-  }
-};
-
-template <>
-struct SizeOfTypeFunctor<> {
-  size_t operator()(std::type_index type) const { return 0UL; }
-};
-
-template <typename HEAD, typename... TAIL>
-struct SizeOfTypeFunctor<HEAD, TAIL...> {
-  size_t operator()(std::type_index type) const {
-    SizeOfTypeFunctor<HEAD> head;
-    size_t head_size = head(type);
-    if (head_size != 0) {
-      return head_size;
-    }
-    SizeOfTypeFunctor<TAIL...> tail;
-    return tail(type);
-  }
-};
-
-static inline size_t SizeOfType(std::type_index type) {
-  SizeOfTypeFunctor<int, float, double, int16_t, int64_t, bool, size_t,
-                    platform::float16>
-      functor;
-  size_t size = functor(type);
-  PADDLE_ENFORCE(size != 0UL, "Cannot get size of type %s", type.name());
-  return size;
-}
-
+extern size_t SizeOfType(std::type_index type);
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
