@@ -3825,19 +3825,3 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
-
-
-def dice_loss(input, label, epsilon=0.001):
-    """
-    **Dice loss Layer**
-    """
-    helper = LayerHelper('dice_loss', **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
-
-    label = reshape(lable, shape)
-    label = one_hot(label, depth=num_classes)
-    inse = reduce_sum(input * label, dims=0)
-
-    dice_denominator = reduce_sum(input, dims=0) + reduce_sum(label, dims=0)
-    dice_score = (inse * 2 + epsilon) / (dice_denominator + epsilon)
-    return reduce_mean(dice_score)
