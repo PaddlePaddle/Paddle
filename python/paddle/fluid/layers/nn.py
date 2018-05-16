@@ -985,17 +985,17 @@ def log_loss(input, label, epsilon=1e-4):
 
     .. math::
 
-        Out = -label * log(X + epsilon) - (1 - label) * log(1 - X + epsilon)
+        Out = -label * log(input + epsilon) - (1 - label) * log(1 - input + epsilon)
 
     Args:
-        input:  a 2-D tensor with shape [N x 1], where N is the batch size.
-                This input is a probability computed by the previous operator.
-        label:  the ground truth which is a 2-D tensor with shape [N x 1],
-                where N is the batch size.
-        epsilon: epsilon
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the batch size.
+                                This input is a probability computed by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with shape [N x 1],
+                                where N is the batch size.
+        epsilon (float): epsilon
 
     Returns:
-         A 2-D tensor with shape [N x 1], the negative log loss.
+        A 2-D tensor with shape [N x 1], the negative log loss.
 
     Examples:
         .. code-block:: python

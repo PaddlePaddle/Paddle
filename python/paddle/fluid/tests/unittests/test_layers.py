@@ -173,6 +173,14 @@ class TestBook(unittest.TestCase):
                     x=dat, label=lbl))
         print(str(program))
 
+    def test_log_loss(self):
+        program = Program()
+        with program_guard(program):
+            dat = layers.data(name='data', shape=[10], dtype='float32')
+            lbl = layers.data(name='label', shape=[10], dtype='float32')
+            self.assertIsNotNone(layers.log_loss(input=dat, label=lbl))
+        print(str(program))
+
     def test_sequence_expand(self):
         program = Program()
         with program_guard(program):
