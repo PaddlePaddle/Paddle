@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import core
-import framework
-import executor
-import data_feeder
 import contextlib
-import io
-import unique_name
-import parallel_executor
+import os
 
+import core
+
+import data_feeder
+import executor
+import framework
+import io
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
+import parallel_executor
 from transpiler import distribute_transpiler
 
 __all__ = [
