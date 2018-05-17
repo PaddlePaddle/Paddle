@@ -480,6 +480,7 @@ function main() {
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        gen_dockerfile
         ;;
       build_android)
         build_android
@@ -504,6 +505,7 @@ function main() {
         ;;
       capi)
         cmake_gen ${PYTHON_ABI:-""}
+        build
         gen_capi_package
         ;;
       fluid_inference_lib)
