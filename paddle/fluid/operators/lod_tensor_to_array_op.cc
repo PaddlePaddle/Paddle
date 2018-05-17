@@ -62,8 +62,10 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
           break;
         }
         size_t start_idx = x.lod()[rank_level][item.index] + t;
+        // when rank_level_curr is 0, GetSubLoD .. is not used effectively
+        auto rank_level_curr = rank_level >= 1 ? rank_level - 1 : 1;
         auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
-            x.lod(), start_idx, start_idx + 1, rank_level + 1);
+              x.lod(), start_idx, start_idx + 1, rank_level_curr);
         auto &lod_length = lod_and_offset.first;
         framework::AppendLoD(&lod, lod_length);
         size_t start_offset = lod_and_offset.second.first;

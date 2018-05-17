@@ -46,10 +46,13 @@ class LoDRankTable {
 
   const LoD& coarse_lod() const { return this->coarse_lod_; }
 
-  size_t level() const { return coarse_lod_.size(); }
+  const LoD& fine_lod() const { return this->fine_lod_; }
+
+  size_t level() const { return coarse_lod_.size() - 1; }
 
  private:
   LoD coarse_lod_;
+  LoD fine_lod_;  //  LoD = coarse_lod_ union fine_lod_
   std::vector<TableItem> items_;
 };
 

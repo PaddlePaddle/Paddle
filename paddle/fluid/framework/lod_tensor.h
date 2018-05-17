@@ -193,7 +193,9 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 }
 
 // Get the absolute offset of a lod[start_level][start_idx:end_idx] and
-// relative length of details for every levels(i.e., [start_level: ]).
+// relative length of details for levels between begin_level and end_level
+// (i.e., [start_level:end_level]) or every levels if end_level = 0
+// (i.e., [start_level: ]).
 //
 // For example,
 //   lod = [[0, 3, 4, 8], [0, 9, 10, 11, 13, 17, 19, 22, 24]]
@@ -205,7 +207,8 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 //  LoD = [[1, 4], [2, 4, 2, 3, 2]]
 //  pair<size_t, size_t> = {11, 24}
 std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
-    const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
+    const LoD& lod, size_t start_idx, size_t end_idx,
+    size_t start_level);
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
 

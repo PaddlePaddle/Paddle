@@ -269,8 +269,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
         // The input is located in I/O or other op's outputs or the variable is
         // located in grad_block's parents
         if (block_ins.find(input_name) != block_ins.end() ||
-            (fwd_block->FindVarRecursive(input_name) != nullptr ||
-             parent_block->FindVarRecursive(input_name) != nullptr)) {
+            fwd_block->FindVarRecursive(input_name) != nullptr ||
+             parent_block->FindVarRecursive(input_name) != nullptr) {
           continue;
         }
         output_grads.insert(input_name);

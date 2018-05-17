@@ -283,4 +283,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(print, ops::TensorPrintOp, ops::PrintOpProtoAndCheckMaker,
                   ops::PrintOpProtoAndCheckGradOpMaker, ops::InferShapeForward,
                   ops::InferVarType);
-REGISTER_OPERATOR(print_grad, ops::TensorPrintOp, ops::InferShapeBackward);
+// currently no need to register print_grad, which will cause printing problem
+// when embedded in a while_op block
+// REGISTER_OPERATOR(print_grad, ops::TensorPrintOp, ops::InferShapeBackward);

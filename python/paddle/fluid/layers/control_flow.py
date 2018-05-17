@@ -190,7 +190,7 @@ def Print(input,
               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype(), stop_gradient=True)
     helper.append_op(
         type='print',
         inputs={'In': input},
@@ -1350,7 +1350,8 @@ class DynamicRNN(object):
             parent_block.append_op(
                 type='lod_rank_table',
                 inputs={"X": x},
-                outputs={"Out": self.lod_rank_table})
+                outputs={"Out": self.lod_rank_table},
+                attrs={'level': 0})
             self.max_seq_len = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_max_seq_len'),
                 dtype='int64')
@@ -1440,7 +1441,8 @@ class DynamicRNN(object):
                shape=None,
                value=0.0,
                need_reorder=False,
-               dtype='float32'):
+               dtype='float32',
+               prefix=''):
         self._assert_in_rnn_block_('memory')
         if init is not None:
             if not isinstance(init, Variable):
@@ -1467,7 +1469,7 @@ class DynamicRNN(object):
                     outputs={'Out': [init_reordered]})
                 init_tensor = init_reordered
             mem_array = parent_block.create_var(
-                name=unique_name.generate('dynamic_rnn_mem_array'),
+                name=unique_name.generate(prefix + '_dynamic_rnn_mem_array'),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=init.dtype)
             parent_block.append_op(
@@ -1490,7 +1492,7 @@ class DynamicRNN(object):
                 name=unique_name.generate('mem_init'), dtype=dtype)
             arr, dtype = self.input_array[0]
             in0 = parent_block.create_var(
-                name=unique_name.generate('in0'), dtype=dtype)
+                name=unique_name.generate(prefix + 'in0'), dtype=dtype)
             parent_block.append_op(
                 type='read_from_array',
                 inputs={'X': [arr],
@@ -1505,7 +1507,7 @@ class DynamicRNN(object):
                     'value': float(value),
                     'dtype': init.dtype
                 })
-            return self.memory(init=init)
+            return self.memory(init=init, prefix=prefix)
 
     def update_memory(self, ex_mem, new_mem):
         self._assert_in_rnn_block_('update_memory')

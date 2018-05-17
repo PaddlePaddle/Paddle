@@ -84,38 +84,31 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     out_lod->clear();
     size_t out_offset = 0;
     auto prefix_lod = rank_table.coarse_lod();
-    prefix_lod.emplace_back();
-    auto &cur_level_lod = prefix_lod.back();
-    cur_level_lod.push_back(0);
     for (size_t idx : table_item_idx) {
-      cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
-      for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
-        auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
-            x[x_idx].lod(), idx, idx + 1, 0);
+        for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
+            auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
+                                           x[x_idx].lod(), idx, idx + 1, 0);
+            size_t start_offset = lod_and_offset.second.first;
+            size_t end_offset = lod_and_offset.second.second;
+            VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " ["
+                     << ", " << end_offset << "]";
+            // Copy data
+            PADDLE_ENFORCE_GE(end_offset, start_offset);
+            size_t len = end_offset - start_offset;
+            if (len == 0) {
+                continue;
+            }
+            // this part is for data copying
+            auto slice = out->Slice(out_offset, out_offset + len);
 
-        auto &lod_length = lod_and_offset.first;
-        framework::AppendLoD(out_lod, lod_length);
+            platform::DeviceContextPool &pool =
+                platform::DeviceContextPool::Instance();
+            auto &dev_ctx = *pool.Get(place);
 
-        size_t start_offset = lod_and_offset.second.first;
-        size_t end_offset = lod_and_offset.second.second;
-        VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " ["
-                 << ", " << end_offset << "]";
-        // Copy data
-        PADDLE_ENFORCE_GE(end_offset, start_offset);
-        size_t len = end_offset - start_offset;
-        if (len == 0) {
-          continue;
+            framework::TensorCopy(x[x_idx].Slice(start_offset, end_offset),
+                                      place, dev_ctx, &slice);
+            out_offset += len;
         }
-        auto slice = out->Slice(out_offset, out_offset + len);
-
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto &dev_ctx = *pool.Get(place);
-
-        framework::TensorCopy(x[x_idx].Slice(start_offset, end_offset), place,
-                              dev_ctx, &slice);
-        out_offset += len;
-      }
     }
     out_lod->insert(out_lod->begin(), prefix_lod.begin(), prefix_lod.end());
   }
@@ -133,10 +126,10 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
     AddComment(
-        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor> 
+        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor>
           and a LoDRankTable. It is supposed to be used in getting dynamic RNN's
-          outputs back to a normal LoDTensor. The std::vector<LoDTensor> 
-          would be the output of RNN Op and the LoDRankTable would be build 
+          outputs back to a normal LoDTensor. The std::vector<LoDTensor>
+          would be the output of RNN Op and the LoDRankTable would be build
           with RNN's input.)DOC");
   }
 };
