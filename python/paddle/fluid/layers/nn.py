@@ -1329,6 +1329,8 @@ def sequence_pool(input, pool_type):
          sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
          max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
         input(variable): The input variable which is a LoDTensor.
@@ -1348,6 +1350,8 @@ def sequence_pool(input, pool_type):
              sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
              sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
              max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
+             last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
+             first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
@@ -3769,13 +3773,13 @@ def label_smooth(label,
 
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform 
+    Region of interest pooling (also known as RoI pooling) is to perform
         is to perform max pooling on inputs of nonuniform sizes to obtain
         fixed-size feature maps (e.g. 7*7).
-    The operator has three steps: 
-        1. Dividing each region proposal into equal-sized sections with 
-           the pooled_width and pooled_height 
-        2. Finding the largest value in each section 
+    The operator has three steps:
+        1. Dividing each region proposal into equal-sized sections with
+           the pooled_width and pooled_height
+        2. Finding the largest value in each section
         3. Copying these max values to the output buffer
 
     Args:
@@ -3783,8 +3787,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         rois (Variable): ROIs (Regions of Interest) to pool over. It should
                          be a 2-D one level LoTensor of shape [num_rois, 4].
                          The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the 
-                         bottom right coordinates. The num_rois is the 
+                         is the top left coordinates, and (x2, y2) is the
+                         bottom right coordinates. The num_rois is the
                          total number of ROIs in this batch data.
         pooled_height (integer): The pooled output height. Default: 1
         pooled_width (integer): The pooled output width. Default: 1
@@ -3793,11 +3797,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                                to the scale used when pooling. Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape 
+        pool_out (Variable): The output is a 4-D tensor of the shape
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()

@@ -63,6 +63,7 @@ EOL
     ${DOCKER_CMD} run -it \
         --name $CONTAINER_ID \
         ${DOCKER_ENV} \
+        -e SCRIPT_NAME=$0 \
         -v $PADDLE_ROOT:/paddle \
         -v ${HOME}/.ccache:/root/.ccache \
         -w /paddle \
