@@ -3263,35 +3263,35 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
     **Smooth L1 Loss Operator. **
 
-    This operator computes the smooth l1 loss for X and Y.
+    This operator computes the smooth L1 loss for X and Y.
     The operator takes the first dimension of X and Y as batch size.
-    For each instance, it computes the smooth l1 loss element by element first
+    For each instance, it computes the smooth L1 loss element by element first
     and then sums all the losses. So the shape of Out is [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
-            l1 loss op with shape [batch_size, dim1, ..., dimN].
+            L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            l1 loss op with same shape as x.
+            L1 loss op with same shape as x.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the result of (x - y) will be multiplied by this tensor element by
             element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
-            the out smooth l1 loss will be multiplied by this tensor element
+            the out smooth L1 loss will be multiplied by this tensor element
             by element.
-        sigma (float|None): Hyper parameter of smooth l1 loss op. A float scalar
+        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
             with default value 1.0.
     Returns:
-        Variable: A tensor with rank be 2. The output smooth l1 loss with
+        Variable: A tensor with rank be 2. The output smooth L1 loss with
             shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[100], dtype='int64')
+            label = fluid.layers.data(name='label', shape=[100], dtype='float32')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
