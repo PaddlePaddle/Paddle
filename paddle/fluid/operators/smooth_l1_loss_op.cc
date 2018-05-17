@@ -105,7 +105,7 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto in_dims = ctx->GetInputDim("X");
+    auto in_dims = ctx->GetInputDim("Diff");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
@@ -127,12 +127,33 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class SmoothL1LossGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType("smooth_l1_loss_grad");
+    op->SetInput("InsideWeight", Input("InsideWeight"));
+    op->SetInput("OutsideWeight", Input("OutsideWeight"));
+    op->SetInput("Diff", Output("Diff"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+
+    op->SetAttrMap(Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SmoothL1LossGradMaker);
 REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,
