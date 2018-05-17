@@ -409,4 +409,4 @@ Single thread + single link?
 
 ## Conclution
 
- 
+ ![avatar](./picture/throughput.png)
