@@ -29,11 +29,15 @@ link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 
 add_executable(demo_trainer demo_trainer.cc)
 
-if(MATH_TYPE STREQUAL "openblas")
-  set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.a)
-else()
+if(MATH_TYPE STREQUAL "mklml")
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel.so)
+else()
+  if(APPLE)
+    set(MATH_LIB cblas)
+  else(APPLE)
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.a)
+  endif(APPLE)
 endif()
 
 if(WITH_MKLDNN)
@@ -46,6 +50,7 @@ IF(APPLE)
 ELSE(APPLE)
   SET(ARCHIVE_START "-Wl,--whole-archive")
   SET(ARCHIVE_END "-Wl,--no-whole-archive")
+  SET(EXTERNAL_LIB "-lrt -ldl -lpthread")
 ENDIF(APPLE)
 
 target_link_libraries(demo_trainer
@@ -56,4 +61,4 @@ target_link_libraries(demo_trainer
         ${MATH_LIB}
         ${MKLDNN_LIB}
         glog gflags protobuf snappystream snappy z
-        -lrt -ldl -lpthread)
+        ${EXTERNAL_LIB})
