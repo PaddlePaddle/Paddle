@@ -45,13 +45,13 @@ if(WITH_MKLDNN)
   set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.0)
 endif()
 
-IF(APPLE)
-  SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load -framework CoreFoundation -framework Security")
-ELSE(APPLE)
-  SET(ARCHIVE_START "-Wl,--whole-archive")
-  SET(ARCHIVE_END "-Wl,--no-whole-archive")
-  SET(EXTERNAL_LIB "-lrt -ldl -lpthread")
-ENDIF(APPLE)
+if(APPLE)
+  set(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load -framework CoreFoundation -framework Security")
+else(APPLE)
+  set(ARCHIVE_START "-Wl,--whole-archive")
+  set(ARCHIVE_END "-Wl,--no-whole-archive")
+  set(EXTERNAL_LIB "-lrt -ldl -lpthread")
+endif(APPLE)
 
 target_link_libraries(demo_trainer
         ${MACOS_LD_FLAGS}
