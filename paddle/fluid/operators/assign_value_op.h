@@ -37,6 +37,9 @@ class AssignValueKernel : public framework::OpKernel<T> {
       case framework::proto::VarType::FP32:
         value_name = "fp32_values";
         break;
+      case framework::proto::VarType::BOOL:
+        value_name = "bool_values";
+        break;
       default:
         PADDLE_THROW("Unsupported dtype for assign_value_op: %d", dtype);
         break;
