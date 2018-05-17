@@ -52,10 +52,13 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
                               "Shape of values.");
     AddAttr<int>("dtype", "data type of values")
         .InEnum({framework::proto::VarType::INT32,
-                 framework::proto::VarType::FP32});
+                 framework::proto::VarType::FP32,
+                 framework::proto::VarType::BOOL});
     AddAttr<std::vector<float>>("fp32_values", "store the float values")
         .SetDefault({});
     AddAttr<std::vector<int>>("int32_values", "store the int values")
+        .SetDefault({});
+    AddAttr<std::vector<bool>>("bool_values", "store the bool values")
         .SetDefault({});
     AddComment(R"DOC(
 AssignValue operator
@@ -72,4 +75,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(assign_value, ops::AssignValueOp, ops::AssignValueOpMaker);
 REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
-                       ops::AssignValueKernel<float>);
+                       ops::AssignValueKernel<float>,
+                       ops::AssignValueKernel<bool>);
