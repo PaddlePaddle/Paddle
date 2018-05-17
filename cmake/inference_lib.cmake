@@ -102,7 +102,7 @@ if(WITH_MKLDNN)
   set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mkldnn")
   copy(mkldnn_lib
     SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-    DSTS ${dst} ${dst_dir}/lib
+    DSTS ${dst_dir} ${dst_dir}/lib
   )
 endif()
 
