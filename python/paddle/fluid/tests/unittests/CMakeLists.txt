@@ -28,11 +28,11 @@ function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs MODULES DEPS ARGS ENVS)
+    set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
              COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-             ${PYTHON_EXECUTABLE} -u -m unittest --verbose ${py_test_modules_MODULES} ${py_test_modules_ARGS}
+             ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction()
@@ -66,6 +66,7 @@ list(REMOVE_ITEM TEST_OPS test_fetch_var)
 list(REMOVE_ITEM TEST_OPS test_parallel_op)
 list(REMOVE_ITEM TEST_OPS test_dynrnn_static_input)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
+list(REMOVE_ITEM TEST_OPS test_network_with_dtype)
 
 # tests that can be bundled together in one python process for speed.
 if(WITH_FAST_BUNDLE_TEST)
@@ -83,6 +84,7 @@ py_test_modules(test_parallel_executor MODULES test_parallel_executor)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)
+py_test_modules(test_network_with_dtype MODULES test_network_with_dtype)
 
 # tests that need to be run in separate process.
 py_test_modules(test_multihead_attention MODULES test_multihead_attention)
