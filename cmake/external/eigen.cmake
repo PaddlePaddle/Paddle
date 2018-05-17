@@ -21,10 +21,10 @@ else()
     ExternalProject_Add(
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY  "https://github.com/eigenteam/eigen-git-mirror"
+        HG_REPOSITORY  "https://bitbucket.org/eigen/eigen"
         # eigen on cuda9.1 missing header of math_funtions.hpp
         # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
-        GIT_TAG         917060c364181f33a735dc023818d5a54f60e54c
+        HG_TAG         10732
         PREFIX          ${EIGEN_SOURCE_DIR}
         DOWNLOAD_NAME   "eigen"
         UPDATE_COMMAND  ""
