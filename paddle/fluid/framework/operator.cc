@@ -456,13 +456,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
     //    input and output "automatically" (now by InferShape()->ShareLoD())
     //    is that layout transform may occur after InferShape().
     // Workaround:
-    //    Hardcode output layout to default value when input layout is kMKLDNN
+    //    Skip set_layout() when input layout is kMKLDNN
     //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
     //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
     //    in Compute()
-    if (in_tensor.layout() == DataLayout::kMKLDNN)
-      out_tensor->set_layout(DataLayout::kNCHW);
-    else
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
 #endif
     out_tensor->set_layout(in_tensor.layout());
   }
