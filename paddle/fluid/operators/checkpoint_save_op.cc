@@ -84,14 +84,13 @@ class CheckpointSaveOp : public framework::OperatorBase {
 
     std::string serial_var_name = std::string(SERIAL_VAR);
     auto *serial_var = scope.FindVar(serial_var_name);
-    auto *serial_num;
+
     if (serial_var == nullptr) {
       *serial_var = scope.Var(serial_var_name);
-      *serial_num = serial_var->GetMutable<std::string>();
-      serial_num->append("0");
+      *serial_tmp = serial_var->GetMutable<std::string>();
+      serial_tmp->append("0");
     }
-
-    *serial_num = serial_var->GetMutable<std::string>();
+    auto *serial_num = serial_var->GetMutable<std::string>();
     VLOG(1) << "CheckpointSaveOp get " << SERIAL_NUMBER
             << " value: " << serial_num;
 
