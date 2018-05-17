@@ -22,6 +22,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
+import paddle.fluid.transpiler.distribute_transpiler as distribute_transpiler
 
 BENCHMARK_MODELS = [
     "machine_translation", "resnet", "vgg", "mnist", "stacked_dynamic_lstm"
@@ -139,6 +140,46 @@ def append_nccl2_prepare():
             "must set PADDLE_TRAINER_ID env variables for dist train.")
 
 
+def dist_transpile():
+    if "PADDLE_TRAINING_ROLE" not in os.environ:
+        return None, None
+
+    # the port of all pservers, needed by both trainer and pserver
+    port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+    # comma separated ips of all pservers, needed by trainer and
+    # pserver
+    pserver_ips = os.getenv("PADDLE_PSERVER_IPS", "")
+    eplist = []
+    for ip in pserver_ips.split(","):
+        eplist.append(':'.join([ip, port]))
+    pserver_endpoints = ",".join(eplist)
+    # total number of workers/trainers in the job, needed by
+    # trainer and pserver
+    trainers = int(os.getenv("PADDLE_TRAINERS"))
+    # the IP of the local machine, needed by pserver only
+    current_endpoint = os.getenv("PADDLE_CURRENT_IP", "") + ":" + port
+    # the unique trainer id, starting from 0, needed by trainer
+    # only
+    trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+    # the role, should be either PSERVER or TRAINER
+    training_role = os.getenv("PADDLE_TRAINING_ROLE")
+
+    t = distribute_transpiler.DistributeTranspiler()
+    t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+    if training_role == "PSERVER":
+        pserver_program = t.get_pserver_program(current_endpoint)
+        pserver_startup_program = t.get_startup_program(current_endpoint,
+                                                        pserver_program)
+        return pserver_program, pserver_startup_program
+    elif training_role == "TRAINER":
+        train_program = t.get_trainer_program()
+        return train_program, fluid.default_startup_program()
+    else:
+        raise ValueError(
+            'TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
+        )
+
+
 def test(exe, inference_program, test_reader, feeder, batch_acc):
     accuracy_evaluator = fluid.metrics.Accuracy()
     for batch_id, data in enumerate(test_reader()):
@@ -153,13 +194,19 @@ def test(exe, inference_program, test_reader, feeder, batch_acc):
 # TODO(wuyi): replace train, train_parallel, test functions with new trainer
 # API once it is ready.
 def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
-          args):
+          args, train_prog, startup_prog):
+    if os.getenv("PADDLE_TRAINING_ROLE") == "PSERVER":
+        place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(startup_prog)
+        exe.run(train_prog)
+        return
+
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
+    exe.run(startup_prog)
     feed_var_list = [
-        var
-        for var in fluid.default_main_program().global_block().vars.itervalues()
+        var for var in train_prog.global_block().vars.itervalues()
         if var.is_data
     ]
     feeder = fluid.DataFeeder(feed_var_list, place)
@@ -173,7 +220,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
                 num_samples = 0
             if iters == args.iterations:
                 break
-            loss = exe.run(fluid.default_main_program(),
+            loss = exe.run(train_prog,
                            feed=feeder.feed(data),
                            fetch_list=[avg_loss])
             iters += 1
@@ -199,22 +246,22 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
 # TODO(wuyi): replace train, train_parallel, test functions with new trainer
 # API once it is ready.
 def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
-                   batch_acc, args, nccl_id_var, num_trainers, trainer_id):
+                   batch_acc, args, train_prog, startup_prog, nccl_id_var,
+                   num_trainers, trainer_id):
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     startup_exe = fluid.Executor(place)
-    startup_exe.run(fluid.default_startup_program())
+    startup_exe.run(startup_prog)
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = 1
     strategy.allow_op_delay = False
     exe = fluid.ParallelExecutor(
         True,
         avg_loss.name,
-        exe_strategy=strategy,
+        exec_strategy=strategy,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
     feed_var_list = [
-        var
-        for var in fluid.default_main_program().global_block().vars.itervalues()
+        var for var in train_prog.global_block().vars.itervalues()
         if var.is_data
     ]
     feeder = fluid.DataFeeder(feed_var_list, place)
@@ -257,6 +304,8 @@ def print_arguments(args):
 def main():
     args = parse_args()
     print_arguments(args)
+    nccl_id_var, num_trainers, trainer_id = None, 1, 0
+
     if args.use_cprof:
         pr = cProfile.Profile()
         pr.enable()
@@ -269,10 +318,22 @@ def main():
         fluid.memory_optimize(fluid.default_main_program())
 
     if args.update_method == "pserver":
-        # TODO(wuyi): do transpile here
+        train_prog, startup_prog = dist_transpile()
+        if not train_prog:
+            raise Exception(
+                "Must configure correct environments to run dist train.")
+        train_args.extend([train_prog, startup_prog])
+        if args.parallel == 1 and os.getenv(
+                "PADDLE_TRAINING_ROLE") == "TRAINER":
+            train_args.extend([nccl_id_var, num_trainers, trainer_id])
+            train_parallel(*train_args)
+        train(*train_args)
         exit(0)
 
-    nccl_id_var, num_trainers, trainer_id = None, 1, 0
+    # for other update methods, use default programs
+    train_args.append(fluid.default_main_program())
+    train_args.append(fluid.default_startup_program())
+
     if args.update_method == "nccl2":
         nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare()
     if args.parallel == 0:
