@@ -81,7 +81,7 @@ def train_network():
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=predict, label=label)
-    return avg_cost, accuracy
+    return [avg_cost, accuracy]
 
 
 def train(use_cuda, train_program, save_dirname):
