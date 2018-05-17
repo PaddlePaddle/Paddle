@@ -1,4 +1,4 @@
-proto_library(profiler_proto SRCS profiler.proto)
+proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto)
 py_proto_compile(profiler_py_proto SRCS profiler.proto)
 
 add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
