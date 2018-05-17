@@ -79,6 +79,8 @@ def train(use_cuda, train_program, save_dirname):
             avg_cost, accuracy = trainer.test(
                 reader=test_reader, feed_order=['pixel', 'label'])
 
+            print('Loss {0:2.2}, Acc {1:2.2}'.format(avg_cost, accuracy))
+
             if accuracy > 0.1:  # Low threshold for speeding up CI
                 if save_dirname is not None:
                     trainer.save_params(save_dirname)
@@ -116,7 +118,8 @@ def main(use_cuda):
         return
     save_path = "image_classification_vgg.inference.model"
 
-    train(use_cuda=use_cuda, train_program=train_network, save_dirname=save_path)
+    train(
+        use_cuda=use_cuda, train_program=train_network, save_dirname=save_path)
 
     infer(
         use_cuda=use_cuda,
