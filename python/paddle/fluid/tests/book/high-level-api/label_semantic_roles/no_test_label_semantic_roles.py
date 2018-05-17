@@ -23,14 +23,16 @@ WORD_DICT_LEN = len(WORD_DICT)
 LABEL_DICT_LEN = len(LABEL_DICT)
 PRED_DICT_LEN = len(VERB_DICT)
 MARK_DICT_LEN = 2
+IS_SPARSE = True
+BATCH_SIZE = 10
+EMBEDDING_NAME = 'emb'
 
 
-def lstm_net(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark):
+def lstm_net():
     WORD_DIM = 32
     MARK_DIM = 5
     HIDDEN_DIM = 512
     DEPTH = 8
-    EMBEDDING_NAME = 'emb'
 
     # Data definitions
     word = fluid.layers.data(
@@ -116,9 +118,8 @@ def lstm_net(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark):
     return feature_out
 
 
-def inference_network():
-    predict = lstm_net(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2,
-                       mark)
+def inference_program():
+    predict = lstm_net()
 
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
@@ -126,11 +127,10 @@ def inference_network():
     return crf_decode
 
 
-def train_network():
+def train_program():
     MIX_HIDDEN_LR = 1e-3
 
-    predict = lstm_net(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2,
-                       mark)
+    predict = lstm_net()
     target = fluid.layers.data(
         name='target', shape=[1], dtype='int64', lod_level=1)
     crf_cost = fluid.layers.linear_chain_crf(
@@ -143,41 +143,63 @@ def train_network():
     return avg_cost
 
 
-def train(use_cuda, save_path):
-    BATCH_SIZE = 128
-    EPOCH_NUM = 1
+def train(use_cuda, train_program, save_path):
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+
+    #    optimizer = fluid.optimizer.SGD(
+    #        learning_rate=fluid.layers.exponential_decay(
+    #            learning_rate=0.01,
+    #            decay_steps=100000,
+    #            decay_rate=0.5,
+    #            staircase=True))
+
+    trainer = fluid.Trainer(
+        train_func=train_program, place=place, optimizer=optimizer)
+
+    feed_order = [
+        'word_data', 'verb_data', 'ctx_n2_data', 'ctx_n1_data', 'ctx_0_data',
+        'ctx_p1_data', 'ctx_p2_data', 'mark_data', 'target'
+    ]
+
+    #    embedding_param = fluid.global_scope().find_var(
+    #            EMBEDDING_NAME).get_tensor()
+    #    embedding_param.set(
+    #            load_parameter(conll05.get_embedding(), word_dict_len, word_dim),
+    #            place)
+
+    def event_handler(event):
+        if isinstance(event, fluid.EndEpochEvent):
+            test_reader = paddle.batch(
+                paddle.dataset.conll05.test(), batch_size=BATCH_SIZE)
+            avg_cost_set = trainer.test(
+                reader=test_reader, feed_order=feed_order)
+
+            # get avg cost
+            avg_cost = np.array(avg_cost_set).mean()
+
+            print("avg_cost: %s" % avg_cost)
+
+            if float(avg_cost) < 1.0:  # Smaller value to increase CI speed
+                trainer.save_params(save_path)
+            else:
+                print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                                                              float(avg_cost)))
+                if math.isnan(float(avg_cost)):
+                    sys.exit("got NaN loss, training failed.")
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.conll05.train(), buf_size=8192),
+            paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    test_reader = paddle.batch(
-        paddle.dataset.conll05.test(), batch_size=BATCH_SIZE)
-
-    def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
-                avg_cost = trainer.test(reader=test_reader)
-
-                print('BatchID {0:04}, Loss {1:2.2}'.format(event.batch_id + 1,
-                                                            avg_cost))
-
-                if avg_cost > 0.01:  # Low threshold for speeding up CI
-                    trainer.save_params(save_path)
-                    return
-
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    sgd_optimizer = fluid.optimizer.SGD(
-        learning_rate=fluid.layers.exponential_decay(
-            learning_rate=0.01,
-            decay_steps=100000,
-            decay_rate=0.5,
-            staircase=True))
-    trainer = fluid.Trainer(train_network, optimizer=sgd_optimizer, place=place)
-    trainer.train(train_reader, EPOCH_NUM, event_handler=event_handler)
+    trainer.train(
+        num_epochs=1,
+        event_handler=event_handler,
+        reader=train_reader,
+        feed_order=feed_order)
 
 
-def infer(use_cuda, save_path):
+def infer(use_cuda, inference_program, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
         inference_program, param_path=save_path, place=place)
@@ -219,9 +241,10 @@ def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     save_path = "label_semantic_roles.inference.model"
-    train(use_cuda, save_path)
-    infer(use_cuda, save_path)
+    train(use_cuda, train_program, save_path)
 
+
+#    infer(use_cuda, inference_program, save_path)
 
 if __name__ == '__main__':
     for use_cuda in (False, True):
