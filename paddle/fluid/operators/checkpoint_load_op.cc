@@ -18,9 +18,6 @@ limitations under the License. */
 #include <numeric>
 #include <sstream>
 #include <string>
-
-#include <boost/filesystem.hpp>
-
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -42,9 +39,10 @@ static bool FileExists(const std::string &filepath) {
 }
 
 static std::string GenePath(const std::string &dir, const std::string &file) {
-  boost::filesystem::path dir(dir);
-  boost::filesystem::path file(file);
-  boost::filesystem::path full_path = dir / file;
+  std::string file_path;
+  file_path.append(file_path);
+  file_path.append("/");
+  file_path.append(file);
   return full_path;
 }
 
