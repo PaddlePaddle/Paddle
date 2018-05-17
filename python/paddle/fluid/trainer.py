@@ -174,7 +174,8 @@ class Trainer(object):
               event_handler,
               reader,
               feed_order,
-              parallel=False):
+              parallel=False,
+              data_feed_handler=None):
         """
         Train the model.
 
@@ -200,9 +201,10 @@ class Trainer(object):
                 exe.run()
                 return
 
-        self._train_by_executor(num_epochs, event_handler, reader, feed_order)
+        self._train_by_executor(num_epochs, event_handler, reader, feed_order,
+                                data_feed_handler)
 
-    def test(self, reader, feed_order):
+    def test(self, reader, feed_order, data_feed_handler=None):
         """
         Test the model on given test data
 
@@ -212,7 +214,8 @@ class Trainer(object):
                 order in program
         """
 
-        return self._test_by_executor(reader, feed_order, self.test_outputs)
+        return self._test_by_executor(reader, feed_order, self.test_outputs,
+                                      data_feed_handler)
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
@@ -228,7 +231,8 @@ class Trainer(object):
             with executor.scope_guard(self.scope):
                 yield
 
-    def _train_by_executor(self, num_epochs, event_handler, reader, feed_order):
+    def _train_by_executor(self, num_epochs, event_handler, reader, feed_order,
+                           data_feed_handler):
         """
         Train by Executor and single device.
 
@@ -243,29 +247,41 @@ class Trainer(object):
         """
         with self._prog_and_scope_guard():
             feed_var_list = build_feed_var_list(self.train_program, feed_order)
-            feeder = data_feeder.DataFeeder(
-                feed_list=feed_var_list, place=self.place)
+            if data_feed_handler == None:
+                feeder = data_feeder.DataFeeder(
+                    feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
             for epoch_id in range(num_epochs):
                 event_handler(BeginEpochEvent(epoch_id))
                 for step_id, data in enumerate(reader()):
                     event_handler(BeginStepEvent(epoch_id, step_id))
-                    exe.run(feed=feeder.feed(data), fetch_list=[])
+                    if data_feed_handler:
+                        exe.run(feed=data_feed_handler(data), fetch_list=[])
+                    else:
+                        exe.run(feed=feeder.feed(data), fetch_list=[])
+
                     event_handler(EndStepEvent(epoch_id, step_id))
                 event_handler(EndEpochEvent(epoch_id))
 
-    def _test_by_executor(self, reader, feed_order, fetch_list):
+    def _test_by_executor(self, reader, feed_order, fetch_list,
+                          data_feed_handler):
         with executor.scope_guard(self.scope):
             feed_var_list = build_feed_var_list(self.test_program, feed_order)
-            feeder = data_feeder.DataFeeder(
-                feed_list=feed_var_list, place=self.place)
+            if data_feed_handler == None:
+                feeder = data_feeder.DataFeeder(
+                    feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
             accumulated = len(fetch_list) * [0]
             count = 0
             for data in reader():
-                outs = exe.run(program=self.test_program,
-                               feed=feeder.feed(data),
-                               fetch_list=fetch_list)
+                if data_feed_handler:
+                    outs = exe.run(program=self.test_program,
+                                   feed=data_feed_handler(data),
+                                   fetch_list=fetch_list)
+                else:
+                    outs = exe.run(program=self.test_program,
+                                   feed=feeder.feed(data),
+                                   fetch_list=fetch_list)
                 accumulated = [x[0] + x[1][0] for x in zip(accumulated, outs)]
                 count += 1
 

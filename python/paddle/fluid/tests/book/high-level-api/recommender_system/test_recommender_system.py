@@ -158,7 +158,7 @@ def train_program():
     return [avg_cost, scale_infer]
 
 
-def func_feed(feeding, data):
+def func_feed(feeding, place, data):
     feed_tensors = {}
     for (key, idx) in feeding.iteritems():
         tensor = fluid.LoDTensor()
@@ -213,15 +213,17 @@ def train(use_cuda, train_program, save_path):
             test_reader = paddle.batch(
                 paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
-                reader=test_reader, feed_order=feed_order)
+                reader=test_reader,
+                feed_order=feed_order,
+                data_feed_handler=partial(func_feed, feeding_map, place))
 
             # get avg cost
-            avg_cost = numpy.array(avg_cost_set).mean()
+            avg_cost = np.array(avg_cost_set).mean()
 
             print("avg_cost: %s" % avg_cost)
 
-            if float(avg_cost) < 6.0:  # Smaller value to increase CI speed
-                trainer.save_params(save_dirname)
+            if float(avg_cost) < 3:  # Smaller value to increase CI speed
+                trainer.save_params(save_path)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
                                                               float(avg_cost)))
@@ -241,7 +243,7 @@ def train(use_cuda, train_program, save_path):
             'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id',
             'category_id', 'movie_title', 'score'
         ],
-        data_feed_handler=partial(func_feed, feeding_map))
+        data_feed_handler=partial(func_feed, feeding_map, place))
 
 
 def infer(use_cuda, inference_program, save_path):
@@ -276,17 +278,19 @@ def infer(use_cuda, inference_program, save_path):
     movie_title = create_lod_tensor([[1069], [4140], [2923], [710], [988]],
                                     [[0, 5]])
 
-    results = inferencer.infer({
-        'user_id': user_id,
-        'gender_id': gender_id,
-        'age_id': age_id,
-        'job_id': job_id,
-        'movie_id': movie_id,
-        'category_id': category_id,
-        'movie_title': movie_title
-    })
+    results = inferencer.infer(
+        {
+            'user_id': user_id,
+            'gender_id': gender_id,
+            'age_id': age_id,
+            'job_id': job_id,
+            'movie_id': movie_id,
+            'category_id': category_id,
+            'movie_title': movie_title
+        },
+        return_numpy=False)
 
-    print("infer results: ", results)
+    print("infer results: ", np.array(results[0]))
 
 
 def main(use_cuda):
@@ -301,4 +305,4 @@ def main(use_cuda):
 
 
 if __name__ == '__main__':
-    main(USE_CUDA)
+    main(USE_GPU)
