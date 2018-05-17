@@ -82,13 +82,23 @@ class CheckpointSaveOp : public framework::OperatorBase {
     auto dir = Attr<std::string>("dir");
     auto overwrite = Attr<bool>("overwrite");
 
-    auto serial_num = scope.FindVar(SERIAL_VAR);
-    if (serial_num == nullptr) {
-      serial_num = scope.Var(SERIAL_VAR);
+    std::string serial_var_name = std::string(SERIAL_VAR);
+    auto *serial_var = scope.FindVar(serial_var_name);
+    auto *serial_num;
+    if (serial_var == nullptr) {
+      *serial_var = scope.Var(serial_var_name);
+      *serial_num = serial_var->GetMutable<std::string>();
+      serial_num->append("0");
     }
-    serial_num = serial_num + 1;
 
-    dir = GenePath(dir, std::to_string(serial_num));
+    *serial_num = serial_var->GetMutable<std::string>();
+    VLOG(1) << "CheckpointSaveOp get " << SERIAL_NUMBER
+            << " value: " << serial_num;
+
+    auto *serial_num = serial_var->GetMutable<std::string>();
+    serial_num->append("1");
+
+    dir = GenePath(dir, serial_num);
     bool is_present = FileExists(dir);
     if (is_present && !overwrite) {
       PADDLE_THROW("%s exists!, checkpoint save cannot to  overwrite it", dir,
