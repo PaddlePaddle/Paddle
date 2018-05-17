@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -30,13 +32,24 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
+    const auto x = ctx.Input<Tensor>("X");
+    const auto y = ctx.Input<Tensor>("Y");
+    auto z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          AddFunctor<T>(), z);
+
+    auto dims_equal = x->dims() == y->dims();
+    if (platform::is_cpu_place(ctx.GetPlace()) && dims_equal) {
+      auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+      auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+      auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+
+      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      blas.VADD(x->numel(), eigen_x.data(), eigen_y.data(), eigen_z.data());
+    } else {
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                            AddFunctor<T>(), z);
+    }
   }
 };
 

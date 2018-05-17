@@ -18,10 +18,10 @@ namespace ops = paddle::operators;
 REGISTER_ELEMWISE_OP(elementwise_add, "Add", "Out = X + Y");
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>);
+//    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>);
+//    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
+//    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
