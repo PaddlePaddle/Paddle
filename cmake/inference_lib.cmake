@@ -70,6 +70,12 @@ copy(glog_lib
   DSTS ${dst_dir} ${dst_dir}/lib
 )
 
+set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/boost/")
+copy(boost_lib
+  SRCS ${BOOST_INCLUDE_DIR}/boost
+  DSTS ${dst_dir}
+)
+
 if(NOT PROTOBUF_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
     copy(protobuf_lib
@@ -90,6 +96,14 @@ elseif (WITH_MKLML)
       SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
       DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
     )
+endif()
+
+if(WITH_MKLDNN)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mkldnn")
+  copy(mkldnn_lib
+    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+    DSTS ${dst_dir} ${dst_dir}/lib
+  )
 endif()
 
 if(NOT MOBILE_INFERENCE AND NOT RPI)
@@ -140,6 +154,12 @@ set(module "string")
 copy(string_lib
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
+)
+
+set(module "pybind")
+copy(pybind_lib
+  SRCS ${CMAKE_CURRENT_BINARY_DIR}/paddle/fluid/${module}/pybind.h
+  DSTS ${dst_dir}/${module}
 )
 
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 

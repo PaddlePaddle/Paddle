@@ -48,12 +48,11 @@ def linear():
     return avg_loss
 
 
-def train(use_cuda, save_dirname):
+def train(use_cuda, train_program, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        train_func=linear,
-        infer_func=inference_program,
+        train_func=train_program,
         place=place,
         optimizer=fluid.optimizer.SGD(learning_rate=0.001))
 
@@ -72,11 +71,7 @@ def train(use_cuda, save_dirname):
             '''
             if float(test_metrics[0]) < 20.0:
                 if save_dirname is not None:
-                    # NOT clear yet
-                    # fluid.io.save_inference_model(save_dirname, ['x'], [y_predict])
-                    # trainer.save_params(save_dirname)
-                    # https://github.com/PaddlePaddle/Paddle/pull/10445
-                    trainer.save_inference_model(save_dirname)
+                    trainer.save_params(save_dirname)
             return
 
     trainer.train(
@@ -87,12 +82,13 @@ def train(use_cuda, save_dirname):
 
 
 # infer
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, inference_program, save_dirname=None):
     if save_dirname is None:
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(param_path=save_dirname, place=place)
+    inferencer = fluid.Inferencer(
+        infer_func=inference_program, param_path=save_dirname, place=place)
 
     batch_size = 10
     tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
@@ -108,8 +104,8 @@ def main(use_cuda):
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname)
-    infer(use_cuda, save_dirname)
+    train(use_cuda, linear, save_dirname)
+    infer(use_cuda, inference_program, save_dirname)
 
 
 class TestFitALine(unittest.TestCase):

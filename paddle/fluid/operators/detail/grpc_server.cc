@@ -306,7 +306,7 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
   }
   RequestPrefetch* prefetch =
       new RequestPrefetch(&service_, cq_prefetch_.get(), sync_mode_, scope_,
-                          dev_ctx_, executor_, program_, prefetch_ctx_);
+                          dev_ctx_, executor_, program_, prefetch_ctx_.get());
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
