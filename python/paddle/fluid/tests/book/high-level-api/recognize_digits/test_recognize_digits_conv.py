@@ -62,31 +62,31 @@ def train(use_cuda, train_program, save_dirname):
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer=optimizer)
+        train_func=train_program,
+        place=place,
+        optimizer=optimizer,
+        parallel=True)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
-            test_metrics = trainer.test(
+            avg_cost, acc = trainer.test(
                 reader=test_reader, feed_order=['img', 'label'])
-            avg_cost_set = test_metrics[0]
-            acc_set = test_metrics[1]
-
-            # get test acc and loss
-            acc = numpy.array(acc_set).mean()
-            avg_cost = numpy.array(avg_cost_set).mean()
 
             print("avg_cost: %s" % avg_cost)
             print("acc     : %s" % acc)
 
-            if float(acc) > 0.2:  # Smaller value to increase CI speed
+            if acc > 0.2:  # Smaller value to increase CI speed
                 trainer.save_params(save_dirname)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
-                    event.epoch + 1, float(avg_cost), float(acc)))
-                if math.isnan(float(avg_cost)):
+                    event.epoch + 1, avg_cost, acc))
+                if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
+        elif isinstance(event, fluid.EndStepEvent):
+            print("Step {0}, Epoch {1} Metrics {2}".format(
+                event.step, event.epoch, map(numpy.array, event.metrics)))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -131,4 +131,4 @@ def main(use_cuda):
 
 if __name__ == '__main__':
     # for use_cuda in (False, True):
-    main(use_cuda=False)
+    main(use_cuda=True)
