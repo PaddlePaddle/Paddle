@@ -112,7 +112,7 @@ def append_nccl2_prepare():
     if os.getenv("PADDLE_TRAINER_ID", None) != None:
         # append gen_nccl_id at the end of startup program
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
-        port = os.getenv("PADDLE_PORT")
+        port = os.getenv("PADDLE_PSERVER_PORT")
         worker_ips = os.getenv("PADDLE_TRAINER_IPS")
         worker_endpoints = []
         for ip in worker_ips.split(","):
@@ -276,6 +276,8 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if iters == args.iterations:
                 break
             loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
+            if args.update_method == "pserver":
+                exe.bcast_params()
             num_samples += len(data)
             iters += 1
             if batch_id % 1 == 0:
