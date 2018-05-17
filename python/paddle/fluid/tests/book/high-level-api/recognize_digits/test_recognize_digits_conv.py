@@ -62,7 +62,10 @@ def train(use_cuda, train_program, save_dirname):
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer=optimizer)
+        train_func=train_program,
+        place=place,
+        optimizer=optimizer,
+        parallel=True)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
@@ -87,6 +90,9 @@ def train(use_cuda, train_program, save_dirname):
                     event.epoch + 1, float(avg_cost), float(acc)))
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
+        elif isinstance(event, fluid.EndStepEvent):
+            print("Step {0}, Epoch {1} Metrics {2}".format(
+                event.step, event.epoch, map(numpy.array, event.metrics)))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -131,4 +137,4 @@ def main(use_cuda):
 
 if __name__ == '__main__':
     # for use_cuda in (False, True):
-    main(use_cuda=False)
+    main(use_cuda=True)
