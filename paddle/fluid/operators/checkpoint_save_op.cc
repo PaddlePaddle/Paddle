@@ -17,6 +17,10 @@ limitations under the License. */
 #include <fstream>
 #include <numeric>
 #include <sstream>
+#include <string>
+
+#include <boost/filesystem.hpp>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -30,6 +34,14 @@ namespace operators {
 constexpr char kSEP = '/';
 // write empty file named _SUCCESS
 const char SUCCESS[] = "_SUCCESS";
+const char SERIAL_VAR[] = "SERIAL_NUMBER";
+
+static std::string GenePath(const std::string &dir, const std::string &file) {
+  boost::filesystem::path dir(dir);
+  boost::filesystem::path file(file);
+  boost::filesystem::path full_path = dir / file;
+  return full_path;
+}
 
 static bool FileExists(const std::string &filepath) {
   struct stat buffer;
@@ -72,22 +84,18 @@ class CheckpointSaveOp : public framework::OperatorBase {
     auto dir = Attr<std::string>("dir");
     auto overwrite = Attr<bool>("overwrite");
 
+    auto serial_num = scope.FindVar(SERIAL_VAR);
+    if (serial_num == nullptr) {
+      serial_num = scope.Var(SERIAL_VAR);
+    }
+    serial_num = serial_num + 1;
+
+    dir = GenePath(dir, std::to_string(serial_num));
     bool is_present = FileExists(dir);
     if (is_present && !overwrite) {
-      return;
-      // todo(tangwei) judge the folder is exist
-      // PADDLE_THROW("%s exists!, cannot save_combine to it when
-      // overwrite=false",
-      //              dir, overwrite);
+      PADDLE_THROW("%s exists!, checkpoint save cannot to  overwrite it", dir,
+                   overwrite);
     }
-    MkDirRecursively(dir.c_str());
-
-    auto serial_var_name = Output("Serial");
-    auto *serial_var = scope.FindVar(serial_var_name);
-    std::string *serial_num = serial_var->GetMutable<std::string>();
-    serial_num->append("0");
-    dir.append("/");
-    dir.append(serial_num->c_str());
     MkDirRecursively(dir.c_str());
 
     auto inp_var_names = Inputs("X");
@@ -101,30 +109,24 @@ class CheckpointSaveOp : public framework::OperatorBase {
     // todo (tangwei) made it async
     for (size_t i = 0; i < inp_var_names.size(); i++) {
       auto *var = scope.FindVar(inp_var_names[i]);
-      std::string var_file;
-      var_file.append(dir);
-      var_file.append("/");
-      var_file.append(inp_var_names[i]);
 
       PADDLE_ENFORCE(var != nullptr,
-                     "Cannot find variable %s for save_combine_op",
+                     "Cannot find variable %s for checkpoint save op",
                      inp_var_names[i]);
-      PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                     "SaveCombineOp only supports LoDTensor, %s has wrong type",
-                     inp_var_names[i]);
+      PADDLE_ENFORCE(
+          var->IsType<framework::LoDTensor>(),
+          "CheckpointSaveOp only supports LoDTensor, %s has wrong type",
+          inp_var_names[i]);
 
       auto &tensor = var->Get<framework::LoDTensor>();
       // Serialize tensors one by one
-
+      std::string var_file = GenePath(dir, inp_var_names[i]);
       std::ofstream fout(var_file);
       framework::SerializeToStream(fout, tensor, dev_ctx);
       fout.close();
     }
 
-    std::string success;
-    success.append(dir);
-    success.append("/");
-    success.append(SUCCESS);
+    std::string success = GenePath(dir, SUCCESS);
     std::ofstream fout(success);
     fout.close();
   }
@@ -138,7 +140,6 @@ class CheckpointSaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(vector) Input LoDTensors that need to be saved together in a file.")
         .AsDuplicable();
-    AddOutput("Serial", "the serial number");
     AddComment(R"DOC(
 CheckpointSave operator
 
@@ -150,30 +151,29 @@ to a file on disk.
                   "Delete the output dir if it exists.")
         .SetDefault(false);
 
-    AddAttr<std::string>(
-        "dir",
-        "(string)"
-        "The \"file_path\" where the LoDTensor variables will be saved.")
+    AddAttr<std::string>("dir",
+                         "(string)"
+                         "The dir where the LoDTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
   }
 };
 
-class CheckpointSaveOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto out_var_name = op_desc.Output("Serial").front();
-    auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
-  }
-};
+// class CheckpointSaveOpVarTypeInference : public framework::VarTypeInference {
+//  public:
+//   void operator()(const framework::OpDesc &op_desc,
+//                   framework::BlockDesc *block) const override {
+//     auto out_var_name = op_desc.Output("Serial").front();
+//     auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
+//     auto var_type = framework::proto::VarType::RAW;
+//     out_var.SetType(var_type);
+//   }
+// };
 
-class CheckpointSaveOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
-};
+// class CheckpointSaveOpShapeInference : public framework::InferShapeBase {
+//  public:
+//   void operator()(framework::InferShapeContext *ctx) const override {}
+// };
 
 }  // namespace operators
 }  // namespace paddle
@@ -181,7 +181,10 @@ class CheckpointSaveOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(checkpoint_save, ops::CheckpointSaveOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::CheckpointSaveOpProtoMaker,
-                  ops::CheckpointSaveOpVarTypeInference,
-                  ops::CheckpointSaveOpShapeInference);
+                  ops::CheckpointSaveOpProtoMaker);
+
+// REGISTER_OPERATOR(checkpoint_save, ops::CheckpointSaveOp,
+//                   paddle::framework::EmptyGradOpMaker,
+//                   ops::CheckpointSaveOpProtoMaker,
+//                   ops::CheckpointSaveOpVarTypeInference,
+//                   ops::CheckpointSaveOpShapeInference);
