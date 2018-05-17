@@ -17,6 +17,10 @@ limitations under the License. */
 #include <fstream>
 #include <numeric>
 #include <sstream>
+#include <string>
+
+#include <boost/filesystem.hpp>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -30,10 +34,68 @@ namespace operators {
 constexpr char kSEP = '/';
 // write empty file named _SUCCESS
 const char SUCCESS[] = "_SUCCESS";
+const char SERIAL_VAR[] = "SERIAL_NUMBER";
 
 static bool FileExists(const std::string &filepath) {
   struct stat buffer;
   return (stat(filepath.c_str(), &buffer) == 0);
+}
+
+static std::string GenePath(const std::string &dir, const std::string &file) {
+  boost::filesystem::path dir(dir);
+  boost::filesystem::path file(file);
+  boost::filesystem::path full_path = dir / file;
+  return full_path;
+}
+
+static void LoadInputVars(const framework::Scope &scope,
+                          const platform::Place &place,
+                          const std::vector<std::string> &inp_var_names,
+                          const std::string &dir) {
+  // get device context from pool
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(place);
+
+  // todo (tangwei) made it async
+  for (size_t i = 0; i < inp_var_names.size(); i++) {
+    auto *var = scope.FindVar(inp_var_names[i]);
+
+    PADDLE_ENFORCE(var != nullptr,
+                   "Cannot find variable %s for save_combine_op",
+                   inp_var_names[i]);
+    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+                   "SaveCombineOp only supports LoDTensor, %s has wrong type",
+                   inp_var_names[i]);
+
+    std::string var_file = GenePath(dir, inp_var_names[i]);
+    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    std::ifstream fin(var_file);
+    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
+                   var_file);
+    framework::DeserializeFromStream(fin, tensor, dev_ctx);
+    fin.close();
+    VLOG(3) << " load var: " << inp_var_names[i] << " finished";
+  }
+}
+
+static void LoadStringArgv(const framework::Scope &scope,
+                           const platform::Place &place,
+                           const std::string &argv, const std::string &dir) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(place);
+
+  for (size_t i = 0; i < argv.size(); i++) {
+    auto *var = scope.FindVar(inp_var_names[i]);
+    std::string *var_str = var->GetMutable<std::string>();
+
+    std::string var_file = GenePath(dir, argv);
+    std::ifstream fin(var_file);
+    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
+                   var_file);
+    std::getline(fin, var_str);
+    fin.close();
+    VLOG(3) << " load String argv: " << argv << " value is: " << var_str;
+  }
 }
 
 class CheckpointLoadOp : public framework::OperatorBase {
@@ -48,53 +110,33 @@ class CheckpointLoadOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     std::string dir = Attr<std::string>("dir");
+    int serial_num = Attr<int>("Serial");
 
-    VLOG(3) << "Load checkpoint from dir: " << dir;
+    auto *serial_var = scope.FindVar(SERIAL_VAR);
+    serial_var = serial_num;
+    VLOG(1) << "CheckpointLoadOp set " << SERIAL_NUMBER
+            << " value: " << serial_num;
 
     std::string success;
-    success.append(dir);
-    success.append("/");
-    success.append(SUCCESS);
-
+    = GenePath(dir, std::to_string(serial_num));
+    VLOG(3) << "Load checkpoint from dir: " << success;
+    success = GenePath(success, SUCCESS);
     bool is_present = FileExists(success);
     if (!is_present) {
-      VLOG(3) << "can not find _SUCCESS from  path: " << success;
+      VLOG(1) << "CheckpointLoadOp can not find " << SUCCESS
+              << " from: " << success;
       return;
     }
 
+    VLOG(3) << "Ready to load vars to scope";
     auto inp_var_names = Inputs("X");
     PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
                       "The number of input variables should be greater than 0");
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    LoadInputVars(scope, place, &inp_var_names);
 
-    // todo (tangwei) made it async
-    for (size_t i = 0; i < inp_var_names.size(); i++) {
-      auto *var = scope.FindVar(inp_var_names[i]);
-
-      PADDLE_ENFORCE(var != nullptr,
-                     "Cannot find variable %s for save_combine_op",
-                     inp_var_names[i]);
-      PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                     "SaveCombineOp only supports LoDTensor, %s has wrong type",
-                     inp_var_names[i]);
-
-      std::string var_file;
-      var_file.append(dir);
-      var_file.append("/");
-      var_file.append(inp_var_names[i]);
-      VLOG(3) << "ready to load var: " << inp_var_names[i];
-
-      auto *tensor = var->GetMutable<framework::LoDTensor>();
-      std::ifstream fin(var_file);
-      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
-                     var_file);
-      framework::DeserializeFromStream(fin, tensor, dev_ctx);
-      fin.close();
-
-      VLOG(3) << " load var: " << inp_var_names[i] << " finished";
-    }
+    VLOG(3) << "Ready to load string argv to scope";
+    auto argv = Inputs("Argv");
+    LoadStringArgv(scope, place, &argv, &dir);
   }
 };
 
@@ -106,6 +148,10 @@ class CheckpointLoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(vector) Input LoDTensors that need to be saved together in a file.")
         .AsDuplicable();
+    AddInput(
+        "Argv",
+        "(vector) Input LoDTensors that need to be saved together in a file.")
+        .AsDuplicable();
     AddComment(R"DOC(
 CheckpointLoad operator
 
@@ -113,6 +159,9 @@ This operator will serialize and write a list of input LoDTensor variables
 to a file on disk.
 )DOC");
 
+    AddAttr<int>("Serial",
+                 "(int)"
+                 "The  serial number of the checkpoint will to be load.");
     AddAttr<std::string>(
         "dir",
         "(string)"
