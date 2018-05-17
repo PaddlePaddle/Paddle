@@ -276,4 +276,3 @@ We recommend users reading following articles for more details:
     - create `sequence_start_positions` for `argument`: [`paddle_arguments_set_sequence_start_pos`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/arguments.h#L137)
     - read `sequence_start_positions` for `argument`:[`paddle_arguments_get_sequence_start_pos`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/arguments.h#L150)
     - description of argument API: [`paddle_arguments_get_sequence_start_pos`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/arguments.h#L150)
-
