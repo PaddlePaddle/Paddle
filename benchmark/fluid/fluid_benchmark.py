@@ -196,16 +196,20 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         exit(0)
 
 
+# TODO(wuyi): replace train, train_parallel, test functions with new trainer
+# API once it is ready.
 def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                    batch_acc, args, nccl_id_var, num_trainers, trainer_id):
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     startup_exe = fluid.Executor(place)
     startup_exe.run(fluid.default_startup_program())
+    strategy = fluid.ExecutionStrategy()
+    strategy.num_threads = 1
+    strategy.allow_op_delay = False
     exe = fluid.ParallelExecutor(
         True,
         avg_loss.name,
-        num_threads=1,
-        allow_op_delay=False,
+        exe_strategy=strategy,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
     feed_var_list = [
