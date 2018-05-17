@@ -20,19 +20,15 @@
 #=================================================
 
 function print_usage() {
-    RED='\033[0;31m'
-    BLUE='\033[0;34m'
-    BOLD='\033[1m'
-    NONE='\033[0m'
-    
     echo -e "\n${RED}Usage${NONE}:
-    ${BOLD}$0${NONE} [OPTION]"
+    ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
     
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
     ${BLUE}build_android${NONE}: run build for android platform
     ${BLUE}build_ios${NONE}: run build for ios platform
     ${BLUE}test${NONE}: run all unit tests
+    ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
     ${BLUE}doc${NONE}: generate paddle documents
     ${BLUE}html${NONE}: convert C++ source code into HTML
@@ -45,7 +41,15 @@ function print_usage() {
 }
 
 function init() {
+    RED='\033[0;31m'
+    BLUE='\033[0;34m'
+    BOLD='\033[1m'
+    NONE='\033[0m'
+
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+    if [ -z "${SCRIPT_NAME}" ]; then
+        SCRIPT_NAME=$0
+    fi
 }
 
 function cmake_gen() {
@@ -309,6 +313,25 @@ EOF
     fi
 }
 
+function single_test() {
+    TEST_NAME=$1
+    if [ -z "${TEST_NAME}" ]; then
+        echo -e "${RED}Usage:${NONE}"
+        echo -e "${BOLD}${SCRIPT_NAME}${NONE} ${BLUE}single_test${NONE} [test_name]"
+        exit 1
+    fi
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running ${TEST_NAME} ...
+    ========================================
+EOF
+        ctest --output-on-failure -R ${TEST_NAME}
+    fi
+}
+
 function bind_test() {
     # the number of process to run tests
     NUM_PROC=6
@@ -490,6 +513,9 @@ function main() {
         ;;
       test)
         run_test
+        ;;
+      single_test)
+        single_test $2
         ;;
       bind_test)
         bind_test
