@@ -17,6 +17,7 @@ import core
 import executor
 import framework
 import io
+import parallel_executor
 import unique_name
 from trainer import check_and_get_place
 
@@ -24,7 +25,7 @@ __all__ = ['Inferencer', ]
 
 
 class Inferencer(object):
-    def __init__(self, infer_func, param_path, place=None):
+    def __init__(self, infer_func, param_path, place=None, parallel=False):
         """
         :param infer_func: a function that will return predict Variable
         :param param_path: the path where the inference model is saved by fluid.io.save_params
@@ -32,13 +33,20 @@ class Inferencer(object):
         """
         self.param_path = param_path
         self.scope = core.Scope()
+        self.parallel = parallel
+        self.place = check_and_get_place(place)
 
         self.inference_program = framework.Program()
         with framework.program_guard(self.inference_program):
             with unique_name.guard():
                 self.predict_var = infer_func()
 
-        self.exe = executor.Executor(check_and_get_place(place))
+        if parallel:
+            self.exe = parallel_executor.ParallelExecutor(
+                use_cuda=isinstance(self.place, core.CUDAPlace),
+                loss_name=self.predict_var.name)
+        else:
+            self.exe = executor.Executor(self.place)
         with executor.scope_guard(self.scope):
             # load params from param_path into scope
             io.load_params(self.exe, param_path, self.inference_program)
