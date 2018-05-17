@@ -99,7 +99,7 @@ def infer(use_cuda, inference_program, save_dirname=None):
 
     results = inferencer.infer({'img': tensor_img})
 
-    print("infer results: ", results[0])
+    print("infer results: ", numpy.array(results[0]))
 
 
 def main(use_cuda):

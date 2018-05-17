@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+
 import core
 
 import executor
@@ -41,31 +43,36 @@ class Inferencer(object):
             with unique_name.guard():
                 self.predict_var = infer_func()
 
+        with self._prog_and_scope_guard():
+            # load params from param_path into scope
+            io.load_params(executor.Executor(self.place), param_path)
+
         if parallel:
-            self.exe = parallel_executor.ParallelExecutor(
-                use_cuda=isinstance(self.place, core.CUDAPlace),
-                loss_name=self.predict_var.name)
+            with self._prog_and_scope_guard():
+                self.exe = parallel_executor.ParallelExecutor(
+                    use_cuda=isinstance(self.place, core.CUDAPlace),
+                    loss_name=self.predict_var.name)
         else:
             self.exe = executor.Executor(self.place)
-        with executor.scope_guard(self.scope):
-            # load params from param_path into scope
-            io.load_params(self.exe, param_path, self.inference_program)
 
-    def infer(self, inputs, return_numpy=True):
+    def infer(self, inputs):
         """
         :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
         to get the predict value
-        :param return_numpy: if return numpy value for row tensor
         :return: the predict value of the inference model
         """
         if not isinstance(inputs, dict):
             raise ValueError(
                 "inputs should be a map of {'input_name': input_var}")
 
-        with executor.scope_guard(self.scope):
-            results = self.exe.run(self.inference_program,
-                                   feed=inputs,
-                                   fetch_list=[self.predict_var],
-                                   return_numpy=return_numpy)
+        with self._prog_and_scope_guard():
+            results = self.exe.run(feed=inputs,
+                                   fetch_list=[self.predict_var.name])
 
         return results
+
+    @contextlib.contextmanager
+    def _prog_and_scope_guard(self):
+        with framework.program_guard(main_program=self.inference_program):
+            with executor.scope_guard(self.scope):
+                yield
