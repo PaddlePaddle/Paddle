@@ -2,6 +2,8 @@
 ### step 1. build paddle lib
 
 ```
+# option MATH_TYPE=mklml
+# option WITH_MKLDNN=ON|OFF
 cmake .. -DCMAKE_INSTALL_PREFIX=/paddle/src/dir/paddle/fluid/train/lib
 make -j4 inference_lib_dist
 ```
@@ -10,7 +12,7 @@ make -j4 inference_lib_dist
 ### step 2. copy lib to this dir
 
 ```
-cpy -r /paddle/src/dir/paddle/fluid/train/lib .
+cp -r /paddle/src/dir/paddle/fluid/train/lib .
 ```
 
 ### step 3. generate program desc
