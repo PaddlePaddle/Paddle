@@ -94,8 +94,7 @@ def train(use_cuda, train_program, save_dirname):
         reader=train_reader,
         num_epochs=1,
         event_handler=event_handler,
-        feed_order=['pixel', 'label']
-    )
+        feed_order=['pixel', 'label'])
 
 
 def infer(use_cuda, inference_program, save_dirname=None):
@@ -117,10 +116,7 @@ def main(use_cuda):
         return
     save_path = "image_classification_vgg.inference.model"
 
-    train(
-        use_cuda=use_cuda,
-        train_program=train_network,
-        save_dirname=save_path)
+    train(use_cuda=use_cuda, train_program=train_network, save_dirname=save_path)
 
     infer(
         use_cuda=use_cuda,
