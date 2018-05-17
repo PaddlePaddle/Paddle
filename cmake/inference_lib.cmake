@@ -99,10 +99,10 @@ elseif (WITH_MKLML)
 endif()
 
 if(WITH_MKLDNN)
-  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/")
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mkldnn")
   copy(mkldnn_lib
-    SRCS ${MKLDNN_INSTALL_DIR}
-    DSTS ${dst_dir}
+    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+    DSTS ${dst_dir} ${dst_dir}/lib
   )
 endif()
 
