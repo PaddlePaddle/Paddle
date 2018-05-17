@@ -20,6 +20,7 @@ import data_feeder
 import contextlib
 import io
 import unique_name
+import parallel_executor
 
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
 import optimizer as opt_module
@@ -48,12 +49,14 @@ class BeginStepEvent(object):
     def __init__(self, epoch_id, step_id):
         self.epoch = epoch_id
         self.step = step_id
+        self.fetch_metrics = True
 
 
 class EndStepEvent(object):
-    def __init__(self, epoch_id, step_id):
+    def __init__(self, epoch_id, step_id, metrics):
         self.epoch = epoch_id
         self.step = step_id
+        self.metrics = metrics
 
 
 def check_and_get_place(place):
@@ -87,24 +90,23 @@ class Trainer(object):
 
     Args:
         train_func(callable): A function which will return loss. The loss must be a scalar.
-        infer_func(callable): A function which will return predict, used to save inference model
         optimizer(optimizer.Optimizer): The optimizer should be an instance of Optimizer
         place: The device place of this trainer.
     """
 
     def __init__(self,
                  train_func,
-                 infer_func,
                  optimizer,
                  param_path=None,
-                 place=None):
+                 place=None,
+                 parallel=False):
+        self.parallel = parallel
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
         if not isinstance(optimizer, opt_module.Optimizer):
             raise TypeError("The optimizer should be an instance of Optimizer")
 
-        self.infer_func = infer_func
         self.scope = core.Scope()
 
         self.startup_program = framework.Program()
@@ -112,14 +114,14 @@ class Trainer(object):
 
         with framework.program_guard(self.train_program, self.startup_program):
             program_func_outs = train_func()
-            self.test_outputs = program_func_outs if isinstance(
+            self.train_func_outputs = program_func_outs if isinstance(
                 program_func_outs, list) else [program_func_outs]
             self.test_program = self.train_program.clone()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
             # The fisrt element of program_func_outs is loss.
-            loss = self.test_outputs[0]
+            loss = self.train_func_outputs[0]
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = check_and_get_place(place)
@@ -137,7 +139,40 @@ class Trainer(object):
             # load params from param_path into scope
             io.load_persistables(exe, dirname=param_path)
 
+    def _transpile_nccl2_dist(self):
+        # PADDLE_TRAINER_IPS
+        if "PADDLE_TRAINER_IPS" not in os.environ:
+            self.nccl_id_var = None
+        else:
+            self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+            port = os.getenv("PADDLE_PSERVER_PORT")
+            worker_ips = os.getenv("PADDLE_TRAINER_IPS")
+            worker_endpoints = []
+            for ip in worker_ips.split(","):
+                worker_endpoints.append(':'.join([ip, port]))
+            self.num_trainers = len(worker_endpoints)
+            current_endpoint = os.getenv("POD_IP") + ":" + port
+            worker_endpoints.remove(current_endpoint)
+            # TODO(wuyi): use self.nccl_id_var, self.num_trainers and self.trainer_id
+            # in ParallelExecutor to start
+            # distributed training using NCCL2
+            self.nccl_id_var = self.startup_program.global_block().create_var(
+                name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+            self.startup_program.global_block().append_op(
+                type="gen_nccl_id",
+                inputs={},
+                outputs={"NCCLID": self.nccl_id_var},
+                attrs={
+                    "endpoint": current_endpoint,
+                    "endpoint_list": worker_endpoints,
+                    "trainer_id": self.trainer_id
+                })
+
     def _dist_transpile_if_necessary(self, optimize_ops, params_grads):
+        self._transpile_nccl2_dist()
+        if self.nccl_id_var != None:
+            return
+
         if "PADDLE_TRAINING_ROLE" not in os.environ:
             return
 
@@ -175,12 +210,7 @@ class Trainer(object):
                     'TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
                 )
 
-    def train(self,
-              num_epochs,
-              event_handler,
-              reader=None,
-              parallel=False,
-              feed_order=None):
+    def train(self, num_epochs, event_handler, reader=None, feed_order=None):
         """
         Train the model.
 
@@ -188,27 +218,26 @@ class Trainer(object):
             num_epochs: The number of epoch. An epoch will process all data in reader
             event_handler: The event handler. A function with type (ev:Event)->void
             reader:
-            parallel: True if use multi-CPUs or multi-GPUs
             feed_order: Feeding order of reader. None will following the defining
                 order in program
 
         Returns:
 
         """
-        if parallel:
-            raise NotImplementedError(
-                "Parallel Executor version of trainer is not implemented")
-
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "")
         if training_role == "PSERVER":
             with self._prog_and_scope_guard():
                 exe = executor.Executor(self.place)
                 exe.run()
                 return
+        if self.parallel:
+            self._train_by_parallel_executor(num_epochs, event_handler, reader,
+                                             feed_order)
+        else:
+            self._train_by_executor(num_epochs, event_handler, reader,
+                                    feed_order)
 
-        self._train_by_executor(num_epochs, event_handler, reader, feed_order)
-
-    def test(self, reader, feed_order=None):
+    def test(self, reader, feed_order):
         """
         Test the model on given test data
 
@@ -218,22 +247,14 @@ class Trainer(object):
                 order in program
         """
 
-        return self._test_by_executor(reader, feed_order, self.test_outputs)
+        return self._test_by_executor(reader, feed_order,
+                                      self.train_func_outputs)
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
         with self._prog_and_scope_guard():
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
-
-    def save_inference_model(self, model_path):
-        inference_program = framework.Program()
-        with framework.program_guard(inference_program):
-            with unique_name.guard():
-                predict_var = self.infer_func()
-        predict_var = self.train_program.block(0).var(predict_var.name)
-        exe = executor.Executor(self.place)
-        io.save_inference_model(model_path, [], [predict_var], exe)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
@@ -261,13 +282,25 @@ class Trainer(object):
             feeder = data_feeder.DataFeeder(
                 feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
-            for epoch_id in range(num_epochs):
-                event_handler(BeginEpochEvent(epoch_id))
-                for step_id, data in enumerate(reader()):
-                    event_handler(BeginStepEvent(epoch_id, step_id))
-                    exe.run(feed=feeder.feed(data), fetch_list=[])
-                    event_handler(EndStepEvent(epoch_id, step_id))
-                event_handler(EndEpochEvent(epoch_id))
+            reader = feeder.decorate_reader(reader, multi_devices=False)
+            self._train_by_any_executor(event_handler, exe, num_epochs, reader)
+
+    def _train_by_any_executor(self, event_handler, exe, num_epochs, reader):
+        for epoch_id in range(num_epochs):
+            event_handler(BeginEpochEvent(epoch_id))
+            for step_id, data in enumerate(reader()):
+                begin_event = BeginStepEvent(epoch_id, step_id)
+                event_handler(begin_event)
+                if begin_event.fetch_metrics:
+                    metrics = exe.run(feed=data,
+                                      fetch_list=[
+                                          var.name
+                                          for var in self.train_func_outputs
+                                      ])
+                else:
+                    metrics = exe.run(feed=data, fetch_list=[])
+                event_handler(EndStepEvent(epoch_id, step_id, metrics))
+            event_handler(EndEpochEvent(epoch_id))
 
     def _test_by_executor(self, reader, feed_order, fetch_list):
         with executor.scope_guard(self.scope):
@@ -286,17 +319,34 @@ class Trainer(object):
 
             return [x / count for x in accumulated]
 
+    def _train_by_parallel_executor(self, num_epochs, event_handler, reader,
+                                    feed_order):
+        with self._prog_and_scope_guard():
+            pe = self._get_or_create_parallel_executor()
+            feed_var_list = build_feed_var_list(self.train_program, feed_order)
+            feeder = data_feeder.DataFeeder(
+                feed_list=feed_var_list, place=self.place)
+            reader = feeder.decorate_reader(reader, multi_devices=True)
+            for epoch_id in range(num_epochs):
+                self._train_by_any_executor(event_handler, pe, num_epochs,
+                                            reader)
+
+    def _get_parallel_executor(self):
+        return getattr(self, 'parallel_executor', None)
+
+    def _get_or_create_parallel_executor(self):
+        if self._get_parallel_executor() is None:
+            self.parallel_executor = parallel_executor.ParallelExecutor(
+                use_cuda=isinstance(self.place, core.CUDAPlace),
+                loss_name=self.train_func_outputs[0].name)
+        return self._get_parallel_executor()
+
 
 def build_feed_var_list(program, feed_order):
     if not isinstance(program, framework.Program):
         raise TypeError("The 'program' should be an object of Program")
 
-    if feed_order is None:
-        feed_var_list = [
-            var for var in program.global_block().vars.itervalues()
-            if var.is_data
-        ]
-    elif isinstance(feed_order, list):
+    if isinstance(feed_order, list):
         feed_var_list = [
             program.global_block().var(var_name) for var_name in feed_order
         ]
