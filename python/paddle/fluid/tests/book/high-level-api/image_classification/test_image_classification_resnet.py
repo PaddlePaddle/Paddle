@@ -141,9 +141,7 @@ def main(use_cuda):
     save_path = "image_classification_resnet.inference.model"
 
     train(
-        use_cuda=use_cuda,
-        train_program=train_network,
-        save_dirname=save_path)
+        use_cuda=use_cuda, train_program=train_network, save_dirname=save_path)
 
     infer(
         use_cuda=use_cuda,
