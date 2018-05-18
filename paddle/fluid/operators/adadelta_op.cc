@@ -66,8 +66,7 @@ class AdadeltaOp : public framework::OperatorWithKernel {
 
 class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdadeltaOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");

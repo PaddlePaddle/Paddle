@@ -37,8 +37,7 @@ class ScaleOp : public framework::OperatorWithKernel {
 
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ScaleOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
     AddComment(R"DOC(

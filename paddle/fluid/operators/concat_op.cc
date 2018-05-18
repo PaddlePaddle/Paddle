@@ -63,8 +63,7 @@ class ConcatOp : public framework::OperatorWithKernel {
 
 class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConcatOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
     AddAttr<int>("axis",

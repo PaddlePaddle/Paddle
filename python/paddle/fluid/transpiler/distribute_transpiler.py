@@ -18,7 +18,7 @@ import os
 import math
 
 import distributed_splitter as splitter
-from .. import core
+from .. import core, framework
 from ..framework import Program, default_main_program, \
                         default_startup_program, \
                         Variable, Parameter, grad_var_name
@@ -98,30 +98,33 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def split_dense_variable(var_list,
-                         pserver_count,
-                         min_block_size=1024,
-                         max_block_size=1048576):
+def split_dense_variable(var_list, service_count, min_block_size=8192):
     """
-        We may need to split dense tensor to one or more blocks and put
-        them equally onto parameter server. One block is a sub-tensor
-        aligned by dim[0] of the tensor.
+    We may need to split dense tensor to one or more blocks and put
+    them equally onto parameter server. One block is a sub-tensor
+    aligned by dim[0] of the tensor.
 
-        We need to have a minimal block size so that the calculations in
-        the parameter server side can gain better performance. By default
-        minimum block size is 1024. The max block size is used to prevent
-        very large blocks that may cause send error.
-        :return: A list of VarBlocks. Each VarBlock specifies a shard of
-           the var.
+    We need to have a minimal block size so that the calculations in
+    the parameter server side can gain better performance. By default
+    minimum block size 8K elements (maybe 16bit or 32bit or 64bit). 
+
+    Args:
+        var_list (list): List of variables.
+        service_count (int): Numel of pserver services. A pserver may have two
+            or more listening ports.
+        min_block_size (int): Minimum splitted block size.
+    Returns:
+        blocks (list[(varname, block_id, current_block_size)]): A list 
+            of VarBlocks. Each VarBlock specifies a shard of the var.
     """
     blocks = []
     for var in var_list:
-        split_count = pserver_count
+        split_count = service_count
         var_numel = reduce(lambda x, y: x * y, var.shape)
         max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
         if max_pserver_count == 0:
             max_pserver_count = 1
-        if max_pserver_count < pserver_count:
+        if max_pserver_count < service_count:
             split_count = max_pserver_count
         block_size = int(math.ceil(var_numel / float(split_count)))
 
@@ -281,6 +284,7 @@ class DistributeTranspiler:
         grad_var_mapping = self._append_split_op(program, grad_blocks)
         param_var_mapping = self._create_vars_from_blocklist(program,
                                                              param_blocks)
+
         # step3: Add gradients as send op inputs and parameters as send
         # op outputs.
         send_inputs = []
@@ -288,9 +292,11 @@ class DistributeTranspiler:
         for b in grad_blocks:  # append by order
             varname, block_id, _ = b.split(":")
             send_inputs.append(grad_var_mapping[varname][int(block_id)])
+
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
             send_outputs.append(param_var_mapping[varname][int(block_id)])
+
         # let send_op know which endpoint to send which var to, eplist has the same
         # order as send_inputs.
         eplist = split_method(send_inputs, pserver_endpoints)
@@ -446,7 +452,7 @@ class DistributeTranspiler:
         def __append_optimize_op__(op, block, grad_to_block_id):
             if self._is_opt_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         default_main_program())
+                                         self.origin_program)
             else:
                 self._append_pserver_non_opt_ops(block, op)
 
@@ -862,9 +868,18 @@ class DistributeTranspiler:
         Create vars for each split.
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
-        :return: A dict mapping from original var name to each var split.
+        Args:
+            program (ProgramDesc): ProgramDesc which gradients blong.
+            block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
+            add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
+        Returns: 
+            var_mapping (dict(varname->[new_varname_variable])):A dict mapping 
+                from original var name to each var split.
         """
+
+        # varname->[(block_id, current_block_size)]
         block_map = dict()
+
         var_mapping = dict()
         for block_str in block_list:
             varname, offset, size = block_str.split(":")
@@ -935,7 +950,16 @@ class DistributeTranspiler:
             persistable=persistable)
 
     def _append_split_op(self, program, gradblocks):
-        # Split variables that need to be split and append respective ops
+        """
+        Split variables that need to be split and append respective ops
+        Args:
+            program (ProgramDesc): ProgramDesc that gradients blong.
+            gradblocks (list[(varname, block_id, block_size)]): List of gradient blocks.
+        Returns:
+            var_mapping (dict(varname->[new_splitted_variable])):A dict mapping 
+                from original var name to each var split.
+        """
+
         add_suffix = False
         if self.trainer_num > 1:
             add_suffix = True
@@ -1259,6 +1283,12 @@ class DistributeTranspiler:
         return lr_ops
 
     def _get_optimize_pass(self):
+        """
+        Get optimizer operators, paramters and gradients from origin_program
+        Returns:
+            opt_ops (list): optimize operators.
+            params_grads (dict): paramter->gradient.
+        """
         block = self.origin_program.global_block()
         opt_ops = []
         params_grads = []

@@ -21,6 +21,7 @@
 
 #include <glog/logging.h>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 #include <vector>
 

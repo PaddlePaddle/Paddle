@@ -127,8 +127,7 @@ class SaveCombineOp : public framework::OperatorBase {
 
 class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SaveCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(vector) Input LoDTensors that need to be saved together in a file.")
