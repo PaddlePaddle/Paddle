@@ -71,8 +71,9 @@ def lstm_net():
         fluid.layers.embedding(
             size=[WORD_DICT_LEN, WORD_DIM],
             input=x,
-            param_attr=fluid.ParamAttr(
-                name=EMBEDDING_NAME, trainable=False)) for x in word_input
+            param_attr=fluid.ParamAttr(name=EMBEDDING_NAME))
+        for x in word_input
+        #name=EMBEDDING_NAME, trainable=False)) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
@@ -147,12 +148,12 @@ def train(use_cuda, train_program, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
-    #    optimizer = fluid.optimizer.SGD(
-    #        learning_rate=fluid.layers.exponential_decay(
-    #            learning_rate=0.01,
-    #            decay_steps=100000,
-    #            decay_rate=0.5,
-    #            staircase=True))
+    #optimizer = fluid.optimizer.SGD(
+    #    learning_rate=fluid.layers.exponential_decay(
+    #        learning_rate=0.01,
+    #        decay_steps=100000,
+    #        decay_rate=0.5,
+    #        staircase=True))
 
     trainer = fluid.Trainer(
         train_func=train_program, place=place, optimizer=optimizer)
@@ -162,11 +163,11 @@ def train(use_cuda, train_program, save_path):
         'ctx_p1_data', 'ctx_p2_data', 'mark_data', 'target'
     ]
 
-    #    embedding_param = fluid.global_scope().find_var(
-    #            EMBEDDING_NAME).get_tensor()
-    #    embedding_param.set(
-    #            load_parameter(conll05.get_embedding(), word_dict_len, word_dim),
-    #            place)
+    #embedding_param = fluid.global_scope().find_var(
+    #        EMBEDDING_NAME).get_tensor()
+    #embedding_param.set(
+    #        load_parameter(conll05.get_embedding(), WORD_DICT_LEN, WORD_DIM),
+    #        place)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
