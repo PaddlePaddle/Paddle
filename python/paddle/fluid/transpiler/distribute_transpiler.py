@@ -654,7 +654,7 @@ class DistributeTranspiler:
             if os.path.isfile(success_path):
                 return int(cur_dir)
 
-        if os.path.isdir(checkpoint_dir):
+        if not os.path.isdir(checkpoint_dir):
             return "-1"
 
         current_dir = 0
