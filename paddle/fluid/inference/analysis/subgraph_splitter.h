@@ -48,10 +48,6 @@ class SubGraphSplitter {
   // Merge the marked nodes into sub-graphs and return the sub-graphs.
   std::vector<std::vector<Node *>> ExtractSubGraphs();
 
-  struct NodeAttr {
-    bool is_in_subgraph{false};
-  };
-
  private:
   DataFlowGraph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
