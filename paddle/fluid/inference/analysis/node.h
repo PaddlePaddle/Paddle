@@ -19,6 +19,10 @@ limitations under the License. */
  */
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include <limits>
+>>>>>>> 8e3e65ff93718efbe3fa7f01dc52132f560e8bfc
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -49,10 +53,19 @@ class Node {
 
   Node() = default;
 
+<<<<<<< HEAD
   // Cast to a subclass type, Function for example.
   template <typename Subclass>
   Subclass &As() {
     return *reinterpret_cast<Subclass *>(this);
+=======
+  struct Attr;
+
+  // Cast to a subclass type, Function for example.
+  template <typename Subclass>
+  Subclass &As() {
+    return *dynamic_cast<Subclass *>(this);
+>>>>>>> 8e3e65ff93718efbe3fa7f01dc52132f560e8bfc
   }
 
   // Formatted representation of this Node.
@@ -68,10 +81,14 @@ class Node {
 
   // Get an additional attribute and convert it to T data type. NOTE this will
   // silently create a new attribute if not exists.
+<<<<<<< HEAD
   template <typename T>
   T &attr(const std::string &name) {
     return attrs_[name].As<T>();
   }
+=======
+  Attr &attr(const std::string &name) { return attrs_[name]; }
+>>>>>>> 8e3e65ff93718efbe3fa7f01dc52132f560e8bfc
 
   int id() const { return id_; }
 
@@ -102,6 +119,7 @@ class Node {
     // Attr attr;
     // T data;
     // attr.data.assign((char*)data, sizeof(data));
+<<<<<<< HEAD
     template <typename T>
     T &As() {
       // init storage in the first usage.
@@ -115,6 +133,31 @@ class Node {
 
    private:
     std::string data;
+=======
+
+    bool &Bool() { return As<bool>(); }
+    float &Float() { return As<float>(); }
+    int32_t &Int32() { return As<int32_t>(); }
+    int64_t &Int64() { return As<int64_t>(); }
+
+   private:
+    template <typename T>
+    T &As() {
+      // init storage in the first usage.
+      if (data_.empty()) {
+        VLOG(4) << "resize data to " << sizeof(T);
+        type_hash_ = typeid(T).hash_code();
+        data_.resize(sizeof(T));
+      }
+      PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(), "type not matched");
+      PADDLE_ENFORCE_EQ(data_.size(), sizeof(T), "Node attr type recast error");
+      return *reinterpret_cast<T *>(&data_[0]);
+    }
+
+   private:
+    std::string data_;
+    size_t type_hash_{std::numeric_limits<size_t>::max()};
+>>>>>>> 8e3e65ff93718efbe3fa7f01dc52132f560e8bfc
   };
 
   virtual ~Node() {}

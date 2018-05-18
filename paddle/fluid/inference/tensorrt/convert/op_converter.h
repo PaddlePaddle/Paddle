@@ -31,10 +31,10 @@ namespace tensorrt {
 class OpConverter {
  public:
   OpConverter() {}
-  virtual void operator()(const framework::OpDesc& op) {}
+  virtual void operator()(const framework::proto::OpDesc& op) {}
 
-  void Run(const framework::OpDesc& op, TensorRTEngine* engine) {
-    std::string type = op.Type();
+  void Run(const framework::proto::OpDesc& op, TensorRTEngine* engine) {
+    std::string type = op.type();
     auto* it = Registry<OpConverter>::Lookup(type);
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", type);
     it->SetEngine(engine);
@@ -42,14 +42,16 @@ class OpConverter {
   }
 
   // convert fluid op to tensorrt layer
-  void ConvertOp(const framework::OpDesc& op, TensorRTEngine* engine) {
+  void ConvertOp(const framework::proto::OpDesc& op, TensorRTEngine* engine) {
     OpConverter::Run(op, engine);
   }
 
   // convert fluid block to tensorrt network
-  void ConvertBlock(const framework::BlockDesc& block, TensorRTEngine* engine) {
-    for (auto op : block.AllOps()) {
-      OpConverter::Run(*op, engine);
+  void ConvertBlock(const framework::proto::BlockDesc& block,
+                    TensorRTEngine* engine) {
+    for (int i = 0; i < block.ops_size(); i++) {
+      const auto& op = block.ops(i);
+      OpConverter::Run(op, engine);
     }
   }
 

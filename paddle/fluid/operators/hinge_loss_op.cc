@@ -46,8 +46,7 @@ class HingeLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HingeLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HingeLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Logits",
              "The input value (Logits) of Hinge loss op."
              "Logits is a 2-D tensor with shape [batch_size, 1].");

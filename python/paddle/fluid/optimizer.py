@@ -47,6 +47,8 @@ class Optimizer(object):
             raise TypeError("learning rate should be float or Variable")
         self.regularization = regularization
         self._learning_rate = learning_rate
+        # the learning rate type should be inferenced from loss
+        self._dtype = None
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
@@ -77,7 +79,7 @@ class Optimizer(object):
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(self._learning_rate),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             persistable=True)
 
     def global_learning_rate(self, program=None):
@@ -200,6 +202,7 @@ class Optimizer(object):
 
         # Create any accumulators
         program = loss.block.program
+        self._dtype = loss.dtype
         with program_guard(program, startup_program):
             global_block = framework.default_main_program().global_block()
             start = len(global_block.ops)
@@ -391,7 +394,7 @@ class AdamOptimizer(Optimizer):
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -400,7 +403,7 @@ class AdamOptimizer(Optimizer):
 
         self._beta2_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta2_pow_acc'),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -493,7 +496,7 @@ class AdamaxOptimizer(Optimizer):
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
             name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32',
+            dtype='float32' if self._dtype == None else self._dtype,
             shape=beta_shape,
             lod_level=0,
             persistable=True)
@@ -900,8 +903,10 @@ class ModelAverage(Optimizer):
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
-        tmp = layers.cast(x=tmp, dtype='float32')
-        sum = layers.cast(x=sum, dtype='float32')
+        tmp = layers.cast(
+            x=tmp, dtype='float32' if self._dtype == None else self._dtype)
+        sum = layers.cast(
+            x=sum, dtype='float32' if self._dtype == None else self._dtype)
         layers.elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):

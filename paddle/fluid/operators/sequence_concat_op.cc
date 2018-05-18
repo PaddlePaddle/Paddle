@@ -43,8 +43,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
 
 class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConcatOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LodTensorArray) Input is a vector of LoDTensor, "
              "each of which is a variable-length sequence or nested sequence.")

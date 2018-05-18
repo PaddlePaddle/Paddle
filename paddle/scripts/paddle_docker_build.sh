@@ -32,7 +32,7 @@ function start_build_docker() {
     DOCKER_ENV=$(cat <<EOL
         -e FLAGS_fraction_of_gpu_memory_to_use=0.15 \
         -e CTEST_OUTPUT_ON_FAILURE=1 \
-        -e CTEST_PARALLEL_LEVEL=5 \
+        -e CTEST_PARALLEL_LEVEL=1 \
         -e APT_MIRROR=${apt_mirror} \
         -e WITH_GPU=ON \
         -e CUDA_ARCH_NAME=Auto \
@@ -59,10 +59,11 @@ EOL
     if [ ! -d "${HOME}/.ccache" ]; then
         mkdir ${HOME}/.ccache
     fi
-    set -x
+    set -ex
     ${DOCKER_CMD} run -it \
         --name $CONTAINER_ID \
         ${DOCKER_ENV} \
+        -e SCRIPT_NAME=$0 \
         -v $PADDLE_ROOT:/paddle \
         -v ${HOME}/.ccache:/root/.ccache \
         -w /paddle \

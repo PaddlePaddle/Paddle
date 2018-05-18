@@ -89,6 +89,50 @@ void CheckError(const paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
+std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
+    paddle::framework::Executor* executor, paddle::framework::Scope* scope,
+    const std::string& dirname, const bool is_combined = false) {
+  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
+  if (is_combined) {
+    // All parameters are saved in a single file.
+    // Hard-coding the file names of program and parameters in unittest.
+    // The file names should be consistent with that used in Python API
+    //  `fluid.io.save_inference_model`.
+    std::string prog_filename = "__model_combined__";
+    std::string param_filename = "__params_combined__";
+    inference_program =
+        paddle::inference::Load(executor, scope, dirname + "/" + prog_filename,
+                                dirname + "/" + param_filename);
+  } else {
+    // Parameters are saved in separate files sited in the specified
+    // `dirname`.
+    inference_program = paddle::inference::Load(executor, scope, dirname);
+  }
+  return inference_program;
+}
+
+std::vector<std::vector<int64_t>> GetFeedTargetShapes(
+    const std::string& dirname, const bool is_combined = false) {
+  auto place = paddle::platform::CPUPlace();
+  auto executor = paddle::framework::Executor(place);
+  auto* scope = new paddle::framework::Scope();
+
+  auto inference_program = InitProgram(&executor, scope, dirname, is_combined);
+  auto& global_block = inference_program->Block(0);
+
+  const std::vector<std::string>& feed_target_names =
+      inference_program->GetFeedTargetNames();
+  std::vector<std::vector<int64_t>> feed_target_shapes;
+  for (size_t i = 0; i < feed_target_names.size(); ++i) {
+    auto* var = global_block.FindVar(feed_target_names[i]);
+    std::vector<int64_t> var_shape = var->GetShape();
+    feed_target_shapes.push_back(var_shape);
+  }
+
+  delete scope;
+  return feed_target_shapes;
+}
+
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
@@ -105,7 +149,7 @@ void TestInference(const std::string& dirname,
     state = paddle::platform::ProfilerState::kCPU;
   } else {
 #ifdef PADDLE_WITH_CUDA
-    state = paddle::platform::ProfilerState::kCUDA;
+    state = paddle::platform::ProfilerState::kAll;
     // The default device_id of paddle::platform::CUDAPlace is 0.
     // Users can get the device_id using:
     //   int device_id = place.GetDeviceId();
@@ -124,26 +168,11 @@ void TestInference(const std::string& dirname,
     paddle::platform::RecordEvent record_event(
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
-
-    if (is_combined) {
-      // All parameters are saved in a single file.
-      // Hard-coding the file names of program and parameters in unittest.
-      // The file names should be consistent with that used in Python API
-      //  `fluid.io.save_inference_model`.
-      std::string prog_filename = "__model_combined__";
-      std::string param_filename = "__params_combined__";
-      inference_program = paddle::inference::Load(
-          &executor, scope, dirname + "/" + prog_filename,
-          dirname + "/" + param_filename);
-    } else {
-      // Parameters are saved in separate files sited in the specified
-      // `dirname`.
-      inference_program = paddle::inference::Load(&executor, scope, dirname);
-    }
+    inference_program = InitProgram(&executor, scope, dirname, is_combined);
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
-                                    "load_program_profiler.txt");
+                                    "load_program_profiler");
   paddle::platform::ResetProfiler();
 
   // 3. Get the feed_target_names and fetch_target_names
@@ -179,10 +208,10 @@ void TestInference(const std::string& dirname,
     if (PrepareContext) {
       ctx = executor.Prepare(*inference_program, 0);
       executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                  &fetch_targets, CreateVars);
+                                  &fetch_targets, true, CreateVars);
     } else {
       executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                   CreateVars);
+                   true, CreateVars);
     }
 
     // Enable the profiler
@@ -208,7 +237,7 @@ void TestInference(const std::string& dirname,
     // Disable the profiler and print the timing information
     paddle::platform::DisableProfiler(
         paddle::platform::EventSortingKey::kDefault,
-        "run_inference_profiler.txt");
+        "run_inference_profiler");
     paddle::platform::ResetProfiler();
   }
 

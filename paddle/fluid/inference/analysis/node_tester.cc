@@ -25,8 +25,8 @@ TEST(Node, Attr) {
   // logic.
   NodeMap nodes;
   auto* node = nodes.Create(Node::Type::kValue);
-  node->attr<int>("v0") = 2008;
-  ASSERT_EQ(node->attr<int>("v0"), 2008);
+  node->attr("v0").Int32() = 2008;
+  ASSERT_EQ(node->attr("v0").Int32(), 2008);
 }
 
 }  // namespace analysis

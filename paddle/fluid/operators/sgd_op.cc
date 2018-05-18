@@ -68,8 +68,7 @@ class SGDOpInferVarType : public framework::VarTypeInference {
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
