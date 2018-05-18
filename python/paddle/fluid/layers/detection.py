@@ -23,6 +23,7 @@ import nn
 import math
 
 __all__ = [
+    'prior_box',
     'multi_box_head',
     'bipartite_match',
     'target_assign',
@@ -564,6 +565,48 @@ def ssd_loss(location,
     return loss
 
 
+def prior_box(input,
+              image,
+              min_sizes,
+              max_sizes,
+              aspect_ratios,
+              variance,
+              flip=False,
+              clip=False,
+              step_w=0.0,
+              step_h=0.0,
+              offset=0.5,
+              name=None):
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+
+    attrs = {
+        'min_sizes': min_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'flip': flip,
+        'clip': clip,
+        'step_w': step_w,
+        'step_h': step_h,
+        'offset': offset
+    }
+    if len(max_sizes) > 0 and max_sizes[0] > 0:
+        attrs['max_sizes'] = max_sizes
+
+    box = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prior_box",
+        inputs={"Input": input,
+                "Image": image},
+        outputs={"Boxes": box,
+                 "Variances": var},
+        attrs=attrs, )
+    box.stop_gradient = True
+    var.stop_gradient = True
+    return box, var
+
+
 def multi_box_head(inputs,
                    image,
                    base_size,
@@ -660,47 +703,6 @@ def multi_box_head(inputs,
             clip=True)
     """
 
-    def _prior_box_(input,
-                    image,
-                    min_sizes,
-                    max_sizes,
-                    aspect_ratios,
-                    variance,
-                    flip=False,
-                    clip=False,
-                    step_w=0.0,
-                    step_h=0.0,
-                    offset=0.5,
-                    name=None):
-        helper = LayerHelper("prior_box", **locals())
-        dtype = helper.input_dtype()
-
-        attrs = {
-            'min_sizes': min_sizes,
-            'aspect_ratios': aspect_ratios,
-            'variances': variance,
-            'flip': flip,
-            'clip': clip,
-            'step_w': step_w,
-            'step_h': step_h,
-            'offset': offset
-        }
-        if len(max_sizes) > 0 and max_sizes[0] > 0:
-            attrs['max_sizes'] = max_sizes
-
-        box = helper.create_tmp_variable(dtype)
-        var = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="prior_box",
-            inputs={"Input": input,
-                    "Image": image},
-            outputs={"Boxes": box,
-                     "Variances": var},
-            attrs=attrs, )
-        box.stop_gradient = True
-        var.stop_gradient = True
-        return box, var
-
     def _reshape_with_axis_(input, axis=1):
         if not (axis > 0 and axis < len(input.shape)):
             raise ValueError("The axis should be smaller than "
@@ -778,10 +780,10 @@ def multi_box_head(inputs,
             if not _is_list_or_tuple_(aspect_ratio):
                 aspect_ratio = [aspect_ratio]
 
-        box, var = _prior_box_(input, image, min_size, max_size, aspect_ratio,
-                               variance, flip, clip, step_w[i]
-                               if step_w else 0.0, step_h[i]
-                               if step_w else 0.0, offset)
+        box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
+                             variance, flip, clip, step_w[i]
+                             if step_w else 0.0, step_h[i]
+                             if step_w else 0.0, offset)
 
         box_results.append(box)
         var_results.append(var)
