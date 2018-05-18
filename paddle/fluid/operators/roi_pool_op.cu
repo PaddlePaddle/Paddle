@@ -101,10 +101,10 @@ __global__ void GPUROIPoolBackward(
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (int i = index; i < nthreads; i += offset) {
-    int pw = index % pooled_width;
-    int ph = (index / pooled_width) % pooled_height;
-    int c = (index / pooled_width / pooled_height) % channels;
-    int n = index / pooled_width / pooled_height / channels;
+    int pw = i % pooled_width;
+    int ph = (i / pooled_width) % pooled_height;
+    int c = (i / pooled_width / pooled_height) % channels;
+    int n = i / pooled_width / pooled_height / channels;
 
     int roi_batch_ind = roi_batch_id_data[n];
     int input_offset = (roi_batch_ind * channels + c) * height * width;
