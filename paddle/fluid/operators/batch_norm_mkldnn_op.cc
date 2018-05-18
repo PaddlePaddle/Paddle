@@ -280,28 +280,41 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     using bn_bwd_types = bn_type_traits<mkldnn::batch_normalization_backward>;
 
     // create mkldnn memory from input diff_y tensor
-    auto diff_dst_memory = memory(
+    auto user_diff_dst_memory = memory(
            { { {diff_dst_tz}, memory::data_type::f32, diff_y->format() },
               mkldnn_engine },
            cast_const_to_void(diff_y_data));
 
-    auto diff_dst_md = diff_dst_memory.get_primitive_desc().desc();
-    auto dst_md = batch_norm_fwd_pd->dst_primitive_desc().desc();
+    // create mkldnn memory from input x tensor
+    auto src_memory = memory(
+           { { {src_tz}, memory::data_type::f32, x->format() },
+             mkldnn_engine },
+           cast_const_to_void(x_data));
+
+    // for diff_dst, try to use same format as dst in forward pass
+    auto diff_dst_pd = batch_norm_fwd_pd.get()->dst_primitive_desc();
+    auto diff_dst_md = diff_dst_pd.desc();
 
     // create primitive descriptor for batch norm backward
     unsigned flags = mkldnn::use_scale_shift;
     auto batch_norm_bwd_desc = bn_bwd_types::op_desc{
         mkldnn::prop_kind::backward,
-        diff_dst_md, dst_md,
+        diff_dst_md, src_memory.get_primitive_desc().desc(),
         epsilon, flags};
     auto batch_norm_bwd_pd = bn_bwd_types::op_prim{
       batch_norm_bwd_desc, mkldnn_engine, *batch_norm_fwd_pd};
 
+    // reorder user_diff_dst if it's not in preferred format
+    auto diff_dst_memory = user_diff_dst_memory;
+    primitive reorder_diff_dst;
+    bool is_diff_dst_reordered = false;
+    if (diff_dst_pd != user_diff_dst_memory.get_primitive_desc()) {
+      diff_dst_memory = memory(diff_dst_pd);
+      reorder_diff_dst = reorder(user_diff_dst_memory, diff_dst_memory);
+      is_diff_dst_reordered = true;
+    }
+
     // create mkldnn memory for input tensors (src/mean/variance)
-    auto src_memory = memory(
-           { { {src_tz}, memory::data_type::f32, x->format() },
-             mkldnn_engine },
-           cast_const_to_void(x_data));
     auto mean_memory = memory(
               batch_norm_bwd_pd.mean_primitive_desc(),
               cast_const_to_void(batch_mean_data));
@@ -328,13 +341,12 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
            batch_norm_bwd_pd.diff_weights_primitive_desc(),
            diff_scaleshift_data.data());
 
-    // create mkldnn memory for output diff src
-    auto diff_src_md = diff_dst_md;
+    // here assume diff_src is in the same format of src
     auto diff_src_memory = memory(
-              {diff_src_md, mkldnn_engine},
-              diff_x_data);
+        src_memory.get_primitive_desc(), diff_x_data);
 
-    run_batch_norm_op<bn_bwd_types::op_type>(
+    // finally create batch_norm backward primitive
+    auto batch_norm_bwd_prim = batch_norm_bwd(
         batch_norm_bwd_pd,
         src_memory,
         mean_memory, variance_memory,
@@ -342,6 +354,13 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         scaleshift_memory,
         diff_src_memory,
         diff_scaleshift_memory);
+
+    // execute optional reorder and batch_norm backward primitive
+    std::vector<primitive> pipeline;
+    if (is_diff_dst_reordered)
+      pipeline.push_back(reorder_diff_dst);
+    pipeline.push_back(batch_norm_bwd_prim);
+    stream(stream::kind::eager).submit(pipeline).wait();
 
     // copy back diff sacle/shift to output tensors (diff scale/shift)
     diff_scaleshift_data.resize(scaleshift_size);

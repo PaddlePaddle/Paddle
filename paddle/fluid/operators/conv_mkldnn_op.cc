@@ -39,6 +39,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
 
+    // Get unique name for index
+    const std::string key = ctx.op().Output("Output");
+    const std::string key_conv_pd = key + "@conv_pd";
+
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -54,10 +58,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    filter->format() != memory::format::format_undef,
                    "Wrong layout/format set for Filter tensor");
 
-    // Get an unique name from "argument" name of "Output" variable
-    // This name will be used as key when saving info into device context
-    const std::string key = ctx.op().Output("Output");
-    const std::string key_conv_pd = key + "@conv_pd";
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -109,7 +109,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<conv_fwd::primitive_desc> conv_pd =
         ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
                              mkldnn_engine);
-    dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
     // create reorder primitive if the input format is not the preferred one
     auto src_memory = user_src_memory;
@@ -146,6 +145,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       pipeline.push_back(reorder_weights);
     pipeline.push_back(conv_prim);
     stream(stream::kind::eager).submit(pipeline).wait();
+
+    // Save conv_pd/src_memory/weights_memory for backward pass
+    dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
     output->set_layout(DataLayout::kMKLDNN);
     // Fix me: there should be clean way to get format from MKLDNN
