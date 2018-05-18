@@ -69,6 +69,8 @@ TEST(CheckpointLoadOp, CPU) {
   }
 
   scope.Var("SERIAL_NUMBER");
+  auto* serial_num = scope.FindVar("SERIAL_NUMBER")->GetMutable<std::string>();
+  serial_num->append("0");
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"dir", std::string("ckpt")});

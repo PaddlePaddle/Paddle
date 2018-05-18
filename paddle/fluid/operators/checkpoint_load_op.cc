@@ -114,7 +114,7 @@ class CheckpointLoadOp : public framework::OperatorBase {
     std::string dir = Attr<std::string>("dir");
     std::string serial_num_attr = Attr<std::string>("Serial");
 
-    PADDLE_ENFORCE(IsNumber(serial_num_attr),
+    PADDLE_ENFORCE(!IsNumber(serial_num_attr),
                    "Checkpoint Serial must be a number");
 
     std::string serial_var_name = std::string(SERIAL_VAR);
@@ -124,7 +124,8 @@ class CheckpointLoadOp : public framework::OperatorBase {
                    serial_var_name);
 
     auto *serial_num = serial_var->GetMutable<std::string>();
-    serial_num = serial_num_attr;
+    serial_num->clear();
+    serial_num->append(serial_num_attr);
 
     VLOG(1) << "CheckpointLoadOp set " << SERIAL_VAR
             << " value: " << serial_num;
