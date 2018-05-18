@@ -545,6 +545,7 @@ class DistributeTranspiler:
         startup_prog.global_block().append_op(
             type="checkpoint_load",
             inputs={"X": load_vars},
+            outputs={"Argv": []},
             attrs={"dir": checkpoint_load_dir,
                    "Serial": serial_number})
         return startup_prog
@@ -616,6 +617,7 @@ class DistributeTranspiler:
         s_prog.global_block().append_op(
             type="checkpoint_load",
             inputs={"X": load_vars},
+            outputs={"Argv": []},
             attrs={"dir": checkpoint_load_dir,
                    "Serial": serial_number})
 
@@ -640,7 +642,7 @@ class DistributeTranspiler:
             """
             is _SUCCESS in this dir
             """
-            if not os.path.isdir(cur_dir):
+            if not os.path.isdir(os.path.join(checkpoint_dir, cur_dir)):
                 return -1
 
             try:

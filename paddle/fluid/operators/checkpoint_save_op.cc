@@ -96,8 +96,7 @@ class CheckpointSaveOp : public framework::OperatorBase {
 
     int serials = 0;
     if (!serial_num->empty()) {
-      std::string::size_type sz;
-      serials = std::stoi(serial_num->data, &sz);
+      serials = std::stoi(serial_num->data());
       serials += 1;
     }
 
