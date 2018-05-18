@@ -32,6 +32,7 @@ class Inferencer(object):
         :param infer_func: a function that will return predict Variable
         :param param_path: the path where the inference model is saved by fluid.io.save_params
         :param place: place to do the inference
+        :param parallel: use parallel_executor to run the inference, it will use multi CPU/GPU.
         """
         self.param_path = param_path
         self.scope = core.Scope()
