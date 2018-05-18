@@ -543,6 +543,11 @@ class DistributeTranspiler:
 
         serial_number = self._get_lastest_checkpoint_dir(self.checkpoint_dir)
 
+        startup_prog.global_block().create_var(
+            name=SERIAL_VAR_NAME,
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
         startup_prog.global_block().append_op(
             type="checkpoint_load",
             inputs={"X": load_vars},
@@ -611,6 +616,11 @@ class DistributeTranspiler:
             return s_prog
 
         serial_number = self._get_lastest_checkpoint_dir(self.checkpoint_dir)
+
+        s_prog.global_block().create_var(
+            name=SERIAL_VAR_NAME,
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
 
         s_prog.global_block().append_op(
             type="checkpoint_load",
