@@ -22,6 +22,7 @@ CLASS_DIM = 2
 EMB_DIM = 128
 HID_DIM = 512
 STACKED_NUM = 3
+BATCH_SIZE = 128
 
 
 def stacked_lstm_net(data, input_dim, class_dim, emb_dim, hid_dim, stacked_num):
@@ -50,7 +51,7 @@ def stacked_lstm_net(data, input_dim, class_dim, emb_dim, hid_dim, stacked_num):
     return prediction
 
 
-def inference_network(word_dict):
+def inference_program(word_dict):
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
 
@@ -60,7 +61,7 @@ def inference_network(word_dict):
     return net
 
 
-def train_network(word_dict):
+def train_program(word_dict):
     prediction = inference_network(word_dict)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -70,7 +71,6 @@ def train_network(word_dict):
 
 
 def train(use_cuda, save_path):
-    BATCH_SIZE = 128
     EPOCH_NUM = 5
 
     word_dict = paddle.dataset.imdb.word_dict()
