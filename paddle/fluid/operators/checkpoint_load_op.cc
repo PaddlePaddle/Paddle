@@ -154,8 +154,7 @@ class CheckpointLoadOp : public framework::OperatorBase {
 
 class CheckpointLoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CheckpointLoadOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(vector) Input LoDTensors that need to be saved together in a file.")
