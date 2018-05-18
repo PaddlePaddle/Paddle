@@ -176,7 +176,7 @@ to a file on disk.
     AddAttr<std::string>(
         "dir",
         "(string)"
-        "The \"file_path\" where the LoDTensor variables will be saved.")
+        "The \"dir\" where the checkpoint files will be loaded.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
   }
