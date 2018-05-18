@@ -208,10 +208,10 @@ void TestInference(const std::string& dirname,
     if (PrepareContext) {
       ctx = executor.Prepare(*inference_program, 0);
       executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                  &fetch_targets, CreateVars);
+                                  &fetch_targets, true, CreateVars);
     } else {
       executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                   CreateVars);
+                   true, CreateVars);
     }
 
     // Enable the profiler
