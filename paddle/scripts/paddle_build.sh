@@ -405,17 +405,19 @@ EOF
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
+    CUDA_VERSION=$(nvcc --version | grep release | cut -d "," -f 2 | cut -d " " -f 3)
+    CUDNN_VERSION=$(cat /usr/include/cudnn.h | grep "#define CUDNN_MAJOR" | cut -d " " -f 3)
     if [[ ${WITH_GPU} == "ON" ]]; then
-    BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
+        BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-runtime-ubuntu16.04"
     else
-    BASE_IMAGE="ubuntu:16.04"
+        BASE_IMAGE="ubuntu:16.04"
     fi
 
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
-        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_VERSION} /usr/lib/x86_64-linux-gnu/libcudnn.so"
     fi
 
     cat <<EOF
@@ -449,7 +451,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && easy_install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -490,7 +492,7 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
-        make inference_lib_dist
+        make -j `nproc` inference_lib_dist
     fi
 }
 
