@@ -68,7 +68,7 @@ def train(use_cuda, train_program, save_dirname):
     BATCH_SIZE = 128
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            cifar10_small_test_set.train10(batch_size=10), buf_size=128*10),
+            cifar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
         batch_size=BATCH_SIZE)
 
     test_reader = paddle.batch(
