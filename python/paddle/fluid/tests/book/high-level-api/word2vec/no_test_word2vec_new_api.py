@@ -127,14 +127,12 @@ def infer(use_cuda, inference_program, save_path):
     third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
 
-    result = inferencer.infer(
-        {
-            'firstw': first_word,
-            'secondw': second_word,
-            'thirdw': third_word,
-            'forthw': fourth_word
-        },
-        return_numpy=False)
+    result = inferencer.infer({
+        'firstw': first_word,
+        'secondw': second_word,
+        'thirdw': third_word,
+        'forthw': fourth_word
+    })
     print(np.array(result[0]))
 
 
