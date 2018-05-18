@@ -297,14 +297,19 @@ class Trainer(object):
         """
         with self._prog_and_scope_guard():
             feed_var_list = build_feed_var_list(self.train_program, feed_order)
-            if data_feed_handler == None:
-                feeder = data_feeder.DataFeeder(
-                    feed_list=feed_var_list, place=self.place)
+            feeder = data_feeder.DataFeeder(
+                feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
             reader = feeder.decorate_reader(reader, multi_devices=False)
-            self._train_by_any_executor(event_handler, exe, num_epochs, reader)
+            self._train_by_any_executor(event_handler, exe, num_epochs, reader,
+                                        data_feed_handler)
 
-    def _train_by_any_executor(self, event_handler, exe, num_epochs, reader):
+    def _train_by_any_executor(self,
+                               event_handler,
+                               exe,
+                               num_epochs,
+                               reader,
+                               data_feed_handler=None):
         for epoch_id in range(num_epochs):
             event_handler(BeginEpochEvent(epoch_id))
             for step_id, data in enumerate(reader()):
