@@ -58,10 +58,10 @@ def reader_creator(filename, sub_name, batch_size=None):
             for name in names:
                 batch = cPickle.load(f.extractfile(name))
                 for item in read_batch(batch):
-                        if isinstance(batch_size, int) and batch_count > batch_size:
-                            break
-                        batch_count += 1
-                        yield item
+                    if isinstance(batch_size, int) and batch_count > batch_size:
+                        break
+                    batch_count += 1
+                    yield item
 
     return reader
 
@@ -78,4 +78,5 @@ def train10(batch_size=None):
     """
     return reader_creator(
         paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'data_batch', batch_size=batch_size)
+        'data_batch',
+        batch_size=batch_size)
