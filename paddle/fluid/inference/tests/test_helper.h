@@ -236,8 +236,7 @@ void TestInference(const std::string& dirname,
 
     // Disable the profiler and print the timing information
     paddle::platform::DisableProfiler(
-        paddle::platform::EventSortingKey::kDefault,
-        "run_inference_profiler");
+        paddle::platform::EventSortingKey::kDefault, "run_inference_profiler");
     paddle::platform::ResetProfiler();
   }
 
