@@ -19,19 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr char kInput[] = "X";
-constexpr char kOutput[] = "Out";
-
 template <typename DeviceContext, typename T>
 class IsEmptyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get input
-    auto* input_tensor = context.Input<framework::LoDTensor>(kInput);
+    auto* input_tensor = context.Input<framework::LoDTensor>("X");
     // get output
-    auto* output_tensor = context.Output<framework::LoDTensor>(kOutput);
+    auto* output_tensor = context.Output<framework::LoDTensor>("Out");
 
-    output_tensor->Resize({1});
     output_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
         framework::product(input_tensor->dims()) == 0;
   }

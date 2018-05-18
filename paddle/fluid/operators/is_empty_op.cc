@@ -29,12 +29,13 @@ class IsEmptyOp : public framework::OperatorWithKernel {
                    "Input(X) of IsEmptyOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of IsEmptyOp should not be null.");
+    ctx->SetOutputDim("Out", {1});
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
         platform::CPUPlace());
     return kt;
   }
@@ -43,8 +44,9 @@ class IsEmptyOp : public framework::OperatorWithKernel {
 class IsEmptyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(kInput, "(Tensor) Tensor which is to be checked.");
-    AddOutput(kOutput, "(Tensor) a boolean Tensor that indicate empty or not.");
+    AddInput("X", "(LoDTensor) Tensor which is to be checked.");
+    AddOutput("Out",
+              "(LoDTensor) a boolean Tensor that indicate empty or not.");
     AddComment(R"DOC(
 IsEmpty Operator which checks whether a tensor is empty.
 
@@ -58,7 +60,8 @@ It will just return product(tensor.ddims()) > 0;
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(is_empty, ops::IsEmptyOp, ops::IsEmptyOpMaker);
+REGISTER_OPERATOR(is_empty, ops::IsEmptyOp, ops::IsEmptyOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     is_empty, ops::IsEmptyOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IsEmptyOpKernel<paddle::platform::CPUDeviceContext, double>,

@@ -1573,10 +1573,15 @@ def is_empty(x, cond=None, **ignored):
 
     Args:
         x(Variable): Operand of *is_empty*
-        cond(Variable|None): Optional output variable to store the result of *is_empty*
+        cond(Variable|None): Optional output variable to store the result
+                             of *is_empty*
 
     Returns:
         Variable: The tensor variable storing the output of *is_empty*.
+
+    Raises:
+        TypeError: If input cond is not a variable, or cond's dtype is
+                   not bool
 
     Examples:
         .. code-block:: python
@@ -1587,6 +1592,10 @@ def is_empty(x, cond=None, **ignored):
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
         cond.stop_gradient = True
+    elif not isinstance(cond, Variable):
+        raise TypeError("cond takes a variable")
+    elif cond.dtype != 'bool':
+        raise TypeError("The data type of cond must be bool")
 
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
