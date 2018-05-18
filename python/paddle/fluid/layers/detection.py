@@ -573,7 +573,7 @@ def prior_box(input,
               variance=[0.1, 0.1, 0.2, 0.2],
               flip=False,
               clip=False,
-              step=[0.0, 0.0],
+              steps=[0.0, 0.0],
               offset=0.5,
               name=None):
     """
@@ -607,10 +607,14 @@ def prior_box(input,
 
     Returns:
         boxes(Variable): the output prior boxes of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
+             The layout is [H, W, num_priors, 4].
+             H is the height of input, W is the width of input,
+             num_priors is the total
              box count of each position of input.
         Variances(Variable): the expanded variances of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
+             The layout is [H, W, num_priors, 4].
+             H is the height of input, W is the width of input
+             num_priors is the total
              box count of each position of input
 
 
@@ -619,7 +623,7 @@ def prior_box(input,
             box, var = prior_box(
             input=conv1,
             image=images,
-            min_size=100,
+            min_sizes=[100.],
             flip=True,
             clip=True)
     """
@@ -632,8 +636,8 @@ def prior_box(input,
         'variances': variance,
         'flip': flip,
         'clip': clip,
-        'step_w': step[0],
-        'step_h': step[1],
+        'step_w': steps[0],
+        'step_h': steps[1],
         'offset': offset
     }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
