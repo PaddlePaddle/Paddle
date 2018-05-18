@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import numpy
+import cifar10_small_test_set
 
 
 def resnet_cifar10(input, depth=32):
@@ -90,7 +91,7 @@ def train(use_cuda, train_program, save_dirname):
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.cifar.train10(), buf_size=128 * 10),
+            cifar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
         batch_size=BATCH_SIZE)
 
     test_reader = paddle.batch(
