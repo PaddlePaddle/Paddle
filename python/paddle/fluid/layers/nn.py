@@ -1329,6 +1329,8 @@ def sequence_pool(input, pool_type):
          sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
          max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
         input(variable): The input variable which is a LoDTensor.
@@ -1348,6 +1350,8 @@ def sequence_pool(input, pool_type):
              sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
              sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
              max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
+             last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
+             first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
@@ -3273,35 +3277,35 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
     **Smooth L1 Loss Operator. **
 
-    This operator computes the smooth l1 loss for X and Y.
+    This operator computes the smooth L1 loss for X and Y.
     The operator takes the first dimension of X and Y as batch size.
-    For each instance, it computes the smooth l1 loss element by element first
+    For each instance, it computes the smooth L1 loss element by element first
     and then sums all the losses. So the shape of Out is [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
-            l1 loss op with shape [batch_size, dim1, ..., dimN].
+            L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            l1 loss op with same shape as x.
+            L1 loss op with same shape as x.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the result of (x - y) will be multiplied by this tensor element by
             element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
-            the out smooth l1 loss will be multiplied by this tensor element
+            the out smooth L1 loss will be multiplied by this tensor element
             by element.
-        sigma (float|None): Hyper parameter of smooth l1 loss op. A float scalar
+        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
             with default value 1.0.
     Returns:
-        Variable: A tensor with rank be 2. The output smooth l1 loss with
+        Variable: A tensor with rank be 2. The output smooth L1 loss with
             shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[100], dtype='int64')
+            label = fluid.layers.data(name='label', shape=[100], dtype='float32')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """

@@ -54,9 +54,9 @@ class DataToLoDTensorConverter(object):
             self.data.append(data)
         else:
             cur_lod_len = len(data)
-            lod[-1].append(lod[-1][-1] + cur_lod_len)
+            lod[0].append(lod[0][-1] + cur_lod_len)
             for each_data in data:
-                self._feed_impl_(each_data, lod[:-1], lod_level - 1)
+                self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
     def done(self):
         arr = numpy.array(self.data, dtype=self.dtype).reshape(self.shape)
