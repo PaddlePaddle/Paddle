@@ -44,7 +44,7 @@ TEST(CheckpointSaveOp, CPU) {
   attrs.insert({"dir", std::string("ckpt")});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
-      "checkpoint_save", {{"X", {"test_var"}}}, attrs);
+      "checkpoint_save", {{"X", {"test_var"}}}, {}, attrs);
   save_op->Run(scope, place);
 }
 
@@ -52,13 +52,29 @@ TEST(CheckpointLoadOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
-  scope.Var("test_var");
+  auto var = scope.Var("test_var");
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  tensor->Resize({3, 10});
+  paddle::framework::LoD expect_lod;
+  expect_lod.resize(1);
+  expect_lod[0].push_back(0);
+  expect_lod[0].push_back(1);
+  expect_lod[0].push_back(2);
+  expect_lod[0].push_back(3);
+
+  tensor->set_lod(expect_lod);
+  float* expect = tensor->mutable_data<float>(place);
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    expect[i] = static_cast<float>(paddle::platform::float16(i));
+  }
+
+  scope.Var("SERIAL_NUMBER");
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"dir", std::string("ckpt")});
+  attrs.insert({"Serial", std::string("SERIAL_NUMBER")});
 
   auto load_op = paddle::framework::OpRegistry::CreateOp(
-      "checkpoint_load", {{"X", {"test_var"}}}, {{"Serial", {"SERIAL_NUMBER"}}},
-      attrs);
+      "checkpoint_load", {{"X", {"test_var"}}}, {{"Argv", {}}}, attrs);
   load_op->Run(scope, place);
 }
