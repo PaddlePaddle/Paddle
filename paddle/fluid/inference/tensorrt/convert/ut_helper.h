@@ -39,6 +39,19 @@ float random(float low, float high) {
   return dist(mt);
 }
 
+void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
+                     const platform::DeviceContext& ctx) {
+  auto dims = tensor->dims();
+  size_t num_elements = analysis::AccuDims(dims, dims.size());
+  PADDLE_ENFORCE_GT(num_elements, 0);
+  tensor->mutable_data<float>(place);
+  std::vector<float> data(num_elements);
+  for (auto& v : data) {
+    v = random(0., 1.);
+  }
+  framework::TensorFromVector(data, ctx, tensor);
+}
+
 /*
  * Help to validate the correctness between Fluid Op and the corresponding TRT
  * layer.
@@ -57,22 +70,18 @@ class TRTConvertValidation {
 
   // Declare a Variable with random initialization.
   void DeclVar(const std::string& name, const nvinfer1::Dims& dims) {
-    framework::Scope scope;
+    LOG(INFO) << "declare Var " << name;
     platform::CUDAPlace place;
     platform::CUDADeviceContext ctx(place);
 
     // Init Fluid tensor.
     std::vector<int> dim_vec(dims.nbDims);
     for (int i = 0; i < dims.nbDims; i++) dim_vec[i] = dims.d[i];
-    auto x = scope_.Var(name);
-    auto x_tensor = x->GetMutable<framework::LoDTensor>();
+    auto* x = scope_.Var(name);
+    auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
-    // Random init data.
-    auto* data = x_tensor->mutable_data<float>(place);
-    for (int i = 0; i < analysis::AccuDims<const int*>(dims.d, dims.nbDims);
-         i++) {
-      data[i] = random(0.0, 1.0);
-    }
+    RandomizeTensor(x_tensor, place, ctx);
+
     // Declare TRT inputs.
     engine_->DeclareInput(name, nvinfer1::DataType::kFLOAT, dims);
   }

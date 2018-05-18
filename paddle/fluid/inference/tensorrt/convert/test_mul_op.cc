@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
 namespace paddle {
@@ -20,12 +21,26 @@ namespace inference {
 namespace tensorrt {
 
 TEST(MulOpConverter, main) {
-  TRTConvertValidation validator(10);
-  validator.DeclVar("x0", nvinfer1::Dims3(10, 6, 3));
-  validator.DeclVar("x1", nvinfer1::Dims3(10, 3, 12));
-  validator.DeclVar("y", nvinfer1::Dims3(10, 6, 12));
+  TRTConvertValidation validator(10, 1000);
+  validator.DeclVar("X", nvinfer1::Dims3(10, 6, 3));
+  validator.DeclVar("Y", nvinfer1::Dims3(10, 3, 12));
+  validator.DeclVar("Out", nvinfer1::Dims3(10, 6, 12));
+
+  // Prepare Op description
+  framework::OpDesc desc;
+  desc.SetType("mul");
+  desc.SetInput("X", {"X"});
+  desc.SetInput("Y", {"Y"});
+  desc.SetOutput("Out", {"Out"});
+
+  LOG(INFO) << "set OP" validator.SetOp(*desc.Proto());
+  LOG(INFO) << "execute";
+
+  validator.Execute(10);
 }
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+USE_OP(mul);

@@ -3,7 +3,8 @@ nv_test(test_op_converter SRCS test_op_converter.cc DEPS ${FLUID_CORE_MODULES} t
 nv_test(test_io_converter SRCS test_io_converter.cc DEPS dynload_cuda dynamic_loader lod_tensor trt_convert)
 
 # Add TRT tests
-nv_test(test_trt_activation_op SRCS test_activation_op.cc
-        DEPS ${FLUID_CORE_MODULES} tensorrt_engine trt_convert)
-nv_test(test_trt_mul_op SRCS test_mul_op.cc
-        DEPS ${FLUID_CORE_MODULES} tensorrt_engine trt_convert)
+nv_test(test_trt_mul_op SRCS test_mul_op.cc io_convert.cc mul_op.cc
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine mul_op)
+
+nv_test(test_trt_activation_op SRCS test_activation_op.cc activation_op.cc
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine trt_convert activation_op)
