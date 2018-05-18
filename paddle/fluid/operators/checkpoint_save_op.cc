@@ -94,8 +94,8 @@ class CheckpointSaveOp : public framework::OperatorBase {
     VLOG(1) << "CheckpointSaveOp get " << SERIAL_VAR
             << " value: " << serial_num;
 
-    if (!IsNumber(serial_num)) {
-      serial_num = "0";
+    if (serial_num->empty()) {
+      serial_num->append("0");
     }
 
     std::string dir = GenePath(ck_dir, serial_num->c_str());
