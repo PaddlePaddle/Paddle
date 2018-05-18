@@ -114,8 +114,8 @@ class CheckpointLoadOp : public framework::OperatorBase {
     std::string dir = Attr<std::string>("dir");
     std::string serial_num_attr = Attr<std::string>("Serial");
 
-    PADDLE_ENFORCE(IsNumber(serial_num_attr),
-                   "Checkpoint Serial must be a number");
+    VLOG(3) << "CheckpointLoadOp  get Attr  dir: " << dir;
+    VLOG(3) << "CheckpointLoadOp  get Attr  Serial: " << serial_num_attr;
 
     std::string serial_var_name = std::string(SERIAL_VAR);
     auto *serial_var = scope.FindVar(serial_var_name);
