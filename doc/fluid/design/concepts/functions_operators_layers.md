@@ -40,7 +40,7 @@ template <typename T>
 class FCOp : public OperatorBase {
  public:
   void Run(...) {
-    add(mul(Input<T>("X"), Input<T>("W")), Input<T>("b");
+    add(mul(Input<T>("X"), Input<T>("W")), Input<T>("b"));
   }
 };
 REGISTER_OP(FCOp, "fc");

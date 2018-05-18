@@ -92,9 +92,8 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
 };
 
 class CreateShuffleReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateShuffleReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("buffer_size", "The shuffle buffer size.").GreaterThan(0);
     AddComment(R"DOC(
       CreateShuffleReader Operator

@@ -61,8 +61,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
 class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LayerNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) The input tensor.");
     AddInput("Scale",
              "(Tensor, optional) Scale is a 1-dimensional tensor of size "

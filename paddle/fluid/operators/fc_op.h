@@ -45,7 +45,7 @@ class FCOpGrad : public framework::OperatorWithKernel {
 
 class FCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FCOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 }  // namespace operators
