@@ -217,7 +217,13 @@ class Trainer(object):
         """
         self.__stop = True
 
-    def train(self, num_epochs, event_handler, reader=None, feed_order=None):
+    def train(self,
+              num_epochs,
+              event_handler,
+              reader,
+              feed_order,
+              parallel=False,
+              data_feed_handler=None):
         """
         Train the model.
 
@@ -227,6 +233,8 @@ class Trainer(object):
             reader:
             feed_order: Feeding order of reader. None will following the defining
                 order in program
+            parallel:
+            data_feed_handler: Function to be called when data is fed.
 
         Returns:
 
@@ -238,13 +246,14 @@ class Trainer(object):
                 exe.run()
                 return
         if self.parallel:
+            #TODO(sidgoyal78) add `data_feed_handler` to parallel executor
             self._train_by_parallel_executor(num_epochs, event_handler, reader,
                                              feed_order)
         else:
             self._train_by_executor(num_epochs, event_handler, reader,
-                                    feed_order)
+                                    feed_order, data_feed_handler)
 
-    def test(self, reader, feed_order):
+    def test(self, reader, feed_order, data_feed_handler=None):
         """
         Test the model on given test data
 
@@ -252,10 +261,11 @@ class Trainer(object):
             reader: The reader that yields test data.
             feed_order: Feeding order of reader. None will following the defining
                 order in program
+            data_feed_handler: Function that will be called when data is fed
         """
 
-        return self._test_by_executor(reader, feed_order,
-                                      self.train_func_outputs)
+        return self._test_by_executor(
+            reader, feed_order, self.train_func_outputs, data_feed_handler)
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
@@ -271,7 +281,8 @@ class Trainer(object):
             with executor.scope_guard(self.scope):
                 yield
 
-    def _train_by_executor(self, num_epochs, event_handler, reader, feed_order):
+    def _train_by_executor(self, num_epochs, event_handler, reader, feed_order,
+                           data_feed_handler):
         """
         Train by Executor and single device.
 
@@ -280,7 +291,7 @@ class Trainer(object):
             event_handler:
             reader:
             feed_order:
-
+            data_feed_handler:
         Returns:
 
         """
@@ -290,9 +301,15 @@ class Trainer(object):
                 feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
             reader = feeder.decorate_reader(reader, multi_devices=False)
-            self._train_by_any_executor(event_handler, exe, num_epochs, reader)
+            self._train_by_any_executor(event_handler, exe, num_epochs, reader,
+                                        data_feed_handler)
 
-    def _train_by_any_executor(self, event_handler, exe, num_epochs, reader):
+    def _train_by_any_executor(self,
+                               event_handler,
+                               exe,
+                               num_epochs,
+                               reader,
+                               data_feed_handler=None):
         for epoch_id in range(num_epochs):
             event_handler(BeginEpochEvent(epoch_id))
             for step_id, data in enumerate(reader()):
@@ -301,7 +318,8 @@ class Trainer(object):
                 begin_event = BeginStepEvent(epoch_id, step_id)
                 event_handler(begin_event)
                 if begin_event.fetch_metrics:
-                    metrics = exe.run(feed=data,
+                    metrics = exe.run(feed=data_feed_handler(data)
+                                      if data_feed_handler else data,
                                       fetch_list=[
                                           var.name
                                           for var in self.train_func_outputs
@@ -311,17 +329,20 @@ class Trainer(object):
                 event_handler(EndStepEvent(epoch_id, step_id, metrics))
             event_handler(EndEpochEvent(epoch_id))
 
-    def _test_by_executor(self, reader, feed_order, fetch_list):
+    def _test_by_executor(self, reader, feed_order, fetch_list,
+                          data_feed_handler):
         with executor.scope_guard(self.scope):
             feed_var_list = build_feed_var_list(self.test_program, feed_order)
-            feeder = data_feeder.DataFeeder(
-                feed_list=feed_var_list, place=self.place)
+            if data_feed_handler == None:
+                feeder = data_feeder.DataFeeder(
+                    feed_list=feed_var_list, place=self.place)
             exe = executor.Executor(self.place)
             accumulated = len(fetch_list) * [0]
             count = 0
             for data in reader():
                 outs = exe.run(program=self.test_program,
-                               feed=feeder.feed(data),
+                               feed=data_feed_handler(data)
+                               if data_feed_handler else feeder.feed(data),
                                fetch_list=fetch_list)
                 accumulated = [x[0] + x[1][0] for x in zip(accumulated, outs)]
                 count += 1
