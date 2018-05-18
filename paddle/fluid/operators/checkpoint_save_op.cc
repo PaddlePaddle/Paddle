@@ -33,12 +33,18 @@ constexpr char kSEP = '/';
 const char SUCCESS[] = "_SUCCESS";
 const char SERIAL_VAR[] = "SERIAL_NUMBER";
 
+static bool IsNumber(const std::string &s) {
+  std::string::const_iterator it = s.begin();
+  while (it != s.end() && std::isdigit(*it)) ++it;
+  return !s.empty() && it == s.end();
+}
+
 static std::string GenePath(const std::string &dir, const std::string &file) {
   std::string file_path;
-  file_path.append(file_path);
+  file_path.append(dir);
   file_path.append("/");
   file_path.append(file);
-  return full_path;
+  return file_path;
 }
 
 static bool FileExists(const std::string &filepath) {
@@ -79,28 +85,24 @@ class CheckpointSaveOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto dir = Attr<std::string>("dir");
+    auto ck_dir = Attr<std::string>("dir");
     auto overwrite = Attr<bool>("overwrite");
 
     std::string serial_var_name = std::string(SERIAL_VAR);
-    auto *serial_var = scope.FindVar(serial_var_name);
-
-    if (serial_var == nullptr) {
-      *serial_var = scope.Var(serial_var_name);
-      *serial_tmp = serial_var->GetMutable<std::string>();
-      serial_tmp->append("0");
-    }
-    auto *serial_num = serial_var->GetMutable<std::string>();
-    VLOG(1) << "CheckpointSaveOp get " << SERIAL_NUMBER
+    auto *serial_num =
+        scope.FindVar(serial_var_name)->GetMutable<std::string>();
+    VLOG(1) << "CheckpointSaveOp get " << SERIAL_VAR
             << " value: " << serial_num;
 
-    auto *serial_num = serial_var->GetMutable<std::string>();
-    serial_num->append("1");
+    if (!IsNumber(serial_num)) {
+      serial_num = "0";
+    }
 
-    dir = GenePath(dir, serial_num);
+    std::string dir = GenePath(ck_dir, serial_num->c_str());
+    VLOG(1) << "CheckpointSaveOp current dir: " << dir;
     bool is_present = FileExists(dir);
     if (is_present && !overwrite) {
-      PADDLE_THROW("%s exists!, checkpoint save cannot to  overwrite it", dir,
+      PADDLE_THROW("%s exists!, checkpoint save cannot to overwrite it", dir,
                    overwrite);
     }
     MkDirRecursively(dir.c_str());
@@ -150,7 +152,7 @@ class CheckpointSaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 CheckpointSave operator
 
-This operator will serialize and write a list of input LoDTensor variables 
+This operator will serialize and write a list of input LoDTensor variables
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
