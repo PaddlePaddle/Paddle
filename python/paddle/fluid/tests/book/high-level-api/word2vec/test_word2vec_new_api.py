@@ -100,8 +100,9 @@ def train(use_cuda, train_program, save_dirname):
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
-            outs = trainer.test(reader=test_reader,
-                                feed_order=['firstw', 'secondw', 'thirdw', 'forthw', 'nextw'])
+            outs = trainer.test(
+                reader=test_reader,
+                feed_order=['firstw', 'secondw', 'thirdw', 'forthw', 'nextw'])
             avg_cost = outs[0]
             print("loss= ", avg_cost)
 
@@ -135,12 +136,14 @@ def infer(use_cuda, inference_program, save_dirname=None):
     third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
     fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
 
-    result = inferencer.infer({
-        'firstw': first_word,
-        'secondw': second_word,
-        'thirdw': third_word,
-        'forthw': fourth_word
-    }, return_numpy=False)
+    result = inferencer.infer(
+        {
+            'firstw': first_word,
+            'secondw': second_word,
+            'thirdw': third_word,
+            'forthw': fourth_word
+        },
+        return_numpy=False)
     print(np.array(result[0]))
 
 
@@ -165,4 +168,3 @@ if __name__ == '__main__':
     for use_cuda in (False, True):
         for is_sparse in (False, True):
             main(use_cuda=use_cuda, is_sparse=is_sparse)
-
