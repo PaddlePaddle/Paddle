@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import numpy
+import cifar10_small_test_set
 
 
 def resnet_cifar10(input, depth=32):
@@ -81,46 +82,50 @@ def train_network():
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=predict, label=label)
-    return avg_cost, accuracy
+    return [avg_cost, accuracy]
 
 
-def train(use_cuda, save_path):
+def train(use_cuda, train_program, save_dirname):
     BATCH_SIZE = 128
     EPOCH_NUM = 1
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.cifar.train10(), buf_size=128 * 10),
+            cifar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
         batch_size=BATCH_SIZE)
 
     test_reader = paddle.batch(
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
-                avg_cost, accuracy = trainer.test(reader=test_reader)
+        if isinstance(event, fluid.EndStepEvent):
+            avg_cost, accuracy = trainer.test(
+                reader=test_reader, feed_order=['pixel', 'label'])
 
-                print('BatchID {1:04}, Loss {2:2.2}, Acc {3:2.2}'.format(
-                    event.batch_id + 1, avg_cost, accuracy))
+            print('Loss {0:2.2}, Acc {1:2.2}'.format(avg_cost, accuracy))
 
-                if accuracy > 0.01:  # Low threshold for speeding up CI
-                    trainer.params.save(save_path)
-                    return
+            if accuracy > 0.01:  # Low threshold for speeding up CI
+                if save_dirname is not None:
+                    trainer.save_params(save_dirname)
+                return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
-        train_network,
+        train_func=train_program,
         optimizer=fluid.optimizer.Adam(learning_rate=0.001),
-        place=place,
-        event_handler=event_handler)
-    trainer.train(train_reader, EPOCH_NUM, event_handler=event_handler)
+        place=place)
+
+    trainer.train(
+        reader=train_reader,
+        num_epochs=EPOCH_NUM,
+        event_handler=event_handler,
+        feed_order=['pixel', 'label'])
 
 
-def infer(use_cuda, save_path):
-    params = fluid.Params(save_path)
+def infer(use_cuda, inference_program, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(inference_network, params, place=place)
+    inferencer = fluid.Inferencer(
+        infer_func=inference_program, param_path=save_dirname, place=place)
 
     # The input's dimension of conv should be 4-D or 5-D.
     # Use normilized image pixels as input data, which should be in the range
@@ -135,8 +140,14 @@ def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     save_path = "image_classification_resnet.inference.model"
-    train(use_cuda, save_path)
-    infer(use_cuda, save_path)
+
+    train(
+        use_cuda=use_cuda, train_program=train_network, save_dirname=save_path)
+
+    infer(
+        use_cuda=use_cuda,
+        inference_program=inference_network,
+        save_dirname=save_path)
 
 
 if __name__ == '__main__':
