@@ -25,6 +25,9 @@ import time
 
 
 class TestSendOp(unittest.TestCase):
+    @unittest.skip(
+        "This test is buggy. We cannot use time.sleep to sync processes, the connection may fail in unittest."
+    )
     def test_send(self):
         # Run init_serv in a thread
         place = fluid.CPUPlace()
