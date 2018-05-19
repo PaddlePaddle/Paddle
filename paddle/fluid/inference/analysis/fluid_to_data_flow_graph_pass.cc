@@ -35,14 +35,14 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
   // insert vars
   std::unordered_map<std::string, size_t> var2id;
   auto &main_block = desc_->blocks(framework::kRootBlockIndex);
-  for (size_t i = 0; i < main_block.vars_size(); i++) {
+  for (int i = 0; i < main_block.vars_size(); i++) {
     const auto &var = main_block.vars(i);
     auto *v = graph->nodes.Create(Node::Type::kValue);
     v->SetName(var.name());
     v->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&var)));
     var2id[var.name()] = v->id();
   }
-  for (size_t i = 0; i < main_block.ops_size(); i++) {
+  for (int i = 0; i < main_block.ops_size(); i++) {
     const auto &op = main_block.ops(i);
     auto *o = graph->nodes.Create(Node::Type::kFunction);
     o->SetName(op.type());
@@ -52,17 +52,17 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     o->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&op)));
     // set inputs and outputs
     // TODO(Superjomn) make sure the InputNames is the real variable name.
-    for (size_t j = 0; j < op.inputs_size(); j++) {
+    for (int j = 0; j < op.inputs_size(); j++) {
       auto &in_var = op.inputs(j);
-      for (size_t k = 0; k < in_var.arguments_size(); k++) {
+      for (int k = 0; k < in_var.arguments_size(); k++) {
         auto *in = graph->nodes.GetMutable(var2id.at(in_var.arguments(k)));
         in->outlinks.push_back(o);
         o->inlinks.push_back(in);
       }
     }
-    for (size_t j = 0; j < op.outputs_size(); j++) {
+    for (int j = 0; j < op.outputs_size(); j++) {
       auto &out_var = op.outputs(j);
-      for (size_t k = 0; k < out_var.arguments_size(); k++) {
+      for (int k = 0; k < out_var.arguments_size(); k++) {
         auto *out = graph->nodes.GetMutable(var2id[out_var.arguments(k)]);
         out->inlinks.push_back(o);
         o->outlinks.push_back(out);

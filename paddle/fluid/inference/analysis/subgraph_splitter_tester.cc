@@ -24,22 +24,42 @@ TEST_F(DFG_Tester, Split) {
   auto dfg = ProgramDescToDFG(desc);
   LOG(INFO) << "spliter\n" << dfg.DotString();
 
-  DataFlowGraph new_graph;
   SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
-    LOG(INFO) << "inside teller";
-    LOG(INFO) << "node.type " << static_cast<int>(node->type());
     if (node->type() != Node::Type::kFunction) return false;
     const auto* func = static_cast<const Function*>(node);
-    LOG(INFO) << "func.type " << func->func_type();
-    if (func->func_type() == "elementwise_sub") {
+    if (func->func_type() == "elementwise_add" || func->func_type() == "relu" ||
+        func->func_type() == "conv2d" || func->func_type() == "mul" ||
+        func->func_type() == "sigmoid" || func->func_type() == "softmax") {
+      LOG(INFO) << "sub-graph marked " << node->repr();
       return true;
     }
     return false;
   };
-  ASSERT_GT(dfg.nodes.size(), 5);
+  ASSERT_GT(dfg.nodes.size(), 5UL);
+
   auto subgraphs = SubGraphSplitter(&dfg, teller)();
-  LOG(INFO) << "subgraph size: " << subgraphs.size();
-  ASSERT_EQ(subgraphs.size(), 1);
+
+  // Check the number of the marked nodes.
+  int marked_nodes = 0;
+  for (auto& node : dfg.nodes.nodes()) {
+    if (node->IsFunction() &&
+        node->attr(SubGraphSplitter::kMarkerAttrName).Bool()) {
+      ++marked_nodes;
+    }
+  }
+  EXPECT_EQ(marked_nodes, 6);
+
+  // For human debug.
+  for (auto& subgraph : subgraphs) {
+    LOG(INFO) << "subgraph size " << subgraph.size();
+    for (auto* node : subgraph) {
+      LOG(INFO) << "node " << node->repr();
+    }
+  }
+
+  ASSERT_EQ(subgraphs.size(), 4UL);
+  // The last sub-graph has 5 Functions.
+  ASSERT_EQ(subgraphs.back().size(), 5UL);
 }
 
 }  // namespace analysis

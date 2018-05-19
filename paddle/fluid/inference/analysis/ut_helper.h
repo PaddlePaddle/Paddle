@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
@@ -24,11 +25,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-const std::string kModelDir =
-    "/Users/superjom/project/Paddle/cmake-build-debug/inference_model";
+DEFINE_string(model_dir, "", "inference test model dir");
 
 static framework::proto::ProgramDesc LoadProgramDesc(
-    const std::string& model_dir = kModelDir) {
+    const std::string& model_dir = FLAGS_model_dir) {
   // TODO(Superjomn) update latter.
   auto place = paddle::platform::CPUPlace();
   auto executor = paddle::framework::Executor(place);
@@ -49,7 +49,7 @@ static DataFlowGraph ProgramDescToDFG(
 
 class DFG_Tester : public ::testing::Test {
  protected:
-  void SetUp() override { desc = LoadProgramDesc(kModelDir); }
+  void SetUp() override { desc = LoadProgramDesc(FLAGS_model_dir); }
 
   framework::proto::ProgramDesc desc;
 };

@@ -18,11 +18,19 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-const char *SubGraphSplitter::kMarkerAttrName = "sub_graph_splitter_";
+const char *SubGraphSplitter::kMarkerAttrName =
+    "_sub_graph_splitter_inside_sub_graph";
 
 std::vector<std::vector<Node *>> SubGraphSplitter::operator()() {
   MarkNodesInsideSubGraph();
   return ExtractSubGraphs();
+}
+
+// Mark the output variables inside a subgraph with the func.
+void MarkOutLinksInSubGraph(const Function *func) {
+  for (auto *var : func->outlinks) {
+    var->attr(SubGraphSplitter::kMarkerAttrName).Bool() = true;
+  }
 }
 
 void SubGraphSplitter::MarkNodesInsideSubGraph() {
@@ -31,6 +39,15 @@ void SubGraphSplitter::MarkNodesInsideSubGraph() {
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     if (node_inside_subgraph_teller_(&(*it))) {
       it->attr(kMarkerAttrName).Bool() = true;
+      if (it->type() == Node::Type::kFunction) {
+        // If a function is inside the sub-graph, mark all the output variables
+        // to be inside too, so that two marked functions will be inside a same
+        // sub-graph, lets take a example:  A_function->var->B_function, if
+        // A_function is marked, var should also be marked, so that B_function
+        // will be in the same sub-graph with A_function if B_function is
+        // marked.
+        MarkOutLinksInSubGraph(static_cast<const Function *>(&(*it)));
+      }
     }
   }
 }
@@ -54,17 +71,16 @@ int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
 void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
-  node_map.at(b_ancestor)->attr(kUnionFindParent).Bool() = a_ancestor;
+  node_map.at(b_ancestor)->attr(kUnionFindParent).Int32() = a_ancestor;
 }
 
 std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   std::vector<Node *> marked_nodes;
   auto trait = GraphTraits<DataFlowGraph>(graph_);
-  auto nodes = trait.nodes();
-  for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    auto &is_in_subgraph = it->attr(kMarkerAttrName).Bool();
+  for (auto &node : trait.nodes()) {
+    auto &is_in_subgraph = node.attr(kMarkerAttrName).Bool();
     if (is_in_subgraph) {
-      marked_nodes.push_back(&(*it));
+      marked_nodes.push_back(&node);
     }
   }
   // extract sub-graphs in the marked node set, use Union Find algorithm.
@@ -87,7 +103,8 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
 
   std::unordered_map<int /*ancestor*/, std::vector<Node *>> clusters;
   for (auto *n : marked_nodes) {
-    clusters[n->attr(kUnionFindParent).Int32()].push_back(n);
+    if (n->type() == Node::Type::kFunction)
+      clusters[n->attr(kUnionFindParent).Int32()].push_back(n);
   }
   std::vector<std::vector<Node *>> result;
   std::for_each(clusters.begin(), clusters.end(),
