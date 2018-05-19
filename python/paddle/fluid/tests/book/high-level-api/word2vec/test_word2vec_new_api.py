@@ -107,7 +107,8 @@ def train(use_cuda, train_program, save_dirname):
 
             if avg_cost < 10.0:
                 trainer.save_params(save_dirname)
-                return
+                trainer.stop()
+
             if math.isnan(avg_cost):
                 sys.exit("got NaN loss, training failed.")
 
@@ -126,7 +127,7 @@ def train(use_cuda, train_program, save_dirname):
 def infer(use_cuda, inference_program, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=save_path, place=place)
+        infer_func=inference_program, param_path=save_dirname, place=place)
 
     lod = [0, 1]
     first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
@@ -139,7 +140,7 @@ def infer(use_cuda, inference_program, save_dirname=None):
         'secondw': second_word,
         'thirdw': third_word,
         'forthw': fourth_word
-    })
+    }, return_numpy=False)
     print(np.array(result[0]))
 
 
@@ -164,3 +165,4 @@ if __name__ == '__main__':
     for use_cuda in (False, True):
         for is_sparse in (False, True):
             main(use_cuda=use_cuda, is_sparse=is_sparse)
+
