@@ -34,19 +34,17 @@ void MarkOutLinksInSubGraph(const Function *func) {
 }
 
 void SubGraphSplitter::MarkNodesInsideSubGraph() {
-  auto trait = GraphTraits<DataFlowGraph>(graph_);
-  auto nodes = trait.nodes();
-  for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    if (node_inside_subgraph_teller_(&(*it))) {
-      it->attr(kMarkerAttrName).Bool() = true;
-      if (it->type() == Node::Type::kFunction) {
+  for (auto &node : GraphTraits<DataFlowGraph>(graph_).nodes()) {
+    if (node_inside_subgraph_teller_(&node)) {
+      node.attr(kMarkerAttrName).Bool() = true;
+      if (node.type() == Node::Type::kFunction) {
         // If a function is inside the sub-graph, mark all the output variables
         // to be inside too, so that two marked functions will be inside a same
         // sub-graph, lets take a example:  A_function->var->B_function, if
         // A_function is marked, var should also be marked, so that B_function
         // will be in the same sub-graph with A_function if B_function is
         // marked.
-        MarkOutLinksInSubGraph(static_cast<const Function *>(&(*it)));
+        MarkOutLinksInSubGraph(static_cast<const Function *>(&node));
       }
     }
   }
@@ -76,8 +74,7 @@ void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
 
 std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   std::vector<Node *> marked_nodes;
-  auto trait = GraphTraits<DataFlowGraph>(graph_);
-  for (auto &node : trait.nodes()) {
+  for (auto &node : GraphTraits<DataFlowGraph>(graph_).nodes()) {
     auto &is_in_subgraph = node.attr(kMarkerAttrName).Bool();
     if (is_in_subgraph) {
       marked_nodes.push_back(&node);

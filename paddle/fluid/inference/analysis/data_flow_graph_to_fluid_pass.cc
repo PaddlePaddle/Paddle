@@ -32,16 +32,15 @@ bool DataFlowGraphToFluidPass::Initialize(framework::proto::ProgramDesc* desc) {
 bool DataFlowGraphToFluidPass::Finalize() { return true; }
 
 void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
-  auto traits = GraphTraits<DataFlowGraph>(graph);
-  for (auto it = traits.nodes().begin(); it != traits.nodes().end(); ++it) {
-    if (it->deleted()) continue;
-    switch (it->type()) {
+  for (auto& node : GraphTraits<DataFlowGraph>(graph).nodes()) {
+    if (node.deleted()) continue;
+    switch (node.type()) {
       case Node::Type::kFunction:
-        LOG(INFO) << "add function " << it->name();
-        AddFluidOp(&(*it));
+        LOG(INFO) << "add function " << node.name();
+        AddFluidOp(&node);
         break;
       case Node::Type::kFunctionBlock:
-        AddEngineOp(&(*it));
+        AddEngineOp(&node);
         break;
       default:
         continue;
