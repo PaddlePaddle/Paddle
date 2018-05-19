@@ -27,7 +27,7 @@ std::vector<std::vector<Node *>> SubGraphSplitter::operator()() {
 }
 
 // Mark the output variables inside a subgraph with the func.
-void MarkOutLinksInSubGraph(const Function *func) {
+inline void MarkOutLinksInSubGraph(const Function *func) {
   for (auto *var : func->outlinks) {
     var->attr(SubGraphSplitter::kMarkerAttrName).Bool() = true;
   }
@@ -70,29 +70,28 @@ void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
   node_map.at(b_ancestor)->attr(kUnionFindParent).Int32() = a_ancestor;
+  node_map.at(a)->attr(kUnionFindParent).Int32() = a_ancestor;
+  node_map.at(b)->attr(kUnionFindParent).Int32() = a_ancestor;
 }
 
 std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   std::vector<Node *> marked_nodes;
   for (auto &node : GraphTraits<DataFlowGraph>(graph_).nodes()) {
-    auto &is_in_subgraph = node.attr(kMarkerAttrName).Bool();
-    if (is_in_subgraph) {
+    if (node.attr(kMarkerAttrName).Bool()) {
       marked_nodes.push_back(&node);
     }
   }
   // extract sub-graphs in the marked node set, use Union Find algorithm.
   node_map_t node_map;  // id to ptr
-  std::unordered_set<Node *> marked;
   for (auto *n : marked_nodes) {
-    n->attr(kUnionFindParent).Int32() =
-        n->id();  // n's parent == n.id means it is the ancestor
+    // n's parent == n.id means it is the ancestor
+    n->attr(kUnionFindParent).Int32() = n->id();
     node_map[n->id()] = n;
-    marked.insert(n);
   }
   std::unordered_set<Node *> visited;
   for (auto *n : marked_nodes) {
     for (auto *out : n->outlinks) {
-      if (marked.count(out)) {
+      if (node_map.count(out->id())) {
         UnionFindCombine(node_map, n->id(), out->id());
       }
     }
@@ -100,8 +99,11 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
 
   std::unordered_map<int /*ancestor*/, std::vector<Node *>> clusters;
   for (auto *n : marked_nodes) {
-    if (n->type() == Node::Type::kFunction)
-      clusters[n->attr(kUnionFindParent).Int32()].push_back(n);
+    if (n->type() == Node::Type::kFunction) {
+      clusters[UnionFindGetAncestor(node_map,
+                                    n->attr(kUnionFindParent).Int32())]
+          .push_back(n);
+    }
   }
   std::vector<std::vector<Node *>> result;
   std::for_each(clusters.begin(), clusters.end(),

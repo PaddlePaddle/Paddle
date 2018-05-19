@@ -57,9 +57,9 @@ TEST_F(DFG_Tester, Split) {
     }
   }
 
-  ASSERT_EQ(subgraphs.size(), 4UL);
+  ASSERT_EQ(subgraphs.size(), 1UL);
   // The last sub-graph has 5 Functions.
-  ASSERT_EQ(subgraphs.back().size(), 5UL);
+  ASSERT_EQ(subgraphs.back().size(), 6UL);
 }
 
 }  // namespace analysis
