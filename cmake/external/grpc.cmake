@@ -23,10 +23,14 @@ SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
 SET(GRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/grpc)
 SET(GRPC_INCLUDE_DIR "${GRPC_INSTALL_DIR}/include/" CACHE PATH "grpc include directory." FORCE)
 SET(GRPC_CPP_PLUGIN "${GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin" CACHE FILEPATH "GRPC_CPP_PLUGIN" FORCE)
+
+include(ProcessorCount)
+ProcessorCount(NUM_OF_PROCESSOR)
+
 IF(APPLE)
-  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
+  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j static grpc_cpp_plugin)
+  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
 ENDIF()
 
 ExternalProject_Add(
