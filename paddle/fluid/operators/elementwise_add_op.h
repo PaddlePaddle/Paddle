@@ -27,6 +27,34 @@ struct AddFunctor {
 };
 
 template <typename DeviceContext, typename T>
+void default_elementwise_add(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                        AddFunctor<T>(), z);
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<std::is_floating_point<T>::value>::type elementwise_add(
+    const framework::ExecutionContext& ctx, const framework::Tensor* x,
+    const framework::Tensor* y, framework::Tensor* z) {
+  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+
+  auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  blas.VADD(x->numel(), eigen_x.data(), eigen_y.data(), eigen_z.data());
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<std::is_integral<T>::value>::type elementwise_add(
+    const framework::ExecutionContext& ctx, const framework::Tensor* x,
+    const framework::Tensor* y, framework::Tensor* z) {
+  default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+}
+
+template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -36,19 +64,12 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     const auto y = ctx.Input<Tensor>("Y");
     auto z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
 
     auto dims_equal = x->dims() == y->dims();
     if (platform::is_cpu_place(ctx.GetPlace()) && dims_equal) {
-      auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-      auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-      auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
-      blas.VADD(x->numel(), eigen_x.data(), eigen_y.data(), eigen_z.data());
+      elementwise_add<DeviceContext, T>(ctx, x, y, z);
     } else {
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                            AddFunctor<T>(), z);
+      default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
     }
   }
 };
