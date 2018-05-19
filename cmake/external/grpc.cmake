@@ -32,8 +32,7 @@ ENDIF()
 ExternalProject_Add(
     extern_grpc
     DEPENDS protobuf zlib
-    GIT_REPOSITORY "https://github.com/grpc/grpc.git"
-    GIT_TAG "v1.10.x"
+    URL "http://paddlepaddledeps.bj.bcebos.com/grpc.tar.xz"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
