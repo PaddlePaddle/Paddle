@@ -26,7 +26,8 @@ namespace framework {
 enum class DataLayout {
   kNHWC = 0,
   kNCHW = 1,
-  kAnyLayout = 2,
+  kMKLDNN = 2,  // MKLDNN-specific layout
+  kAnyLayout = 3,
 };
 
 inline DataLayout StringToDataLayout(const std::string& str) {
@@ -39,6 +40,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::kNHWC;
   } else if (s == "NCHW") {
     return DataLayout::kNCHW;
+  } else if (s == "MKLDNN") {
+    return DataLayout::kMKLDNN;
   } else if (s == "ANYLAYOUT") {
     return DataLayout::kAnyLayout;
   } else {
@@ -52,10 +55,12 @@ inline std::string DataLayoutToString(const DataLayout& data_layout) {
       return "NHWC";
     case DataLayout::kNCHW:
       return "NCHW";
+    case DataLayout::kMKLDNN:
+      return "MKLDNN";
     case DataLayout::kAnyLayout:
       return "ANY_LAYOUT";
     default:
-      PADDLE_THROW("unknown DataLayou %d", data_layout);
+      PADDLE_THROW("unknown DataLayout %d", data_layout);
   }
 }
 

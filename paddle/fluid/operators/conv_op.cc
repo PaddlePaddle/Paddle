@@ -100,7 +100,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 
   std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                  library);
@@ -322,7 +321,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #endif
 
   std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),

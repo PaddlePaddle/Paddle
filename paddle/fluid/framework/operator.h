@@ -208,6 +208,11 @@ class ExecutionContext {
     return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
   }
 
+  Variable* MutableInputVar(const std::string& name) const {
+    auto ipt = op_.Input(name);
+    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+  }
+
   Variable* OutputVar(const std::string& name) const {
     auto opt = op_.Output(name);
     return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
@@ -242,6 +247,12 @@ class ExecutionContext {
   const T* Input(const std::string& name) const {
     auto* var = InputVar(name);
     return var == nullptr ? nullptr : &var->Get<T>();
+  }
+
+  template <typename T>
+  T* MutableInput(const std::string& name) const {
+    auto* var = MutableInputVar(name);
+    return var == nullptr ? nullptr : var->GetMutable<T>();
   }
 
   template <typename T>

@@ -298,6 +298,12 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 }
 
 template <>
+Tensor* ExecutionContext::MutableInput<Tensor>(const std::string& name) const {
+  auto* var = MutableInputVar(name);
+  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
+}
+
+template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
   auto names = op().Inputs(name);
@@ -444,6 +450,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     // TODO(dzhwinter) : reuse ShareLoD in most operators.
     // Need to call ShareLayout explicitly in sequence related ops.
     // Shall we have a better method to shared info between in/out Tensor?
+    VLOG(3) << "setting out layout to " << in_tensor.layout() << " in: " << in
+            << " out: " << out << std::endl;
     out_tensor->set_layout(in_tensor.layout());
   }
 
@@ -517,6 +525,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
+
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -560,6 +569,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       auto* var = scope.FindVar(var_name);
       if (var && VarIsTensor(var)) {
         auto* tensor_in = GetTensorFromVar(var);
+        VLOG(3) << "tensor " << var_name << " "
+                << reinterpret_cast<const void*>(tensor_in) << " layout "
+                << tensor_in->layout() << " dims: " << tensor_in->dims().size()
+                << std::endl;
         if (tensor_in->IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
               var_name_item.first, *tensor_in, expected_kernel_key);
@@ -575,7 +588,30 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             std::shared_ptr<Tensor> out(new Tensor);
             DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
                           out.get());
+            VLOG(3) << "layout after transform: " << out->layout() << std::endl;
             CopyVariableWithTensor(*var, *(out.get()), trans_var);
+#ifdef PADDLE_WITH_MKLDNN
+            // Output tensor layout is set to input tensor layout in InferShape
+            // method. If input tensor layout is transformed from MKLDNN layout
+            // to a different one, then we need to update output tensor layout
+            // here.
+            if ((kernel_type_for_var.data_layout_ == DataLayout::kMKLDNN &&
+                 expected_kernel_key.library_type_ != LibraryType::kMKLDNN)) {
+              for (auto& var_name_item : this->Outputs()) {
+                for (auto& var_name : var_name_item.second) {
+                  auto* var = scope.FindVar(var_name);
+                  if (var && VarIsTensor(var)) {
+                    auto* tensor_out = GetMutableTensorFromVar(var);
+                    if (tensor_out->layout() == DataLayout::kMKLDNN) {
+                      tensor_out->set_layout(out->layout());
+                      VLOG(3) << "setting out layout back to " << out->layout()
+                              << std::endl;
+                    }
+                  }
+                }
+              }
+            }
+#endif
           }
         }
       }
@@ -636,7 +672,8 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
 OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
     const OpKernelType& expected_kernel_type) const {
-  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
+                      tensor.layout());
 }
 
 }  // namespace framework

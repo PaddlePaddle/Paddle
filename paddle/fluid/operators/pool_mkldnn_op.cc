@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/mkldnn_tensor.h"
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
@@ -63,11 +64,12 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
-    // TODO(pzelazko-intel): support more formats
-    auto src_md = platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
-                                          mkldnn::memory::format::nchw);
-    auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
-                                          mkldnn::memory::format::nchw);
+    auto src_format = GetMKLDNNFormat(*input);
+    auto src_md =
+        platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32, src_format);
+    auto dst_format = GetMKLDNNFormat(*input);
+    auto dst_md =
+        platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32, dst_format);
 
     std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
         CreatePrimitiveDesc(src_md, dst_md, strides, paddings, ksize,
@@ -171,10 +173,12 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> diff_dst_tz =
         paddle::framework::vectorize2int(out_grad->dims());
 
+    auto diff_src_format = GetMKLDNNFormat(*in_x_grad);
     auto diff_src_md = platform::MKLDNNMemDesc(diff_src_tz, mkldnn::memory::f32,
-                                               mkldnn::memory::format::nchw);
+                                               diff_src_format);
+    auto diff_dst_format = GetMKLDNNFormat(*out_grad);
     auto diff_dst_md = platform::MKLDNNMemDesc(diff_dst_tz, mkldnn::memory::f32,
-                                               mkldnn::memory::format::nchw);
+                                               diff_dst_format);
 
     // Retrieve pool_pd/pool_workspace_memory from device context
     auto pool_pd =

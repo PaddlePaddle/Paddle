@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include <vector>
+#include "paddle/fluid/framework/mkldnn_tensor.h"
 
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -65,6 +66,16 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
       "TransDataLayout only support DataLayout transform on same place!");
 
   PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
+
+  if (in.layout() == DataLayout::kMKLDNN) {
+    auto layout = expected_kernel_type.data_layout_;
+    if (layout == DataLayout::kAnyLayout) {
+      layout = DataLayout::kNCHW;
+    }
+
+    MKLDNNTensor(in).Reorder(out, layout, expected_kernel_type.place_);
+    return;
+  }
 
   auto& pool = platform::DeviceContextPool::Instance();
 

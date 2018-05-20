@@ -333,6 +333,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
+    VLOG(3) << "---------------------------------\noperation " << op->Type()
+            << std::endl;
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
 

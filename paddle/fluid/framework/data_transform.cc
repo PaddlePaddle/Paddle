@@ -29,14 +29,14 @@ static void PassTensorData(Tensor* from, Tensor* to) {
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
                    const Tensor& input_tensor, Tensor* output_tensor) {
+  VLOG(3) << "DataTransform" << std::endl;
   bool transformed = false;
   Tensor in;
   in.ShareDataWith(input_tensor);
   Tensor out;
 
   // do layout transform
-  if (NeedTransformLayout(expected_kernel_type.data_layout_,
-                          kernel_type_for_var.data_layout_)) {
+  if (NeedTransformLayout(kernel_type_for_var, expected_kernel_type)) {
     TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
     PassTensorData(&out, &in);
