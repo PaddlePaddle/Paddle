@@ -21,7 +21,7 @@ namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
-  if (places_.size() == 1) return;
+  if (exe_contexts_.size() == 1) return;
 
   // The input and output may have dummy vars.
   VarHandle *in_var_handle;
@@ -35,14 +35,15 @@ void BroadcastOpHandle::RunImpl() {
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
   PADDLE_ENFORCE_EQ(
-      out_var_handles.size(), places_.size(),
+      out_var_handles.size(), exe_contexts_.size(),
       "The number of output should equal to the number of places.");
 
   WaitInputVarGenerated();
 
   std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
+  for (auto exe_ctx : exe_contexts_) {
+    var_scopes.emplace_back(
+        exe_ctx.scope->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
 
   auto *in_var =
@@ -50,7 +51,7 @@ void BroadcastOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(in_var);
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
-  InitOutputValue(*in_var_handle, out_var_handles);
+  InitOutputValue(var_scopes, *in_var_handle, out_var_handles);
 
   if (platform::is_cpu_place(in_tensor.place())) {
     for (auto *out_var_handle : out_var_handles) {
@@ -126,12 +127,9 @@ void BroadcastOpHandle::RunImpl() {
 }
 
 void BroadcastOpHandle::InitOutputValue(
+    const std::vector<const Scope *> &var_scopes,
     const VarHandle &in_var_handle,
     const std::vector<VarHandle *> &out_var_handles) const {
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx_)->FindVar(in_var_handle.name_);
 

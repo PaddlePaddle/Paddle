@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
+#include "paddle/fluid/framework/details/execution_context.h"
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -32,18 +33,19 @@ namespace details {
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
 #ifdef PADDLE_WITH_CUDA
-  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
-                          const std::string &loss_var_name,
-                          const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes,
-                          platform::NCCLContextMap *nccl_ctxs,
-                          const BuildStrategy &strategy);
+  MultiDevSSAGraphBuilder(
+      const std::vector<ExecutionContext> &exe_context,
+      const std::string &loss_var_name,
+      const std::unordered_set<std::string> &params,
+      //                          const std::vector<Scope *> &local_scopes,
+      platform::NCCLContextMap *nccl_ctxs, const BuildStrategy &strategy);
 #else
-  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
-                          const std::string &loss_var_name,
-                          const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes,
-                          const BuildStrategy &strategy);
+  MultiDevSSAGraphBuilder(
+      const std::vector<ExecutionContext> &exe_context,
+      const std::string &loss_var_name,
+      const std::unordered_set<std::string> &params,
+      //                          const std::vector<Scope *> &local_scopes,
+      const BuildStrategy &strategy);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -54,8 +56,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   std::string loss_var_name_;
-  const std::vector<platform::Place> &places_;
-  const std::vector<Scope *> &local_scopes_;
+  const std::vector<ExecutionContext> exe_contexts_;
+  //  const std::vector<platform::Place> &places_;
+  //  const std::vector<Scope *> &local_scopes_;
   std::unordered_set<std::string> grad_names_;
 
 #ifdef PADDLE_WITH_CUDA

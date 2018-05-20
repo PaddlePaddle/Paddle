@@ -33,25 +33,26 @@ namespace details {
 
 #ifdef PADDLE_WITH_CUDA
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
-    const std::vector<platform::Place> &places,
+    const std::vector<ExecutionContext> &exe_contexts,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes,
+    //    const std::vector<Scope *> &local_scopes,
     platform::NCCLContextMap *nccl_ctxs, const BuildStrategy &strategy)
     : loss_var_name_(loss_var_name),
-      places_(places),
-      local_scopes_(local_scopes),
+      exe_contexts_(exe_contexts),
+      //      local_scopes_(local_scopes),
       nccl_ctxs_(nccl_ctxs),
       strategy_(strategy) {
 #else
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
-    const std::vector<platform::Place> &places,
+    const std::vector<ExecutionContext> &exe_contexts,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, const BuildStrategy &strategy)
+    //    const std::vector<Scope *> &local_scopes,
+    const BuildStrategy &strategy)
     : loss_var_name_(loss_var_name),
-      places_(places),
-      local_scopes_(local_scopes),
+      exe_contexts_(exe_contexts),
+      //      local_scopes_(local_scopes),
       strategy_(strategy) {
 #endif
   for (auto &p : params) {
@@ -62,7 +63,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
                                                 const OpDesc &op,
                                                 size_t place_id) const {
-  auto p = places_[place_id];
+  auto p = exe_contexts_[place_id].place;
   auto *op_handle = result->ops_.back().get();
   op_handle->SetDeviceContext(p,
                               platform::DeviceContextPool::Instance().Get(p));
@@ -120,7 +121,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   // We cannot invoke resize. It is a bug of GCC 4.8
   result.vars_ = std::vector<
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
-      places_.size());
+      exe_contexts_.size());
 
   // Find "send" op first for split is in front of send.
   OpDesc *send_op = GetSendOpDesc(program);
@@ -128,8 +129,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   size_t cur_device_id = 0;
   std::vector<std::unordered_set<std::string>> var_name_on_devices;
   std::vector<std::unordered_set<std::string>> bcast_var_name_set;
-  var_name_on_devices.resize(places_.size());
-  bcast_var_name_set.resize(places_.size());
+  var_name_on_devices.resize(exe_contexts_.size());
+  bcast_var_name_set.resize(exe_contexts_.size());
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
@@ -149,14 +150,14 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     } else {
       int op_dev_id = GetOpDeviceID(var_name_on_devices, *op);
       if (op_dev_id == -1) {  // var on all device
-        CreateComputationalOps(&result, *op, places_.size());
+        CreateComputationalOps(&result, *op, exe_contexts_.size());
       } else {
         CreateComputationalOp(&result, *op, op_dev_id);
         for (auto &var_name : op->OutputArgumentNames()) {
           var_name_on_devices[op_dev_id].emplace(var_name);
         }
       }
-      if (!is_forwarding && places_.size() > 1) {
+      if (!is_forwarding && exe_contexts_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         for (auto &og : op->OutputArgumentNames()) {
@@ -167,7 +168,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
                 var_name_on_devices[cur_device_id].emplace(og);
                 bcast_var_name_set[cur_device_id].emplace(
                     og.substr(0, og.size() - strlen(kGradVarSuffix)));
-                cur_device_id = (cur_device_id + 1) % places_.size();
+                cur_device_id = (cur_device_id + 1) % exe_contexts_.size();
                 break;
               case BuildStrategy::ReduceStrategy::kAllReduce:
                 if (IsSparseGradient(var_types, og)) {
@@ -225,18 +226,18 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
                                                 const std::string &p_name,
                                                 size_t src_dev_id) const {
 #ifdef PADDLE_WITH_CUDA
-  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, nccl_ctxs_);
+  auto *op_handle = new BroadcastOpHandle(exe_contexts_, nccl_ctxs_);
 #else
-  auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
+  auto *op_handle = new BroadcastOpHandle(exe_contexts_);
 #endif
 
   result->ops_.emplace_back(op_handle);
   auto *in = result->vars_.at(src_dev_id).at(p_name).back().get();
   op_handle->AddInput(in);
 
-  for (size_t i = 0; i < places_.size(); ++i) {
+  for (size_t i = 0; i < exe_contexts_.size(); ++i) {
     auto &vars = result->vars_.at(i).at(p_name);
-    auto &p = places_[i];
+    auto &p = exe_contexts_[i].place;
     auto *out_var = new VarHandle(vars.size(), i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
@@ -250,8 +251,8 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
 void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
                                                     const OpDesc &op,
                                                     int dev_id) const {
-  result->ops_.emplace_back(
-      new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]));
+  result->ops_.emplace_back(new ComputationOpHandle(
+      op, exe_contexts_[dev_id].scope, exe_contexts_[dev_id].place));
   CreateOpHandleIOs(result, op, dev_id);
 }
 
@@ -268,11 +269,11 @@ void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     SSAGraph *result, const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA
   result->ops_.emplace_back(
-      new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
+      new NCCLAllReduceOpHandle(exe_contexts_, *nccl_ctxs_));
   auto *op_handle = result->ops_.back().get();
 
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
+  for (size_t i = 0; i < exe_contexts_.size(); ++i) {
+    auto &p = exe_contexts_[i].place;
     auto &vars = result->vars_[i][og];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
@@ -320,18 +321,18 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(
 }
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
-  for (size_t i = 0; i < places_.size(); ++i) {
+  for (size_t i = 0; i < exe_contexts_.size(); ++i) {
 // Insert ScaleCost OpHandle
 #ifdef PADDLE_WITH_CUDA
-    auto *communication_dev_ctx = nccl_ctxs_->DevCtx(places_[i]);
+    auto *communication_dev_ctx = nccl_ctxs_->DevCtx(exe_contexts_[i].place);
 #else
     auto *communication_dev_ctx =
         platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
 #endif
 
-    auto *op_handle =
-        new ScaleLossGradOpHandle(local_scopes_.size(), local_scopes_[i],
-                                  places_[i], communication_dev_ctx);
+    auto *op_handle = new ScaleLossGradOpHandle(
+        exe_contexts_.size(), exe_contexts_[i].scope, exe_contexts_[i].place,
+        communication_dev_ctx);
     result->ops_.emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
@@ -340,8 +341,8 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
     // loss->pending_ops_.emplace_back(op_handle);
     // op_handle->inputs_.emplace_back(loss);
 
-    CreateOpOutput(result, op_handle, GradVarName(loss_var_name_), places_[i],
-                   i);
+    CreateOpOutput(result, op_handle, GradVarName(loss_var_name_),
+                   exe_contexts_[i].place, i);
   }
 }
 
@@ -349,8 +350,8 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
                                                      const OpDesc &op,
                                                      size_t num_places) const {
   for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
-    auto p = places_[scope_idx];
-    auto s = local_scopes_[scope_idx];
+    auto p = exe_contexts_[scope_idx].place;
+    auto s = exe_contexts_[scope_idx].scope;
     result->ops_.emplace_back(new ComputationOpHandle(op, s, p));
     CreateOpHandleIOs(result, op, scope_idx);
   }
@@ -360,17 +361,16 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
                                                    const std::string &og,
                                                    int dst_dev_id) const {
 #ifdef PADDLE_WITH_CUDA
-  result->ops_.emplace_back(
-      new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+  result->ops_.emplace_back(new ReduceOpHandle(exe_contexts_, nccl_ctxs_));
 #else
-  result->ops_.emplace_back(new ReduceOpHandle(local_scopes_, places_));
+  result->ops_.emplace_back(new ReduceOpHandle(exe_contexts_));
 #endif
   auto *op_handle = result->ops_.back().get();
 
-  for (size_t i = 0; i < places_.size(); ++i) {
+  for (size_t i = 0; i < exe_contexts_.size(); ++i) {
     auto &vars = result->vars_[i][og];
 #ifndef PADDLE_WITH_CUDA
-    auto &p = places_[i];
+    auto &p = exe_contexts_[i].place;
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
 #endif
@@ -379,8 +379,8 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
     op_handle->AddInput(prev_grad.get());
   }
   auto &vars = result->vars_[dst_dev_id][og];
-  auto var =
-      new VarHandle(vars.size() - 1, dst_dev_id, og, places_[dst_dev_id]);
+  auto var = new VarHandle(vars.size() - 1, dst_dev_id, og,
+                           exe_contexts_[dst_dev_id].place);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
   return var;
@@ -388,8 +388,8 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
                                            const OpDesc &op) const {
-  auto &p = places_[0];
-  auto *s = local_scopes_[0];
+  auto &p = exe_contexts_[0].place;
+  auto *s = exe_contexts_[0].scope;
   // FIXME(wuyi): send op always copy from GPU 0
   result->ops_.emplace_back(new SendOpHandle(op, s, p));
   // Create inputs for output on original place and no ssa output

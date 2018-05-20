@@ -22,8 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/execution_context.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -32,9 +34,16 @@ namespace framework {
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
-      : places_(places) {}
+      : places_(places) {
+    execution_contexts_.resize(places.size());
+    for (int j = 0; j < places.size(); ++j) {
+      execution_contexts_[j].place = places[j];
+    }
+  }
 
   std::vector<platform::Place> places_;
+  std::vector<framework::details::ExecutionContext> execution_contexts_;
+
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;
   std::unique_ptr<details::SSAGraphExecutor> executor_;
@@ -66,15 +75,15 @@ ParallelExecutor::ParallelExecutor(
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope = true;
-    member_->local_scopes_.emplace_back(member_->global_scope_);
-    for (size_t i = 1; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(&scope->NewScope());
+    member_->execution_contexts_[0].scope = member_->global_scope_;
+    for (size_t i = 1; i < member_->execution_contexts_.size(); ++i) {
+      member_->execution_contexts_[i].scope = &scope->NewScope();
     }
   } else {
     member_->own_local_scope = false;
-    PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
-    for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
+    PADDLE_ENFORCE_EQ(member_->execution_contexts_.size(), local_scopes.size());
+    for (size_t i = 0; i < member_->execution_contexts_.size(); ++i) {
+      member_->execution_contexts_[i].scope = &local_scopes[i]->NewScope();
     }
   }
 
@@ -88,7 +97,8 @@ ParallelExecutor::ParallelExecutor(
   member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
       member_->places_, nccl_id, num_trainers, trainer_id));
 #endif
-  if (platform::is_gpu_place(places[0]) && member_->local_scopes_.size() != 1 &&
+  if (platform::is_gpu_place(places[0]) &&
+      member_->execution_contexts_.size() != 1 &&
       local_scopes.empty()) {  // Is CUDA
     BCastParamsToGPUs(bcast_vars);
   }
@@ -98,12 +108,12 @@ ParallelExecutor::ParallelExecutor(
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
   details::MultiDevSSAGraphBuilder builder(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
+      member_->execution_contexts_, loss_var_name, params,
+      //      member_->local_scopes_,
       member_->nccl_ctxs_.get(), build_strategy);
 #else
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           build_strategy);
+  details::MultiDevSSAGraphBuilder builder(
+      member_->execution_contexts_, loss_var_name, params, build_strategy);
 #endif
   auto graph = builder.Build(main_program);
 
@@ -120,7 +130,7 @@ ParallelExecutor::ParallelExecutor(
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
 #ifdef PADDLE_WITH_CUDA
-  auto *main_scope = member_->local_scopes_[0];
+  auto *main_scope = member_->execution_contexts_[0].scope;
 
   for (auto &var : vars) {
     auto *main_var = main_scope->FindVar(var);
@@ -134,13 +144,13 @@ void ParallelExecutor::BCastParamsToGPUs(
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
       platform::NCCLGroupGuard guard;
-      for (size_t i = 0; i < member_->places_.size(); ++i) {
-        auto place = member_->places_[i];
+      for (size_t i = 0; i < member_->execution_contexts_.size(); ++i) {
+        auto place = member_->execution_contexts_[i].place;
         void *buffer;
         if (i == 0) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
-          auto local_scope = member_->local_scopes_[i];
+          auto local_scope = member_->execution_contexts_[i].scope;
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.type());
@@ -151,8 +161,8 @@ void ParallelExecutor::BCastParamsToGPUs(
       }
     } else {
       platform::CPUPlace cpu;
-      for (size_t i = 1; i < member_->places_.size(); ++i) {
-        auto local_scope = member_->local_scopes_[i];
+      for (size_t i = 1; i < member_->execution_contexts_.size(); ++i) {
+        auto local_scope = member_->execution_contexts_[i].scope;
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
         t->Resize(dims);
         t->mutable_data(cpu, main_tensor.type());

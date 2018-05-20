@@ -22,12 +22,12 @@ namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
-  if (places_.size() == 1) return;
+  if (exe_contexts_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), places_.size(),
+      in_var_handles.size(), exe_contexts_.size(),
       "The number of output should equal to the number of places.");
 
   VarHandle *out_var_handle;
@@ -42,8 +42,9 @@ void ReduceOpHandle::RunImpl() {
   auto in_0_handle = in_var_handles[0];
 
   std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
+  for (auto exe_ctx : exe_contexts_) {
+    var_scopes.emplace_back(
+        exe_ctx.scope->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
 
   auto pre_in_var =

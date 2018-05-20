@@ -20,12 +20,11 @@ namespace paddle {
 namespace framework {
 namespace details {
 NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
-    const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<ExecutionContext> &exe_contexts,
     const platform::NCCLContextMap &ctxs)
-    : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
-  for (auto &p : places_) {
-    this->dev_ctxes_[p] = nccl_ctxs_.DevCtx(p);
+    : exe_contexts_(exe_contexts), nccl_ctxs_(ctxs) {
+  for (auto &exe_ctx : exe_contexts) {
+    this->dev_ctxes_[exe_ctx.place] = nccl_ctxs_.DevCtx(exe_ctx.place);
   }
 }
 
@@ -42,8 +41,8 @@ void NCCLAllReduceOpHandle::RunImpl() {
 
     std::vector<const LoDTensor *> lod_tensors;
 
-    for (size_t i = 0; i < local_scopes_.size(); ++i) {
-      auto *s = local_scopes_[i];
+    for (size_t i = 0; i < exe_contexts_.size(); ++i) {
+      auto *s = exe_contexts_[i].scope;
       auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
       auto &lod_tensor = local_scope.FindVar(var_name)->Get<LoDTensor>();
@@ -52,8 +51,8 @@ void NCCLAllReduceOpHandle::RunImpl() {
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
       std::vector<std::function<void()>> all_reduce_calls;
-      for (size_t i = 0; i < local_scopes_.size(); ++i) {
-        auto &p = places_[i];
+      for (size_t i = 0; i < exe_contexts_.size(); ++i) {
+        auto &p = exe_contexts_[i].place;
         auto &lod_tensor = *lod_tensors[i];
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
 
@@ -82,8 +81,8 @@ void NCCLAllReduceOpHandle::RunImpl() {
         }
       });
     } else {  // Special handle CPU only Operator's gradient. Like CRF
-      auto &trg = *this->local_scopes_[0]
-                       ->FindVar(kLocalExecScopeName)
+      auto &trg = *this->exe_contexts_[0]
+                       .scope->FindVar(kLocalExecScopeName)
                        ->Get<Scope *>()
                        ->Var()
                        ->GetMutable<framework::LoDTensor>();
@@ -92,10 +91,11 @@ void NCCLAllReduceOpHandle::RunImpl() {
       ReduceLoDTensor func(lod_tensors, &trg);
       VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
-      for (size_t i = 0; i < local_scopes_.size(); ++i) {
-        auto &scope =
-            *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
-        auto &p = places_[i];
+      for (size_t i = 0; i < exe_contexts_.size(); ++i) {
+        auto &scope = *(exe_contexts_[i].scope)
+                           ->FindVar(kLocalExecScopeName)
+                           ->Get<Scope *>();
+        auto &p = exe_contexts_[i].place;
         auto *var = scope.FindVar(var_name);
         auto *dev_ctx = dev_ctxes_[p];
 
