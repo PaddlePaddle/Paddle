@@ -455,7 +455,7 @@ def get_parameter_value_by_name(name, executor, program=None):
 
 
 SUCCESS = "_SUCCESS"
-BEGIN_SECS = time.time()
+BEGIN_SECS = None
 
 
 def save_checkpoint(executor,
@@ -478,13 +478,21 @@ def save_checkpoint(executor,
         os.makedirs(dirname)
 
     global BEGIN_SECS
-    if time.time() - BEGIN_SECS < save_secs:
-        return
+    if BEGIN_SECS is not None:
+        if time.time() - BEGIN_SECS < save_secs:
+            return
     BEGIN_SECS = time.time()
 
     serial = _get_lastest_checkpoint_dir(dirname) + 1
     cur_dir = os.path.join(dirname, str(serial))
-    save_persistables(executor, cur_dir, main_program)
+    # save_persistables(executor, cur_dir, main_program)
+    save_vars(
+        executor,
+        dirname=cur_dir,
+        main_program=main_program,
+        vars=None,
+        predicate=is_checkpoint_var,
+        filename=None)
     _write_success(cur_dir)
     _lru_delete(dirname, keep_max)
 
@@ -505,7 +513,25 @@ def restore_checkpoint(dirname, executor, main_program=None):
     if serial < 0:
         return
     cur_dir = os.path.join(dirname, str(serial))
-    load_persistables(executor, cur_dir, main_program)
+    # load_persistables(executor, cur_dir, main_program)
+    load_vars(
+        executor,
+        dirname=cur_dir,
+        main_program=main_program,
+        predicate=is_checkpoint_var,
+        filename=None)
+
+
+def is_checkpoint_var(var):
+    if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+            var.desc.type() == core.VarDesc.VarType.RAW:
+        return False
+
+    if var.name.endswith("@GRAD"):
+        return False
+
+    return var.persistable
 
 
 def _lru_delete(dirname, keep_max=3):
