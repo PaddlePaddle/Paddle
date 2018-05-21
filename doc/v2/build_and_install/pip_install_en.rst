@@ -25,7 +25,7 @@ If you wish to install GPU version (cuda7.5_cudnn5_avx_openblas), just run:
 
      pip install paddlepaddle-gpu
 
-If you wish to install the latest develop branch PaddlePaddle, 
+If you wish to install the latest develop branch PaddlePaddle,
 you can download the latest whl package from our CI system. Access
 the below links, log in as guest, then click at the "Artifact"
 tab, you'll find the download link of whl packages.
@@ -40,12 +40,12 @@ If the links below shows up the login form, just click "Log in as guest" to star
     :header: "version", "cp27-cp27mu", "cp27-cp27m"
     :widths: 1, 3, 3
 
-    "cpu_avx_mkl", "`paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
-    "cpu_avx_openblas", "`paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
-    "cpu_noavx_openblas", "`paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
-    "cuda7.5_cudnn5_avx_mkl", "`paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
-    "cuda8.0_cudnn5_avx_mkl", "`paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
-    "cuda8.0_cudnn7_avx_mkl", "`paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
+    "cpu_avx_mkl", "`paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/35256:id/paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/35256:id/paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
+    "cpu_avx_openblas", "`paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/35526:id/paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/35526:id/paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
+    "cpu_noavx_openblas", "`paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/35538:id/paddlepaddle-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/35538:id/paddlepaddle-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
+    "cuda7.5_cudnn5_avx_mkl", "`paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/32166:id/paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/32166:id/paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
+    "cuda8.0_cudnn5_avx_mkl", "`paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/35507:id/paddlepaddle_gpu-0.11.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/35507:id/paddlepaddle_gpu-0.11.0-cp27-cp27m-linux_x86_64.whl>`_"
+    "cuda8.0_cudnn7_avx_mkl", "`paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/35434:id/paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl <https://paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/35434:id/paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl>`_"
 
 .. _pip_dependency:
 
@@ -79,7 +79,7 @@ FAQ
 ------------------------------
 
 - paddlepaddle*.whl is not a supported wheel on this platform.
-  
+
   The main cause of this issue is that your current platform is
   not supported. Please check that you are using Python 2.7 series.
   Besides, pypi only supports manylinux1 standard, you'll need to
