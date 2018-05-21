@@ -149,7 +149,7 @@ void TestInference(const std::string& dirname,
     state = paddle::platform::ProfilerState::kCPU;
   } else {
 #ifdef PADDLE_WITH_CUDA
-    state = paddle::platform::ProfilerState::kCUDA;
+    state = paddle::platform::ProfilerState::kAll;
     // The default device_id of paddle::platform::CUDAPlace is 0.
     // Users can get the device_id using:
     //   int device_id = place.GetDeviceId();
@@ -172,7 +172,7 @@ void TestInference(const std::string& dirname,
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
-                                    "load_program_profiler.txt");
+                                    "load_program_profiler");
   paddle::platform::ResetProfiler();
 
   // 3. Get the feed_target_names and fetch_target_names
@@ -236,8 +236,7 @@ void TestInference(const std::string& dirname,
 
     // Disable the profiler and print the timing information
     paddle::platform::DisableProfiler(
-        paddle::platform::EventSortingKey::kDefault,
-        "run_inference_profiler.txt");
+        paddle::platform::EventSortingKey::kDefault, "run_inference_profiler");
     paddle::platform::ResetProfiler();
   }
 
