@@ -4,7 +4,10 @@ project(cpp_train_demo CXX C)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(PADDLE_LIB "${PROJECT_SOURCE_DIR}/lib")
+if(NOT DEFINED PADDLE_LIB)
+  message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/path/to/paddle/lib")
+endif()
+
 set(MATH_TYPE $ENV{LIB_TYPE} CACHE STRING "Choose the Math library type: openblas mkl")
 
 option(WITH_MKLDNN     "Compile PaddlePaddle with MKLDNN"             OFF)

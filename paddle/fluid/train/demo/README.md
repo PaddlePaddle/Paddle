@@ -4,7 +4,7 @@
 ```
 # option MATH_TYPE=mklml
 # option WITH_MKLDNN=ON|OFF
-cmake .. -DCMAKE_INSTALL_PREFIX=/paddle/src/dir/paddle/fluid/train/lib
+cmake .. -DCMAKE_INSTALL_PREFIX=/paddle/lib/dir
 make -j4 inference_lib_dist
 ```
 
@@ -29,7 +29,8 @@ This will generate two files:
 ```
 mkdir build
 cd build
-cmake ..
+# PADDLE_LIB is the same with CMAKE_INSTALL_PREFIX when building the lib
+cmake .. -DPADDLE_LIB=/paddle/lib/dir
 make
 cp ../startup_program .
 cp ../main_program .
