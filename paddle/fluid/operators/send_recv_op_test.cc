@@ -92,12 +92,16 @@ void InitSelectedRowsInScope(const p::CPUPlace &place, f::Scope *scope) {
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
-           f::BlockDesc *block) {
+           f::BlockDesc *block, bool is_sparse) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
       auto var = block->Var(v);
       var->SetDataType(f::proto::VarType::FP32);
+      var->SetPersistable(true);
+      if (is_sparse) {
+        var->SetType(f::proto::VarType::SELECTED_ROWS);
+      }
     }
   }
 
@@ -128,7 +132,8 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   auto *optimize_block = program.AppendBlock(root_block);
   auto *prefetch_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensors, must be of same shape.
-  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
+  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block,
+        is_sparse);
   f::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:0")});
   attrs.insert({"Fanin", 1});
