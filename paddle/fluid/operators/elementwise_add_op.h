@@ -102,13 +102,15 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(ctx.GetPlace()) && (x->dims() == y->dims())) {
       auto blas = math::GetBlas<DeviceContext, T>(ctx);
 
-      if (dx)
-        dx->mutable_data<T>(ctx.GetPlace());
-      if (dy)
-        dy->mutable_data<T>(ctx.GetPlace());
+      if (dx) {
+        blas.VCOPY(dout->numel(), dout->data<T>(),
+                   dx->mutable_data<T>(ctx.GetPlace()));
+      }
 
-      blas.VCOPY(dout->numel(), dout->data<T>(), dx->data<T>());
-      blas.VCOPY(dout->numel(), dout->data<T>(), dy->data<T>());
+      if (dy) {
+        blas.VCOPY(dout->numel(), dout->data<T>(),
+                   dy->mutable_data<T>(ctx.GetPlace()));
+      }
     } else {
       ElemwiseGradCompute<DeviceContext, T, IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
