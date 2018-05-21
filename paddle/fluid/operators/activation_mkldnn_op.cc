@@ -58,7 +58,8 @@ void eltwise_forward(const ExecContext &ctx, mkldnn::algorithm algorithm,
   std::vector<int> src_tz = framework::vectorize2int(src->dims());
 
   const std::string key = gethash(src_tz, algorithm);
-  const std::string key_src_data = key + "@eltwise_fwd_src_data";
+  const std::string key_src_data =
+      key + ctx.op().Output("Out") + "@eltwise_fwd_src_data";
   const std::string key_src_mem = key + "@eltwise_fwd_src_mem";
   const std::string key_dst_mem = key + "@eltwise_fwd_dst_mem";
   const std::string key_fwd = key + "@eltwise_fwd";
@@ -140,7 +141,8 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
   const std::string key_diff_dst_mem = key + "@eltwise_diff_dst_mem";
   const std::string key_grad = key + "@eltwise_grad";
 
-  const std::string key_src_data = key + "@eltwise_fwd_src_data";
+  const std::string key_src_data =
+      key + ctx.op().Input("Out") + "@eltwise_fwd_src_data";
   const auto p_src_data =
       std::static_pointer_cast<T *>(dev_ctx.GetBlob(key_src_data));
 
