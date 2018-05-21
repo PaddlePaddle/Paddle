@@ -42,16 +42,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 };
 
-class ElementwiseOpInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto x_var = op_desc.Input("X")[0];
-    auto out_var = op_desc.Output("Out")[0];
-    block->Var(out_var)->SetType(block->Var(x_var)->GetType());
-  }
-};
-
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
@@ -148,6 +138,5 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   };                                                                    \
   REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
                     __ElemwiseOp##op_type##Maker__,                     \
-                    ::paddle::operators::ElementwiseOpInferVarType,     \
                     ::paddle::framework::DefaultGradOpDescMaker<true>); \
   REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)
