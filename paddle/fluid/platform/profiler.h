@@ -74,6 +74,7 @@ struct RecordEvent {
 
   ~RecordEvent();
 
+  bool is_enabled_;
   uint64_t start_ns_;
   // The device context is used by Event to get the current cuda stream.
   const DeviceContext* dev_ctx_;
@@ -89,6 +90,7 @@ struct RecordBlock {
   ~RecordBlock();
 
  private:
+  bool is_enabled_;
   std::string name_;
   uint64_t start_ns_;
 };

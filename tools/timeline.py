@@ -171,7 +171,7 @@ if args.timeline_path:
 
 profile_paths = profile_path.split(',')
 profile_dict = dict()
-if len(profile_path) == 1:
+if len(profile_paths) == 1:
     with open(profile_path, 'r') as f:
         profile_s = f.read()
         profile_pb = profiler_pb2.Profile()
