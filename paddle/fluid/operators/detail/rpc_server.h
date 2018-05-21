@@ -40,15 +40,16 @@ typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 class RPCServer {
  public:
   RPCServer(const std::string &address, bool sync_mode)
-      : address_(address), sync_mode_(sync_mode), ready_(0) {}
+      : address_(address), sync_mode_(sync_mode) {}
 
   virtual ~RPCServer() {}
-  virtual void WaitServerReady() {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-  }
 
   virtual void RunSyncUpdate() {
     PADDLE_ENFORCE(false, "RPCServer RunSyncUpdate is not implemented!");
+  }
+
+  virtual void WaitServerReady() {
+    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
   }
 
   virtual void ShutDown() {
@@ -60,12 +61,10 @@ class RPCServer {
   void SetCond(int cond);
   void WaitClientGet(int count);
 
+  // set attribute.
   void SetScope(framework::Scope *scope) { scope_ = scope; }
-
   void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
-
   void SetProgram(framework::ProgramDesc *program) { program_ = program; }
-
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
   void SetPrefetchPreparedCtx(
@@ -73,10 +72,11 @@ class RPCServer {
     prefetch_ctx_.reset(prepared.release());
   }
 
+  // get attribute.
   int GetSelectedPort() const { return selected_port_; }
 
+  // queue interface.
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
-
   void Push(const std::string &msg_name) {
     this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
   }
@@ -101,10 +101,6 @@ class RPCServer {
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
   int selected_port_;
-
-  std::mutex mutex_ready_;
-  std::condition_variable condition_ready_;
-  int ready_;
 };
 
 };  // namespace detail
