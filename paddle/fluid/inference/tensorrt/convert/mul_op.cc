@@ -28,13 +28,21 @@ class MulOpConverter : public OpConverter {
     LOG(INFO) << "convert a fluid mul op to tensorrt fc layer without bias";
 
     framework::OpDesc op_desc(op, nullptr, nullptr);
+    // Declare inputs
+    LOG(INFO) << "get input1";
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
+    LOG(INFO) << "get input2";
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
     // Both the input1 and input2 do not need transpose.
+    LOG(INFO) << "add layer";
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), false,
         *const_cast<nvinfer1::ITensor*>(input2), false);
-    engine_->SetITensor(op_desc.Output("Out")[0], layer->getOutput(0));
+
+    LOG(INFO) << "set itensor";
+    // engine_->SetITensor(op_desc.Output("Out")[0], layer->getOutput(0));
+    engine_->DeclareOutput(layer, 0, op_desc.Output("Out")[0]);
+    LOG(INFO) << "finish set output";
   }
 };
 

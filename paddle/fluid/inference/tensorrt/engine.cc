@@ -165,13 +165,13 @@ void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
 void TensorRTEngine::SetITensor(const std::string& name,
                                 nvinfer1::ITensor* tensor) {
   PADDLE_ENFORCE(tensor != nullptr);
-  PADDLE_ENFORCE_EQ(0, itensor_map_.count(name), "duplicate itensor name %s",
+  PADDLE_ENFORCE_EQ(0, itensor_map_.count(name), "duplicate ITensor name %s",
                     name);
   itensor_map_[name] = tensor;
 }
 
 nvinfer1::ITensor* TensorRTEngine::GetITensor(const std::string& name) {
-  PADDLE_ENFORCE(itensor_map_.count(name), "no itensor %s", name);
+  PADDLE_ENFORCE(itensor_map_.count(name), "no ITensor %s", name);
   return itensor_map_[name];
 }
 
