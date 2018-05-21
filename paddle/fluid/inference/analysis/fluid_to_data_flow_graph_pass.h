@@ -32,7 +32,7 @@ namespace analysis {
  */
 class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
  public:
-  explicit FluidToDataFlowGraphPass();
+  FluidToDataFlowGraphPass();
   bool Initialize() override;
   bool Initialize(const framework::proto::ProgramDesc &desc) override;
   bool Finalize() override;

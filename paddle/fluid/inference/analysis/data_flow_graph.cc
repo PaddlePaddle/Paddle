@@ -91,7 +91,7 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     : queue_(source.begin(), source.end()) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
-    GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
+    GraphTraits<DataFlowGraph>::NodesBFSIterator && other) noexcept
     : queue_(std::move(other.queue_)),
       visited_(std::move(other.visited_)) {}
 
@@ -153,7 +153,7 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
 }
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
-    GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
+    GraphTraits<DataFlowGraph>::NodesDFSIterator && other) noexcept
     : stack_(std::move(other.stack_)),
       visited_(std::move(other.visited_)) {}
 

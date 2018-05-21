@@ -31,7 +31,7 @@ namespace analysis {
  */
 class SubGraphSplitter {
  public:
-  const static char *kMarkerAttrName;
+  static const char *kMarkerAttrName;
   // Tell whether a node is inside a sub-graph.
   using NodeInsideSubgraphTeller = std::function<bool(const Node *)>;
 

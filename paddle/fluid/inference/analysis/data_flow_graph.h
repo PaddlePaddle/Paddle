@@ -100,7 +100,7 @@ struct GraphTraits<DataFlowGraph> {
     std::unordered_set<Node *> visited_;
   };
 
-  GraphTraits(DataFlowGraph *graph) : graph_(graph) {}
+  explicit GraphTraits(DataFlowGraph *graph) : graph_(graph) {}
 
   // default use BFS to visit the nodes.
   iterator_range<NodesBFSIterator> nodes() {

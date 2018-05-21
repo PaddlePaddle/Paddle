@@ -48,7 +48,7 @@ template <typename GraphType>
 struct Inverse {
   const GraphType &graph;
 
-  Inverse(const GraphType &graph) : graph(graph) {}
+  explicit Inverse(const GraphType &graph) : graph(graph) {}
 };
 
 /*
