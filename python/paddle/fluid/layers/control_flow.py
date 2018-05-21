@@ -1108,10 +1108,10 @@ class ConditionalBlock(object):
                     except:
                         try:
                             next_block = self.helper.main_program.block(
-                              next_block.parent_idx)
+                                next_block.parent_idx)
                         except:
-                            raise ValueError(
-                              "var %s not in this block" % each_name)
+                            raise ValueError("var %s not in this block" % 
+                                             each_name)
 
         out_list = [
             parent_block.var(var_name) for var_name in parent_block.vars
