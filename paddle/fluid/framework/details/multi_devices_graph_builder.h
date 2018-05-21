@@ -65,11 +65,16 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   bool IsScaleLossOp(const OpDesc &op) const;
 
   void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateRPCOp(SSAGraph *result, const OpDesc &op) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
    */
   bool IsDistTrainOp(const OpDesc &op, OpDesc *send_op) const;
+
+  bool IsRPCOp(const OpDesc &op) const;
+
+  void ConnectOp(SSAGraph *result, std::string op_name) const;
 
   void CreateComputationalOps(SSAGraph *result, const OpDesc &op,
                               size_t num_places) const;

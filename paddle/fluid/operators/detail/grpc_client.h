@@ -21,6 +21,7 @@ limitations under the License. */
 #include <functional>
 #include <iostream>
 #include <map>
+#include <mutex>  // NOLINT
 #include <string>
 #include <vector>
 
@@ -190,12 +191,14 @@ class RPCClient {
 
  private:
   bool Proceed();
-  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
+  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep,
+                                            const std::string& key);
 
  private:
   grpc::CompletionQueue cq_;
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   int64_t req_count_ = 0;
+  std::mutex mutex_;
 };
 
 }  // namespace detail

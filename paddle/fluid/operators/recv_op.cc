@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -37,14 +38,17 @@ class RecvOp : public framework::OperatorBase {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     auto client_var_name = Output("RPCClient");
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(place);
+    // For profiling
+    platform::RecordEvent record_event(Type(), &ctx);
+
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
     auto* client_var = scope.FindVar(client_var_name);
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
 
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];

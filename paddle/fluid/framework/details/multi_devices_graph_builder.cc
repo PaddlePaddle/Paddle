@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include <fstream>
 #include <utility>
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+#include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
@@ -77,7 +79,6 @@ void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
     CreateOpOutput(result, op_handle, each_var_name, p, place_id);
   }
 }
-
 bool MultiDevSSAGraphBuilder::IsDistTrainOp(const OpDesc &op,
                                             OpDesc *send_op) const {
   if (send_op == nullptr) {
@@ -98,10 +99,19 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(const OpDesc &op,
     return false;
   };
 
-  if (op.Type() == "split") {
+  if (op.Type() == "split" || op.Type() == "split_byref") {
     return checker(op.OutputArgumentNames(), send_op->InputArgumentNames());
   } else if (op.Type() == "concat") {
     return checker(op.InputArgumentNames(), send_op->OutputArgumentNames());
+  }
+  return false;
+}
+
+bool MultiDevSSAGraphBuilder::IsRPCOp(const OpDesc &op) const {
+  for (auto &name : op.OutputNames()) {
+    if (name == "RPCClient") {
+      return true;
+    }
   }
   return false;
 }
@@ -133,10 +143,10 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
-    if (op->Type() == "send") {
-      // append send op if program is distributed trainer main program.
+    if (IsRPCOp(*op)) {
+      // append rpc op if program is distributed trainer main program.
       // always use the first device
-      CreateSendOp(&result, *op);
+      CreateRPCOp(&result, *op);
     } else if (IsDistTrainOp(*op, send_op)) {
       CreateComputationalOps(&result, *op, 1);
     } else if (IsScaleLossOp(*op)) {
@@ -203,9 +213,9 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   AddOutputToLeafOps(&result);
 
   if (VLOG_IS_ON(10)) {
-    std::ostringstream sout;
-    PrintGraphviz(*graph, sout);
-    VLOG(10) << sout.str();
+    std::string filename = "/tmp/graph";
+    std::ofstream fout(filename);
+    PrintGraphviz(*graph, fout);
   }
 
   return std::unique_ptr<SSAGraph>(graph);
@@ -386,12 +396,40 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
   return var;
 }
 
-void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
-                                           const OpDesc &op) const {
+void MultiDevSSAGraphBuilder::ConnectOp(SSAGraph *result,
+                                        std::string op_name) const {
+  for (auto &prev_op : result->ops_) {
+    if (prev_op->Name() == op_name) {
+      auto *dep_var = new DummyVarHandle();
+      prev_op->AddOutput(dep_var);
+      result->dep_vars_.emplace(dep_var);
+      result->ops_.back().get()->AddInput(dep_var);
+    }
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
+                                          const OpDesc &op) const {
   auto &p = places_[0];
   auto *s = local_scopes_[0];
+  VLOG(3) << "create rpc op: " << op.Type();
+  result->ops_.emplace_back(new RPCOpHandle(op, s, p, op.Type()));
+  if (op.Type() == "send_barrier") {
+    ConnectOp(result, "send_vars");
+  } else if (op.Type() == "recv") {
+    ConnectOp(result, "send_barrier");
+  } else if (op.Type() == "fetch_barrier") {
+    ConnectOp(result, "recv");
+  } else if (op.Type() == "send" || op.Type() == "send_vars") {
+    // do nothing
+  } else {
+    PADDLE_THROW(
+        "rpc op should be in [send,"
+        "send_vars, send_barrier. recv, fetch_barrier]");
+  }
+
   // FIXME(wuyi): send op always copy from GPU 0
-  result->ops_.emplace_back(new SendOpHandle(op, s, p));
+  // result->ops_.emplace_back(new RPCOpHandle(op, s, p, op.Type()));
   // Create inputs for output on original place and no ssa output
   // is created for send op.
   CreateOpHandleIOs(result, op, 0);
