@@ -201,6 +201,7 @@ class RequestPrefetch final : public RequestBase {
   framework::ExecutorPrepareContext* prefetch_ctx_;
 };
 
+/*
 void AsyncGRPCServer::WaitClientGet(int count) {
   int fetch_barriers = 0;
   while (fetch_barriers < count) {
@@ -210,6 +211,7 @@ void AsyncGRPCServer::WaitClientGet(int count) {
     }
   }
 }
+*/
 
 void AsyncGRPCServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
@@ -366,7 +368,7 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
     }
   }
 }
-
+/*
 void AsyncGRPCServer::WaitCond(int cond) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
   barrier_condition_.wait(lock,
@@ -380,6 +382,7 @@ void AsyncGRPCServer::SetCond(int cond) {
   }
   barrier_condition_.notify_all();
 }
+*/
 
 }  // namespace detail
 }  // namespace operators

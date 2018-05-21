@@ -43,11 +43,11 @@ class RPCServer {
 
   virtual ~RPCServer() {}
   virtual void WaitServerReady() {
-    PADDLE_ENFORCE(false, "RPCServer ShutDown is not implemented!");
+    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
   }
 
   virtual void RunSyncUpdate() {
-    PADDLE_ENFORCE(false, "RPCServer ShutDown is not implemented!");
+    PADDLE_ENFORCE(false, "RPCServer RunSyncUpdate is not implemented!");
   }
 
   virtual void ShutDown() {

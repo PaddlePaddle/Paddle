@@ -52,13 +52,13 @@ class AsyncGRPCServer final : public RPCServer {
   virtual ~AsyncGRPCServer() {}
   virtual void WaitServerReady();
   virtual void RunSyncUpdate();
+  virtual void ShutDown();
 
   // functions to sync server barrier status.
   /*
   void WaitCond(int cond);
   void SetCond(int cond);
   void WaitClientGet(int count);
-
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
@@ -81,8 +81,6 @@ class AsyncGRPCServer final : public RPCServer {
   void Push(const std::string &msg_name) {
     this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
   }
-
-  void ShutDown();
   */
 
  protected:
