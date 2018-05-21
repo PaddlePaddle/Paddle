@@ -25,7 +25,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace paddle {
 namespace operators {
@@ -99,6 +100,7 @@ class RPCServer {
   std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
+  int selected_port_;
 
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;

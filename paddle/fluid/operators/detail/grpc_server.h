@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/grpc_service.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -47,8 +48,7 @@ class RequestBase;
 class AsyncGRPCServer final : public RPCServer {
  public:
   explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
-      : address_(address), sync_mode_(sync_mode), ready_(0) {}
-
+      : RPCServer(address, sync_mode) {}
   virtual ~AsyncGRPCServer() {}
   virtual void WaitServerReady();
   virtual void RunSyncUpdate();
