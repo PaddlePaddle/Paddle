@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
@@ -159,34 +160,34 @@ class FetchBarrierProcessor : public BaseProcessor {
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
-class RPCClient {
+class GRPCClient : public RPCClient {
  public:
-  bool AsyncSendVariable(const std::string& ep,
-                         const platform::DeviceContext& ctx,
-                         const framework::Scope& scope,
-                         const std::string& var_name,
-                         int64_t time_out = 600 * 1000);
+  virtual bool AsyncSendVariable(const std::string& ep,
+                                 const platform::DeviceContext& ctx,
+                                 const framework::Scope& scope,
+                                 const std::string& var_name,
+                                 int64_t time_out = 600 * 1000);
 
-  bool AsyncGetVariable(const std::string& ep,
-                        const platform::DeviceContext& ctx,
-                        const framework::Scope& scope,
-                        const std::string& var_name,
-                        int64_t time_out = 600 * 1000);
+  virtual bool AsyncGetVariable(const std::string& ep,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope& scope,
+                                const std::string& var_name,
+                                int64_t time_out = 600 * 1000);
 
-  bool AsyncPrefetchVariable(const std::string& ep,
-                             const platform::DeviceContext& ctx,
-                             const framework::Scope& scope,
-                             const std::string& in_var_name,
-                             const std::string& out_var_name,
-                             int64_t time_out = 600 * 1000);
+  virtual bool AsyncPrefetchVariable(const std::string& ep,
+                                     const platform::DeviceContext& ctx,
+                                     const framework::Scope& scope,
+                                     const std::string& in_var_name,
+                                     const std::string& out_var_name,
+                                     int64_t time_out = 600 * 1000);
 
-  void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = 600 * 1000);
+  virtual void AsyncSendBatchBarrier(const std::string& ep,
+                                     int64_t time_out = 600 * 1000);
 
-  void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = 600 * 1000);
+  virtual void AsyncSendFetchBarrier(const std::string& ep,
+                                     int64_t time_out = 600 * 1000);
 
-  bool Wait();
+  virtual bool Wait();
 
  private:
   bool Proceed();

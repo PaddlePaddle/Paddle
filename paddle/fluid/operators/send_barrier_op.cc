@@ -42,7 +42,9 @@ class SendBarrierOp : public framework::OperatorBase {
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
     auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    // FIXME(gongwb): Should be compatible with other frameworks, eg:brpc.
+    detail::RPCClient* rpc_client =
+        client_var->GetMutable<detail::GRPCClient>();
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait());
