@@ -5,12 +5,11 @@ project(cpp_train_demo CXX C)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if(NOT DEFINED PADDLE_LIB)
-  message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/path/to/paddle/lib")
+  message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/paddle/lib/dir")
 endif()
 
-set(MATH_TYPE $ENV{LIB_TYPE} CACHE STRING "Choose the Math library type: openblas mkl")
-
-option(WITH_MKLDNN     "Compile PaddlePaddle with MKLDNN"             OFF)
+option(WITH_MKLDNN     "Compile PaddlePaddle with MKLDNN"                                   OFF)
+option(WITH_MKL        "Compile PaddlePaddle with MKL support, default use openblas."       OFF)
 
 include_directories("${PADDLE_LIB}")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
@@ -32,7 +31,12 @@ link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 
 add_executable(demo_trainer demo_trainer.cc)
 
-if(MATH_TYPE STREQUAL "mklml")
+if(WITH_MKLDNN)
+  include_directories("${PADDLE_LIB}/third_party/install/mkldnn/include")
+  set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.0)
+endif()
+
+if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel.so)
 else()
@@ -41,11 +45,6 @@ else()
   else(APPLE)
     set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.a)
   endif(APPLE)
-endif()
-
-if(WITH_MKLDNN)
-  include_directories("${PADDLE_LIB}/third_party/install/mkldnn/include")
-  set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.0)
 endif()
 
 if(APPLE)

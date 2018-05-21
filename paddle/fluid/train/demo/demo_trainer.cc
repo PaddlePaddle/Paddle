@@ -95,7 +95,7 @@ int main() {
 
   for (int i = 0; i < 100; ++i) {
     executor.Run(*train_program.get(), &scope, 0, false, true);
-    std::cout << "loss: "
+    std::cout << "step: " << i << " loss: "
               << loss_var->Get<paddle::framework::LoDTensor>().data<float>()[0]
               << std::endl;
   }
