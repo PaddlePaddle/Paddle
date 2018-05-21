@@ -49,6 +49,7 @@ __all__ = [
     'reorder_lod_tensor_by_rank',
     'ParallelDo',
     'Print',
+    'is_empty',
 ]
 
 
@@ -1096,10 +1097,21 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
-        param_list = [
-            parent_block.var(each_name) for each_name in params
-            if each_name not in input_set
-        ]
+        next_block = parent_block
+        param_list = []
+        for each_name in params:
+            if each_name not in input_set:
+                while True:
+                    try:
+                        param_list.append(next_block.var(each_name))
+                        break
+                    except:
+                        try:
+                            next_block = self.helper.main_program.block(
+                              next_block.parent_idx)
+                        except:
+                            raise ValueError(
+                              "var %s not in this block" % each_name)
 
         out_list = [
             parent_block.var(var_name) for var_name in parent_block.vars
@@ -1562,3 +1574,40 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                 'RankTable': [rank_table]},
         outputs={'Out': [out]})
     return out
+
+
+def is_empty(x, cond=None, **ignored):
+    """
+    **Is Empty**
+
+    This layer returns the truth value of whether the variable is empty.
+
+    Args:
+        x(Variable): Operand of *is_empty*
+        cond(Variable|None): Optional output variable to store the result
+                             of *is_empty*
+
+    Returns:
+        Variable: The tensor variable storing the output of *is_empty*.
+
+    Raises:
+        TypeError: If input cond is not a variable, or cond's dtype is
+                   not bool
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.is_empty(x=input)
+    """
+    helper = LayerHelper("is_empty", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+    elif not isinstance(cond, Variable):
+        raise TypeError("cond takes a variable")
+    elif cond.dtype != 'bool':
+        raise TypeError("The data type of cond must be bool")
+
+    helper.append_op(
+        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
+    return cond
