@@ -162,4 +162,24 @@ copy(pybind_lib
   DSTS ${dst_dir}/${module}
 )
 
+# CMakeCache Info
+copy(cmake_cache
+  SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
+  DSTS ${CMAKE_INSTALL_PREFIX})
+
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 
+
+# paddle fluid version
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
+  OUTPUT_VARIABLE PADDLE_GIT_COMMIT)
+set(version_file ${CMAKE_INSTALL_PREFIX}/version.txt)
+file(WRITE ${version_file}
+  "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
+  "WITH_MKL: ${WITH_MKL}\n"
+  "WITH_GPU: ${WITH_GPU}\n")
+if(WITH_GPU)
+  file(APPEND ${version_file}
+    "CUDA version: ${CUDA_VERSION}\n"
+    "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
+endif()
