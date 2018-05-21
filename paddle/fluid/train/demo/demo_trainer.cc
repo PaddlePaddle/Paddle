@@ -93,7 +93,7 @@ int main() {
 
   auto loss_var = scope.Var(loss_name);
 
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 10; ++i) {
     executor.Run(*train_program.get(), &scope, 0, false, true);
     std::cout << "step: " << i << " loss: "
               << loss_var->Get<paddle::framework::LoDTensor>().data<float>()[0]
