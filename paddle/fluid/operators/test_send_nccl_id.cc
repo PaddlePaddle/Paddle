@@ -35,7 +35,7 @@ namespace m = paddle::operators::math;
 namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::AsyncGRPCServer> rpc_service;
+std::unique_ptr<detail::RPCServer> rpc_service;
 
 void StartServer(std::atomic<bool>* initialized) {
   f::Scope scope;
@@ -63,7 +63,7 @@ void StartServer(std::atomic<bool>* initialized) {
   server_thread.join();
 }
 
-TEST(SendNcclId, Normal) {
+void SendNcclId(std::shared_ptr<RPCClient> client) {
   std::atomic<bool> initialized{false};
   std::thread server_thread(StartServer, &initialized);
   while (!initialized) {
@@ -84,11 +84,15 @@ TEST(SendNcclId, Normal) {
 
   int port = rpc_service->GetSelectedPort();
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient client;
 
-  client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
-  client.Wait();
+  client->AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
+  client->Wait();
   server_thread.join();
   auto* ptr = rpc_service.release();
   delete ptr;
+}
+
+TEST(SendNcclId, Normal) {
+  std::shared_ptr<RPCClient> client(new GRPCClient());
+  SendNcclId(client);
 }

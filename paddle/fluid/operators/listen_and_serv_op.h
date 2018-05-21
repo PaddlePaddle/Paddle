@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
 
 namespace paddle {
 namespace operators {
@@ -63,7 +63,7 @@ class ListenAndServOp : public framework::OperatorBase {
   static void ResetPort() { selected_port_ = 0; }
 
  protected:
-  mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
+  mutable std::shared_ptr<detail::RPCServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
   // FIXME(wuyi): it's static so that the operator can be cloned.
   static std::atomic_int selected_port_;

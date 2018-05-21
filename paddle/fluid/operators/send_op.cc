@@ -54,7 +54,9 @@ class SendOp : public framework::OperatorBase {
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
     auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    // FIXME(gongwb): Should be compatible with other frameworks, eg:brpc.
+    detail::RPCClient* rpc_client =
+        client_var->GetMutable<detail::GRPCClient>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
