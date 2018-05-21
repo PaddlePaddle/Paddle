@@ -90,10 +90,10 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     const std::vector<Node *> &source)
     : queue_(source.begin(), source.end()) {}
 
-GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
-    GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
-    : queue_(std::move(other.queue_)),
-      visited_(std::move(other.visited_)) {}
+// GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
+//     GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
+//     : queue_(std::move(other.queue_)),
+//       visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     const GraphTraits<DataFlowGraph>::NodesBFSIterator &other)
@@ -152,10 +152,10 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
   for (auto *x : source) stack_.push(x);
 }
 
-GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
-    GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
-    : stack_(std::move(other.stack_)),
-      visited_(std::move(other.visited_)) {}
+// GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
+//     GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
+//     : stack_(std::move(other.stack_)),
+//       visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
     const GraphTraits<DataFlowGraph>::NodesDFSIterator &other)

@@ -58,7 +58,7 @@ struct GraphTraits<DataFlowGraph> {
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesBFSIterator() = default;
     explicit NodesBFSIterator(const std::vector<Node *> &source);
-    NodesBFSIterator(NodesBFSIterator &&other) noexcept;
+    // NodesBFSIterator(NodesBFSIterator &&other) noexcept;
     // NOTE Heavy to use.
     NodesBFSIterator(const NodesBFSIterator &other);
 
@@ -82,7 +82,7 @@ struct GraphTraits<DataFlowGraph> {
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesDFSIterator() = default;
     explicit NodesDFSIterator(const std::vector<Node *> &source);
-    NodesDFSIterator(NodesDFSIterator &&other) noexcept;
+    // NodesDFSIterator(NodesDFSIterator &&other) noexcept;
     NodesDFSIterator(const NodesDFSIterator &other);
 
     Node &operator*();
