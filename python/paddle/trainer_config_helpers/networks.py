@@ -1769,7 +1769,7 @@ def outputs(layers, *args):
     assert len(layers) > 0
 
     if HasInputsSet():  # input already set
-        Outputs(* [l.name for l in layers])
+        Outputs(*[l.name for l in layers])
         return  # just return outputs.
 
     if len(layers) != 1:
