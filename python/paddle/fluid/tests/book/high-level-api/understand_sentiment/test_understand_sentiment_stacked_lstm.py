@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from functools import partial
+import numpy as np
 
 CLASS_DIM = 2
 EMB_DIM = 128
@@ -62,12 +63,12 @@ def inference_program(word_dict):
 
 
 def train_program(word_dict):
-    prediction = inference_network(word_dict)
+    prediction = inference_program(word_dict)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy
+    return [avg_cost, accuracy]
 
 
 def train(use_cuda, train_program, save_dirname):
@@ -92,6 +93,8 @@ def train(use_cuda, train_program, save_dirname):
 
             if acc > 0.2:  # Smaller value to increase CI speed
                 trainer.save_params(save_dirname)
+                trainer.stop()
+
             else:
                 print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
                     event.epoch + 1, avg_cost, acc))
@@ -99,7 +102,10 @@ def train(use_cuda, train_program, save_dirname):
                     sys.exit("got NaN loss, training failed.")
         elif isinstance(event, fluid.EndStepEvent):
             print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(numpy.array, event.metrics)))
+                event.step, event.epoch, map(np.array, event.metrics)))
+            if event.step == 1:  # Run 2 iterations to speed CI
+                trainer.save_params(save_dirname)
+                trainer.stop()
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
