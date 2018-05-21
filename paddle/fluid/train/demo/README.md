@@ -20,6 +20,8 @@ make -j8 inference_lib_dist
 
 ### step 2. generate program desc
 ```
+# please install paddle before run this scripe
+pip install --upgrade paddlepaddle-*.whl
 python demo_network.py
 ```
 
@@ -29,7 +31,10 @@ This will generate two program desc files:
 
 ### step 3. build demo_trainer and run it.
 
+
 ```
+# Make a build dir at the same dir of this README.md document.
+# The demo dir can be put anywhere.
 mkdir build
 cd build
 
