@@ -33,7 +33,8 @@ TEST(MulOpConverter, main) {
   desc.SetInput("Y", {"Y"});
   desc.SetOutput("Out", {"Out"});
 
-  LOG(INFO) << "set OP" validator.SetOp(*desc.Proto());
+  LOG(INFO) << "set OP";
+  validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
   validator.Execute(10);
