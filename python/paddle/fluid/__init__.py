@@ -48,6 +48,7 @@ from transpiler import DistributeTranspiler, SimpleDistributeTranspiler, \
     InferenceTranspiler, memory_optimize, release_memory
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
+from lod_tensor import create_lod_tensor
 import clip
 import profiler
 import unique_name
@@ -59,7 +60,7 @@ Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
           trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-          parallel_executor.__all__ + [
+          parallel_executor.__all__ + lod_tensor.__all__ + [
               'io',
               'initializer',
               'layers',
