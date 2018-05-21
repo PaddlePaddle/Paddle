@@ -44,6 +44,7 @@ class RPCClient {
                                  const std::string& var_name,
                                  int64_t time_out = 600 * 1000) {
     PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
+    return false;
   }
 
   virtual bool AsyncGetVariable(const std::string& ep,
@@ -52,6 +53,7 @@ class RPCClient {
                                 const std::string& var_name,
                                 int64_t time_out = 600 * 1000) {
     PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
+    return false;
   }
 
   virtual bool AsyncPrefetchVariable(const std::string& ep,
@@ -61,6 +63,7 @@ class RPCClient {
                                      const std::string& out_var_name,
                                      int64_t time_out = 600 * 1000) {
     PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
+    return false;
   }
 
   virtual void AsyncSendBatchBarrier(const std::string& ep,
@@ -75,6 +78,7 @@ class RPCClient {
 
   virtual bool Wait() {
     PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
+    return false;
   }
 };
 }  // namespace detail

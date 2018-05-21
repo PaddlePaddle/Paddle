@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -35,7 +37,7 @@ namespace m = paddle::operators::math;
 namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::RPCServer> rpc_service;
+std::unique_ptr<detail::AsyncGRPCServer> rpc_service;
 
 void StartServer(std::atomic<bool>* initialized) {
   f::Scope scope;
@@ -63,7 +65,7 @@ void StartServer(std::atomic<bool>* initialized) {
   server_thread.join();
 }
 
-void SendNcclId(std::shared_ptr<RPCClient> client) {
+void SendNcclId(std::shared_ptr<detail::RPCClient> client) {
   std::atomic<bool> initialized{false};
   std::thread server_thread(StartServer, &initialized);
   while (!initialized) {
@@ -93,6 +95,6 @@ void SendNcclId(std::shared_ptr<RPCClient> client) {
 }
 
 TEST(SendNcclId, Normal) {
-  std::shared_ptr<RPCClient> client(new GRPCClient());
+  std::shared_ptr<detail::RPCClient> client(new detail::GRPCClient());
   SendNcclId(client);
 }

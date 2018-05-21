@@ -31,7 +31,7 @@ namespace operators {
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
 constexpr char kPrefetchBlock[] = "PrefetchBlock";
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
+void RunServer(std::shared_ptr<detail::RPCServer> service);
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
