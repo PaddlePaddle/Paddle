@@ -2,16 +2,20 @@
 ### step 1. build paddle lib
 
 ```
-PADDLE_LIB=/paddle/lib/dir
 
+# WITH_MKL=ON|OFF
+# WITH_MKLDNN=ON|OFF
+
+PADDLE_LIB=/paddle/lib/dir
 cmake .. -DCMAKE_INSTALL_PREFIX=$PADDLE_LIB \
          -DCMAKE_BUILD_TYPE=Release \
-         -DWITH_FLUID_ONLY=ON
-         -DWITH_MKL=OFF \ # or ON
-         -DWITH_GPU=OFF
-         -DWITH_STYLE_CHECK=OFF
-
-make -j4 inference_lib_dist
+         -DWITH_FLUID_ONLY=ON \
+         -DWITH_GPU=OFF \
+         -DWITH_STYLE_CHECK=OFF \
+         -DWITH_MKL=OFF \
+         -DWITH_MKLDNN=OFF
+make -j8
+make -j8 inference_lib_dist
 ```
 
 ### step 2. generate program desc
@@ -29,12 +33,14 @@ This will generate two program desc files:
 mkdir build
 cd build
 
+# WITH_MKL=ON|OFF
+# WITH_MKLDNN=ON|OFF
 PADDLE_LIB=/paddle/lib/dir
 
 # PADDLE_LIB is the same with CMAKE_INSTALL_PREFIX when building the lib
 cmake .. -DPADDLE_LIB=$PADDLE_LIB \
-         -DWITH_MKLDNN=OFF \ # or ON
-         -DWITH_MKL=OFF \ # or ON
+         -DWITH_MKLDNN=OFF \
+         -DWITH_MKL=OFF
 make
 
 # copy startup_program and main_program to this dir
