@@ -1719,7 +1719,7 @@ def inputs(layers, *args):
     if len(args) != 0:
         layers.extend(args)
 
-    Inputs(* [l.name for l in layers])
+    Inputs(*[l.name for l in layers])
 
 
 def outputs(layers, *args):
