@@ -33,7 +33,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
-  const auto ch = GetChannel(ep_val);
+  const auto ch = GetChannel(ep_val, ep_val + ":" + var_name_val);
 
   framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
                       this] {
@@ -88,7 +88,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
-  const auto ch = GetChannel(ep_val);
+  const auto ch = GetChannel(ep_val, ep_val + ":" + var_name_val);
 
   framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, ch,
                       this] {
@@ -132,7 +132,7 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
   const std::string in_var_name_val = in_var_name;
   const std::string out_var_name_val = out_var_name;
   const framework::Scope* p_scope = &scope;
-  const auto ch = GetChannel(ep_val);
+  const auto ch = GetChannel(ep_val, ep_val + ":" + in_var_name_val);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
                       time_out, ch, this] {
@@ -165,7 +165,7 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
 }
 
 void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
-  const auto ch = GetChannel(ep);
+  const auto ch = GetChannel(ep, ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   s->Prepare(time_out);
@@ -178,7 +178,7 @@ void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
 }
 
 void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
-  const auto ch = GetChannel(ep);
+  const auto ch = GetChannel(ep, ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
   s->Prepare(time_out);
 
@@ -243,11 +243,18 @@ bool RPCClient::Proceed() {
   delete c;
   return true;
 }
-
-std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
-  auto it = channels_.find(ep);
+std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep,
+                                                     const std::string& key) {
+  VLOG(3) << "this addr: " << this;
+  std::unique_lock<std::mutex> lock(mutex_);
+  auto it = channels_.find(key);
   if (it != channels_.end()) {
+    VLOG(3) << "find ep: " << ep;
     return it->second;
+  }
+  VLOG(3) << "can not find ep: " << ep;
+  for (auto it = channels_.begin(); it != channels_.end(); ++it) {
+    VLOG(3) << "ep: " << it->first;
   }
 
   grpc::ChannelArguments args;
@@ -257,8 +264,7 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
 
   auto ch =
       grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
-
-  channels_[ep] = ch;
+  channels_[key] = ch;
   return ch;
 }
 

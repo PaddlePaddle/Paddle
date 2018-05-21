@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/send_recv_util.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -41,12 +42,17 @@ class SendVarsOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
+    // For profiling
+    platform::RecordEvent record_event(Type(), &ctx);
+
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
     auto* client_var = scope.FindVar(client_var_name);
+    VLOG(3) << "client var addr: " << client_var;
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    VLOG(3) << "rpc_client addr: " << rpc_client;
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
