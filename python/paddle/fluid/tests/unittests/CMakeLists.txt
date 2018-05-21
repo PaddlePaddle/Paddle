@@ -24,6 +24,8 @@ list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/Paddl
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
 
+list(REMOVE_ITEM TEST_OPS test_warpctc_op) # Will hang
+
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
     set(options "")
