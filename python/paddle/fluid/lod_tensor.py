@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import core
-import numpy
+import numpy as np
 
-__all__ = ['create_lod_tensor']
+__all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 
 
-def _validate_lod(lod, tensor_height):
+def _validate_lod(lod, tensor_height=-1):
     assert isinstance(lod, list), "lod should be a list"
     # Empty lod is fine
     if len(lod) == 0:
@@ -45,10 +45,10 @@ def _validate_lod(lod, tensor_height):
             return False
 
     # Last level's sum should be equal to the tensor height
-    if lod_sum[-1] != tensor_height:
-        return False
-    else:
+    if tensor_height == -1:
         return True
+    else:
+        return lod_sum[-1] == tensor_height
 
 
 def _convert_lod(lod):
@@ -65,8 +65,8 @@ def _convert_lod(lod):
 
 def create_lod_tensor(data, lod, place):
     if isinstance(data, core.LoDTensor):
-        return create_lod_tensor(numpy.array(data), lod, place)
-    elif isinstance(data, numpy.ndarray):
+        return create_lod_tensor(np.array(data), lod, place)
+    elif isinstance(data, np.ndarray):
         assert _validate_lod(lod,
                              data.shape[0]), "the provided lod info is invalid"
         tensor = core.LoDTensor()
@@ -76,3 +76,13 @@ def create_lod_tensor(data, lod, place):
     else:
         raise Exception("data should be either a LoDTensor or a Numpy array, \
         	             but you pass type %s instead" % (type(data)))
+
+
+def create_random_int_lodtensor(lod, shape, low, high, place):
+    assert _validate_lod(lod), "the provided lod info is invalid"
+    assert isinstance(shape, list), "shape should be a list"
+    converted_lod = _convert_lod(lod)
+    shape.insert(0, converted_lod[-1][-1])
+    # The range of integer data elements is [low, high]    
+    data = np.random.random_integers(low, high, shape).astype("int64")
+    return create_lod_tensor(data, lod, place)
