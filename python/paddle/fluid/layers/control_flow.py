@@ -1097,10 +1097,21 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
-        param_list = [
-            parent_block.var(each_name) for each_name in params
-            if each_name not in input_set
-        ]
+        next_block = parent_block
+        param_list = []
+        for each_name in params:
+            if each_name not in input_set:
+                while True:
+                    try:
+                        param_list.append(next_block.var(each_name))
+                        break
+                    except:
+                        try:
+                            next_block = self.helper.main_program.block(
+                                next_block.parent_idx)
+                        except:
+                            raise ValueError("var %s not in this block" %
+                                             each_name)
 
         out_list = [
             parent_block.var(var_name) for var_name in parent_block.vars
