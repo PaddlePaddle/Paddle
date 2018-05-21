@@ -98,7 +98,7 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(const OpDesc &op,
     return false;
   };
 
-  if (op.Type() == "split") {
+  if (op.Type() == "split" || op.Type() == "split_byref") {
     return checker(op.OutputArgumentNames(), send_op->InputArgumentNames());
   } else if (op.Type() == "concat") {
     return checker(op.InputArgumentNames(), send_op->OutputArgumentNames());

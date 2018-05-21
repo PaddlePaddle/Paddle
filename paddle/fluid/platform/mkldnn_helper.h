@@ -71,5 +71,15 @@ inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
   return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
 }
 
+template <typename Type>
+mkldnn::memory::data_type MKLDNNGetDataType() {
+  return mkldnn::memory::data_undef;
+}
+
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
+  return mkldnn::memory::f32;
+}
+
 }  // namespace platform
 }  // namespace paddle
