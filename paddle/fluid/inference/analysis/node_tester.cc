@@ -29,8 +29,6 @@ TEST(Node, Attr) {
   ASSERT_EQ(node->attr("v0").Int32(), 2008);
 }
 
-TEST(DataTypeNamer)
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
