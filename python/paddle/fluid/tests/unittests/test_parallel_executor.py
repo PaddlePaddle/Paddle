@@ -775,7 +775,7 @@ class TestCRFModel(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         self.check_network_convergence(
-            is_sparse=False, build_strategy=build_strategy)
+            is_sparse=True, build_strategy=build_strategy)
 
     def test_update_dense_parameter_reduce(self):
         build_strategy = fluid.BuildStrategy()
@@ -849,8 +849,7 @@ class TestFetchOp(unittest.TestCase):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
 
-    @unittest.skip("this test is buggy")
-    def test_feed(self):
+    def test_fetch_op(self):
         tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
         tst_reader_iter = tst_reader()
 

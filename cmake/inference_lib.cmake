@@ -98,6 +98,14 @@ elseif (WITH_MKLML)
     )
 endif()
 
+if(WITH_MKLDNN)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mkldnn")
+  copy(mkldnn_lib
+    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+    DSTS ${dst_dir} ${dst_dir}/lib
+  )
+endif()
+
 if(NOT MOBILE_INFERENCE AND NOT RPI)
   set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappy")
   copy(snappy_lib
@@ -146,6 +154,12 @@ set(module "string")
 copy(string_lib
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
+)
+
+set(module "pybind")
+copy(pybind_lib
+  SRCS ${CMAKE_CURRENT_BINARY_DIR}/paddle/fluid/${module}/pybind.h
+  DSTS ${dst_dir}/${module}
 )
 
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 

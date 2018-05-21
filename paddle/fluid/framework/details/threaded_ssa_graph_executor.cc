@@ -174,7 +174,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
 void ThreadedSSAGraphExecutor::InsertPendingOp(
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     OpHandleBase *op_instance) const {
-  pending_ops->insert({op_instance, op_instance->Inputs().size()});
+  pending_ops->insert({op_instance, op_instance->NoDupInputSize()});
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingVar(

@@ -23,6 +23,7 @@ import nn
 import math
 
 __all__ = [
+    'prior_box',
     'multi_box_head',
     'bipartite_match',
     'target_assign',
@@ -564,6 +565,98 @@ def ssd_loss(location,
     return loss
 
 
+def prior_box(input,
+              image,
+              min_sizes,
+              max_sizes=None,
+              aspect_ratios=None,
+              variance=[0.1, 0.1, 0.2, 0.2],
+              flip=False,
+              clip=False,
+              steps=[0.0, 0.0],
+              offset=0.5,
+              name=None):
+    """
+    **Prior box operator**
+
+    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+    Each position of the input produce N prior boxes, N is determined by
+    the count of min_sizes, max_sizes and aspect_ratios, The size of the
+    box is in range(min_size, max_size) interval, which is generated in
+    sequence according to the aspect_ratios.
+
+    Args:
+       input(Variable): The Input Variables, the format is NCHW.
+       image(Variable): The input image data of PriorBoxOp,
+            the layout is NCHW.
+       min_sizes(list|tuple): min sizes of generated prior boxes.
+       max_sizes(list|tuple|None): max sizes of generated prior boxes.
+            Default: None.
+       aspect_ratios(list|tuple): the aspect ratios of generated prior
+            boxes. Default: None.
+       variance(list|tuple): the variances to be encoded in prior boxes.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       flip(bool): Whether to flip aspect ratios. Default:False.
+       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
+       step(list|turple): Prior boxes step across weight and height, If
+            step[0] == 0.0/step[1] == 0.0, the prior boxes step across
+            height/weight  of the input will be automatically calculated.
+            Default: [0.0]
+       offset(float): Prior boxes center offset. Default: 0.5
+       name(str): Name of the prior box op. Default: None.
+
+    Returns:
+        boxes(Variable): the output prior boxes of PriorBox.
+             The layout is [H, W, num_priors, 4].
+             H is the height of input, W is the width of input,
+             num_priors is the total
+             box count of each position of input.
+        Variances(Variable): the expanded variances of PriorBox.
+             The layout is [H, W, num_priors, 4].
+             H is the height of input, W is the width of input
+             num_priors is the total
+             box count of each position of input
+
+
+    Examples:
+        .. code-block:: python
+            box, var = prior_box(
+            input=conv1,
+            image=images,
+            min_sizes=[100.],
+            flip=True,
+            clip=True)
+    """
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+
+    attrs = {
+        'min_sizes': min_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'flip': flip,
+        'clip': clip,
+        'step_w': steps[0],
+        'step_h': steps[1],
+        'offset': offset
+    }
+    if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
+        attrs['max_sizes'] = max_sizes
+
+    box = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prior_box",
+        inputs={"Input": input,
+                "Image": image},
+        outputs={"Boxes": box,
+                 "Variances": var},
+        attrs=attrs, )
+    box.stop_gradient = True
+    var.stop_gradient = True
+    return box, var
+
+
 def multi_box_head(inputs,
                    image,
                    base_size,
@@ -660,47 +753,6 @@ def multi_box_head(inputs,
             clip=True)
     """
 
-    def _prior_box_(input,
-                    image,
-                    min_sizes,
-                    max_sizes,
-                    aspect_ratios,
-                    variance,
-                    flip=False,
-                    clip=False,
-                    step_w=0.0,
-                    step_h=0.0,
-                    offset=0.5,
-                    name=None):
-        helper = LayerHelper("prior_box", **locals())
-        dtype = helper.input_dtype()
-
-        attrs = {
-            'min_sizes': min_sizes,
-            'aspect_ratios': aspect_ratios,
-            'variances': variance,
-            'flip': flip,
-            'clip': clip,
-            'step_w': step_w,
-            'step_h': step_h,
-            'offset': offset
-        }
-        if len(max_sizes) > 0 and max_sizes[0] > 0:
-            attrs['max_sizes'] = max_sizes
-
-        box = helper.create_tmp_variable(dtype)
-        var = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="prior_box",
-            inputs={"Input": input,
-                    "Image": image},
-            outputs={"Boxes": box,
-                     "Variances": var},
-            attrs=attrs, )
-        box.stop_gradient = True
-        var.stop_gradient = True
-        return box, var
-
     def _reshape_with_axis_(input, axis=1):
         if not (axis > 0 and axis < len(input.shape)):
             raise ValueError("The axis should be smaller than "
@@ -777,11 +829,10 @@ def multi_box_head(inputs,
             aspect_ratio = aspect_ratios[i]
             if not _is_list_or_tuple_(aspect_ratio):
                 aspect_ratio = [aspect_ratio]
+        step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
-        box, var = _prior_box_(input, image, min_size, max_size, aspect_ratio,
-                               variance, flip, clip, step_w[i]
-                               if step_w else 0.0, step_h[i]
-                               if step_w else 0.0, offset)
+        box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
+                             variance, flip, clip, step, offset)
 
         box_results.append(box)
         var_results.append(var)
