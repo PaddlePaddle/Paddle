@@ -44,11 +44,7 @@ def parse_args():
         type=float,
         default=0.001,
         help='The minibatch size.')
-    # TODO(wuyi): add this option back.
-    # parser.add_argument(
-    #     '--use_fake_data',
-    #     action='store_true',
-    #     help='use real data or fake data')
+    # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
         type=int,
