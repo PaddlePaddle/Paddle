@@ -173,8 +173,9 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 }
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
-    : start_ns_(PosixInNsec()) {
+    : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
+  is_enabled_ = true;
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
@@ -183,7 +184,7 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 }
 
 RecordEvent::~RecordEvent() {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
@@ -193,14 +194,16 @@ RecordEvent::~RecordEvent() {
   PopEvent(name_, dev_ctx_);
 }
 
-RecordBlock::RecordBlock(int block_id) : start_ns_(PosixInNsec()) {
+RecordBlock::RecordBlock(int block_id)
+    : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
+  is_enabled_ = true;
   SetCurBlock(block_id);
   name_ = string::Sprintf("block_%d", block_id);
 }
 
 RecordBlock::~RecordBlock() {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     // We try to put all blocks at the same nested depth in the

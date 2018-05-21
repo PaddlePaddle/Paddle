@@ -49,7 +49,7 @@ class OpConverter {
   // convert fluid block to tensorrt network
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     TensorRTEngine* engine) {
-    for (size_t i = 0; i < block.ops_size(); i++) {
+    for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
       OpConverter::Run(op, engine);
     }

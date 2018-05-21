@@ -1,4 +1,4 @@
-proto_library(profiler_proto SRCS profiler.proto)
+proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto)
 py_proto_compile(profiler_py_proto SRCS profiler.proto)
 
 add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -49,7 +49,7 @@ nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 
-cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto ${GPU_CTX_DEPS})
+cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
