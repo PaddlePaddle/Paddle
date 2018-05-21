@@ -67,14 +67,9 @@ list(REMOVE_ITEM TEST_OPS test_dynrnn_static_input)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_network_with_dtype)
 
-# tests that can be bundled together in one python process for speed.
-if(WITH_FAST_BUNDLE_TEST)
-    py_test_modules("test_all_ops" MODULES ${TEST_OPS})
-else()
-    foreach(TEST_OP ${TEST_OPS})
-        py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-    endforeach(TEST_OP)
-endif(WITH_FAST_BUNDLE_TEST)
+foreach(TEST_OP ${TEST_OPS})
+    py_test_modules(${TEST_OP} MODULES ${TEST_OP})
+endforeach(TEST_OP)
 
 #
 py_test_modules(test_sequence_expand MODULES test_sequence_expand)
