@@ -25,6 +25,6 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>);
-// ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
-// ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
