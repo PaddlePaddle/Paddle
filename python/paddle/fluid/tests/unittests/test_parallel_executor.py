@@ -759,11 +759,11 @@ class TestCRFModel(unittest.TestCase):
                           pe.run(feed=feeder.feed(cur_batch),
                                  fetch_list=[avg_cost.name]))[0]
 
-    def test_update_sparse_parameter_all_reduce(self):
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
-        self.check_network_convergence(
-            is_sparse=True, build_strategy=build_strategy)
+    # def test_update_sparse_parameter_all_reduce(self):
+    #     build_strategy = fluid.BuildStrategy()
+    #     build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+    #     self.check_network_convergence(
+    #         is_sparse=True, build_strategy=build_strategy)
 
     def test_update_dense_parameter_all_reduce(self):
         build_strategy = fluid.BuildStrategy()

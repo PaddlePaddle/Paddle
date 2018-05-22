@@ -51,8 +51,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
   void RunOp(
       std::atomic<int> *total_ops, BlockingQueue<OpHandleBase *> *pending_ops,
-      std::unordered_map<OpHandleBase *, std::atomic<int>> *pending_op_deps,
-      details::OpHandleBase *current_op);
+      std::unordered_map<OpHandleBase *, std::atomic<size_t>> *pending_op_deps);
 
  private:
   std::unique_ptr<::ThreadPool> pool_;
@@ -62,7 +61,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   ExecutionStrategy strategy_;
-  size_t thread_cnt_;
+  const size_t thread_cnt_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
@@ -70,14 +69,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void InsertPendingVar(std::unordered_set<VarHandleBase *> *pending_vars,
                         BlockingQueue<VarHandleBase *> *ready_vars,
                         VarHandleBase *var) const;
-
-  void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors,
-      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
-      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
-      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
-      std::unordered_set<VarHandleBase *> *pending_vars,
-      BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
 
   void InsertFetchOps(
       const std::vector<std::string> &fetch_tensors,

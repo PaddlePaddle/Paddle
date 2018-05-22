@@ -56,17 +56,25 @@ class BlockingQueue {
     return ret;
   }
 
+  T Pop(size_t ms, bool *timeout) {
+    auto time =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(ms);
+    std::unique_lock<std::mutex> lock(mutex_);
+    *timeout = !cv_.wait_until(lock, time, [this] { return !q_.empty(); });
+    if (!*timeout) {
+      T rc(std::move(q_.front()));
+      q_.pop_front();
+      return rc;
+    }
+    return nullptr;
+  }
+
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [=] { return !q_.empty(); });
     T rc(std::move(q_.front()));
     q_.pop_front();
     return rc;
-  }
-
-  size_t Size() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return q_.size();
   }
 
  private:
