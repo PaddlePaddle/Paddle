@@ -108,7 +108,7 @@ void StartServer(const std::string& endpoint) {
   rpc_service_->RunSyncUpdate();
 }
 
-TEST(PREFETCH, CPU) {
+TEST(PREFETCH, DISABLED_CPU) {
   // start up a server instance backend
   std::thread server_thread(StartServer, "127.0.0.1:8889");
   sleep(2);
