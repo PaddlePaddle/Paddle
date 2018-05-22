@@ -241,6 +241,7 @@ def run_benchmark(model, args):
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
     accuracy = fluid.average.WeightedAverage()
+    train_exe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
     if args.use_fake_data:
         data = train_reader().next()
         image = np.array(map(lambda x: x[0].reshape(dshape), data)).astype(
@@ -264,14 +265,17 @@ def run_benchmark(model, args):
                                      data)).astype('float32')
                 label = np.array(map(lambda x: x[1], data)).astype('int64')
                 label = label.reshape([-1, 1])
-            loss, acc, weight = exe.run(
-                fluid.default_main_program(),
+            loss, acc, weight = train_exe.run(
                 feed={'data': image,
                       'label': label},
-                fetch_list=[avg_cost, batch_acc, batch_size_tensor])
+                fetch_list=[
+                    avg_cost.name, batch_acc.name, batch_size_tensor.name
+                ])
             iters += 1
             num_samples += len(label)
-            accuracy.add(value=acc, weight=weight)
+            accuracy.add(value=np.array(np.mean(acc)), weight=np.mean(weight))
+            loss = np.mean(np.array(loss))
+            acc = np.mean(np.array(acc))
             train_losses.append(loss)
             train_accs.append(acc)
             print("Pass: %d, Iter: %d, Loss: %f, Accuracy: %f" %
