@@ -21,15 +21,6 @@ import math
 import sys
 
 
-def create_random_lodtensor(lod, place, low, high):
-    # The range of data elements is [low, high]
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     PASS_NUM = 100
     EMBED_SIZE = 32
@@ -175,16 +166,19 @@ def infer(use_cuda, save_dirname=None):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        # Setup inputs, by creating 4 words, the lod of which should be [0, 1]
-        lod = [0, 1]
-        first_word = create_random_lodtensor(
-            lod, place, low=0, high=dict_size - 1)
-        second_word = create_random_lodtensor(
-            lod, place, low=0, high=dict_size - 1)
-        third_word = create_random_lodtensor(
-            lod, place, low=0, high=dict_size - 1)
-        fourth_word = create_random_lodtensor(
-            lod, place, low=0, high=dict_size - 1)
+        # Setup inputs, by creating 4 words, the shape of the word should be [1].
+        # The lod of word should be [[1]] meaning there is only one lod_level and 
+        # there is one sequence of one word on this level
+        lod = [[1]]
+        shape = [1]
+        first_word = fluid.create_random_int_lodtensor(
+            lod, shape, place, low=0, high=dict_size - 1)
+        second_word = fluid.create_random_int_lodtensor(
+            lod, shape, place, low=0, high=dict_size - 1)
+        third_word = fluid.create_random_int_lodtensor(
+            lod, shape, place, low=0, high=dict_size - 1)
+        fourth_word = fluid.create_random_int_lodtensor(
+            lod, shape, place, low=0, high=dict_size - 1)
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'

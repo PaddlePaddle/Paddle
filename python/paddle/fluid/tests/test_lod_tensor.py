@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor, _validate_lod, _convert_lod
+import numpy
+import unittest
 
 
 class TestLoDTensor(unittest.TestCase):
@@ -55,7 +54,7 @@ class TestLoDTensor(unittest.TestCase):
 
     def test_create_lod_tensor(self):
         # Only numpy array or a fluid LoDTensor is valid input to
-        # create_lod_tensor function, a list of lists is not.
+        # create_lod_tensor function, currently a list of lists is not.
         data = [[1, 2], [3, 4]]
         self.assertRaises(Exception, create_lod_tensor, data, [],
                           fluid.CPUPlace())
@@ -73,14 +72,14 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(new_tensor.lod(), [[0, 2, 4, 5], [0, 1, 3, 5, 8, 10]])
 
     def test_create_random_int_lodtensor(self):
-        # The shape of a word, commonly used in speech and NLP problem
+        # The shape of a word, commonly used in speech and NLP problem, is [1]
         shape = [1]
         lod = [[2, 3, 5]]
         dict_size = 10000
         low = 0
         high = dict_size - 1
-        tensor = create_random_int_lodtensor(lod, shape, low, high,
-                                             fluid.CPUPlace())
+        tensor = create_random_int_lodtensor(lod, shape,
+                                             fluid.CPUPlace(), low, high)
         self.assertEqual(tensor.lod(), [[0, 2, 5, 10]])
         self.assertEqual(tensor.shape(), [10, 1])
 

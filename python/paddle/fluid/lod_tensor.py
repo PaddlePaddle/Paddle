@@ -44,10 +44,10 @@ def _validate_lod(lod, tensor_height=-1):
         if val != len(lod[idx + 1]):
             return False
 
-    # Last level's sum should be equal to the tensor height
     if tensor_height == -1:
         return True
     else:
+        # Last level's sum should be equal to the tensor height
         return lod_sum[-1] == tensor_height
 
 
@@ -78,11 +78,11 @@ def create_lod_tensor(data, lod, place):
         	             but you pass type %s instead" % (type(data)))
 
 
-def create_random_int_lodtensor(lod, shape, low, high, place):
-    assert _validate_lod(lod), "the provided lod info is invalid"
+def create_random_int_lodtensor(lod, shape, place, low, high):
     assert isinstance(shape, list), "shape should be a list"
     converted_lod = _convert_lod(lod)
-    shape.insert(0, converted_lod[-1][-1])
-    # The range of integer data elements is [low, high]    
-    data = np.random.random_integers(low, high, shape).astype("int64")
+    # append the total number of basic elements to the front of its shape
+    new_shape = [converted_lod[-1][-1]] + shape
+    # the range of integer data elements is [low, high]    
+    data = np.random.random_integers(low, high, new_shape).astype("int64")
     return create_lod_tensor(data, lod, place)
