@@ -23,8 +23,8 @@ class TestMulOp(OpTest):
         self.op_type = "mul"
         self.use_mkldnn = False
         self.inputs = {
-            'X': np.random.random((2, 5)).astype("float32"),
-            'Y': np.random.random((5, 3)).astype("float32")
+            'X': np.random.random((32, 84)).astype("float32"),
+            'Y': np.random.random((84, 100)).astype("float32")
         }
         self.attrs = {'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
@@ -49,17 +49,17 @@ class TestMulOp2(OpTest):
         self.op_type = "mul"
         self.use_mkldnn = False
         self.inputs = {
-            'X': np.random.random((3, 4, 4, 3)).astype("float32"),
-            'Y': np.random.random((2, 6, 1, 2, 3)).astype("float32")
+            'X': np.random.random((15, 4, 12, 10)).astype("float32"),
+            'Y': np.random.random((4, 30, 8, 2, 9)).astype("float32")
         }
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
             'use_mkldnn': self.use_mkldnn
         }
-        result = np.dot(self.inputs['X'].reshape(3 * 4, 4 * 3),
-                        self.inputs['Y'].reshape(2 * 6, 1 * 2 * 3))
-        result = result.reshape(3, 4, 1, 2, 3)
+        result = np.dot(self.inputs['X'].reshape(15 * 4, 12 * 10),
+                        self.inputs['Y'].reshape(4 * 30, 8 * 2 * 9))
+        result = result.reshape(15, 4, 8, 2, 9)
         self.outputs = {'Out': result}
 
     def test_check_output(self):
@@ -81,9 +81,9 @@ class TestFP16MulOp1(OpTest):
     def setUp(self):
         self.op_type = "mul"
         self.use_mkldnn = False
-        x = np.random.random((3, 5)).astype("float16")
-        y = np.random.random((5, 4)).astype("float16")
-        self.inputs = {'X': x.view(np.float16), 'Y': y.view(np.float16)}
+        x = np.random.random((32, 84)).astype("float16")
+        y = np.random.random((84, 100)).astype("float16")
+        self.inputs = {'X': x.view(np.uint16), 'Y': y.view(np.uint16)}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.dot(x, y)}
 
@@ -98,16 +98,17 @@ class TestFP16MulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
         self.use_mkldnn = False
-        x = np.random.random((3, 4, 4, 3)).astype("float16")
-        y = np.random.random((2, 6, 1, 2, 3)).astype("float16")
-        self.inputs = {'X': x.view(np.float16), 'Y': y.view(np.float16)}
+        x = np.random.random((15, 4, 12, 10)).astype("float16")
+        y = np.random.random((4, 30, 8, 2, 9)).astype("float16")
+        self.inputs = {'X': x.view(np.uint16), 'Y': y.view(np.uint16)}
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
             'use_mkldnn': self.use_mkldnn
         }
-        result = np.dot(x.reshape(3 * 4, 4 * 3), y.reshape(2 * 6, 1 * 2 * 3))
-        result = result.reshape(3, 4, 1, 2, 3)
+        result = np.dot(
+            x.reshape(15 * 4, 12 * 10), y.reshape(4 * 30, 8 * 2 * 9))
+        result = result.reshape(15, 4, 8, 2, 9)
         self.outputs = {'Out': result}
 
     def test_check_output(self):
