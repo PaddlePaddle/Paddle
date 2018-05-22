@@ -43,14 +43,11 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
                      const platform::DeviceContext& ctx) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
-  LOG(INFO) << "num_elements " << num_elements;
   PADDLE_ENFORCE_GT(num_elements, 0);
-  tensor->mutable_data<float>(place);
-  std::vector<float> data(num_elements);
-  for (auto& v : data) {
-    v = random(0., 1.);
+  auto* data = tensor->mutable_data<float>(place);
+  for (int i = 0; i < num_elements; i++) {
+    *(data + i) = random(0., 1.);
   }
-  framework::TensorFromVector(data, ctx, tensor);
 }
 
 /*
@@ -73,7 +70,6 @@ class TRTConvertValidation {
   void DeclInputVar(const std::string& name, const nvinfer1::Dims& dims) {
     DeclVar(name, dims);
     // Declare TRT inputs.
-    LOG(INFO) << "Declare Input " << name;
     engine_->DeclareInput(name, nvinfer1::DataType::kFLOAT, dims);
   }
 
@@ -82,15 +78,13 @@ class TRTConvertValidation {
   }
 
   void DeclVar(const std::string& name, const nvinfer1::Dims& dims) {
-    LOG(INFO) << "declare Var " << name;
-    platform::CUDAPlace place;
-    platform::CUDADeviceContext ctx(place);
+    platform::CPUPlace place;
+    platform::CPUDeviceContext ctx(place);
 
     // Init Fluid tensor.
     std::vector<int> dim_vec(dims.nbDims);
     for (int i = 0; i < dims.nbDims; i++) {
       dim_vec[i] = dims.d[i];
-      LOG(INFO) << "dims " << dim_vec[i];
     }
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
@@ -111,7 +105,6 @@ class TRTConvertValidation {
 
     // Set Inputs.
     for (const auto& input : op_desc_->InputArgumentNames()) {
-      LOG(INFO) << "get input name " << input;
       auto* var = scope_.FindVar(input);
       PADDLE_ENFORCE(var);
       auto tensor = var->GetMutable<framework::LoDTensor>();
@@ -125,21 +118,17 @@ class TRTConvertValidation {
   void Execute(int batch_size) {
     // Execute Fluid Op
     // Execute TRT
-    LOG(INFO) << "eingine execute";
-    platform::CUDAPlace place;
-    platform::CUDADeviceContext ctx(place);
+    platform::CPUPlace place;
+    platform::CPUDeviceContext ctx(place);
     engine_->Execute(batch_size);
 
-    auto* t = scope_.FindVar("mul-X")->GetMutable<framework::LoDTensor>();
-    LOG(INFO) << "X-mul.dims.size " << t->dims().size();
-
-    LOG(INFO) << "fluid execute";
     op_->Run(scope_, place);
 
-    LOG(INFO) << "compare output";
-    for (const auto& output : op_desc_->OutputNames()) {
+    for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
-      std::vector<float> trt_out;
+      std::vector<float> trt_out(200);
+      engine_->GetOutputInCPU(output, &trt_out[0], 200 * sizeof(float));
+
       auto* var = scope_.FindVar(output);
       auto tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
@@ -149,6 +138,8 @@ class TRTConvertValidation {
       }
     }
   }
+
+  framework::Scope& scope() { return scope_; }
 
  private:
   std::unique_ptr<TensorRTEngine> engine_;

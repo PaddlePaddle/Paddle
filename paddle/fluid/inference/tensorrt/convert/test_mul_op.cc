@@ -22,9 +22,9 @@ namespace tensorrt {
 
 TEST(MulOpConverter, main) {
   TRTConvertValidation validator(10, 1000);
-  validator.DeclInputVar("mul-X", nvinfer1::Dims3(10, 6, 3));
-  validator.DeclInputVar("mul-Y", nvinfer1::Dims3(10, 3, 12));
-  validator.DeclOutputVar("mul-Out", nvinfer1::Dims3(10, 6, 12));
+  validator.DeclInputVar("mul-X", nvinfer1::Dims2(10, 6));
+  validator.DeclInputVar("mul-Y", nvinfer1::Dims2(6, 10));
+  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(10, 10));
 
   // Prepare Op description
   framework::OpDesc desc;
