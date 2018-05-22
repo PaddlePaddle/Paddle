@@ -350,9 +350,12 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       }
     }
   }
-  // platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
+  } else {
+    // Delete the local scopes created in operators.
+    scope->DropKids();
   }
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
