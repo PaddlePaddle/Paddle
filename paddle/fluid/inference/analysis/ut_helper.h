@@ -25,10 +25,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-DEFINE_string(model_dir, "", "inference test model dir");
+DEFINE_string(inference_model_dir, "", "inference test model dir");
 
 static framework::proto::ProgramDesc LoadProgramDesc(
-    const std::string& model_dir = FLAGS_model_dir) {
+    const std::string& model_dir = FLAGS_inference_model_dir) {
   // TODO(Superjomn) update latter.
   auto place = paddle::platform::CPUPlace();
   auto executor = paddle::framework::Executor(place);
@@ -49,7 +49,7 @@ static DataFlowGraph ProgramDescToDFG(
 
 class DFG_Tester : public ::testing::Test {
  protected:
-  void SetUp() override { desc = LoadProgramDesc(FLAGS_model_dir); }
+  void SetUp() override { desc = LoadProgramDesc(FLAGS_inference_model_dir); }
 
   framework::proto::ProgramDesc desc;
 };
