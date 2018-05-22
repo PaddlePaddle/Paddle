@@ -78,6 +78,9 @@ class OpDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
+  Attribute GetAttrOrDefault(const std::string &name,
+                             Attribute default_attr) const;
+
   int GetBlockAttr(const std::string &name) const;
 
   void Rename(const std::string &old_name, const std::string &new_name);

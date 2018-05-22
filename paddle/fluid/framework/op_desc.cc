@@ -223,6 +223,16 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
+Attribute OpDesc::GetAttrOrDefault(
+    const std::string &name, paddle::framework::Attribute default_attr) const {
+  auto it = attrs_.find(name);
+  if (it != attrs_.end()) {
+    return it->second;
+  } else {
+    return default_attr;
+  }
+}
+
 int OpDesc::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
