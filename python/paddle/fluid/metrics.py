@@ -251,7 +251,7 @@ class EditDistance(MetricBase):
         self.instance_error += seq_num - seq_right_count
         self.total_distance += total_distance
 
-    def eval():
+    def eval(self):
         if self.seq_num == 0:
             raise ValueError(
                 "There is no data in EditDistance Metric. Please check layers.edit_distance output has been added to EditDistance."
@@ -280,6 +280,7 @@ class DetectionMAP(MetricBase):
         super(DetectionMAP, self).__init__(name)
         # the current map value
         self.value = .0
+        self.weight = .0
 
     def update(self, value, weight):
         if not _is_number_or_matrix_(value):
@@ -340,8 +341,8 @@ class Auc(MetricBase):
             raise ValueError("The 'predictions' must be a numpy ndarray.")
 
         kepsilon = 1e-7  # to account for floating point imprecisions
-        thresholds = [(i + 1) * 1.0 / (num_thresholds - 1)
-                      for i in range(num_thresholds - 2)]
+        thresholds = [(i + 1) * 1.0 / (self._num_thresholds - 1)
+                      for i in range(self._num_thresholds - 2)]
         thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
 
         # caculate TP, FN, TN, FP count
@@ -358,19 +359,20 @@ class Auc(MetricBase):
                         fp += 1
                     else:
                         tn += 1
-            tp_list[idx_thresh] += tp
-            fn_list[idx_thresh] += fn
-            tn_list[idx_thresh] += tn
-            fp_list[idx_thresh] += fp
+            self.tp_list[idx_thresh] += tp
+            self.fn_list[idx_thresh] += fn
+            self.tn_list[idx_thresh] += tn
+            self.fp_list[idx_thresh] += fp
 
     def eval(self):
         epsilon = self._epsilon
         num_thresholds = self._num_thresholds
-        tpr = (tp_list.astype("float32") + epsilon) / (
-            tp_list + fn_list + epsilon)
-        fpr = fp_list.astype("float32") / (fp_list + tn_list + epsilon)
-        rec = (tp_list.astype("float32") + epsilon) / (
-            tp_list + fp_list + epsilon)
+        tpr = (self.tp_list.astype("float32") + epsilon) / (
+            self.tp_list + self.fn_list + epsilon)
+        fpr = self.fp_list.astype("float32") / (
+            self.fp_list + self.tn_list + epsilon)
+        rec = (self.tp_list.astype("float32") + epsilon) / (
+            self.tp_list + self.fp_list + epsilon)
 
         x = fpr[:num_thresholds - 1] - fpr[1:]
         y = (tpr[:num_thresholds - 1] + tpr[1:]) / 2.0

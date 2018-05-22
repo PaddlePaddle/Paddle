@@ -96,10 +96,22 @@ struct CUBlas<platform::float16> {
                                        reinterpret_cast<__half *>(C), ldc));
   }
 
-  template <typename... ARGS>
-  static void GEMM_BATCH(ARGS... args) {
+  static void GEMM_BATCH(cublasHandle_t handle, cublasOperation_t transa,
+                         cublasOperation_t transb, int m, int n, int k,
+                         const float16 *alpha, const float16 *A, int lda,
+                         long long int strideA, const float16 *B,  // NOLINT
+                         int ldb, long long int strideB,           // NOLINT
+                         const float16 *beta, float16 *C, int ldc,
+                         long long int strideC,  // NOLINT
+                         int batchCount) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE(platform::dynload::cublasHgemmStridedBatched(args...));
+    PADDLE_ENFORCE(platform::dynload::cublasHgemmStridedBatched(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const __half *>(alpha),
+        reinterpret_cast<const __half *>(A), lda, strideA,
+        reinterpret_cast<const __half *>(B), ldb, strideB,
+        reinterpret_cast<const __half *>(beta), reinterpret_cast<__half *>(C),
+        ldc, strideC, batchCount));
 #else
     PADDLE_THROW("HgemmStridedBatched is not supported on cuda <= 7.5");
 #endif

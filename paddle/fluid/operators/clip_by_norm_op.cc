@@ -37,8 +37,7 @@ class ClipByNormOp : public framework::OperatorWithKernel {
 
 class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipByNormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input of clip_by_norm op."
              "The number of dimensions must be between [1, 9].");

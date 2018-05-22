@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include <nccl.h>
+#endif
 #include <sys/time.h>
 #include <thread>  // NOLINT
 
@@ -23,127 +26,155 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
+using VarMsg = sendrecv::VariableMessage;
+
+void GetTensorPayload(framework::Variable* var,
+                      const platform::DeviceContext& ctx, VarMsg* request,
+                      void** payload, size_t* payload_size) {
+  auto tensor = var->Get<framework::LoDTensor>();
+  // FIXME(wuyi): data types in send_recv.proto is copied from
+  // framework.proto
+  request->set_data_type(
+      static_cast<VarMsg::Type>(framework::ToDataType(tensor.type())));
+  for (auto& dim : framework::vectorize(tensor.dims())) {
+    request->add_dims(dim);
+  }
+  const framework::LoD lod = tensor.lod();
+  if (lod.size() > 0) {
+    request->set_lod_level(lod.size());
+    for (auto& each : lod) {
+      VarMsg::LodData* lod_inner = request->add_lod();
+      for (auto& d : each) {
+        lod_inner->add_lod_data(d);
+      }
+    }
+  }
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
+    platform::CPUPlace cpu;
+    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+    auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
+    *payload = memory::Alloc(cpu, copy_size);
+
+    memory::Copy(cpu, *payload, boost::get<platform::CUDAPlace>(tensor.place()),
+                 reinterpret_cast<const void*>(tensor.data<void>()), copy_size,
+                 gpu_dev_ctx.stream());
+    ctx.Wait();
+#endif
+  } else {
+    *payload = tensor.data<void>();
+  }
+  *payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
+}
+
+void GetSelectedRowsPayload(framework::Variable* var,
+                            const platform::DeviceContext& ctx, VarMsg* request,
+                            void** payload, size_t* payload_size) {
+  auto* slr = var->GetMutable<framework::SelectedRows>();
+  request->set_data_type(
+      static_cast<VarMsg::Type>(framework::ToDataType(slr->value().type())));
+  request->set_lod_level(0);
+  request->set_slr_height(slr->height());
+
+  for (auto& dim : framework::vectorize(slr->value().dims())) {
+    request->add_dims(dim);
+  }
+
+  auto* tensor = slr->mutable_value();
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+    platform::CPUPlace cpu;
+    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+    auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
+    *payload = memory::Alloc(cpu, copy_size);
+    memory::Copy(cpu, *payload,
+                 boost::get<platform::CUDAPlace>(tensor->place()),
+                 reinterpret_cast<const void*>(tensor->data<void>()), copy_size,
+                 gpu_dev_ctx.stream());
+    ctx.Wait();
+#endif
+  } else {
+    *payload = slr->mutable_value()->data<void>();
+  }
+  *payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
+}
+
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
                            const std::string& out_name) {
-  using VarMsg = sendrecv::VariableMessage;
-  // When using GPU, need to free the copied CPU buffer
-  // when the ByteBuffer destroies
-  // TODO(typhoonzero): add unref here, if we have dependent
-  // parallelism execution, need to know when to free the tensor.
+  // Default DestroyCallback does nothing, When using GPU
+  // the CPU buffer need to be freed.
   DestroyCallback destroy_callback = [](void* backing) {};
-
-  auto buffer = std::unique_ptr<char[]>(new char[1024]);
-  void* buf = buffer.get();
-
+  VarMsg request;
   void* payload = nullptr;
   size_t payload_size;
-  ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
-  e.WriteString(VarMsg::kVarnameFieldNumber, name);
-  if (var->IsType<framework::LoDTensor>()) {
-    e.WriteUint64(VarMsg::kTypeFieldNumber, 0);
-  } else if (var->IsType<framework::SelectedRows>()) {
-    e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
-  }
 
+  request.set_varname(name);
+  // Note: normally the profiler is enabled in 1 trainer, hence only
+  // 1 trainer returns true for ShouldSendProfileState(). It tells PS
+  // servers the trainer's profiling state so that PS can follow the
+  // trainer.
+  request.set_profile(platform::IsProfileEnabled());
   if (!out_name.empty()) {
-    e.WriteString(VarMsg::kOutVarnameFieldNumber, out_name);
+    request.set_out_varname(out_name);
   }
-  switch (framework::ToVarType(var->Type())) {
-    case framework::proto::VarType_Type_LOD_TENSOR: {
-      auto tensor = var->Get<framework::LoDTensor>();
-      e.WriteUint64(VarMsg::kDataTypeFieldNumber,
-                    framework::ToDataType(tensor.type()));
-      for (auto& dim : framework::vectorize(tensor.dims())) {
-        e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
-      }
-      auto lod = tensor.lod();  // std::vector<Vector<size_t>>
-      if (lod.size() > 0) {
-        e.WriteUint64(VarMsg::kLodLevelFieldNumber, lod.size());
-
-        for (auto& each : lod) {
-          e.WriteVarlengthBeginning(VarMsg::kLodFieldNumber,
-                                    2 +      // tag + varintlength of submessage
-                                        1 +  // kLodDataFieldNumber
-                                        each.size());
-          // auto copied from GPU
-          for (auto& d : each) {
-            e.WriteUint64(VarMsg::LodData::kLodDataFieldNumber, d);
-          }
-        }
-      }
-      if (platform::is_gpu_place(ctx.GetPlace())) {
+  if (var->IsType<framework::LoDTensor>()) {
+    request.set_type(::sendrecv::LOD_TENSOR);
+    GetTensorPayload(var, ctx, &request, &payload, &payload_size);
+  } else if (var->IsType<framework::SelectedRows>()) {
+    request.set_type(::sendrecv::SELECTED_ROWS);
+    GetSelectedRowsPayload(var, ctx, &request, &payload, &payload_size);
 #ifdef PADDLE_WITH_CUDA
-        PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
-        platform::CPUPlace cpu;
-        auto& gpu_dev_ctx =
-            static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
-        payload = memory::Alloc(cpu, copy_size);
-
-        memory::Copy(cpu, payload,
-                     boost::get<platform::CUDAPlace>(tensor.place()),
-                     reinterpret_cast<const void*>(tensor.data<void>()),
-                     copy_size, gpu_dev_ctx.stream());
-        ctx.Wait();
-        destroy_callback = [](void* backing) {
-          platform::CPUPlace cpu;
-          memory::Free(cpu, backing);
-        };
-
+  } else if (var->IsType<ncclUniqueId>()) {
+    request.set_type(::sendrecv::NCCL_ID);
 #endif
-      } else {
-        payload = tensor.data<void>();
-      }
-      payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
-      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
-    } break;
-    case framework::proto::VarType_Type_SELECTED_ROWS: {
-      // TODO(typhoonzero): selectedrows implement should not use unique_ptr
-      auto* slr = var->GetMutable<framework::SelectedRows>();
-      e.WriteUint64(VarMsg::kDataTypeFieldNumber,
-                    framework::ToDataType(slr->value().type()));
-      for (auto& dim : framework::vectorize(slr->value().dims())) {
-        e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
-      }
-      e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
-      e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
-      auto* tensor = slr->mutable_value();
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-        platform::CPUPlace cpu;
-        auto& gpu_dev_ctx =
-            static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size =
-            tensor->numel() * framework::SizeOfType(tensor->type());
-        payload = memory::Alloc(cpu, copy_size);
-        memory::Copy(cpu, payload,
-                     boost::get<platform::CUDAPlace>(tensor->place()),
-                     reinterpret_cast<const void*>(tensor->data<void>()),
-                     copy_size, gpu_dev_ctx.stream());
-        ctx.Wait();
-        destroy_callback = [](void* backing) {
-          platform::CPUPlace cpu;
-          memory::Free(cpu, backing);
-        };
-#endif
-      } else {
-        payload = slr->mutable_value()->data<void>();
-      }
-      payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
-      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
-    } break;
-    default:
-      PADDLE_THROW("Serialize does not support type: %s",
-                   typeid(var->Type()).name());
-      break;
+  } else {
+    PADDLE_THROW("Serialize does not support type: %s",
+                 typeid(var->Type()).name());
   }
+
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    // GPU data is copied to CPU buffer when sending,
+    // free the buffer when possible.
+    destroy_callback = [](void* backing) {
+      platform::CPUPlace cpu;
+      memory::Free(cpu, backing);
+    };
+  }
+
+  std::string header;
+  request.AppendToString(&header);
+  auto buffer = std::unique_ptr<char[]>(new char[1024]);
+  void* buf = buffer.get();
+  ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
+  e.WriteRawBytes(std::string(header.data(), header.size()));
+// NCCLID is copied directly to the message, return bytebuffer
+// with only one slice if serializing NCCLID.
+#ifdef PADDLE_WITH_CUDA
+  if (var->IsType<ncclUniqueId>()) {
+    e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
+                              NCCL_UNIQUE_ID_BYTES);
+    const ncclUniqueId& uid = var->Get<ncclUniqueId>();
+    e.WriteRawBytes(std::string(uid.internal, NCCL_UNIQUE_ID_BYTES));
+
+    // for serialize NCCL_ID
+    ::grpc::Slice slices(e.size());
+    memcpy(const_cast<uint8_t*>(slices.begin()), e.data(), e.size());
+    ::grpc::ByteBuffer tmp(&slices, 1);
+    msg->Swap(&tmp);
+    return;
+  }
+#endif
+
+  e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
   int num_slices = 2;       // only SelectedRows have rows buffer
@@ -154,12 +185,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                                     static_cast<char*>(payload)),
       ::grpc::Slice::STEAL_REF);
 
-  if (framework::ToVarType(var->Type()) ==
-      framework::proto::VarType_Type_SELECTED_ROWS) {
+  if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
-
     ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
-    // NOTE: rows is of type int64_t
     size_t rows_memory_size =
         slr->rows().size() * framework::SizeOfType(typeid(int64_t));
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
@@ -170,10 +198,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         grpc_slice_new_with_user_data(
             const_cast<void*>(
                 reinterpret_cast<const void*>(slr->rows().data())),
-            rows_memory_size,
-            [](void* backing) {
-              // TODO(typhoonzero): add unref here, same as above.
-            },
+            rows_memory_size, [](void* backing) {},
             const_cast<char*>(
                 reinterpret_cast<const char*>(slr->rows().data()))),
         ::grpc::Slice::STEAL_REF);

@@ -224,7 +224,7 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::__shfl_down_sync(mask, val, offset);
+          val += platform::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -284,7 +284,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::__shfl_down_sync(mask, val, offset);
+          val += platform::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 

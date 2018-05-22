@@ -134,6 +134,11 @@ OpDesc *BlockDesc::PrependOp() {
   return ops_.front().get();
 }
 
+void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
+  need_update_ = true;
+  ops_.emplace_front(std::move(op_desc));
+}
+
 OpDesc *BlockDesc::InsertOp(size_t index) {
   need_update_ = true;
   auto it = ops_.begin() + index;
@@ -143,7 +148,7 @@ OpDesc *BlockDesc::InsertOp(size_t index) {
 }
 
 void BlockDesc::RemoveOp(size_t s, size_t e) {
-  if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
+  if (ops_.begin() + s >= ops_.end() || ops_.begin() + e > ops_.end()) {
     return;
   }
   need_update_ = true;

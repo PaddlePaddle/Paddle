@@ -74,6 +74,7 @@ struct RecordEvent {
 
   ~RecordEvent();
 
+  bool is_enabled_;
   uint64_t start_ns_;
   // The device context is used by Event to get the current cuda stream.
   const DeviceContext* dev_ctx_;
@@ -89,6 +90,7 @@ struct RecordBlock {
   ~RecordBlock();
 
  private:
+  bool is_enabled_;
   std::string name_;
   uint64_t start_ns_;
 };
@@ -113,6 +115,14 @@ void ResetProfiler();
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
+
+// Test if the profiler is currently enabled.
+bool IsProfileEnabled();
+// Whether the trainer should send profiling state to PS.
+bool ShouldSendProfileState();
+// Mark current process as PS by assigning a lister id.
+void SetProfileListener();
+int64_t ListenerId();
 
 }  // namespace platform
 }  // namespace paddle

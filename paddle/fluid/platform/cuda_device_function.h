@@ -18,34 +18,33 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// __shfl_down and __shfl have been deprecated as of CUDA 9.0.
 #if CUDA_VERSION < 9000
-template <typename T>
-__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
-  return __shfl_down(val, delta);
-}
-
-template <typename T>
-__forceinline__ __device__ T __shfl_sync(unsigned, T val, int src_line,
-                                         int width) {
-  return __shfl(val, src_line, width);
-}
 #define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
 #else
 #define FULL_WARP_MASK 0xFFFFFFFF
 #define CREATE_SHFL_MASK(mask, predicate) \
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
+#endif
+
 template <typename T>
-__forceinline__ __device__ T __shfl_down_sync(unsigned mask, T val, int delta) {
-  return __shfl_down_sync(mask, val, delta);
+__forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
+                                                 int delta, int width = 32) {
+#if CUDA_VERSION < 9000
+  return __shfl_down(val, delta, width);
+#else
+  return __shfl_down_sync(mask, val, delta, width);
+#endif
 }
 
 template <typename T>
-__forceinline__ __device__ T __shfl_sync(unsigned mask, T val, int src_line,
-                                         int width) {
+__forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
+                                             int width = 32) {
+#if CUDA_VERSION < 9000
+  return __shfl(val, src_line, width);
+#else
   return __shfl_sync(mask, val, src_line, width);
-}
 #endif
+}
 
 template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {
@@ -61,9 +60,10 @@ __device__ T reduceSum(T val, int tid, int len) {
   CREATE_SHFL_MASK(mask, tid < len);
 
   for (int offset = warpSize / 2; offset > 0; offset /= 2)
-    val += platform::__shfl_down_sync(mask, val, offset);
+    val += platform::CudaShuffleDownSync(mask, val, offset);
 
   if (tid < warpSize) shm[tid] = 0;
+  __syncthreads();
 
   if (tid % warpSize == 0) {
     shm[tid / warpSize] = val;
@@ -75,7 +75,7 @@ __device__ T reduceSum(T val, int tid, int len) {
   if (tid < warpSize) {
     val = shm[tid];
     for (int offset = warpSize / 2; offset > 0; offset /= 2)
-      val += platform::__shfl_down_sync(mask, val, offset);
+      val += platform::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }

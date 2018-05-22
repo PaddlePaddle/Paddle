@@ -69,8 +69,8 @@ void testConcat() {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(input_a_cpu, Place(), *context, &input_a);
-    paddle::framework::TensorCopy(input_b_cpu, Place(), *context, &input_b);
+    paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
+    paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
   std::vector<paddle::framework::Tensor> input;
@@ -86,8 +86,8 @@ void testConcat() {
 
   int* out_ptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(out, paddle::platform::CPUPlace(), *context,
-                                  &out_cpu);
+    paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
+                                      &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -142,8 +142,8 @@ void testConcat() {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(input_a_cpu, Place(), *context, &input_a);
-    paddle::framework::TensorCopy(input_b_cpu, Place(), *context, &input_b);
+    paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
+    paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
   input.clear();
@@ -157,8 +157,8 @@ void testConcat() {
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(out, paddle::platform::CPUPlace(), *context,
-                                  &out_cpu);
+    paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
+                                      &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -215,8 +215,8 @@ void testConcat() {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(input_a_cpu, Place(), *context, &input_a);
-    paddle::framework::TensorCopy(input_b_cpu, Place(), *context, &input_b);
+    paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
+    paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
   input.clear();
@@ -230,8 +230,8 @@ void testConcat() {
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(out, paddle::platform::CPUPlace(), *context,
-                                  &out_cpu);
+    paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
+                                      &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -290,8 +290,8 @@ void testConcat() {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(input_a_cpu, Place(), *context, &input_a);
-    paddle::framework::TensorCopy(input_b_cpu, Place(), *context, &input_b);
+    paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
+    paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
   input.clear();
@@ -305,8 +305,8 @@ void testConcat() {
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopy(out, paddle::platform::CPUPlace(), *context,
-                                  &out_cpu);
+    paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
+                                      &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();

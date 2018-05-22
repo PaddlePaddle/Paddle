@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(BlockConverter, ConvertBlock) {
+TEST(OpConverter, ConvertBlock) {
   framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);
   auto* mul_op = block->AppendOp();
@@ -29,7 +29,7 @@ TEST(BlockConverter, ConvertBlock) {
   conv2d_op->SetType("conv2d");
 
   OpConverter converter;
-  converter.ConvertBlock(*block, nullptr /*TensorRTEngine*/);
+  converter.ConvertBlock(*block->Proto(), nullptr /*TensorRTEngine*/);
 }
 
 }  // namespace tensorrt
