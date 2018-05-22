@@ -21,6 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
+#define CUDA_BLOCK_SIZE 16
 
 template <typename T>
 __global__ void QuadTransformKernel(const int n, const int h, const int w,
@@ -53,13 +54,15 @@ class QuadTransfromOpCUDAKernel : public framework::OpKernel<T> {
     int batch_size = in_dims[0];
     int height = in_dims[2];
     int width = in_dims[3];
-    dim3 threadsPerBlock(2, 16, 16);
-    dim3 numBlocks((batch_size * 8) / threadsPerBlock.x,
+    dim3 threadsPerBlock(
+        PADDLE_CUDA_NUM_THREADS / (CUDA_BLOCK_SIZE * CUDA_BLOCK_SIZE),
+        CUDA_BLOCK_SIZE, CUDA_BLOCK_SIZE);
+    dim3 numBlocks((batch_size * GEO_CHANNEL) / threadsPerBlock.x,
                    (height + threadsPerBlock.y - 1) / threadsPerBlock.y,
                    (width + threadsPerBlock.z - 1) / threadsPerBlock.z);
     auto stream = ctx.cuda_device_context().stream();
     QuadTransformKernel<T><<<numBlocks, threadsPerBlock, 0, stream>>>(
-        batch_size * 8, height, width, in_data, out_data);
+        batch_size * GEO_CHANNEL, height, width, in_data, out_data);
   }
 };
 

@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#define GEO_CHANNEL 8
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
@@ -37,7 +38,7 @@ class QuadTransformCPUKernel : public framework::OpKernel<T> {
     int height = in_dims[2];
     int width = in_dims[3];
     int id = 0;
-    for (int id_n = 0; id_n < batch_size * 8; ++id_n) {
+    for (int id_n = 0; id_n < batch_size * GEO_CHANNEL; ++id_n) {
       for (int id_h = 0; id_h < height; ++id_h) {
         for (int id_w = 0; id_w < width; ++id_w) {
           id = id_n * height * width + width * id_h + id_w;
