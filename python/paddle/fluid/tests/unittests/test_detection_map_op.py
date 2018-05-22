@@ -160,7 +160,9 @@ class TestDetectionMAPOp(OpTest):
         label_count, true_pos, false_pos = get_input_pos(
             self.class_pos_count, self.true_pos, self.true_pos_lod,
             self.false_pos, self.false_pos_lod)
-        for (label, difficult, xmin, ymin, xmax, ymax) in self.label:
+        for v in self.label:
+            label = v[0]
+            difficult = False if len(v) == 5 else v[1]
             if self.evaluate_difficult:
                 label_count[label] += 1
             elif not difficult:
@@ -243,6 +245,15 @@ class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
         # label score true_pos false_pos
         self.tf_pos = [[1, 0.7, 1, 0], [1, 0.3, 0, 1], [1, 0.2, 1, 0],
                        [2, 0.8, 0, 1], [2, 0.1, 1, 0], [3, 0.2, 0, 1]]
+
+
+class TestDetectionMAPOpWithoutDiff(TestDetectionMAPOp):
+    def init_test_case(self):
+        super(TestDetectionMAPOpWithoutDiff, self).init_test_case()
+
+        # label xmin ymin xmax ymax
+        self.label = [[1, 0.1, 0.1, 0.3, 0.3], [1, 0.6, 0.6, 0.8, 0.8],
+                      [2, 0.3, 0.3, 0.6, 0.5], [1, 0.7, 0.1, 0.9, 0.3]]
 
 
 class TestDetectionMAPOp11Point(TestDetectionMAPOp):

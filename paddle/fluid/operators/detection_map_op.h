@@ -72,7 +72,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto* out_false_pos = ctx.Output<framework::LoDTensor>("AccumFalsePos");
 
     float overlap_threshold = ctx.Attr<float>("overlap_threshold");
-    float evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
+    bool evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
     auto ap_type = GetAPType(ctx.Attr<std::string>("ap_type"));
     int class_num = ctx.Attr<int>("class_num");
 
@@ -175,14 +175,20 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     for (int n = 0; n < batch_size; ++n) {
       std::map<int, std::vector<Box>> boxes;
       for (size_t i = label_index[n]; i < label_index[n + 1]; ++i) {
-        Box box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
         int label = labels(i, 0);
-        auto is_difficult = labels(i, 1);
-        if (std::abs(is_difficult - 0.0) < 1e-6)
-          box.is_difficult = false;
-        else
-          box.is_difficult = true;
-        boxes[label].push_back(box);
+        if (input_label.dims()[1] == 6) {
+          Box box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
+          auto is_difficult = labels(i, 1);
+          if (std::abs(is_difficult - 0.0) < 1e-6)
+            box.is_difficult = false;
+          else
+            box.is_difficult = true;
+          boxes[label].push_back(box);
+        } else {
+          PADDLE_ENFORCE_EQ(input_label.dims()[1], 5);
+          Box box(labels(i, 1), labels(i, 2), labels(i, 3), labels(i, 4));
+          boxes[label].push_back(box);
+        }
       }
       gt_boxes->push_back(boxes);
     }
