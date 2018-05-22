@@ -35,7 +35,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
    # 2. 可选步骤：源码中构建用于编译PaddlePaddle的Docker镜像
    docker build -t paddle:dev .
    # 3. 执行下面的命令编译CPU-Only的二进制
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/paddle_build.sh build
    # 4. 或者也可以使用为上述可选步骤构建的镜像（必须先执行第2步）
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
 
