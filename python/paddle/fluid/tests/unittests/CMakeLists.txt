@@ -24,11 +24,9 @@ list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/Paddl
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
 
-list(REMOVE_ITEM TEST_OPS test_warpctc_op) # Will hang
-
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
-    set(options "")
+    set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -36,9 +34,15 @@ function(py_test_modules TARGET_NAME)
              COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
              ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (py_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    endif()
   endif()
 endfunction()
-
+list(REMOVE_ITEM TEST_OPS test_warpctc_op)
+list(REMOVE_ITEM TEST_OPS test_dist_train)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
+py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
+py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
