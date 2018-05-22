@@ -449,8 +449,8 @@ int VariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kProfileFieldNumber: {
-        bool profiling;
-        if (!input.ReadRaw(reinterpret_cast<void*>(&profiling), 1)) {
+        uint64_t profiling = 0;
+        if (!input.ReadVarint64(&profiling)) {
           return tag;
         }
         meta_.set_profile(profiling);
@@ -458,9 +458,9 @@ int VariableResponse::Parse(Source* source) {
         if (listener_id <= 0) {
           break;
         }
-        if (profiling && !platform::IsProfileEnabled()) {
+        if (profiling == 1 && !platform::IsProfileEnabled()) {
           platform::EnableProfiler(platform::ProfilerState::kCPU);
-        } else if (!profiling && platform::IsProfileEnabled()) {
+        } else if (profiling == 2 && platform::IsProfileEnabled()) {
           // TODO(panyx0718): Should we allow to customize file dir.
           platform::DisableProfiler(
               platform::EventSortingKey::kDefault,

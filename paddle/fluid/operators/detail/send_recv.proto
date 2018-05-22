@@ -73,7 +73,7 @@ message VariableMessage {
   // If true, the ps server will start profiling, the ps
   // server stops profiling and generates a profile to /tmp/profile_ps_*
   // when profile switches from true to false.
-  bool profile = 11;
+  int64 profile = 11;
 }
 
 message VoidMessage {}
