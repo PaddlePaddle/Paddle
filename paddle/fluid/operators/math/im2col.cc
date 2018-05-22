@@ -66,17 +66,17 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
       int w_offset = c % filter_width;
       int h_offset = (c / filter_width) % filter_height;
       int c_im = c / (filter_width * filter_height);
+      int im_row_start = h_offset * dilation[0] - padding[0];
+      int im_col_start = w_offset * dilation[1] - padding[1];
       for (int h = 0; h < col_height; ++h) {
-        int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
+        int im_row_idx = im_row_start + h * stride[0];
         for (int w = 0; w < col_width; ++w) {
-          int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
+          int im_col_idx = im_col_start + w * stride[1];
           int col_idx = (c * col_height + h) * col_width + w;
           int im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
-
-          col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
-                               im_col_idx < 0 || im_col_idx >= im_width)
-                                  ? static_cast<T>(0)
-                                  : im_data[im_idx];
+          bool flag = im_row_idx < 0 || im_row_idx >= im_height ||
+                      im_col_idx < 0 || im_col_idx >= im_width;
+          col_data[col_idx] = flag ? static_cast<T>(0) : im_data[im_idx];
         }
       }
     }
