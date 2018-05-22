@@ -617,8 +617,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
-          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                         "DataType of Paddle Op %s must be the same.", Type());
+          PADDLE_ENFORCE(
+              tmp == data_type || data_type == -1,
+              "DataType of Paddle Op %s must be the same. Get %d != %d", Type(),
+              data_type, tmp);
           data_type = tmp;
         }
       }

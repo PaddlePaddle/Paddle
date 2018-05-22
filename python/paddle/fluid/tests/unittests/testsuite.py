@@ -87,12 +87,14 @@ def set_input(scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
+# dtype is inferenced from input/output data type.
+class Static(object):
+    dtype = "float32"
+
+
 def append_input_output(block, op_proto, np_list, is_input):
     '''Insert VarDesc and generate Python variable instance'''
     proto_list = op_proto.inputs if is_input else op_proto.outputs
-
-    class Static:
-        dtype = "float32"
 
     def create_var(block, name, np_list, var_proto):
         # FIXME: the output data type, shape shoud be infered by input.
