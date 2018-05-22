@@ -72,6 +72,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
     else:
         raise ValueError("Not supported numpy dtype " + str(dtype))
 

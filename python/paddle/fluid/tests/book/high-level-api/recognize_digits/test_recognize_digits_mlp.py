@@ -55,24 +55,18 @@ def train(use_cuda, train_program, save_dirname):
         if isinstance(event, fluid.EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
-            test_metrics = trainer.test(
+            avg_cost, acc = trainer.test(
                 reader=test_reader, feed_order=['img', 'label'])
-            avg_cost_set = test_metrics[0]
-            acc_set = test_metrics[1]
-
-            # get test acc and loss
-            acc = numpy.array(acc_set).mean()
-            avg_cost = numpy.array(avg_cost_set).mean()
 
             print("avg_cost: %s" % avg_cost)
             print("acc     : %s" % acc)
 
-            if float(acc) > 0.2:  # Smaller value to increase CI speed
+            if acc > 0.2:  # Smaller value to increase CI speed
                 trainer.save_params(save_dirname)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
-                    event.epoch + 1, float(avg_cost), float(acc)))
-                if math.isnan(float(avg_cost)):
+                    event.epoch + 1, avg_cost, acc))
+                if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
 
     train_reader = paddle.batch(
@@ -99,7 +93,7 @@ def infer(use_cuda, inference_program, save_dirname=None):
 
     results = inferencer.infer({'img': tensor_img})
 
-    print("infer results: ", results[0])
+    print("infer results: ", numpy.array(results[0]))
 
 
 def main(use_cuda):
