@@ -39,14 +39,10 @@ namespace detail {
 
 struct VarHandle {
   std::string ep;
-  const platform::DeviceContext* ctx;
   const framework::Scope* scope;
   std::string name;
 
-  VarHandle() {
-    ctx = nullptr;
-    scope = nullptr;
-  }
+  VarHandle() { scope = nullptr; }
 
   std::string String() const {
     std::ostringstream s;
@@ -169,13 +165,11 @@ class RPCClient {
                                  int64_t time_out = rpc_time_out);
 
   virtual bool AsyncGetVariable(const std::string& ep,
-                                const platform::DeviceContext& ctx,
                                 const framework::Scope& scope,
                                 const std::string& var_name,
                                 int64_t time_out = rpc_time_out);
 
   virtual bool AsyncPrefetchVariable(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
                                      const framework::Scope& scope,
                                      const std::string& in_var_name,
                                      const std::string& out_var_name,

@@ -122,7 +122,7 @@ TEST(PREFETCH, CPU) {
   std::string out_var_name("out");
 
   detail::RPCClient client;
-  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
+  client.AsyncPrefetchVariable("127.0.0.1:8889", scope, in_var_name,
                                out_var_name);
   client.Wait();
 

@@ -59,7 +59,7 @@ class SendOp : public framework::OperatorBase {
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVariable(epmap[i], scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
@@ -77,7 +77,7 @@ class SendOp : public framework::OperatorBase {
     if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
         VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
-        rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+        rpc_client->AsyncGetVariable(epmap[i], scope, outs[i]);
       }
       PADDLE_ENFORCE(rpc_client->Wait());
       // tell pservers that current trainer have called fetch

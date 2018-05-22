@@ -37,12 +37,9 @@ class RecvOp : public framework::OperatorBase {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i];
-      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      client_.AsyncGetVariable(epmap[i], scope, outs[i]);
     }
     PADDLE_ENFORCE(client_.Wait());
   }

@@ -38,9 +38,6 @@ class SendVarsOp : public framework::OperatorBase {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     int sync_send = Attr<int>("sync_send");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
@@ -53,7 +50,7 @@ class SendVarsOp : public framework::OperatorBase {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
         // TODO(Yancey1989): we need to use an IO threadpool which has
         // a larger number of threads than the computing threadpool.
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVariable(epmap[i], scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }

@@ -63,7 +63,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     detail::RPCClient client;
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
-      client.AsyncSendVariable(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
+      client.AsyncSendVariable(ep, *scope, NCCL_ID_VARNAME);
     }
     client.Wait();
     VLOG(3) << "sending completed...";

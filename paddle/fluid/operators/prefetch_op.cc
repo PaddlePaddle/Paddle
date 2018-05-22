@@ -38,9 +38,6 @@ class PrefetchOp : public framework::OperatorBase {
 
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
@@ -52,8 +49,7 @@ class PrefetchOp : public framework::OperatorBase {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
                 << outs[i] << " back";
-        rpc_client->AsyncPrefetchVariable(epmap[i], ctx, scope, ins[i],
-                                          outs[i]);
+        rpc_client->AsyncPrefetchVariable(epmap[i], scope, ins[i], outs[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }

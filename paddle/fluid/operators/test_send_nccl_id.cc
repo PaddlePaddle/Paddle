@@ -74,8 +74,6 @@ TEST(SendNcclId, Normal) {
 
   f::Scope scope;
   p::CPUPlace place;
-  p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(p::CPUPlace());
 
   auto var = scope.Var(NCCL_ID_VARNAME);
   // var->SetType(f::proto::VarType_Type_RAW);
@@ -86,7 +84,7 @@ TEST(SendNcclId, Normal) {
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
   detail::RPCClient client;
 
-  client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
+  client.AsyncSendVariable(ep, scope, NCCL_ID_VARNAME);
   client.Wait();
   server_thread.join();
   auto* ptr = rpc_service.release();
