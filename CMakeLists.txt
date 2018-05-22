@@ -100,6 +100,9 @@ endif()
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
+set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
+  "A path setting fluid shared and static libraries")
+
 if (WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "
     "when using C-API. It will give an unpredictable behavior when using a "
