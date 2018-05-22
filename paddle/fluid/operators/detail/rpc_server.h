@@ -39,8 +39,8 @@ typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
 class RPCServer {
  public:
-  RPCServer(const std::string &address, bool sync_mode)
-      : address_(address), sync_mode_(sync_mode) {}
+  RPCServer(const std::string &bind_address, bool sync_mode)
+      : address_(bind_address), sync_mode_(sync_mode) {}
 
   virtual ~RPCServer() {}
 
@@ -60,6 +60,13 @@ class RPCServer {
   void WaitCond(int cond);
   void SetCond(int cond);
   void WaitClientGet(int count);
+  /*
+  // register rpc call name to a condition id with will be waiting on
+  virtual void RegisterBarrier(const std::string& rpc_name, int cond_id) = 0;
+  // wait the RPC call barrier, which means wait all the clients have
+  // performed the call.
+  virtual void WaitCond(const std::string& rpc_name) = 0;
+  */
 
   // set attribute.
   void SetScope(framework::Scope *scope) { scope_ = scope; }

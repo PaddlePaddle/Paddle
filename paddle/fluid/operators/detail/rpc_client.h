@@ -14,23 +14,11 @@
 
 #pragma once
 
-#include <time.h>
-
-#include <chrono>  // NOLINT
-#include <ctime>
-#include <functional>
-#include <iostream>
-#include <map>
 #include <string>
-#include <vector>
 
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -42,44 +30,30 @@ class RPCClient {
                                  const platform::DeviceContext& ctx,
                                  const framework::Scope& scope,
                                  const std::string& var_name,
-                                 int64_t time_out = 600 * 1000) {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-    return false;
-  }
+                                 int64_t time_out = rpc_time_out) = 0;
 
   virtual bool AsyncGetVariable(const std::string& ep,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope& scope,
                                 const std::string& var_name,
-                                int64_t time_out = 600 * 1000) {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-    return false;
-  }
+                                int64_t time_out = rpc_time_out) = 0;
 
   virtual bool AsyncPrefetchVariable(const std::string& ep,
                                      const platform::DeviceContext& ctx,
                                      const framework::Scope& scope,
                                      const std::string& in_var_name,
                                      const std::string& out_var_name,
-                                     int64_t time_out = 600 * 1000) {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-    return false;
-  }
+                                     int64_t time_out = rpc_time_out) = 0;
 
   virtual void AsyncSendBatchBarrier(const std::string& ep,
-                                     int64_t time_out = 600 * 1000) {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-  }
+                                     int64_t time_out = rpc_time_out) = 0;
 
   virtual void AsyncSendFetchBarrier(const std::string& ep,
-                                     int64_t time_out = 600 * 1000) {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-  }
+                                     int64_t time_out = rpc_time_out) = 0;
 
-  virtual bool Wait() {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-    return false;
-  }
+  virtual bool Wait() = 0;
+
+  static const int64_t rpc_time_out = 600 * 1000;
 };
 }  // namespace detail
 }  // namespace operators
