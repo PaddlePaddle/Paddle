@@ -3848,8 +3848,6 @@ def dice_loss(input, label, epsilon=0.00001):
             predictions = fluid.layers.softmax(x)
             loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
     """
-    helper = LayerHelper('dice_loss', **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = range(1, len(input.shape))
     inse = reduce_sum(input * label, dim=reduce_dim)
