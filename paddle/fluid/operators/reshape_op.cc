@@ -22,8 +22,7 @@ namespace operators {
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor). The input tensor of reshape operator.");
     AddInput("Shape",
              "(Tensor<int32>, optional). If provided, reshape according to "

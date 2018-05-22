@@ -47,7 +47,10 @@ extern std::vector<framework::DDim> RestoreShapes(
 
 class FileReaderMakerBase : public framework::OpProtoAndCheckerMaker {
  public:
-  FileReaderMakerBase(OpProto* op_proto, OpAttrChecker* op_checker);
+  void Make() final;
+
+ protected:
+  virtual void Apply() = 0;
 };
 
 class FileReaderInferShape : public framework::InferShapeBase {
@@ -76,7 +79,10 @@ class DecoratedReaderInferVarType : public framework::VarTypeInference {
 
 class DecoratedReaderMakerBase : public framework::OpProtoAndCheckerMaker {
  public:
-  DecoratedReaderMakerBase(OpProto* op_proto, OpAttrChecker* op_checker);
+  void Make() final;
+
+ protected:
+  virtual void Apply() = 0;
 };
 
 }  // namespace reader
