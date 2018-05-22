@@ -62,7 +62,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto w_t = w_var->GetMutable<framework::SelectedRows>();
     std::vector<int64_t> keys;
     keys.resize(ids_t.numel());
-    for (size_t i = 0; i < ids_t.numel(); ++i) {
+    for (int64_t i = 0; i < ids_t.numel(); ++i) {
       keys[i] = ids_t.data<int64_t>()[i];
     }
 
@@ -105,8 +105,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
 
 class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupSparseTableOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("W",
              "(SelectedRows) The input represents embedding table, "
              "which is a learnable parameter.");

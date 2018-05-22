@@ -228,7 +228,8 @@ static bool has_fetch_operators(
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>* feed_targets,
                    std::map<std::string, LoDTensor*>* fetch_targets,
-                   bool create_vars, const std::string& feed_holder_name,
+                   bool create_local_scope, bool create_vars,
+                   const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
@@ -290,8 +291,9 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 
   auto ctx = Prepare(*copy_program, 0);
-  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets, create_vars,
-                     feed_holder_name, fetch_holder_name);
+  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
+                     create_local_scope, create_vars, feed_holder_name,
+                     fetch_holder_name);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
@@ -348,8 +350,12 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       }
     }
   }
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
+  } else {
+    // Delete the local scopes created in operators.
+    scope->DropKids();
   }
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
@@ -362,8 +368,9 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
     std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_vars,
-    const std::string& feed_holder_name, const std::string& fetch_holder_name) {
+    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
+    bool create_vars, const std::string& feed_holder_name,
+    const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE(
@@ -383,7 +390,7 @@ void Executor::RunPreparedContext(
     }
   }
 
-  RunPreparedContext(ctx, scope, create_vars, create_vars);
+  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block.AllOps()) {

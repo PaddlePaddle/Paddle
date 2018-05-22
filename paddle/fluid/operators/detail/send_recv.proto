@@ -32,6 +32,7 @@ service SendRecvService {
 enum VarType {
   LOD_TENSOR = 0;
   SELECTED_ROWS = 1;
+  NCCL_ID = 2;
 }
 
 // NOTICE(gongwb):don't modify this proto if you are not
@@ -69,6 +70,10 @@ message VariableMessage {
   bytes rows = 9;
   // Look up table block execution output variable name.
   string out_varname = 10;
+  // If true, the ps server will start profiling, the ps
+  // server stops profiling and generates a profile to /tmp/profile_ps_*
+  // when profile switches from true to false.
+  bool profile = 11;
 }
 
 message VoidMessage {}

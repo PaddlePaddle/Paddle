@@ -33,8 +33,7 @@ class CosineOp : public OperatorBase {
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  CosineOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input of cosine op");
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -55,8 +54,7 @@ class MyTestOp : public OperatorBase {
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  MyTestOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input of cosine op").AsDuplicable();
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
@@ -212,10 +210,7 @@ namespace framework {
 
 class OpKernelTestMaker : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddComment("NoGradOp, same input output. no Grad");
-  }
+  void Make() { AddComment("NoGradOp, same input output. no Grad"); }
 };
 
 class OpWithKernelTest : public OperatorWithKernel {
@@ -275,9 +270,9 @@ TEST(OperatorRegistrar, CUDA) {
 
 static int op_test_value = 0;
 
-using paddle::platform::DeviceContext;
 using paddle::platform::CPUDeviceContext;
 using paddle::platform::CUDADeviceContext;
+using paddle::platform::DeviceContext;
 
 namespace paddle {
 namespace framework {

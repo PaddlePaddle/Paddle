@@ -23,6 +23,8 @@
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 
 namespace paddle {
@@ -33,11 +35,10 @@ namespace details {
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
-  ThreadedSSAGraphExecutor(size_t num_threads, bool use_event,
+  ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<SSAGraph> &&graph,
-                           bool allow_op_delay);
+                           std::unique_ptr<SSAGraph> &&graph);
 
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
@@ -54,10 +55,26 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
-  const bool use_event_;
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
-  bool allow_op_delay_;
+
+  void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+                       OpHandleBase *op_instance) const;
+
+  void InsertPendingVar(std::unordered_set<VarHandleBase *> *pending_vars,
+                        BlockingQueue<VarHandleBase *> *ready_vars,
+                        VarHandleBase *var) const;
+
+  void InsertFetchOps(
+      const std::vector<std::string> &fetch_tensors,
+      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+      std::unordered_set<VarHandleBase *> *pending_vars,
+      BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
+
+ private:
+  ExecutionStrategy strategy_;
 };
 
 }  // namespace details

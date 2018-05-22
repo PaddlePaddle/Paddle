@@ -72,6 +72,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
     else:
         raise ValueError("Not supported numpy dtype " + str(dtype))
 
@@ -160,6 +162,7 @@ class Variable(object):
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
+                 is_data=False,
                  **kwargs):
         self.block = block
         self.error_clip = error_clip
@@ -238,6 +241,7 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
         self.stop_gradient = stop_gradient
+        self.is_data = is_data
 
     def __str__(self):
         return self.to_string(True)
@@ -475,7 +479,7 @@ class Operator(object):
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
                 elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                   isinstance(attrs[attr_name], core.ProgramDesc):
+                        isinstance(attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
                 else:
@@ -487,7 +491,7 @@ class Operator(object):
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
             'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select'
+            'channel_send', 'channel_recv', 'select', 'gen_nccl_id'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -978,7 +982,8 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -986,7 +991,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         return ret_var
 
 
@@ -1042,14 +1048,16 @@ class Program(object):
         Returns(Program):
             The cloned Program object.
         """
-        p = Program()
         if for_test:
-            p.desc = core.inference_optimize(self.desc)
+            p = self.inference_optimize()
         else:
+            p = Program()
             p.desc = core.ProgramDesc(self.desc)
-        p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-        p.sync_with_cpp()
+            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.sync_with_cpp()
+
         p.copy_param_info_from(self)
+        p.copy_data_info_from(self)
         return p
 
     def prune(self, targets):
@@ -1061,7 +1069,7 @@ class Program(object):
                 if isinstance(t, Variable):
                     # After transpiler processing, the op that output this
                     # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this 
+                    # and we need to find the current op that generate this
                     # variable here.
                     t.op = None
                     global_block = self.global_block()
@@ -1087,8 +1095,16 @@ class Program(object):
         return res
 
     def inference_optimize(self):
+        # this is an alternative implement before
+        # core.inference_optimize being fixed.
         res = Program()
-        res.desc = core.inference_optimize(self.desc)
+        res.desc = core.ProgramDesc(self.desc)
+        for i in xrange(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for j in xrange(block.op_size()):
+                op = block.op(j)
+                if op.has_attr('is_test'):
+                    op.set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
@@ -1162,6 +1178,26 @@ class Program(object):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block().copy_param_info_from(other.global_block())
+
+    def copy_data_info_from(self, other):
+        """
+        Copy the information of data variables from other program.
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("copy_param_info_from should be invoked with "
+                            "Program")
+
+        if len(self.blocks) != len(other.blocks):
+            raise ValueError("copy_param_info_from should be invoked with two "
+                             "program, with represent the same topology")
+        for var in other.global_block().vars.itervalues():
+            if var.is_data:
+                self.global_block().var(var.name).is_data = True
 
     def list_vars(self):
         for each_block in self.blocks:

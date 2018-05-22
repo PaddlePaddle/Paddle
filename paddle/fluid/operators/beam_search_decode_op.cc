@@ -134,8 +134,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
 
 class BeamSearchDecodeOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchDecodeOpProtoMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Ids",
              "(LodTensorArray)"
              "score of the candidate words in each step");

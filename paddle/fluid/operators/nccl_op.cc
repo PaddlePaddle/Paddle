@@ -76,8 +76,7 @@ class NCCLInitOpShapeInference : public framework::InferShapeBase {
 
 class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLInitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kParallelScopes, "The working place of parallel do.");
     AddOutput("Communicator",
               "Create Communicator for communicating between gpus");
@@ -118,8 +117,7 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
 // AllReduceOp
 class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLAllReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of AllReduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of AllReduce op");
@@ -165,8 +163,7 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
 // ReduceOp
 class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of Reduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of Reduce op");
@@ -214,8 +211,7 @@ class NCCLBcastOp : public framework::OperatorWithKernel {
 // BcastOp
 class NCCLBcastOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLBcastOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of BcastSend op");
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of Bcast");

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/listen_and_serv_op.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,7 @@ static void ParallelExecuteBlocks(
         framework::Async([&executor, &prepared, &program, &scope, idx]() {
           int run_block = idx;  // thread local
           try {
-            executor->RunPreparedContext(prepared[run_block].get(), scope,
-                                         false, false);
+            executor->RunPreparedContext(prepared[run_block].get(), scope);
           } catch (std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
@@ -210,8 +210,8 @@ static void AsyncUpdateThread(
     }
     auto fs = framework::Async([var_name, &executor, &v, prepared] {
       try {
-        executor->RunPreparedContext(prepared, v.second->GetMutableLocalScope(),
-                                     false, false);
+        executor->RunPreparedContext(prepared,
+                                     v.second->GetMutableLocalScope());
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
@@ -294,6 +294,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
+  // Mark this as PS that it should decide profiling by listening from trainer.
+  platform::SetProfileListener();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   framework::Scope &recv_scope = scope.NewScope();
@@ -319,8 +321,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // prepare for prefetch
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
   auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
-  rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
-  prefetch_prepared.release();
+  rpc_service_->SetPrefetchPreparedCtx(std::move(prefetch_prepared));
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
@@ -328,9 +329,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->WaitServerReady();
 
   // Write to a file of server selected port for python use.
-  std::string file_path =
-    string::Sprintf("/tmp/paddle.%d.selected_port",
-                    static_cast<int>(::getpid()));
+  std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
+                                          static_cast<int>(::getpid()));
   SavePort(file_path);
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
@@ -341,8 +341,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ListenAndServOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(R"DOC(
 ListenAndServ operator

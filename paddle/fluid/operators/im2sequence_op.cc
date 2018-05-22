@@ -54,8 +54,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
 class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Im2SequenceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input tensor has NCHW format."
              "N: batch size"

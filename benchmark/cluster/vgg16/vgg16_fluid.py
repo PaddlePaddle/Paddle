@@ -80,6 +80,8 @@ parser.add_argument(
     type=str,
     default="",
     help="Comma-separated list of hostname:port pairs")
+parser.add_argument(
+    "--profile", action='store_true', help="If set, profile a few steps.")
 
 # Flags for defining the tf.train.Server
 parser.add_argument(
@@ -183,8 +185,8 @@ def main():
             start_time = time.time()
             num_samples = 0
             train_pass_acc.reset()
-            for batch_id, data in enumerate(train_reader()):
-                ts = time.time()
+
+            def run_step(batch_id, data):
                 img_data = np.array(
                     map(lambda x: x[0].reshape(data_shape), data)).astype(
                         "float32")
@@ -196,14 +198,28 @@ def main():
                     feed={"pixel": img_data,
                           "label": y_data},
                     fetch_list=[avg_cost, batch_acc, batch_size])
+                return loss, acc, b_size
+
+            if args.profile and args.task_index == 0:
+                # warmup.
+                for batch_id, data in enumerate(train_reader()):
+                    if batch_id > 5: break
+                    run_step(batch_id, data)
+                with profiler.profiler('All', 'total', '/tmp/profile_vgg'):
+                    for batch_id, data in enumerate(train_reader()):
+                        if batch_id > 5: break
+                        run_step(batch_id, data)
+
+            for batch_id, data in enumerate(train_reader()):
+                ts = time.time()
+                loss, acc, b_size = run_step(batch_id, data)
                 iters += 1
                 num_samples += len(data)
                 train_pass_acc.add(value=acc, weight=b_size)
                 print(
-                    "Task:%d Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, "
-                    "Speed = %.2f img/s " % (args.task_index, pass_id, iters,
-                                             loss, acc,
-                                             len(data) / (time.time() - ts))
+                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, "
+                    "Speed = %.2f img/s" % (pass_id, iters, loss, acc,
+                                            len(data) / (time.time() - ts))
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time

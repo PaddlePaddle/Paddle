@@ -22,6 +22,8 @@ How To Build
 You need to use Docker to build PaddlePaddle
 to avoid installing dependencies by yourself. We have several pre-built
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ ,
+you can also find how to build and use paddle_manylinux_devel Docker image from
+`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`_
 Or you can build your own image from source as the optional step below:
 
 .. code-block:: bash

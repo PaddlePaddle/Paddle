@@ -96,8 +96,7 @@ class MulOp : public framework::OperatorWithKernel {
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");

@@ -21,8 +21,7 @@ namespace operators {
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CompareOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     OpComment comment;
     AddInput("X",
              string::Sprintf("(LoDTensor) the left hand operand of %s operator",
