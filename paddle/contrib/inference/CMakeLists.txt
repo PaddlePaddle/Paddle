@@ -13,9 +13,6 @@
 # limitations under the License.
 #
 
-
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
-
 cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
