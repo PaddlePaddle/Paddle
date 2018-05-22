@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 struct PaddleTensor {
   std::string name;  // variable name.
