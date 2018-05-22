@@ -27,7 +27,7 @@ def QuadTransform(input):
     w_indexes = np.array(range(w) * h).reshape(
         [h, w])[np.newaxis, :]  # [1, h, w]
     indexes = np.concatenate(
-        (h_indexes, w_indexes))[np.newaxis, :]  # [1, 2, h, w]
+        (w_indexes, h_indexes))[np.newaxis, :]  # [1, 2, h, w]
     indexes = indexes.repeat([4], axis=0)[np.newaxis, :]  # [1, 4, 2, h, w]
     indexes = indexes.repeat([batch_size], axis=0)  # [batch_size, 4, 2, h, w]
     return input + indexes.reshape(input.shape)  # [batch_size, 8, h, w]
@@ -38,11 +38,12 @@ class TestQuadTransformOp(OpTest):
         self.input_shape = (1, 8, 2, 2)
 
     def setUp(self):
+        self.config()
         self.op_type = "quad_transform"
         input = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'Input': input}
         output = QuadTransform(input)
-        self.outputs = {'Ouput': output}
+        self.outputs = {'Output': output}
 
     def test_check_output(self):
         self.check_output()
@@ -55,7 +56,7 @@ class TestCase1(TestQuadTransformOp):
 
 class TestCase2(TestQuadTransformOp):
     def config(self):
-        self.input_shape = (3, 2, 4, 5)
+        self.input_shape = (3, 8, 4, 5)
 
 
 if __name__ == '__main__':

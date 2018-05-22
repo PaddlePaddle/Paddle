@@ -22,13 +22,13 @@ namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-template <int T>
+template <typename T>
 __global__ void QuadTransformKernel(const int n, const int h, const int w,
                                     const T* input, T* output) {
   int id_n = threadIdx.x + blockDim.x * blockIdx.x;
   int id_h = threadIdx.y + blockDim.y * blockIdx.y;
   int id_w = threadIdx.z + blockDim.z * blockIdx.z;
-  if (idx < n && idy < h && idz < w) {
+  if (id_n < n && id_h < h && id_w < w) {
     int id = id_n * h * w + w * id_h + id_w;
     if (id_n % 2 == 0) {
       output[id] = input[id] + id_w;
@@ -53,10 +53,12 @@ class QuadTransfromOpCUDAKernel : public framework::OpKernel<T> {
     int batch_size = in_dims[0];
     int height = in_dims[2];
     int width = in_dims[3];
-    dim3 threadsPerBlock(4, 16, 16);
+    dim3 threadsPerBlock(2, 16, 16);
     dim3 numBlocks((batch_size * 8) / threadsPerBlock.x,
-                   height / threadsPerBlock.y, width / threadsPerBlock.z);
-    QuadTransfromCudaKernel<T><<<numBlocks, threadsPerBlock, 0, stream>>>(
+                   (height + threadsPerBlock.y - 1) / threadsPerBlock.y,
+                   (width + threadsPerBlock.z - 1) / threadsPerBlock.z);
+    auto stream = ctx.cuda_device_context().stream();
+    QuadTransformKernel<T><<<numBlocks, threadsPerBlock, 0, stream>>>(
         batch_size * 8, height, width, in_data, out_data);
   }
 };
@@ -64,5 +66,6 @@ class QuadTransfromOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(quad_transform, paddle::operators::OpCUDAKernel<float>,
-                        paddle::operators::AccuracyOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(quad_transform,
+                        paddle::operators::QuadTransfromOpCUDAKernel<float>,
+                        paddle::operators::QuadTransfromOpCUDAKernel<double>);

@@ -32,8 +32,7 @@ class QuadTransformOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(in_dim.size(), 4, "input's rank must be 4.");
     PADDLE_ENFORCE_EQ(in_dim[1], 8, "input's second dimension must be 8");
 
-    ctx->SetOutputDim("Input", in_dim);
-    ctx->ShareLoD("Input", /*->*/ "Output");
+    ctx->SetOutputDim("Output", in_dim);
   }
 };
 
@@ -62,5 +61,6 @@ REGISTER_OPERATOR(quad_transform, ops::QuadTransformOp,
                   ops::QuadTransformOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    quad_transform, ops::QuadTransformKernel<paddle::platform::CPUPlace, float>,
-    ops::QuadTransformKernel<paddle::platform::CPUPlace, double>);
+    quad_transform,
+    ops::QuadTransformCPUKernel<paddle::platform::CPUPlace, float>,
+    ops::QuadTransformCPUKernel<paddle::platform::CPUPlace, double>);
