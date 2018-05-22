@@ -38,7 +38,7 @@ def str2bool(v):
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    '--batch_size', type=int, default=128, help="Batch size for training.")
+    '--batch_size', type=int, default=16, help="Batch size for training.")
 parser.add_argument(
     '--learning_rate',
     type=float,
@@ -61,7 +61,7 @@ parser.add_argument(
 parser.add_argument(
     '--data_set',
     type=str,
-    default='cifar10',
+    default='flowers',
     choices=['cifar10', 'flowers'],
     help='Optional dataset for benchmark.')
 parser.add_argument(
@@ -200,26 +200,30 @@ def main():
                     fetch_list=[avg_cost, batch_acc, batch_size])
                 return loss, acc, b_size
 
-            if args.profile and args.task_index == 0:
-                # warmup.
-                for batch_id, data in enumerate(train_reader()):
-                    if batch_id > 5: break
-                    run_step(batch_id, data)
-                with profiler.profiler('All', 'total', '/tmp/profile_vgg'):
+            if args.profile:
+                with profiler.profiler('All', 'total',
+                                       '/tmp/profile_vgg_%d' % args.task_index):
                     for batch_id, data in enumerate(train_reader()):
-                        if batch_id > 5: break
+                        if batch_id > 4: break
                         run_step(batch_id, data)
 
+            total_time = 0.0
+            count = 0
             for batch_id, data in enumerate(train_reader()):
                 ts = time.time()
                 loss, acc, b_size = run_step(batch_id, data)
                 iters += 1
                 num_samples += len(data)
                 train_pass_acc.add(value=acc, weight=b_size)
+
+                duration = time.time() - ts
+                total_time += duration
+                count += len(data)
                 print(
                     "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, "
-                    "Speed = %.2f img/s" % (pass_id, iters, loss, acc,
-                                            len(data) / (time.time() - ts))
+                    "Speed = %.2f (%.2f) img/s" % (pass_id, iters, loss, acc,
+                                                   len(data) / duration,
+                                                   count / total_time)
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
