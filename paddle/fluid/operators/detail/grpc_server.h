@@ -93,6 +93,7 @@ class AsyncGRPCServer final {
  private:
   static const int kSendReqsBufSize = 100;
   static const int kGetReqsBufSize = 100;
+  static const int kPrefetchReqsBufSize = 10;
 
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
@@ -102,6 +103,7 @@ class AsyncGRPCServer final {
 
   RequestBase *send_reqs_[kSendReqsBufSize];
   RequestBase *get_reqs_[kGetReqsBufSize];
+  RequestBase *prefetch_reqs_[kPrefetchReqsBufSize];
 
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
@@ -123,6 +125,7 @@ class AsyncGRPCServer final {
 
   std::vector<std::unique_ptr<std::thread>> t_sends_;
   std::vector<std::unique_ptr<std::thread>> t_gets_;
+  std::vector<std::unique_ptr<std::thread>> t_prefetchs_;
 
   std::unique_ptr<std::thread> t_prefetch_;
 
