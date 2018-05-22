@@ -1,3 +1,5 @@
+# Tune CPU performance
+
 This tutorial introduces techniques we use to profile and tune the
 CPU performance of PaddlePaddle.  We will use Python packages
 `cProfile` and `yep`, and Google's `perftools`.
@@ -14,7 +16,7 @@ the profiling and tuning of
 1. the Python code and
 1. the mixture of Python and C++ code.
 
-# Profiling the Python Code
+## Profiling the Python Code
 
 ### Generate the Performance Profiling File
 
