@@ -16,6 +16,7 @@ limitations under the License. */
 #include <mkldnn.h>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {
@@ -84,6 +85,18 @@ mkldnn::memory::data_type MKLDNNGetDataType() {
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
   return mkldnn::memory::f32;
+}
+
+inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {
+  auto reorder_prim = mkldnn::reorder(src, dst);
+  std::vector<mkldnn::primitive> pipeline;
+  pipeline.push_back(reorder_prim);
+  mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+}
+
+inline mkldnn::memory::format GetMKLDNNFormat(const mkldnn::memory memory) {
+  return static_cast<mkldnn::memory::format>(
+      memory.get_primitive_desc().desc().data.format);
 }
 
 }  // namespace platform

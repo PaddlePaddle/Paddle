@@ -23,7 +23,9 @@ using framework::Tensor;
 using mkldnn::memory;
 using mkldnn::primitive;
 using mkldnn::stream;
+using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
+using platform::to_void_cast;
 
 namespace {
 std::string gethash(const mkldnn::memory::dims &operand_dims,
@@ -36,11 +38,6 @@ std::string gethash(const mkldnn::memory::dims &operand_dims,
     return dstr;
   };
   return dim2str(operand_dims) + std::to_string(algorithm);
-}
-
-template <typename T>
-inline void *cast_const_to_void(const T *t) {
-  return static_cast<void *>(const_cast<T *>(t));
 }
 
 template <typename Functor>
@@ -167,8 +164,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   stream(stream::kind::eager).submit(pipeline).wait();
 
   y->set_layout(DataLayout::kMKLDNN);
-  y->set_format(
-      (memory::format)dst_memory->get_primitive_desc().desc().data.format);
+  y->set_format(GetMKLDNNFormat(*dst_memory));
 }
 
 template <typename T>
@@ -262,8 +258,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   stream(stream::kind::eager).submit(pipeline).wait();
 
   diff_x->set_layout(DataLayout::kMKLDNN);
-  diff_x->set_format(
-      (memory::format)diff_src_memory->get_primitive_desc().desc().data.format);
+  diff_x->set_format(GetMKLDNNFormat(*diff_src_memory));
 }
 
 template <typename T, mkldnn::algorithm algorithm>

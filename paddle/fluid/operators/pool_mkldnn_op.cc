@@ -25,6 +25,7 @@ using mkldnn::pooling_forward;
 using mkldnn::primitive;
 using mkldnn::reorder;
 using mkldnn::stream;
+using platform::to_void_cast;
 
 // Generate keys for storing/retriving primitives for this operator
 // TODO(jczaja): Make hashing function more optimial
@@ -43,11 +44,6 @@ static std::string gethash(const memory::dims& input_dims,
   };
   return dims2str(input_dims) + dims2str(ksize) + dims2str(strides) +
          dims2str(paddings) + pooling_type + suffix;
-}
-
-template <typename T>
-inline void* cast_const_to_void(const T* t) {
-  return static_cast<void*>(const_cast<T*>(t));
 }
 
 template <typename T>
@@ -130,8 +126,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // save pool_workspace_memory to be referred in backward path
       dev_ctx.SetBlob(key_pool_workspace_memory, workspace_memory);
 
-      auto src_memory = std::make_shared<memory>(
-          pool_pd->src_primitive_desc(), cast_const_to_void<T>(input_data));
+      auto src_memory = std::make_shared<memory>(pool_pd->src_primitive_desc(),
+                                                 to_void_cast<T>(input_data));
       auto dst_memory =
           std::make_shared<memory>(pool_pd->dst_primitive_desc(), output_data);
 
@@ -156,7 +152,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_dst_mem_p));
       PADDLE_ENFORCE(pool_dst_memory_p != nullptr,
                      "Fail to find pooling dst mem_p in device context");
-      pool_src_memory_p->set_data_handle(cast_const_to_void<T>(input_data));
+      pool_src_memory_p->set_data_handle(to_void_cast<T>(input_data));
       pool_dst_memory_p->set_data_handle(output_data);
 
       output_format = (memory::format)pool_dst_memory_p->get_primitive_desc()
@@ -264,7 +260,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto user_diff_dst_memory =
         memory({{{diff_dst_tz}, memory::data_type::f32, out_grad->format()},
                 mkldnn_engine},
-               cast_const_to_void<T>(out_grad_data));
+               to_void_cast<T>(out_grad_data));
 
     std::shared_ptr<memory> diff_src_memory;
     std::shared_ptr<memory> diff_dst_memory;
