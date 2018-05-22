@@ -151,7 +151,7 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   LOG(INFO) << "server exit";
 }
 
-TEST(SendRecvOp, DISABLED_CPUDense) {
+TEST(SendRecvOp, CPUDense) {
   std::atomic<bool> initialized{false};
   std::thread server_thread(StartServerNet, false, &initialized);
   while (!initialized) {
@@ -197,7 +197,7 @@ TEST(SendRecvOp, DISABLED_CPUDense) {
   paddle::operators::ListenAndServOp::ResetPort();
 }
 
-TEST(SendRecvOp, DISABLED_CPUSparse) {
+TEST(SendRecvOp, CPUSparse) {
   std::atomic<bool> initialized;
   initialized = false;
   std::thread server_thread(StartServerNet, true, &initialized);

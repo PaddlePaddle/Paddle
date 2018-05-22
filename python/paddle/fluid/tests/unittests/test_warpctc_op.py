@@ -210,11 +210,9 @@ class TestWarpCTCOp(OpTest):
         self.outputs = {"Loss": loss}
         self.attrs = {"blank": self.blank, "norm_by_times": self.norm_by_times}
 
-    @unittest.skip("This unittest could be hang")
     def test_check_output(self):
         self.check_output()
 
-    @unittest.skip("This unittest could be hang")
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
         self.check_grad(["Logits"], "Loss", max_relative_error=0.007)

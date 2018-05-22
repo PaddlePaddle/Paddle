@@ -108,10 +108,7 @@ void StartServer(const std::string& endpoint) {
   rpc_service_->RunSyncUpdate();
 }
 
-// NOTE(yuyang18) : This test is buggy.
-// 1. We should not use port 8889 before check.
-// 2. We should not use sleep(2) to sync threads.
-TEST(PREFETCH, DISABLED_CPU) {
+TEST(PREFETCH, CPU) {
   // start up a server instance backend
   std::thread server_thread(StartServer, "127.0.0.1:8889");
   sleep(2);
