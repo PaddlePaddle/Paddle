@@ -2451,8 +2451,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
     if len(x.shape) == 1:
         axis = 0
-    if axis is not None and not isinstance(axis, list):
-        axis = [axis]
     helper = LayerHelper("l2_normalize", **locals())
 
     square = helper.create_tmp_variable(dtype=x.dtype)
@@ -2464,7 +2462,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         inputs={"X": square},
         outputs={"Out": reduced_sum},
         attrs={
-            "dim": [1] if axis is None else axis,
+            "dim": [1] if axis is None else [axis],
             "keep_dim": True,
             "reduce_all": False
         })
