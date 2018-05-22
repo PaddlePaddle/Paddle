@@ -223,13 +223,12 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
-Attribute OpDesc::GetAttrOrDefault(
-    const std::string &name, paddle::framework::Attribute default_attr) const {
+Attribute OpDesc::GetNullableAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   if (it != attrs_.end()) {
     return it->second;
   } else {
-    return default_attr;
+    return Attribute();
   }
 }
 
