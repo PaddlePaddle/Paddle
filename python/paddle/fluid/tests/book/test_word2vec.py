@@ -166,19 +166,22 @@ def infer(use_cuda, save_dirname=None):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        # Setup inputs, by creating 4 words, the shape of the word should be [1].
-        # The lod of word should be [[1]] meaning there is only one lod_level and 
-        # there is one sequence of one word on this level
+        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
+        # is simply an index to look up for the corresponding word vector and hence 
+        # the shape of word (base_shape) should be [1]. The length-based level of 
+        # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
+        # one lod_level and there is only one sequence of one word on this level.
+        # Note that lod info should be a list of lists.
         lod = [[1]]
-        shape = [1]
+        base_shape = [1]
         first_word = fluid.create_random_int_lodtensor(
-            lod, shape, place, low=0, high=dict_size - 1)
+            lod, base_shape, place, low=0, high=dict_size - 1)
         second_word = fluid.create_random_int_lodtensor(
-            lod, shape, place, low=0, high=dict_size - 1)
+            lod, base_shape, place, low=0, high=dict_size - 1)
         third_word = fluid.create_random_int_lodtensor(
-            lod, shape, place, low=0, high=dict_size - 1)
+            lod, base_shape, place, low=0, high=dict_size - 1)
         fourth_word = fluid.create_random_int_lodtensor(
-            lod, shape, place, low=0, high=dict_size - 1)
+            lod, base_shape, place, low=0, high=dict_size - 1)
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'
