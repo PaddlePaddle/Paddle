@@ -27,7 +27,6 @@ namespace detail {
 class RPCClient {
  public:
   virtual bool AsyncSendVariable(const std::string& ep,
-                                 const platform::DeviceContext& ctx,
                                  const framework::Scope& scope,
                                  const std::string& var_name,
                                  int64_t time_out = rpc_time_out) = 0;

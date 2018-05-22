@@ -163,7 +163,6 @@ class FetchBarrierProcessor : public BaseProcessor {
 class GRPCClient : public RPCClient {
  public:
   virtual bool AsyncSendVariable(const std::string& ep,
-                                 const platform::DeviceContext& ctx,
                                  const framework::Scope& scope,
                                  const std::string& var_name,
                                  int64_t time_out = 600 * 1000);

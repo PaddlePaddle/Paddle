@@ -125,7 +125,7 @@ class RequestGet final : public RequestBase {
 
     ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
-      SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+      SerializeToByteBuffer(var_name, var, &reply);
     }
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -186,7 +186,7 @@ class RequestPrefetch final : public RequestBase {
     InitializeVariable(var, var_desc->GetType());
     executor_->RunPreparedContext(prefetch_ctx_, scope_);
 
-    SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+    SerializeToByteBuffer(var_name, var, &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;

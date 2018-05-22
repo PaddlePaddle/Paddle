@@ -61,7 +61,7 @@ class SendOp : public framework::OperatorBase {
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVariable(epmap[i], scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }

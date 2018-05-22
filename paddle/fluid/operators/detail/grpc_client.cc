@@ -25,29 +25,30 @@ namespace operators {
 namespace detail {
 
 bool GRPCClient::AsyncSendVariable(const std::string& ep,
-                                   const platform::DeviceContext& ctx,
                                    const framework::Scope& scope,
                                    const std::string& var_name,
                                    int64_t time_out) {
-  const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
 
-  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
-                      this] {
+  framework::AsyncIO([var_name_val, ep_val, p_scope, time_out, ch, this] {
     auto* var = p_scope->FindVar(var_name_val);
+    // auto tensor = var->Get<framework::LoDTensor>();
+    // auto place  = tensor.place();
+    // const platform::DeviceContext* p_ctx =
+    // platform::DeviceContextPool::Instance().Get(place);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
+    SerializeToByteBuffer(var_name_val, var, &req);
 
     // varhandle
     VarHandle var_h;
     var_h.ep = ep_val;
     var_h.scope = p_scope;
     var_h.name = var_name_val;
-    var_h.ctx = p_ctx;
+    // var_h.ctx = p_ctx;
 
     // stub context
     SendProcessor* s = new SendProcessor(ch);
@@ -103,7 +104,7 @@ bool GRPCClient::AsyncGetVariable(const std::string& ep,
     var_h.ep = ep_val;
     var_h.scope = p_scope;
     var_h.name = var_name_val;
-    var_h.ctx = p_ctx;
+    // var_h.ctx = p_ctx;
 
     // stub context
     GetProcessor* s = new GetProcessor(ch);
@@ -139,14 +140,14 @@ bool GRPCClient::AsyncPrefetchVariable(const std::string& ep,
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
+    SerializeToByteBuffer(in_var_name_val, var, &req, out_var_name_val);
 
     // var handle
     VarHandle var_h;
     var_h.ep = ep_val;
     var_h.scope = p_scope;
     var_h.name = out_var_name_val;
-    var_h.ctx = p_ctx;
+    // var_h.ctx = p_ctx;
 
     // stub context
     GetProcessor* s = new GetProcessor(ch);

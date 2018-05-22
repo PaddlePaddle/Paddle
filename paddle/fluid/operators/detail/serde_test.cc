@@ -50,7 +50,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (int i = 0; i < 564; ++i) rows->push_back(i);
 
   ::grpc::ByteBuffer msg;
-  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  operators::detail::SerializeToByteBuffer("myvar", &var, &msg);
   EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
@@ -128,7 +128,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   math::set_constant(ctx, tensor, 31.9);
 
   ::grpc::ByteBuffer msg;
-  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  operators::detail::SerializeToByteBuffer("myvar", &var, &msg);
   EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
