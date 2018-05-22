@@ -41,6 +41,7 @@ list(REMOVE_ITEM TEST_OPS test_sequence_expand)
 
 # test time consuming OPs in a separate process for expliot parallism
 list(REMOVE_ITEM TEST_OPS test_parallel_executor)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_grad)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dyn_rnn)
 list(REMOVE_ITEM TEST_OPS test_mul_op)
@@ -81,6 +82,7 @@ endif(WITH_FAST_BUNDLE_TEST)
 py_test_modules(test_sequence_expand MODULES test_sequence_expand)
 # tests with high overhead
 py_test_modules(test_parallel_executor MODULES test_parallel_executor)
+py_test_modules(test_parallel_executor_grad MODULES test_parallel_executor_grad)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)
