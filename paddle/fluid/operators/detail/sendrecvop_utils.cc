@@ -34,10 +34,12 @@ namespace detail {
 
 using VarMsg = sendrecv::VariableMessage;
 
-void GetTensorPayload(framework::Variable* var,
-                      const platform::DeviceContext& ctx, VarMsg* request,
-                      void** payload, size_t* payload_size) {
+void GetTensorPayload(framework::Variable* var, VarMsg* request, void** payload,
+                      size_t* payload_size) {
   auto tensor = var->Get<framework::LoDTensor>();
+  const platform::DeviceContext& ctx =
+      *platform::DeviceContextPool::Instance().Get(tensor.place());
+
   // FIXME(wuyi): data types in send_recv.proto is copied from
   // framework.proto
   request->set_data_type(
@@ -74,10 +76,12 @@ void GetTensorPayload(framework::Variable* var,
   *payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
 }
 
-void GetSelectedRowsPayload(framework::Variable* var,
-                            const platform::DeviceContext& ctx, VarMsg* request,
+void GetSelectedRowsPayload(framework::Variable* var, VarMsg* request,
                             void** payload, size_t* payload_size) {
   auto* slr = var->GetMutable<framework::SelectedRows>();
+  const platform::DeviceContext& ctx =
+      *platform::DeviceContextPool::Instance().Get(slr->place());
+
   request->set_data_type(
       static_cast<VarMsg::Type>(framework::ToDataType(slr->value().type())));
   request->set_lod_level(0);
@@ -107,7 +111,6 @@ void GetSelectedRowsPayload(framework::Variable* var,
 }
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
-                           const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
                            const std::string& out_name) {
   // Default DestroyCallback does nothing, When using GPU
@@ -117,6 +120,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   void* payload = nullptr;
   size_t payload_size;
 
+  platform::Place place = platform::CPUPlace();
   request.set_varname(name);
   // Note: normally the profiler is enabled in 1 trainer, hence only
   // 1 trainer returns true for ShouldSendProfileState(). It tells PS
@@ -127,11 +131,13 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     request.set_out_varname(out_name);
   }
   if (var->IsType<framework::LoDTensor>()) {
+    place = var->Get<framework::LoDTensor>().place();
     request.set_type(::sendrecv::LOD_TENSOR);
-    GetTensorPayload(var, ctx, &request, &payload, &payload_size);
+    GetTensorPayload(var, &request, &payload, &payload_size);
   } else if (var->IsType<framework::SelectedRows>()) {
+    place = var->Get<framework::LoDTensor>().place();
     request.set_type(::sendrecv::SELECTED_ROWS);
-    GetSelectedRowsPayload(var, ctx, &request, &payload, &payload_size);
+    GetSelectedRowsPayload(var, &request, &payload, &payload_size);
 #ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
     request.set_type(::sendrecv::NCCL_ID);
@@ -141,7 +147,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
-  if (platform::is_gpu_place(ctx.GetPlace())) {
+  if (platform::is_gpu_place(place)) {
     // GPU data is copied to CPU buffer when sending,
     // free the buffer when possible.
     destroy_callback = [](void* backing) {
