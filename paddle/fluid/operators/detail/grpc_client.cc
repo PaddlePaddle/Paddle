@@ -245,16 +245,10 @@ bool RPCClient::Proceed() {
 }
 std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep,
                                                      const std::string& key) {
-  VLOG(3) << "this addr: " << this;
   std::unique_lock<std::mutex> lock(mutex_);
   auto it = channels_.find(key);
   if (it != channels_.end()) {
-    VLOG(3) << "find ep: " << ep;
     return it->second;
-  }
-  VLOG(3) << "can not find ep: " << ep;
-  for (auto it = channels_.begin(); it != channels_.end(); ++it) {
-    VLOG(3) << "ep: " << it->first;
   }
 
   grpc::ChannelArguments args;
