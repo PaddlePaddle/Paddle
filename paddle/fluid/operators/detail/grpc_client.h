@@ -47,6 +47,11 @@ struct VarHandle {
   const framework::Scope* scope;
   std::string name;
 
+  VarHandle() {
+    ctx = nullptr;
+    scope = nullptr;
+  }
+
   std::string String() const {
     std::ostringstream s;
     s << "name:[" << name << "] ep:[" << ep << "]";

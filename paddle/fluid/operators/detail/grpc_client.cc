@@ -35,10 +35,6 @@ bool GRPCClient::AsyncSendVariable(const std::string& ep,
 
   framework::AsyncIO([var_name_val, ep_val, p_scope, time_out, ch, this] {
     auto* var = p_scope->FindVar(var_name_val);
-    // auto tensor = var->Get<framework::LoDTensor>();
-    // auto place  = tensor.place();
-    // const platform::DeviceContext* p_ctx =
-    // platform::DeviceContextPool::Instance().Get(place);
 
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, &req);
@@ -48,7 +44,6 @@ bool GRPCClient::AsyncSendVariable(const std::string& ep,
     var_h.ep = ep_val;
     var_h.scope = p_scope;
     var_h.name = var_name_val;
-    // var_h.ctx = p_ctx;
 
     // stub context
     SendProcessor* s = new SendProcessor(ch);
@@ -104,7 +99,7 @@ bool GRPCClient::AsyncGetVariable(const std::string& ep,
     var_h.ep = ep_val;
     var_h.scope = p_scope;
     var_h.name = var_name_val;
-    // var_h.ctx = p_ctx;
+    var_h.ctx = p_ctx;
 
     // stub context
     GetProcessor* s = new GetProcessor(ch);
@@ -147,7 +142,7 @@ bool GRPCClient::AsyncPrefetchVariable(const std::string& ep,
     var_h.ep = ep_val;
     var_h.scope = p_scope;
     var_h.name = out_var_name_val;
-    // var_h.ctx = p_ctx;
+    var_h.ctx = p_ctx;
 
     // stub context
     GetProcessor* s = new GetProcessor(ch);
