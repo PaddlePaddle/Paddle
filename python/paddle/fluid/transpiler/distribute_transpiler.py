@@ -373,6 +373,16 @@ class DistributeTranspiler:
         for i, ep in enumerate(eplist):
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+        # step4: Concat the parameters splits together after recv.
+        for varname, splited_var in param_var_mapping.iteritems():
+            if len(splited_var) <= 1:
+                continue
+            orig_param = program.global_block().vars[varname]
+            program.global_block().append_op(
+                type="concat",
+                inputs={"X": splited_var},
+                outputs={"Out": [orig_param]},
+                attrs={"axis": 0})
 
         # TODO(Yancey1989): check dist lookup table
         if self.has_distributed_lookup_table:

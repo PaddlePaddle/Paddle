@@ -29,7 +29,9 @@ void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
   this->RunAndRecordEvent([this] {
+    VLOG(3) << "begin run op type is " << op_->Type();
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
+    VLOG(3) << "end run op type is " << op_->Type();
   });
 }
 
