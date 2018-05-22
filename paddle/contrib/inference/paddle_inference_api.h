@@ -37,7 +37,7 @@ struct PaddleTensor {
  * TODO(Superjomn) Prepare another API for NLP-related usages.
  */
 class PaddlePredictor {
- public:
+public:
   struct Config;
   PaddlePredictor() = default;
 
@@ -73,7 +73,7 @@ class PaddlePredictor {
     };
   };
 
- private:
+private:
   // Build the network before inference.
   virtual bool Init(const Config& config) = 0;
 };

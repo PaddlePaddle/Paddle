@@ -20,11 +20,11 @@ limitations under the License. */
  * Do not use this, just a demo indicating how to customize a Predictor.
  */
 class DemoPredictor : public PaddlePredictor {
- public:
+public:
   DemoPredictor() = default;
 
   bool Init(const Config &config) override {
-    const DemoConfig &demo_config = *static_cast<const DemoConfig*>(&config);
+    const DemoConfig &demo_config = *static_cast<const DemoConfig *>(&config);
     LOG(INFO) << "I get other_config " << demo_config.other_config;
     return true;
   }
