@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -162,8 +163,9 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         if (static_cast<bool>(boost::get<int>(op->GetAttr(
                                   OpProtoAndCheckerMaker::OpRoleAttrName())) &
                               static_cast<int>(OpRole::kBackward))) {
-          auto &backward_vars = boost::get<std::vector<std::string>>(
-              op->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          auto backward_vars = boost::get<std::vector<std::string>>(
+              op->GetAttrOrDefault(OpProtoAndCheckerMaker::OpRoleVarAttrName(),
+                                   std::vector<std::string>()));
           for (auto &og : backward_vars) {
             switch (strategy_.reduce_) {
               case BuildStrategy::ReduceStrategy::kReduce:
@@ -404,8 +406,9 @@ void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
   return boost::get<int>(
              op.GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-         (static_cast<int>(OpRole::kBackward) |
-          static_cast<int>(OpRole::kLoss));
+             (static_cast<int>(OpRole::kBackward) |
+              static_cast<int>(OpRole::kLoss)) &&
+         !loss_var_name_.empty();  // If loss_var is empty. This is test mode
 }
 }  // namespace details
 }  // namespace framework
