@@ -26,6 +26,9 @@ enum class OpRole {
   kOptimize = 0x0002,
 
   kLoss = 0x0100,
+  // The default value of op's role. This should be only used for unittests and
+  // CreateOp inside a operator.
+  kNotSpecified = 0x1000,
 };
 
 // this class not only make proto but also init attribute checkers.
