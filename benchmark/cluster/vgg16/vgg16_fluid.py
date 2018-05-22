@@ -204,7 +204,7 @@ def main():
                 with profiler.profiler('All', 'total',
                                        '/tmp/profile_vgg_%d' % args.task_index):
                     for batch_id, data in enumerate(train_reader()):
-                        if batch_id > 4: break
+                        if batch_id > 5: break
                         run_step(batch_id, data)
 
             total_time = 0.0
