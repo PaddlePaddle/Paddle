@@ -78,8 +78,7 @@ class OpDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
-  Attribute GetAttrOrDefault(const std::string &name,
-                             Attribute default_attr) const;
+  Attribute GetNullableAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
 
