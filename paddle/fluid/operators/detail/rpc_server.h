@@ -44,29 +44,14 @@ class RPCServer {
 
   virtual ~RPCServer() {}
 
-  virtual void RunSyncUpdate() {
-    PADDLE_ENFORCE(false, "RPCServer RunSyncUpdate is not implemented!");
-  }
-
-  virtual void WaitServerReady() {
-    PADDLE_ENFORCE(false, "RPCServer WaitServerReady is not implemented!");
-  }
-
-  virtual void ShutDown() {
-    PADDLE_ENFORCE(false, "RPCServer ShutDown is not implemented!");
-  }
+  virtual void RunSyncUpdate() = 0;
+  virtual void WaitServerReady() = 0;
+  virtual void ShutDown() = 0;
 
   // functions to sync server barrier status.
   void WaitCond(int cond);
   void SetCond(int cond);
   void WaitClientGet(int count);
-  /*
-  // register rpc call name to a condition id with will be waiting on
-  virtual void RegisterBarrier(const std::string& rpc_name, int cond_id) = 0;
-  // wait the RPC call barrier, which means wait all the clients have
-  // performed the call.
-  virtual void WaitCond(const std::string& rpc_name) = 0;
-  */
 
   // set attribute.
   void SetScope(framework::Scope *scope) { scope_ = scope; }
