@@ -569,7 +569,7 @@ def prior_box(input,
               image,
               min_sizes,
               max_sizes=None,
-              aspect_ratios=None,
+              aspect_ratios=[1.],
               variance=[0.1, 0.1, 0.2, 0.2],
               flip=False,
               clip=False,
@@ -589,19 +589,19 @@ def prior_box(input,
        input(Variable): The Input Variables, the format is NCHW.
        image(Variable): The input image data of PriorBoxOp,
             the layout is NCHW.
-       min_sizes(list|tuple): min sizes of generated prior boxes.
+       min_sizes(list|tuple|float value): min sizes of generated prior boxes.
        max_sizes(list|tuple|None): max sizes of generated prior boxes.
             Default: None.
-       aspect_ratios(list|tuple): the aspect ratios of generated prior
-            boxes. Default: None.
+       aspect_ratios(list|tuple|float value): the aspect ratios of generated
+            prior boxes. Default: [1.].
        variance(list|tuple): the variances to be encoded in prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
        flip(bool): Whether to flip aspect ratios. Default:False.
        clip(bool): Whether to clip out-of-boundary boxes. Default: False.
-       step(list|turple): Prior boxes step across weight and height, If
+       step(list|turple): Prior boxes step across width and height, If
             step[0] == 0.0/step[1] == 0.0, the prior boxes step across
-            height/weight  of the input will be automatically calculated.
-            Default: [0.0]
+            height/weight of the input will be automatically calculated.
+            Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
 
@@ -630,6 +630,21 @@ def prior_box(input,
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
 
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(min_sizes):
+        min_sizes = [min_sizes]
+    if not _is_list_or_tuple_(aspect_ratios):
+        aspect_ratios = [aspect_ratios]
+    if not (_is_list_or_tuple_(steps) and len(steps) == 2):
+        raise ValueError('steps should be a list or tuple ',
+                         'with length 2, (step_width, step_height).')
+
+    min_sizes = list(map(float, min_sizes))
+    aspect_ratios = list(map(float, aspect_ratios))
+    steps = list(map(float, steps))
+
     attrs = {
         'min_sizes': min_sizes,
         'aspect_ratios': aspect_ratios,
@@ -641,6 +656,8 @@ def prior_box(input,
         'offset': offset
     }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
+        if not _is_list_or_tuple_(max_sizes):
+            max_sizes = [max_sizes]
         attrs['max_sizes'] = max_sizes
 
     box = helper.create_tmp_variable(dtype)
