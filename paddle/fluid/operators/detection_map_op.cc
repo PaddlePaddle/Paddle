@@ -51,7 +51,8 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(label_dims.size(), 2,
                       "The rank of Input(Label) must be 2, "
                       "the shape is [N, 6].");
-    PADDLE_ENFORCE_EQ(label_dims[1], 6, "The shape is of Input(Label) [N, 6].");
+    PADDLE_ENFORCE(label_dims[1] == 6 || label_dims[1] == 5,
+                   "The shape of Input(Label) is [N, 6] or [N, 5].");
 
     if (ctx->HasInput("PosCount")) {
       PADDLE_ENFORCE(ctx->HasInput("TruePos"),
@@ -78,8 +79,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
 
 class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DetectionMAPOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("DetectRes",
              "(LoDTensor) A 2-D LoDTensor with shape [M, 6] represents the "
              "detections. Each row has 6 values: "
@@ -89,9 +89,10 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
              "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
              "no detected data.");
     AddInput("Label",
-             "(LoDTensor) A 2-D LoDTensor with shape[N, 6] represents the"
+             "(LoDTensor) A 2-D LoDTensor represents the"
              "Labeled ground-truth data. Each row has 6 values: "
-             "[label, is_difficult, xmin, ymin, xmax, ymax], N is the total "
+             "[label, xmin, ymin, xmax, ymax, is_difficult] or 5 values: "
+             "[label, xmin, ymin, xmax, ymax], where N is the total "
              "number of ground-truth data in this mini-batch. For each "
              "instance, the offsets in first dimension are called LoD, "
              "the number of offset is N + 1, if LoD[i + 1] - LoD[i] == 0, "

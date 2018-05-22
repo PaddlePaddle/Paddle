@@ -14,10 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace inference {
+
+struct Buffer;
+enum class DeviceType { UNK = -1, CPU, GPU };
 
 /*
  * EngineBase is the base class of all inference engines. An inference engine
@@ -45,8 +49,20 @@ class EngineBase {
   // Execute the engine, that will run the inference network.
   virtual void Execute(int batch_size) = 0;
 
+  // Return the IO buffer that allocated in engine. One can read/write directly
+  // on the buffer. If the buffer's buffer is nullptr, one can also allocate
+  // memory and maintain it outside the engine.
+  virtual Buffer& buffer(const std::string& name) = 0;
+
   virtual ~EngineBase() {}
 };  // class EngineBase
+
+struct Buffer {
+  void* buffer{nullptr};               // buffer should be allocated only once.
+  size_t max_size;                     // buffer allocated space.
+  size_t size;                         // data size.
+  DeviceType device{DeviceType::UNK};  // tells which device this buffer is on.
+};
 
 }  // namespace inference
 }  // namespace paddle

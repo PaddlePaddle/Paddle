@@ -79,8 +79,7 @@ class ReadOp : public framework::OperatorBase {
 
 class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(op_proto, op_checker) {
+  void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
     AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
     AddComment(R"DOC(
