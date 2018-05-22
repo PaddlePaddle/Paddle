@@ -64,6 +64,11 @@ class BlockingQueue {
     return rc;
   }
 
+  size_t Size() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return q_.size();
+  }
+
  private:
   std::mutex mutex_;
   std::condition_variable cv_;

@@ -49,6 +49,10 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  private:
   void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
              details::OpHandleBase *op);
+  void RunOp(
+      std::atomic<int> *total_ops, BlockingQueue<OpHandleBase *> *pending_ops,
+      std::unordered_map<OpHandleBase *, std::atomic<int>> *pending_op_deps,
+      details::OpHandleBase *current_op);
 
  private:
   std::unique_ptr<::ThreadPool> pool_;
@@ -57,6 +61,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   platform::DeviceContextPool fetch_ctxs_;
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
+  ExecutionStrategy strategy_;
+  size_t thread_cnt_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
@@ -73,8 +79,11 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
       std::unordered_set<VarHandleBase *> *pending_vars,
       BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
 
- private:
-  ExecutionStrategy strategy_;
+  void InsertFetchOps(
+      const std::vector<std::string> &fetch_tensors,
+      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+      FeedFetchList *fetch_data);
 };
 
 }  // namespace details
