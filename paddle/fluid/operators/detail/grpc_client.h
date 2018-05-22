@@ -161,7 +161,7 @@ class FetchBarrierProcessor : public BaseProcessor {
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
-class GRPCClient {
+class RPCClient {
  public:
   virtual bool AsyncSendVariable(const std::string& ep,
                                  const framework::Scope& scope,
