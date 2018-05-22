@@ -135,7 +135,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     request.set_type(::sendrecv::LOD_TENSOR);
     GetTensorPayload(var, &request, &payload, &payload_size);
   } else if (var->IsType<framework::SelectedRows>()) {
-    place = var->Get<framework::LoDTensor>().place();
+    place = var->Get<framework::SelectedRows>().place();
     request.set_type(::sendrecv::SELECTED_ROWS);
     GetSelectedRowsPayload(var, &request, &payload, &payload_size);
 #ifdef PADDLE_WITH_CUDA

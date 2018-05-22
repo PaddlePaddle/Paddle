@@ -159,29 +159,27 @@ class FetchBarrierProcessor : public BaseProcessor {
 
 class RPCClient {
  public:
-  virtual bool AsyncSendVariable(const std::string& ep,
-                                 const framework::Scope& scope,
-                                 const std::string& var_name,
-                                 int64_t time_out = rpc_time_out);
+  bool AsyncSendVariable(const std::string& ep, const framework::Scope& scope,
+                         const std::string& var_name,
+                         int64_t time_out = rpc_time_out);
 
-  virtual bool AsyncGetVariable(const std::string& ep,
-                                const framework::Scope& scope,
-                                const std::string& var_name,
-                                int64_t time_out = rpc_time_out);
+  bool AsyncGetVariable(const std::string& ep, const framework::Scope& scope,
+                        const std::string& var_name,
+                        int64_t time_out = rpc_time_out);
 
-  virtual bool AsyncPrefetchVariable(const std::string& ep,
-                                     const framework::Scope& scope,
-                                     const std::string& in_var_name,
-                                     const std::string& out_var_name,
-                                     int64_t time_out = rpc_time_out);
+  bool AsyncPrefetchVariable(const std::string& ep,
+                             const framework::Scope& scope,
+                             const std::string& in_var_name,
+                             const std::string& out_var_name,
+                             int64_t time_out = rpc_time_out);
 
-  virtual void AsyncSendBatchBarrier(const std::string& ep,
-                                     int64_t time_out = rpc_time_out);
+  void AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = rpc_time_out);
 
-  virtual void AsyncSendFetchBarrier(const std::string& ep,
-                                     int64_t time_out = rpc_time_out);
+  void AsyncSendFetchBarrier(const std::string& ep,
+                             int64_t time_out = rpc_time_out);
 
-  virtual bool Wait();
+  bool Wait();
 
  private:
   bool Proceed();
