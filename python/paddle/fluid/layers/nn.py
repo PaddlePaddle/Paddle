@@ -80,6 +80,7 @@ __all__ = [
     'pad',
     'label_smooth',
     'roi_pool',
+    'dice_loss',
 ]
 
 
@@ -3816,3 +3817,43 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+def dice_loss(input, label, epsilon=0.00001):
+    """
+    **Dice loss Layer**
+    Dice loss for comparing the similarity of two batch of data,
+    usually is used for binary image segmentation i.e. labels are binary.
+    The dice loss can be defined as below equation:
+
+    .. math::
+
+        dice\_loss &= 1 - \\frac{2 * intersection\_area}{total\_area} \\\\
+                  &= \\frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\\\
+                  &= \\frac{(union\_area - intersection\_area)}{total\_area}
+
+
+    Args:
+        input (Variable): The predictions with rank>=2. The first dimension is batch size,
+                          and the last dimension is class number.
+        label (Variable): The groud truth with the same rank with input. The first dimension
+                          is batch size, and the last dimension is 1.
+        epsilon (float): The epsilon will be added to the numerator and denominator.
+                         If both input and label are empty, it makes sure dice is 1.
+                         Default: 0.00001
+
+    Returns:
+        dice_loss (Variable): The dice loss with shape [1].
+
+    Examples:
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+    """
+    label = one_hot(label, depth=input.shape[-1])
+    reduce_dim = range(1, len(input.shape))
+    inse = reduce_sum(input * label, dim=reduce_dim)
+    dice_denominator = reduce_sum(
+        input, dim=reduce_dim) + reduce_sum(
+            label, dim=reduce_dim)
+    dice_score = 1 - inse * 2 / (dice_denominator + epsilon)
+    return reduce_mean(dice_score)
