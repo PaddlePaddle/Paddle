@@ -125,7 +125,7 @@ class RequestGet final : public RequestBase {
 
     ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
-      SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+      SerializeToByteBuffer(var_name, var, &reply);
     }
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -186,7 +186,7 @@ class RequestPrefetch final : public RequestBase {
     InitializeVariable(var, var_desc->GetType());
     executor_->RunPreparedContext(prefetch_ctx_, scope_);
 
-    SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+    SerializeToByteBuffer(var_name, var, &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
@@ -200,16 +200,6 @@ class RequestPrefetch final : public RequestBase {
   framework::ProgramDesc* program_;
   framework::ExecutorPrepareContext* prefetch_ctx_;
 };
-
-void AsyncGRPCServer::WaitClientGet(int count) {
-  int fetch_barriers = 0;
-  while (fetch_barriers < count) {
-    auto msg = var_get_queue_.Pop();
-    if (msg.first == FETCH_BARRIER_MESSAGE) {
-      fetch_barriers++;
-    }
-  }
-}
 
 void AsyncGRPCServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
@@ -365,20 +355,6 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
       default: { assert(false); }
     }
   }
-}
-
-void AsyncGRPCServer::WaitCond(int cond) {
-  std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  barrier_condition_.wait(lock,
-                          [=] { return this->barrier_cond_step_ == cond; });
-}
-
-void AsyncGRPCServer::SetCond(int cond) {
-  {
-    std::lock_guard<std::mutex> lock(this->barrier_mutex_);
-    barrier_cond_step_ = cond;
-  }
-  barrier_condition_.notify_all();
 }
 
 }  // namespace detail

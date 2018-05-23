@@ -45,7 +45,6 @@ static int64_t GetTimestamp() {
 typedef void (*DestroyCallback)(void*);
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
-                           const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
                            const std::string& out_varname = std::string());
 

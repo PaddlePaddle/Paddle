@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -63,7 +65,7 @@ void StartServer(std::atomic<bool>* initialized) {
   server_thread.join();
 }
 
-TEST(SendNcclId, Normal) {
+void SendNcclId(std::shared_ptr<detail::RPCClient> client) {
   std::atomic<bool> initialized{false};
   std::thread server_thread(StartServer, &initialized);
   while (!initialized) {
@@ -73,10 +75,6 @@ TEST(SendNcclId, Normal) {
   rpc_service->WaitServerReady();
 
   f::Scope scope;
-  p::CPUPlace place;
-  p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(p::CPUPlace());
-
   auto var = scope.Var(NCCL_ID_VARNAME);
   // var->SetType(f::proto::VarType_Type_RAW);
   auto id = var->GetMutable<ncclUniqueId>();
@@ -84,11 +82,15 @@ TEST(SendNcclId, Normal) {
 
   int port = rpc_service->GetSelectedPort();
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient client;
 
-  client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
-  client.Wait();
+  client->AsyncSendVariable(ep, scope, NCCL_ID_VARNAME);
+  client->Wait();
   server_thread.join();
   auto* ptr = rpc_service.release();
   delete ptr;
+}
+
+TEST(SendNcclId, Normal) {
+  std::shared_ptr<detail::RPCClient> client(new detail::GRPCClient());
+  SendNcclId(client);
 }

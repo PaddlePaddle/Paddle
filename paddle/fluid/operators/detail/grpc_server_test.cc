@@ -108,7 +108,7 @@ void StartServer(const std::string& endpoint) {
   rpc_service_->RunSyncUpdate();
 }
 
-TEST(PREFETCH, CPU) {
+void prefetch_cpu_test(std::shared_ptr<detail::RPCClient> client) {
   // start up a server instance backend
   std::thread server_thread(StartServer, "127.0.0.1:8889");
   sleep(2);
@@ -121,10 +121,9 @@ TEST(PREFETCH, CPU) {
   std::string in_var_name("ids");
   std::string out_var_name("out");
 
-  detail::RPCClient client;
-  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
-                               out_var_name);
-  client.Wait();
+  client->AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
+                                out_var_name);
+  client->Wait();
 
   auto var = scope.Var(out_var_name);
   auto value = var->GetMutable<framework::SelectedRows>()->value();
@@ -137,4 +136,9 @@ TEST(PREFETCH, CPU) {
   for (int64_t i = 0; i < rows_numel; ++i) {
     EXPECT_EQ(ptr[0 + i * value.dims()[1]], static_cast<float>(i * 2));
   }
+}
+
+TEST(PREFETCH, CPU) {
+  std::shared_ptr<detail::RPCClient> client(new detail::GRPCClient);
+  prefetch_cpu_test(client);
 }

@@ -48,7 +48,7 @@ class RecvOp : public framework::OperatorBase {
   }
 
  private:
-  mutable detail::RPCClient client_;
+  mutable detail::GRPCClient client_;
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {

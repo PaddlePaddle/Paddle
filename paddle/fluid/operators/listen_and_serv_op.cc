@@ -17,13 +17,14 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
+void RunServer(std::shared_ptr<detail::RPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
 }
