@@ -65,6 +65,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   bool IsScaleLossOp(const OpDesc &op) const;
 
   void CreateRPCOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.

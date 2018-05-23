@@ -38,6 +38,7 @@ class RecvOp : public framework::OperatorBase {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     auto client_var_name = Output("RPCClient");
+    int sync_recv = Attr<int>("sync_recv");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -54,7 +55,9 @@ class RecvOp : public framework::OperatorBase {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
       rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    if (sync_recv) {
+      PADDLE_ENFORCE(rpc_client->Wait());
+    }
   }
 };
 
@@ -75,6 +78,10 @@ This operator can get variables from server side.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<int>("sync_recv",
+                 "(int, default 0)"
+                 "sync recv or async recv.")
+        .SetDefault(0);
   }
 };
 
