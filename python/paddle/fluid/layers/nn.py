@@ -3220,13 +3220,6 @@ def multiplex(inputs, index):
         Variable: Multiplex variable gathered from input variables.
 
     Examples:
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
         .. code-block:: python
 
             x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
