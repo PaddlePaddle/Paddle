@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <future>  // NOLINT
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,6 +35,8 @@ class SSAGraphExecutor {
   virtual ~SSAGraphExecutor();
 
   virtual FeedFetchList Run(const std::vector<std::string> &fetch_tensors) = 0;
+
+  virtual std::future<void> AsyncExecute(std::function<void()> &&callback);
 
  protected:
   std::unique_ptr<SSAGraph> graph_;

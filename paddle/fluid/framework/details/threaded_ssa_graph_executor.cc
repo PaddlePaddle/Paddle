@@ -207,6 +207,11 @@ void ThreadedSSAGraphExecutor::RunOp(
     op_run();
   }
 }
+
+std::future<void> ThreadedSSAGraphExecutor::AsyncExecute(
+    std::function<void()> &&callback) {
+  return pool_->enqueue(callback);
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

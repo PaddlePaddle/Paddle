@@ -197,9 +197,15 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
       fetch_data;
 
   // Wait All computational streams
+  std::vector<std::future<void>> futures;
   for (auto p : member_->places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
+    futures.emplace_back(member_->executor_->AsyncExecute(
+        [=] { platform::DeviceContextPool::Instance().Get(p)->Wait(); }));
   }
+  for (auto &f : futures) {
+    f.wait();
+  }
+
   for (auto &scope : member_->local_scopes_) {
     auto &local_scope =
         *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();

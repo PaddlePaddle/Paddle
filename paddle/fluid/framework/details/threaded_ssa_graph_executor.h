@@ -46,6 +46,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   ~ThreadedSSAGraphExecutor() {}
 
+  std::future<void> AsyncExecute(std::function<void()> &&callback) override;
+
  private:
   void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
              details::OpHandleBase *op);

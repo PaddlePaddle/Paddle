@@ -23,6 +23,11 @@ SSAGraphExecutor::SSAGraphExecutor(std::unique_ptr<SSAGraph> &&graph)
 
 SSAGraphExecutor::~SSAGraphExecutor() {}
 
+std::future<void> SSAGraphExecutor::AsyncExecute(
+    std::function<void()> &&callback) {
+  return std::async(callback);
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
