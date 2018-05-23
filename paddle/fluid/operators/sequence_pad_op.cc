@@ -54,7 +54,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
       seq_num = x_abs_offset.size() - 1;
 
-      for (size_t i = 1; i <= seq_num; ++i) {
+      for (int64_t i = 1; i <= seq_num; ++i) {
         int64_t seq_len = x_abs_offset[i] - x_abs_offset[i - 1];
         max_len = max_len < seq_len ? seq_len : max_len;
       }
