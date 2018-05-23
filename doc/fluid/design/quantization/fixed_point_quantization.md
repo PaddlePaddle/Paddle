@@ -9,19 +9,19 @@ This document is to design a quantized training framework on Fluid. The first pa
 
 There are many ways to quantizate the float value to fixed-point value. For example:
 
-$$ r  = min(max(x, a), b)$$
+$$ r = min(max(x, a), b)$$
 $$ s = \frac{b - a}{n - 1} $$
-$$ q = round(\frac{r - a}{s}}) $$
+$$ q = \left \lfloor \frac{r - a}{s} \right \rceil $$
 
-where, $x$ is the float value to be quantized, $[a, b]$ is the quantization range, $a$ is the minimum value and $b$ is the maximal value. `round` denotes rounding to the nearest integer. If the quantization level is $m$, $n$ is $2^m$, for example, $m$ is 8 and $n$ is 256. $q$ is the quantized integer. 
+where, $x$ is the float value to be quantized, $[a, b]$ is the quantization range, $a$ is the minimum value and $b$ is the maximal value. $\left \lfloor \right \rceil$  denotes rounding to the nearest integer. If the quantization level is $k$, $n$ is $2^k$, for example, $k$ is 8 and $n$ is 256. $q$ is the quantized integer. 
 
 
 The quantization we apllied is parameterized by the number of quantization levels and maximum absolute value:
 
-$$ abs_max  = max(abs(x)); $$
-$$ q = \left \lfloor \frac{x}{abs_max} * (n - 1) \right \rceil $$
+$$ M  = max(abs(x))  $$
+$$ q = \left \lfloor \frac{x}{M} * (n - 1) \right \rceil $$
 
-where, $x$ is the float value to be quantized, $abs_max$ is maximum absolute value. $\left \lfloor \right \rceil$ denotes rounding to the nearest integer.  For 8 bit quantization, $n=2^{8}=256$. $q$ is the quantized integer. 
+where, $x$ is the float value to be quantized, $M$ is maximum absolute value. $\left \lfloor \right \rceil$ denotes rounding to the nearest integer.  For 8 bit quantization, $n=2^{8}=256$. $q$ is the quantized integer. 
 
 
 Wether the *min-max* quantization or *max-abs* quantization, they also can be represent:
@@ -37,7 +37,12 @@ How to calculate the quantization range (or maximum absolute value) for inferenc
 ### Training Framework
 
 The training framework is as following figure. 
+
+<p align="center"> 
 <img src="quantization_training_framework.png" align="center"/><br/>
+
+Fig 1. Forward and backward in training.
+</p>
 
 #### Forward pass
 
@@ -50,27 +55,32 @@ The forward pass is simulated quantization, see the figure a.
 
 For general matrix to matrix multiplication (GEMM), quantize for $X$ and $W$:
 
-$$ Xq = \left \lfloor \frac{X}{Xm} * (n - 1) \right \rceil  $$
-$$ Wq = \left \lfloor \frac{W}{Wm} * (n - 1) \right \rceil $$
+$$ X_q = \left \lfloor \frac{X}{X_m} * (n - 1) \right \rceil  $$
+$$ W_q = \left \lfloor \frac{W}{W_m} * (n - 1) \right \rceil $$
 
 Do GEMM:
 
-$$ Y = Xq * Wq $$
+$$ Y = X_q * W_q $$
 
 
 Dequantize $Y$:
 
 $$
-Ydq  &=  \frac{Y}{(n - 1) * (n - 1)} * Xm * Wm \\
-     &=  \frac{Xq * Wq}{(n - 1) * (n - 1)} * Xm * Wm \\
-     &=  \frac{Xq}{n - 1} * Xm  * \frac{Wq}{n - 1} * Wm
+\begin{align}
+Y_{dq} &=\frac{Y}{(n - 1) * (n - 1)} * X_m * W_m \\\
+       &=\frac{X_q * W_q}{(n - 1) * (n - 1)} * X_m * W_m \\
+       &=(\frac{X_q}{n - 1} * X_m) * (\frac{W_q}{n - 1} * W_m) 
+\end{align}
 $$
 
 From these formulas, dequantization also can be moved before GEMM, do dequantization for $Xq$ and $Wq$ at first, then do GEMM. The forward workflow in training is equivalent to following framework.
 
- 
-<img src="quantization_forward.png" align="center"/><br/>
+<p align="center"> 
+<img src="quantization_forward.png"  width="300" height="300"  /><br/>
 
+Fig 2. Equitvalent forward in training.
+
+</p>
 
 We use this equivalent workflow in the training. In our desigin, there is a quantization transipler to insert the quantization operator and the de-quantization operator in the Fluid `ProgramDesc`.
 
