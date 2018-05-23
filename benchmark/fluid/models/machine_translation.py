@@ -27,74 +27,6 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.executor import Executor
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument(
-    "--embedding_dim",
-    type=int,
-    default=512,
-    help="The dimension of embedding table. (default: %(default)d)")
-parser.add_argument(
-    "--encoder_size",
-    type=int,
-    default=512,
-    help="The size of encoder bi-rnn unit. (default: %(default)d)")
-parser.add_argument(
-    "--decoder_size",
-    type=int,
-    default=512,
-    help="The size of decoder rnn unit. (default: %(default)d)")
-parser.add_argument(
-    "--batch_size",
-    type=int,
-    default=16,
-    help="The sequence number of a mini-batch data. (default: %(default)d)")
-parser.add_argument(
-    '--skip_batch_num',
-    type=int,
-    default=5,
-    help='The first num of minibatch num to skip, for better performance test')
-parser.add_argument(
-    '--iterations', type=int, default=80, help='The number of minibatches.')
-parser.add_argument(
-    "--dict_size",
-    type=int,
-    default=30000,
-    help="The dictionary capacity. Dictionaries of source sequence and "
-    "target dictionary have same capacity. (default: %(default)d)")
-parser.add_argument(
-    "--pass_num",
-    type=int,
-    default=2,
-    help="The pass number to train. (default: %(default)d)")
-parser.add_argument(
-    "--learning_rate",
-    type=float,
-    default=0.0002,
-    help="Learning rate used to train the model. (default: %(default)f)")
-parser.add_argument(
-    "--infer_only", action='store_true', help="If set, run forward only.")
-parser.add_argument(
-    "--beam_size",
-    type=int,
-    default=3,
-    help="The width for beam searching. (default: %(default)d)")
-parser.add_argument(
-    '--device',
-    type=str,
-    default='GPU',
-    choices=['CPU', 'GPU'],
-    help="The device type.")
-parser.add_argument(
-    "--max_length",
-    type=int,
-    default=250,
-    help="The maximum length of sequence when doing generation. "
-    "(default: %(default)d)")
-parser.add_argument(
-    '--with_test',
-    action='store_true',
-    help='If set, test the testset during training.')
-
 
 def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
     def linear(inputs):
@@ -264,116 +196,37 @@ def lodtensor_to_ndarray(lod_tensor):
     return ndarray
 
 
-def train():
+def get_model(args):
+    embedding_dim = 512
+    encoder_size = 512
+    decoder_size = 512
+    dict_size = 30000
+    beam_size = 3
+    max_length = 250
     avg_cost, feeding_list = seq_to_seq_net(
-        args.embedding_dim,
-        args.encoder_size,
-        args.decoder_size,
-        args.dict_size,
-        args.dict_size,
+        embedding_dim,
+        encoder_size,
+        decoder_size,
+        dict_size,
+        dict_size,
         False,
-        beam_size=args.beam_size,
-        max_length=args.max_length)
+        beam_size=beam_size,
+        max_length=max_length)
 
     # clone from default main program
     inference_program = fluid.default_main_program().clone()
 
     optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
-    optimizer.minimize(avg_cost)
-
-    fluid.memory_optimize(fluid.default_main_program())
 
     train_batch_generator = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(args.dict_size), buf_size=1000),
+            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=args.batch_size)
 
     test_batch_generator = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.wmt14.test(args.dict_size), buf_size=1000),
+            paddle.dataset.wmt14.test(dict_size), buf_size=1000),
         batch_size=args.batch_size)
 
-    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
-    exe = Executor(place)
-    exe.run(framework.default_startup_program())
-
-    def do_validation():
-        total_loss = 0.0
-        count = 0
-        for batch_id, data in enumerate(test_batch_generator()):
-            src_seq = to_lodtensor(map(lambda x: x[0], data), place)[0]
-            trg_seq = to_lodtensor(map(lambda x: x[1], data), place)[0]
-            lbl_seq = to_lodtensor(map(lambda x: x[2], data), place)[0]
-
-            fetch_outs = exe.run(inference_program,
-                                 feed={
-                                     feeding_list[0]: src_seq,
-                                     feeding_list[1]: trg_seq,
-                                     feeding_list[2]: lbl_seq
-                                 },
-                                 fetch_list=[avg_cost],
-                                 return_numpy=False)
-
-            total_loss += lodtensor_to_ndarray(fetch_outs[0])[0]
-            count += 1
-
-        return total_loss / count
-
-    iters, num_samples, start_time = 0, 0, time.time()
-    for pass_id in xrange(args.pass_num):
-        train_accs = []
-        train_losses = []
-        for batch_id, data in enumerate(train_batch_generator()):
-            if iters == args.skip_batch_num:
-                start_time = time.time()
-                num_samples = 0
-            if iters == args.iterations:
-                break
-            src_seq, word_num = to_lodtensor(map(lambda x: x[0], data), place)
-            num_samples += word_num
-            trg_seq, word_num = to_lodtensor(map(lambda x: x[1], data), place)
-            num_samples += word_num
-            lbl_seq, _ = to_lodtensor(map(lambda x: x[2], data), place)
-
-            fetch_outs = exe.run(framework.default_main_program(),
-                                 feed={
-                                     feeding_list[0]: src_seq,
-                                     feeding_list[1]: trg_seq,
-                                     feeding_list[2]: lbl_seq
-                                 },
-                                 fetch_list=[avg_cost])
-
-            iters += 1
-            loss = np.array(fetch_outs[0])
-            print(
-                "Pass = %d, Iter = %d, Loss = %f" % (pass_id, iters, loss)
-            )  # The accuracy is the accumulation of batches, but not the current batch.
-
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        # evaluation
-        if args.with_test:
-            test_loss = do_validation()
-        exit(0)
-
-
-def infer():
-    pass
-
-
-def print_arguments(args):
-    print('----------- seq2seq Configuration Arguments -----------')
-    for arg, value in sorted(vars(args).iteritems()):
-        print('%s: %s' % (arg, value))
-    print('------------------------------------------------')
-
-
-if __name__ == '__main__':
-    args = parser.parse_args()
-    print_arguments(args)
-    if args.infer_only:
-        infer()
-    else:
-        train()
+    return avg_cost, inference_program, optimizer, train_batch_generator, \
+           test_batch_generator, None
