@@ -161,23 +161,23 @@ class RPCClient {
  public:
   bool AsyncSendVariable(const std::string& ep, const framework::Scope& scope,
                          const std::string& var_name,
-                         int64_t time_out = rpc_time_out);
+                         int64_t time_out = kRpcTimeOut);
 
   bool AsyncGetVariable(const std::string& ep, const framework::Scope& scope,
                         const std::string& var_name,
-                        int64_t time_out = rpc_time_out);
+                        int64_t time_out = kRpcTimeOut);
 
   bool AsyncPrefetchVariable(const std::string& ep,
                              const framework::Scope& scope,
                              const std::string& in_var_name,
                              const std::string& out_var_name,
-                             int64_t time_out = rpc_time_out);
+                             int64_t time_out = kRpcTimeOut);
 
   void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = rpc_time_out);
+                             int64_t time_out = kRpcTimeOut);
 
   void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = rpc_time_out);
+                             int64_t time_out = kRpcTimeOut);
 
   bool Wait();
 
@@ -190,7 +190,7 @@ class RPCClient {
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   int64_t req_count_ = 0;
 
-  static const int64_t rpc_time_out = 600 * 1000;
+  static const int64_t kRpcTimeOut = 600 * 1000;
 };
 
 }  // namespace detail

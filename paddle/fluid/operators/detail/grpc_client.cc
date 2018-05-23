@@ -61,10 +61,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   return true;
 }
 
-void ProcGetResponse(const VarHandle& var_h,
-                     const ::grpc::ByteBuffer& ret_msg) {
-  auto var = var_h.scope->FindVar(var_h.name);
-
+static platform::Place GetPlaceFromVarData(framework::Variable* var) {
   platform::Place place = platform::CPUPlace();
   if (var->IsType<framework::LoDTensor>()) {
     place = var->Get<framework::LoDTensor>().place();
@@ -72,11 +69,21 @@ void ProcGetResponse(const VarHandle& var_h,
     place = var->Get<framework::SelectedRows>().place();
 #ifdef PADDLE_WITH_CUDA
   } else if (var->IsType<ncclUniqueId>()) {
+    place = platform::CPUPlace();
 #endif
   } else {
     PADDLE_THROW("ProcGetResponse does not support type: %s",
                  typeid(var->Type()).name());
   }
+
+  return place;
+}
+
+void ProcGetResponse(const VarHandle& var_h,
+                     const ::grpc::ByteBuffer& ret_msg) {
+  auto var = var_h.scope->FindVar(var_h.name);
+
+  auto place = GetPlaceFromVarData(var);
 
   const platform::DeviceContext& ctx =
       *platform::DeviceContextPool::Instance().Get(place);
