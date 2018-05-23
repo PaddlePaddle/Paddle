@@ -107,12 +107,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
-  /**
-   * Get send op in the global block of program.
-   * nullptr if not found.
-   */
-  OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
-
   bool IsSparseGradient(
       const std::unordered_map<std::string, proto::VarType::Type> &var_types,
       const std::string &og) const;

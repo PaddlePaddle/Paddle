@@ -403,7 +403,6 @@ class DistributeTranspiler:
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
-        # TODO(Yancey1989): check dist lookup table
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program, rpc_client_var,
                                                         eplist)

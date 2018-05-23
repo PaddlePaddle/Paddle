@@ -197,7 +197,7 @@ class RPCClient {
  private:
   grpc::CompletionQueue cq_;
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  int64_t req_count_ = 0;
+  std::atomic<int64_t> req_count_{0};
   std::mutex mutex_;
 };
 
