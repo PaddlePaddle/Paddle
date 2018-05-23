@@ -117,7 +117,10 @@ class Node {
         type_hash_ = typeid(T).hash_code();
         data_.resize(sizeof(T));
       }
-      PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(), "type not matched");
+      PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(),
+                     "type not matched, origin is %s, want %s",
+                     DataTypeNamer::Global().repr(type_hash_),
+                     DataTypeNamer::Global().repr<T>());
       PADDLE_ENFORCE_EQ(data_.size(), sizeof(T), "Node attr type recast error");
       return *reinterpret_cast<T *>(&data_[0]);
     }
@@ -126,6 +129,10 @@ class Node {
     std::string data_;
     size_t type_hash_{std::numeric_limits<size_t>::max()};
   };
+
+  bool IsFunction() const { return type_ == Node::Type::kFunction; }
+  bool IsValue() const { return type_ == Node::Type::kValue; }
+  bool IsFunctionBlock() const { return type_ == Node::Type::kFunctionBlock; }
 
   virtual ~Node() {}
 
