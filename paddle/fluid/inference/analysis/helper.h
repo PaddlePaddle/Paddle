@@ -24,14 +24,38 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-template <typename Vec>
-int AccuDims(Vec &&vec, int size) {
-  int res = 1;
-  for (int i = 0; i < size; i++) {
-    res *= std::forward<Vec>(vec)[i];
+#define SET_TYPE(type__) dic_[typeid(type__).hash_code()] = #type__;
+/*
+ * Map typeid to representation.
+ */
+struct DataTypeNamer {
+  static const DataTypeNamer &Global() {
+    static auto *x = new DataTypeNamer();
+    return *x;
   }
-  return res;
-}
+
+  template <typename T>
+  const std::string &repr() const {
+    auto x = typeid(T).hash_code();
+    PADDLE_ENFORCE(dic_.count(x), "unknown type for representation");
+    return dic_.at(x);
+  }
+
+  const std::string &repr(size_t &hash) const {
+    PADDLE_ENFORCE(dic_.count(hash), "unknown type for representation");
+    return dic_.at(hash);
+  }
+
+ private:
+  DataTypeNamer() {
+    SET_TYPE(int);
+    SET_TYPE(bool);
+    SET_TYPE(float);
+  }
+
+  std::unordered_map<decltype(typeid(int).hash_code()), std::string> dic_;
+};
+#undef SET_TYPE
 
 template <typename IteratorT>
 class iterator_range {
@@ -77,5 +101,7 @@ class OrderedRegistry {
 }  // namespace paddle
 
 #define PADDLE_DISALLOW_COPY_AND_ASSIGN(type__) \
+                                                \
   type__(const type__ &) = delete;              \
+                                                \
   void operator=(const type__ &) = delete;
