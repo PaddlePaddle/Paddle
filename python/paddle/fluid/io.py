@@ -23,7 +23,8 @@ from . import core
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
     'load_persistables', 'save_inference_model', 'load_inference_model',
-    'get_inference_program', 'save_checkpoint', 'load_checkpoint'
+    'get_inference_program', 'save_checkpoint', 'load_checkpoint',
+    'clean_checkpoint'
 ]
 
 
