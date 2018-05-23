@@ -3917,7 +3917,7 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def bilinear_interp(input, out_h, out_w):
+def bilinear_interp(input, out_h, out_w, name=None):
     """
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
@@ -3928,12 +3928,16 @@ def bilinear_interp(input, out_h, out_w):
     
     Args:
         input (Variable): The input tensor of bilinear interpolation,
-                          This is a 4-D tensor with shape of (N X C x h x w).
+                          This is a 4-D tensor of the shape
+                          (num_batches, channels, in_h, in_w).
         out_h (int): output height of bilinear interpolation layer.
         out_w (int): output width of bilinear interpolation layer.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
-        out (Variable): The dimension of out is (N x C x out_h x out_w).
+        out (Variable): The output is a 4-D tensor of the shape
+                        (num_batches, channls, out_h, out_w).
    
     Examples:
         .. code-block:: python
