@@ -214,8 +214,7 @@ def train(use_cuda, train_program, save_path):
                 paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
                 reader=test_reader,
-                feed_order=feed_order,
-                data_feed_handler=partial(func_feed, feeding_map, place))
+                feed_order=feed_order)
 
             # get avg cost
             avg_cost = np.array(avg_cost_set).mean()
@@ -242,8 +241,7 @@ def train(use_cuda, train_program, save_path):
         feed_order=[
             'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id',
             'category_id', 'movie_title', 'score'
-        ],
-        data_feed_handler=partial(func_feed, feeding_map, place))
+        ])
 
 
 def infer(use_cuda, inference_program, save_path):
