@@ -298,16 +298,6 @@ void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
   CreateOpHandleIOs(result, op, dev_id);
 }
 
-OpDesc *MultiDevSSAGraphBuilder::GetSendOpDesc(
-    const ProgramDesc &program) const {
-  for (auto *op : program.Block(0).AllOps()) {
-    if (op->Type() == "send") {
-      return op;
-    }
-  }
-  return nullptr;
-}
-
 void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     SSAGraph *result, const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA

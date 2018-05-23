@@ -59,7 +59,6 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
-
   req_count_++;
 
   return true;
