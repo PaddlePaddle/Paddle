@@ -33,6 +33,24 @@ NUM_TRAIN_TIMES_OF_DG = 3
 LEARNING_RATE = 2e-5
 
 
+def plot(gen_data):
+    gen_data.resize(gen_data.shape[0], 28, 28)
+    n = int(math.ceil(math.sqrt(gen_data.shape[0])))
+    fig = plt.figure(figsize=(n, n))
+    gs = gridspec.GridSpec(n, n)
+    gs.update(wspace=0.05, hspace=0.05)
+
+    for i, sample in enumerate(gen_data):
+        ax = plt.subplot(gs[i])
+        plt.axis('off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_aspect('equal')
+        plt.imshow(sample.reshape(28, 28), cmap='Greys_r')
+
+    return fig
+
+
 def G(noise):
     hidden = fluid.layers.fc(input=noise,
                              size=200,
@@ -96,17 +114,28 @@ def train_generator():
     return dg_loss
 
 
+def infer_generator():
+    noise = fluid.layers.data(name='noise', shape=[NOISE_SIZE], dtype='float32')
+    g_img = G(noise)
+
+    return g_img
+
+
 class GANTrainer(object):
     def __init__(self, place):
         startup_program = fluid.Program()
         self.d_program = fluid.Program()
         self.g_program = fluid.Program()
+        self.g_infer_program = fluid.Program()
 
         with fluid.program_guard(self.d_program, startup_program):
             self.d_loss = train_discriminator()
 
         with fluid.program_guard(self.g_program, startup_program):
             self.g_loss = train_generator()
+
+        with fluid.program_guard(self.g_infer_program, startup_program):
+            self.generated_image = infer_generator()
 
         self.exe = fluid.Executor(place)
         self.exe.run(startup_program)
@@ -146,8 +175,24 @@ class GANTrainer(object):
                                  },
                                  fetch_list=[self.d_loss]))
 
+            print('plot images')
+            rval = self.exe.run(self.g_infer_program,
+                                feed={'noise': n},
+                                fetch_list=[self.generated_image])
+            fig = plot(rval[0])
+            plt.savefig(
+                'out/{0}.png'.format(str(pass_id).zfill(3)),
+                bbox_inches='tight')
+            plt.close(fig)
+
 
 def main():
+    try:
+        os.makedirs("./out")
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     num_true = NUM_REAL_IMGS_IN_BATCH
     train_reader = paddle.batch(
         paddle.reader.shuffle(
