@@ -34,7 +34,7 @@ Or you can build your own image from source as the optional step below:
    # 2. Optional: build development docker image from source
    docker build -t paddle:dev .
    # 3. Run the following command to build a CPU-Only binaries
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/paddle_build.sh build
    # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
 

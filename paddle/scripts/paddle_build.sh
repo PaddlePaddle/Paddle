@@ -95,7 +95,6 @@ function cmake_gen() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DWITH_SWIG_PY=ON
         -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
@@ -406,17 +405,19 @@ EOF
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
+    CUDA_MAJOR="$(echo $CUDA_VERSION | cut -d '.' -f 1).$(echo $CUDA_VERSION | cut -d '.' -f 2)"
+    CUDNN_MAJOR=$(echo $CUDNN_VERSION | cut -d '.' -f 1)
     if [[ ${WITH_GPU} == "ON" ]]; then
-    BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
+        BASE_IMAGE="nvidia/cuda:${CUDA_MAJOR}-cudnn${CUDNN_MAJOR}-runtime-ubuntu16.04"
     else
-    BASE_IMAGE="ubuntu:16.04"
+        BASE_IMAGE="ubuntu:16.04"
     fi
 
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
-        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
     fi
 
     cat <<EOF
@@ -432,7 +433,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.1.2-1+cuda${CUDA_MAJOR} libnccl-dev=2.1.2-1+cuda${CUDA_MAJOR} &&"
     else
         NCCL_DEPS=""
     fi
@@ -450,7 +451,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
+        apt-get install -y wget python-pip dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -491,8 +492,9 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
-        make inference_lib_dist
-    fi
+        make -j `nproc` inference_lib_dist
+        tar -cf ${PADDLE_ROOT}/build/fluid.tgz ${PADDLE_ROOT}/build/fluid_install_dir
+      fi
 }
 
 function main() {

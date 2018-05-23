@@ -17,11 +17,13 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from functools import partial
+import numpy as np
 
 CLASS_DIM = 2
 EMB_DIM = 128
 HID_DIM = 512
 STACKED_NUM = 3
+BATCH_SIZE = 128
 
 
 def stacked_lstm_net(data, input_dim, class_dim, emb_dim, hid_dim, stacked_num):
@@ -50,7 +52,7 @@ def stacked_lstm_net(data, input_dim, class_dim, emb_dim, hid_dim, stacked_num):
     return prediction
 
 
-def inference_network(word_dict):
+def inference_program(word_dict):
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
 
@@ -60,57 +62,71 @@ def inference_network(word_dict):
     return net
 
 
-def train_network(word_dict):
-    prediction = inference_network(word_dict)
+def train_program(word_dict):
+    prediction = inference_program(word_dict)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy
+    return [avg_cost, accuracy]
 
 
-def train(use_cuda, save_path):
-    BATCH_SIZE = 128
-    EPOCH_NUM = 5
+def train(use_cuda, train_program, save_dirname):
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    optimizer = fluid.optimizer.Adagrad(learning_rate=0.002)
 
     word_dict = paddle.dataset.imdb.word_dict()
-
-    train_data = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.imdb.train(word_dict), buf_size=1000),
-        batch_size=BATCH_SIZE)
-
-    test_data = paddle.batch(
-        paddle.dataset.imdb.test(word_dict), batch_size=BATCH_SIZE)
+    trainer = fluid.Trainer(
+        train_func=partial(train_program, word_dict),
+        place=place,
+        optimizer=optimizer)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndIteration):
-            if (event.batch_id % 10) == 0:
-                avg_cost, accuracy = trainer.test(reader=test_data)
+        if isinstance(event, fluid.EndEpochEvent):
+            test_reader = paddle.batch(
+                paddle.dataset.imdb.test(word_dict), batch_size=BATCH_SIZE)
+            avg_cost, acc = trainer.test(
+                reader=test_reader, feed_order=['words', 'label'])
 
-                print('BatchID {1:04}, Loss {2:2.2}, Acc {3:2.2}'.format(
-                    event.batch_id + 1, avg_cost, accuracy))
+            print("avg_cost: %s" % avg_cost)
+            print("acc     : %s" % acc)
 
-                if accuracy > 0.01:  # Low threshold for speeding up CI
-                    trainer.params.save(save_path)
-                    return
+            if acc > 0.2:  # Smaller value to increase CI speed
+                trainer.save_params(save_dirname)
+                trainer.stop()
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    trainer = fluid.Trainer(
-        partial(train_network, word_dict),
-        optimizer=fluid.optimizer.Adagrad(learning_rate=0.002),
-        place=place,
-        event_handler=event_handler)
+            else:
+                print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
+                    event.epoch + 1, avg_cost, acc))
+                if math.isnan(avg_cost):
+                    sys.exit("got NaN loss, training failed.")
+        elif isinstance(event, fluid.EndStepEvent):
+            print("Step {0}, Epoch {1} Metrics {2}".format(
+                event.step, event.epoch, map(np.array, event.metrics)))
+            if event.step == 1:  # Run 2 iterations to speed CI
+                trainer.save_params(save_dirname)
+                trainer.stop()
 
-    trainer.train(train_data, EPOCH_NUM, event_handler=event_handler)
+    train_reader = paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.imdb.train(word_dict), buf_size=25000),
+        batch_size=BATCH_SIZE)
+
+    trainer.train(
+        num_epochs=1,
+        event_handler=event_handler,
+        reader=train_reader,
+        feed_order=['words', 'label'])
 
 
-def infer(use_cuda, save_path):
-    params = fluid.Params(save_path)
+def infer(use_cuda, inference_program, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     word_dict = paddle.dataset.imdb.word_dict()
+
     inferencer = fluid.Inferencer(
-        partial(inference_network, word_dict), params, place=place)
+        infer_func=partial(inference_program, word_dict),
+        param_path=save_dirname,
+        place=place)
 
     def create_random_lodtensor(lod, place, low, high):
         data = np.random.random_integers(low, high,
@@ -131,8 +147,8 @@ def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     save_path = "understand_sentiment_stacked_lstm.inference.model"
-    train(use_cuda, save_path)
-    infer(use_cuda, save_path)
+    train(use_cuda, train_program, save_path)
+    infer(use_cuda, inference_program, save_path)
 
 
 if __name__ == '__main__':
