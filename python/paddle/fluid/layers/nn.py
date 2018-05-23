@@ -80,6 +80,7 @@ __all__ = [
     'pad',
     'label_smooth',
     'roi_pool',
+    'dice_loss',
 ]
 
 
@@ -699,8 +700,8 @@ def dynamic_gru(input,
 def gru_unit(input,
              hidden,
              size,
-             weight=None,
-             bias=None,
+             param_attr=None,
+             bias_attr=None,
              activation='tanh',
              gate_activation='sigmoid'):
     """
@@ -731,8 +732,8 @@ def gru_unit(input,
         input (Variable): The fc transformed input value of current step.
         hidden (Variable): The hidden value of lstm unit from previous step.
         size (integer): The input dimension value.
-        weight (ParamAttr): The weight parameters for gru unit. Default: None
-        bias (ParamAttr): The bias parameters for gru unit. Default: None
+        param_attr (ParamAttr): The weight parameters for gru unit. Default: None
+        bias_attr (ParamAttr): The bias parameters for gru unit. Default: None
         activation (string): The activation type for cell (actNode).
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
@@ -764,34 +765,31 @@ def gru_unit(input,
     size = size / 3
 
     # create weight
-    if weight is None:
-        weight = helper.create_parameter(
-            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
-
-    # create bias
-
-    if bias is None:
-        bias_size = [1, 3 * size]
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
 
     gate = helper.create_tmp_variable(dtype)
     reset_hidden_pre = helper.create_tmp_variable(dtype)
     updated_hidden = helper.create_tmp_variable(dtype)
+    inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
+    # create bias
+    if helper.bias_attr:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
 
     helper.append_op(
         type='gru_unit',
-        inputs={'Input': input,
-                'HiddenPrev': hidden,
-                'Weight': weight},
+        inputs=inputs,
         outputs={
             'Gate': gate,
             'ResetHiddenPrev': reset_hidden_pre,
             'Hidden': updated_hidden,
         },
         attrs={
-            'activation': 0,
-            'gate_activation': 1,
+            'activation': 2,  # tanh
+            'gate_activation': 1,  # sigmoid
         })
 
     return updated_hidden, reset_hidden_pre, gate
@@ -3819,3 +3817,43 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+def dice_loss(input, label, epsilon=0.00001):
+    """
+    **Dice loss Layer**
+    Dice loss for comparing the similarity of two batch of data,
+    usually is used for binary image segmentation i.e. labels are binary.
+    The dice loss can be defined as below equation:
+
+    .. math::
+
+        dice\_loss &= 1 - \\frac{2 * intersection\_area}{total\_area} \\\\
+                  &= \\frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\\\
+                  &= \\frac{(union\_area - intersection\_area)}{total\_area}
+
+
+    Args:
+        input (Variable): The predictions with rank>=2. The first dimension is batch size,
+                          and the last dimension is class number.
+        label (Variable): The groud truth with the same rank with input. The first dimension
+                          is batch size, and the last dimension is 1.
+        epsilon (float): The epsilon will be added to the numerator and denominator.
+                         If both input and label are empty, it makes sure dice is 1.
+                         Default: 0.00001
+
+    Returns:
+        dice_loss (Variable): The dice loss with shape [1].
+
+    Examples:
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+    """
+    label = one_hot(label, depth=input.shape[-1])
+    reduce_dim = range(1, len(input.shape))
+    inse = reduce_sum(input * label, dim=reduce_dim)
+    dice_denominator = reduce_sum(
+        input, dim=reduce_dim) + reduce_sum(
+            label, dim=reduce_dim)
+    dice_score = 1 - inse * 2 / (dice_denominator + epsilon)
+    return reduce_mean(dice_score)
