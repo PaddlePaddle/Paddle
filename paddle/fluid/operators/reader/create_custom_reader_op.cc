@@ -28,7 +28,7 @@ class CustomReader : public framework::DecoratedReader {
       : DecoratedReader(reader),
         sub_block_(sub_block),
         scope_(scope),
-        dev_place_(dev_place),
+        exe_(framework::Executor(dev_place)),
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
@@ -43,7 +43,7 @@ class CustomReader : public framework::DecoratedReader {
  private:
   const framework::BlockDesc* sub_block_;
   const framework::Scope* scope_;
-  platform::Place dev_place_;
+  framework::Executor exe_;
 
   std::vector<std::string> source_var_names_;
   std::vector<std::string> sink_var_names_;
@@ -160,9 +160,8 @@ void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
     tensor->set_lod(underlying_outs[i].lod());
   }
   // 2. Run the sub-block.
-  framework::Executor executor(dev_place_);
   framework::ProgramDesc* program = sub_block_->Program();
-  executor.Run(*program, exe_scope, sub_block_->ID(), false, true);
+  exe_.Run(*program, exe_scope, sub_block_->ID(), false, true);
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
