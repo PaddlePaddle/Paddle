@@ -36,17 +36,17 @@ How to calculate the quantization range (or maximum absolute value) for inferenc
 
 ### Training Framework
 
+#### Forward pass
+
+The forward pass is simulated quantization, see the figure 1.
+
 The training framework is as following figure. 
 
 <p align="center"> 
-<img src="quantization_training_framework.png" align="center"/><br/>
+<img src="quantization_forward.png" width="300" height="340" /><br/>
 
-Fig 1. Forward and backward in training.
+Fig 1. Forward in training with simulated quantization.
 </p>
-
-#### Forward pass
-
-The forward pass is simulated quantization, see the figure a.
 
 - At first, both input and weight will be quantized to 8 bit. 
 - Then, do the multiplication (or convolution) operation with integers.
@@ -68,7 +68,7 @@ Dequantize $Y$:
 $$
 \begin{align}
 Y_{dq} &=\frac{Y}{(n - 1) * (n - 1)} * X_m * W_m \\\
-       &=\frac{X_q * W_q}{(n - 1) * (n - 1)} * X_m * W_m \\
+       &=\frac{X_q * W_q}{(n - 1) * (n - 1)} * X_m * W_m \\\
        &=(\frac{X_q}{n - 1} * X_m) * (\frac{W_q}{n - 1} * W_m) 
 \end{align}
 $$
@@ -76,9 +76,9 @@ $$
 From these formulas, dequantization also can be moved before GEMM, do dequantization for $Xq$ and $Wq$ at first, then do GEMM. The forward workflow in training is equivalent to following framework.
 
 <p align="center"> 
-<img src="quantization_forward.png"  width="300" height="300"  /><br/>
+<img src="quantization_forward.png"  width="300" height="330"  /><br/>
 
-Fig 2. Equitvalent forward in training.
+Fig 2. Equitvalent forward in training with simulated quantization.
 
 </p>
 
@@ -86,9 +86,16 @@ We use this equivalent workflow in the training. In our desigin, there is a quan
 
 #### Backward pass
 
-See the figure b. The backward pass still remains unchanged, all inputs and outputs of backward operator are float point with 32 bit.
+See the figure 3. The gradients are calculated by dequantized weights and activations. All inputs and outputs are float point with 32 bit. And in the weight updating process, the gradients will be added to the original weight, not the quantized or dequantized weights.
 
-So the quantization transipler should not change the backward pass. 
+<p align="center"> 
+<img src="quantization_backward_and_optimization.png" /><br/>
+
+Fig 3. Backward and weight updating in training with simulated quantization.
+
+</p>
+
+So the quantization transipler will change some inputs of the corresponding backward operators. 
 
 ### How to calculate quantization scale
 
