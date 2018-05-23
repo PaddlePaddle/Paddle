@@ -3913,7 +3913,7 @@ def bilinear_interp(input, out_h, out_w):
     """
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
-    W-direction in this op) on a rectilinear 2D grid.
+    W-direction in this layer) on a rectilinear 2D grid.
     
     For details, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
@@ -3921,8 +3921,8 @@ def bilinear_interp(input, out_h, out_w):
     Args:
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor with shape of (N X C x h x w).
-        out_h (int): output height of bilinear interpolation op.
-        out_w (int): output width of bilinear interpolation op.
+        out_h (int): output height of bilinear interpolation layer.
+        out_w (int): output width of bilinear interpolation layer.
 
     Returns:
         out (Variable): The dimension of out is (N x C x out_h x out_w).
