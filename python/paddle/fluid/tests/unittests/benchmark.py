@@ -29,7 +29,7 @@ class BenchmarkSuite(OpTest):
         start = time.time()
         for i in range(iters):
             callback(*args, **kwargs)
-            elapse = time.time() - start
+        elapse = time.time() - start
         return elapse / iters
 
     def _assert_cpu_gpu_same(self, cpu_outs, gpu_outs, fetch_list, atol):

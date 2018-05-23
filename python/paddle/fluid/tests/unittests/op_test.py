@@ -141,7 +141,8 @@ class OpTest(unittest.TestCase):
                 dict), "self.inputs, self.outputs must be numpy_dict"
             for var_name, var_value in numpy_dict.iteritems():
                 if isinstance(var_value, (list, tuple)):
-                    self.try_call_once(var_value[0].dtype)
+                    instance = var_value[0]
+                    self.try_call_once(instance[1].dtype)
                 else:
                     self.try_call_once(var_value.dtype)
 

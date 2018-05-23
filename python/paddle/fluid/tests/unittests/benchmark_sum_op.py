@@ -33,7 +33,7 @@ class TestSumOp(BenchmarkSuite):
         customize fetch list, configure the wanted variables.
         >>> self.fetch_list = ["Out"]
         """
-        pass
+        self.fetch_list = ["Out"]
 
     def customize_testcase(self):
         # a test case

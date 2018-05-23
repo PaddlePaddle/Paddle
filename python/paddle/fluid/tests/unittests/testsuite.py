@@ -101,11 +101,9 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
         else:
             np_value = np_list[name]
             if isinstance(np_value, tuple):
-                Static.try_call_once(np_value[0].dtype)
                 shape = list(np_value[0].shape)
                 lod_level = len(np_value[1])
             else:
-                Static.try_call_once(np_value.dtype)
                 shape = list(np_value.shape)
                 lod_level = 0
         return block.create_var(
