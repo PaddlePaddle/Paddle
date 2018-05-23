@@ -238,6 +238,7 @@ void BindVarDsec(pybind11::module *m) {
 
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)
+      .value("UINT8", pd::proto::VarType::UINT8)
       .value("INT16", pd::proto::VarType::INT16)
       .value("INT32", pd::proto::VarType::INT32)
       .value("INT64", pd::proto::VarType::INT64)

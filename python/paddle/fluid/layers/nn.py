@@ -80,6 +80,7 @@ __all__ = [
     'pad',
     'label_smooth',
     'roi_pool',
+    'dice_loss',
 ]
 
 
@@ -699,8 +700,8 @@ def dynamic_gru(input,
 def gru_unit(input,
              hidden,
              size,
-             weight=None,
-             bias=None,
+             param_attr=None,
+             bias_attr=None,
              activation='tanh',
              gate_activation='sigmoid'):
     """
@@ -731,8 +732,8 @@ def gru_unit(input,
         input (Variable): The fc transformed input value of current step.
         hidden (Variable): The hidden value of lstm unit from previous step.
         size (integer): The input dimension value.
-        weight (ParamAttr): The weight parameters for gru unit. Default: None
-        bias (ParamAttr): The bias parameters for gru unit. Default: None
+        param_attr (ParamAttr): The weight parameters for gru unit. Default: None
+        bias_attr (ParamAttr): The bias parameters for gru unit. Default: None
         activation (string): The activation type for cell (actNode).
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
@@ -764,34 +765,31 @@ def gru_unit(input,
     size = size / 3
 
     # create weight
-    if weight is None:
-        weight = helper.create_parameter(
-            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
-
-    # create bias
-
-    if bias is None:
-        bias_size = [1, 3 * size]
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
 
     gate = helper.create_tmp_variable(dtype)
     reset_hidden_pre = helper.create_tmp_variable(dtype)
     updated_hidden = helper.create_tmp_variable(dtype)
+    inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
+    # create bias
+    if helper.bias_attr:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
 
     helper.append_op(
         type='gru_unit',
-        inputs={'Input': input,
-                'HiddenPrev': hidden,
-                'Weight': weight},
+        inputs=inputs,
         outputs={
             'Gate': gate,
             'ResetHiddenPrev': reset_hidden_pre,
             'Hidden': updated_hidden,
         },
         attrs={
-            'activation': 0,
-            'gate_activation': 1,
+            'activation': 2,  # tanh
+            'gate_activation': 1,  # sigmoid
         })
 
     return updated_hidden, reset_hidden_pre, gate
@@ -1329,6 +1327,8 @@ def sequence_pool(input, pool_type):
          sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
          max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
         input(variable): The input variable which is a LoDTensor.
@@ -1348,6 +1348,8 @@ def sequence_pool(input, pool_type):
              sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
              sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
              max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
+             last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
+             first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
@@ -3263,35 +3265,35 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
     **Smooth L1 Loss Operator. **
 
-    This operator computes the smooth l1 loss for X and Y.
+    This operator computes the smooth L1 loss for X and Y.
     The operator takes the first dimension of X and Y as batch size.
-    For each instance, it computes the smooth l1 loss element by element first
+    For each instance, it computes the smooth L1 loss element by element first
     and then sums all the losses. So the shape of Out is [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
-            l1 loss op with shape [batch_size, dim1, ..., dimN].
+            L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            l1 loss op with same shape as x.
+            L1 loss op with same shape as x.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the result of (x - y) will be multiplied by this tensor element by
             element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
-            the out smooth l1 loss will be multiplied by this tensor element
+            the out smooth L1 loss will be multiplied by this tensor element
             by element.
-        sigma (float|None): Hyper parameter of smooth l1 loss op. A float scalar
+        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
             with default value 1.0.
     Returns:
-        Variable: A tensor with rank be 2. The output smooth l1 loss with
+        Variable: A tensor with rank be 2. The output smooth L1 loss with
             shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[100], dtype='int64')
+            label = fluid.layers.data(name='label', shape=[100], dtype='float32')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
@@ -3769,13 +3771,13 @@ def label_smooth(label,
 
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform 
+    Region of interest pooling (also known as RoI pooling) is to perform
         is to perform max pooling on inputs of nonuniform sizes to obtain
         fixed-size feature maps (e.g. 7*7).
-    The operator has three steps: 
-        1. Dividing each region proposal into equal-sized sections with 
-           the pooled_width and pooled_height 
-        2. Finding the largest value in each section 
+    The operator has three steps:
+        1. Dividing each region proposal into equal-sized sections with
+           the pooled_width and pooled_height
+        2. Finding the largest value in each section
         3. Copying these max values to the output buffer
 
     Args:
@@ -3783,8 +3785,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         rois (Variable): ROIs (Regions of Interest) to pool over. It should
                          be a 2-D one level LoTensor of shape [num_rois, 4].
                          The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the 
-                         bottom right coordinates. The num_rois is the 
+                         is the top left coordinates, and (x2, y2) is the
+                         bottom right coordinates. The num_rois is the
                          total number of ROIs in this batch data.
         pooled_height (integer): The pooled output height. Default: 1
         pooled_width (integer): The pooled output width. Default: 1
@@ -3793,11 +3795,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                                to the scale used when pooling. Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape 
+        pool_out (Variable): The output is a 4-D tensor of the shape
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -3815,3 +3817,43 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+def dice_loss(input, label, epsilon=0.00001):
+    """
+    **Dice loss Layer**
+    Dice loss for comparing the similarity of two batch of data,
+    usually is used for binary image segmentation i.e. labels are binary.
+    The dice loss can be defined as below equation:
+
+    .. math::
+
+        dice\_loss &= 1 - \\frac{2 * intersection\_area}{total\_area} \\\\
+                  &= \\frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\\\
+                  &= \\frac{(union\_area - intersection\_area)}{total\_area}
+
+
+    Args:
+        input (Variable): The predictions with rank>=2. The first dimension is batch size,
+                          and the last dimension is class number.
+        label (Variable): The groud truth with the same rank with input. The first dimension
+                          is batch size, and the last dimension is 1.
+        epsilon (float): The epsilon will be added to the numerator and denominator.
+                         If both input and label are empty, it makes sure dice is 1.
+                         Default: 0.00001
+
+    Returns:
+        dice_loss (Variable): The dice loss with shape [1].
+
+    Examples:
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+    """
+    label = one_hot(label, depth=input.shape[-1])
+    reduce_dim = range(1, len(input.shape))
+    inse = reduce_sum(input * label, dim=reduce_dim)
+    dice_denominator = reduce_sum(
+        input, dim=reduce_dim) + reduce_sum(
+            label, dim=reduce_dim)
+    dice_score = 1 - inse * 2 / (dice_denominator + epsilon)
+    return reduce_mean(dice_score)

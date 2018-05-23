@@ -594,6 +594,7 @@ roi_pool
 ..  autofunction:: paddle.fluid.layers.roi_pool
     :noindex:
 
+
 ops
 ===
 
@@ -988,5 +989,17 @@ zeros
 -----
 
 ..  autofunction:: paddle.fluid.layers.zeros
+    :noindex:
+
+topk
+----
+
+..  autofunction:: paddle.fluid.layers.topk
+    :noindex:
+
+dice_loss
+----
+
+..  autofunction:: paddle.fluid.layers.dice_loss
     :noindex:
 

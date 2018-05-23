@@ -184,7 +184,7 @@ class RequestPrefetch final : public RequestBase {
     framework::Scope* local_scope = &scope_->NewScope();
     auto* var = local_scope->FindVar(var_name);
     InitializeVariable(var, var_desc->GetType());
-    executor_->RunPreparedContext(prefetch_ctx_, scope_, false, false);
+    executor_->RunPreparedContext(prefetch_ctx_, scope_);
 
     SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
 
