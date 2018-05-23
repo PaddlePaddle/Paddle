@@ -2082,11 +2082,11 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the sum is performed. If
+        dim (list|int|None): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
-            the dimension to reduce is :math:`rank + dim`.
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2107,15 +2107,25 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
             fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1, 2], [3, 4]],
+            #      [[5, 6], [7, 8]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
+            fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
+
     """
     helper = LayerHelper('reduce_sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_sum',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2128,11 +2138,11 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the mean is computed. If
+        dim (list|int|None): The dimensions along which the mean is computed. If
             :attr:`None`, compute the mean over all elements of :attr:`input`
             and return a Tensor variable with a single element, otherwise
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2153,15 +2163,24 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
             fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_mean(x, dim=[1, 2]) # [2.5, 6.5]
+            fluid.layers.reduce_mean(x, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_mean',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2174,11 +2193,11 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the maximum is computed.
+        dim (list|int|None): The dimension along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2199,15 +2218,24 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
             fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_max(x, dim=[1, 2]) # [4.0, 8.0]
+            fluid.layers.reduce_max(x, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_max',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2220,11 +2248,11 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the minimum is computed.
+        dim (list|int|None): The dimensions along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2245,15 +2273,24 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
             fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_min(x, dim=[1, 2]) # [1.0, 5.0]
+            fluid.layers.reduce_min(x, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_min',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2266,11 +2303,11 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the product is performed. If
+        dim (list|int|None): The dimensions along which the product is performed. If
             :attr:`None`, multipy all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
-            the dimension to reduce is :math:`rank + dim`.
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2292,15 +2329,24 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
             fluid.layers.reduce_prod(x, dim=1,
                                      keep_dim=True)  # [[0.027], [0.0084]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_prod(x, dim=[1, 2]) # [24.0, 1680.0]
+            fluid.layers.reduce_prod(x, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_prod',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2403,7 +2449,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
     if len(x.shape) == 1:
         axis = 0
-
     helper = LayerHelper("l2_normalize", **locals())
 
     square = helper.create_tmp_variable(dtype=x.dtype)
@@ -2415,7 +2460,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         inputs={"X": square},
         outputs={"Out": reduced_sum},
         attrs={
-            "dim": 1 if axis is None else axis,
+            "dim": [1] if axis is None else [axis],
             "keep_dim": True,
             "reduce_all": False
         })
