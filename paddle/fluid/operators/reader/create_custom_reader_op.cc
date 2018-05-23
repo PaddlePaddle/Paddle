@@ -65,9 +65,8 @@ class CreateCustomReaderOp : public framework::OperatorBase {
 };
 
 class CreateCustomReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateCustomReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<framework::BlockDesc*>("sub_block", "");
     AddAttr<std::vector<std::string>>("source_var_names", "");
     AddAttr<std::vector<std::string>>("sink_var_names", "");
@@ -86,13 +85,14 @@ class CustomReaderInferShape : public framework::InferShapeBase {
                    "compile time.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "The output decorated reader should not be null.");
+    const auto* sub_block =
+        ctx->Attrs().Get<framework::BlockDesc*>("sub_block");
     const auto sink_var_names =
         ctx->Attrs().Get<std::vector<std::string>>("sink_var_names");
     std::vector<std::vector<int64_t>> res_dims;
     std::vector<int32_t> res_lod_levels;
     for (const std::string& var_name : sink_var_names) {
-      auto* sink_var =
-          boost::get<framework::VarDesc*>(ctx->GetVarPtr(var_name));
+      auto* sink_var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(sink_var);
       res_dims.emplace_back(sink_var->GetShape());
       res_lod_levels.push_back(sink_var->GetLoDLevel());
@@ -114,9 +114,11 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
 
     auto sink_var_names =
         boost::get<std::vector<std::string>>(op_desc.GetAttr("sink_var_names"));
+    const auto* sub_block =
+        boost::get<framework::BlockDesc*>(op_desc.GetAttr("sub_block"));
     std::vector<framework::proto::VarType::Type> res_data_types;
     for (const std::string& var_name : sink_var_names) {
-      framework::VarDesc* var = block->FindVar(var_name);
+      framework::VarDesc* var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var);
       res_data_types.emplace_back(var->GetDataType());
     }
@@ -152,8 +154,7 @@ void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   framework::Executor executor(dev_place_);
   framework::ProgramDesc* program = sub_block_.Program();
   framework::Scope* exe_scope = &scope_.NewScope();
-  executor.Run(*program, exe_scope, sub_block_.ID(),
-               false /*create_local_scope*/, true);
+  executor.Run(*program, exe_scope, sub_block_.ID(), false, true);
   scope_.DeleteScope(exe_scope);
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
