@@ -101,7 +101,5 @@ class OrderedRegistry {
 }  // namespace paddle
 
 #define PADDLE_DISALLOW_COPY_AND_ASSIGN(type__) \
-                                                \
   type__(const type__ &) = delete;              \
-                                                \
   void operator=(const type__ &) = delete;
