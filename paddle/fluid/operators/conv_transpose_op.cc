@@ -50,7 +50,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                     "dimension should be the same.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "In ConvTransposeOp, The number of input channels should "
-                    "be equal to the number of filter' channels.");
+                    "be equal to the number of filter's channels.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1] * groups});
   for (size_t i = 0; i < strides.size(); ++i) {
@@ -208,6 +208,10 @@ void Conv3DTransposeOpMaker::Make() {
                             "(vector<int> default:{0, 0, 0}), paddings(d_pad, "
                             "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
+  AddAttr<int>("groups",
+               "(int default:1), the groups number of the convolution3d "
+               "transpose operator. ")
+      .SetDefault(1);
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
