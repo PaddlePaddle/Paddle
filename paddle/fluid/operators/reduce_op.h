@@ -173,13 +173,13 @@ class ReduceKernel : public framework::OpKernel<T> {
     bool keep_dim = context.Attr<bool>("keep_dim");
     DDim out_dims = output->dims();
     if (keep_dim && x_rank > 1) {
-      int DEL_FLAG = -2;
+      const int kDelFlag = -2;
       auto dims_vector = vectorize(out_dims);
       for (size_t i = 0; i < dims.size(); ++i) {
-        dims_vector[dims[i]] = DEL_FLAG;
+        dims_vector[dims[i]] = kDelFlag;
       }
       dims_vector.erase(
-          remove(dims_vector.begin(), dims_vector.end(), DEL_FLAG),
+          remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
           dims_vector.end());
       out_dims = framework::make_ddim(dims_vector);
     }

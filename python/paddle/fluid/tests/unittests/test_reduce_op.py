@@ -134,7 +134,7 @@ class TestReduceAll(OpTest):
 
 
 ## reduction in multi dims
-class TestMeanOpM(OpTest):
+class TestReduceMeanOpMultiAxises(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
@@ -148,7 +148,7 @@ class TestMeanOpM(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestMaxOpM(OpTest):
+class TestReduceMaxOpMultiAxises(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -163,7 +163,7 @@ class TestMaxOpM(OpTest):
         self.check_output()
 
 
-class TestMinOpM(OpTest):
+class TestReduceMinOpMultiAxises(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -178,7 +178,7 @@ class TestMinOpM(OpTest):
         self.check_output()
 
 
-class TestKeepDimReduceM(OpTest):
+class TestKeepDimReduceSumMultiAxises(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
