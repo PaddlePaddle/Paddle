@@ -29,57 +29,6 @@ import paddle.fluid as fluid
 import paddle.batch as batch
 import paddle.fluid.profiler as profiler
 
-
-def parse_args():
-    parser = argparse.ArgumentParser("Understand Sentiment by Dynamic RNN.")
-    parser.add_argument(
-        '--batch_size',
-        type=int,
-        default=32,
-        help='The sequence number of a batch data. (default: %(default)d)')
-    parser.add_argument(
-        '--skip_batch_num',
-        type=int,
-        default=5,
-        help='The first num of minibatch num to skip, for better performance test'
-    )
-    parser.add_argument(
-        '--iterations', type=int, default=80, help='The number of minibatches.')
-    parser.add_argument(
-        '--emb_dim',
-        type=int,
-        default=512,
-        help='Dimension of embedding table. (default: %(default)d)')
-    parser.add_argument(
-        '--hidden_dim',
-        type=int,
-        default=512,
-        help='Hidden size of lstm unit. (default: %(default)d)')
-    parser.add_argument(
-        '--pass_num',
-        type=int,
-        default=100,
-        help='Epoch number to train. (default: %(default)d)')
-    parser.add_argument(
-        '--device',
-        type=str,
-        default='CPU',
-        choices=['CPU', 'GPU'],
-        help='The device type.')
-    parser.add_argument(
-        '--crop_size',
-        type=int,
-        default=int(os.environ.get('CROP_SIZE', '1500')),
-        help='The max sentence length of input. Since this model use plain RNN,'
-        ' Gradient could be explored if sentence is too long')
-    parser.add_argument(
-        '--with_test',
-        action='store_true',
-        help='If set, test the testset during training.')
-    args = parser.parse_args()
-    return args
-
-
 word_dict = imdb.word_dict()
 
 
@@ -94,14 +43,15 @@ def crop_sentence(reader, crop_size):
     return __impl__
 
 
-def main():
-    args = parse_args()
-    lstm_size = args.hidden_dim
+def get_model(args):
+    lstm_size = 512
+    emb_dim = 512
+    crop_size = 1500
 
     data = fluid.layers.data(
         name="words", shape=[1], lod_level=1, dtype='int64')
     sentence = fluid.layers.embedding(
-        input=data, size=[len(word_dict), args.emb_dim])
+        input=data, size=[len(word_dict), emb_dim])
 
     sentence = fluid.layers.fc(input=sentence, size=lstm_size, act='tanh')
 
@@ -161,51 +111,17 @@ def main():
             target_vars=[batch_acc, batch_size_tensor])
 
     adam = fluid.optimizer.Adam()
-    adam.minimize(loss)
-
-    fluid.memory_optimize(fluid.default_main_program())
-
-    place = fluid.CPUPlace() if args.device == 'CPU' else fluid.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
 
     train_reader = batch(
         paddle.reader.shuffle(
-            crop_sentence(imdb.train(word_dict), args.crop_size),
-            buf_size=25000),
+            crop_sentence(imdb.train(word_dict), crop_size), buf_size=25000),
+        batch_size=args.batch_size)
+    test_reader = batch(
+        paddle.reader.shuffle(
+            crop_sentence(imdb.test(word_dict), crop_size), buf_size=25000),
         batch_size=args.batch_size)
 
-    iters, num_samples, start_time = 0, 0, time.time()
-    for pass_id in range(args.pass_num):
-        train_accs = []
-        train_losses = []
-        for batch_id, data in enumerate(train_reader()):
-            if iters == args.skip_batch_num:
-                start_time = time.time()
-                num_samples = 0
-            if iters == args.iterations:
-                break
-            tensor_words = to_lodtensor([x[0] for x in data], place)
-            label = numpy.array([x[1] for x in data]).astype("int64")
-            label = label.reshape((-1, 1))
-            loss_np, acc, weight = exe.run(
-                fluid.default_main_program(),
-                feed={"words": tensor_words,
-                      "label": label},
-                fetch_list=[loss, batch_acc, batch_size_tensor])
-            iters += 1
-            for x in data:
-                num_samples += len(x[0])
-            print(
-                "Pass = %d, Iter = %d, Loss = %f, Accuracy = %f" %
-                (pass_id, iters, loss_np, acc)
-            )  # The accuracy is the accumulation of batches, but not the current batch.
-
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        exit(0)
+    return loss, inference_program, adam, train_reader, test_reader, batch_acc
 
 
 def to_lodtensor(data, place):
@@ -221,16 +137,3 @@ def to_lodtensor(data, place):
     res.set(flattened_data, place)
     res.set_lod([lod])
     return res
-
-
-def print_arguments(args):
-    print('----------- lstm Configuration Arguments -----------')
-    for arg, value in sorted(vars(args).iteritems()):
-        print('%s: %s' % (arg, value))
-    print('------------------------------------------------')
-
-
-if __name__ == '__main__':
-    args = parse_args()
-    print_arguments(args)
-    main()
