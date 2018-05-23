@@ -173,6 +173,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
             for (size_t i = 0; i < backward_vars.size(); ++i) {
               auto &p_name = backward_vars[i];
               auto &g_name = backward_vars[i + 1];
+              VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
+
               switch (strategy_.reduce_) {
                 case BuildStrategy::ReduceStrategy::kReduce:
                   CreateReduceOp(&result, g_name, cur_device_id);
