@@ -486,14 +486,7 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
-            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select', 'gen_nccl_id'
-        }
-        if type not in no_kernel_op_set:
+        if core.op_has_kernel(self.op_type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 

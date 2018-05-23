@@ -388,5 +388,7 @@ class OperatorWithKernel : public OperatorBase {
 
 extern bool OpSupportGPU(const std::string& op_type);
 
+extern bool OpHasKernel(const std::string& op_type);
+
 }  // namespace framework
 }  // namespace paddle

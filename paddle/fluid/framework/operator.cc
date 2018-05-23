@@ -347,6 +347,16 @@ bool OpSupportGPU(const std::string& op_type) {
   return false;
 }
 
+bool OpHasKernel(const std::string& op_type) {
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op_type);
+  if (it != all_kernels.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
