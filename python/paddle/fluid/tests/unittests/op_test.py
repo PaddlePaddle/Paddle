@@ -140,11 +140,16 @@ class OpTest(unittest.TestCase):
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
             for var_name, var_value in numpy_dict.iteritems():
-                if isinstance(var_value, (list, tuple)):
-                    instance = var_value[0]
-                    self.try_call_once(instance[1].dtype)
-                else:
+                if isinstance(var_value, (np.ndarray, np.generic)):
                     self.try_call_once(var_value.dtype)
+                elif isinstance(var_value, (list, tuple)):
+                    # the case of self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+                    if len(var_value) > 1 and isinstance(var_value[1], (
+                            np.ndarray, np.generic)):
+                        instance = var_value[1]
+                        self.try_call_once(instance[1].dtype)
+                else:
+                    self.try_call_once("float32")
 
         infer_dtype(inputs)
         infer_dtype(outputs)
@@ -244,6 +249,8 @@ class OpTest(unittest.TestCase):
         if len(fetch_list) == 0:
             for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                 fetch_list.append(str(out_name))
+        # fetch_list = self._fetch_data(fetch_list)
+        fetch_list = map(block.var, fetch_list)
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,

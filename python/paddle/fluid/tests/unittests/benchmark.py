@@ -63,10 +63,10 @@ class BenchmarkSuite(OpTest):
         outputs = []
         for var_name, var in self.outputs.iteritems():
             if isinstance(var, list):
-                for v in var:
-                    outputs.append(v)
+                for sub_var_name, sub_var in var:
+                    outputs.append(sub_var_name)
             else:
-                outputs.append(var)
+                outputs.append(var_name)
         if len(outputs) == 0:
             for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                 outputs.append(str(out_name))

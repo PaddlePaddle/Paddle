@@ -92,20 +92,24 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
     proto_list = op_proto.inputs if is_input else op_proto.outputs
 
     def create_var(block, name, np_list, var_proto):
-        if not is_input:
-            return block.create_var(dtype=dtype, name=name)
+        dtype = None
+        shape = None
+        lod_level = None
         if name not in np_list:
             assert var_proto.intermediate, "{} not found".format(name)
-            shape = None
-            lod_level = None
         else:
             np_value = np_list[name]
             if isinstance(np_value, tuple):
-                shape = list(np_value[0].shape)
-                lod_level = len(np_value[1])
+                dtype = np_value[0].dtype
+                # output shape, lod should be infered from input.
+                if is_input:
+                    shape = list(np_value[0].shape)
+                    lod_level = len(np_value[1])
             else:
-                shape = list(np_value.shape)
-                lod_level = 0
+                dtype = np_value.dtype
+                if is_input:
+                    shape = list(np_value.shape)
+                    lod_level = 0
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name)
 
@@ -133,6 +137,9 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
 
 def append_loss_ops(block, output_names):
     mean_inputs = map(block.var, output_names)
+    # for item in mean_inputs:
+    #     print(item)
+    #     print("Item", item.dtype)
 
     if len(mean_inputs) == 1:
         loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])

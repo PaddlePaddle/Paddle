@@ -34,6 +34,7 @@ class TestSumOp(BenchmarkSuite):
         >>> self.fetch_list = ["Out"]
         """
         self.fetch_list = ["Out"]
+        # pass
 
     def customize_testcase(self):
         # a test case
@@ -41,9 +42,10 @@ class TestSumOp(BenchmarkSuite):
         x1 = np.random.random((300, 400)).astype('float32')
         x2 = np.random.random((300, 400)).astype('float32')
 
-        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         # NOTE: if the output is empty, then it will autofilled by benchmarkSuite.
-        # self.outputs = {"Out": x0 + x1 + x2}
+        # only the output dtype is used, the shape, lod and data is computed from input.
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+        self.outputs = {"Out": x0 + x1 + x2}
 
     def test_check_output(self):
         """
