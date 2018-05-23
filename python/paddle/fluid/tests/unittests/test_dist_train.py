@@ -52,15 +52,18 @@ class TestSendOp(unittest.TestCase):
             serv = layers.ListenAndServ(
                 "127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
+                out_var = main.global_block().create_var(
+                    name="scale_0.tmp_0",
+                    psersistable=True,
+                    dtype="float32",
+                    shape=[32, 32])
                 x = layers.data(
                     shape=[32, 32],
                     dtype='float32',
                     name="X",
                     append_batch_size=False)
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
-                o = layers.scale(x=x, scale=10.0)
-            main.global_block().create_var(
-                name=o.name, psersistable=False, dtype=o.dtype, shape=o.shape)
+                layers.scale(x=x, scale=10.0, out=out_var)
 
         self.server_exe = fluid.Executor(place)
         self.server_exe.run(main)

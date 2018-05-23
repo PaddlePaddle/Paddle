@@ -159,6 +159,7 @@ def run_benchmark(model, args):
         paddle.dataset.mnist.train(), batch_size=args.batch_size)
 
     accuracy = fluid.metrics.Accuracy()
+    train_exe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         accuracy.reset()
@@ -175,17 +176,20 @@ def run_benchmark(model, args):
             y_data = np.array(map(lambda x: x[1], data)).astype("int64")
             y_data = y_data.reshape([len(y_data), 1])
 
-            outs = exe.run(
-                fluid.default_main_program(),
+            outs = train_exe.run(
                 feed={"pixel": img_data,
                       "label": y_data},
-                fetch_list=[avg_cost, batch_acc, batch_size_tensor]
+                fetch_list=[
+                    avg_cost.name, batch_acc.name, batch_size_tensor.name
+                ]
             )  # The accuracy is the accumulation of batches, but not the current batch.
-            accuracy.update(value=outs[1], weight=outs[2])
+            accuracy.update(
+                value=np.array(np.mean(outs[1])),
+                weight=np.mean(np.array(outs[2])))
             iters += 1
             num_samples += len(y_data)
-            loss = np.array(outs[0])
-            acc = np.array(outs[1])
+            loss = np.mean(np.array(outs[0]))
+            acc = np.mean(np.array(outs[1]))
             train_losses.append(loss)
             train_accs.append(acc)
             print("Pass: %d, Iter: %d, Loss: %f, Accuracy: %f" %

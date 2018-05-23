@@ -57,8 +57,7 @@ static void ParallelExecuteBlocks(
         framework::Async([&executor, &prepared, &program, &scope, idx]() {
           int run_block = idx;  // thread local
           try {
-            executor->RunPreparedContext(prepared[run_block].get(), scope,
-                                         false, false);
+            executor->RunPreparedContext(prepared[run_block].get(), scope);
           } catch (std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
@@ -211,8 +210,8 @@ static void AsyncUpdateThread(
     }
     auto fs = framework::Async([var_name, &executor, &v, prepared] {
       try {
-        executor->RunPreparedContext(prepared, v.second->GetMutableLocalScope(),
-                                     false, false);
+        executor->RunPreparedContext(prepared,
+                                     v.second->GetMutableLocalScope());
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }

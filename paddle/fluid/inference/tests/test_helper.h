@@ -133,11 +133,24 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
   return feed_target_shapes;
 }
 
+void EnableMKLDNN(
+    const std::unique_ptr<paddle::framework::ProgramDesc>& program) {
+  for (size_t bid = 0; bid < program->Size(); ++bid) {
+    auto* block = program->MutableBlock(bid);
+    for (auto* op : block->AllOps()) {
+      if (op->HasAttr("use_mkldnn")) {
+        op->SetAttr("use_mkldnn", true);
+      }
+    }
+  }
+}
+
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
-                   const int repeat = 1, const bool is_combined = false) {
+                   const int repeat = 1, const bool is_combined = false,
+                   const bool use_mkldnn = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -149,7 +162,7 @@ void TestInference(const std::string& dirname,
     state = paddle::platform::ProfilerState::kCPU;
   } else {
 #ifdef PADDLE_WITH_CUDA
-    state = paddle::platform::ProfilerState::kCUDA;
+    state = paddle::platform::ProfilerState::kAll;
     // The default device_id of paddle::platform::CUDAPlace is 0.
     // Users can get the device_id using:
     //   int device_id = place.GetDeviceId();
@@ -169,10 +182,13 @@ void TestInference(const std::string& dirname,
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
     inference_program = InitProgram(&executor, scope, dirname, is_combined);
+    if (use_mkldnn) {
+      EnableMKLDNN(inference_program);
+    }
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
-                                    "load_program_profiler.txt");
+                                    "load_program_profiler");
   paddle::platform::ResetProfiler();
 
   // 3. Get the feed_target_names and fetch_target_names
@@ -208,10 +224,10 @@ void TestInference(const std::string& dirname,
     if (PrepareContext) {
       ctx = executor.Prepare(*inference_program, 0);
       executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                  &fetch_targets, CreateVars);
+                                  &fetch_targets, true, CreateVars);
     } else {
       executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                   CreateVars);
+                   true, CreateVars);
     }
 
     // Enable the profiler
@@ -236,8 +252,7 @@ void TestInference(const std::string& dirname,
 
     // Disable the profiler and print the timing information
     paddle::platform::DisableProfiler(
-        paddle::platform::EventSortingKey::kDefault,
-        "run_inference_profiler.txt");
+        paddle::platform::EventSortingKey::kDefault, "run_inference_profiler");
     paddle::platform::ResetProfiler();
   }
 

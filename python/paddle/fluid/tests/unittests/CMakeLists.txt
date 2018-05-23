@@ -26,14 +26,17 @@ list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not 
 
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
-    set(options "")
+    set(options SERIAL)
     set(oneValueArgs "")
-    set(multiValueArgs MODULES DEPS ARGS ENVS)
+    set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
              COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-             ${PYTHON_EXECUTABLE} -u -m unittest --verbose ${py_test_modules_MODULES} ${py_test_modules_ARGS}
+             ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (py_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    endif()
   endif()
 endfunction()
 
@@ -81,7 +84,7 @@ endif(WITH_FAST_BUNDLE_TEST)
 py_test_modules(test_sequence_expand MODULES test_sequence_expand)
 # tests with high overhead
 py_test_modules(test_parallel_executor MODULES test_parallel_executor)
-py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
+py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)
 py_test_modules(test_network_with_dtype MODULES test_network_with_dtype)
@@ -106,4 +109,4 @@ py_test_modules(test_registry MODULES test_registry)
 py_test_modules(test_fetch_var MODULES test_fetch_var)
 py_test_modules(test_dynrnn_static_input MODULES test_dynrnn_static_input)
 py_test_modules(test_parallel_op MODULES test_parallel_op)
-py_test_modules(test_dist_train MODULES test_dist_train)
+py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
