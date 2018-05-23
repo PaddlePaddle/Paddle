@@ -433,7 +433,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.1.2-1+cuda${CUDA_MAJOR} libnccl-dev=2.1.2-1+cuda${CUDA_MAJOR} &&"
     else
         NCCL_DEPS=""
     fi
@@ -493,7 +493,8 @@ function gen_fluid_inference_lib() {
     ========================================
 EOF
         make -j `nproc` inference_lib_dist
-    fi
+        tar -cf ${PADDLE_ROOT}/build/fluid.tgz ${PADDLE_ROOT}/build/fluid_install_dir
+      fi
 }
 
 function main() {
