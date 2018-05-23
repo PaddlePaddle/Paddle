@@ -585,9 +585,9 @@ def _write_success(dirname):
     :param dirname
     """
     success_file = os.path.join(dirname, SUCCESS_MARK_FILENAME)
-    with open(success_file, 'a'):
+    with open(success_file, 'a') as f:
         now = time.ctime()
-        success_file.write(now)
+        f.write(now)
 
 
 def _get_lastest_checkpoint_dir(checkpoint_dir):
