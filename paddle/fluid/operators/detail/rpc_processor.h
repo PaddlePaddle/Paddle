@@ -47,18 +47,25 @@ typedef framework::BlockingQueue<ReceivedMessage> ReceivedQueue;
 
 class RPCProcessorCtx {
  public:
-  explicit RPCProcessorCtx(
-      bool sync_mode, framework::Scope* scope, platform::DeviceContext* dev_ctx,
-      std::unique_ptr<framework::ExecutorPrepareContext> prepared,
-      framework::ProgramDesc* program, framework::Executor* executor,
-      ReceivedQueue* var_recv_queue)
-      : sync_mode_(sync_mode) {
-    scope_ = scope;
-    dev_ctx_ = dev_ctx;
+  RPCProcessorCtx()
+      : sync_mode_(true),
+        scope_(nullptr),
+        dev_ctx_(nullptr),
+        program_(nullptr),
+        executor_(nullptr),
+        var_recv_queue_(nullptr) {}
+  virtual ~RPCProcessorCtx() {}
 
+  void SetSyncMode(bool sync_mode) { sync_mode_ = sync_mode; }
+  void SetScope(framework::Scope* scope) { scope_ = scope; }
+  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
+  void SetProgram(framework::ProgramDesc* program) { program_ = program; }
+  void SetExecutor(framework::Executor* executor) { executor_ = executor; }
+  void SetPrefetchPreparedCtx(
+      std::unique_ptr<framework::ExecutorPrepareContext> prepared) {
     prefetch_ctx_.reset(prepared.release());
-    program_ = program;
-    executor_ = executor;
+  }
+  void SetVarRecvQueue(ReceivedQueue* var_recv_queue) {
     var_recv_queue_ = var_recv_queue;
   }
 
@@ -73,7 +80,7 @@ class RPCProcessorCtx {
   ReceivedQueue* var_recv_queue() { return var_recv_queue_; }
 
  protected:
-  const bool sync_mode_;
+  bool sync_mode_;
   framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
 
@@ -85,17 +92,13 @@ class RPCProcessorCtx {
 
 class GRPCProcessorCtx : public RPCProcessorCtx {
  public:
-  explicit GRPCProcessorCtx(
-      bool sync_mode, framework::Scope* scope, platform::DeviceContext* dev_ctx,
-      std::unique_ptr<framework::ExecutorPrepareContext> prepared,
-      framework::ProgramDesc* program, framework::Executor* executor,
-      ReceivedQueue* var_recv_queue)
-      : RPCProcessorCtx(sync_mode, scope, dev_ctx, std::move(prepared), program,
-                        executor, var_recv_queue) {}
+  GRPCProcessorCtx() {}
+  virtual ~GRPCProcessorCtx() {}
 
-  bool RequestSend(const VariableResponse* request);
-  bool RequestGet(const VariableResponse* request, ::grpc::ByteBuffer* reply);
-  bool ReqeustPrefetch(const VariableResponse* request,
+  bool RequestSend(std::shared_ptr<VariableResponse> request);
+  bool RequestGet(const sendrecv::VariableMessage* request,
+                  ::grpc::ByteBuffer* reply);
+  bool RequestPrefetch(const VariableResponse* request,
                        ::grpc::ByteBuffer* reply);
 };
 

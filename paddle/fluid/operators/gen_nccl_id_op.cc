@@ -75,19 +75,25 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::AsyncGRPCServer rpc_service(endpoint, true);
+    detail::GRPCProcessorCtx rpc_processor;
+    rpc_processor.SetSyncMode(true);
+    detail::AsyncGRPCServer rpc_service(endpoint, &rpc_processor);
+
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
-    rpc_service.SetScope(scope);
-    rpc_service.SetDevCtx(&dev_ctx);
-    rpc_service.SetProgram(&empty_program);
-    rpc_service.SetExecutor(&executor);
+    rpc_processor.SetScope(scope);
+    rpc_processor.SetDevCtx(&dev_ctx);
+    rpc_processor.SetProgram(&empty_program);
+    rpc_processor.SetExecutor(&executor);
+
+    detail::ReceivedQueue queue;
+    rpc_processor.SetVarRecvQueue(&queue);
 
     std::thread server_thread(
         std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
     rpc_service.SetCond(0);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    auto recv = rpc_service.Get();
+    auto recv = queue.Pop();
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";

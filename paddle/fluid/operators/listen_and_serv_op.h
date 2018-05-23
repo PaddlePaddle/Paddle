@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/rpc_processor.h"
 
 namespace paddle {
 namespace operators {
@@ -64,9 +65,13 @@ class ListenAndServOp : public framework::OperatorBase {
 
  protected:
   mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
+  mutable std::shared_ptr<detail::GRPCProcessorCtx> rpc_processor_;
+
   mutable std::shared_ptr<std::thread> server_thread_;
   // FIXME(wuyi): it's static so that the operator can be cloned.
   static std::atomic_int selected_port_;
+
+  mutable std::shared_ptr<detail::ReceivedQueue> var_recv_queue_;
 };
 
 }  // namespace operators

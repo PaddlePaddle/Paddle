@@ -36,6 +36,8 @@ namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
 std::unique_ptr<detail::AsyncGRPCServer> rpc_service;
+std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
+std::unique_ptr<detail::ReceivedQueue> g_var_recv_queue;
 
 void StartServer(std::atomic<bool>* initialized) {
   f::Scope scope;
@@ -44,14 +46,17 @@ void StartServer(std::atomic<bool>* initialized) {
   p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
-  rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", true));
+  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
+  g_rpc_processor->SetSyncMode(true);
+  rpc_service.reset(
+      new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
 
   f::ProgramDesc empty_program;
   f::Executor executor(dev_ctx.GetPlace());
-  rpc_service->SetScope(&scope);
-  rpc_service->SetDevCtx(&dev_ctx);
-  rpc_service->SetProgram(&empty_program);
-  rpc_service->SetExecutor(&executor);
+  g_rpc_processor->SetScope(&scope);
+  g_rpc_processor->SetDevCtx(&dev_ctx);
+  g_rpc_processor->SetProgram(&empty_program);
+  g_rpc_processor->SetExecutor(&executor);
 
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service.get()));

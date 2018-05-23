@@ -42,7 +42,7 @@ class AsyncGRPCServer final {
  public:
   explicit AsyncGRPCServer(const std::string& address,
                            GRPCProcessorCtx* rpc_processor)
-      : address_(address), rpc_processor_(rpc_processor), ready_(0) {}
+      : address_(address), ready_(0), rpc_processor_(rpc_processor) {}
 
   ~AsyncGRPCServer() {}
   void WaitServerReady();
@@ -54,12 +54,6 @@ class AsyncGRPCServer final {
   void WaitClientGet(int count);
 
   int GetSelectedPort() const { return selected_port_; }
-
-  const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
-
-  void Push(const std::string& msg_name) {
-    this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
-  }
 
   void ShutDown();
 
@@ -83,11 +77,6 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
-  /*
-  const bool sync_mode_;
-  framework::Scope *scope_;
-  const platform::DeviceContext *dev_ctx_;
-  */
 
   // received variable from RPC, operators fetch variable from this queue.
   framework::BlockingQueue<MessageWithName> var_get_queue_;
@@ -103,12 +92,7 @@ class AsyncGRPCServer final {
   std::unique_ptr<std::thread> t_get_;
   std::unique_ptr<std::thread> t_prefetch_;
 
-  /*
-  std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
-  framework::ProgramDesc *program_;
-  framework::Executor *executor_;
   int selected_port_;
-  */
 
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;

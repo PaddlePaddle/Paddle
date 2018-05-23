@@ -60,11 +60,11 @@ class RequestSend final : public RequestBase {
                        GRPCProcessorCtx* rpc_processor)
       : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
     if (rpc_processor->sync_mode()) {
-      request_.reset(
-          new VariableResponse(scope, rpc_processor->dev_ctx(), false));
+      request_.reset(new VariableResponse(rpc_processor->scope(),
+                                          rpc_processor->dev_ctx(), false));
     } else {
-      request_.reset(
-          new VariableResponse(scope, rpc_processor->dev_ctx(), true));
+      request_.reset(new VariableResponse(rpc_processor->scope(),
+                                          rpc_processor->dev_ctx(), true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
@@ -79,7 +79,7 @@ class RequestSend final : public RequestBase {
     std::string var_name = GetReqName();
     VLOG(3) << "RequestSend " << var_name;
 
-    rpc_processor_->RequestSend(request_.get());
+    rpc_processor_->RequestSend(request_);
 
     sendrecv::VoidMessage reply;
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -116,7 +116,7 @@ class RequestGet final : public RequestBase {
 
     ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
-      rpc_processor_->RequestGet(request_.get(), &reply);
+      rpc_processor_->RequestGet(&request_, &reply);
     }
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -142,11 +142,11 @@ class RequestPrefetch final : public RequestBase {
                            GRPCProcessorCtx* rpc_processor)
       : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
     if (rpc_processor->sync_mode()) {
-      request_.reset(
-          new VariableResponse(scope, rpc_processor->dev_ctx(), false));
+      request_.reset(new VariableResponse(rpc_processor->scope(),
+                                          rpc_processor->dev_ctx(), false));
     } else {
-      request_.reset(
-          new VariableResponse(scope, rpc_processor->dev_ctx(), true));
+      request_.reset(new VariableResponse(rpc_processor->scope(),
+                                          rpc_processor->dev_ctx(), true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
@@ -161,7 +161,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     ::grpc::ByteBuffer reply;
 
-    rpc_processor->RequestPrefetch(request_.get(), &reply);
+    rpc_processor_->RequestPrefetch(request_.get(), &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
@@ -300,7 +300,7 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
 
     PADDLE_ENFORCE(tag);
 
-    if (sync_mode_) {
+    if (rpc_processor_->sync_mode()) {
       // FIXME(typhoonzero): de-couple the barriers with recv_op
       if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
       if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);

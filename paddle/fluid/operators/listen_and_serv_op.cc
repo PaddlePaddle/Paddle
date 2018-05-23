@@ -75,7 +75,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
     : OperatorBase(type, inputs, outputs, attrs) {}
 
 void ListenAndServOp::Stop() {
-  rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
+  var_recv_queue_->Push(std::make_pair(LISTEN_TERMINATE_MESSAGE, nullptr));
   server_thread_->join();
 }
 
@@ -126,7 +126,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     size_t recv_var_cnt = 0;
     int batch_barrier = 0;
     while (batch_barrier != fan_in) {
-      const detail::ReceivedMessage v = rpc_service_->Get();
+      const detail::ReceivedMessage v = var_recv_queue_->Pop();
       auto recv_var_name = v.first;
       if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
         LOG(INFO) << "received terminate message and exit";
@@ -274,7 +274,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
   VLOG(3) << "RunAsyncLoop into while";
   while (!exit_flag) {
-    const detail::ReceivedMessage v = rpc_service_->Get();
+    const detail::ReceivedMessage v = var_recv_queue_->Pop();
     auto recv_var_name = v.first;
     if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
       LOG(INFO) << "received terminate message and exit";
@@ -305,23 +305,28 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
 
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, sync_mode));
+  var_recv_queue_.reset(new detail::ReceivedQueue());
+  rpc_processor_.reset(new detail::GRPCProcessorCtx());
+  rpc_service_.reset(
+      new detail::AsyncGRPCServer(endpoint, rpc_processor_.get()));
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);
   auto *program = optimize_block->Program();
   framework::Executor executor(dev_place);
 
-  // prepare rpc_service
-  rpc_service_->SetScope(&recv_scope);
-  rpc_service_->SetDevCtx(&dev_ctx);
-  rpc_service_->SetProgram(program);
-  rpc_service_->SetExecutor(&executor);
+  // prepare rpc processor
+  rpc_processor_->SetSyncMode(sync_mode);
+  rpc_processor_->SetScope(&recv_scope);
+  rpc_processor_->SetDevCtx(&dev_ctx);
+  rpc_processor_->SetProgram(program);
+  rpc_processor_->SetExecutor(&executor);
+  rpc_processor_->SetVarRecvQueue(var_recv_queue_.get());
 
   // prepare for prefetch
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
   auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
-  rpc_service_->SetPrefetchPreparedCtx(std::move(prefetch_prepared));
+  rpc_processor_->SetPrefetchPreparedCtx(std::move(prefetch_prepared));
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));

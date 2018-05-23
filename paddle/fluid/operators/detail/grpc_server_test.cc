@@ -31,6 +31,8 @@ namespace detail = paddle::operators::detail;
 USE_OP(lookup_table);
 
 std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
+detail::ReceivedQueue g_var_recv_queue;
+detail::GRPCProcessorCtx g_rpc_processor;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -89,7 +91,9 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
 }
 
 void StartServer(const std::string& endpoint) {
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, true));
+  g_rpc_processor.SetSyncMode(true);
+  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, &g_rpc_processor));
+
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -99,11 +103,12 @@ void StartServer(const std::string& endpoint) {
   auto prepared = exe.Prepare(program, block->ID());
   InitTensorsOnServer(&scope, &place, 10);
 
-  rpc_service_->SetProgram(&program);
-  rpc_service_->SetPrefetchPreparedCtx(std::move(prepared));
-  rpc_service_->SetDevCtx(&ctx);
-  rpc_service_->SetScope(&scope);
-  rpc_service_->SetExecutor(&exe);
+  g_rpc_processor.SetProgram(&program);
+  g_rpc_processor.SetPrefetchPreparedCtx(std::move(prepared));
+  g_rpc_processor.SetDevCtx(&ctx);
+  g_rpc_processor.SetScope(&scope);
+  g_rpc_processor.SetExecutor(&exe);
+  g_rpc_processor.SetVarRecvQueue(&g_var_recv_queue);
 
   rpc_service_->RunSyncUpdate();
 }
