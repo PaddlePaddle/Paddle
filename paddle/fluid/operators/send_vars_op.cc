@@ -50,9 +50,7 @@ class SendVarsOp : public framework::OperatorBase {
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
     auto* client_var = scope.FindVar(client_var_name);
-    VLOG(3) << "client var addr: " << client_var;
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
-    VLOG(3) << "rpc_client addr: " << rpc_client;
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {

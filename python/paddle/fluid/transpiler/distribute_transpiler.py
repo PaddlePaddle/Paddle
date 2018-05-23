@@ -357,12 +357,35 @@ class DistributeTranspiler:
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
-        program.global_block().append_op(
-            type="recv",
-            inputs={},
-            outputs={"Out": recv_vars,
-                     "RPCClient": rpc_client_var},
-            attrs={"epmap": eplist})
+        #program.global_block().append_op(
+        #    type="recv",
+        #    inputs={},
+        #    outputs={"Out": recv_vars,
+        #             "RPCClient": rpc_client_var},
+        #    attrs={"epmap": eplist})
+
+        #program.global_block().append_op(
+        #    type="fetch_barrier",
+        #    inputs={},
+        #    outputs={"RPCClient": rpc_client_var},
+        #    attrs={"endpoints": pserver_endpoints})
+
+        for i, ep in enumerate(eplist):
+            self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
+            self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+        # step4: Concat the parameters splits together after recv.
+        for varname, splited_var in param_var_mapping.iteritems():
+            eps = []
+            for var in splited_var:
+                index = [v.name for v in recv_vars].index(var.name)
+                eps.append(eplist[index])
+
+            program.global_block().append_op(
+                type="recv",
+                inputs={},
+                outputs={"Out": splited_var,
+                         "RPCClient": rpc_client_var},
+                attrs={"epmap": eps})
 
         program.global_block().append_op(
             type="fetch_barrier",
@@ -370,10 +393,6 @@ class DistributeTranspiler:
             outputs={"RPCClient": rpc_client_var},
             attrs={"endpoints": pserver_endpoints})
 
-        for i, ep in enumerate(eplist):
-            self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
-            self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
-        # step4: Concat the parameters splits together after recv.
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:
                 continue
