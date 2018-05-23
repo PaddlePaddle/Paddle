@@ -87,21 +87,13 @@ def set_input(scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
-# dtype is inferenced from input/output data type.
-class Static(object):
-    dtype = "float32"
-
-
-def append_input_output(block, op_proto, np_list, is_input):
+def append_input_output(block, op_proto, np_list, is_input, dtype):
     '''Insert VarDesc and generate Python variable instance'''
     proto_list = op_proto.inputs if is_input else op_proto.outputs
 
     def create_var(block, name, np_list, var_proto):
-        # FIXME: the output data type, shape shoud be infered by input.
-        # but the datatype is not worked. Now we store input dtype and used in
-        # creating output variables.
         if not is_input:
-            return block.create_var(dtype=Static.dtype, name=name)
+            return block.create_var(dtype=dtype, name=name)
         if name not in np_list:
             assert var_proto.intermediate, "{} not found".format(name)
             shape = None
@@ -109,15 +101,15 @@ def append_input_output(block, op_proto, np_list, is_input):
         else:
             np_value = np_list[name]
             if isinstance(np_value, tuple):
-                Static.dtype = np_value[0].dtype
+                Static.try_call_once(np_value[0].dtype)
                 shape = list(np_value[0].shape)
                 lod_level = len(np_value[1])
             else:
-                Static.dtype = np_value.dtype
+                Static.try_call_once(np_value.dtype)
                 shape = list(np_value.shape)
                 lod_level = 0
         return block.create_var(
-            dtype=Static.dtype, shape=shape, lod_level=lod_level, name=name)
+            dtype=dtype, shape=shape, lod_level=lod_level, name=name)
 
     var_dict = {}
     for var_proto in proto_list:

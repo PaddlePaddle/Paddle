@@ -116,6 +116,8 @@ class OpTest(unittest.TestCase):
         '''Fix random seeds to remove randomness from tests'''
         cls._np_rand_state = np.random.get_state()
         cls._py_rand_state = random.getstate()
+        cls.call_once = False
+        cls.dtype = "float32"
         cls.outputs = {}
 
         np.random.seed(123)
@@ -126,6 +128,25 @@ class OpTest(unittest.TestCase):
         '''Restore random seeds'''
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
+
+    def try_call_once(self, data_type):
+        if not self.call_once:
+            self.call_once = True
+            self.dtype = data_type
+
+    def infer_dtype_from_inputs_outputs(self, inputs, outputs):
+        def infer_dtype(numpy_dict):
+            assert isinstance(
+                numpy_dict,
+                dict), "self.inputs, self.outputs must be numpy_dict"
+            for var_name, var_value in numpy_dict.iteritems():
+                if isinstance(var_value, (list, tuple)):
+                    self.try_call_once(var_value[0].dtype)
+                else:
+                    self.try_call_once(var_value.dtype)
+
+        infer_dtype(inputs)
+        infer_dtype(outputs)
 
     def feed_var(self, input_vars, place):
         feed_map = {}
@@ -152,8 +173,12 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-        inputs = append_input_output(block, op_proto, self.inputs, True)
-        outputs = append_input_output(block, op_proto, self.outputs, False)
+        "infer datatype from inputs and outputs for this test case"
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        inputs = append_input_output(block, op_proto, self.inputs, True,
+                                     self.dtype)
+        outputs = append_input_output(block, op_proto, self.outputs, False,
+                                      self.dtype)
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
