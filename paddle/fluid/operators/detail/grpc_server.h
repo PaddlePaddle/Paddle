@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/grpc_service.h"
+#include "paddle/fluid/operators/detail/rpc_processor.h"
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -35,17 +36,13 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
-    ReceivedMessage;
-typedef framework::BlockingQueue<ReceivedMessage> ReceivedQueue;
-
-typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 class RequestBase;
 
 class AsyncGRPCServer final {
  public:
-  explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
-      : address_(address), sync_mode_(sync_mode), ready_(0) {}
+  explicit AsyncGRPCServer(const std::string& address,
+                           GRPCProcessorCtx* rpc_processor)
+      : address_(address), rpc_processor_(rpc_processor), ready_(0) {}
 
   ~AsyncGRPCServer() {}
   void WaitServerReady();
@@ -56,32 +53,19 @@ class AsyncGRPCServer final {
   void SetCond(int cond);
   void WaitClientGet(int count);
 
-  void SetScope(framework::Scope *scope) { scope_ = scope; }
-
-  void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
-
-  void SetProgram(framework::ProgramDesc *program) { program_ = program; }
-
-  void SetExecutor(framework::Executor *executor) { executor_ = executor; }
-
-  void SetPrefetchPreparedCtx(
-      std::unique_ptr<framework::ExecutorPrepareContext> prepared) {
-    prefetch_ctx_.reset(prepared.release());
-  }
-
   int GetSelectedPort() const { return selected_port_; }
 
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
-  void Push(const std::string &msg_name) {
+  void Push(const std::string& msg_name) {
     this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
   }
 
   void ShutDown();
 
  protected:
-  void HandleRequest(::grpc::ServerCompletionQueue *cq,
-                     const std::string &cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue* cq,
+                     const std::string& cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
@@ -99,14 +83,16 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
+  /*
   const bool sync_mode_;
   framework::Scope *scope_;
   const platform::DeviceContext *dev_ctx_;
+  */
 
   // received variable from RPC, operators fetch variable from this queue.
   framework::BlockingQueue<MessageWithName> var_get_queue_;
   // client send variable to this queue.
-  ReceivedQueue var_recv_queue_;
+  // ReceivedQueue var_recv_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;
@@ -117,14 +103,18 @@ class AsyncGRPCServer final {
   std::unique_ptr<std::thread> t_get_;
   std::unique_ptr<std::thread> t_prefetch_;
 
+  /*
   std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
   int selected_port_;
+  */
 
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;
   int ready_;
+
+  GRPCProcessorCtx* rpc_processor_;
 };
 
 };  // namespace detail

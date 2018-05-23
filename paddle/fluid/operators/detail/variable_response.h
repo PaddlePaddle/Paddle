@@ -67,7 +67,7 @@ class VariableResponse {
 
   framework::Scope* GetMutableLocalScope() const { return local_scope_; }
 
-  inline std::string Varname() { return meta_.varname(); }
+  inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() { return meta_.out_varname(); }
 
   // should call parse first.

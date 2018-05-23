@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,13 +30,12 @@ enum CallStatus { PROCESS = 0, FINISH };
 class RequestBase {
  public:
   explicit RequestBase(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq, bool sync_mode,
-                       const platform::DeviceContext* dev_ctx)
+                       ::grpc::ServerCompletionQueue* cq,
+                       GRPCProcessorCtx* rpc_processor)
       : service_(service),
         cq_(cq),
-        sync_mode_(sync_mode),
         status_(PROCESS),
-        dev_ctx_(dev_ctx) {
+        rpc_processor_(rpc_processor) {
     PADDLE_ENFORCE(cq_);
   }
   virtual ~RequestBase() {}
@@ -44,33 +43,28 @@ class RequestBase {
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
-  virtual std::string GetReqName() {
-    assert(false);
-    return "";
-  }
+  virtual std::string GetReqName() = 0;
 
  protected:
   ::grpc::ServerContext ctx_;
   GrpcService::AsyncService* service_;
   ::grpc::ServerCompletionQueue* cq_;
-  const bool sync_mode_;
   CallStatus status_;
-  const platform::DeviceContext* dev_ctx_;
+  GRPCProcessorCtx* rpc_processor_;
 };
 
 class RequestSend final : public RequestBase {
  public:
   explicit RequestSend(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq, bool sync_mode,
-                       framework::Scope* scope, ReceivedQueue* queue,
-                       const platform::DeviceContext* dev_ctx)
-      : RequestBase(service, cq, sync_mode, dev_ctx),
-        queue_(queue),
-        responder_(&ctx_) {
-    if (sync_mode_) {
-      request_.reset(new VariableResponse(scope, dev_ctx_, false));
+                       ::grpc::ServerCompletionQueue* cq,
+                       GRPCProcessorCtx* rpc_processor)
+      : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
+    if (rpc_processor->sync_mode()) {
+      request_.reset(
+          new VariableResponse(scope, rpc_processor->dev_ctx(), false));
     } else {
-      request_.reset(new VariableResponse(scope, dev_ctx_, true));
+      request_.reset(
+          new VariableResponse(scope, rpc_processor->dev_ctx(), true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
@@ -84,7 +78,8 @@ class RequestSend final : public RequestBase {
   virtual void Process() {
     std::string var_name = GetReqName();
     VLOG(3) << "RequestSend " << var_name;
-    queue_->Push(std::make_pair(var_name, request_));
+
+    rpc_processor_->RequestSend(request_.get());
 
     sendrecv::VoidMessage reply;
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -93,20 +88,17 @@ class RequestSend final : public RequestBase {
 
  protected:
   std::shared_ptr<VariableResponse> request_;
-  ReceivedQueue* queue_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
 class RequestGet final : public RequestBase {
  public:
   explicit RequestGet(GrpcService::AsyncService* service,
-                      ::grpc::ServerCompletionQueue* cq, bool sync_mode,
-                      framework::Scope* scope,
-                      const platform::DeviceContext* dev_ctx,
-                      framework::BlockingQueue<MessageWithName>* queue)
-      : RequestBase(service, cq, sync_mode, dev_ctx),
+                      ::grpc::ServerCompletionQueue* cq,
+                      framework::BlockingQueue<MessageWithName>* queue,
+                      GRPCProcessorCtx* rpc_processor)
+      : RequestBase(service, cq, rpc_processor),
         responder_(&ctx_),
-        scope_(scope),
         queue_(queue) {
     auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
@@ -121,11 +113,10 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string var_name = request_.varname();
     VLOG(3) << "RequestGet " << var_name;
-    auto* var = scope_->FindVar(var_name);
 
     ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
-      SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+      rpc_processor_->RequestGet(request_.get(), &reply);
     }
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -141,29 +132,21 @@ class RequestGet final : public RequestBase {
  protected:
   sendrecv::VariableMessage request_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-  framework::Scope* scope_;
   framework::BlockingQueue<MessageWithName>* queue_;
 };
 
 class RequestPrefetch final : public RequestBase {
  public:
   explicit RequestPrefetch(GrpcService::AsyncService* service,
-                           ::grpc::ServerCompletionQueue* cq, bool sync_mode,
-                           framework::Scope* scope,
-                           const platform::DeviceContext* dev_ctx,
-                           framework::Executor* executor,
-                           framework::ProgramDesc* program,
-                           framework::ExecutorPrepareContext* prefetch_ctx)
-      : RequestBase(service, cq, sync_mode, dev_ctx),
-        responder_(&ctx_),
-        scope_(scope),
-        executor_(executor),
-        program_(program),
-        prefetch_ctx_(prefetch_ctx) {
-    if (sync_mode_) {
-      request_.reset(new VariableResponse(scope, dev_ctx_, false));
+                           ::grpc::ServerCompletionQueue* cq,
+                           GRPCProcessorCtx* rpc_processor)
+      : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
+    if (rpc_processor->sync_mode()) {
+      request_.reset(
+          new VariableResponse(scope, rpc_processor->dev_ctx(), false));
     } else {
-      request_.reset(new VariableResponse(scope, dev_ctx_, true));
+      request_.reset(
+          new VariableResponse(scope, rpc_processor->dev_ctx(), true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
@@ -178,15 +161,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     ::grpc::ByteBuffer reply;
 
-    std::string var_name = request_->OutVarname();
-    VLOG(3) << "RequestPrefetch " << var_name;
-    auto var_desc = program_->Block(0).FindVar(var_name);
-    framework::Scope* local_scope = &scope_->NewScope();
-    auto* var = local_scope->FindVar(var_name);
-    InitializeVariable(var, var_desc->GetType());
-    executor_->RunPreparedContext(prefetch_ctx_, scope_);
-
-    SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+    rpc_processor->RequestPrefetch(request_.get(), &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
@@ -195,10 +170,6 @@ class RequestPrefetch final : public RequestBase {
  protected:
   std::shared_ptr<VariableResponse> request_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-  framework::Scope* scope_;
-  framework::Executor* executor_;
-  framework::ProgramDesc* program_;
-  framework::ExecutorPrepareContext* prefetch_ctx_;
 };
 
 void AsyncGRPCServer::WaitClientGet(int count) {
@@ -282,8 +253,8 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
     VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
-  RequestSend* send = new RequestSend(&service_, cq_send_.get(), sync_mode_,
-                                      scope_, &var_recv_queue_, dev_ctx_);
+  RequestSend* send =
+      new RequestSend(&service_, cq_send_.get(), rpc_processor_);
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 
@@ -293,8 +264,8 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
     VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
     return;
   }
-  RequestGet* get = new RequestGet(&service_, cq_get_.get(), sync_mode_, scope_,
-                                   dev_ctx_, &var_get_queue_);
+  RequestGet* get =
+      new RequestGet(&service_, cq_get_.get(), &var_get_queue_, rpc_processor_);
   VLOG(4) << "Create RequestGet status:" << get->Status();
 }
 
@@ -305,8 +276,7 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
     return;
   }
   RequestPrefetch* prefetch =
-      new RequestPrefetch(&service_, cq_prefetch_.get(), sync_mode_, scope_,
-                          dev_ctx_, executor_, program_, prefetch_ctx_.get());
+      new RequestPrefetch(&service_, cq_prefetch_.get(), rpc_processor_);
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
