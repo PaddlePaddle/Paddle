@@ -21,14 +21,15 @@ namespace reader {
 template <typename T>
 class RandomDataGenerator : public framework::ReaderBase {
  public:
-  RandomDataGenerator(const std::vector<framework::DDim>& shapes, float min,
-                      float max)
-      : framework::ReaderBase(), min_(min), max_(max), shapes_(shapes) {
-    PADDLE_ENFORCE_LE(
-        min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
+  RandomDataGenerator(const std::vector<framework::DDim>& shapes, float low,
+                      float high)
+      : framework::ReaderBase(), low_(low), high_(high), shapes_(shapes) {
+    PADDLE_ENFORCE_LE(low, high,
+                      "'low' shouldn't be greater than 'high'.(%f vs %f)", low,
+                      high);
     unsigned int seed = std::random_device()();
     engine_.seed(seed);
-    dist_ = std::uniform_real_distribution<float>(min_, max_);
+    dist_ = std::uniform_real_distribution<float>(low_, high_);
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
@@ -53,8 +54,8 @@ class RandomDataGenerator : public framework::ReaderBase {
   void ReInit() override { return; }
 
  private:
-  float min_;
-  float max_;
+  float low_;
+  float high_;
   std::minstd_rand engine_;
   std::uniform_real_distribution<float> dist_;
   std::vector<framework::DDim> shapes_;
@@ -78,22 +79,22 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
     std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RandomDataGenerator<T>(shapes, Attr<float>("min"),
-                                          Attr<float>("max")));
+    out->Reset(new RandomDataGenerator<T>(shapes, Attr<float>("low"),
+                                          Attr<float>("high")));
   }
 };
 
 class CreateRandomDataGeneratorOpMaker : public FileReaderMakerBase {
  protected:
   void Apply() override {
-    AddAttr<float>("min", "The lower bound of reader's uniform distribution.");
-    AddAttr<float>("max", "The upper bound of reader's uniform distribution.");
+    AddAttr<float>("low", "The lower bound of reader's uniform distribution.");
+    AddAttr<float>("high", "The upper bound of reader's uniform distribution.");
     AddComment(R"DOC(
       CreateRandomDataGenerator Operator
 
       This Op creates a random reader.
       The reader generates random data instead of really reading from files.
-      Generated data follow an uniform distribution between 'min' and 'max'.
+      Generated data follow an uniform distribution between 'low' and 'high'.
     )DOC");
   }
 };
