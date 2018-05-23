@@ -19,14 +19,16 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
+DEFINE_int32(rpc_server_handle_send_threads, 20,
+             "Number of threads used to handle send at rpc server.");
+DEFINE_int32(rpc_server_handle_get_threads, 20,
+             "Number of threads used to handle get at rpc server.");
+DEFINE_int32(rpc_server_handle_prefetch_threads, 1,
+             "Number of threads used to handle prefetch at rpc server.");
+
 namespace paddle {
 namespace operators {
 namespace detail {
-namespace {
-const int kNumHandleSendThreads = 20;
-const int kNumHandleGetThreads = 20;
-const int kNumHandlePrefetchThreads = 1;
-}  // namespace
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -268,17 +270,17 @@ void AsyncGRPCServer::RunSyncUpdate() {
     TryToRegisterNewPrefetchOne(i);
   }
 
-  for (int i = 0; i < kNumHandleSendThreads; ++i) {
+  for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
     t_sends_.emplace_back(
         new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                   cq_send_.get(), "cq_send", send_register)));
   }
-  for (int i = 0; i < kNumHandleGetThreads; ++i) {
+  for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
     t_gets_.emplace_back(
         new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                   cq_get_.get(), "cq_get", get_register)));
   }
-  for (int i = 0; i < kNumHandlePrefetchThreads; ++i) {
+  for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
     t_prefetchs_.emplace_back(new std::thread(
         std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
                   "cq_prefetch", prefetch_register)));
@@ -290,13 +292,13 @@ void AsyncGRPCServer::RunSyncUpdate() {
   condition_ready_.notify_all();
   // wait server
   server_->Wait();
-  for (int i = 0; i < kNumHandleSendThreads; ++i) {
+  for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
     t_sends_[i]->join();
   }
-  for (int i = 0; i < kNumHandleGetThreads; ++i) {
+  for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
     t_gets_[i]->join();
   }
-  for (int i = 0; i < kNumHandlePrefetchThreads; ++i) {
+  for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
     t_prefetchs_[i]->join();
   }
 }

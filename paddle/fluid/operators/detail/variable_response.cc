@@ -458,9 +458,11 @@ int VariableResponse::Parse(Source* source) {
         if (listener_id <= 0) {
           break;
         }
-        if (profiling == 1 && !platform::IsProfileEnabled()) {
+        if (profiling == platform::kEnableProfiler &&
+            !platform::IsProfileEnabled()) {
           platform::EnableProfiler(platform::ProfilerState::kCPU);
-        } else if (profiling == 2 && platform::IsProfileEnabled()) {
+        } else if (profiling == platform::kDisableProfiler &&
+                   platform::IsProfileEnabled()) {
           // TODO(panyx0718): Should we allow to customize file dir.
           platform::DisableProfiler(
               platform::EventSortingKey::kDefault,

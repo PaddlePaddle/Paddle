@@ -85,9 +85,9 @@ class AsyncGRPCServer final {
   void HandleRequest(::grpc::ServerCompletionQueue *cq,
                      const std::string &cq_name,
                      std::function<void(int)> TryToRegisterNewOne);
-  void TryToRegisterNewSendOne(int i);
-  void TryToRegisterNewGetOne(int i);
-  void TryToRegisterNewPrefetchOne(int i);
+  void TryToRegisterNewSendOne(int req_id);
+  void TryToRegisterNewGetOne(int req_id);
+  void TryToRegisterNewPrefetchOne(int req_id);
   void ShutdownQueue();
 
  private:
