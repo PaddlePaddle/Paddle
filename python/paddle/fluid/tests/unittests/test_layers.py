@@ -369,6 +369,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_bilinear_interp(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.bilinear_interp(x, 12, 12)
+            self.assertIsNotNone(output)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
