@@ -406,9 +406,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", &OperatorBase::DebugString)
       .def("no_intermediate_outputs",
            [](const OperatorBase &op) { return op.OutputVars(false); })
-      .def("support_gpu", &OperatorBase::SupportGPU)
+      .def("support_gpu", &OperatorBase::SupportGPU);
 
-          py::class_<framework::Executor>(m, "Executor")
+  py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("run",
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
