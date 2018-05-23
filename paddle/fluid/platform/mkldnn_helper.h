@@ -38,6 +38,11 @@ void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
 }
 
+template <typename Type>
+void* to_void_reinterpret_cast(const Type* t) {
+  return reinterpret_cast<void*>(const_cast<Type*>(t));
+}
+
 template <class Type>
 using tf_desc = typename Type::desc;
 
@@ -69,6 +74,16 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
 inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
   bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
   return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
+}
+
+template <typename Type>
+mkldnn::memory::data_type MKLDNNGetDataType() {
+  return mkldnn::memory::data_undef;
+}
+
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
+  return mkldnn::memory::f32;
 }
 
 }  // namespace platform
