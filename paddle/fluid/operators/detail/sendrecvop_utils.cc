@@ -123,7 +123,13 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // 1 trainer returns true for ShouldSendProfileState(). It tells PS
   // servers the trainer's profiling state so that PS can follow the
   // trainer.
-  request.set_profile(platform::IsProfileEnabled());
+  if (platform::ShouldSendProfileState()) {
+    if (platform::IsProfileEnabled()) {
+      request.set_profile(platform::kEnableProfiler);
+    } else {
+      request.set_profile(platform::kDisableProfiler);
+    }
+  }
   if (!out_name.empty()) {
     request.set_out_varname(out_name);
   }
