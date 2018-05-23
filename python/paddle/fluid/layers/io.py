@@ -321,7 +321,7 @@ def open_recordio_file(filename,
                                           dtypes=['float32', 'int64'])
 
          # Via the reader, we can use 'read_file' layer to get data:
-         image, label = fluid.layers.read_file(reader)
+         image, label = fluid.layers.io.read_file(reader)
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -352,6 +352,73 @@ def open_recordio_file(filename,
 
     if pass_num > 1:
         main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
+
+    if for_parallel:
+        main_prog_var = parallel(reader=main_prog_var)
+
+    return monkey_patch_reader_methods(main_prog_var)
+
+
+def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
+    """
+    Create a uniform random data generator
+
+    This layer returns a Reader Variable.
+    Instead of opening a file and reading data from it, this 
+    Reader Variable generates float uniform random data by itself. 
+    It can be used as a dummy reader to test a network without 
+    opening a real file.
+
+    Args:
+       low(float): The lower bound of data's uniform distribution.
+       high(float): The upper bound of data's uniform distribution.
+       shapes(list): List of tuples which declaring data shapes.
+       lod_levels(list): List of ints which declaring data lod_level.
+       for_parallel(Bool): Set it as True if you are going to run
+            subsequent operators in parallel.
+
+    Returns:
+       Variable: A Reader Variable from which we can get random data.
+
+    Examples:
+       .. code-block:: python
+
+         reader = fluid.layers.io.random_data_generator(
+                                          low=0.0,
+                                          high=1.0,
+                                          shapes=[(3,224,224), (1)],
+                                          lod_levels=[0, 0])
+
+         # Via the reader, we can use 'read_file' layer to get data:
+         image, label = fluid.layers.io.read_file(reader)
+    """
+    dtypes = [core.VarDesc.VarType.FP32] * len(shapes)
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    var_name = unique_name('random_data_generator')
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=var_name)
+    startup_blk.append_op(
+        type='create_random_data_generator',
+        outputs={'Out': [startup_var]},
+        attrs={
+            'low': low,
+            'high': high,
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
 
     if for_parallel:
         main_prog_var = parallel(reader=main_prog_var)
