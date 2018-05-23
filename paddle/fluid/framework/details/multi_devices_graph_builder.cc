@@ -170,7 +170,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
 
             PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
-            for (size_t i = 0; i < backward_vars.size(); ++i) {
+            for (size_t i = 0; i < backward_vars.size(); i += 2) {
               auto &p_name = backward_vars[i];
               auto &g_name = backward_vars[i + 1];
               VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
