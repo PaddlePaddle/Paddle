@@ -28,8 +28,8 @@ from contextlib import contextmanager
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'Adadelta', 'ModelAverage',
-    'Optimizer'
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
+    'Adadelta', 'ModelAverage', 'Optimizer'
 ]
 
 
