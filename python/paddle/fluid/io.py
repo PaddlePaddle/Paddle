@@ -464,10 +464,10 @@ def save_checkpoint(executor,
                     main_program=None):
     """
     Save Checkpoint will save persistable LodTensor variables from main_program in checkpoint directory,
-    directory named by serial number from 0 to (n -1), save_checkpoint use LRU strategy
+    the directory named by serial number from 0 to (n -1), save_checkpoint use LRU strategy
     to keep numbers of checkpoint directory,  the numbers of checkpoint directory are max_num_checkpoints at most,
     The interval time between two save_checkpoint must great than or equal to save_interval_secs.
-    
+
     :param dirname
     :param max_num_checkpoints
     :param save_secs
@@ -500,8 +500,8 @@ def save_checkpoint(executor,
 
 def load_checkpoint(executor, dirname=None, main_program=None):
     """
-    Load checkpoint from directory by executor,
-    it will find lastest checkpoint file and load it auto.
+    Load checkpoint from a directory by executor,
+    it will find latest checkpoint file and load it auto.
 
     :param executor
     :param dirname
@@ -527,9 +527,9 @@ def load_checkpoint(executor, dirname=None, main_program=None):
 
 def _is_checkpoint_var(var):
     """
-    checkpoint will not save or load all the variables.
-    var type is FEED_MINIBATCH/FETCH_LIST/RAW and var name is end with @GRAD are discarded.
-    
+    the checkpoint will not save or load all the variables.
+    var type is FEED_MINIBATCH/FETCH_LIST/RAW or var name ends with @GRAD are discarded.
+
     :param var
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -571,7 +571,7 @@ def _lru_delete(dirname, max_num_checkpoints=3):
 
 def _write_success(dirname):
     """
-    write an empty _SUCCESS file to checkpoint dir, indicate this checkpoint is correct.
+    write an empty file named "_SUCCESS" in checkpoint dir, indicate this checkpoint is correct.
 
     :param dirname
     """
