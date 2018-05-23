@@ -23,7 +23,8 @@ from . import core
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
     'load_persistables', 'save_inference_model', 'load_inference_model',
-    'get_inference_program', 'save_checkpoint', 'load_checkpoint'
+    'get_inference_program', 'save_checkpoint', 'load_checkpoint',
+    'clean_checkpoint'
 ]
 
 
@@ -455,76 +456,104 @@ def get_parameter_value_by_name(name, executor, program=None):
 
 
 SUCCESS_MARK_FILENAME = "_SUCCESS"
+CHECKPOINT_PREFIX = "checkpoint"
+CHECKPOINT_SEPARATOR = "_"
 
 
 def save_checkpoint(executor,
-                    dirname=None,
+                    checkpoint_dir=None,
                     max_num_checkpoints=3,
                     save_interval_secs=600,
                     main_program=None):
     """
-    Save Variables to Checkpoint Directory
+    Save Checkpoint will save persistable LodTensor variables from main_program in checkpoint directory,
+    the directory named by serial number from 0 to (n -1), save_checkpoint use LRU strategy
+    to keep numbers of checkpoint directory,  the numbers of checkpoint directory are max_num_checkpoints at most,
+    The interval between two saved checkpoints must greater than save_interval_secs.
 
-    :param dirname
+    :param executor
+    :param checkpoint_dir
     :param max_num_checkpoints
-    :param save_secs
+    :param save_interval_secs
     :param main_program
     """
-    if dirname is None:
-        dirname = os.getcwd()
+    if checkpoint_dir is None:
+        checkpoint_dir = os.getcwd()
 
-    if not os.path.isdir(dirname):
-        os.makedirs(dirname)
+    if not os.path.isdir(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
 
-    serial = _get_lastest_checkpoint_dir(dirname)
+    serial = _get_lastest_checkpoint_dir(checkpoint_dir)
     if serial >= 0 and not _interval_secs_exceed(
-            os.path.join(dirname, str(serial)), save_interval_secs):
+            _get_serial_dir(serial, checkpoint_dir), save_interval_secs):
         return
 
-    serial = serial + 1
-    cur_dir = os.path.join(dirname, str(serial))
+    serial += 1
+    cur_dir = _get_serial_dir(serial, checkpoint_dir)
 
     save_vars(
         executor,
         dirname=cur_dir,
         main_program=main_program,
         vars=None,
-        predicate=is_checkpoint_var,
+        predicate=_is_checkpoint_var,
         filename=None)
     _write_success(cur_dir)
-    _lru_delete(dirname, max_num_checkpoints)
+    _lru_delete(checkpoint_dir, max_num_checkpoints)
 
 
-def load_checkpoint(executor, dirname=None, main_program=None):
+def load_checkpoint(executor, checkpoint_dir=None, main_program=None):
     """
-    Load Variables from Checkpint Dir
+    Load checkpoint from a directory by executor,
+    it will find  the most recent saved checkpoint file and load it auto.
 
-    :param dirname
     :param executor
+    :param checkpoint_dir
     :param main_program
     """
 
-    if dirname is None:
-        dirname = os.getcwd()
+    if checkpoint_dir is None:
+        checkpoint_dir = os.getcwd()
 
-    serial = _get_lastest_checkpoint_dir(dirname)
+    serial = _get_lastest_checkpoint_dir(checkpoint_dir)
 
     if serial < 0:
         return
-    cur_dir = os.path.join(dirname, str(serial))
+
+    cur_dir = _get_serial_dir(serial, checkpoint_dir)
 
     load_vars(
         executor,
         dirname=cur_dir,
         main_program=main_program,
-        predicate=is_checkpoint_var,
+        predicate=_is_checkpoint_var,
         filename=None)
 
 
-def is_checkpoint_var(var):
+def clean_checkpoint(checkpoint_dir, delete_dir=False):
     """
-    VarType will fliter out FEED_MINIBATCH FETCH_LIST RAW
-    VarName will fliter out Gradient
+    clean the checkpoint dir, when the train exits normally, the trainer will call clean_checkpoint to delete checkpoint directory saved before.
+    delete_dir only works when the directory is empty, otherwise, OSError is raised.  
+    """
+    if checkpoint_dir is None:
+        checkpoint_dir = os.getcwd()
+    _lru_delete(checkpoint_dir, max_num_checkpoints=0)
+
+    if delete_dir and not os.listdir(checkpoint_dir):
+        os.rmdir(checkpoint_dir)
+
+
+def _get_serial_dir(serial, checkpoint_dir):
+    serial_folder = CHECKPOINT_PREFIX + CHECKPOINT_SEPARATOR + str(serial)
+    return os.path.join(checkpoint_dir, serial_folder)
+
+
+def _is_checkpoint_var(var):
+    """
+    the checkpoint will not save or load all the variables.
+    var type is FEED_MINIBATCH/FETCH_LIST/RAW or var name ends with @GRAD are discarded.
+
+    :param var
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
             var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
@@ -545,9 +574,6 @@ def _interval_secs_exceed(dirname, save_interval_secs):
 
 
 def _lru_delete(dirname, max_num_checkpoints=3):
-    """
-    retain checkpoint nums with max_num_checkpoints
-    """
     dirs = os.listdir(dirname)
     serials = []
     for serial in dirs:
@@ -568,16 +594,21 @@ def _lru_delete(dirname, max_num_checkpoints=3):
 
 def _write_success(dirname):
     """
-    write _SUCCESS to checkpoint dir
+    write an empty file named "_SUCCESS" in checkpoint dir, indicate this checkpoint is correct.
+
+    :param dirname
     """
     success_file = os.path.join(dirname, SUCCESS_MARK_FILENAME)
-    with open(success_file, 'a'):
-        pass
+    with open(success_file, 'a') as f:
+        now = time.ctime()
+        f.write(now)
 
 
 def _get_lastest_checkpoint_dir(checkpoint_dir):
     """
-    get the biggest number in checkpoint_dir, which has _SUCCESS
+    get the latest file in checkpoint directory, the _SUCCESS file must exist in the directory
+
+    :param checkpoint_dir
     """
     if not checkpoint_dir.strip():
         return -1
@@ -586,18 +617,20 @@ def _get_lastest_checkpoint_dir(checkpoint_dir):
         """
         is _SUCCESS in this dir
         """
-        if not os.path.isdir(os.path.join(checkpoint_dir, cur_dir)):
-            return -1
+        _, serial = cur_dir.split(CHECKPOINT_SEPARATOR)
 
         try:
-            int(cur_dir)
+            int(serial)
         except ValueError:
             return -1
 
-        success_path = os.path.join(checkpoint_dir, cur_dir,
-                                    SUCCESS_MARK_FILENAME)
+        if not os.path.isdir(os.path.join(checkpoint_dir, cur_dir)):
+            return -1
+
+        success_path = os.path.join(
+            _get_serial_dir(serial, checkpoint_dir), SUCCESS_MARK_FILENAME)
         if os.path.isfile(success_path):
-            return int(cur_dir)
+            return int(serial)
 
     if not os.path.isdir(checkpoint_dir):
         return -1
