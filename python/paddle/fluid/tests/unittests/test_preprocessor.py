@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import numpy as np
 
 import paddle.fluid as fluid
 import paddle.v2 as paddle
@@ -35,6 +36,31 @@ class TestPreprocessor(unittest.TestCase):
                 './mnist_for_preprocessor_test.recordio', reader, feeder)
 
     def test_main(self):
+        N = 10
+
+        img_expected_res = []
+        lbl_expected_res = []
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data_file = fluid.layers.io.open_recordio_file(
+                './mnist_for_preprocessor_test.recordio',
+                shapes=[[-1, 784], [-1, 1]],
+                lod_levels=[0, 0],
+                dtypes=['float32', 'int64'])
+            img, lbl = fluid.layers.io.read_file(data_file)
+
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            else:
+                place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            for _ in range(N):
+                img_v, lbl_v = exe.run(fetch_list=[img, lbl])
+                img_expected_res.append(img_v / 2)
+                lbl_expected_res.append(lbl_v + 1)
+
+        img_actual_res = []
+        lbl_actual_res = []
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data_file = fluid.layers.io.open_recordio_file(
                 './mnist_for_preprocessor_test.recordio',
@@ -48,8 +74,7 @@ class TestPreprocessor(unittest.TestCase):
                 lbl_out = lbl + 1
                 preprocessor.outputs(img_out, lbl_out)
 
-            img_before, lbl_before = fluid.layers.io.read_file(data_file)
-            img_after, lbl_after = fluid.layers.io.read_file(preprocessor())
+            img, lbl = fluid.layers.io.read_file(preprocessor())
 
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -57,10 +82,11 @@ class TestPreprocessor(unittest.TestCase):
                 place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
+            for _ in range(N):
+                img_v, lbl_v = exe.run(fetch_list=[img, lbl])
+                img_actual_res.append(img_v)
+                lbl_actual_res.append(lbl_v)
 
-            for _ in range(5):
-                img_b, lbl_b, img_a, lbl_a = exe.run(
-                    fetch_list=[img_before, lbl_before, img_after, lbl_after])
-
-            self.assertEqual(img_b / 2, img_a)
-            self.assertEqual(lbl_b + 1, lbl_a)
+        for idx in range(N):
+            np.allclose(img_expected_res[idx], img_actual_res[idx])
+            np.allclose(lbl_expected_res[idx], lbl_actual_res[idx])
