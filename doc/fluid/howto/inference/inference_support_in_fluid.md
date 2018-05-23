@@ -1,5 +1,7 @@
 # Fluid Inference使用指南
 
+## 目录：
+
 - Python Inference API
 - 编译Fluid Inference库
 - Inference C++ API
@@ -7,7 +9,7 @@
 - Inference计算优化
 
 ## Python Inference API **[改进中]**
--  [保存Inference模型](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/io.py#L295)
+- 保存Inference模型 ([链接](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/io.py#L295))
 
   ```python
   def save_inference_model(dirname,
@@ -43,7 +45,7 @@
     $ ls
     $ __model__ __params__
     ```
-- [加载Inference模型](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/io.py#L380)
+- 加载Inference模型([链接](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/io.py#L380))
   ```python
   def load_inference_model(dirname,
                            executor,
@@ -110,7 +112,7 @@
 
 
 ## 链接Fluid Inference库
-- [示例项目](https://github.com/luotao1/fluid_inference_example.git)
+- 示例项目([链接](https://github.com/luotao1/fluid_inference_example.git))
 
   - GCC配置
     ```bash
@@ -143,7 +145,7 @@
 
 ## C++ Inference API
 
-- [推断流程](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/test_helper.h#L91)
+- 推断流程([链接](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/test_helper.h#L91))
 
   - 1、 初始化设备
     ```cpp
@@ -242,7 +244,7 @@
 
 
 - **不在每次执行时创建和销毁变量
- [PR](https://github.com/PaddlePaddle/Paddle/pull/9301)**
+ ([PR](https://github.com/PaddlePaddle/Paddle/pull/9301))**
   - 执行`inference_program`
     ```cpp
     // Call once
@@ -259,7 +261,7 @@
     - 在同一个`Scope`中，相同的变量名是公用同一块内存的，容易引起意想不到的错误
 
 
-- **不在每次执行时创建Op [PR](https://github.com/PaddlePaddle/Paddle/pull/9630)**
+- **不在每次执行时创建Op([PR](https://github.com/PaddlePaddle/Paddle/pull/9630))**
   - 执行`inference_program`
     ```cpp
     // Call once
@@ -273,7 +275,7 @@
     - 一旦修改了`inference_program`，则需要重新创建`ctx`
 
 
-- **[多线程共享Parameters](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/test_multi_thread_helper.h)**
+- **多线程共享Parameters([链接](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/test_multi_thread_helper.h))**
   - 主线程
     - 1、 初始化设备
     - 2、 定义`place`，`executor`，`scope`
@@ -310,9 +312,9 @@
       - CPUPlace，CPU设备
       - CUDAPlace，CUDA GPU设备
   - 神经网络表示：
-    - [Program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/program.md)
+    - [Program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/program.md).
 
-  详细介绍请参考[**Paddle Fluid开发者指南**](https://github.com/lcy-seso/learning_notes/blob/master/Fluid/developer's_guid_for_Fluid/Developer's_Guide_to_Paddle_Fluid.md)
+    详细介绍请参考[**Paddle Fluid开发者指南**](https://github.com/lcy-seso/learning_notes/blob/master/Fluid/developer's_guid_for_Fluid/Developer's_Guide_to_Paddle_Fluid.md)
 
 
 
@@ -328,7 +330,7 @@
 
 
 ## Inference计算优化
-- 使用Python推理优化工具[inference_transpiler](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/inference_transpiler.py)
+- 使用Python推理优化工具([inference_transpiler](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/inference_transpiler.py))
   ```python
   class InferenceTranspiler:
     def transpile(self, program, place, scope=None):
@@ -341,7 +343,7 @@
   - 使用`InferenceTranspiler`会修改参数的值，请确保`program`的参数在`scope`内。
 - 支持的优化
   - 融合batch_norm op的计算
-- [使用示例](https://github.com/Xreki/Xreki.github.io/blob/master/fluid/inference/inference_transpiler.py)
+- 使用示例([链接](https://github.com/Xreki/Xreki.github.io/blob/master/fluid/inference/inference_transpiler.py))
   ```python
   import paddle.fluid as fluid
   # NOTE: Applying the inference transpiler will change the inference_program.
@@ -353,7 +355,7 @@
 
 
 ## 内存使用优化
-- 使用Python内存优化工具[memory_optimization_transipiler](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/memory_optimization_transpiler.py)
+- 使用Python内存优化工具([memory_optimization_transipiler](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/memory_optimization_transpiler.py))
   ```python
   fluid.memory_optimize(inference_program)
   ```
