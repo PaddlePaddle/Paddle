@@ -68,10 +68,10 @@ def parse_args():
         choices=['CPU', 'GPU'],
         help='The device type.')
     parser.add_argument(
-        '--parallel',
+        '--gpus',
         type=int,
         default=1,
-        help='Use ParallelExecutor to run multi GPU tests.')
+        help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
     parser.add_argument(
         '--data_set',
         type=str,
@@ -87,8 +87,8 @@ def parse_args():
         action='store_true',
         help='If set, use nvprof for CUDA.')
     parser.add_argument(
-        '--with_test',
-        action='store_true',
+        '--no_test',
+        action='store_false',
         help='If set, test the testset during training.')
     parser.add_argument(
         '--memory_optimize',
@@ -230,7 +230,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
               (num_samples, train_elapsed, examples_per_sec))
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
         # evaluation
-        if args.with_test and batch_acc != None:
+        if not args.no_test and batch_acc != None:
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -283,7 +283,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         examples_per_sec = num_samples / train_elapsed
         print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
               (num_samples, train_elapsed, examples_per_sec))
-        if args.with_test and batch_acc != None:
+        if not args.no_test and batch_acc != None:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
@@ -321,8 +321,7 @@ def main():
             raise Exception(
                 "Must configure correct environments to run dist train.")
         train_args.extend([train_prog, startup_prog])
-        if args.parallel == 1 and os.getenv(
-                "PADDLE_TRAINING_ROLE") == "TRAINER":
+        if args.gpus > 1 and os.getenv("PADDLE_TRAINING_ROLE") == "TRAINER":
             train_args.extend([nccl_id_var, num_trainers, trainer_id])
             train_parallel(*train_args)
         train(*train_args)
@@ -334,7 +333,7 @@ def main():
 
     if args.update_method == "nccl2":
         nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare()
-    if args.parallel == 0:
+    if args.gpus == 1:
         # NOTE: parallel executor use profiler interanlly
         if args.use_nvprof and args.device == 'GPU':
             with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:

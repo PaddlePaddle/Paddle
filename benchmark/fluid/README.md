@@ -1,6 +1,6 @@
 # Fluid Benchmark
 
-This directory contains several models and tools that used to run
+This directory contains several models configurations and tools that used to run
 Fluid benchmarks for local and distributed training.
 
 

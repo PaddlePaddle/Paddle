@@ -17,155 +17,7 @@ import copy
 import argparse
 import random
 import os
-
-pserver = {
-    "apiVersion": "extensions/v1beta1",
-    "kind": "ReplicaSet",
-    "metadata": {
-        "name": "jobname-pserver"
-    },
-    "spec": {
-        "replicas": 1,
-        "template": {
-            "metadata": {
-                "labels": {
-                    "paddle-job-pserver": "jobname"
-                }
-            },
-            "spec": {
-                "hostNetwork": True,
-                "imagePullSecrets": [{
-                    "name": "job-registry-secret"
-                }],
-                "containers": [{
-                    "name": "pserver",
-                    "image": "",
-                    "imagePullPolicy": "Always",
-                    "ports": [{
-                        "name": "jobport-1",
-                        "containerPort": 1
-                    }],
-                    "env": [],
-                    "command": ["paddle_k8s", "start_pserver"],
-                    "resources": {
-                        "requests": {
-                            "memory": "10Gi",
-                            "cpu": "4"
-                        },
-                        "limits": {
-                            "memory": "10Gi",
-                            "cpu": "4"
-                        }
-                    }
-                }]
-            }
-        }
-    }
-}
-
-trainer = {
-    "apiVersion": "batch/v1",
-    "kind": "Job",
-    "metadata": {
-        "name": "jobname-pserver"
-    },
-    "spec": {
-        "parallelism": 4,
-        "completions": 4,
-        "template": {
-            "metadata": {
-                "labels": {
-                    "paddle-job": "jobname"
-                }
-            },
-            "spec": {
-                "hostNetwork": True,
-                "imagePullSecrets": [{
-                    "name": "job-registry-secret"
-                }],
-                "restartPolicy": "Never",
-                "containers": [{
-                    "name": "trainer",
-                    "image": "",
-                    "imagePullPolicy": "Always",
-                    # to let container set rlimit
-                    "securityContext": {
-                        "privileged": True
-                        # "capabilities": {
-                        #     "add": ["SYS_RESOURCE"]
-                        # }
-                    },
-                    "ports": [{
-                        "name": "jobport-1",
-                        "containerPort": 1
-                    }],
-                    "env": [],
-                    "command": ["paddle_k8s", "start_trainer", "v2"],
-                    "resources": {
-                        "requests": {
-                            "memory": "10Gi",
-                            "cpu": "4",
-                        },
-                        "limits": {
-                            "memory": "10Gi",
-                            "cpu": "4",
-                        }
-                    }
-                }]
-            }
-        }
-    }
-}
-
-envs = [
-    # {"name": "PADDLE_JOB_NAME", "value": ""},
-    # {"name": "TRAINERS", "value": "4"},
-    # {"name": "PSERVERS", "value": "4"},
-    # {"name": "ENTRY", "value": ""},
-    # {"name": "PADDLE_INIT_PORT", "value": ""},
-    # envs that don't need to change
-    {
-        "name": "GLOG_v",
-        "value": "3"
-    },
-    {
-        "name": "GLOG_logtostderr",
-        "value": "1"
-    },
-    {
-        "name": "TOPOLOGY",
-        "value": ""
-    },
-    {
-        "name": "TRAINER_PACKAGE",
-        "value": "/workspace"
-    },
-    {
-        "name": "PADDLE_INIT_NICS",
-        "value": "eth2"
-    },
-    {
-        "name": "LD_LIBRARY_PATH",
-        "value":
-        "/usr/local/lib:/usr/local/nvidia/lib64:/usr/local/rdma/lib64:/usr/lib64/mlnx_ofed/valgrind"
-    },
-    {
-        "name": "NAMESPACE",
-        "valueFrom": {
-            "fieldRef": {
-                "fieldPath": "metadata.namespace"
-            }
-        }
-    },
-    {
-        "name": "POD_IP",
-        "valueFrom": {
-            "fieldRef": {
-                "fieldPath": "status.podIP"
-            }
-        }
-    }
-]
+from kube_templates import pserver, trainer, envs
 
 
 def parse_args():
@@ -197,9 +49,13 @@ def parse_args():
     parser.add_argument(
         '--fluid', default=1, type=int, help='whether is fluid job')
     parser.add_argument(
-        '--rdma', default=0, type=int, help='whether mount rdma libs')
+        '--rdma', action='store_ture', help='whether mount rdma libs')
     parser.add_argument(
-        '--disttype', default="pserver", help='pserver or NCCL2')
+        '--disttype',
+        default="pserver",
+        type=str,
+        choices=['pserver', 'nccl2', 'local'],
+        help='pserver or nccl2 or local')
 
     args = parser.parse_args()
     return args
@@ -251,16 +107,18 @@ def gen_job():
     tn_container["ports"][0]["name"] = "spr-" + str(spreadport)
     tn_container["ports"][0]["containerPort"] = spreadport
 
-    # {"name": "PADDLE_JOB_NAME", "value": ""},
-    # {"name": "TRAINERS", "value": "4"},
-    # {"name": "PSERVERS", "value": "4"},
-    # {"name": "ENTRY", "value": ""},
-    # {"name": "PADDLE_INIT_PORT", "value": ""},
     envs.append({"name": "PADDLE_JOB_NAME", "value": args.jobname})
     envs.append({"name": "TRAINERS", "value": str(args.trainers)})
     envs.append({"name": "PSERVERS", "value": str(args.pservers)})
     envs.append({"name": "ENTRY", "value": args.entry})
     envs.append({"name": "PADDLE_INIT_PORT", "value": str(args.port)})
+    # NOTE: these directories below are cluster specific, please modify
+    # this settings before you run on your own cluster.
+    envs.append({
+        "name": "LD_LIBRARY_PATH",
+        "value":
+        "/usr/local/lib:/usr/local/nvidia/lib64:/usr/local/rdma/lib64:/usr/lib64/mlnx_ofed/valgrind"
+    })
 
     volumes = [{
         "name": "nvidia-driver",
@@ -273,7 +131,7 @@ def gen_job():
         "name": "nvidia-driver"
     }]
 
-    if args.rdma == 1:
+    if args.rdma:
         volumes.extend([{
             "name": "ibetc",
             "hostPath": {
@@ -315,7 +173,7 @@ def gen_job():
             "name": "TRAINING_ROLE",
             "value": "TRAINER"
         })
-    elif args.disttype == "NCCL2":
+    elif args.disttype == "nccl2" or args.disttype == "local":
         # NCCL2 have no training role, set to plain WORKER
         tn_container["env"].append({"name": "TRAINING_ROLE", "value": "WORKER"})
 
