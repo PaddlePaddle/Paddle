@@ -41,6 +41,11 @@ class PaddlePredictor {
 public:
   struct Config;
   PaddlePredictor() = default;
+  PaddlePredictor(const PaddlePredictor&) = delete;
+
+  // One drived class should has such a constructor
+  // PaddlePredictor(const XConfig& config);
+  // The XConfig is a derived class of Config.
 
   // Predict an record.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
@@ -73,18 +78,8 @@ public:
       kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
     };
   };
-
-private:
-  // Build the network before inference.
-  virtual bool Init(const Config& config) = 0;
 };
 
 // A factory to help create difference predictor.
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
-    const PaddlePredictor::Config& config);
-
-// Do not use this, just a demo indicating how to customize a config for a
-// specific predictor.
-struct DemoConfig : public PaddlePredictor::Config {
-  float other_config;
-};
+template <typename ConfigT>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);

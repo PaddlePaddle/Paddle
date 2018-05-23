@@ -14,7 +14,45 @@ limitations under the License. */
 
 #include "paddle/contrib/inference/paddle_inference_api.h"
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
+
+namespace {
+
+/*
+ * Do not use this, just a demo indicating how to customize a config for a
+ * specific predictor.
+ */
+struct DemoConfig : public PaddlePredictor::Config {
+  float other_config;
+};
+
+/*
+ * Do not use this, just a demo indicating how to customize a Predictor.
+ */
+class DemoPredictor : public PaddlePredictor {
+public:
+  explicit DemoPredictor(const DemoConfig &config) {
+    LOG(INFO) << "I get other_config " << config.other_config;
+  }
+  bool Run(const std::vector<PaddleTensor> &inputs,
+           std::vector<PaddleTensor> *output_data) override {
+    LOG(INFO) << "Run";
+    return false;
+  }
+
+  std::unique_ptr<PaddlePredictor> Clone() override { return nullptr; }
+
+  ~DemoPredictor() override {}
+};
+}  // namespace
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<DemoConfig>(
+    const DemoConfig &config) {
+  std::unique_ptr<PaddlePredictor> x(new DemoPredictor(config));
+  return x;
+}
 
 TEST(paddle_inference_api, demo) {
   DemoConfig config;
