@@ -58,12 +58,13 @@ void GetTensorPayload(framework::Variable* var,
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
-    platform::CPUPlace cpu;
+    platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
-    *payload = memory::Alloc(cpu, copy_size);
+    *payload = memory::Alloc(cuda_pinned, copy_size);
 
-    memory::Copy(cpu, *payload, boost::get<platform::CUDAPlace>(tensor.place()),
+    memory::Copy(cuda_pinned, *payload,
+                 boost::get<platform::CUDAPlace>(tensor.place()),
                  reinterpret_cast<const void*>(tensor.data<void>()), copy_size,
                  gpu_dev_ctx.stream());
     ctx.Wait();
@@ -90,11 +91,11 @@ void GetSelectedRowsPayload(framework::Variable* var,
   auto* tensor = slr->mutable_value();
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-    platform::CPUPlace cpu;
+    platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
-    *payload = memory::Alloc(cpu, copy_size);
-    memory::Copy(cpu, *payload,
+    *payload = memory::Alloc(cuda_pinned, copy_size);
+    memory::Copy(cuda_pinned, *payload,
                  boost::get<platform::CUDAPlace>(tensor->place()),
                  reinterpret_cast<const void*>(tensor->data<void>()), copy_size,
                  gpu_dev_ctx.stream());
@@ -145,8 +146,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     // GPU data is copied to CPU buffer when sending,
     // free the buffer when possible.
     destroy_callback = [](void* backing) {
-      platform::CPUPlace cpu;
-      memory::Free(cpu, backing);
+      platform::CUDAPinnedPlace cuda_pinned;
+      memory::Free(cuda_pinned, backing);
     };
   }
 
