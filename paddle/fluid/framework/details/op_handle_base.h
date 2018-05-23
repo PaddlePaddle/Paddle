@@ -78,6 +78,21 @@ class OpHandleBase {
     return res.size();
   }
 
+  size_t NoReadyInputSize() const {
+    std::unordered_set<VarHandleBase *> res;
+    for (auto *var : inputs_) {
+      res.emplace(var);
+    }
+
+    size_t retv = 0;
+    for (VarHandleBase *var : res) {
+      if (var->generated_op_ != nullptr) {
+        retv += 1;
+      }
+    }
+    return retv;
+  }
+
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
 
  protected:

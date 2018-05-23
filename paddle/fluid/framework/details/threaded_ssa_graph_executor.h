@@ -77,6 +77,22 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ExecutionStrategy strategy_;
 };
 
+class FasterSSAGraphExecutor : public SSAGraphExecutor {
+ public:
+  FasterSSAGraphExecutor(const ExecutionStrategy &strategy,
+                         const std::vector<Scope *> &local_scopes,
+                         const std::vector<platform::Place> &places,
+                         std::unique_ptr<SSAGraph> &&graph);
+
+  // Run a SSAGraph by a thread pool
+  // Use topological sort algorithm
+  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+
+ private:
+  ExecutionStrategy strategy_;
+  std::vector<Scope *> local_scopes_;
+  std::vector<platform::Place> places_;
+};
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
