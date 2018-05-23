@@ -1706,6 +1706,7 @@ def conv2d_transpose(input,
                      padding=0,
                      stride=1,
                      dilation=1,
+                     groups=None,
                      param_attr=None,
                      bias_attr=None,
                      use_cudnn=True,
@@ -1776,6 +1777,12 @@ def conv2d_transpose(input,
        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
            contain two integers, (dilation_H, dilation_W). Otherwise, the
            dilation_H = dilation_W = dilation. Default: dilation = 1.
+       groups(int): The groups number of the Conv2d transpose layer. Inspired by
+           grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+           when group=2, the first half of the filters is only connected to the
+           first half of the input channels, while the second half of the
+           filters is only connected to the second half of the input channels.
+           Default: groups=1
        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
                               Default: None
        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
@@ -1830,7 +1837,8 @@ def conv2d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
-    filter_shape = [input_channel, num_filters] + filter_size
+    groups = 1 if groups is None else groups
+    filter_shape = [input_channel, num_filters / groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
