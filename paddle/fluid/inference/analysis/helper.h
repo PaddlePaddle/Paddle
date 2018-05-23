@@ -24,6 +24,15 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+template <typename Vec>
+int AccuDims(Vec &&vec, int size) {
+  int res = 1;
+  for (int i = 0; i < size; i++) {
+    res *= std::forward<Vec>(vec)[i];
+  }
+  return res;
+}
+
 #define SET_TYPE(type__) dic_[typeid(type__).hash_code()] = #type__;
 /*
  * Map typeid to representation.
