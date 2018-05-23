@@ -3169,7 +3169,6 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         Variable: The output tensor with same shape as input tensor.
 
     Examples:
-    # fluid.io.save_inference_model('./vgg_model/', ['image'], [loss], exe)
         .. code-block:: python
 
             x = fluid.layers.data(name='x', shape=[16],
