@@ -57,22 +57,20 @@ def train(use_cuda, train_program, save_dirname):
         optimizer=fluid.optimizer.SGD(learning_rate=0.001))
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
-            test_metrics = trainer.test(
-                reader=test_reader, feed_order=['x', 'y'])
-            print test_metrics
-            '''
-            
-            ...
-            ['25.768919467926025']
-            ['15.343549569447836']
-            ...
-            
-            '''
-            if float(test_metrics[0]) < 20.0:
+        if isinstance(event, fluid.EndStepEvent):
+            if event.step == 10:
+                test_metrics = trainer.test(
+                    reader=test_reader, feed_order=['x', 'y'])
+                print test_metrics
+                '''
+                ...
+                ['25.768919467926025']
+                ['15.343549569447836']
+                ...
+                '''
                 if save_dirname is not None:
                     trainer.save_params(save_dirname)
-            return
+                trainer.stop()
 
     trainer.train(
         reader=train_reader,
@@ -94,7 +92,7 @@ def infer(use_cuda, inference_program, save_dirname=None):
     tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
 
     results = inferencer.infer({'x': tensor_x})
-    print("infer results: ", results[0])
+    print("infer results: ", numpy.array(results[0]))
 
 
 def main(use_cuda):
