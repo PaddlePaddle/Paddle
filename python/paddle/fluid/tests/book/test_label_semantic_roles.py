@@ -257,8 +257,10 @@ def infer(use_cuda, save_dirname=None):
         # one higher level structure (sequence of words, or sentence) than the basic 
         # element (word). Hence the LoDTensor will hold data for three sentences of 
         # length 3, 4 and 2, respectively. 
+        # Note that lod info should be a list of lists.
         lod = [[3, 4, 2]]
         base_shape = [1]
+        # The range of random integers is [low, high]
         word = fluid.create_random_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
         pred = fluid.create_random_lodtensor(
