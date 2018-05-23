@@ -31,10 +31,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace detail {
-namespace {
-const int kStartProfile = 1;
-const int kStopProfile = 2;
-}  // namespace
 
 using VarMsg = sendrecv::VariableMessage;
 
@@ -128,9 +124,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // trainer.
   if (platform::ShouldSendProfileState()) {
     if (platform::IsProfileEnabled()) {
-      request.set_profile(kStartProfile);
+      request.set_profile(platform::kEnableProfiler);
     } else {
-      request.set_profile(kStopProfile);
+      request.set_profile(platform::kDisableProfiler);
     }
   }
   if (!out_name.empty()) {
