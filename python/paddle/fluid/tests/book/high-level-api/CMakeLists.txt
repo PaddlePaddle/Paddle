@@ -11,4 +11,3 @@ add_subdirectory(recognize_digits)
 add_subdirectory(image_classification)
 add_subdirectory(understand_sentiment)
 add_subdirectory(recommender_system)
-

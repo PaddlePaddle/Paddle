@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
 
-
 IS_SPARSE = True
 USE_GPU = False
 BATCH_SIZE = 256
@@ -173,8 +172,7 @@ def train(use_cuda, train_program, save_path):
             test_reader = paddle.batch(
                 paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
-                reader=test_reader,
-                feed_order=feed_order)
+                reader=test_reader, feed_order=feed_order)
 
             # get avg cost
             avg_cost = np.array(avg_cost_set).mean()
