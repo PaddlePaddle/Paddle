@@ -149,7 +149,7 @@ def infer(use_cuda, inference_program, save_dirname=None):
     lod = [[3, 4, 2]]
     base_shape = [1]
     # The range of random integers is [low, high]
-    tensor_words = fluid.create_random_lodtensor(
+    tensor_words = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=len(word_dict) - 1)
     results = inferencer.infer({'words': tensor_words})
     print("infer results: ", results)

@@ -247,7 +247,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
         lod = [[3, 4, 2]]
         base_shape = [1]
         # The range of random integers is [low, high]
-        tensor_words = fluid.create_random_lodtensor(
+        tensor_words = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
