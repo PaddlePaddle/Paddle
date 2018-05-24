@@ -122,7 +122,8 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
   while (!exit_flag) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    rpc_service_->SetCond(0);
+    rpc_service_->SetCond(
+        detail::GrpcMethodName(detail::GrpcMethod::kSendVariable));
     size_t recv_var_cnt = 0;
     int batch_barrier = 0;
     while (batch_barrier != fan_in) {
@@ -150,7 +151,8 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       }
     }
     if (exit_flag) {
-      rpc_service_->SetCond(1);
+      rpc_service_->SetCond(
+          detail::GrpcMethodName(detail::GrpcMethod::kGetVariable));
       rpc_service_->ShutDown();
       break;
     }
@@ -187,7 +189,8 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     for (auto &var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
-    rpc_service_->SetCond(1);
+    rpc_service_->SetCond(
+        detail::GrpcMethodName(detail::GrpcMethod::kGetVariable));
     // FIXME(typhoonzero): use another condition to sync wait clients get.
     rpc_service_->WaitClientGet(fan_in);
     sparse_vars.clear();
@@ -308,6 +311,13 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_processor_.reset(new detail::GRPCProcessorCtx());
   rpc_service_.reset(
       new detail::AsyncGRPCServer(endpoint, rpc_processor_.get()));
+
+  rpc_service_.RegisterBarrier(
+      detail::GrpcMethodName(detail::GrpcMethod::kSendVariable),
+      detail::GrpcMethod::kSendVariable);
+  rpc_service_.RegisterBarrier(
+      detail::GrpcMethodName(detail::GrpcMethod::kGetVariable),
+      detail::GrpcMethod::kGetVariable);
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);

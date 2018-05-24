@@ -211,15 +211,15 @@ void AsyncGRPCServer::RunSyncUpdate() {
       std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this);
 
   // TODO(wuyi): Run these "HandleRequest" in thread pool
-  t_send_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
-                                cq_send_.get(), "cq_send", send_register)));
-  t_get_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
-                                cq_get_.get(), "cq_get", get_register)));
-  t_prefetch_.reset(new std::thread(
-      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
-                "cq_prefetch", prefetch_register)));
+  t_send_.reset(new std::thread(
+      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_send_.get(),
+                static_cast<int>(GrpcMethod::kSendVariable), send_register)));
+  t_get_.reset(new std::thread(
+      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_get_.get(),
+                static_cast<int>(GrpcMethod::kGetVariable), get_register)));
+  t_prefetch_.reset(new std::thread(std::bind(
+      &AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
+      static_cast<int>(GrpcMethod::kPrefetchVariable), prefetch_register)));
 
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
@@ -281,9 +281,8 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
 
-// FIXME(typhoonzero): change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    const std::string& cq_name,
+                                    int rpc_id,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();
 
@@ -291,20 +290,27 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
   bool ok = false;
 
   while (true) {
-    VLOG(3) << "HandleRequest for " << cq_name << " wait Next";
+    VLOG(3) << "HandleRequest for " << rpc_id << " wait Next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(INFO) << cq_name << " CompletionQueue shutdown!";
+      LOG(INFO) << rpc_id << " CompletionQueue shutdown!";
       break;
     }
-    VLOG(3) << "HandleRequest for " << cq_name << " get Next";
+    VLOG(3) << "HandleRequest for " << rpc_id << " get Next";
 
     PADDLE_ENFORCE(tag);
 
     if (rpc_processor_->sync_mode()) {
-      // FIXME(typhoonzero): de-couple the barriers with recv_op
-      if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
-      if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);
-      VLOG(3) << "HandleRequest for " << cq_name << " after WaitCond";
+      if (!is_shut_down_ &&
+          rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
+        WaitCond(GrpcMethodName(GrpcMethod::kGetVariable));
+      }
+
+      if (!is_shut_down_ &&
+          rpc_id == static_cast<int>(GrpcMethod::kSendVariable)) {
+        WaitCond(GrpcMethodName(GrpcMethod::kSendVariable));
+      }
+
+      VLOG(3) << "HandleRequest for " << rpc_id << " after WaitCond";
     }
 
     RequestBase* base = reinterpret_cast<RequestBase*>(tag);
@@ -313,7 +319,7 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      LOG(WARNING) << cq_name << " recv no regular event:argument name["
+      LOG(WARNING) << rpc_id << " recv no regular event:argument name["
                    << base->GetReqName() << "]";
       TryToRegisterNewOne();
       delete base;
@@ -324,11 +330,11 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
       case PROCESS: {
         TryToRegisterNewOne();
         base->Process();
-        VLOG(4) << cq_name << " PROCESS status:" << base->Status();
+        VLOG(4) << rpc_id << " PROCESS status:" << base->Status();
         break;
       }
       case FINISH: {
-        VLOG(4) << cq_name << " FINISH status:" << base->Status();
+        VLOG(4) << rpc_id << " FINISH status:" << base->Status();
         delete base;
         break;
       }
@@ -337,15 +343,29 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
   }
 }
 
-void AsyncGRPCServer::WaitCond(int cond) {
+void AsyncGRPCServer::RegisterBarrier(const std::string& rpc_name,
+                                      int cond_id) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
+  barrier_[rpc_name] = cond_id;
+}
+
+void AsyncGRPCServer::WaitCond(const std::string& rpc_name) {
+  std::unique_lock<std::mutex> lock(this->barrier_mutex_);
+  auto it = barrier_.find(rpc_name);
+  assert(it != barrier_.end());
+  int cond = it->second;
+
   barrier_condition_.wait(lock,
                           [=] { return this->barrier_cond_step_ == cond; });
 }
 
-void AsyncGRPCServer::SetCond(int cond) {
+void AsyncGRPCServer::SetCond(const std::string& rpc_name) {
   {
     std::lock_guard<std::mutex> lock(this->barrier_mutex_);
+    auto it = barrier_.find(rpc_name);
+    assert(it != barrier_.end());
+    int cond = it->second;
+
     barrier_cond_step_ = cond;
   }
   barrier_condition_.notify_all();

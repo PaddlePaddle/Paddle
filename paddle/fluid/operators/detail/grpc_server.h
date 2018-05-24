@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
@@ -48,9 +49,11 @@ class AsyncGRPCServer final {
   void WaitServerReady();
   void RunSyncUpdate();
 
+  // register rpc call name to a condition id with will be waiting on
+  void RegisterBarrier(const std::string& rpc_name, int cond_id);
   // functions to sync server barrier status.
-  void WaitCond(int cond);
-  void SetCond(int cond);
+  void SetCond(const std::string& rpc_name);
+
   void WaitClientGet(int count);
 
   int GetSelectedPort() const { return selected_port_; }
@@ -58,13 +61,13 @@ class AsyncGRPCServer final {
   void ShutDown();
 
  protected:
-  void HandleRequest(::grpc::ServerCompletionQueue* cq,
-                     const std::string& cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue* cq, int rpc_id,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
   void TryToRegisterNewPrefetchOne();
   void ShutdownQueue();
+  void WaitCond(const std::string& rpc_name);
 
  private:
   std::mutex cq_mutex_;
@@ -97,6 +100,9 @@ class AsyncGRPCServer final {
   int ready_;
 
   GRPCProcessorCtx* rpc_processor_;
+
+  // barrier
+  std::map<std::string, int64_t> barrier_;
 };
 
 };  // namespace detail
