@@ -86,14 +86,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_processor.SetProgram(&empty_program);
     rpc_processor.SetExecutor(&executor);
 
-    detail::ReceivedQueue queue;
-    rpc_processor.SetVarRecvQueue(&queue);
-
     std::thread server_thread(
         std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
     rpc_service.SetCond(0);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    auto recv = queue.Pop();
+    auto recv = rpc_processor.Get();
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";

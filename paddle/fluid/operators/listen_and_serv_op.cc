@@ -75,7 +75,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
     : OperatorBase(type, inputs, outputs, attrs) {}
 
 void ListenAndServOp::Stop() {
-  var_recv_queue_->Push(std::make_pair(LISTEN_TERMINATE_MESSAGE, nullptr));
+  rpc_processor_->Push(LISTEN_TERMINATE_MESSAGE);
   server_thread_->join();
 }
 
@@ -126,7 +126,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     size_t recv_var_cnt = 0;
     int batch_barrier = 0;
     while (batch_barrier != fan_in) {
-      const detail::ReceivedMessage v = var_recv_queue_->Pop();
+      const detail::ReceivedMessage v = rpc_processor_->Get();
       auto recv_var_name = v.first;
       if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
         LOG(INFO) << "received terminate message and exit";
@@ -274,7 +274,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
   VLOG(3) << "RunAsyncLoop into while";
   while (!exit_flag) {
-    const detail::ReceivedMessage v = var_recv_queue_->Pop();
+    const detail::ReceivedMessage v = rpc_processor_->Get();
     auto recv_var_name = v.first;
     if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
       LOG(INFO) << "received terminate message and exit";
@@ -305,7 +305,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
 
-  var_recv_queue_.reset(new detail::ReceivedQueue());
   rpc_processor_.reset(new detail::GRPCProcessorCtx());
   rpc_service_.reset(
       new detail::AsyncGRPCServer(endpoint, rpc_processor_.get()));
@@ -321,7 +320,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_processor_->SetDevCtx(&dev_ctx);
   rpc_processor_->SetProgram(program);
   rpc_processor_->SetExecutor(&executor);
-  rpc_processor_->SetVarRecvQueue(var_recv_queue_.get());
 
   // prepare for prefetch
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();

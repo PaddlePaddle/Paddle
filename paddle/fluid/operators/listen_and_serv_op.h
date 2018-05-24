@@ -70,8 +70,6 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<std::thread> server_thread_;
   // FIXME(wuyi): it's static so that the operator can be cloned.
   static std::atomic_int selected_port_;
-
-  mutable std::shared_ptr<detail::ReceivedQueue> var_recv_queue_;
 };
 
 }  // namespace operators

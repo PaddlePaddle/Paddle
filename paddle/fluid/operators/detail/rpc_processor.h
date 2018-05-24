@@ -52,8 +52,7 @@ class RPCProcessorCtx {
         scope_(nullptr),
         dev_ctx_(nullptr),
         program_(nullptr),
-        executor_(nullptr),
-        var_recv_queue_(nullptr) {}
+        executor_(nullptr) {}
   virtual ~RPCProcessorCtx() {}
 
   void SetSyncMode(bool sync_mode) { sync_mode_ = sync_mode; }
@@ -65,9 +64,6 @@ class RPCProcessorCtx {
       std::unique_ptr<framework::ExecutorPrepareContext> prepared) {
     prefetch_ctx_.reset(prepared.release());
   }
-  void SetVarRecvQueue(ReceivedQueue* var_recv_queue) {
-    var_recv_queue_ = var_recv_queue;
-  }
 
   bool sync_mode() { return sync_mode_; }
   framework::Scope* scope() { return scope_; }
@@ -77,7 +73,12 @@ class RPCProcessorCtx {
   }
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
-  ReceivedQueue* var_recv_queue() { return var_recv_queue_; }
+
+  const ReceivedMessage Get() { return var_recv_queue_.Pop(); }
+
+  void Push(const std::string& msg_name) {
+    var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
+  }
 
  protected:
   bool sync_mode_;
@@ -87,7 +88,8 @@ class RPCProcessorCtx {
   std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
   framework::ProgramDesc* program_;
   framework::Executor* executor_;
-  ReceivedQueue* var_recv_queue_;
+
+  ReceivedQueue var_recv_queue_;
 };
 
 class GRPCProcessorCtx : public RPCProcessorCtx {

@@ -32,7 +32,7 @@ namespace operators {
 namespace detail {
 
 bool GRPCProcessorCtx::RequestSend(std::shared_ptr<VariableResponse> request) {
-  var_recv_queue_->Push(std::make_pair(request->Varname(), request));
+  var_recv_queue_.Push(std::make_pair(request->Varname(), request));
   return true;
 }
 

@@ -31,7 +31,6 @@ namespace detail = paddle::operators::detail;
 USE_OP(lookup_table);
 
 std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
-detail::ReceivedQueue g_var_recv_queue;
 detail::GRPCProcessorCtx g_rpc_processor;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
@@ -108,7 +107,6 @@ void StartServer(const std::string& endpoint) {
   g_rpc_processor.SetDevCtx(&ctx);
   g_rpc_processor.SetScope(&scope);
   g_rpc_processor.SetExecutor(&exe);
-  g_rpc_processor.SetVarRecvQueue(&g_var_recv_queue);
 
   rpc_service_->RunSyncUpdate();
 }
