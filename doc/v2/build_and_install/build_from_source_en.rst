@@ -23,7 +23,7 @@ You need to use Docker to build PaddlePaddle
 to avoid installing dependencies by yourself. We have several pre-built
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ ,
 you can also find how to build and use paddle_manylinux_devel Docker image from
-`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`_
+`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__
 Or you can build your own image from source as the optional step below:
 
 .. code-block:: bash
@@ -170,7 +170,7 @@ Appendix: Build Options
 
 Build options include whether build binaries for CPU or GPU, which BLAS
 library to use etc. You may pass these settings when running cmake.
-For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`_ 。
+For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`__ 。
 
 
 You can add :code:`-D` argument to pass such options, like:
