@@ -27,17 +27,6 @@ extern "C" {
 PD_API paddle_error paddle_init(int argc, char** argv);
 
 /**
- * set the thread count of OpenMP or Eigen when run on android or ios device.
- * @note thread count will be set to the smaller between n and cpu cores.
- */
-PD_API paddle_error paddle_set_num_threads(int n);
-
-/*
- * get the thread count of OpenMP or Eigen
- */
-PD_API paddle_error paddle_get_num_threads(int* n);
-
-/**
  * Initialize the thread environment of Paddle.
  * @note it is requisite for GPU runs but optional for CPU runs.
  *       For GPU runs, all threads will run on the same GPU devices.

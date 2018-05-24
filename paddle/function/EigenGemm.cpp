@@ -12,10 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/function/EigenDevice.h"
-
 #include <glog/logging.h>
-#include "unsupported/Eigen/CXX11/Tensor"
+#include "paddle/function/EigenDevice.h"
 
 namespace paddle {
 
@@ -72,29 +70,26 @@ struct EigenBlasGemm {
     dims[0].first = transA ? 0 : 1;
     dims[0].second = transB ? 1 : 0;
 
-#if defined(__ANDROID__) || defined(__OSX__)
-    const Eigen::ThreadPoolDevice& device = GetThreadPoolDevice();
-#else
-    const Eigen::DefaultDevice device;
-#endif
+    auto* device = EigenDeviceWarpper::device();
     if (N == ldc) {
       if (alpha == T(1) && beta == T(0)) {
-        c.device(device) = a.contract(b, dims);
+        c.device(*device) = a.contract(b, dims);
       } else if (alpha == T(1) && beta == T(1)) {
-        c.device(device) += a.contract(b, dims);
+        c.device(*device) += a.contract(b, dims);
       } else {
-        c.device(device) = alpha * a.contract(b, dims) + beta * c;
+        c.device(*device) = alpha * a.contract(b, dims) + beta * c;
       }
     } else {
       if (alpha == T(1) && beta == T(0)) {
-        c.slice(offsetC, extentC).device(device) = a.contract(b, dims);
+        c.slice(offsetC, extentC).device(*device) = a.contract(b, dims);
       } else if (alpha == T(1) && beta == T(1)) {
-        c.slice(offsetC, extentC).device(device) += a.contract(b, dims);
+        c.slice(offsetC, extentC).device(*device) += a.contract(b, dims);
       } else {
-        c.slice(offsetC, extentC).device(device) =
+        c.slice(offsetC, extentC).device(*device) =
             alpha * a.contract(b, dims) + beta * c.slice(offsetC, extentC);
       }
     }
+    EigenDeviceWarpper::free_device(device);
   }
 };
 

@@ -14,55 +14,60 @@
 
 #pragma once
 
-#include "unsupported/Eigen/CXX11/Tensor"
-
-#ifdef _OPENMP
-#include <omp.h>
+#if defined(__OSX__) || defined(__APPLE__)
+#include <sys/sysctl.h>
+#include <sys/types.h>
 #endif
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 
-int GetAndroidCpuCount();
+#if defined(__ANDROID__)
+int GetCpuCount() {
+  FILE* fp = fopen("/sys/devices/system/cpu/possible", "r");
+  if (!fp) {
+    return 1;
+  }
+  int rank0, rank1;
+  int num = fscanf(fp, "%d-%d", &rank0, &rank1);
+  fclose(fp);
+  if (num < 2) return 1;
+  return rank1 + 1;
+}
+#elif defined(__OSX__) || defined(__APPLE__)
+int GetCpuCount() {
+  int count = 0;
+  size_t len = sizeof(int);
+  sysctlbyname("hw.ncpu", &count, &len, NULL, 0);
+  return count > 0 ? count : 1;
+}
+#else
+int GetCpuCount() { return 1; }
+#endif
 
-int GetOSXCpuCount();
-
-int GetCpuCount();
-
-const Eigen::ThreadPoolDevice& GetThreadPoolDevice();
-
-class ThreadsNumManager {
+class EigenDeviceWarpper {
 public:
-  static void Set(int n) {
-#ifdef _OPENMP
-    omp_set_num_threads(n);
+#if EIGEN_USE_THREADS
+  static Eigen::ThreadPoolDevice* device() {
+    const int num_cpus = GetCpuCount();
+    const int num_threads = (num_cpus > 2) ? 2 : num_cpus;
+    static Eigen::ThreadPool tp(num_threads);
+    static Eigen::ThreadPoolDevice* device =
+        new Eigen::ThreadPoolDevice(&tp, num_threads);
+    return device;
+  }
+
+  static void free_device(Eigen::ThreadPoolDevice* device) {
+    // do nothing
+  }
 #else
-    manage_threads_num(SetAction, &n);
+  static Eigen::DefaultDevice* device() {
+    Eigen::DefaultDevice* device = new Eigen::DefaultDevice;
+    return device;
+  }
+
+  static void free_device(Eigen::DefaultDevice* device) { delete device; }
 #endif
-  }
-
-  static int Get() {
-#ifdef _OPENMP
-    return omp_get_num_threads();
-#else
-    int n = 1;
-    manage_threads_num(GetAction, &n);
-    return n;
-#endif
-  }
-
-private:
-  enum Action { GetAction, SetAction };
-
-  static void manage_threads_num(Action a, int* n) {
-    static int num_threads = GetCpuCount();
-    if (a == SetAction) {
-      if (*n > 0 && *n < num_threads) {
-        num_threads = *n;
-      }
-    } else {
-      *n = num_threads;
-    }
-  }
 };
 
 }  // namespace paddle
