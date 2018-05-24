@@ -215,21 +215,21 @@ def infer(use_cuda, inference_program, save_path):
     lod = [[3, 4, 2]]
     base_shape = [1]
     # The range of random integers is [low, high]
-    word = fluid.create_random_lodtensor(
+    word = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    pred = fluid.create_random_lodtensor(
+    pred = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=PRED_DICT_LEN - 1)
-    ctx_n2 = fluid.create_random_lodtensor(
+    ctx_n2 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_n1 = fluid.create_random_lodtensor(
+    ctx_n1 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_0 = fluid.create_random_lodtensor(
+    ctx_0 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_p1 = fluid.create_random_lodtensor(
+    ctx_p1 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_p2 = fluid.create_random_lodtensor(
+    ctx_p2 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    mark = fluid.create_random_lodtensor(
+    mark = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=MARK_DICT_LEN - 1)
 
     results = inferencer.infer(
