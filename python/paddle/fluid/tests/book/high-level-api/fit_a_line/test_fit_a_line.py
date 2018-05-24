@@ -92,7 +92,7 @@ def infer(use_cuda, inference_program, save_dirname=None):
     tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
 
     results = inferencer.infer({'x': tensor_x})
-    print("infer results: ", numpy.array(results[0]))
+    print("infer results: ", results[0])
 
 
 def main(use_cuda):

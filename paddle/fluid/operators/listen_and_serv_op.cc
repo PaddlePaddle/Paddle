@@ -190,6 +190,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     for (auto &var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
+
     rpc_service_->SetCond(1);
     // FIXME(typhoonzero): use another condition to sync wait clients get.
     rpc_service_->WaitClientGet(fan_in);
