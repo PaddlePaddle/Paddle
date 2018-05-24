@@ -14,14 +14,12 @@
 
 import math
 import sys
-import os
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
-from functools import partial
+
 
 IS_SPARSE = True
 USE_GPU = False
@@ -161,16 +159,6 @@ def train_program():
 def train(use_cuda, train_program, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.SGD(learning_rate=0.2)
-    feeding_map = {
-        'user_id': 0,
-        'gender_id': 1,
-        'age_id': 2,
-        'job_id': 3,
-        'movie_id': 4,
-        'category_id': 5,
-        'movie_title': 6,
-        'score': 7
-    }
 
     trainer = fluid.Trainer(
         train_func=train_program, place=place, optimizer=optimizer)
@@ -181,7 +169,7 @@ def train(use_cuda, train_program, save_path):
     ]
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
+        if isinstance(event, fluid.EndStepEvent):
             test_reader = paddle.batch(
                 paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
@@ -195,6 +183,7 @@ def train(use_cuda, train_program, save_path):
 
             if float(avg_cost) < 4:  # Smaller value to increase CI speed
                 trainer.save_params(save_path)
+                trainer.stop()
             else:
                 print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
                                                               float(avg_cost)))
