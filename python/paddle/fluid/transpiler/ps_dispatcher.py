@@ -15,7 +15,7 @@
 
 class PSDispatcher(object):
     """
-    DistributedSpliter is the base class for dispatching vars
+    PSDispatcher is the base class for dispatching vars
     into different pserver instance.
     You need to implement the `dispatch` inferface.
     """

@@ -348,7 +348,10 @@ class DistributeTranspiler:
                 type="send_barrier",
                 inputs={},
                 outputs={"RPCClient": rpc_client_var},
-                attrs={"endpoints": pserver_endpoints})
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    "sync_mode": self.sync_mode
+                })
 
         # step 3.2: insert recv op to receive parameters from parameter server
         recv_vars = []
