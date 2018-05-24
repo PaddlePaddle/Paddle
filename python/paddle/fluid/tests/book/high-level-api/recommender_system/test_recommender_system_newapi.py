@@ -221,7 +221,7 @@ def train(use_cuda, train_program, save_path):
 
             print("avg_cost: %s" % avg_cost)
 
-            if float(avg_cost) < 3:  # Smaller value to increase CI speed
+            if float(avg_cost) < 4:  # Smaller value to increase CI speed
                 trainer.save_params(save_path)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
