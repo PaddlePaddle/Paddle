@@ -85,7 +85,7 @@ struct IdentityGrad {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
 };
 
-template<typename DeviceContext, typename T>
+template <typename DeviceContext, typename T>
 void default_elementwise_add_grad(const framework::ExecutionContext& ctx,
                                   const framework::Tensor* x,
                                   const framework::Tensor* y,
@@ -100,16 +100,15 @@ void default_elementwise_add_grad(const framework::ExecutionContext& ctx,
       IdentityGrad<T>());
 }
 
-template<typename DeviceContext, typename T>
+template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_floating_point<T>::value &&
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x,
-                     const framework::Tensor* y,
+                     const framework::Tensor* x, const framework::Tensor* y,
                      const framework::Tensor* out,
-                     const framework::Tensor* dout,
-                     framework::Tensor* dx, framework::Tensor* dy) {
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
 
   if (dx) {
@@ -123,16 +122,15 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
   }
 }
 
-template<typename DeviceContext, typename T>
+template <typename DeviceContext, typename T>
 typename std::enable_if<
     !std::is_floating_point<T>::value ||
     !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x,
-                     const framework::Tensor* y,
+                     const framework::Tensor* x, const framework::Tensor* y,
                      const framework::Tensor* out,
-                     const framework::Tensor* dout,
-                     framework::Tensor* dx, framework::Tensor* dy) {
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
   default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
 }
 
@@ -152,8 +150,8 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(ctx.GetPlace()) && (x->dims() == y->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
-      default_elementwise_add_grad<DeviceContext, T>(
-            ctx, x, y, out, dout, dx, dy);
+      default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
+                                                     dy);
     }
   }
 };
