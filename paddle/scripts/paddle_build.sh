@@ -496,7 +496,9 @@ function gen_fluid_inference_lib() {
     ========================================
 EOF
         make -j `nproc` inference_lib_dist
-        tar -cf ${PADDLE_ROOT}/build/fluid.tgz ${PADDLE_ROOT}/build/fluid_install_dir
+        cd ${PADDLE_ROOT}/build
+        mv fluid_install_dir fluid
+        tar -cf fluid.tgz fluid
       fi
 }
 

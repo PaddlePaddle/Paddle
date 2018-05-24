@@ -172,6 +172,7 @@ add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep})
 # paddle fluid version
 execute_process(
   COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
+  WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
   OUTPUT_VARIABLE PADDLE_GIT_COMMIT)
 set(version_file ${FLUID_INSTALL_DIR}/version.txt)
 file(WRITE ${version_file}
