@@ -19,8 +19,8 @@
 ----------------
 
 PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安装编译依赖的步骤，可选的不同编译环境Docker镜像
-可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ 找到，您也可以
-在 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`_ 找到 paddle_manylinux_devel
+可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`__ 找到，您也可以
+在 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__ 找到 paddle_manylinux_devel
 镜像的编译以及使用方法。或者参考下述可选步骤，从源码中构建用于编译PaddlePaddle的Docker镜像。
 
 如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 `编译依赖`_ 之后才能开始编译的步骤。
