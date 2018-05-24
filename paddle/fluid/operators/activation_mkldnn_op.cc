@@ -99,9 +99,10 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   PADDLE_ENFORCE(x->dims().size() == 2 || x->dims().size() == 4,
                  "Input dim must be with 2 or 4");
 
-  memory::format src_format = x->format();
-
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
+
+  auto src_format =
+      src_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
 
   const std::string key = gethash(src_tz, algorithm);
   const std::string key_src_data =
@@ -127,9 +128,10 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   if (p_fwd == nullptr) {
     // create mkldnn memory for input X
-    auto src_memory = std::shared_ptr<memory>(new memory(
-        {{{src_tz}, memory::data_type::f32, src_format}, mkldnn_engine},
-        to_void_cast(x_data)));
+    auto src_md = platform::MKLDNNMemDesc(
+        src_tz, platform::MKLDNNGetDataType<T>(), src_format);
+    auto src_memory = std::shared_ptr<memory>(
+        new memory({src_md, mkldnn_engine}, to_void_cast(x_data)));
     // save src_memory to be referred in backward path
     dev_ctx.SetBlob(key_src_mem, src_memory);
 
@@ -190,18 +192,10 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const T *diff_y_data = diff_y->data<T>();
   T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
 
-  auto diff_y_format = diff_y->format();
-
   std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
-  // const std::string key = gethash(src_tz, algorithm);
-  // const std::string key_src_data =
-  // key + ctx.op().Output("Out") + "@eltwise_fwd_src_data";
-  // const std::string key_src_layout =
-  // key + ctx.op().Output("Out") + "@eltwise_fwd_src_layout";
-  // const std::string key_with_layout = key + std::to_string(src_format);
-  // const std::string key_src_mem = key_with_layout + "@eltwise_fwd_src_mem";
-  // const std::string key_dst_mem = key_with_layout + "@eltwise_fwd_dst_mem";
-  // const std::string key_fwd = key_with_layout + "@eltwise_fwd";
+
+  auto diff_y_format =
+      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : diff_y->format();
 
   const std::string key = gethash(diff_dst_tz, algorithm);
   const std::string key_src_data =

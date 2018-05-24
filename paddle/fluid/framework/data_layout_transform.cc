@@ -146,8 +146,10 @@ void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
                  "Input tensor type is not supported: ", in.type().name());
   memory::data_type out_type = in_type;
 
-  memory::format in_format = in.format();
-  memory::format out_format = to_mkldnn_format(out_layout);
+  memory::format in_format =
+      in_tz.size() == 2 ? memory::format::nc : in.format();
+  memory::format out_format =
+      out_tz.size() == 2 ? memory::format::nc : to_mkldnn_format(out_layout);
 
   void* in_data = get_data_from_tensor(in, in_type);
 
