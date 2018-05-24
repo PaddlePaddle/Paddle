@@ -17,7 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-namespace {
+namespace paddle {
 
 /*
  * Do not use this, just a demo indicating how to customize a config for a
@@ -45,7 +45,6 @@ public:
 
   ~DemoPredictor() override {}
 };
-}  // namespace
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<DemoConfig>(
@@ -61,3 +60,5 @@ TEST(paddle_inference_api, demo) {
   std::vector<PaddleTensor> outputs;
   predictor->Run({}, &outputs);
 }
+
+}  // namespace paddle

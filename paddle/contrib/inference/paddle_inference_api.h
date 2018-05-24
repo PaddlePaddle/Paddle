@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+namespace paddle {
+
 struct PaddleTensor {
   std::string name;  // variable name.
   std::vector<int> shape;
@@ -83,3 +85,5 @@ public:
 // A factory to help create difference predictor.
 template <typename ConfigT>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+
+}  // namespace paddle
