@@ -834,4 +834,8 @@ dice_loss
 ..  autofunction:: paddle.fluid.layers.dice_loss
     :noindex:
 
+bilinear_interp
+____
 
+..  autofunction:: paddle.fluid.layers.bilinear_interp
+    :noindex:
