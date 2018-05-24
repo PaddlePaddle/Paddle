@@ -221,18 +221,20 @@ def infer(use_cuda, inference_program, save_path):
     ctx_p2 = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
     mark = create_random_lodtensor(lod, place, low=0, high=MARK_DICT_LEN - 1)
 
-    results = inferencer.infer({
-        'word_data': word,
-        'verb_data': pred,
-        'ctx_n2_data': ctx_n2,
-        'ctx_n1_data': ctx_n1,
-        'ctx_0_data': ctx_0,
-        'ctx_p1_data': ctx_p1,
-        'ctx_p2_data': ctx_p2,
-        'mark_data': mark
-    })
+    results = inferencer.infer(
+        {
+            'word_data': word,
+            'verb_data': pred,
+            'ctx_n2_data': ctx_n2,
+            'ctx_n1_data': ctx_n1,
+            'ctx_0_data': ctx_0,
+            'ctx_p1_data': ctx_p1,
+            'ctx_p2_data': ctx_p2,
+            'mark_data': mark
+        },
+        return_numpy=False)
 
-    print("infer results: ", results)
+    print("infer results: ", np.array(results[0]))
 
 
 def main(use_cuda):
@@ -240,7 +242,7 @@ def main(use_cuda):
         return
     save_path = "label_semantic_roles.inference.model"
     train(use_cuda, train_program, save_path)
-    #infer(use_cuda, inference_program, save_path)
+    infer(use_cuda, inference_program, save_path)
 
 
 if __name__ == '__main__':
