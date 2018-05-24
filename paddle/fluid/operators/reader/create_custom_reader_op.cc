@@ -68,12 +68,25 @@ class CreateCustomReaderOp : public framework::OperatorBase {
 class CreateCustomReaderOpMaker : public DecoratedReaderMakerBase {
  protected:
   void Apply() override {
-    AddAttr<framework::BlockDesc*>("sub_block", "");
-    AddAttr<std::vector<std::string>>("source_var_names", "");
-    AddAttr<std::vector<std::string>>("sink_var_names", "");
+    AddAttr<framework::BlockDesc*>(
+        "sub_block", "The block to hold all preprocessing operators.");
+    AddAttr<std::vector<std::string>>(
+        "source_var_names",
+        "Source variables are starting points of data preprocessing. They hold "
+        "preprocessing's input tensors. Each source variable corresponds to "
+        "one of underlying reader's output datas.");
+    AddAttr<std::vector<std::string>>(
+        "sink_var_names",
+        "Sink variables are ending points of data preprocessing. They hold "
+        "preprocessing's output tensors. Each sink variable corresponds to "
+        "one of custom reader's output datas.");
     AddComment(R"DOC(
       CreateCustomReader Operator
 
+      A custom reader can be used for input data preprocessing. 
+      A custom reader holds its own sub-block, which will be executed in its 
+      'ReadNext()' function. Users can configurate their own preprocessing 
+      pipelines by inserting operators into custom reader's sub-block.
     )DOC");
   }
 };
