@@ -312,12 +312,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_.reset(
       new detail::AsyncGRPCServer(endpoint, rpc_processor_.get()));
 
-  rpc_service_.RegisterBarrier(
+  rpc_service_->RegisterBarrier(
       detail::GrpcMethodName(detail::GrpcMethod::kSendVariable),
-      detail::GrpcMethod::kSendVariable);
-  rpc_service_.RegisterBarrier(
+      static_cast<int>(detail::GrpcMethod::kSendVariable));
+  rpc_service_->RegisterBarrier(
       detail::GrpcMethodName(detail::GrpcMethod::kGetVariable),
-      detail::GrpcMethod::kGetVariable);
+      static_cast<int>(detail::GrpcMethod::kGetVariable));
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);

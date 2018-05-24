@@ -102,7 +102,7 @@ class AsyncGRPCServer final {
   GRPCProcessorCtx* rpc_processor_;
 
   // barrier
-  std::map<std::string, int64_t> barrier_;
+  std::map<std::string, int> barrier_;
 };
 
 };  // namespace detail
