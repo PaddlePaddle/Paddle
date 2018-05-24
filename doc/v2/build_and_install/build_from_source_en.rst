@@ -118,11 +118,10 @@ Frequently Asked Questions
 
   Many PaddlePaddle developers are using Emacs.  They add the following few lines into their `~/.emacs` configure file:
 
-  ```emacs
-  (global-set-key "\C-cc" 'compile)
-  (setq compile-command
-   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
-  ```
+  .. code-block:: emacs
+
+    (global-set-key "\C-cc" 'compile)
+    (setq compile-command "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
 
   so they could type `Ctrl-C` and `c` to build PaddlePaddle from source.
 
