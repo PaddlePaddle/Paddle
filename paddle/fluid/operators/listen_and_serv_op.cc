@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <csignal>
 #include <fstream>
 #include <ostream>
 #include <thread>  // NOLINT
@@ -26,6 +27,12 @@ namespace operators {
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
+}
+
+void interruptSignalHandler(int signal_num) {
+  VLOG(3) << "Catch interrupt signal: " << signal_num
+          << ", program will exit";
+  exit(signal_num);
 }
 
 static void split(const std::string &str, char sep,
@@ -327,6 +334,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
+
+  // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
+  signal(SIGINT, interruptSignalHandler);
+  signal(SIGTERM, interruptSignalHandler);
 
   // Write to a file of server selected port for python use.
   std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
