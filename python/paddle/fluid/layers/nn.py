@@ -81,6 +81,7 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
+    'bilinear_interp',
 ]
 
 
@@ -3852,6 +3853,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
+        .. code-block:: python
+
             pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
@@ -3899,6 +3902,8 @@ def dice_loss(input, label, epsilon=0.00001):
         dice_loss (Variable): The dice loss with shape [1].
 
     Examples:
+        .. code-block:: python
+
             predictions = fluid.layers.softmax(x)
             loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
     """
@@ -3910,3 +3915,42 @@ def dice_loss(input, label, epsilon=0.00001):
             label, dim=reduce_dim)
     dice_score = 1 - inse * 2 / (dice_denominator + epsilon)
     return reduce_mean(dice_score)
+
+
+def bilinear_interp(input, out_h, out_w, name=None):
+    """
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this layer) on a rectilinear 2D grid.
+    
+    For details, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation
+    
+    Args:
+        input (Variable): The input tensor of bilinear interpolation,
+                          This is a 4-D tensor of the shape
+                          (num_batches, channels, in_h, in_w).
+        out_h (int): output height of bilinear interpolation layer.
+        out_w (int): output width of bilinear interpolation layer.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        out (Variable): The output is a 4-D tensor of the shape
+                        (num_batches, channls, out_h, out_w).
+   
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.bilinear_interp(input, out_h=12, out_w=12)
+    """
+    helper = LayerHelper('bilinear_interp', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="bilinear_interp",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"out_h": out_h,
+               "out_w": out_w})
+    return out

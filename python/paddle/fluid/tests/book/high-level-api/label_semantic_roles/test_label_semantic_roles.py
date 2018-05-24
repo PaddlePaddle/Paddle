@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
-import numpy
+import numpy as np
 
 WORD_DICT, VERB_DICT, LABEL_DICT = paddle.dataset.conll05.get_dict()
 WORD_DICT_LEN = len(WORD_DICT)
@@ -167,7 +167,7 @@ def train(use_cuda, train_program, save_path):
                 reader=test_reader, feed_order=feed_order)
 
             # get avg cost
-            avg_cost = numpy.array(avg_cost_set).mean()
+            avg_cost = np.array(avg_cost_set).mean()
 
             print("avg_cost: %s" % avg_cost)
 
@@ -181,7 +181,7 @@ def train(use_cuda, train_program, save_path):
 
         elif isinstance(event, fluid.EndStepEvent):
             print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(numpy.array, event.metrics)))
+                event.step, event.epoch, map(np.array, event.metrics)))
             if event.step == 1:  # Run 2 iterations to speed CI
                 trainer.save_params(save_path)
                 trainer.stop()
@@ -240,9 +240,8 @@ def main(use_cuda):
         return
     save_path = "label_semantic_roles.inference.model"
     train(use_cuda, train_program, save_path)
+    #infer(use_cuda, inference_program, save_path)
 
-
-#    infer(use_cuda, inference_program, save_path)
 
 if __name__ == '__main__':
     for use_cuda in (False, True):
