@@ -19,6 +19,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -55,10 +56,11 @@ TEST(inference, word2vec) {
   cpu_feeds.push_back(&fourth_word);
 
   int total_work = 1000;
-  int num_threads = 10;
+  int num_threads = 100;
   int work_per_thread = total_work / num_threads;
   // Run inference on CPU
   std::vector<std::unique_ptr<std::thread>> infer_threads;
+  paddle::platform::EnableProfiler(paddle::platform::ProfilerState::kAll);
   for (int i = 0; i < num_threads; ++i) {
     infer_threads.emplace_back(new std::thread([&, i]() {
       for (int j = 0; j < work_per_thread; ++j) {
@@ -80,7 +82,6 @@ TEST(inference, word2vec) {
 
         // CheckError<float>(output1, output2);
 #endif
-        fprintf(stderr, "working on %dth in thread %d\n", j, i);
       }
     }));
   }
@@ -88,6 +89,9 @@ TEST(inference, word2vec) {
   for (int i = 0; i < num_threads; ++i) {
     infer_threads[i]->join();
   }
+  paddle::platform::DisableProfiler(
+      paddle::platform::EventSortingKey::kDefault,
+      paddle::string::Sprintf("/tmp/profile_infer"));
   uint64_t stop_ns = PosixInNsec();
   fprintf(stderr, "total time: %lu\n", stop_ns - start_ns);
 }
