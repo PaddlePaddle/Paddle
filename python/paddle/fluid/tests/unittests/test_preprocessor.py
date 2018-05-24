@@ -74,7 +74,8 @@ class TestPreprocessor(unittest.TestCase):
                 lbl_out = lbl + 1
                 preprocessor.outputs(img_out, lbl_out)
 
-            img, lbl = fluid.layers.io.read_file(preprocessor())
+            data_file = fluid.layers.io.double_buffer(preprocessor())
+            img, lbl = fluid.layers.io.read_file(data_file)
 
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
