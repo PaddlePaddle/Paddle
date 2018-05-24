@@ -415,9 +415,11 @@ function gen_dockerfile() {
 
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
+    DOCKERFILE_CUBLAS_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
-        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUDNN_DSO="RUN ln -sf /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUBLAS_DSO="RUN ln -sf /usr/local/cuda/targets/x86_64-linux/lib/libcublas.so.${CUDA_MAJOR} /usr/lib/x86_64-linux-gnu/libcublas.so"
     fi
 
     cat <<EOF
@@ -433,7 +435,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.1.2-1+cuda${CUDA_MAJOR} libnccl-dev=2.1.2-1+cuda${CUDA_MAJOR} &&"
     else
         NCCL_DEPS=""
     fi
@@ -458,6 +460,7 @@ EOF
         ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
@@ -493,7 +496,10 @@ function gen_fluid_inference_lib() {
     ========================================
 EOF
         make -j `nproc` inference_lib_dist
-    fi
+        cd ${PADDLE_ROOT}/build
+        mv fluid_install_dir fluid
+        tar -cf fluid.tgz fluid
+      fi
 }
 
 function main() {

@@ -5,24 +5,3 @@
 evaluator
 =========
 
-ChunkEvaluator
---------------
-
-..  autoclass:: paddle.fluid.evaluator.ChunkEvaluator
-    :members:
-    :noindex:
-
-EditDistance
---------------
-
-..  autoclass:: paddle.fluid.evaluator.EditDistance
-    :members:
-    :noindex:
-
-DetectionMAP
---------------
-
-..  autoclass:: paddle.fluid.evaluator.DetectionMAP
-    :members:
-    :noindex:
-  

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <csignal>
+#include <stdio.h>  // for removing the port file
 #include <fstream>
 #include <ostream>
 #include <thread>  // NOLINT
@@ -85,12 +86,14 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
 void ListenAndServOp::Stop() {
   rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
   server_thread_->join();
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
+  remove(file_path.c_str());
 }
 
-void ListenAndServOp::SavePort(const std::string &file_path) const {
+void ListenAndServOp::SavePort() const {
   // NOTE: default write file to /tmp/paddle.selected_port
   selected_port_ = rpc_service_->GetSelectedPort();
-
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
   std::ofstream port_file;
   port_file.open(file_path);
   port_file << selected_port_.load();
@@ -195,6 +198,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     for (auto &var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
+
     rpc_service_->SetCond(1);
     // FIXME(typhoonzero): use another condition to sync wait clients get.
     rpc_service_->WaitClientGet(fan_in);
@@ -343,7 +347,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // Write to a file of server selected port for python use.
   std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
                                           static_cast<int>(::getpid()));
-  SavePort(file_path);
+  SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
   } else {

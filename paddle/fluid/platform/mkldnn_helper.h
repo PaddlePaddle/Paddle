@@ -38,6 +38,11 @@ void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
 }
 
+template <typename Type>
+void* to_void_reinterpret_cast(const Type* t) {
+  return reinterpret_cast<void*>(const_cast<Type*>(t));
+}
+
 template <class Type>
 using tf_desc = typename Type::desc;
 
