@@ -88,7 +88,7 @@ If you wish to run only one unit test, like :code:`test_sum_op`:
 .. _faq_docker:
 
 Frequently Asked Questions
-----------------
+---------------------------
 
 - What is Docker?
 
@@ -145,7 +145,7 @@ Frequently Asked Questions
 .. _compile_deps:
 
 Appendix: Compile Dependencies
-----------------
+-------------------------------
 
 PaddlePaddle need the following dependencies when compiling, other dependencies
 will be downloaded automatically.
@@ -166,7 +166,7 @@ will be downloaded automatically.
 .. _build_options:
 
 Appendix: Build Options
-----------------
+-------------------------
 
 Build options include whether build binaries for CPU or GPU, which BLAS
 library to use etc. You may pass these settings when running cmake.
@@ -219,7 +219,7 @@ keep on with latest cuDNN versions. Be sure to run with the same version of cuDN
 you built.
 
 Pass Compile Options
-++++++++++++++
+++++++++++++++++++++++
 
 You can pass compile options to use intended BLAS/CUDA/Cudnn libraries.
 When running cmake command, it will search system paths like
