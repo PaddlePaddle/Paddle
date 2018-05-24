@@ -158,34 +158,6 @@ def train_program():
     return [avg_cost, scale_infer]
 
 
-def func_feed(feeding, place, data):
-    feed_tensors = {}
-    for (key, idx) in feeding.iteritems():
-        tensor = fluid.LoDTensor()
-        if key != "category_id" and key != "movie_title":
-            if key == "score":
-                numpy_data = np.array(map(lambda x: x[idx], data)).astype(
-                    "float32")
-            else:
-                numpy_data = np.array(map(lambda x: x[idx], data)).astype(
-                    "int64")
-        else:
-            numpy_data = map(lambda x: np.array(x[idx]).astype("int64"), data)
-            lod_info = [len(item) for item in numpy_data]
-            offset = 0
-            lod = [offset]
-            for item in lod_info:
-                offset += item
-                lod.append(offset)
-            numpy_data = np.concatenate(numpy_data, axis=0)
-            tensor.set_lod([lod])
-
-        numpy_data = numpy_data.reshape([numpy_data.shape[0], 1])
-        tensor.set(numpy_data, place)
-        feed_tensors[key] = tensor
-    return feed_tensors
-
-
 def train(use_cuda, train_program, save_path):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.SGD(learning_rate=0.2)
