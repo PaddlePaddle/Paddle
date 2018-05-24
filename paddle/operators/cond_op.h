@@ -78,7 +78,7 @@ class CondOp : public framework::OperatorBase {
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override;
+           const platform::Place& place) const override;
 
  private:
   const int TRUE_BRANCH = 0;

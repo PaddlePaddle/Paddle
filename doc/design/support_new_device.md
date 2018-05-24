@@ -25,13 +25,14 @@ There are mainly three parts that we have to consider while integrating a new de
 
 ### Place and DeviceContext
 
+Please remind that device and computing library are not one-to-one corresponding. A device can have a lot of computing libraries and a computing library can also support several devices.
 
 #### Place
-Fluid uses class [Place](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/place.h#L55) to represent different devices and computing libraries. There are inheritance relationships between different kinds of `Place`.
+Fluid uses class [Place](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/place.h#L55) to represent the device memory where data is located. If we add another device, we have to add corresponding `DevicePlace`.
 
 ```
-        |   CPUPlace   --> MKLDNNPlace
-Place --|   CUDAPlace  --> CUDNNPlace
+        |   CPUPlace
+Place --|   CUDAPlace
         |   FPGAPlace
 ```
 
@@ -43,7 +44,7 @@ typedef boost::variant<CUDAPlace, CPUPlace, FPGAPlace> Place;
 
 #### DeviceContext
 
-Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L30) to manage the resources in different hardwares, such as CUDA stream in `CDUADeviceContext`. There are also inheritance relationships between different kinds of `DeviceContext`.
+Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L30) to manage the resources in different libraries, such as CUDA stream in `CDUADeviceContext`. There are also inheritance relationships between different kinds of `DeviceContext`.
 
 
 ```
@@ -106,7 +107,7 @@ template <typename Place>
 size_t Used(Place place);
 ```
 
-To implementing these interfaces, we have to implement MemoryAllocator for different Devices
+To implement these interfaces, we have to implement MemoryAllocator for different Devices.
 
 
 #### Tensor
@@ -243,6 +244,7 @@ REGISTER_OP_CUDA_KERNEL(
 Generally, we will impelement OpKernel for all Device/Library of an Operator. We can easily train a Convolutional Neural Network in GPU. However, some OpKernel is not sutibale on a specific Device. For example, crf operator can only run on CPU, whereas most other operators can run at GPU. To achieve high performance in such circumstance, we have to switch between different Device/Library.
 
 
-We will discuss how to implement an efficient OpKernel switch policy. 
+For more details, please refer to following docs:
 
-- TBD
+- operator kernel type [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md)
+- switch kernel [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md)

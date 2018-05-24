@@ -50,10 +50,14 @@ input Tensor can be either [N, 1] or [N], where N is the sum of the length
 of all sequences.
 
 The algorithm works as follows:
+
     for i-th sequence in a mini-batch:
-        $$Out(X[lod[i]:lod[i+1]], :) =
-            \frac{\exp(X[lod[i]:lod[i+1], :])}
-            {\sum(\exp(X[lod[i]:lod[i+1], :]))}$$
+
+$$
+Out(X[lod[i]:lod[i+1]], :) = \
+\frac{\exp(X[lod[i]:lod[i+1], :])} \
+{\sum(\exp(X[lod[i]:lod[i+1], :]))}
+$$
 
 For example, for a mini-batch of 3 sequences with variable-length,
 each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],

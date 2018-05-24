@@ -85,7 +85,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Score")->type()),
@@ -154,13 +154,14 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
         "Noting that reducing on the first dim will make the LoD info lost.")
         .SetDefault(0);
     AddComment(R"DOC(
-        PositiveNegativePairOp can be used to evaluate Learning To Rank(LTR) 
-        model performance. 
-        Within some context, e.g. the "query", a LTR model generates scores
-        for a list of items, which gives a partial order of the items.
-        PositiveNegativePairOp takes a list of reference rank order 
-        (Input("Label")) and the model generated scores (Input(Score)) as 
-        inputs and counts the pairs that ranked correctly and incorrectly.
+PositiveNegativePairOp can be used to evaluate Learning To Rank(LTR) model's
+performance.
+
+Within some context, e.g. the "query", a LTR model generates scores for a list
+of items, which gives a partial order of the items. PositiveNegativePairOp
+takes a list of reference rank order (Input("Label")) and the model generated
+scores (Input(Score)) as inputs and counts the pairs that ranked correctly
+and incorrectly.
 )DOC");
   }
 };

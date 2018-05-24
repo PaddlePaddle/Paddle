@@ -67,7 +67,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto stream = ctx.cuda_device_context().stream();
 
     // device id
-    int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
     for (size_t i = 0; i < ins.size(); ++i) {
@@ -120,7 +120,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
                       ctx.device_context())
                       .stream();
     // device id
-    int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
     auto ins_names = ctx.Inputs("X");
@@ -164,7 +164,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
                       ctx.device_context())
                       .stream();
     // device id
-    int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
     if (idx == root) {

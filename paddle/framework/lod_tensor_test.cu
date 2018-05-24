@@ -27,7 +27,7 @@ __global__ void test(size_t* a, int size) {
 
 TEST(LoDTensor, LoDInGPU) {
   paddle::framework::LoDTensor lod_tensor;
-  paddle::platform::GPUPlace place(0);
+  paddle::platform::CUDAPlace place(0);
 
   paddle::framework::LoD src_lod;
   src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});

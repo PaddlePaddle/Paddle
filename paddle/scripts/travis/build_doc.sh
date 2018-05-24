@@ -14,9 +14,8 @@ make -j `nproc` print_operators_doc
 paddle/pybind/print_operators_doc > doc/en/html/operators.json
 
 # check websites for broken links
-# It will be failed now!
-#linkchecker doc/en/html/index.html
-#linkchecker doc/cn/html/index.html
+linkchecker doc/en/html/index.html
+linkchecker doc/cn/html/index.html
 
 # Parse Github URL
 REPO=`git config remote.origin.url`

@@ -46,4 +46,13 @@ void LoDRankTable::Reset(const LoD& lod, size_t level) {
 }
 
 }  // namespace framework
+
+std::ostream& operator<<(std::ostream& out,
+                         const framework::LoDRankTable& table) {
+  out << "NumOfSequence " << table.items().size() << "\n";
+  for (auto& each_item : table.items()) {
+    out << "\tSeq #" << each_item.index << ", Len=" << each_item.length << "\n";
+  }
+  return out;
+}
 }  // namespace paddle

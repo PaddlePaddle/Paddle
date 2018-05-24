@@ -27,11 +27,11 @@ class ShrinkRNNMemoryOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x_var != nullptr, "Input X must be set");
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
-    size_t offset = this->GetOffset(scope, dev_ctx);
+    size_t offset = this->GetOffset(scope, place);
     auto *rank_table_var = scope.FindVar(Input("RankTable"));
     PADDLE_ENFORCE(rank_table_var != nullptr, "RankTable must be set");
     auto &rank_table = rank_table_var->Get<framework::LoDRankTable>();
@@ -93,7 +93,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");
@@ -104,6 +104,10 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
     dx_tensor.Resize(x_tensor.dims());
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.type());
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
 
     if (dout_var == nullptr) {  // dx_tensor fill zero
       math::set_constant(dev_ctx, &dx_tensor, 0.0f);
@@ -136,14 +140,14 @@ class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
     op->SetType("shrink_rnn_memory_grad");
     op->SetInput("X", Input("X"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

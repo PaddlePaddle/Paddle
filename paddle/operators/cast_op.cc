@@ -52,14 +52,14 @@ class CastOpGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto grad = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto grad = new framework::OpDesc();
     grad->SetType("cast");
     grad->SetInput("X", OutputGrad("Out"));
     grad->SetOutput("Out", InputGrad("X"));
     grad->SetAttr("out_dtype", GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", GetAttr("out_dtype"));
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 

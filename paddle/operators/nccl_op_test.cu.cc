@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/init.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/program_desc.h"
@@ -49,9 +50,9 @@ const f::DDim kDims = {100, 100};
 class NCCLTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    cpu_ctx = new p::CPUDeviceContext(p::CPUPlace());
+    paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list.size(); ++i) {
-      p::GPUPlace place(i);
+      p::CUDAPlace place(i);
       dev_ctxs.emplace_back(new p::CUDADeviceContext(place));
     }
 
@@ -65,7 +66,8 @@ class NCCLTester : public ::testing::Test {
   }
 
   void NCCLInitOp() {
-    std::unique_ptr<f::OpDescBind> op1(new f::OpDescBind);
+    paddle::platform::CPUPlace cpu_place;
+    std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
 
     op1->SetType("ncclInit");
     op1->SetOutput("Communicator", {"comm"});
@@ -76,17 +78,16 @@ class NCCLTester : public ::testing::Test {
 
     auto op = f::OpRegistry::CreateOp(*op1);
     VLOG(1) << "invoke NCCLInitOp.";
-    op->Run(g_scope, *cpu_ctx);
+    op->Run(g_scope, cpu_place);
     VLOG(1) << "NCCLInitOp finished.";
   }
 
   template <class T>
-  void PerThreadProgram(int gpu_id, const f::OpDescBind &op_desc,
-                        f::Scope *scope) {
+  void PerThreadProgram(int gpu_id, const f::OpDesc &op_desc, f::Scope *scope) {
     std::unique_lock<std::mutex> lk(mu);
-    const f::OpDescBind *op1 = &op_desc;
+    const f::OpDesc *op1 = &op_desc;
 
-    p::GPUPlace place(gpu_id);
+    p::CUDAPlace place(gpu_id);
     auto &ctx = dev_ctxs.at(gpu_id);
 
     auto *send_tensor = scope->Var("st")->GetMutable<f::LoDTensor>();
@@ -112,40 +113,39 @@ class NCCLTester : public ::testing::Test {
     VLOG(1) << "Device : " << gpu_id << " invoke " << op_desc.Type();
     VLOG(1) << " send_tensor : " << send_tensor->numel()
             << " recv_tensor : " << recv_tensor->numel();
-    op->Run(*scope, *ctx);
+    op->Run(*scope, place);
     VLOG(1) << "Device : " << gpu_id << " finished " << op_desc.Type();
   }
 
  public:
   std::vector<p::DeviceContext *> dev_ctxs;
-  p::DeviceContext *cpu_ctx;
   f::Scope g_scope;
   std::mutex mu;
 };
 
 // ncclInitOp with desc
 TEST(NCCL, ncclInitOp) {
-  std::unique_ptr<f::OpDescBind> op_desc(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op_desc(new f::OpDesc);
 
   op_desc->SetType("ncclInit");
   op_desc->SetOutput("Communicator", {"x1"});
   op_desc->SetAttr("gpus", {gpu_list});
 
   f::Scope g_scope;
-  std::unique_ptr<p::DeviceContext> ctx(new p::CPUDeviceContext(p::CPUPlace()));
+  paddle::platform::CPUPlace cpu_place;
 
   auto *var = g_scope.Var("x1");
   var->GetMutable<p::Communicator>();
 
   auto op = f::OpRegistry::CreateOp(*op_desc);
   VLOG(1) << "invoke NCCLInitOp.";
-  op->Run(g_scope, *ctx.get());
+  op->Run(g_scope, cpu_place);
   VLOG(1) << "NCCLInitOp finished.";
 }
 
 // ncclAllReduceOp with desc
 TEST_F(NCCLTester, ncclAllReduceOp) {
-  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   op2->SetType("ncclAllReduce");
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
@@ -171,7 +171,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
 
   for (size_t i = 0; i < dev_scopes.size(); ++i) {
     p::CPUPlace cpu_place;
-    p::GPUPlace gpu_place(gpu_list[i]);
+    p::CUDAPlace gpu_place(gpu_list[i]);
 
     auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<f::LoDTensor>();
     auto *rt = recv_tensor.data<float>();
@@ -180,7 +180,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
     paddle::memory::Copy(
-        cpu_place, ct, p::GPUPlace(gpu_list[i]), rt,
+        cpu_place, ct, p::CUDAPlace(gpu_list[i]), rt,
         recv_tensor.numel() * sizeof(float),
         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
 
@@ -192,7 +192,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
 
 // ncclReduceOp with desc
 TEST_F(NCCLTester, ncclReduceOp) {
-  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 0;
   op2->SetType("ncclReduce");
   op2->SetInput("X", {"st"});
@@ -219,7 +219,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
 
   p::CPUPlace cpu_place;
-  p::GPUPlace gpu_place(gpu_list[kRoot]);
+  p::CUDAPlace gpu_place(gpu_list[kRoot]);
 
   auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<f::LoDTensor>();
   auto *rt = recv_tensor.data<float>();
@@ -229,7 +229,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
   paddle::memory::Copy(
-      cpu_place, ct, p::GPUPlace(gpu_list[kRoot]), rt,
+      cpu_place, ct, p::CUDAPlace(gpu_list[kRoot]), rt,
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
 
@@ -240,7 +240,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
 
 // ncclBcastOp with desc
 TEST_F(NCCLTester, ncclBcastOp) {
-  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 5;
   op2->SetType("ncclBcast");
   op2->SetInput("X", {"st"});
@@ -268,7 +268,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
   float result = kRoot;
 
   p::CPUPlace cpu_place;
-  p::GPUPlace gpu_place(gpu_list[idx]);
+  p::CUDAPlace gpu_place(gpu_list[idx]);
 
   auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
   auto *rt = recv_tensor.data<float>();
@@ -277,7 +277,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
   paddle::memory::Copy(
-      cpu_place, ct, p::GPUPlace(gpu_list[idx]), rt,
+      cpu_place, ct, p::CUDAPlace(gpu_list[idx]), rt,
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[idx])->stream());
 
@@ -295,9 +295,18 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  for (int i = 0; i < dev_count; ++i) {
+  std::vector<paddle::platform::Place> places;
+
+  places.emplace_back(paddle::platform::CPUPlace());
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(paddle::platform::CUDAPlace(i));
     gpu_list.emplace_back(i);
   }
+
+  VLOG(0) << " DeviceCount " << count;
+  paddle::platform::DeviceContextPool::Create(places);
+
   testing::InitGoogleTest(&argc, argv);
 
   // device context should be release before scope.

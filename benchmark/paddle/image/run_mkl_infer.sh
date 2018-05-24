@@ -37,7 +37,7 @@ function infer() {
       --trainer_count=1 \
       --num_passes=1 \
       --save_dir="models/${topology}-${layer_num}" \
-      --config_args="batch_size=128,layer_num=${layer_num}" \
+      --config_args="batch_size=128,layer_num=${layer_num},num_samples=256" \
       > /dev/null 2>&1
     echo "Done"
   fi
@@ -79,8 +79,9 @@ fi
 # inference benchmark
 for use_mkldnn in True False; do
   for batchsize in 1 2 4 8 16; do
-    infer googlenet v1 $batchsize $use_mkldnn
-    infer resnet 50 $batchsize $use_mkldnn
     infer vgg 19 $batchsize $use_mkldnn
+    infer resnet 50 $batchsize $use_mkldnn
+    infer googlenet v1 $batchsize $use_mkldnn
+    infer alexnet 2 $batchsize $use_mkldnn
   done
 done

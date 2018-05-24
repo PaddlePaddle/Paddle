@@ -19,7 +19,12 @@ package sendrecv;
 service SendRecvService {
   // For parameter server round-robin like hashing, do not split tensors.
   // Send and recv only one tensor
-  rpc SendVariable(VariableMessage) returns (VariableMessage) {}
+  // TODO(typhoonzero): add streaming API
+  rpc SendVariable(VariableMessage) returns (VoidMessage) {}
+  // Argument VariableMessage for GetVariable should only contain varname.
+  rpc GetVariable(VariableMessage) returns (VariableMessage) {}
+  // wait for one execution of the program
+  rpc Wait(VoidMessage) returns (VoidMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.

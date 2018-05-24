@@ -18,29 +18,27 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-proto::VarDesc::VarType VarDescBind::GetType() const { return desc_.type(); }
+proto::VarDesc::VarType VarDesc::GetType() const { return desc_.type(); }
 
-void VarDescBind::SetType(proto::VarDesc::VarType type) {
-  desc_.set_type(type);
-}
+void VarDesc::SetType(proto::VarDesc::VarType type) { desc_.set_type(type); }
 
-void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
+void VarDesc::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, mutable_tensor_desc()->mutable_dims());
 }
 
-void VarDescBind::SetDataType(proto::DataType data_type) {
+void VarDesc::SetDataType(proto::DataType data_type) {
   mutable_tensor_desc()->set_data_type(data_type);
 }
 
-std::vector<int64_t> VarDescBind::Shape() const {
+std::vector<int64_t> VarDesc::Shape() const {
   return RepeatedToVector(tensor_desc().dims());
 }
 
-proto::DataType VarDescBind::GetDataType() const {
+proto::DataType VarDesc::GetDataType() const {
   return tensor_desc().data_type();
 }
 
-void VarDescBind::SetLoDLevel(int32_t lod_level) {
+void VarDesc::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type()) {
     case proto::VarDesc::LOD_TENSOR:
       desc_.mutable_lod_tensor()->set_lod_level(lod_level);
@@ -54,7 +52,7 @@ void VarDescBind::SetLoDLevel(int32_t lod_level) {
   }
 }
 
-int32_t VarDescBind::GetLodLevel() const {
+int32_t VarDesc::GetLodLevel() const {
   switch (desc_.type()) {
     case proto::VarDesc::LOD_TENSOR:
       return desc_.lod_tensor().lod_level();
@@ -66,7 +64,7 @@ int32_t VarDescBind::GetLodLevel() const {
   }
 }
 
-const proto::TensorDesc &VarDescBind::tensor_desc() const {
+const proto::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE(desc_.has_type(), "invoke TensorDesc must after set type");
   switch (desc_.type()) {
     case proto::VarDesc::SELECTED_ROWS:
@@ -80,7 +78,7 @@ const proto::TensorDesc &VarDescBind::tensor_desc() const {
   }
 }
 
-proto::TensorDesc *VarDescBind::mutable_tensor_desc() {
+proto::TensorDesc *VarDesc::mutable_tensor_desc() {
   PADDLE_ENFORCE(desc_.has_type(),
                  "invoke MutableTensorDesc must after set type");
   switch (desc_.type()) {

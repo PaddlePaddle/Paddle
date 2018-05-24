@@ -36,7 +36,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -130,7 +130,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
     // Allocate on GPU memory
-    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv forward ---------------------
     T alpha = 1.0f, beta = 0.0f;
@@ -151,7 +151,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -277,7 +277,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     // Already on GPU
     void* cudnn_workspace = nullptr;
-    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     T alpha = 1.0f, beta = 0.0f;

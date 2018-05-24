@@ -80,20 +80,20 @@ TEST(Tensor, MutableData) {
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), GPUPlace());
+    p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), CUDAPlace());
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), GPUPlace());
+    p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), CUDAPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1, p2);
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(make_ddim({2, 2, 3}), GPUPlace());
+    p1 = src_tensor.mutable_data<float>(make_ddim({2, 2, 3}), CUDAPlace());
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), GPUPlace());
+    p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CUDAPlace());
     EXPECT_EQ(p1, p2);
   }
 #endif
@@ -130,7 +130,7 @@ TEST(Tensor, ShareDataWith) {
   {
     Tensor src_tensor;
     Tensor dst_tensor;
-    src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
+    src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CUDAPlace());
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
@@ -166,7 +166,7 @@ TEST(Tensor, Slice) {
 #ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
-    src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
+    src_tensor.mutable_data<double>(make_ddim({6, 9}), CUDAPlace());
     Tensor slice_tensor = src_tensor.Slice(2, 6);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
@@ -176,11 +176,11 @@ TEST(Tensor, Slice) {
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<double>());
     uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
-        src_tensor.mutable_data<double>(src_tensor.dims(), GPUPlace()));
+        src_tensor.mutable_data<double>(src_tensor.dims(), CUDAPlace()));
     uintptr_t slice_data_address =
         reinterpret_cast<uintptr_t>(slice_tensor.data<double>());
     uintptr_t slice_mutable_data_address = reinterpret_cast<uintptr_t>(
-        slice_tensor.mutable_data<double>(slice_tensor.dims(), GPUPlace()));
+        slice_tensor.mutable_data<double>(slice_tensor.dims(), CUDAPlace()));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     EXPECT_EQ(slice_data_address, slice_mutable_data_address);
     EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);

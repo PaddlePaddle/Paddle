@@ -27,7 +27,7 @@ class TestOptimizer(unittest.TestCase):
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
-        opts = sgd_optimizer.minimize(mean_out, init_program)
+        opts, _ = sgd_optimizer.minimize(mean_out, init_program)
         self.assertEqual(len(opts), 1)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
@@ -57,7 +57,7 @@ class TestOptimizer(unittest.TestCase):
         learning_rate = 0.01
         sgd_optimizer = optimizer.SGDOptimizer(
             learning_rate=learning_rate, global_step=global_step)
-        opts = sgd_optimizer.minimize(mean_out, init_program)
+        opts, _ = sgd_optimizer.minimize(mean_out, init_program)
         self.assertEqual(len(opts), 2)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")

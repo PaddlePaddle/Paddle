@@ -41,7 +41,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
@@ -98,7 +98,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
@@ -108,8 +108,8 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
 class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);

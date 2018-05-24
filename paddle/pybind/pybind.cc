@@ -79,7 +79,7 @@ PYBIND11_PLUGIN(core) {
              self.Resize(make_ddim(dim));
            })
       .def("alloc_float",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
@@ -91,7 +91,7 @@ PYBIND11_PLUGIN(core) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("set", PyCPUTensorSetFromArray<float>)
@@ -266,36 +266,36 @@ All parameter, weight, gradient are variables in Paddle.
     return ret_values;
   });
   m.def("get_grad_op_descs",
-        [](const OpDescBind &op_desc,
+        [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
            std::unordered_map<std::string, std::string> &grad_to_var,
-           const std::vector<BlockDescBind *> &grad_sub_block) {
-          std::vector<std::unique_ptr<OpDescBind>> grad_op_descs =
+           const std::vector<BlockDesc *> &grad_sub_block) {
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
               framework::OpInfoMap::Instance()
                   .Get(op_desc.Type())
                   .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
                                  grad_sub_block);
-          std::vector<OpDescBind *> grad_op_desc_ptrs(grad_op_descs.size());
+          std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(), grad_op_descs.end(),
               grad_op_desc_ptrs.begin(),
-              [](std::unique_ptr<OpDescBind> &p) { return p.release(); });
+              [](std::unique_ptr<OpDesc> &p) { return p.release(); });
           return grad_op_desc_ptrs;
         });
-  m.def("prune", [](const ProgramDescBind &origin,
+  m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
-    ProgramDescBind prog_with_targets(origin);
+    ProgramDesc prog_with_targets(origin);
     for (const auto &t : targets) {
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
     proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
-    return new ProgramDescBind(pruned_desc);
+    return new ProgramDesc(pruned_desc);
   });
-  m.def("inference_optimize", [](ProgramDescBind &origin) {
+  m.def("inference_optimize", [](ProgramDesc &origin) {
     proto::ProgramDesc pruned_desc;
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
-    return new ProgramDescBind(pruned_desc);
+    return new ProgramDesc(pruned_desc);
   });
   m.def_submodule(
        "var_names",
@@ -310,10 +310,10 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CPUDeviceContext();
                   })
       .def_static("create",
-                  [](paddle::platform::GPUPlace& place)
+                  [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
+                    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
@@ -323,9 +323,9 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::GPUPlace>(m, "GPUPlace")
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
       .def(py::init<int>())
-      .def("__str__", string::to_string<const platform::GPUPlace &>);
+      .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())
@@ -338,7 +338,7 @@ All parameter, weight, gradient are variables in Paddle.
              self = cpu_place;
            })
       .def("set_place",
-           [](platform::Place &self, const platform::GPUPlace &gpu_place) {
+           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
            });
 
@@ -360,10 +360,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::DeviceContext &dev_ctx) {
-             self.Run(scope, dev_ctx);
-             dev_ctx.Wait();
-           })
+              const platform::CPUPlace &place) { self.Run(scope, place); })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::CUDAPlace &place) { self.Run(scope, place); })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -417,7 +417,7 @@ All parameter, weight, gradient are variables in Paddle.
            });
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<std::vector<platform::Place> &>())
+      .def(py::init<const platform::Place &>())
       .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);

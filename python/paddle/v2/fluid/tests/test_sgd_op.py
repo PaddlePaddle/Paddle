@@ -55,8 +55,7 @@ class TestSparseSGDOp(unittest.TestCase):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate')
-        ctx = core.DeviceContext.create(place)
-        sgd_op.run(scope, ctx)
+        sgd_op.run(scope, place)
 
         # get and compare result
         result_array = np.array(param)
@@ -79,7 +78,7 @@ class TestSparseSGDOp(unittest.TestCase):
     def test_sparse_sgd(self):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
 

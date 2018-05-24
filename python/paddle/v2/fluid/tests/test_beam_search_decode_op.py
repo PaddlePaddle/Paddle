@@ -57,8 +57,7 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
             SentenceIds="sentence_ids",
             SentenceScores="sentence_scores")
 
-        ctx = core.DeviceContext.create(self.cpu_place)
-        beam_search_decode_op.run(self.scope, ctx)
+        beam_search_decode_op.run(self.scope, self.cpu_place)
 
         expected_lod = [[0, 4, 8], [0, 1, 3, 6, 9, 10, 13, 16, 19]]
         self.assertEqual(sentence_ids.lod(), expected_lod)

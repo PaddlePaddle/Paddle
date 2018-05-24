@@ -22,6 +22,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 
+#include "paddle/platform/macros.h"
 #include "paddle/string/printf.h"
 #include "paddle/string/to_string.h"
 

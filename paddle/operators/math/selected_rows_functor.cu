@@ -58,15 +58,15 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE(platform::is_gpu_place(out_place));
 
     memory::Copy(
-        boost::get<platform::GPUPlace>(out_place), out_data,
-        boost::get<platform::GPUPlace>(in1_place), in1_data,
+        boost::get<platform::CUDAPlace>(out_place), out_data,
+        boost::get<platform::CUDAPlace>(in1_place), in1_data,
         in1_value.numel() * sizeof(T),
         reinterpret_cast<const platform::CUDADeviceContext&>(context).stream());
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(boost::get<platform::GPUPlace>(out_place),
+    memory::Copy(boost::get<platform::CUDAPlace>(out_place),
                  out_data + in1_value.numel(),
-                 boost::get<platform::GPUPlace>(in2_place), in2_data,
+                 boost::get<platform::CUDAPlace>(in2_place), in2_data,
                  in2_value.numel() * sizeof(T), context.stream());
   }
 };
@@ -160,9 +160,9 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(boost::get<platform::GPUPlace>(in2_place),
+    memory::Copy(boost::get<platform::CUDAPlace>(in2_place),
                  in2_data + input2_offset,
-                 boost::get<platform::GPUPlace>(in1_place), in1_data,
+                 boost::get<platform::CUDAPlace>(in1_place), in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
   }
 };

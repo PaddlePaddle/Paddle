@@ -208,7 +208,7 @@ class TestBatchNormOp(OpTest):
         print 'python: NHWC, NCHW, backward checking passed'
 
     def test_forward_backward(self):
-        def test_with_place(place, tensor_format, shape):
+        def test_with_place(place, data_layout, shape):
             # attr
             epsilon = 0.00001
             momentum = 0.9
@@ -292,12 +292,11 @@ class TestBatchNormOp(OpTest):
                 SavedVariance="saved_variance",
                 # attrs
                 is_test=False,
-                tensor_format=tensor_format,
+                data_layout=data_layout,
                 momentum=momentum,
                 epsilon=epsilon)
 
-            ctx = core.DeviceContext.create(place)
-            batch_norm_op.run(scope, ctx)
+            batch_norm_op.run(scope, place)
 
             # check forward result
             self.__assert_close(y_tensor, y_out, "y_out")
@@ -305,13 +304,13 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(saved_variance_tensor, saved_variance,
                                 "saved_variance")
             self.__assert_close(mean_out_tensor, mean_out, "mean_out")
-            if isinstance(place, core.GPUPlace):
+            if isinstance(place, core.CUDAPlace):
                 atol = 5e-2
             else:
                 atol = 1e-4
             self.__assert_close(variance_out_tensor, variance_out,
                                 "variance_out", atol)
-            print "op test forward passed: ", str(place), tensor_format
+            print "op test forward passed: ", str(place), data_layout
 
             # run backward
             batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
@@ -320,7 +319,7 @@ class TestBatchNormOp(OpTest):
                 ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
                 place,
                 feed_dict={"y_out": y_grad})
-            batch_norm_op_grad.run(scope, ctx)
+            batch_norm_op_grad.run(scope, place)
 
             x_grad_tensor = create_or_get_tensor(scope,
                                                  grad_var_name("x_val"), None,
@@ -336,11 +335,15 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
             self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
             self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
-            print "op test backward passed: ", str(place), tensor_format
+            print "op test backward passed: ", str(place), data_layout
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu("batch_norm"):
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
+
+            core.init_devices(["CPU", "GPU:0"])
+        else:
+            core.init_devices(["CPU"])
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 test_with_place(place, data_format, [2, 3, 4, 5])

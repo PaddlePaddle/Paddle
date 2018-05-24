@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_USE_EIGEN_FOR_BLAS
+#include "paddle/function/EigenDevice.h"
+#endif
 #include "GemmFunctor.h"
 #include "paddle/math/MathFunctions.h"
 
@@ -33,8 +36,15 @@ struct BlasGemm<DEVICE_TYPE_CPU, T> {
                       T* C,
                       const int ldc) {
 #ifdef PADDLE_USE_EIGEN_FOR_BLAS
-    EigenBlasGemm<T>::compute(
-        transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+#ifdef EIGEN_USE_THREADS
+    const Eigen::ThreadPoolDevice& device = GetThreadPoolDevice();
+    EigenBlasGemm<Eigen::ThreadPoolDevice, T>::compute(
+        transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc, device);
+#else
+    const Eigen::DefaultDevice device;
+    EigenBlasGemm<Eigen::DefaultDevice, T>::compute(
+        transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc, device);
+#endif
 #else
     gemm<T>(transA == false ? CblasNoTrans : CblasTrans,
             transB == false ? CblasNoTrans : CblasTrans,

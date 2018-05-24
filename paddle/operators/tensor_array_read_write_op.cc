@@ -25,11 +25,11 @@ class WriteToArrayOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
-    size_t offset = GetOffset(scope, dev_ctx);
+    size_t offset = GetOffset(scope, place);
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
@@ -39,7 +39,11 @@ class WriteToArrayOp : public ArrayOp {
     }
     if (x_tensor.memory_size() > 0) {
       auto *out_tensor = &out->at(offset);
-      CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx, out_tensor);
+
+      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+      auto &dev_ctx = *pool.Borrow(place);
+
+      CopyFrom(x_tensor, place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_tensor.lod());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
@@ -96,8 +100,8 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
 
 class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto x_name = op_desc.Input("X")[0];
     auto out_name = op_desc.Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
@@ -119,17 +123,18 @@ class ReadFromArrayOp : public ArrayOp {
                   const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x != nullptr, "X must be set");
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
-    size_t offset = GetOffset(scope, dev_ctx);
+    size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
-                          out_tensor);
+      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+      auto &dev_ctx = *pool.Borrow(place);
+      framework::CopyFrom(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();
@@ -175,14 +180,14 @@ class WriteToArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -191,14 +196,14 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("write_to_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

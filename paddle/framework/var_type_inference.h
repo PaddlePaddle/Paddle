@@ -21,8 +21,7 @@ namespace framework {
 class VarTypeInference {
  public:
   virtual ~VarTypeInference() {}
-  virtual void operator()(const OpDescBind& op_desc,
-                          BlockDescBind* block) const = 0;
+  virtual void operator()(const OpDesc& op_desc, BlockDesc* block) const = 0;
 };
 
 }  // namespace framework

@@ -65,8 +65,7 @@ class TestCondOp(unittest.TestCase):
         self.create_global_variables()
         self.create_cond_op()
         self.create_sub_net()
-        ctx = core.DeviceContext.create(core.CPUPlace())
-        self.condop.run(self.scope, ctx)
+        self.condop.run(self.scope, core.CPUPlace())
         return np.array(self.scope.find_var("Out").get_tensor())
 
     def create_global_variables(self):

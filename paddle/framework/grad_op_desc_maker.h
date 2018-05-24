@@ -22,21 +22,27 @@
 namespace paddle {
 namespace framework {
 
+/*
+  This functor class is responsible for creating the gradient ops for the given
+  operator fwd_op. After it is called (through operator()), the pairs of
+  (gradient variable, corresponding input variable of fwd_op) will be added to
+  grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
+  gradient varialbe will be ignored or kEmptyVarName depending on the template
+  argument DropEmptyIG in the derived classes.
+ */
 class GradOpDescMakerBase {
  public:
   explicit GradOpDescMakerBase(
-      const OpDescBind& fwd_op,
-      const std::unordered_set<std::string>& no_grad_set,
+      const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
-      const std::vector<BlockDescBind*>& grad_block =
-          std::vector<BlockDescBind*>())
+      const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>())
       : fwd_op_(fwd_op),
         no_grad_set_(no_grad_set),
         grad_to_var_(grad_to_var),
         grad_block_(grad_block) {}
 
   virtual ~GradOpDescMakerBase() = default;
-  virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
+  virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
  protected:
   std::vector<std::string> InputGrad(const std::string& name,
@@ -58,6 +64,16 @@ class GradOpDescMakerBase {
     if (!drop_empty_grad) {
       return ret_val;
     }
+    PADDLE_ENFORCE_LE(var_names.size(), 1UL,
+                      "BUG from operator developer:"
+                      " for input argument with a list of variables, "
+                      " drop_empty_grad is not allowed because it makes"
+                      " the correspondence bewteen a variable and its gradient"
+                      " ambiguous. Use REGISTER_OP_EX to register the op"
+                      " or call InputGrad(?,false) in GradOpDescMaker."
+                      " Op type %s",
+                      fwd_op_.Type());
+
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
     std::copy_if(ret_val.begin(), ret_val.end(),
@@ -105,26 +121,26 @@ class GradOpDescMakerBase {
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  private:
-  const OpDescBind& fwd_op_;
+  const OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
 
  protected:
-  std::vector<BlockDescBind*> grad_block_;
+  std::vector<BlockDesc*> grad_block_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDescBind>> operator()() const {
-    std::vector<std::unique_ptr<OpDescBind>> retv;
+  std::vector<std::unique_ptr<OpDesc>> operator()() const {
+    std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(this->Apply());
     return retv;
   }
 
  protected:
-  virtual std::unique_ptr<OpDescBind> Apply() const = 0;
+  virtual std::unique_ptr<OpDesc> Apply() const = 0;
 };
 
 template <bool DropEmptyIG = true>
@@ -133,8 +149,8 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
   using SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<OpDescBind> Apply() const {
-    auto* grad = new OpDescBind();
+  virtual std::unique_ptr<OpDesc> Apply() const {
+    auto* grad = new OpDesc();
     grad->SetType(this->GradOpType());
 
     for (auto& input_param : this->InputNames()) {
@@ -150,7 +166,7 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
     grad->SetAttrMap(this->Attrs());
 
-    return std::unique_ptr<OpDescBind>(grad);
+    return std::unique_ptr<OpDesc>(grad);
   }
 
   virtual std::string GradOpType() const {
@@ -161,7 +177,7 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 class EmptyGradOpMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
-  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const override {
     return {};
   }
 };

@@ -33,8 +33,7 @@ class SumOpMaker : public OpProtoAndCheckerMaker {
 
 class SumOpVarTypeInference : public VarTypeInference {
  public:
-  void operator()(const OpDescBind &op_desc,
-                  BlockDescBind *block) const override {
+  void operator()(const OpDesc &op_desc, BlockDesc *block) const override {
     auto &inputs = op_desc.Input("X");
     auto default_var_type = proto::VarDesc::SELECTED_ROWS;
 
@@ -62,7 +61,7 @@ namespace paddle {
 namespace framework {
 
 TEST(InferVarType, sum_op) {
-  ProgramDescBind prog;
+  ProgramDesc prog;
   auto *op = prog.MutableBlock(0)->AppendOp();
   op->SetType("sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
@@ -85,7 +84,7 @@ TEST(InferVarType, sum_op) {
 }
 
 TEST(InferVarType, sum_op_without_infer_var_type) {
-  ProgramDescBind prog;
+  ProgramDesc prog;
   auto *op = prog.MutableBlock(0)->AppendOp();
   op->SetType("sum_without_infer_var_type");
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});

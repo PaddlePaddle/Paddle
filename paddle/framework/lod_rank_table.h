@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+#include <iosfwd>
 #include "paddle/framework/lod_tensor.h"
 
 namespace paddle {
@@ -52,4 +53,8 @@ class LoDRankTable {
 };
 
 }  // namespace framework
+
+std::ostream& operator<<(std::ostream& out,
+                         const framework::LoDRankTable& table);
+
 }  // namespace paddle

@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -27,11 +28,16 @@ class ArrayOp : public framework::OperatorBase {
 
  protected:
   size_t GetOffset(const framework::Scope &scope,
-                   const platform::DeviceContext &dev_ctx) const {
+                   const platform::Place &place) const {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE(i != nullptr, "I must be set");
     auto &i_tensor = i->Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(i_tensor.numel(), 1);
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
     size_t offset;
     if (platform::is_gpu_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU

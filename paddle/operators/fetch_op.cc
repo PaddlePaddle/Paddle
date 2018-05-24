@@ -14,6 +14,7 @@
 
 #include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +27,7 @@ class FetchOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto fetch_var_name = Input("X");
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE(fetch_var != nullptr,
@@ -51,6 +52,9 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
     CopyFrom(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
     dev_ctx.Wait();
     dst_item.set_lod(src_item.lod());

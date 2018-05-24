@@ -61,17 +61,6 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
-  template <typename OpType, typename ProtoMakerType, typename GradOpType>
-  static void RegisterOp(const std::string& op_type,
-                         const std::string& grad_op_type) {
-    OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
-    reg.info.grad_op_type_ = grad_op_type;
-    // register gradient op
-    if (!grad_op_type.empty()) {
-      OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
-    }
-  }
-
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
@@ -79,7 +68,7 @@ class OpRegistry {
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
@@ -126,6 +115,14 @@ class OpKernelRegistrar : public Registrar {
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
+/*
+  The variadic arguments should be class types derived from one of the
+  following classes:
+    OpProtoAndCheckerMaker
+    GradOpDescMakerBase
+    VarTypeInference
+    InferShapeBase
+*/
 #define REGISTER_OPERATOR(op_type, op_class, ...)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       __reg_op__##op_type,                                             \
@@ -144,20 +141,29 @@ class OpKernelRegistrar : public Registrar {
   }
 
 /**
- * Macro to register Operator.
+ * Macro to register Operator. When the input is duplicable, you should
+ * use REGISTER_OP_EX with deop_empty_grad=false instead.
  */
-#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type,       \
-                    grad_op_class)                                         \
-  REGISTER_OPERATOR(grad_op_type, grad_op_class);                          \
-  class _GradOpDescMaker_##grad_op_type##_                                 \
-      : public ::paddle::framework::DefaultGradOpDescMaker<true> {         \
-    using ::paddle::framework::DefaultGradOpDescMaker<                     \
-        true>::DefaultGradOpDescMaker;                                     \
-                                                                           \
-   protected:                                                              \
-    virtual std::string GradOpType() const { return #grad_op_type; }       \
-  };                                                                       \
-  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_, \
+#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type, \
+                    grad_op_class)                                   \
+  REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,    \
+                 grad_op_class, true)
+
+// When an argument is duplicable, we need to use this version.
+// Perhaps we can omit DropEmptyIG template parameter and
+// only have one version of REGISTER_OP.
+#define REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,       \
+                       grad_op_class, drop_empty_grad)                        \
+  REGISTER_OPERATOR(grad_op_type, grad_op_class);                             \
+  class _GradOpDescMaker_##grad_op_type##_                                    \
+      : public ::paddle::framework::DefaultGradOpDescMaker<drop_empty_grad> { \
+    using ::paddle::framework::DefaultGradOpDescMaker<                        \
+        drop_empty_grad>::DefaultGradOpDescMaker;                             \
+                                                                              \
+   protected:                                                                 \
+    virtual std::string GradOpType() const { return #grad_op_type; }          \
+  };                                                                          \
+  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_,    \
                     op_maker_class);
 
 #define REGISTER_OP_WITH_KERNEL(op_type, ...)                         \
@@ -182,7 +188,7 @@ class OpKernelRegistrar : public Registrar {
   }
 
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::GPUPlace, __VA_ARGS__)
+  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)

@@ -21,7 +21,7 @@ USE_NO_KERNEL_OP(load);
 TEST(SaveLoadOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
-  paddle::platform::CPUDeviceContext ctx(place);
+
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
   tensor->Resize({10, 10});
@@ -42,13 +42,13 @@ TEST(SaveLoadOp, CPU) {
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save", {{"X", {"test_var"}}}, {}, attrs);
-  save_op->Run(scope, ctx);
+  save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
   auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
-  load_op->Run(scope, ctx);
+  load_op->Run(scope, place);
   int* actual = target->data<int>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], actual[i]);

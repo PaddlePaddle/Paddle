@@ -194,3 +194,9 @@ class LayerHelper(object):
         else:
             # For integer and boolean types, initialize with all zeros
             return Constant()
+
+    def is_instance(self, param_name, cls):
+        param = self.kwargs.get(param_name, None)
+        if not isinstance(param, cls):
+            raise TypeError("The input {0} parameter of method {1} must be {2}",
+                            param_name, self.layer_type, cls.__name__)

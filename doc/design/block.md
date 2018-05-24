@@ -291,10 +291,10 @@ public:
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& place) const override {
     PADDLE_ENFORCE(symbols_ready_, "operators and variables should be created first.");
     for (auto& op : runtime_table_.ops()) {
-      op->Run(scope, dev_ctx);
+      op->Run(scope, place);
     }
   }
 

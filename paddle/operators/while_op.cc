@@ -40,13 +40,14 @@ class WhileOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
-    framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    framework::Executor executor(dev_place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+
     auto *program = block->Program();
 
     auto step_scopes =
@@ -82,8 +83,8 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
               "(StepScopeVar) A vector of local scope, which size equals the "
               "step number of While Op. The i'th scope storages temporary "
               "variables generated in the i'th step.");
-    AddAttr<framework::BlockDescBind *>(kStepBlock,
-                                        "The step block inside WhileOp");
+    AddAttr<framework::BlockDesc *>(kStepBlock,
+                                    "The step block inside WhileOp");
     AddComment(R"DOC(
 )DOC");
   }
@@ -97,9 +98,9 @@ class WhileGradOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
-    framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+           const platform::Place &dev_place) const override {
+    framework::Executor executor(dev_place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     auto *step_scopes =
@@ -189,7 +190,7 @@ class WhileGradOp : public framework::OperatorBase {
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {pg_names[param_id]}}}, attrs);
-            zero_op->Run(scope, dev_ctx);
+            zero_op->Run(scope, dev_place);
           }
         }
 
@@ -197,7 +198,7 @@ class WhileGradOp : public framework::OperatorBase {
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
-        sum_op->Run(cur_scope, dev_ctx);
+        sum_op->Run(cur_scope, dev_place);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
     }
@@ -209,8 +210,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad = new framework::OpDesc();
     grad->SetType("while_grad");
     grad->SetInput(kParameters, Input(kParameters));
 
@@ -279,14 +280,14 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     grad->SetAttr("original_output_grad", extra_inputs_list);
 
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto p_names = op_desc.Input(kParameters);
     auto pg_names = op_desc.Output(framework::GradVarName(kParameters));
 

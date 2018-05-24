@@ -16,7 +16,7 @@
 
 REGISTER_OP_CUDA_KERNEL(
     reshape,
-    paddle::operators::ReshapeKernel<paddle::platform::GPUPlace, float>);
+    paddle::operators::ReshapeKernel<paddle::platform::CUDAPlace, float>);
 REGISTER_OP_CUDA_KERNEL(
     reshape_grad,
-    paddle::operators::ReshapeGradKernel<paddle::platform::GPUPlace, float>);
+    paddle::operators::ReshapeGradKernel<paddle::platform::CUDAPlace, float>);

@@ -21,8 +21,6 @@ class CudnnConv2DTransposeOpMaker : public Conv2DTransposeOpMaker {
  public:
   CudnnConv2DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv2DTransposeOpMaker(proto, op_checker) {
-    AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
-        .SetDefault({1, 1});
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "
@@ -37,8 +35,6 @@ class CudnnConv3DTransposeOpMaker : public Conv3DTransposeOpMaker {
  public:
   CudnnConv3DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv3DTransposeOpMaker(proto, op_checker) {
-    AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
-        .SetDefault({1, 1, 1});
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "

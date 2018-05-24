@@ -17,6 +17,10 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
+USE_CPU = core.kUseCPU()
+USE_CUDNN = core.kUseMKLDNN()
+USE_MKLDNN = core.kUseMKLDNN()
+
 
 def grad_var_name(var_name):
     """
@@ -359,6 +363,10 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
+        # for clone a new operator
+        self.inputs = inputs
+        self.outputs = outputs
+        self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -389,7 +397,10 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        in_arg_names.append(arg.name)
+                        if isinstance(arg, basestring):
+                            in_arg_names.append(arg)
+                        else:
+                            in_arg_names.append(arg.name)
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -430,13 +441,18 @@ class Operator(object):
                     continue
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                elif isinstance(attrs[attr_name], core.BlockDesc) or \
+                   isinstance(attrs[attr_name], core.ProgramDesc):
+                    self.desc.set_serialized_attr(
+                        attr_name, attrs[attr_name].serialize_to_string())
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
-            'rnn_memory_helper_grad', 'conditional_block', 'while'
+            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
+            'recv'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -582,6 +598,7 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+        self.removed_vars = dict()
 
     def __str__(self):
         return self.to_string(True)
@@ -637,6 +654,16 @@ class Block(object):
         op = Operator(self, op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
+
+    def delete_ops(self, ops):
+        # remove from cpp
+        # FIXME(typhoonzero): remove only the first occuracy.
+        try:
+            start = list(self.ops).index(ops[0])
+            end = list(self.ops).index(ops[-1])
+        except Exception, e:
+            raise e
+        self.desc.remove_op(start, end)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()

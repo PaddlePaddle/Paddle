@@ -82,7 +82,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
 
 #ifdef PADDLE_WITH_CUDA
 
-size_t align(size_t size, paddle::platform::GPUPlace place) {
+size_t align(size_t size, paddle::platform::CUDAPlace place) {
   size += sizeof(paddle::memory::detail::Metadata);
   size_t alignment = paddle::platform::GpuMinChunkSize();
   size_t remaining = size % alignment;
@@ -94,7 +94,7 @@ TEST(BuddyAllocator, GPUAllocation) {
 
   EXPECT_EQ(p, nullptr);
 
-  paddle::platform::GPUPlace gpu(0);
+  paddle::platform::CUDAPlace gpu(0);
   p = paddle::memory::Alloc(gpu, 4096);
 
   EXPECT_NE(p, nullptr);
@@ -103,7 +103,7 @@ TEST(BuddyAllocator, GPUAllocation) {
 }
 
 TEST(BuddyAllocator, GPUMultAlloc) {
-  paddle::platform::GPUPlace gpu;
+  paddle::platform::CUDAPlace gpu;
 
   std::unordered_map<void *, size_t> ps;
 

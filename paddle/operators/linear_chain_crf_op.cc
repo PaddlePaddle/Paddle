@@ -183,7 +183,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of linear_chain_crf
   // is determined by its input "Emission".
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
@@ -242,7 +242,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of output of the linear_chain_crf_grad
   // operator is determined by its input: gradients of LogLikelihood.
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(

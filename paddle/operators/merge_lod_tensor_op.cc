@@ -28,7 +28,11 @@ class MergeLoDTensorOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(dev_place);
+
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     auto &in_true = scope.FindVar(Input("InTrue"))->Get<framework::LoDTensor>();
@@ -161,15 +165,15 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("split_lod_tensor");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetInput("Mask", Input("Mask"));
     grad_op->SetOutput("OutTrue", InputGrad("InTrue"));
     grad_op->SetOutput("OutFalse", InputGrad("InFalse"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

@@ -227,14 +227,15 @@ class RecurrentOp : public RecurrentBase {
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
     VLOG(3) << "Static RNN input sequence length = " << seq_len;
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
 
-    framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    framework::Executor executor(place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+
     auto *program = block->Program();
 
     for (size_t i = 0; i < seq_len; ++i) {
@@ -270,6 +271,10 @@ class RecurrentOp : public RecurrentBase {
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/);
 
+      // get device context from pool
+      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+      auto &dev_ctx = *pool.Borrow(place);
+
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
       this->LinkTensorWithCallback(
@@ -278,14 +283,13 @@ class RecurrentOp : public RecurrentBase {
               framework::LoDTensor *dst_tensor) {
             if (i == 0) {  // create output tensor at begin
               dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
-              dst_tensor->mutable_data(dev_ctx.GetPlace(), src_tensor.type());
+              dst_tensor->mutable_data(place, src_tensor.type());
             }
 
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
-            framework::CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx,
-                                &dst_out);
+            framework::CopyFrom(src_tensor, place, dev_ctx, &dst_out);
           });
 
       scopes.Next();
@@ -311,14 +315,19 @@ class RecurrentGradOp : public RecurrentBase {
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
 
-    framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    framework::Executor executor(place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+
     auto *program = block->Program();
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
@@ -366,8 +375,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto *cur_grad_var = cur_scope.Var(cur_grad);
           auto cur_grad_tensor =
               cur_grad_var->GetMutable<framework::LoDTensor>();
-          framework::CopyFrom(ex_tensor, dev_ctx.GetPlace(), dev_ctx,
-                              cur_grad_tensor);
+          framework::CopyFrom(ex_tensor, place, dev_ctx, cur_grad_tensor);
         }
       }
 
@@ -410,7 +418,7 @@ class RecurrentGradOp : public RecurrentBase {
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {pg_names[param_id]}}}, attrs);
-            zero_op->Run(scope, dev_ctx);
+            zero_op->Run(scope, place);
           }
 
           auto new_inside_name = cur_scope.Rename(inside_grad_name);
@@ -419,7 +427,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
               {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
-          sum_op->Run(cur_scope, dev_ctx);
+          sum_op->Run(cur_scope, place);
 
           cur_scope.Rename(new_inside_name, inside_grad_name);
         }
@@ -437,11 +445,11 @@ class RecurrentGradOp : public RecurrentBase {
             }
             if (step_id == 0) {  // alloc memory
               outside->Resize(PrependDims(seq_len, inside.dims()));
-              outside->mutable_data(dev_ctx.GetPlace(), inside.type());
+              outside->mutable_data(place, inside.type());
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
-            framework::CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx, &dst);
+            framework::CopyFrom(inside, place, dev_ctx, &dst);
           });
       VLOG(5) << "Link outside gradient finished ";
 
@@ -453,8 +461,8 @@ class RecurrentGradOp : public RecurrentBase {
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
-              outside->mutable_data(dev_ctx.GetPlace(), inside.type());
-              framework::CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx, outside);
+              outside->mutable_data(place, inside.type());
+              framework::CopyFrom(inside, place, dev_ctx, outside);
             });
         VLOG(5) << "Link initialize state gradient finished ";
       }
@@ -522,8 +530,7 @@ The ex-state means the state value in the ex-timestep or the previous time step
         string::Sprintf(
             "The state variable names. [%s, %s, %s] must be the same order",
             kExStates, kStates, kInitStateGrads));
-    AddAttr<framework::BlockDescBind *>(kStepBlock,
-                                        "The step block inside RNN");
+    AddAttr<framework::BlockDesc *>(kStepBlock, "The step block inside RNN");
     AddAttr<bool>(kReverse, R"DOC(Calculate RNN reversely or not.
 By default reverse=False
 
@@ -565,13 +572,13 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<framework::OpDescBind> Apply() const {
-    auto *grad = new framework::OpDescBind();
+  virtual std::unique_ptr<framework::OpDesc> Apply() const {
+    auto *grad = new framework::OpDesc();
     grad->SetType("recurrent_grad");
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
       grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param));
+                      this->InputGrad(input_param, false));
     }
 
     for (auto &output_param : this->OutputNames()) {
@@ -588,7 +595,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
 
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 

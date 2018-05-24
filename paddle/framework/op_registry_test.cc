@@ -8,8 +8,7 @@ namespace framework {
 class CosineOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+  void Run(const Scope& scope, const platform::Place& place) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -28,8 +27,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+  void Run(const Scope& scope, const platform::Place& place) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -76,8 +74,8 @@ TEST(OpRegistry, CreateOp) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
-  paddle::platform::CPUDeviceContext dev_ctx;
-  op->Run(scope, dev_ctx);
+  paddle::platform::CPUPlace cpu_place;
+  op->Run(scope, cpu_place);
   float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
@@ -117,8 +115,8 @@ TEST(OpRegistry, DefaultValue) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
-  paddle::platform::CPUDeviceContext dev_ctx;
-  op->Run(scope, dev_ctx);
+  paddle::platform::CPUPlace cpu_place;
+  op->Run(scope, cpu_place);
   ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
 
@@ -167,9 +165,9 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_type(paddle::framework::proto::AttrType::INT);
   attr->set_i(4);
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  paddle::platform::CPUDeviceContext dev_ctx;
+  paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  op->Run(scope, dev_ctx);
+  op->Run(scope, cpu_place);
   int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }

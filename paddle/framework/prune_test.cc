@@ -29,7 +29,7 @@ namespace ops = paddle::operators;
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
-           paddle::framework::BlockDescBind *block) {
+           paddle::framework::BlockDesc *block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
@@ -51,8 +51,8 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 }
 
 TEST(Prune, one_operator) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
         block);
@@ -69,8 +69,8 @@ TEST(Prune, one_operator) {
 }
 
 TEST(Prune, forward) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
         block);
@@ -92,8 +92,8 @@ TEST(Prune, forward) {
 }
 
 TEST(Prune, multi_input_op) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, f::AttributeMap{},
         block);
@@ -113,8 +113,8 @@ TEST(Prune, multi_input_op) {
 }
 
 TEST(Prune, multi_output_op) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
         f::AttributeMap{}, block);
@@ -132,8 +132,8 @@ TEST(Prune, multi_output_op) {
 }
 
 TEST(Prune, multi_target) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
         f::AttributeMap{}, block);

@@ -51,7 +51,7 @@ class ConditionalBlockOp : public ConditionalOp {
                      const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto xs = InputTensors(scope);
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
@@ -65,8 +65,8 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
-      auto *block = Attr<framework::BlockDescBind *>("sub_block");
-      framework::Executor exec(dev_ctx);
+      framework::Executor exec(dev_place);
+      auto *block = Attr<framework::BlockDesc *>("sub_block");
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
     }
   }
@@ -86,7 +86,7 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "(std::vector<Scope*>) The step scope of conditional block. To "
               "unify the conditional block, rnn and while op, the type of "
               "scope is std::vector<Scope*>");
-    AddAttr<framework::BlockDescBind *>(
+    AddAttr<framework::BlockDesc *>(
         "sub_block", "The step block of conditional block operator");
     AddComment(R"DOC(Conditional block operator
 
@@ -104,7 +104,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
                          const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto xs = this->InputTensors(scope);
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
@@ -116,21 +116,21 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       framework::Scope &cur_scope = *scopes[0];
 
-      auto *block = Attr<framework::BlockDescBind *>("sub_block");
-      framework::Executor exec(dev_ctx);
+      framework::Executor exec(dev_place);
+      auto *block = Attr<framework::BlockDesc *>("sub_block");
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
 
-      AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("Params"),
+      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Params"),
                                   Outputs(framework::GradVarName("Params")));
 
-      AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("X"),
+      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
                                   Outputs(framework::GradVarName("X")));
     }
   }
 
  private:
   void AssignLocalGradientToGlobal(
-      const platform::DeviceContext &dev_ctx, const framework::Scope &cur_scope,
+      const platform::Place &place, const framework::Scope &cur_scope,
       const std::vector<std::string> &p_names,
       const std::vector<std::string> &pg_names) const {
     for (size_t i = 0; i < p_names.size(); ++i) {
@@ -144,7 +144,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto assign = framework::OpRegistry::CreateOp(
           "assign", {{"X", {new_in_grad_name}}}, {{"Out", {out_grad_name}}},
           framework::AttributeMap{});
-      assign->Run(cur_scope, dev_ctx);
+      assign->Run(cur_scope, place);
       cur_scope.Rename(new_in_grad_name, in_grad_name);
     }
   }
@@ -170,18 +170,19 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto grad_op = new framework::OpDesc();
     grad_op->SetType("conditional_block_grad");
     grad_op->SetInput("X", Input("X"));
     grad_op->SetInput("Params", Input("Params"));
     grad_op->SetInput("Out", Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetOutput(framework::GradVarName("Params"), InputGrad("Params"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    grad_op->SetOutput(framework::GradVarName("Params"),
+                       InputGrad("Params", false));
     grad_op->SetBlockAttr("sub_block", *this->grad_block_[0]);
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

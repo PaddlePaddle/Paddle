@@ -283,7 +283,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");

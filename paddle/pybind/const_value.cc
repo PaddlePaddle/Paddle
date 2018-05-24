@@ -23,6 +23,11 @@ void BindConstValue(pybind11::module& m) {
   m.def("kTempVarName", [] { return framework::kTempVarName; });
   m.def("kGradVarSuffix", [] { return framework::kGradVarSuffix; });
   m.def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
+
+  // for kernel_hint key
+  m.def("kUseCPU", [] { return framework::kUseCPU; });
+  m.def("kUseCUDNN", [] { return framework::kUseCUDNN; });
+  m.def("kUseMKLDNN", [] { return framework::kUseMKLDNN; });
 }
 
 }  // namespace pybind

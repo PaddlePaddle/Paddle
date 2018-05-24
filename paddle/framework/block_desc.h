@@ -28,20 +28,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class ProgramDescBind;
+class ProgramDesc;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize
 // read/write speed. Only when we want the protobuf message, the local changes
 // will be synchronized (by `Sync` method).
 
-class BlockDescBind {
+class BlockDesc {
  public:
-  BlockDescBind(ProgramDescBind *prog, proto::BlockDesc *desc);
+  BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc);
 
-  BlockDescBind(const BlockDescBind &other, proto::BlockDesc *desc,
-                ProgramDescBind *prog);
+  BlockDesc(const BlockDesc &other, proto::BlockDesc *desc, ProgramDesc *prog);
 
-  ~BlockDescBind() {
+  ~BlockDesc() {
     this->ClearPBVars();
     this->ClearPBOps();
   }
@@ -50,15 +49,15 @@ class BlockDescBind {
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
-  VarDescBind *Var(const std::string &name_bytes);
+  VarDesc *Var(const std::string &name_bytes);
 
-  VarDescBind *FindVar(const std::string &name_bytes) const;
+  VarDesc *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
 
-  VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
+  VarDesc *FindVarRecursive(const std::string &name_bytes) const;
 
-  VarDescBind *FindRecursiveOrCreateVar(const std::string &name_bytes);
+  VarDesc *FindRecursiveOrCreateVar(const std::string &name_bytes);
 
   bool HasVarRecursive(const std::string &var_name) const;
 
@@ -70,41 +69,43 @@ class BlockDescBind {
     return var_names;
   }
 
-  std::vector<VarDescBind *> AllVars() const;
+  std::vector<VarDesc *> AllVars() const;
 
-  BlockDescBind *ParentBlock() const;
+  BlockDesc *ParentBlock() const;
 
-  OpDescBind *AppendOp();
+  OpDesc *AppendOp();
 
-  void AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc);
+  void AppendAllocatedOp(std::unique_ptr<OpDesc> &&op_desc);
 
-  OpDescBind *PrependOp();
+  OpDesc *PrependOp();
 
-  std::vector<OpDescBind *> AllOps() const;
+  void RemoveOp(size_t s, size_t e);
+
+  std::vector<OpDesc *> AllOps() const;
 
   size_t OpSize() const { return ops_.size(); }
 
-  OpDescBind *Op(int idx) { return ops_.at(idx).get(); }
+  OpDesc *Op(int idx) { return ops_.at(idx).get(); }
 
   void Flush();
 
   proto::BlockDesc *Proto();
 
-  ProgramDescBind *Program() { return this->prog_; }
+  ProgramDesc *Program() { return this->prog_; }
 
  private:
   void ClearPBOps();
   void ClearPBVars();
 
  private:
-  ProgramDescBind *prog_;   // not_own
+  ProgramDesc *prog_;       // not_own
   proto::BlockDesc *desc_;  // not_own
   bool need_update_;
 
-  std::deque<std::unique_ptr<OpDescBind>> ops_;
-  std::unordered_map<std::string, std::unique_ptr<VarDescBind>> vars_;
+  std::deque<std::unique_ptr<OpDesc>> ops_;
+  std::unordered_map<std::string, std::unique_ptr<VarDesc>> vars_;
 
-  DISABLE_COPY_AND_ASSIGN(BlockDescBind);
+  DISABLE_COPY_AND_ASSIGN(BlockDesc);
 };
 }  // namespace framework
 }  // namespace paddle

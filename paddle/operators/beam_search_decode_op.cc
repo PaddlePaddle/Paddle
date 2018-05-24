@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/beam_search_decode_op.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -55,7 +56,10 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
                      const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& dev_place) const override {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
+    auto& dev_ctx = *pool.Borrow(dev_place);
+
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
 
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
@@ -119,8 +123,8 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     for (auto& o : op_desc.Output("SentenceIds")) {
       block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }

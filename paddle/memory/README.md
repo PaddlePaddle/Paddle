@@ -12,13 +12,13 @@ p = memory::Alloc(platform::CPUPlace(), 4*1024);
 To allocate 4KB memory on the 3rd GPU:
 
 ```cpp
-p = memory::Alloc(platform::GPUPlace(2), 4*1024);
+p = memory::Alloc(platform::CUDAPlace(2), 4*1024);
 ```
 
 To free memory and check the so-far used amount of memory on a place:
 
 ```cpp
-auto pl = platform::GPUPlace(0);
+auto pl = platform::CUDAPlace(0);
 p = memory::Alloc(pl, 4*1024);
 cout << memory::Used(pl);
 memory::Free(pl, p);
@@ -36,7 +36,7 @@ template <typename Place> size_t Used(Place);
 }  // namespace memory
 ```
 
-These function templates have specializations on either `platform::CPUPlace` or `platform::GPUPlace`:
+These function templates have specializations on either `platform::CPUPlace` or `platform::CUDAPlace`:
 
 ```cpp
 template<>
@@ -49,7 +49,7 @@ and
 
 ```cpp
 template<>
-void Alloc<GPUPlace>(GPUPlace p, size_t size) {
+void Alloc<CUDAPlace>(CUDAPlace p, size_t size) {
   return GetGPUBuddyAllocator(p.id)->Alloc(size);
 }
 ```
@@ -122,7 +122,7 @@ There are two implementations of `Context`:
 
 1. [`CPUContext`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context.h#L105), whose [`New` method](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context.h#L131) calls [`g_cpu_allocator.get()->New(size_t)`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context.cc#L15) to allocate the memory.
 
-1. [`CUDAContext`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context_gpu.h#L99), which has a data member [`int gpu_id_`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context_gpu.h#L202).  This looks very similar to class `majel::GPUPlace`, who also has an `int id_` data member.   `CUDAContext::New(size_t)` calls [`g_cub_allocator->DeviceAllocate(&ptr, nbytes)`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context_gpu.cu#L355) to allocate the memory.
+1. [`CUDAContext`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context_gpu.h#L99), which has a data member [`int gpu_id_`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context_gpu.h#L202).  This looks very similar to class `majel::CUDAPlace`, who also has an `int id_` data member.   `CUDAContext::New(size_t)` calls [`g_cub_allocator->DeviceAllocate(&ptr, nbytes)`](https://github.com/caffe2/caffe2/blob/v0.7.0/caffe2/core/context_gpu.cu#L355) to allocate the memory.
 
 ### Majel
 

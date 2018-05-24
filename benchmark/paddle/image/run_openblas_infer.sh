@@ -23,24 +23,25 @@ function infer() {
     echo "./run_mkl_infer.sh to save the model first"
     exit 0
   fi
-  log_period=$((256 / bs))
+  log_period=$((32 / bs))
   paddle train --job=test \
     --config="${topology}.py" \
+    --use_mkldnn=False \
     --use_gpu=False \
     --trainer_count=$thread \
     --log_period=$log_period \
-    --config_args="batch_size=${bs},layer_num=${layer_num},is_infer=True" \
+    --config_args="batch_size=${bs},layer_num=${layer_num},is_infer=True,num_samples=256" \
     --init_model_path=$models_in \
     2>&1 | tee ${log}
 
-  # calculate the last 5 logs period time of 1280 samples,
+  # calculate the last 5 logs period time of 160(=32*5) samples,
   # the time before are burning time.
   start=`tail ${log} -n 7 | head -n 1 | awk -F ' ' '{print $2}' | xargs`
   end=`tail ${log} -n 2 | head -n 1 | awk -F ' ' '{print $2}' | xargs`
   start_sec=`clock_to_seconds $start`
   end_sec=`clock_to_seconds $end`
-  fps=`awk 'BEGIN{printf "%.2f",(1280 / ('$end_sec' - '$start_sec'))}'`
-  echo "Last 1280 samples start: ${start}(${start_sec} sec), end: ${end}(${end_sec} sec;" >> ${log}
+  fps=`awk 'BEGIN{printf "%.2f",(160 / ('$end_sec' - '$start_sec'))}'`
+  echo "Last 160 samples start: ${start}(${start_sec} sec), end: ${end}(${end_sec} sec;" >> ${log}
   echo "FPS: $fps images/sec" 2>&1 | tee -a ${log}
 }
 
@@ -56,7 +57,8 @@ fi
 
 # inference benchmark
 for batchsize in 1 2 4 8 16; do
-  infer googlenet v1 $batchsize
-  infer resnet 50 $batchsize
   infer vgg 19 $batchsize
+  infer resnet 50 $batchsize 
+  infer googlenet v1 $batchsize
+  infer alexnet 2 $batchsize
 done

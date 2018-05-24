@@ -98,8 +98,8 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(concat, ops::ConcatOp, ops::ConcatOpMaker, concat_grad,
-            ops::ConcatOpGrad)
+REGISTER_OP_EX(concat, ops::ConcatOp, ops::ConcatOpMaker, concat_grad,
+               ops::ConcatOpGrad, false)
 REGISTER_OP_CPU_KERNEL(concat,
                        ops::ConcatKernel<paddle::platform::CPUPlace, float>)
 REGISTER_OP_CPU_KERNEL(concat_grad,

@@ -83,12 +83,12 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 }
 
 template <>
-size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
+size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
 }
 
 template <>
-void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
+void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
   auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto* ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
@@ -101,14 +101,14 @@ void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
     LOG(WARNING) << "total " << total;
     LOG(WARNING) << "GpuMinChunkSize " << platform::GpuMinChunkSize();
     LOG(WARNING) << "GpuMaxChunkSize " << platform::GpuMaxChunkSize();
-    LOG(WARNING) << "GPU memory used: " << Used<platform::GPUPlace>(place);
+    LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
     platform::SetDeviceId(cur_dev);
   }
   return ptr;
 }
 
 template <>
-void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
+void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
   GetGPUBuddyAllocator(place.device)->Free(p);
 }
 

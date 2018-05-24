@@ -16,12 +16,14 @@
 // a RemoteOptimizer.
 
 #include <unistd.h>
+#include <string>
 #include <thread>
 
 #include "gtest/gtest.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
+#include "paddle/string/printf.h"
 
 USE_NO_KERNEL_OP(send);
 USE_NO_KERNEL_OP(recv);
@@ -33,30 +35,33 @@ std::unique_ptr<paddle::framework::OperatorBase> recv_op;
 void InitTensorsInScope(paddle::framework::Scope &scope,
                         paddle::platform::CPUPlace &place) {
   paddle::platform::CPUDeviceContext ctx(place);
-  auto var = scope.Var("X");
-  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize({10, 10});
-  float *expect = tensor->mutable_data<float>(place);
-  for (int64_t i = 0; i < tensor->numel(); ++i) {
-    expect[i] = static_cast<float>(i);
+  for (int i = 0; i < 2; ++i) {
+    auto var_name = paddle::string::Sprintf("x%d", i);
+    auto var = scope.Var(var_name);
+    auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    tensor->Resize({10, 10});
+    float *expect = tensor->mutable_data<float>(place);
+    for (int64_t i = 0; i < tensor->numel(); ++i) {
+      expect[i] = static_cast<float>(i);
+    }
   }
 
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<paddle::framework::LoDTensor>();
   out_tensor->Resize({10, 10});
-  tensor->mutable_data<float>(place);  // allocate
+  out_tensor->mutable_data<float>(place);  // allocate
 }
 
 void AddOp(const std::string &type,
            const paddle::framework::VariableNameMap &inputs,
            const paddle::framework::VariableNameMap &outputs,
            paddle::framework::AttributeMap attrs,
-           paddle::framework::BlockDescBind *block) {
+           paddle::framework::BlockDesc *block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
       auto var = block->Var(v);
-      var->SetDataType(paddle::framework::DataType::FP32);
+      var->SetDataType(paddle::framework::proto::DataType::FP32);
     }
   }
 
@@ -78,10 +83,10 @@ void StartServerNet() {
   InitTensorsInScope(scope, place);
 
   // sub program run in recv_op, for simple test we use sum
-  paddle::framework::ProgramDescBind program;
-  paddle::framework::BlockDescBind *block = program.MutableBlock(0);
+  paddle::framework::ProgramDesc program;
+  paddle::framework::BlockDesc *block = program.MutableBlock(0);
   // X for server side tensors, RX for received tensers, must be of same shape.
-  AddOp("sum", {{"X", {"X", "RX"}}}, {{"Out", {"Out"}}}, {}, block);
+  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, block);
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
@@ -89,8 +94,8 @@ void StartServerNet() {
   PADDLE_ENFORCE(program.Proto()->SerializeToString(&program_proto));
 
   attrs.insert({"OptimizeProgram", program_proto});
-  recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"RX"}}},
-                                                    {{"Out", {"Out"}}}, attrs);
+  recv_op = paddle::framework::OpRegistry::CreateOp(
+      "recv", {{"RX", {"x0", "x1"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
   recv_op->Run(scope, ctx);
 }
@@ -107,11 +112,11 @@ TEST(SendRecvOp, CPU) {
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
 
   auto send_op = paddle::framework::OpRegistry::CreateOp(
-      "send", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
+      "send", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
   send_op->Run(scope, ctx);
 
-  auto in_var = scope.Var("X");
+  auto in_var = scope.Var("x0");
   auto tensor = in_var->GetMutable<paddle::framework::LoDTensor>();
   float *expected = tensor->data<float>();
 
