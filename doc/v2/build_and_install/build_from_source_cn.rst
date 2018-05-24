@@ -116,11 +116,10 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
   很多 PaddlePaddle 开发者使用 Emacs。他们在自己的 `~/.emacs` 配置文件里加两行
 
-  ```emacs
-  (global-set-key "\C-cc" 'compile)
-  (setq compile-command
-   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
-  ```
+  .. code-block:: emacs
+
+    (global-set-key "\C-cc" 'compile)
+    (setq compile-command "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
 
   就可以按 `Ctrl-C` 和 `c` 键来启动编译了。
 
