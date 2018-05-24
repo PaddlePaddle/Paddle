@@ -43,31 +43,32 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
-        # If no gradient then we don't need to do anything
-        if grad is None:
+        with param.block.program.optimized_guard(param):
+            # If no gradient then we don't need to do anything
+            if grad is None:
+                params_and_grads.append((param, grad))
+                continue
+
+            regularization_term = None
+            if param.regularizer is not None:
+                # Add variable for regularization term in grad block
+                regularization_term = param.regularizer(param, grad, grad.block)
+            elif regularization is not None:
+                regularization_term = regularization(param, grad, grad.block)
+
+            # If no regularization specified, then we don't need to do anything
+            if regularization_term is None:
+                params_and_grads.append((param, grad))
+                continue
+
+            assert grad.shape == regularization_term.shape
+
+            grad.block.append_op(
+                type='elementwise_add',
+                inputs={"X": grad,
+                        "Y": regularization_term},
+                outputs={"Out": grad})
             params_and_grads.append((param, grad))
-            continue
-
-        regularization_term = None
-        if param.regularizer is not None:
-            # Add variable for regularization term in grad block
-            regularization_term = param.regularizer(param, grad, grad.block)
-        elif regularization is not None:
-            regularization_term = regularization(param, grad, grad.block)
-
-        # If no regularization specified, then we don't need to do anything
-        if regularization_term is None:
-            params_and_grads.append((param, grad))
-            continue
-
-        assert grad.shape == regularization_term.shape
-
-        grad.block.append_op(
-            type='elementwise_add',
-            inputs={"X": grad,
-                    "Y": regularization_term},
-            outputs={"Out": grad})
-        params_and_grads.append((param, grad))
 
     return params_and_grads
 
