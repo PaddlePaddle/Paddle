@@ -66,7 +66,7 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kAnyLayout;
+    layout = framework::DataLayout::kMKLDNN;
   }
 #endif
   return framework::OpKernelType(

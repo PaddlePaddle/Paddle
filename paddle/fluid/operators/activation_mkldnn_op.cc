@@ -39,6 +39,7 @@ std::string gethash(const mkldnn::memory::dims &operand_dims,
   };
   return dim2str(operand_dims) + std::to_string(algorithm);
 }
+}  // namespace
 
 template <typename Functor>
 class MKLDNNActivationKernel
@@ -86,7 +87,6 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
                      const T beta = 0) {
   PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                  "It must use CPUPlace.");
-
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto &mkldnn_engine = dev_ctx.GetEngine();
 
@@ -98,29 +98,39 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   PADDLE_ENFORCE(x->dims().size() == 2 || x->dims().size() == 4,
                  "Input dim must be with 2 or 4");
-  memory::format input_format = x->format();
+
+  memory::format src_format = x->format();
 
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
 
   const std::string key = gethash(src_tz, algorithm);
   const std::string key_src_data =
       key + ctx.op().Output("Out") + "@eltwise_fwd_src_data";
-  const std::string key_src_mem = key + "@eltwise_fwd_src_mem";
-  const std::string key_dst_mem = key + "@eltwise_fwd_dst_mem";
-  const std::string key_fwd = key + "@eltwise_fwd";
+  const std::string key_src_layout =
+      key + ctx.op().Output("Out") + "@eltwise_fwd_src_layout";
+  const std::string key_with_layout = key + std::to_string(src_format);
+  const std::string key_src_mem = key_with_layout + "@eltwise_fwd_src_mem";
+  const std::string key_dst_mem = key_with_layout + "@eltwise_fwd_dst_mem";
+  const std::string key_fwd = key_with_layout + "@eltwise_fwd";
+  const std::string key_fwd_pd = key_with_layout + "@eltwise_fwd_pd";
+
+  // save input data and layout to be referred in backward path
+  auto p_src_data = std::make_shared<const T *>(x_data);
+  dev_ctx.SetBlob(key_src_data, p_src_data);
+  auto p_src_layout = std::make_shared<memory::format>(src_format);
+  dev_ctx.SetBlob(key_src_layout, p_src_layout);
 
   auto p_fwd = std::static_pointer_cast<mkldnn::eltwise_forward>(
       dev_ctx.GetBlob(key_fwd));
 
-  std::shared_ptr<memory> src_memory, dst_memory;
+  std::shared_ptr<memory> dst_memory;
 
   if (p_fwd == nullptr) {
     // create mkldnn memory for input X
     auto src_memory = std::shared_ptr<memory>(new memory(
-        {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
-        cast_const_to_void(x_data)));
+        {{{src_tz}, memory::data_type::f32, src_format}, mkldnn_engine},
+        to_void_cast(x_data)));
     // save src_memory to be referred in backward path
-    // const std::string key_src_memory = key + "@src_memory";
     dev_ctx.SetBlob(key_src_mem, src_memory);
 
     // create primitive descriptor for activation forward and save it
@@ -131,7 +141,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
         forward_desc, mkldnn_engine);
 
     // save prim desc into global device context to be referred in backward path
-    dev_ctx.SetBlob(key_fwd, forward_pd);
+    dev_ctx.SetBlob(key_fwd_pd, forward_pd);
 
     // create mkldnn memory for output y
     dst_memory =
@@ -145,17 +155,17 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
     dev_ctx.SetBlob(key_fwd, p_fwd);
   } else {
     // primitives already exist
-    auto p_src_mem =
+    auto src_memory =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(key_src_mem));
     PADDLE_ENFORCE(src_memory != nullptr,
-                   "Fail to find eltwise p_src_mem in device context.");
-    auto dst_memory =
+                   "Fail to find eltwise src_memory in device context.");
+    dst_memory =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(key_dst_mem));
     PADDLE_ENFORCE(dst_memory != nullptr,
-                   "Fail to find eltwise p_src_mem in device context.");
+                   "Fail to find eltwise dst_memory in device context.");
 
-    src_memory->set_data_handle(platform::to_void_reinterpret_cast(x_data));
-    src_memory->set_data_handle(y_data);
+    src_memory->set_data_handle(platform::to_void_cast(x_data));
+    dst_memory->set_data_handle(y_data);
   }
 
   // push primitive to stream and wait until it's executed
@@ -180,27 +190,46 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const T *diff_y_data = diff_y->data<T>();
   T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
 
+  auto diff_y_format = diff_y->format();
+
   std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
+  // const std::string key = gethash(src_tz, algorithm);
+  // const std::string key_src_data =
+  // key + ctx.op().Output("Out") + "@eltwise_fwd_src_data";
+  // const std::string key_src_layout =
+  // key + ctx.op().Output("Out") + "@eltwise_fwd_src_layout";
+  // const std::string key_with_layout = key + std::to_string(src_format);
+  // const std::string key_src_mem = key_with_layout + "@eltwise_fwd_src_mem";
+  // const std::string key_dst_mem = key_with_layout + "@eltwise_fwd_dst_mem";
+  // const std::string key_fwd = key_with_layout + "@eltwise_fwd";
 
   const std::string key = gethash(diff_dst_tz, algorithm);
-  const std::string key_diff_src_mem = key + "@eltwise_diff_src_mem";
-  const std::string key_diff_dst_mem = key + "@eltwise_diff_dst_mem";
-  const std::string key_grad = key + "@eltwise_grad";
-
   const std::string key_src_data =
       key + ctx.op().Input("Out") + "@eltwise_fwd_src_data";
+  const std::string key_src_layout =
+      key + ctx.op().Input("Out") + "@eltwise_fwd_src_layout";
+  const auto p_src_layout =
+      std::static_pointer_cast<memory::format>(dev_ctx.GetBlob(key_src_layout));
+  const std::string key_src_mem =
+      key + std::to_string(*p_src_layout) + "@eltwise_fwd_src_mem";
+  const std::string key_fwd_pd =
+      key + std::to_string(*p_src_layout) + "@eltwise_fwd_pd";
+  const std::string key_with_layouts =
+      key + std::to_string(*p_src_layout) + "-" + std::to_string(diff_y_format);
+  const std::string key_diff_src_mem =
+      key_with_layouts + "@eltwise_diff_src_mem";
+  const std::string key_diff_dst_mem =
+      key_with_layouts + "@eltwise_diff_dst_mem";
+  const std::string key_grad = key_with_layouts + "@eltwise_grad";
+
   const auto p_src_data =
       std::static_pointer_cast<T *>(dev_ctx.GetBlob(key_src_data));
 
-  const std::string key_src_mem = key + "@eltwise_fwd_src_mem";
-  auto p_src_mem =
-      std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(key_src_mem));
-  p_src_mem->set_data_handle(*p_src_data.get());
-
   auto src_memory =
-      std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_src_mem));
+      std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(key_src_mem));
   PADDLE_ENFORCE(src_memory != nullptr,
                  "Fail to find src_memory in device context");
+  src_memory->set_data_handle(*p_src_data.get());
 
   std::shared_ptr<memory> diff_src_memory;
 
@@ -209,14 +238,13 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   if (p_grad == nullptr) {
     // create mkldnn memory for input diff_y
-    auto diff_dst_memory = std::make_shared<memory>(
-        {{{diff_dst_tz}, memory::data_type::f32, diff_y->format()},
-         mkldnn_engine},
-        cast_const_to_void(diff_y_data));
+    auto diff_dst_md = platform::MKLDNNMemDesc(
+        diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);
+    auto diff_dst_memory = std::shared_ptr<memory>(
+        new memory({diff_dst_md, mkldnn_engine}, to_void_cast(diff_y_data)));
     dev_ctx.SetBlob(key_diff_dst_mem, diff_dst_memory);
 
     // retrieve eltwise primitive desc from device context
-    const std::string key_fwd_pd = key + "eltwise_fwd_pd";
     auto forward_pd =
         std::static_pointer_cast<mkldnn::eltwise_forward::primitive_desc>(
             dev_ctx.GetBlob(key_fwd_pd));
@@ -241,7 +269,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
     dev_ctx.SetBlob(key_grad, p_grad);
   } else {
     // primitives already exist
-    auto diff_src_memory = std::static_pointer_cast<mkldnn::memory>(
+    diff_src_memory = std::static_pointer_cast<mkldnn::memory>(
         dev_ctx.GetBlob(key_diff_src_mem));
     auto diff_dst_memory = std::static_pointer_cast<mkldnn::memory>(
         dev_ctx.GetBlob(key_diff_dst_mem));
