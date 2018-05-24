@@ -67,7 +67,7 @@ void StartServer(std::atomic<bool>* initialized) {
   server_thread.join();
 }
 
-TEST(SendNcclId, Normal) {
+TEST(SendNcclId, DISABLED_Normal) {
   std::atomic<bool> initialized{false};
   std::thread server_thread(StartServer, &initialized);
   while (!initialized) {

@@ -19,10 +19,16 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
+DEFINE_int32(rpc_server_handle_send_threads, 20,
+             "Number of threads used to handle send at rpc server.");
+DEFINE_int32(rpc_server_handle_get_threads, 20,
+             "Number of threads used to handle get at rpc server.");
+DEFINE_int32(rpc_server_handle_prefetch_threads, 1,
+             "Number of threads used to handle prefetch at rpc server.");
+
 namespace paddle {
 namespace operators {
 namespace detail {
-
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -57,7 +63,7 @@ class RequestSend final : public RequestBase {
  public:
   explicit RequestSend(GrpcService::AsyncService* service,
                        ::grpc::ServerCompletionQueue* cq,
-                       GRPCProcessorCtx* rpc_processor)
+                       GRPCProcessorCtx* rpc_processor, int req_id)
       : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
     if (rpc_processor->sync_mode()) {
       request_.reset(new VariableResponse(rpc_processor->scope(),
@@ -67,8 +73,9 @@ class RequestSend final : public RequestBase {
                                           rpc_processor->dev_ctx(), true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
-    service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
-                                cq_, cq_, this);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
 
   virtual ~RequestSend() {}
@@ -81,14 +88,16 @@ class RequestSend final : public RequestBase {
 
     rpc_processor_->RequestSend(request_);
 
-    sendrecv::VoidMessage reply;
-    responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
+    responder_.Finish(reply_, ::grpc::Status::OK,
+                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
  protected:
+  sendrecv::VoidMessage reply_;
   std::shared_ptr<VariableResponse> request_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+  int req_id_;
 };
 
 class RequestGet final : public RequestBase {
@@ -96,13 +105,14 @@ class RequestGet final : public RequestBase {
   explicit RequestGet(GrpcService::AsyncService* service,
                       ::grpc::ServerCompletionQueue* cq,
                       framework::BlockingQueue<MessageWithName>* queue,
-                      GRPCProcessorCtx* rpc_processor)
-      : RequestBase(service, cq, rpc_processor),
+                      GRPCProcessorCtx* rpc_processor, int req_id)
+      : RequestBase(service, cq, rpc_processor, req_id),
         responder_(&ctx_),
         queue_(queue) {
     auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
-    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
-                                cq_, this);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
   virtual ~RequestGet() {}
@@ -114,13 +124,13 @@ class RequestGet final : public RequestBase {
     std::string var_name = request_.varname();
     VLOG(3) << "RequestGet " << var_name;
 
-    ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
       rpc_processor_->RequestGet(&request_, &reply);
     }
 
-    responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
+    responder_.Finish(reply_, ::grpc::Status::OK,
+                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
 
     if (var_name == FETCH_BARRIER_MESSAGE) {
       sendrecv::VariableMessage msg;
@@ -131,16 +141,18 @@ class RequestGet final : public RequestBase {
 
  protected:
   sendrecv::VariableMessage request_;
+  ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::BlockingQueue<MessageWithName>* queue_;
+  int req_id_;
 };
 
 class RequestPrefetch final : public RequestBase {
  public:
   explicit RequestPrefetch(GrpcService::AsyncService* service,
                            ::grpc::ServerCompletionQueue* cq,
-                           GRPCProcessorCtx* rpc_processor)
-      : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
+                           GRPCProcessorCtx* rpc_processor, int req_id)
+      : RequestBase(service, cq, rpc_processor, req_id), responder_(&ctx_) {
     if (rpc_processor->sync_mode()) {
       request_.reset(new VariableResponse(rpc_processor->scope(),
                                           rpc_processor->dev_ctx(), false));
@@ -149,8 +161,9 @@ class RequestPrefetch final : public RequestBase {
                                           rpc_processor->dev_ctx(), true));
     }
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
-    service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
-                                cq_, cq_, this);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
   virtual ~RequestPrefetch() {}
@@ -159,17 +172,20 @@ class RequestPrefetch final : public RequestBase {
 
   virtual void Process() {
     // prefetch process...
-    ::grpc::ByteBuffer reply;
 
     rpc_processor_->RequestPrefetch(request_.get(), &reply);
 
-    responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
+    responder_.Finish(reply_, ::grpc::Status::OK,
+                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
  protected:
   std::shared_ptr<VariableResponse> request_;
+  ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+
+  int req_id_;
 };
 
 void AsyncGRPCServer::WaitClientGet(int count) {
@@ -203,24 +219,39 @@ void AsyncGRPCServer::RunSyncUpdate() {
   LOG(INFO) << "Server listening on " << address_
             << " selected port: " << selected_port_;
 
-  std::function<void()> send_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewSendOne, this);
-  std::function<void()> get_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewGetOne, this);
-  std::function<void()> prefetch_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this);
+  std::function<void(int)> send_register = std::bind(
+      &AsyncGRPCServer::TryToRegisterNewSendOne, this, std::placeholders::_1);
+  std::function<void(int)> get_register = std::bind(
+      &AsyncGRPCServer::TryToRegisterNewGetOne, this, std::placeholders::_1);
+  std::function<void(int)> prefetch_register =
+      std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this,
+                std::placeholders::_1);
 
-  // TODO(wuyi): Run these "HandleRequest" in thread pool
-  t_send_.reset(new std::thread(
-      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_send_.get(),
-                static_cast<int>(GrpcMethod::kSendVariable), send_register)));
-  t_get_.reset(new std::thread(
-      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_get_.get(),
-                static_cast<int>(GrpcMethod::kGetVariable), get_register)));
-  t_prefetch_.reset(new std::thread(std::bind(
-      &AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
-      static_cast<int>(GrpcMethod::kPrefetchVariable), prefetch_register)));
+  for (int i = 0; i < kSendReqsBufSize; ++i) {
+    TryToRegisterNewSendOne(i);
+  }
+  for (int i = 0; i < kGetReqsBufSize; ++i) {
+    TryToRegisterNewGetOne(i);
+  }
+  for (int i = 0; i < kPrefetchReqsBufSize; ++i) {
+    TryToRegisterNewPrefetchOne(i);
+  }
 
+  for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
+    t_sends_.emplace_back(
+        new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
+                                  cq_send_.get(), "cq_send", send_register)));
+  }
+  for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
+    t_gets_.emplace_back(
+        new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
+                                  cq_get_.get(), "cq_get", get_register)));
+  }
+  for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
+    t_prefetchs_.emplace_back(new std::thread(
+        std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
+                  "cq_prefetch", prefetch_register)));
+  }
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
     ready_ = 1;
@@ -228,9 +259,15 @@ void AsyncGRPCServer::RunSyncUpdate() {
   condition_ready_.notify_all();
   // wait server
   server_->Wait();
-  t_send_->join();
-  t_get_->join();
-  t_prefetch_->join();
+  for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
+    t_sends_[i]->join();
+  }
+  for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
+    t_gets_[i]->join();
+  }
+  for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
+    t_prefetchs_[i]->join();
+  }
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
@@ -247,36 +284,41 @@ void AsyncGRPCServer::ShutDown() {
   server_->Shutdown();
 }
 
-void AsyncGRPCServer::TryToRegisterNewSendOne() {
+void AsyncGRPCServer::TryToRegisterNewSendOne(int i) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
   RequestSend* send =
-      new RequestSend(&service_, cq_send_.get(), rpc_processor_);
+      new RequestSend(&service_, cq_send_.get(), rpc_processor_, i);
+  send_reqs_[i] = static_cast<RequestBase*>(send);
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 
-void AsyncGRPCServer::TryToRegisterNewGetOne() {
+void AsyncGRPCServer::TryToRegisterNewGetOne(int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
     return;
   }
-  RequestGet* get =
-      new RequestGet(&service_, cq_get_.get(), &var_get_queue_, rpc_processor_);
+  RequestGet* get = new RequestGet(&service_, cq_get_.get(), &var_get_queue_,
+                                   rpc_processor_, req_id);
+  get_reqs_[req_id] = static_cast<RequestBase*>(get);
   VLOG(4) << "Create RequestGet status:" << get->Status();
 }
 
-void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
+void AsyncGRPCServer::TryToRegisterNewPrefetchOne(int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewPrefetchOne";
     return;
   }
-  RequestPrefetch* prefetch =
-      new RequestPrefetch(&service_, cq_prefetch_.get(), rpc_processor_);
+
+  RequestPrefetch* prefetch = new RequestPrefetch(&service_, cq_prefetch_.get(),
+                                                  rpc_processor_, req_id);
+
+  prefetch_reqs_[req_id] = static_cast<RequestBase*>(prefetch);
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
@@ -295,6 +337,7 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
       LOG(INFO) << rpc_id << " CompletionQueue shutdown!";
       break;
     }
+
     VLOG(3) << "HandleRequest for " << rpc_id << " get Next";
 
     PADDLE_ENFORCE(tag);
@@ -313,7 +356,17 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
       VLOG(3) << "HandleRequest for " << rpc_id << " after WaitCond";
     }
 
-    RequestBase* base = reinterpret_cast<RequestBase*>(tag);
+    RequestBase* base = nullptr;
+    {
+      std::lock_guard<std::mutex> l(cq_mutex_);
+      if (cq_name == "cq_get") {
+        base = get_reqs_[req_id];
+      } else if (cq_name == "cq_send") {
+        base = send_reqs_[req_id];
+      } else if (cq_name == "cq_prefetch") {
+        base = prefetch_reqs_[req_id];
+      }
+    }
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
@@ -321,20 +374,20 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
     if (!ok) {
       LOG(WARNING) << rpc_id << " recv no regular event:argument name["
                    << base->GetReqName() << "]";
-      TryToRegisterNewOne();
+      TryToRegisterNewOne(req_id);
       delete base;
       continue;
     }
 
     switch (base->Status()) {
       case PROCESS: {
-        TryToRegisterNewOne();
         base->Process();
         VLOG(4) << rpc_id << " PROCESS status:" << base->Status();
         break;
       }
       case FINISH: {
-        VLOG(4) << rpc_id << " FINISH status:" << base->Status();
+        TryToRegisterNewOne(req_id);
+        VLOG(4) << req_id << " FINISH status:" << base->Status();
         delete base;
         break;
       }

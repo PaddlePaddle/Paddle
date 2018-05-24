@@ -201,9 +201,9 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(send_vars_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     op_library(send_barrier_op DEPS ${DISTRIBUTE_DEPS})
     set_source_files_properties(send_barrier_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op
-            listen_and_serv_op sum_op executor SERIAL)
+    #set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    #cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op
+    #        listen_and_serv_op sum_op executor SERIAL)
     if(WITH_GPU)
         set_source_files_properties(test_send_nccl_id.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
         cc_test(test_send_nccl_id SRCS test_send_nccl_id.cc DEPS send_op

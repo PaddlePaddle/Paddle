@@ -49,8 +49,7 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunAsyncLoop(framework::Executor* executor,
                     framework::ProgramDesc* program) const;
 
-  void SavePort(
-      const std::string& file_path = "/tmp/paddle.selected_port") const;
+  void SavePort() const;
 
   void WaitServerReady();
 
