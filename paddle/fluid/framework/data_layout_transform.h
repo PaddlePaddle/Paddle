@@ -24,42 +24,42 @@ namespace paddle {
 namespace framework {
 
 #ifdef PADDLE_WITH_MKLDNN
-using MkldnnFormat = mkldnn::memory::format;
-using MkldnnDataType = mkldnn::memory::data_type;
+using MKLDNNFormat = mkldnn::memory::format;
+using MKLDNNDataType = mkldnn::memory::data_type;
 
-inline MkldnnFormat to_mkldnn_format(const DataLayout& layout) {
+inline MKLDNNFormat to_mkldnn_format(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::kNHWC:
-      return MkldnnFormat::nhwc;
+      return MKLDNNFormat::nhwc;
     case DataLayout::kNCHW:
-      return MkldnnFormat::nchw;
+      return MKLDNNFormat::nchw;
     default:
       PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
                    DataLayoutToString(layout));
   }
 }
 
-inline DataLayout to_paddle_layout(const MkldnnFormat& format) {
+inline DataLayout to_paddle_layout(const MKLDNNFormat& format) {
   switch (format) {
-    case MkldnnFormat::nhwc:
+    case MKLDNNFormat::nhwc:
       return DataLayout::kNHWC;
-    case MkldnnFormat::nchw:
+    case MKLDNNFormat::nchw:
       return DataLayout::kNCHW;
     default:
       PADDLE_THROW("Fail to convert MKLDNN format to paddle layout");
   }
 }
 
-inline MkldnnDataType to_mkldnn_data_type(const std::type_index type) {
-  static const std::map<std::type_index, MkldnnDataType> dict{
-      {std::type_index(typeid(float)), MkldnnDataType::f32},
-      {std::type_index(typeid(char)), MkldnnDataType::s8},
-      {std::type_index(typeid(unsigned char)), MkldnnDataType::u8},
-      {std::type_index(typeid(int16_t)), MkldnnDataType::s16},
-      {std::type_index(typeid(int32_t)), MkldnnDataType::s32}};
+inline MKLDNNDataType to_mkldnn_data_type(const std::type_index type) {
+  static const std::map<std::type_index, MKLDNNDataType> dict{
+      {std::type_index(typeid(float)), MKLDNNDataType::f32},
+      {std::type_index(typeid(char)), MKLDNNDataType::s8},
+      {std::type_index(typeid(unsigned char)), MKLDNNDataType::u8},
+      {std::type_index(typeid(int16_t)), MKLDNNDataType::s16},
+      {std::type_index(typeid(int32_t)), MKLDNNDataType::s32}};
   auto iter = dict.find(type);
   if (iter != dict.end()) return iter->second;
-  return MkldnnDataType::data_undef;
+  return MKLDNNDataType::data_undef;
 }
 
 void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,

@@ -40,9 +40,9 @@ void DataTransform(const OpKernelType& expected_kernel_type,
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN
     if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
-      PADDLE_ENFORCE(!(lin == DataLayout::kMKLDNN &&
-                       lout == DataLayout::kMKLDNN),
-           "No layout transform needed between two MKLDNN OPKernels");
+      PADDLE_ENFORCE(
+          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
+          "No layout transform needed between two MKLDNN OPKernels");
 
       if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
@@ -53,11 +53,11 @@ void DataTransform(const OpKernelType& expected_kernel_type,
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        TransDataLayoutMkldnn(kernel_type_for_var, expected_kernel_type,
-                              in, &out);
+        TransDataLayoutMkldnn(kernel_type_for_var, expected_kernel_type, in,
+                              &out);
       }
     } else {
-      // Case3 - transfrom between Non-MKLDNN OPKernels
+// Case3 - transfrom between Non-MKLDNN OPKernels
 #endif
       TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
 #ifdef PADDLE_WITH_MKLDNN

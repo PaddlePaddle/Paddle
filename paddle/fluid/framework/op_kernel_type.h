@@ -87,7 +87,8 @@ inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
 }
 
 inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
-  bool ret = (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
+  bool ret =
+      (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_MKLDNN
   // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
   ret |= (l != DataLayout::kMKLDNN && r == DataLayout::kMKLDNN);
