@@ -261,21 +261,21 @@ def infer(use_cuda, save_dirname=None):
         lod = [[3, 4, 2]]
         base_shape = [1]
         # The range of random integers is [low, high]
-        word = fluid.create_random_lodtensor(
+        word = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
-        pred = fluid.create_random_lodtensor(
+        pred = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=pred_dict_len - 1)
-        ctx_n2 = fluid.create_random_lodtensor(
+        ctx_n2 = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
-        ctx_n1 = fluid.create_random_lodtensor(
+        ctx_n1 = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
-        ctx_0 = fluid.create_random_lodtensor(
+        ctx_0 = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
-        ctx_p1 = fluid.create_random_lodtensor(
+        ctx_p1 = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
-        ctx_p2 = fluid.create_random_lodtensor(
+        ctx_p2 = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=word_dict_len - 1)
-        mark = fluid.create_random_lodtensor(
+        mark = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=mark_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
