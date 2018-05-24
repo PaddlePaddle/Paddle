@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <csignal>
 #include <fstream>
 #include <ostream>
 #include <thread>  // NOLINT
@@ -19,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 namespace operators {
@@ -327,6 +329,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
+
+  // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
+  signal(SIGINT, paddle::interruptSignalHandler);
+  signal(SIGTERM, paddle::interruptSignalHandler);
 
   // Write to a file of server selected port for python use.
   std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",

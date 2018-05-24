@@ -129,6 +129,12 @@ void registerInitFunction(std::function<void()> func, int priority) {
   g_initFuncs->push_back(std::make_pair(priority, func));
 }
 
+void interruptSignalHandler(int signal_num) {
+  VLOG(3) << "Catch interrupt signal: " << signal_num
+          << ", program will exit";
+  exit(signal_num);
+}
+
 void runInitFunctions() {
   std::call_once(g_onceFlag, []() {
     VLOG(3) << "Calling runInitFunctions";

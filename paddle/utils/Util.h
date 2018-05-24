@@ -309,6 +309,8 @@ inline std::pair<size_t, size_t> calcSplitArrayInterval(size_t totalSize,
 // on the host list and port_num.
 size_t calculateServiceNum(const std::string& pservers, int ports_num);
 
+void interruptSignalHandler(int signal_num);
+
 /**
  * sort and unique ids vector.
  */
