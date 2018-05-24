@@ -80,8 +80,6 @@ class AsyncGRPCServer final {
 
   // received variable from RPC, operators fetch variable from this queue.
   framework::BlockingQueue<MessageWithName> var_get_queue_;
-  // client send variable to this queue.
-  // ReceivedQueue var_recv_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;

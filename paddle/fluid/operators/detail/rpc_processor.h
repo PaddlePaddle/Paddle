@@ -89,6 +89,7 @@ class RPCProcessorCtx {
   framework::ProgramDesc* program_;
   framework::Executor* executor_;
 
+  // client send variable to this queue.
   ReceivedQueue var_recv_queue_;
 };
 
