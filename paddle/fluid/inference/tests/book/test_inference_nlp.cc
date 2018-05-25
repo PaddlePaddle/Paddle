@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <sys/time.h>
+#include <time.h>
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
@@ -29,32 +31,28 @@ TEST(inference, understand_sentiment) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
   paddle::framework::LoDTensor words;
-
-  paddle::framework::LoD lod{{0, 83}};
-  int64_t word_dict_len = 198392;
-  SetupLoDTensor(&words, lod, static_cast<int64_t>(0),
-                 static_cast<int64_t>(word_dict_len - 1));
   /*
-    std::vector<int64_t> srcdata{
-        784,    784,   1550,   6463,   56,     75693, 6189,  784,    784,  1550,
-        198391, 6463,  42468,  4376,   10251,  10760, 6189,  297,    396,  6463,
-        6463,   1550,  198391, 6463,   22564,  1612,  291,   68,     164,  784,
-        784,    1550,  198391, 6463,   13659,  3362,  42468, 6189,   2209,
-    198391,
-        6463,   2209,  2209,   198391, 6463,   2209,  1062,  3029,   1831, 3029,
-        1065,   2281,  100,    11216,  1110,   56,    10869, 9811,   100,
-    198391,
-        6463,   100,   9280,   100,    288,    40031, 1680,  1335,   100,  1550,
-        9280,   7265,  244,    1550,   198391, 6463,  1550,  198391, 6463,
-    42468,
-        4376,   10251, 10760};
-    paddle::framework::LoD lod{{0, srcdata.size()}};
-    words.set_lod(lod);
-    int64_t* pdata =
-    words.mutable_data<int64_t>({static_cast<int64_t>(srcdata.size()), 1},
-                                                  paddle::platform::CPUPlace());
-    memcpy(pdata, srcdata.data(), words.numel() * sizeof(int64_t));
-  */
+    paddle::framework::LoD lod{{0, 83}};
+    int64_t word_dict_len = 198392;
+    SetupLoDTensor(&words, lod, static_cast<int64_t>(0),
+                   static_cast<int64_t>(word_dict_len - 1));
+   */
+  std::vector<int64_t> srcdata{
+      784,    784,   1550,   6463,   56,     75693, 6189,  784,    784,  1550,
+      198391, 6463,  42468,  4376,   10251,  10760, 6189,  297,    396,  6463,
+      6463,   1550,  198391, 6463,   22564,  1612,  291,   68,     164,  784,
+      784,    1550,  198391, 6463,   13659,  3362,  42468, 6189,   2209, 198391,
+      6463,   2209,  2209,   198391, 6463,   2209,  1062,  3029,   1831, 3029,
+      1065,   2281,  100,    11216,  1110,   56,    10869, 9811,   100,  198391,
+      6463,   100,   9280,   100,    288,    40031, 1680,  1335,   100,  1550,
+      9280,   7265,  244,    1550,   198391, 6463,  1550,  198391, 6463, 42468,
+      4376,   10251, 10760};
+  paddle::framework::LoD lod{{0, srcdata.size()}};
+  words.set_lod(lod);
+  int64_t* pdata = words.mutable_data<int64_t>(
+      {static_cast<int64_t>(srcdata.size()), 1}, paddle::platform::CPUPlace());
+  memcpy(pdata, srcdata.data(), words.numel() * sizeof(int64_t));
+
   LOG(INFO) << "number of input size:" << words.numel();
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&words);
