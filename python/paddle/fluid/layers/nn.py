@@ -1293,6 +1293,13 @@ def conv2d(input,
         dtype=dtype,
         default_initializer=_get_default_param_initializer())
 
+    algorithm = helper.create_parameter(
+        attr=ParamAttr(name=None, initializer=Constant(0), trainable=False),
+        shape=[3],
+        dtype='int')
+
+    algorithm_out = algorithm
+
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -1300,8 +1307,11 @@ def conv2d(input,
         inputs={
             'Input': input,
             'Filter': filter_param,
+            'Algorithm': algorithm,
         },
-        outputs={"Output": pre_bias},
+        outputs={'Output': pre_bias,
+                 'AlgorithmOut': algorithm_out,
+        },
         attrs={
             'strides': stride,
             'paddings': padding,

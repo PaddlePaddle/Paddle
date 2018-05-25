@@ -43,6 +43,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
+    auto* alg    = ctx.Input<Tensor>("Algorithm");
+    auto* algOut = ctx.Output<Tensor>("AlgorithmOut");
+    algOut->mutable_data<int>(platform::CPUPlace());
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -126,13 +129,30 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     miopenConvAlgoPerf_t perfRes;
     int algoCount = 0;
+
+    VLOG(3) << "ctx: " << &ctx << " op: " << &ctx.op() << " scope: " << &ctx.scope();
+    VLOG(3) << "alg: " << alg << " get alg str: " << ctx.op().Input("Algorithm");
+    VLOG(3) << "get alg ptr: " << ctx.scope().FindVar(ctx.op().Input("Algorithm"));
+    VLOG(3) << "Input: " << alg->data<int>() << " Output: " << algOut->mutable_data<int>(platform::CPUPlace());
+    int pre_alg = (alg->data<int>())[0];
+    // New allocated memory is initialized as 0
+    if (pre_alg == 0)
+    {
+        PADDLE_ENFORCE(platform::dynload::miopenFindConvolutionForwardAlgorithm(
+            handle, cudnn_input_desc, input_data,
+            cudnn_filter_desc, filter_data,
+            cudnn_conv_desc, cudnn_output_desc, output_data,
+            1, &algoCount, &perfRes, cudnn_workspace, workspace_size_in_bytes, false));
+        (algOut->data<int>())[0] = (int)(perfRes.fwd_algo) + 1;
+        VLOG(3) << "Find Kernel: store " << (algOut->data<int>()) << " kernel :" << perfRes.fwd_algo;
+    }
+    else
+    {
+        perfRes.fwd_algo = (miopenConvFwdAlgorithm_t)(pre_alg - 1);
+        VLOG(3) << "Find Kernel:  load  " << (alg->data<int>()) << " kernel :" << perfRes.fwd_algo;
+    }
+
     for (int i = 0; i < groups; i++) {
-      // ------------------- cudnn conv algorithm ---------------------
-      PADDLE_ENFORCE(platform::dynload::miopenFindConvolutionForwardAlgorithm(
-          handle, cudnn_input_desc, input_data + i * group_offset_in,
-          cudnn_filter_desc, filter_data + i * group_offset_filter,
-	  cudnn_conv_desc, cudnn_output_desc, output_data + i * group_offset_out,
-          1, &algoCount, &perfRes, cudnn_workspace, workspace_size_in_bytes, false));
       // ------------------- cudnn conv forward ---------------------
       PADDLE_ENFORCE(platform::dynload::miopenConvolutionForward(
           handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
@@ -157,6 +177,15 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+#if 0
+    // This block is commented out since it triggers assertion.
+    auto* alg    = ctx.Input<Tensor>("Algorithm");
+    auto* algOut = ctx.Output<Tensor>("AlgorithmOut");
+    if (alg == nullptr || algOut == nullptr)
+    {
+      VLOG(3) << "GradOp alg: " << alg << " algOut : " << algOut;
+    }
+#endif
 
     const T* input_data = input->data<T>();
     const T* output_grad_data = output_grad->data<T>();

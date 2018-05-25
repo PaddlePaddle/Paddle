@@ -129,9 +129,13 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
            "H is the height of the filter, and W is the width of the filter. "
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
+  AddInput("Algorithm",
+           "Selected algorithm for conv2d");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.");
+  AddOutput("AlgorithmOut",
+            "Tuned algorithm for conv2d");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
@@ -225,9 +229,13 @@ Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
            "is the width of the filter."
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
+  AddInput("Algorithm",
+           "Selected algorithm for conv3d");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
             "The format of output tensor is also NCDHW.");
+  AddOutput("AlgorithmOut",
+            "Tuned algorithm for conv3d");
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default:{1, 1, 1}), the "
                             "strides(d_stride, h_stride, w_stride) of "

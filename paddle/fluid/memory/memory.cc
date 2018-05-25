@@ -42,6 +42,8 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
   VLOG(10) << "  pointer=" << p;
+  // For debug
+  memset(p, 0, size);
   return p;
 }
 
