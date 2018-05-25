@@ -85,12 +85,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_processor.SetDevCtx(&dev_ctx);
     rpc_processor.SetProgram(&empty_program);
     rpc_processor.SetExecutor(&executor);
+    rpc_processor.SetFanIn(1);
 
     std::thread server_thread(
         std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
-    rpc_service.SetCond(0);
+    rpc_service.SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
     VLOG(3) << "start getting nccl id from trainer 0...";
-    auto recv = rpc_processor.Get();
+    rpc_processor.WaitFanInOfSend();
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";

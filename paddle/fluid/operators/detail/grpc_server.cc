@@ -82,7 +82,8 @@ class RequestSend final : public RequestBase {
     std::string var_name = GetReqName();
     VLOG(3) << "RequestSend " << var_name;
 
-    rpc_processor_->ProcessSendImpl(var_name, request_->GetVar());
+    rpc_processor_->ProcessSendImpl(var_name, request_->GetVar(),
+                                    request_->GetMutableLocalScope());
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -120,10 +121,9 @@ class RequestGet final : public RequestBase {
     std::string var_name = request_.varname();
     VLOG(3) << "RequestGet " << var_name;
 
-    ::grpc::ByteBuffer reply;
     framework::Variable* var = nullptr;
     rpc_processor_->ProcessGetImpl(var_name, &var);
-    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply);
+    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply_);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -164,10 +164,9 @@ class RequestPrefetch final : public RequestBase {
     VLOG(3) << "RequestPrefetch " << var_name;
 
     framework::Variable* var = nullptr;
-    ::grpc::ByteBuffer reply;
 
     rpc_processor_->ProcessPrefetchImpl(var_name, &var);
-    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply);
+    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply_);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,

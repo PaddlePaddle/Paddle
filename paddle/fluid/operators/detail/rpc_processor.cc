@@ -32,7 +32,7 @@ namespace operators {
 namespace detail {
 
 void GRPCProcessorCtx::SetExit() {
-  LOG(WARNING) << "GRPCProcessorCtx setexit";
+  LOG(WARNING) << "GRPCProcessorCtx SetExit!";
   std::unique_lock<std::mutex> lock(mutex_);
   exit_flag_ = true;
   condition_send_.notify_all();
@@ -70,21 +70,22 @@ bool GRPCProcessorCtx::ProcessSendImpl(const std::string& msg_name,
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[msg_name].get(),
                                     scope);
     } catch (std::exception& e) {
-      LOG(ERROR) << "run sub program error " << e.what();
+      LOG(ERROR) << "async: run sub program error " << e.what();
     }
     return true;
   }
 
+  PADDLE_ENFORCE((fan_in_ > 0), "please set fan_in first!");
   // Sync
   if (msg_name == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "recv batch barrier message";
+    VLOG(3) << "sync: recv batch barrier message";
     IncreaseBatchBarrierSend();
   } else {
-    VLOG(3) << "received grad: " << msg_name;
+    VLOG(3) << "sync: received grad: " << msg_name;
 
     if (var == nullptr) {
-      LOG(ERROR) << "Can not find server side var: " << msg_name;
-      PADDLE_THROW("Can not find server side var");
+      LOG(ERROR) << "sync: Can not find server side var: " << msg_name;
+      PADDLE_THROW("sync: Can not find server side var");
     }
 
     if (var->IsType<framework::SelectedRows>()) {
@@ -104,7 +105,10 @@ bool GRPCProcessorCtx::ProcessGetImpl(const std::string& msg_name,
   }
 
   sendrecv::VariableMessage msg;
-  if (sync_mode_) IncreaseBatchBarrierGet();
+  if (sync_mode_) {
+    PADDLE_ENFORCE((fan_in_ > 0), "please set fan_in first!");
+    IncreaseBatchBarrierGet();
+  }
   return true;
 }
 

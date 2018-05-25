@@ -98,7 +98,7 @@ class RPCProcessorCtx {
 
 class GRPCProcessorCtx : public RPCProcessorCtx {
  public:
-  GRPCProcessorCtx() : exit_flag_(false) { clear_to_init(); }
+  GRPCProcessorCtx() : exit_flag_(false), fan_in_(-1) { clear_to_init(); }
   virtual ~GRPCProcessorCtx() {}
 
   bool ProcessSendImpl(const std::string& msg_name, framework::Variable* var,
@@ -128,7 +128,6 @@ class GRPCProcessorCtx : public RPCProcessorCtx {
   void clear_to_init() {
     std::unique_lock<std::mutex> lock(this->mutex_);
     batch_barrier_send_ = 0;
-    recv_var_cnt_ = 0;
 
     sparse_vars_.clear();
     batch_barrier_get_ = 0;
@@ -157,7 +156,6 @@ class GRPCProcessorCtx : public RPCProcessorCtx {
   // send
   std::condition_variable condition_send_;
   int batch_barrier_send_;
-  int recv_var_cnt_;
 
   // get
   std::condition_variable condition_get_;

@@ -56,12 +56,13 @@ void StartServer(std::atomic<bool>* initialized) {
   g_rpc_processor->SetDevCtx(&dev_ctx);
   g_rpc_processor->SetProgram(&empty_program);
   g_rpc_processor->SetExecutor(&executor);
+  g_rpc_processor->SetFanIn(1);
 
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service.get()));
   *initialized = true;
-  rpc_service->SetCond(0);
-  auto recv = g_rpc_processor->Get();
+  rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
+  g_rpc_processor->WaitFanInOfSend();
   LOG(INFO) << "got nccl id and stop server...";
   rpc_service->ShutDown();
   server_thread.join();
