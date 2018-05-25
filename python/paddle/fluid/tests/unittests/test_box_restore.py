@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def PolygonRestore(input):
+def BoxRestore(input):
     shape = input.shape
     batch_size = shape[0]
     geo_channels = shape[1]
@@ -38,28 +38,28 @@ def PolygonRestore(input):
         input.shape) - input  # [batch_size, geo_channels, h, w]
 
 
-class TestPolygonRestoreOp(OpTest):
+class TestBoxRestoreOp(OpTest):
     def config(self):
         self.input_shape = (1, 8, 2, 2)
 
     def setUp(self):
         self.config()
-        self.op_type = "polygon_restore"
+        self.op_type = "box_restore"
         input = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'Input': input}
-        output = PolygonRestore(input)
+        output = BoxRestore(input)
         self.outputs = {'Output': output}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestCase1(TestPolygonRestoreOp):
+class TestCase1(TestBoxRestoreOp):
     def config(self):
         self.input_shape = (2, 10, 3, 2)
 
 
-class TestCase2(TestPolygonRestoreOp):
+class TestCase2(TestBoxRestoreOp):
     def config(self):
         self.input_shape = (3, 12, 4, 5)
 
