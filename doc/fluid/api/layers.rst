@@ -1003,9 +1003,9 @@ dice_loss
 ..  autofunction:: paddle.fluid.layers.dice_loss
     :noindex:
 
-UpsamplingBilinear2d
+upsampling_bilinear2d
 ____
 
-..  autofunction:: paddle.fluid.layers.UpsamplingBilinear2d
+..  autofunction:: paddle.fluid.layers.upsampling_bilinear2d
     :noindex:
 

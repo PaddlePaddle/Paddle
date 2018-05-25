@@ -81,7 +81,7 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
-    'UpsamplingBilinear2d',
+    'upsampling_bilinear2d',
 ]
 
 
@@ -3917,9 +3917,9 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def UpsamplingBilinear2d(input, out_shape=None, scale=None, name=None):
+def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     """
-    The mathematical meaning of UpsamplingBilinear2d is alse called
+    The mathematical meaning of upsampling_bilinear2d is also called
     Bilinear interpolation.
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
