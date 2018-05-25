@@ -117,7 +117,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   std::string program_desc_str;
   VLOG(3) << "loading model from " << model_filename;
   ReadBinaryFile(model_filename, &program_desc_str);
-
+  // LOG(INFO) << program_desc_str;
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
 
