@@ -205,32 +205,22 @@ def infer(use_cuda, inference_program, save_path):
     inferencer = fluid.Inferencer(
         inference_program, param_path=save_path, place=place)
 
-    def create_lod_tensor(data, lod=None):
-        tensor = fluid.LoDTensor()
-        if lod is None:
-            # Tensor, the shape is [batch_size, 1]
-            index = 0
-            lod_0 = [index]
-            for l in range(len(data)):
-                index += 1
-                lod_0.append(index)
-            lod = [lod_0]
-        tensor.set_lod(lod)
-
-        flattened_data = np.concatenate(data, axis=0).astype("int64")
-        flattened_data = flattened_data.reshape([len(flattened_data), 1])
-        tensor.set(flattened_data, place)
-        return tensor
-
-    # Generate a random input for inference
-    user_id = create_lod_tensor([[1]])
-    gender_id = create_lod_tensor([[1]])
-    age_id = create_lod_tensor([[0]])
-    job_id = create_lod_tensor([[10]])
-    movie_id = create_lod_tensor([[783]])
-    category_id = create_lod_tensor([[10], [8], [9]], [[0, 3]])
-    movie_title = create_lod_tensor([[1069], [4140], [2923], [710], [988]],
-                                    [[0, 5]])
+    # Use the first data from paddle.dataset.movielens.test() as input.
+    # Use create_lod_tensor(data, lod, place) API to generate LoD Tensor,
+    # where `data` is a list of sequences of index numbers, `lod` is 
+    # the level of detail (lod) info associated with `data`.
+    # For example, data = [[10, 2, 3], [2, 3]] means that it contains
+    # two sequences of indexes, of length 3 and 2, respectively.
+    # Correspondingly, lod = [[3, 2]] contains one level of detail info,
+    # indicating that `data` consists of two sequences of length 3 and 2. 
+    user_id = fluid.create_lod_tensor([[1]], [[1]], place)
+    gender_id = fluid.create_lod_tensor([[1]], [[1]], place)
+    age_id = fluid.create_lod_tensor([[0]], [[1]], place)
+    job_id = fluid.create_lod_tensor([[10]], [[1]], place)
+    movie_id = fluid.create_lod_tensor([[783]], [[1]], place)
+    category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place)
+    movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]],
+                                          place)
 
     results = inferencer.infer(
         {

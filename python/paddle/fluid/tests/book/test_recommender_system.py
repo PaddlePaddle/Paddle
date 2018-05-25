@@ -249,23 +249,6 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    def create_lod_tensor(data, lod=None):
-        tensor = fluid.LoDTensor()
-        if lod is None:
-            # Tensor, the shape is [batch_size, 1]
-            index = 0
-            lod_0 = [index]
-            for l in range(len(data)):
-                index += 1
-                lod_0.append(index)
-            lod = [lod_0]
-        tensor.set_lod(lod)
-
-        flattened_data = np.concatenate(data, axis=0).astype("int64")
-        flattened_data = flattened_data.reshape([len(flattened_data), 1])
-        tensor.set(flattened_data, place)
-        return tensor
-
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
