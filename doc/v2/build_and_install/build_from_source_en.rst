@@ -23,7 +23,7 @@ You need to use Docker to build PaddlePaddle
 to avoid installing dependencies by yourself. We have several pre-built
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ ,
 you can also find how to build and use paddle_manylinux_devel Docker image from
-`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`_
+`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__
 Or you can build your own image from source as the optional step below:
 
 .. code-block:: bash
@@ -88,7 +88,7 @@ If you wish to run only one unit test, like :code:`test_sum_op`:
 .. _faq_docker:
 
 Frequently Asked Questions
-----------------
+---------------------------
 
 - What is Docker?
 
@@ -118,11 +118,10 @@ Frequently Asked Questions
 
   Many PaddlePaddle developers are using Emacs.  They add the following few lines into their `~/.emacs` configure file:
 
-  ```emacs
-  (global-set-key "\C-cc" 'compile)
-  (setq compile-command
-   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
-  ```
+  .. code-block:: emacs
+
+    (global-set-key "\C-cc" 'compile)
+    (setq compile-command "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
 
   so they could type `Ctrl-C` and `c` to build PaddlePaddle from source.
 
@@ -145,7 +144,7 @@ Frequently Asked Questions
 .. _compile_deps:
 
 Appendix: Compile Dependencies
-----------------
+-------------------------------
 
 PaddlePaddle need the following dependencies when compiling, other dependencies
 will be downloaded automatically.
@@ -166,11 +165,11 @@ will be downloaded automatically.
 .. _build_options:
 
 Appendix: Build Options
-----------------
+-------------------------
 
 Build options include whether build binaries for CPU or GPU, which BLAS
 library to use etc. You may pass these settings when running cmake.
-For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`_ 。
+For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`__ 。
 
 
 You can add :code:`-D` argument to pass such options, like:
@@ -219,7 +218,7 @@ keep on with latest cuDNN versions. Be sure to run with the same version of cuDN
 you built.
 
 Pass Compile Options
-++++++++++++++
+++++++++++++++++++++++
 
 You can pass compile options to use intended BLAS/CUDA/Cudnn libraries.
 When running cmake command, it will search system paths like

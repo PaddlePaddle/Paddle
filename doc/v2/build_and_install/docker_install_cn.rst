@@ -73,6 +73,7 @@
 当然，您也可以进入到Docker容器中，以交互式的方式执行或调试您的代码：
 
   .. code-block:: bash
+
      docker run -it -v $PWD:/work paddlepaddle/paddle /bin/bash
      cd /work
      python train.py
