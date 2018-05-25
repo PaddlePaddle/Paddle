@@ -35,20 +35,17 @@ namespace m = paddle::operators::math;
 namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::AsyncGRPCServer> rpc_service;
+std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
 std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
 
-void StartServer(std::atomic<bool>* initialized) {
+void StartServer() {
   f::Scope scope;
   p::CPUPlace place;
   scope.Var(NCCL_ID_VARNAME);
   p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
-  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
   g_rpc_processor->SetSyncMode(true);
-  rpc_service.reset(
-      new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
 
   f::ProgramDesc empty_program;
   f::Executor executor(dev_ctx.GetPlace());
@@ -57,25 +54,31 @@ void StartServer(std::atomic<bool>* initialized) {
   g_rpc_processor->SetProgram(&empty_program);
   g_rpc_processor->SetExecutor(&executor);
   g_rpc_processor->SetFanIn(1);
+  g_rpc_service->RegisterBarrier(
+      static_cast<int>(detail::GrpcMethod::kSendVariable));
 
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, rpc_service.get()));
-  *initialized = true;
-  rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
+      std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
+
+  g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
+  std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_processor->WaitFanInOfSend();
   LOG(INFO) << "got nccl id and stop server...";
-  rpc_service->ShutDown();
+  g_rpc_service->ShutDown();
   server_thread.join();
 }
 
-TEST(SendNcclId, DISABLED_Normal) {
+TEST(SendNcclId, GrpcServer) {
   std::atomic<bool> initialized{false};
-  std::thread server_thread(StartServer, &initialized);
-  while (!initialized) {
-  }
+  std::thread server_thread(StartServer);
+
+  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
+  g_rpc_service.reset(
+      new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
+
   // wait server to start
   // sleep(2);
-  rpc_service->WaitServerReady();
+  g_rpc_service->WaitServerReady();
 
   f::Scope scope;
   p::CPUPlace place;
@@ -87,13 +90,15 @@ TEST(SendNcclId, DISABLED_Normal) {
   auto id = var->GetMutable<ncclUniqueId>();
   p::dynload::ncclGetUniqueId(id);
 
-  int port = rpc_service->GetSelectedPort();
+  int port = g_rpc_service->GetSelectedPort();
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
   detail::RPCClient client;
 
   client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
   client.Wait();
+  client.AsyncSendBatchBarrier(ep);
+  client.Wait();
   server_thread.join();
-  auto* ptr = rpc_service.release();
+  auto* ptr = g_rpc_service.release();
   delete ptr;
 }

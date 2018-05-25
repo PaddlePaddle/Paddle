@@ -323,7 +323,7 @@ void AsyncGRPCServer::HandleRequest(
   bool ok = false;
 
   while (true) {
-    VLOG(3) << "HandleRequest for " << rpc_id << " wait Next";
+    VLOG(3) << "HandleRequest for completion queue:" << rpc_id << " wait Next";
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << rpc_id << " CompletionQueue shutdown!";
       break;
@@ -331,7 +331,7 @@ void AsyncGRPCServer::HandleRequest(
 
     int req_id = reinterpret_cast<intptr_t>(tag);
 
-    VLOG(3) << "HandleRequest for " << rpc_id << " get Next";
+    VLOG(3) << "HandleRequest for completion queue:" << rpc_id << " get Next";
 
     RequestBase* base = nullptr;
     {
@@ -355,7 +355,7 @@ void AsyncGRPCServer::HandleRequest(
         WaitCond(rpc_id);
       }
 
-      VLOG(3) << "HandleRequest for " << rpc_id << " sync_mode";
+      VLOG(3) << "HandleRequest for completion queue:" << rpc_id;
     }
 
     // reference:
