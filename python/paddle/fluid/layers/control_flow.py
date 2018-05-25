@@ -1098,7 +1098,7 @@ class ConditionalBlock(object):
         input_set = set([ipt.name for ipt in self.inputs])
 
         param_list = [
-            parent_block.var(each_name) for each_name in params
+            parent_block.var_recursive(each_name) for each_name in params
             if each_name not in input_set
         ]
 
