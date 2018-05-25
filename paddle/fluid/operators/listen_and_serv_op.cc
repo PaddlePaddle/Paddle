@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/utils/Util.h"
 
 namespace paddle {
 namespace operators {
