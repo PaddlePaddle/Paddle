@@ -36,17 +36,12 @@ endif()
 add_library(paddle_trainer_lib STATIC
     ${TRAINER_SOURCES})
 
-add_style_check_target(paddle_trainer_lib
-    ${TRAINER_SOURCES})
-add_style_check_target(paddle_trainer_lib
-    ${TRAINER_HEADERS})
 add_dependencies(paddle_trainer_lib
     paddle_proto
     ${external_project_dependencies})
 
 macro(add_paddle_exe TARGET_NAME)
   add_executable(${TARGET_NAME} ${ARGN})
-  add_style_check_target(${TARGET_NAME} ${ARGN})
   link_paddle_exe(${TARGET_NAME})
 endmacro()
 

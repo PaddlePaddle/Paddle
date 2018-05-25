@@ -80,6 +80,7 @@ Also, you can go into the container shell, run or debug your code
 interactively:
 
   .. code-block:: bash
+
      docker run -it -v $PWD:/work paddlepaddle/paddle /bin/bash
      cd /work
      python train.py

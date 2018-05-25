@@ -41,7 +41,6 @@ option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FO
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
-option(WITH_STYLE_CHECK "Compile PaddlePaddle with style check"         ON)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
@@ -155,7 +154,6 @@ include(cupti)
 include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
-include(cpplint)            # set paddle c++ style
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
