@@ -41,9 +41,9 @@ class PolygonRestoreCPUKernel : public framework::OpKernel<T> {
         for (int id_w = 0; id_w < width; ++id_w) {
           id = id_n * height * width + width * id_h + id_w;
           if (id_n % 2 == 0) {
-            out_data[id] = in_data[id] + id_w;
+            out_data[id] = id_w - in_data[id];
           } else {
-            out_data[id] = in_data[id] + id_h;
+            out_data[id] = id_h - in_data[id];
           }
         }
       }

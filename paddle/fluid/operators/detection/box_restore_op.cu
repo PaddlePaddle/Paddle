@@ -32,9 +32,9 @@ __global__ void PolygonRestoreKernel(const int n, const int h, const int w,
   if (id_n < n && id_h < h && id_w < w) {
     int id = id_n * h * w + w * id_h + id_w;
     if (id_n % 2 == 0) {
-      output[id] = input[id] + id_w;
+      output[id] = id_w - input[id];
     } else {
-      output[id] = input[id] + id_h;
+      output[id] = id_h - input[id];
     }
   }
 }

@@ -34,8 +34,8 @@ def PolygonRestore(input):
         axis=0)[np.newaxis, :]  # [1, geo_channels/2, 2, h, w]
     indexes = indexes.repeat(
         [batch_size], axis=0)  # [batch_size, geo_channels/2, 2, h, w]
-    return input + indexes.reshape(
-        input.shape)  # [batch_size, geo_channels, h, w]
+    return indexes.reshape(
+        input.shape) - input  # [batch_size, geo_channels, h, w]
 
 
 class TestPolygonRestoreOp(OpTest):
