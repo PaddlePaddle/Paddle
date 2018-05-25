@@ -32,8 +32,7 @@ struct AddFunctor {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input1 of test op");
     AddOutput("output", "output of test op");
     AddAttr<bool>("use_gpu", "force to use gpu kernel").SetDefault(false);

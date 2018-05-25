@@ -72,6 +72,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
     else:
         raise ValueError("Not supported numpy dtype " + str(dtype))
 
@@ -160,6 +162,7 @@ class Variable(object):
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
+                 is_data=False,
                  **kwargs):
         self.block = block
         self.error_clip = error_clip
@@ -238,6 +241,7 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
         self.stop_gradient = stop_gradient
+        self.is_data = is_data
 
     def __str__(self):
         return self.to_string(True)
@@ -400,6 +404,23 @@ class Operator(object):
         self.block = block
         self.desc = desc
         self.attrs = attrs
+        if self.attrs is None:
+            self.attrs = dict()
+        del attrs
+
+        op_maker = core.op_proto_and_checker_maker
+
+        if op_maker.kOpRoleAttrName() not in self.attrs:
+            self.attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
+
+        role_var_name = op_maker.kOpRoleVarAttrName()
+        if len(self.block.program.
+               op_role_var) != 0 and role_var_name not in self.attrs:
+            self.attrs[role_var_name] = self.block.program.op_role_var
+
+        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
+            del self.attrs[role_var_name]
+
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -465,29 +486,30 @@ class Operator(object):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        if attrs is not None:
-            if not isinstance(attrs, dict):
+        if self.attrs is not None:
+            if not isinstance(self.attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (attr_name not in attrs) or (attrs[attr_name] is None):
+                if (attr_name not in self.attrs) or (
+                        self.attrs[attr_name] is None):
                     continue
-                if isinstance(attrs[attr_name], Block):
-                    self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
-                elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                   isinstance(attrs[attr_name], core.ProgramDesc):
+                if isinstance(self.attrs[attr_name], Block):
+                    self.desc.set_block_attr(attr_name,
+                                             self.attrs[attr_name].desc)
+                elif isinstance(self.attrs[attr_name], core.BlockDesc) or \
+                        isinstance(self.attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
-                        attr_name, attrs[attr_name].serialize_to_string())
+                        attr_name, self.attrs[attr_name].serialize_to_string())
                 else:
-                    self.desc.set_attr(attr_name, attrs[attr_name])
-
+                    self.desc.set_attr(attr_name, self.attrs[attr_name])
         self.desc.check_attrs()
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
             'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select'
+            'channel_send', 'channel_recv', 'select', 'gen_nccl_id'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -607,6 +629,10 @@ class Operator(object):
 
         """
         return self.desc.attr_type(name)
+
+    def set_attr(self, name, val):
+        self.attrs[name] = val
+        self.desc.set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -978,7 +1004,8 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -986,7 +1013,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True)
+                persistable=True,
+                is_data=var.is_data)
         return ret_var
 
 
@@ -996,6 +1024,33 @@ class Program(object):
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
         self._seed = 0
+        self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
+        self._op_role_var = []
+
+    @property
+    def op_role(self):
+        return self._current_role
+
+    @op_role.setter
+    def set_op_role(self, role):
+        self._current_role = role
+
+    @property
+    def op_role_var(self):
+        return self._op_role_var
+
+    @op_role_var.setter
+    def set_op_role_var(self, var_name):
+        self._op_role_var = [var_name]
+
+    @contextlib.contextmanager
+    def optimized_guard(self, var):
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Optimize
+        self._op_role_var = [var.name if isinstance(var, Variable) else var]
+        yield
+        self._op_role_var = []
+        self._current_role = OpRole.Forward
 
     def __str__(self):
         return self.to_string(True)
@@ -1051,6 +1106,7 @@ class Program(object):
             p.sync_with_cpp()
 
         p.copy_param_info_from(self)
+        p.copy_data_info_from(self)
         return p
 
     def prune(self, targets):
@@ -1171,6 +1227,26 @@ class Program(object):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block().copy_param_info_from(other.global_block())
+
+    def copy_data_info_from(self, other):
+        """
+        Copy the information of data variables from other program.
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("copy_param_info_from should be invoked with "
+                            "Program")
+
+        if len(self.blocks) != len(other.blocks):
+            raise ValueError("copy_param_info_from should be invoked with two "
+                             "program, with represent the same topology")
+        for var in other.global_block().vars.itervalues():
+            if var.is_data:
+                self.global_block().var(var.name).is_data = True
 
     def list_vars(self):
         for each_block in self.blocks:

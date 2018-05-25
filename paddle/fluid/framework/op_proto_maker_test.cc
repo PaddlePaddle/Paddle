@@ -18,9 +18,7 @@ limitations under the License. */
 
 class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
-  TestAttrProtoMaker(paddle::framework::proto::OpProto* proto,
-                     paddle::framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddAttr<float>("scale", "scale of test op");
     AddAttr<float>("scale", "scale of test op");
   }
@@ -29,15 +27,14 @@ class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
 TEST(ProtoMaker, DuplicatedAttr) {
   paddle::framework::proto::OpProto op_proto;
   paddle::framework::OpAttrChecker op_checker;
-  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
+  TestAttrProtoMaker proto_maker;
+  ASSERT_THROW(proto_maker(&op_proto, &op_checker),
+               paddle::platform::EnforceNotMet);
 }
 
 class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
-  TestInOutProtoMaker(paddle::framework::proto::OpProto* proto,
-                      paddle::framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input of test op");
     AddInput("input", "input of test op");
   }
@@ -46,6 +43,7 @@ class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
 TEST(ProtoMaker, DuplicatedInOut) {
   paddle::framework::proto::OpProto op_proto;
   paddle::framework::OpAttrChecker op_checker;
-  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
+  TestAttrProtoMaker proto_maker;
+  ASSERT_THROW(proto_maker(&op_proto, &op_checker),
+               paddle::platform::EnforceNotMet);
 }

@@ -80,6 +80,8 @@ __all__ = [
     'pad',
     'label_smooth',
     'roi_pool',
+    'dice_loss',
+    'bilinear_interp',
 ]
 
 
@@ -699,8 +701,8 @@ def dynamic_gru(input,
 def gru_unit(input,
              hidden,
              size,
-             weight=None,
-             bias=None,
+             param_attr=None,
+             bias_attr=None,
              activation='tanh',
              gate_activation='sigmoid'):
     """
@@ -731,8 +733,8 @@ def gru_unit(input,
         input (Variable): The fc transformed input value of current step.
         hidden (Variable): The hidden value of lstm unit from previous step.
         size (integer): The input dimension value.
-        weight (ParamAttr): The weight parameters for gru unit. Default: None
-        bias (ParamAttr): The bias parameters for gru unit. Default: None
+        param_attr (ParamAttr): The weight parameters for gru unit. Default: None
+        bias_attr (ParamAttr): The bias parameters for gru unit. Default: None
         activation (string): The activation type for cell (actNode).
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
@@ -764,34 +766,31 @@ def gru_unit(input,
     size = size / 3
 
     # create weight
-    if weight is None:
-        weight = helper.create_parameter(
-            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
-
-    # create bias
-
-    if bias is None:
-        bias_size = [1, 3 * size]
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
 
     gate = helper.create_tmp_variable(dtype)
     reset_hidden_pre = helper.create_tmp_variable(dtype)
     updated_hidden = helper.create_tmp_variable(dtype)
+    inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
+    # create bias
+    if helper.bias_attr:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
 
     helper.append_op(
         type='gru_unit',
-        inputs={'Input': input,
-                'HiddenPrev': hidden,
-                'Weight': weight},
+        inputs=inputs,
         outputs={
             'Gate': gate,
             'ResetHiddenPrev': reset_hidden_pre,
             'Hidden': updated_hidden,
         },
         attrs={
-            'activation': 0,
-            'gate_activation': 1,
+            'activation': 2,  # tanh
+            'gate_activation': 1,  # sigmoid
         })
 
     return updated_hidden, reset_hidden_pre, gate
@@ -1329,6 +1328,8 @@ def sequence_pool(input, pool_type):
          sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
          max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
         input(variable): The input variable which is a LoDTensor.
@@ -1348,6 +1349,8 @@ def sequence_pool(input, pool_type):
              sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
              sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
              max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
+             last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
+             first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
@@ -1706,6 +1709,7 @@ def conv2d_transpose(input,
                      padding=0,
                      stride=1,
                      dilation=1,
+                     groups=None,
                      param_attr=None,
                      bias_attr=None,
                      use_cudnn=True,
@@ -1776,6 +1780,12 @@ def conv2d_transpose(input,
        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
            contain two integers, (dilation_H, dilation_W). Otherwise, the
            dilation_H = dilation_W = dilation. Default: dilation = 1.
+       groups(int): The groups number of the Conv2d transpose layer. Inspired by
+           grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+           when group=2, the first half of the filters is only connected to the
+           first half of the input channels, while the second half of the
+           filters is only connected to the second half of the input channels.
+           Default: groups=1
        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
                               Default: None
        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
@@ -1830,7 +1840,8 @@ def conv2d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
-    filter_shape = [input_channel, num_filters] + filter_size
+    groups = 1 if groups is None else groups
+    filter_shape = [input_channel, num_filters / groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
@@ -2080,11 +2091,11 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the sum is performed. If
+        dim (list|int|None): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
-            the dimension to reduce is :math:`rank + dim`.
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2105,15 +2116,25 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
             fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1, 2], [3, 4]],
+            #      [[5, 6], [7, 8]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
+            fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
+
     """
     helper = LayerHelper('reduce_sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_sum',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2126,11 +2147,11 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the mean is computed. If
+        dim (list|int|None): The dimensions along which the mean is computed. If
             :attr:`None`, compute the mean over all elements of :attr:`input`
             and return a Tensor variable with a single element, otherwise
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2151,15 +2172,24 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
             fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_mean(x, dim=[1, 2]) # [2.5, 6.5]
+            fluid.layers.reduce_mean(x, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_mean',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2172,11 +2202,11 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the maximum is computed.
+        dim (list|int|None): The dimension along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2197,15 +2227,24 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
             fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_max(x, dim=[1, 2]) # [4.0, 8.0]
+            fluid.layers.reduce_max(x, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_max',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2218,11 +2257,11 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the minimum is computed.
+        dim (list|int|None): The dimensions along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2243,15 +2282,24 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
             fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_min(x, dim=[1, 2]) # [1.0, 5.0]
+            fluid.layers.reduce_min(x, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_min',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2264,11 +2312,11 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the product is performed. If
+        dim (list|int|None): The dimensions along which the product is performed. If
             :attr:`None`, multipy all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
-            the dimension to reduce is :math:`rank + dim`.
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
@@ -2290,15 +2338,24 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
             fluid.layers.reduce_prod(x, dim=1,
                                      keep_dim=True)  # [[0.027], [0.0084]]
+
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_prod(x, dim=[1, 2]) # [24.0, 1680.0]
+            fluid.layers.reduce_prod(x, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     helper.append_op(
         type='reduce_prod',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim != None else [0],
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2401,7 +2458,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
     if len(x.shape) == 1:
         axis = 0
-
     helper = LayerHelper("l2_normalize", **locals())
 
     square = helper.create_tmp_variable(dtype=x.dtype)
@@ -2413,7 +2469,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         inputs={"X": square},
         outputs={"Out": reduced_sum},
         attrs={
-            "dim": 1 if axis is None else axis,
+            "dim": [1] if axis is None else [axis],
             "keep_dim": True,
             "reduce_all": False
         })
@@ -3263,35 +3319,35 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
     **Smooth L1 Loss Operator. **
 
-    This operator computes the smooth l1 loss for X and Y.
+    This operator computes the smooth L1 loss for X and Y.
     The operator takes the first dimension of X and Y as batch size.
-    For each instance, it computes the smooth l1 loss element by element first
+    For each instance, it computes the smooth L1 loss element by element first
     and then sums all the losses. So the shape of Out is [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
-            l1 loss op with shape [batch_size, dim1, ..., dimN].
+            L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            l1 loss op with same shape as x.
+            L1 loss op with same shape as x.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the result of (x - y) will be multiplied by this tensor element by
             element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
-            the out smooth l1 loss will be multiplied by this tensor element
+            the out smooth L1 loss will be multiplied by this tensor element
             by element.
-        sigma (float|None): Hyper parameter of smooth l1 loss op. A float scalar
+        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
             with default value 1.0.
     Returns:
-        Variable: A tensor with rank be 2. The output smooth l1 loss with
+        Variable: A tensor with rank be 2. The output smooth L1 loss with
             shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[100], dtype='int64')
+            label = fluid.layers.data(name='label', shape=[100], dtype='float32')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
@@ -3769,13 +3825,13 @@ def label_smooth(label,
 
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform 
+    Region of interest pooling (also known as RoI pooling) is to perform
         is to perform max pooling on inputs of nonuniform sizes to obtain
         fixed-size feature maps (e.g. 7*7).
-    The operator has three steps: 
-        1. Dividing each region proposal into equal-sized sections with 
-           the pooled_width and pooled_height 
-        2. Finding the largest value in each section 
+    The operator has three steps:
+        1. Dividing each region proposal into equal-sized sections with
+           the pooled_width and pooled_height
+        2. Finding the largest value in each section
         3. Copying these max values to the output buffer
 
     Args:
@@ -3783,8 +3839,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         rois (Variable): ROIs (Regions of Interest) to pool over. It should
                          be a 2-D one level LoTensor of shape [num_rois, 4].
                          The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the 
-                         bottom right coordinates. The num_rois is the 
+                         is the top left coordinates, and (x2, y2) is the
+                         bottom right coordinates. The num_rois is the
                          total number of ROIs in this batch data.
         pooled_height (integer): The pooled output height. Default: 1
         pooled_width (integer): The pooled output width. Default: 1
@@ -3793,11 +3849,13 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
                                to the scale used when pooling. Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape 
+        pool_out (Variable): The output is a 4-D tensor of the shape
                              (num_rois, channels, pooled_h, pooled_w).
 
     Examples:
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0) 
+        .. code-block:: python
+
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -3815,3 +3873,84 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
             "spatial_scale": spatial_scale
         })
     return pool_out
+
+
+def dice_loss(input, label, epsilon=0.00001):
+    """
+    **Dice loss Layer**
+    Dice loss for comparing the similarity of two batch of data,
+    usually is used for binary image segmentation i.e. labels are binary.
+    The dice loss can be defined as below equation:
+
+    .. math::
+
+        dice\_loss &= 1 - \\frac{2 * intersection\_area}{total\_area} \\\\
+                  &= \\frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\\\
+                  &= \\frac{(union\_area - intersection\_area)}{total\_area}
+
+
+    Args:
+        input (Variable): The predictions with rank>=2. The first dimension is batch size,
+                          and the last dimension is class number.
+        label (Variable): The groud truth with the same rank with input. The first dimension
+                          is batch size, and the last dimension is 1.
+        epsilon (float): The epsilon will be added to the numerator and denominator.
+                         If both input and label are empty, it makes sure dice is 1.
+                         Default: 0.00001
+
+    Returns:
+        dice_loss (Variable): The dice loss with shape [1].
+
+    Examples:
+        .. code-block:: python
+
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+    """
+    label = one_hot(label, depth=input.shape[-1])
+    reduce_dim = range(1, len(input.shape))
+    inse = reduce_sum(input * label, dim=reduce_dim)
+    dice_denominator = reduce_sum(
+        input, dim=reduce_dim) + reduce_sum(
+            label, dim=reduce_dim)
+    dice_score = 1 - inse * 2 / (dice_denominator + epsilon)
+    return reduce_mean(dice_score)
+
+
+def bilinear_interp(input, out_h, out_w, name=None):
+    """
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this layer) on a rectilinear 2D grid.
+    
+    For details, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation
+    
+    Args:
+        input (Variable): The input tensor of bilinear interpolation,
+                          This is a 4-D tensor of the shape
+                          (num_batches, channels, in_h, in_w).
+        out_h (int): output height of bilinear interpolation layer.
+        out_w (int): output width of bilinear interpolation layer.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        out (Variable): The output is a 4-D tensor of the shape
+                        (num_batches, channls, out_h, out_w).
+   
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.bilinear_interp(input, out_h=12, out_w=12)
+    """
+    helper = LayerHelper('bilinear_interp', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="bilinear_interp",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"out_h": out_h,
+               "out_w": out_w})
+    return out

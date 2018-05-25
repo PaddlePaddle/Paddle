@@ -47,7 +47,6 @@ if [ $ANDROID_ABI == "armeabi-v7a" ]; then
         -DUSE_EIGEN_FOR_BLAS=ON \
         -DWITH_C_API=ON \
         -DWITH_SWIG_PY=OFF \
-        -DWITH_STYLE_CHECK=OFF \
         ..
 elif [ $ANDROID_ABI == "arm64-v8a" ]; then
   cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -61,7 +60,6 @@ elif [ $ANDROID_ABI == "arm64-v8a" ]; then
         -DUSE_EIGEN_FOR_BLAS=OFF \
         -DWITH_C_API=ON \
         -DWITH_SWIG_PY=OFF \
-        -DWITH_STYLE_CHECK=OFF \
         ..
 elif [ $ANDROID_ABI == "armeabi" ]; then
   cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -74,7 +72,6 @@ elif [ $ANDROID_ABI == "armeabi" ]; then
         -DCMAKE_BUILD_TYPE=MinSizeRel \
         -DWITH_C_API=ON \
         -DWITH_SWIG_PY=OFF \
-        -DWITH_STYLE_CHECK=OFF \
         ..
 else
   echo "Invalid ANDROID_ABI: $ANDROID_ABI"

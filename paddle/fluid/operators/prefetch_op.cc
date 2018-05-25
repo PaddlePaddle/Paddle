@@ -64,8 +64,7 @@ class PrefetchOp : public framework::OperatorBase {
 
 class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PrefetchOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(LoDTensor) Input Id variables to be sent").AsDuplicable();
     AddOutput("RPCClient",
               "(RPCClient) The RPC client object which will be"

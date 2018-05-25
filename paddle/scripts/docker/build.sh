@@ -48,7 +48,6 @@ function cmake_gen() {
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
@@ -75,7 +74,6 @@ EOF
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
@@ -125,8 +123,7 @@ EOF
             -DWITH_DOC=ON \
             -DWITH_GPU=OFF \
             -DWITH_AVX=${WITH_AVX:-ON} \
-            -DWITH_SWIG_PY=ON \
-            -DWITH_STYLE_CHECK=OFF
+            -DWITH_SWIG_PY=ON
 
         make -j `nproc` paddle_docs paddle_apis
         popd
@@ -198,7 +195,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
+        apt-get install -y wget python-pip dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \

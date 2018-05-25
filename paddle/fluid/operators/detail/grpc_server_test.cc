@@ -100,7 +100,7 @@ void StartServer(const std::string& endpoint) {
   InitTensorsOnServer(&scope, &place, 10);
 
   rpc_service_->SetProgram(&program);
-  rpc_service_->SetPrefetchPreparedCtx(prepared.get());
+  rpc_service_->SetPrefetchPreparedCtx(std::move(prepared));
   rpc_service_->SetDevCtx(&ctx);
   rpc_service_->SetScope(&scope);
   rpc_service_->SetExecutor(&exe);
@@ -108,7 +108,7 @@ void StartServer(const std::string& endpoint) {
   rpc_service_->RunSyncUpdate();
 }
 
-TEST(PREFETCH, CPU) {
+TEST(PREFETCH, DISABLED_CPU) {
   // start up a server instance backend
   std::thread server_thread(StartServer, "127.0.0.1:8889");
   sleep(2);
