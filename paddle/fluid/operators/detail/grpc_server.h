@@ -74,7 +74,7 @@ class AsyncGRPCServer final {
  private:
   static const int kSendReqsBufSize = 1;
   static const int kGetReqsBufSize = 1;
-  static const int kPrefetchReqsBufSize = 10;
+  static const int kPrefetchReqsBufSize = 1;
 
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
