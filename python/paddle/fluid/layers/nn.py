@@ -3967,10 +3967,8 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         out_h = out_shape[0]
         out_w = out_shape[1]
     else:
-        if not isinstance(scale, int):
-            scale = int(scale)
-        out_h = input.shape[2] * scale
-        out_w = input.shape[3] * scale
+        out_h = int(input.shape[2] * scale)
+        out_w = int(input.shape[3] * scale)
 
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
