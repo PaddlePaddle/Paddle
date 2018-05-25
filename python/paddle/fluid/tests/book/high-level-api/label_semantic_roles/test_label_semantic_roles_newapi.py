@@ -202,24 +202,35 @@ def infer(use_cuda, inference_program, save_path):
     inferencer = fluid.Inferencer(
         inference_program, param_path=save_path, place=place)
 
-    def create_random_lodtensor(lod, place, low, high):
-        data = np.random.random_integers(low, high,
-                                         [lod[-1], 1]).astype("int64")
-        res = fluid.LoDTensor()
-        res.set(data, place)
-        res.set_lod([lod])
-        return res
-
-    # Create an input example
-    lod = [0, 4, 10]
-    word = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
-    pred = create_random_lodtensor(lod, place, low=0, high=PRED_DICT_LEN - 1)
-    ctx_n2 = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_n1 = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_0 = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_p1 = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
-    ctx_p2 = create_random_lodtensor(lod, place, low=0, high=WORD_DICT_LEN - 1)
-    mark = create_random_lodtensor(lod, place, low=0, high=MARK_DICT_LEN - 1)
+    # Setup inputs by creating LoDTensors to represent sequences of words.
+    # Here each word is the basic element of these LoDTensors and the shape of 
+    # each word (base_shape) should be [1] since it is simply an index to 
+    # look up for the corresponding word vector.
+    # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
+    # which has only one lod level. Then the created LoDTensors will have only 
+    # one higher level structure (sequence of words, or sentence) than the basic 
+    # element (word). Hence the LoDTensor will hold data for three sentences of 
+    # length 3, 4 and 2, respectively. 
+    # Note that lod info should be a list of lists.
+    lod = [[3, 4, 2]]
+    base_shape = [1]
+    # The range of random integers is [low, high]
+    word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    pred = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=PRED_DICT_LEN - 1)
+    ctx_n2 = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    ctx_n1 = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    ctx_0 = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    ctx_p1 = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    ctx_p2 = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    mark = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=MARK_DICT_LEN - 1)
 
     results = inferencer.infer(
         {
