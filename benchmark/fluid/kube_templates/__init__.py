@@ -54,5 +54,13 @@ envs = [
                 "fieldPath": "status.podIP"
             }
         }
+    },
+    {
+        "name": "PADDLE_CURRENT_IP",
+        "valueFrom": {
+            "fieldRef": {
+                "fieldPath": "status.podIP"
+            }
+        }
     }
 ]
