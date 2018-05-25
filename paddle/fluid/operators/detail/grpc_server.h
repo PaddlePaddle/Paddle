@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
+#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
@@ -52,9 +52,9 @@ class AsyncGRPCServer final {
   void RunSyncUpdate();
 
   // register rpc call name to a condition id with will be waiting on
-  void RegisterBarrier(const std::string& rpc_name, int cond_id);
+  void RegisterBarrier(int rpc_id);
   // functions to sync server barrier status.
-  void SetCond(const std::string& rpc_name);
+  void SetCond(int rpc_id);
 
   void WaitClientGet(int count);
 
@@ -69,7 +69,7 @@ class AsyncGRPCServer final {
   void TryToRegisterNewGetOne(int req_id);
   void TryToRegisterNewPrefetchOne(int req_id);
   void ShutdownQueue();
-  void WaitCond(const std::string& rpc_name);
+  void WaitCond(int cond);
 
  private:
   static const int kSendReqsBufSize = 100;
@@ -114,7 +114,7 @@ class AsyncGRPCServer final {
   GRPCProcessorCtx* rpc_processor_;
 
   // barrier
-  std::map<std::string, int> barrier_;
+  std::set<int> barrier_;
 };
 
 };  // namespace detail

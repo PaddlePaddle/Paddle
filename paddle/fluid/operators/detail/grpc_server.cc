@@ -350,10 +350,9 @@ void AsyncGRPCServer::HandleRequest(
     }
 
     if (rpc_processor_->sync_mode() && !is_shut_down_) {
-      if (rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
-        WaitCond(GrpcMethodName(GrpcMethod::kGetVariable));
-      } else if (rpc_id == static_cast<int>(GrpcMethod::kSendVariable)) {
-        WaitCond(GrpcMethodName(GrpcMethod::kSendVariable));
+      auto it = barrier_.find(rpc_id);
+      if (it != barrier_.end()) {
+        WaitCond(rpc_id);
       }
 
       VLOG(3) << "HandleRequest for " << rpc_id << " sync_mode";
@@ -388,26 +387,22 @@ void AsyncGRPCServer::HandleRequest(
   }
 }
 
-void AsyncGRPCServer::RegisterBarrier(const std::string& rpc_name,
-                                      int cond_id) {
+void AsyncGRPCServer::RegisterBarrier(int rpc_id) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  barrier_[rpc_name] = cond_id;
+  assert(barrier_.find(rpc_id) == barrier_.end());
+  barrier_.insert(rpc_id);
 }
 
-void AsyncGRPCServer::WaitCond(const std::string& rpc_name) {
+void AsyncGRPCServer::WaitCond(int cond) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  auto cond = barrier_.at(rpc_name);
-
   barrier_condition_.wait(lock,
                           [=] { return this->barrier_cond_step_ == cond; });
 }
 
-void AsyncGRPCServer::SetCond(const std::string& rpc_name) {
+void AsyncGRPCServer::SetCond(int rpc_id) {
   {
     std::lock_guard<std::mutex> lock(this->barrier_mutex_);
-    auto cond = barrier_.at(rpc_name);
-
-    barrier_cond_step_ = cond;
+    barrier_cond_step_ = rpc_id;
   }
   barrier_condition_.notify_all();
 }
