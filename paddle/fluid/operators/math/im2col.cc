@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/im2col.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -42,21 +43,21 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int col_height = col->dims()[3];
     int col_width = col->dims()[4];
 
-    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
-                       ((dilation[0] * (filter_height - 1) + 1))) /
-                              stride[0] +
-                          1,
-                      col_height,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       ((dilation[1] * (filter_width - 1) + 1))) /
-                              stride[1] +
-                          1,
-                      col_width,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
-
+/*    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+ *                       ((dilation[0] * (filter_height - 1) + 1))) /
+ *                              stride[0] +
+ *                          1,
+ *                      col_height,
+ *                      "Output_height and padding(padding_up, padding_down) are "
+ *                      "inconsistent.");
+ *    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+ *                       ((dilation[1] * (filter_width - 1) + 1))) /
+ *                              stride[1] +
+ *                          1,
+ *                      col_width,
+ *                      "Output_height and padding(padding_up, padding_down) are "
+ *                      "inconsistent.");
+ */
     int channels_col = im_channels * filter_height * filter_width;
 
     const T* im_data = im.data<T>();
@@ -177,22 +178,23 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     int col_height = col->dims()[0];
     int col_width = col->dims()[1];
 
-    PADDLE_ENFORCE_EQ(
-        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
-        col_height,
-        "Output_height and padding(padding_up, padding_down) are "
-        "inconsistent.");
-    PADDLE_ENFORCE_EQ(
-        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
-        col_width,
-        "col_width and padding(padding_left, padding_right) are "
-        "inconsistent.");
-
+/*   PADDLE_ENFORCE_EQ(
+ *        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
+ *        col_height,
+ *        "Output_height and padding(padding_up, padding_down) are "
+ *        "inconsistent.");
+ *    PADDLE_ENFORCE_EQ(
+ *        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
+ *        col_width,
+ *        "col_width and padding(padding_left, padding_right) are "
+ *        "inconsistent.");
+ */
     const T* im_data = im.data<T>();
     T* col_data = col->data<T>();
 
     for (int col_row_idx = 0; col_row_idx < col_height; ++col_row_idx) {
       for (int col_col_idx = 0; col_col_idx < col_width; ++col_col_idx) {
+        std::cout << "step data: " << col_row_idx * col_col_idx << " ";
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
@@ -218,9 +220,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                    im_col_offset < 0 || im_col_offset >= im_width)
                       ? static_cast<T>(0)
                       : im_data[im_offset];
+              std::cout << im_data[im_offset] << " ";
             }
           }
         }
+        std::cout << std::endl;
       }
     }
   }
@@ -250,17 +254,17 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
     int col_height = col.dims()[0];
     int col_width = col.dims()[1];
 
-    PADDLE_ENFORCE_EQ(
-        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
-        col_height,
-        "Output_height and padding(padding_up, padding_down) are "
-        "inconsistent.");
-    PADDLE_ENFORCE_EQ(
-        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
-        col_width,
-        "col_width and padding(padding_left, padding_right) are "
-        "inconsistent.");
-
+/*    PADDLE_ENFORCE_EQ(
+ *        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
+ *        col_height,
+ *        "Output_height and padding(padding_up, padding_down) are "
+ *        "inconsistent.");
+ *    PADDLE_ENFORCE_EQ(
+ *        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
+ *        col_width,
+ *        "col_width and padding(padding_left, padding_right) are "
+ *        "inconsistent.");
+ */
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();
 

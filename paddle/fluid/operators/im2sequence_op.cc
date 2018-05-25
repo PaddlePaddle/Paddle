@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/im2sequence_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -53,14 +54,14 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
 class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Im2SequenceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input tensor has NCHW format."
              "N: batch size"
              "C: channels"
              "H: height"
              "W: width");
+    AddInput("Image_real_size", "Image real size.");
     AddOutput("Out", "(LodTensor) The output data of im2sequence op,");
     AddAttr<std::vector<int>>("kernels",
                               "(vector<int>), the "
@@ -73,6 +74,13 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int> default:{0, 0, 0, 0}), the "
                               "paddings(up_pad, left_pad, down_pad, right_pad)")
         .SetDefault({0, 0, 0, 0});
+    AddAttr<std::vector<int>>("out_stride",
+                "(vector<int> dedault:{1,1}),the out_stride "
+                " (out_stride_height, out_stride_width)")
+        .SetDefault({1, 1});
+    AddAttr<bool>("is_inference",
+                   " nor 0  is inference, 0 is train")
+        .SetDefault({false});
     AddComment(R"DOC(
 This op uses kernels to scan images and converts these images to sequences.
 After expanding, The number of time steps are output_height * output_width
@@ -147,8 +155,9 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
-            im2sequence_grad, ops::Im2SequenceGradOp);
+REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 REGISTER_OP_CPU_KERNEL(
     im2sequence,
     ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, float>);
