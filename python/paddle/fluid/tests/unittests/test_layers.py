@@ -369,12 +369,13 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
-    def test_bilinear_interp(self):
+    def test_UpsamplingBilinear2d(self):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
-            output = layers.bilinear_interp(x, 12, 12)
+            output = layers.UpsamplingBilinear2d(x, out_shape=[12, 12])
             self.assertIsNotNone(output)
+            output = layers.UpsamplingBilinear2d(x, scale=3)
         print(str(program))
 
 

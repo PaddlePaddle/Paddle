@@ -81,7 +81,7 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
-    'bilinear_interp',
+    'UpsamplingBilinear2d',
 ]
 
 
@@ -3917,8 +3917,10 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def bilinear_interp(input, out_h, out_w, name=None):
+def UpsamplingBilinear2d(input, out_shape=None, scale=None, name=None):
     """
+    The mathematical meaning of UpsamplingBilinear2d is alse called
+    Bilinear interpolation.
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
     W-direction in this layer) on a rectilinear 2D grid.
@@ -3930,8 +3932,13 @@ def bilinear_interp(input, out_h, out_w, name=None):
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_h (int): output height of bilinear interpolation layer.
-        out_w (int): output width of bilinear interpolation layer.
+        out_shape(list|tuple|None): Output shape of bilinear interpolation
+                                    layer, the shape is (out_h, out_w).
+                                    Default: None
+        scale(int|None): The multiplier for the input height or width.
+                         At least one of out_shape or scale must be set.
+                         And out_shape has a higher priority than scale.
+                         Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -3942,10 +3949,29 @@ def bilinear_interp(input, out_h, out_w, name=None):
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.bilinear_interp(input, out_h=12, out_w=12)
+            out = fluid.layers.bilinear_interp(input, out_shape=[12, 12])
     """
+    if out_shape is None and scale is None:
+        raise ValueError("One of out_shape and scale must not be None")
     helper = LayerHelper('bilinear_interp', **locals())
     dtype = helper.input_dtype()
+
+    def _is_list_or_turple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if out_shape is not None:
+        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2):
+            raise ValueError('out_shape should be a list or tuple ',
+                             'with length 2, (out_h, out_w).')
+        out_shape = list(map(int, out_shape))
+        out_h = out_shape[0]
+        out_w = out_shape[1]
+    else:
+        if not isinstance(scale, int):
+            scale = int(scale)
+        out_h = input.shape[2] * scale
+        out_w = input.shape[3] * scale
+
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="bilinear_interp",
