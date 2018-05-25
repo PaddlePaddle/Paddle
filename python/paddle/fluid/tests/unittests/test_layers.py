@@ -376,6 +376,7 @@ class TestBook(unittest.TestCase):
             output = layers.UpsamplingBilinear2d(x, out_shape=[12, 12])
             self.assertIsNotNone(output)
             output = layers.UpsamplingBilinear2d(x, scale=3)
+            self.assertIsNotNone(output)
         print(str(program))
 
 
