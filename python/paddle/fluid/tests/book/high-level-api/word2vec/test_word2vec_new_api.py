@@ -25,16 +25,6 @@ HIDDEN_SIZE = 256
 N = 5
 BATCH_SIZE = 32
 
-
-def create_random_lodtensor(lod, place, low, high):
-    # The range of data elements is [low, high]
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
 
@@ -130,11 +120,23 @@ def infer(use_cuda, inference_program, save_dirname=None):
     inferencer = fluid.Inferencer(
         infer_func=inference_program, param_path=save_dirname, place=place)
 
-    lod = [0, 1]
-    first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    second_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
+    # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
+    # is simply an index to look up for the corresponding word vector and hence 
+    # the shape of word (base_shape) should be [1]. The length-based level of 
+    # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
+    # one lod_level and there is only one sequence of one word on this level.
+    # Note that lod info should be a list of lists.
+    lod = [[1]]
+    base_shape = [1]
+    # The range of random integers is [low, high]
+    first_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
+    second_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
+    third_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
+    fourth_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
 
     result = inferencer.infer(
         {

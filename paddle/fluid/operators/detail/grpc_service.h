@@ -25,6 +25,8 @@
 #include <grpc++/support/byte_buffer.h>
 #include "paddle/fluid/operators/detail/variable_response.h"
 
+#include "paddle/fluid/platform/profiler.h"
+
 // NOTE: This method was originally created by tensorflow
 //       (https://github.com/tensorflow/tensorflow/) we borrow this
 //       method and did some modifications so that we can parse gRPC
