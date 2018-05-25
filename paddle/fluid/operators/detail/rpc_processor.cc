@@ -81,7 +81,7 @@ bool GRPCProcessorCtx::ProcessSendImpl(const std::string& msg_name,
     VLOG(3) << "sync: recv batch barrier message";
     IncreaseBatchBarrierSend();
   } else {
-    VLOG(3) << "sync: received grad: " << msg_name;
+    VLOG(3) << "sync: received var_name: " << msg_name;
 
     if (var == nullptr) {
       LOG(ERROR) << "sync: Can not find server side var: " << msg_name;

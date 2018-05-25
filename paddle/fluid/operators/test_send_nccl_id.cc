@@ -64,17 +64,17 @@ void StartServer() {
   std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_processor->WaitFanInOfSend();
   LOG(INFO) << "got nccl id and stop server...";
+  sleep(1);
   g_rpc_service->ShutDown();
   server_thread.join();
 }
 
 TEST(SendNcclId, GrpcServer) {
-  std::atomic<bool> initialized{false};
-  std::thread server_thread(StartServer);
-
   g_rpc_processor.reset(new detail::GRPCProcessorCtx());
   g_rpc_service.reset(
       new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
+
+  std::thread server_thread(StartServer);
 
   // wait server to start
   // sleep(2);

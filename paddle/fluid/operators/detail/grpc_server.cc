@@ -19,9 +19,9 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
-DEFINE_int32(rpc_server_handle_send_threads, 20,
+DEFINE_int32(rpc_server_handle_send_threads, 1,
              "Number of threads used to handle send at rpc server.");
-DEFINE_int32(rpc_server_handle_get_threads, 20,
+DEFINE_int32(rpc_server_handle_get_threads, 1,
              "Number of threads used to handle get at rpc server.");
 DEFINE_int32(rpc_server_handle_prefetch_threads, 1,
              "Number of threads used to handle prefetch at rpc server.");
@@ -49,7 +49,10 @@ class RequestBase {
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
-  virtual std::string GetReqName() = 0;
+  virtual std::string GetReqName() {
+    assert(false);
+    return "";
+  }
 
  protected:
   ::grpc::ServerContext ctx_;
@@ -80,7 +83,7 @@ class RequestSend final : public RequestBase {
 
   virtual void Process() {
     std::string var_name = GetReqName();
-    VLOG(3) << "RequestSend " << var_name;
+    VLOG(3) << "RequestSend var_name:" << var_name;
 
     rpc_processor_->ProcessSendImpl(var_name, request_->GetVar(),
                                     request_->GetMutableLocalScope());
@@ -221,12 +224,15 @@ void AsyncGRPCServer::RunSyncUpdate() {
                 std::placeholders::_1);
 
   for (int i = 0; i < kSendReqsBufSize; ++i) {
+    send_reqs_[i] = nullptr;
     TryToRegisterNewSendOne(i);
   }
   for (int i = 0; i < kGetReqsBufSize; ++i) {
+    get_reqs_[i] = nullptr;
     TryToRegisterNewGetOne(i);
   }
   for (int i = 0; i < kPrefetchReqsBufSize; ++i) {
+    prefetch_reqs_[i] = nullptr;
     TryToRegisterNewPrefetchOne(i);
   }
 
@@ -283,6 +289,8 @@ void AsyncGRPCServer::TryToRegisterNewSendOne(int i) {
     VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
+
+  VLOG(4) << "register send req_id:" << i;
   RequestSend* send =
       new RequestSend(&service_, cq_send_.get(), rpc_processor_, i);
   send_reqs_[i] = static_cast<RequestBase*>(send);
@@ -295,6 +303,8 @@ void AsyncGRPCServer::TryToRegisterNewGetOne(int req_id) {
     VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
     return;
   }
+
+  VLOG(4) << "register get req_id:" << req_id;
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), &var_get_queue_,
                                    rpc_processor_, req_id);
   get_reqs_[req_id] = static_cast<RequestBase*>(get);
@@ -308,10 +318,11 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne(int req_id) {
     return;
   }
 
+  VLOG(4) << "register prefetch req_id:" << req_id;
   RequestPrefetch* prefetch = new RequestPrefetch(&service_, cq_prefetch_.get(),
                                                   rpc_processor_, req_id);
 
-  prefetch_reqs_[req_id] = static_cast<RequestBase*>(prefetch);
+  prefetch_reqs_[req_id] = prefetch;
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
@@ -325,13 +336,13 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(3) << "HandleRequest for completion queue:" << rpc_id << " wait Next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(INFO) << rpc_id << " CompletionQueue shutdown!";
+      LOG(INFO) << "CompletionQueue " << rpc_id << " shutdown!";
       break;
     }
 
     int req_id = reinterpret_cast<intptr_t>(tag);
 
-    VLOG(3) << "HandleRequest for completion queue:" << rpc_id << " get Next";
+    VLOG(4) << "queue id:" << rpc_id << " req_id:" << req_id;
 
     RequestBase* base = nullptr;
     {
@@ -349,37 +360,43 @@ void AsyncGRPCServer::HandleRequest(
       }
     }
 
+    // reference:
+    // https://github.com/tensorflow/tensorflow/issues/5596
+    // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
+    // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
+    if (!ok) {
+      LOG(WARNING) << "completion queue:" << rpc_id
+                   << " recv no regular event:argument name["
+                   << base->GetReqName() << "]";
+      TryToRegisterNewOne(req_id);
+      // delete base;
+      continue;
+    }
+
     if (rpc_processor_->sync_mode() && !is_shut_down_) {
       auto it = barrier_.find(rpc_id);
       if (it != barrier_.end()) {
         WaitCond(rpc_id);
       }
 
-      VLOG(3) << "HandleRequest for completion queue:" << rpc_id;
+      VLOG(3) << "HandleRequest waitcond:" << rpc_id << " success!";
     }
 
-    // reference:
-    // https://github.com/tensorflow/tensorflow/issues/5596
-    // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
-    // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
-    if (!ok) {
-      LOG(WARNING) << rpc_id << " recv no regular event:argument name["
-                   << base->GetReqName() << "]";
-      TryToRegisterNewOne(req_id);
-      delete base;
-      continue;
-    }
+    VLOG(4) << "queue id:" << rpc_id << " req_id:" << req_id
+            << " PROCESS status:" << base->Status();
 
     switch (base->Status()) {
       case PROCESS: {
         base->Process();
-        VLOG(4) << rpc_id << " PROCESS status:" << base->Status();
+        VLOG(4) << "completion queue" << rpc_id
+                << " PROCESS status:" << base->Status();
         break;
       }
       case FINISH: {
         TryToRegisterNewOne(req_id);
-        VLOG(4) << req_id << " FINISH status:" << base->Status();
         delete base;
+        VLOG(4) << "complete queue:" << rpc_id
+                << " FINISH status:" << base->Status();
         break;
       }
       default: { assert(false); }
