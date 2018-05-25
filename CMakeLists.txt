@@ -202,7 +202,7 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
-if(NOT MOBILE_INFERENCE)
+if(NOT MOBILE_INFERENCE AND NOT WITH_FLUID_ONLY)
     # "add_subdirectory(go)" should be placed after the following loine,
     # because it depends on paddle/optimizer.
     add_subdirectory(paddle/optimizer)
