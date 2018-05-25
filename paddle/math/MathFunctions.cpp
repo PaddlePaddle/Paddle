@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "MathFunctions.h"
+#include "paddle/math/MathFunctions.h"
 #include "hl_matrix_apply.cuh"
 #include "hl_matrix_ops.cuh"
 #include "paddle/utils/DynamicLoader.h"
@@ -240,6 +240,36 @@ template <>
 void vAdd<double>(const int n, const double* a, const double* b, double* r) {
   vdAdd(n, a, b, r);
 }
+
+template <>
+void vTanh<float>(const int n, const float* a, float* r) {
+  vsTanh(n, a, r);
+}
+
+template <>
+void vTanh<double>(const int n, const double* a, double* r) {
+  vdTanh(n, a, r);
+}
+
+template <>
+void vInvSqrt<float>(const int n, const float* a, float* r) {
+  vsInvSqrt(n, a, r);
+}
+
+template <>
+void vInvSqrt<double>(const int n, const double* a, double* r) {
+  vdInvSqrt(n, a, r);
+}
+
+template <>
+void vLog1p<float>(const int n, const float* a, float* r) {
+  vsLog1p(n, a, r);
+}
+
+template <>
+void vLog1p<double>(const int n, const double* a, double* r) {
+  vdLog1p(n, a, r);
+}
 #else
 
 DEFINE_MATRIX_BINARY_OP(vExp, b = std::exp(a));
@@ -287,35 +317,4 @@ template void vAdd(const int n, const float* a, const float* b, float* r);
 template void vAdd(const int n, const double* a, const double* b, double* r);
 
 #endif
-
-DEFINE_MATRIX_BINARY_OP(vInvSqrt, b = 1.0f / std::sqrt(a));
-template <class T>
-void vInvSqrt(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vInvSqrt<T>, 0, 0>(
-      binary::vInvSqrt<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_BINARY_OP(vLog1p, b = std::log(1.0f + a));
-template <class T>
-void vLog1p(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vLog1p<T>, 0, 0>(
-      binary::vLog1p<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_BINARY_OP(vTanh, T tmp = -2.0 * a;
-                        tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
-                        b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
-template <class T>
-void vTanh(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vTanh<T>, 0, 0>(
-      binary::vTanh<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-template void vInvSqrt(const int n, const double* a, double* r);
-template void vInvSqrt(const int n, const float* a, float* r);
-template void vLog1p(const int n, const float* a, float* r);
-template void vLog1p(const int n, const double* a, double* r);
-template void vTanh(const int n, const float* a, float* r);
-template void vTanh(const int n, const double* a, double* r);
-
 }  // namespace paddle
