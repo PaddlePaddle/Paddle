@@ -65,13 +65,9 @@ class RequestSend final : public RequestBase {
                        ::grpc::ServerCompletionQueue* cq,
                        GRPCProcessorCtx* rpc_processor, int req_id)
       : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
-    if (rpc_processor->sync_mode()) {
-      request_.reset(new VariableResponse(rpc_processor->scope(),
-                                          rpc_processor->dev_ctx(), false));
-    } else {
-      request_.reset(new VariableResponse(rpc_processor->scope(),
-                                          rpc_processor->dev_ctx(), true));
-    }
+    request_.reset(new VariableResponse(rpc_processor->scope(),
+                                        rpc_processor->dev_ctx(),
+                                        !rpc_processor->sync_mode()));
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -106,7 +102,7 @@ class RequestGet final : public RequestBase {
                       ::grpc::ServerCompletionQueue* cq,
                       framework::BlockingQueue<MessageWithName>* queue,
                       GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor, req_id),
+      : RequestBase(service, cq, rpc_processor),
         responder_(&ctx_),
         queue_(queue) {
     auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
@@ -125,7 +121,7 @@ class RequestGet final : public RequestBase {
     VLOG(3) << "RequestGet " << var_name;
 
     if (var_name != FETCH_BARRIER_MESSAGE) {
-      rpc_processor_->RequestGet(&request_, &reply);
+      rpc_processor_->RequestGet(&request_, &reply_);
     }
 
     status_ = FINISH;
@@ -152,14 +148,11 @@ class RequestPrefetch final : public RequestBase {
   explicit RequestPrefetch(GrpcService::AsyncService* service,
                            ::grpc::ServerCompletionQueue* cq,
                            GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor, req_id), responder_(&ctx_) {
-    if (rpc_processor->sync_mode()) {
-      request_.reset(new VariableResponse(rpc_processor->scope(),
-                                          rpc_processor->dev_ctx(), false));
-    } else {
-      request_.reset(new VariableResponse(rpc_processor->scope(),
-                                          rpc_processor->dev_ctx(), true));
-    }
+      : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
+    request_.reset(new VariableResponse(rpc_processor->scope(),
+                                        rpc_processor->dev_ctx(),
+                                        !rpc_processor->sync_mode()));
+
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -173,7 +166,7 @@ class RequestPrefetch final : public RequestBase {
   virtual void Process() {
     // prefetch process...
 
-    rpc_processor_->RequestPrefetch(request_.get(), &reply);
+    rpc_processor_->RequestPrefetch(request_.get(), &reply_);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -238,19 +231,19 @@ void AsyncGRPCServer::RunSyncUpdate() {
   }
 
   for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
-    t_sends_.emplace_back(
-        new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
-                                  cq_send_.get(), "cq_send", send_register)));
+    t_sends_.emplace_back(new std::thread(
+        std::bind(&AsyncGRPCServer::HandleRequest, this, cq_send_.get(),
+                  static_cast<int>(GrpcMethod::kSendVariable), send_register)));
   }
   for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
-    t_gets_.emplace_back(
-        new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
-                                  cq_get_.get(), "cq_get", get_register)));
+    t_gets_.emplace_back(new std::thread(
+        std::bind(&AsyncGRPCServer::HandleRequest, this, cq_get_.get(),
+                  static_cast<int>(GrpcMethod::kGetVariable), get_register)));
   }
   for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
-    t_prefetchs_.emplace_back(new std::thread(
-        std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
-                  "cq_prefetch", prefetch_register)));
+    t_prefetchs_.emplace_back(new std::thread(std::bind(
+        &AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
+        static_cast<int>(GrpcMethod::kPrefetchVariable), prefetch_register)));
   }
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
@@ -323,11 +316,9 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne(int req_id) {
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
 
-void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    int rpc_id,
-                                    std::function<void()> TryToRegisterNewOne) {
-  TryToRegisterNewOne();
-
+void AsyncGRPCServer::HandleRequest(
+    ::grpc::ServerCompletionQueue* cq, int rpc_id,
+    std::function<void(int)> TryToRegisterNewOne) {
   void* tag = NULL;
   bool ok = false;
 
@@ -338,35 +329,36 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
       break;
     }
 
+    int req_id = reinterpret_cast<intptr_t>(tag);
+
     VLOG(3) << "HandleRequest for " << rpc_id << " get Next";
-
-    PADDLE_ENFORCE(tag);
-
-    if (rpc_processor_->sync_mode()) {
-      if (!is_shut_down_ &&
-          rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
-        WaitCond(GrpcMethodName(GrpcMethod::kGetVariable));
-      }
-
-      if (!is_shut_down_ &&
-          rpc_id == static_cast<int>(GrpcMethod::kSendVariable)) {
-        WaitCond(GrpcMethodName(GrpcMethod::kSendVariable));
-      }
-
-      VLOG(3) << "HandleRequest for " << rpc_id << " after WaitCond";
-    }
 
     RequestBase* base = nullptr;
     {
-      std::lock_guard<std::mutex> l(cq_mutex_);
-      if (cq_name == "cq_get") {
+      if (rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
+        PADDLE_ENFORCE(req_id >= 0 && req_id < kGetReqsBufSize);
         base = get_reqs_[req_id];
-      } else if (cq_name == "cq_send") {
+      } else if (rpc_id == static_cast<int>(GrpcMethod::kSendVariable)) {
+        PADDLE_ENFORCE(req_id >= 0 && req_id < kSendReqsBufSize);
         base = send_reqs_[req_id];
-      } else if (cq_name == "cq_prefetch") {
+      } else if (rpc_id == static_cast<int>(GrpcMethod::kPrefetchVariable)) {
+        PADDLE_ENFORCE(req_id >= 0 && req_id < kPrefetchReqsBufSize);
         base = prefetch_reqs_[req_id];
+      } else {
+        PADDLE_ENFORCE(false, "not surpported rpc_id");
       }
     }
+
+    if (rpc_processor_->sync_mode() && !is_shut_down_) {
+      if (rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
+        WaitCond(GrpcMethodName(GrpcMethod::kGetVariable));
+      } else if (rpc_id == static_cast<int>(GrpcMethod::kSendVariable)) {
+        WaitCond(GrpcMethodName(GrpcMethod::kSendVariable));
+      }
+
+      VLOG(3) << "HandleRequest for " << rpc_id << " sync_mode";
+    }
+
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
@@ -404,9 +396,7 @@ void AsyncGRPCServer::RegisterBarrier(const std::string& rpc_name,
 
 void AsyncGRPCServer::WaitCond(const std::string& rpc_name) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  auto it = barrier_.find(rpc_name);
-  assert(it != barrier_.end());
-  int cond = it->second;
+  auto cond = barrier_.at(rpc_name);
 
   barrier_condition_.wait(lock,
                           [=] { return this->barrier_cond_step_ == cond; });
@@ -415,9 +405,7 @@ void AsyncGRPCServer::WaitCond(const std::string& rpc_name) {
 void AsyncGRPCServer::SetCond(const std::string& rpc_name) {
   {
     std::lock_guard<std::mutex> lock(this->barrier_mutex_);
-    auto it = barrier_.find(rpc_name);
-    assert(it != barrier_.end());
-    int cond = it->second;
+    auto cond = barrier_.at(rpc_name);
 
     barrier_cond_step_ = cond;
   }
