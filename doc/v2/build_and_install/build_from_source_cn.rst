@@ -19,8 +19,8 @@
 ----------------
 
 PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安装编译依赖的步骤，可选的不同编译环境Docker镜像
-可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ 找到，您也可以
-在 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`_ 找到 paddle_manylinux_devel
+可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`__ 找到，您也可以
+在 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__ 找到 paddle_manylinux_devel
 镜像的编译以及使用方法。或者参考下述可选步骤，从源码中构建用于编译PaddlePaddle的Docker镜像。
 
 如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 `编译依赖`_ 之后才能开始编译的步骤。
@@ -35,7 +35,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
    # 2. 可选步骤：源码中构建用于编译PaddlePaddle的Docker镜像
    docker build -t paddle:dev .
    # 3. 执行下面的命令编译CPU-Only的二进制
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/paddle_build.sh build
    # 4. 或者也可以使用为上述可选步骤构建的镜像（必须先执行第2步）
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
 
@@ -116,11 +116,10 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
   很多 PaddlePaddle 开发者使用 Emacs。他们在自己的 `~/.emacs` 配置文件里加两行
 
-  ```emacs
-  (global-set-key "\C-cc" 'compile)
-  (setq compile-command
-   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
-  ```
+  .. code-block:: emacs
+
+    (global-set-key "\C-cc" 'compile)
+    (setq compile-command "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
 
   就可以按 `Ctrl-C` 和 `c` 键来启动编译了。
 

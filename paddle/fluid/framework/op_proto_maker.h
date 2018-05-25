@@ -20,20 +20,30 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+enum class OpRole {
+  kForward = 0x0000,
+  kBackward = 0x0001,
+  kOptimize = 0x0002,
+
+  kLoss = 0x0100,
+  // The default value of op's role. This should be only used for unittests and
+  // CreateOp inside a operator.
+  kNotSpecified = 0x1000,
+};
+
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
+  static const char *OpRoleAttrName() { return "op_role"; }
+  static const char *OpRoleVarAttrName() { return "op_role_var"; }
+
+  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
+
   virtual void Make() = 0;
 
   virtual ~OpProtoAndCheckerMaker() {
     CHECK(validated_) << "should call Validate after build";
   }
-
-  void SetProto(proto::OpProto *proto) { proto_ = proto; }
-
-  void SetChecker(OpAttrChecker *attr_checker) { op_checker_ = attr_checker; }
-
-  void Validate();
 
  protected:
   struct VariableBuilder {
@@ -76,6 +86,7 @@ class OpProtoAndCheckerMaker {
 
  private:
   void CheckNoDuplicatedInOutAttrs();
+  void Validate();
 
   proto::OpProto *proto_;
   OpAttrChecker *op_checker_;

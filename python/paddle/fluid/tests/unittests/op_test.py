@@ -36,6 +36,12 @@ def randomize_probability(batch_size, class_num, dtype='float32'):
 def create_op(scope, op_type, inputs, outputs, attrs):
     kwargs = dict()
 
+    op_maker = core.op_proto_and_checker_maker
+    op_role_attr_name = op_maker.kOpRoleAttrName()
+
+    if op_role_attr_name not in attrs:
+        attrs[op_role_attr_name] = int(op_maker.OpRole.Forward)
+
     def __create_var__(name, var_name):
         scope.var(var_name).get_tensor()
         kwargs[name].append(var_name)
