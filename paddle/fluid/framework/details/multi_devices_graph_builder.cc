@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -203,25 +204,39 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       if (!is_forwarding && places_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
-        for (auto &og : op->OutputArgumentNames()) {
-          if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            switch (strategy_.reduce_) {
-              case BuildStrategy::ReduceStrategy::kReduce:
-                CreateReduceOp(&result, og, cur_device_id);
-                var_name_on_devices[cur_device_id].emplace(og);
-                bcast_var_name_set[cur_device_id].emplace(
-                    og.substr(0, og.size() - strlen(kGradVarSuffix)));
-                cur_device_id = (cur_device_id + 1) % places_.size();
-                break;
-              case BuildStrategy::ReduceStrategy::kAllReduce:
-                if (IsSparseGradient(var_types, og)) {
-                  CreateReduceOp(&result, og, 0);
-                  CreateBroadcastOp(&result, og, 0);
-                } else {
-                  InsertNCCLAllReduceOp(&result, og);
-                }
-                break;
+        if (static_cast<bool>(boost::get<int>(op->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                              static_cast<int>(OpRole::kBackward))) {
+          try {
+            auto backward_vars =
+                boost::get<std::vector<std::string>>(op->GetNullableAttr(
+                    OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+
+            PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+
+            for (size_t i = 0; i < backward_vars.size(); i += 2) {
+              auto &p_name = backward_vars[i];
+              auto &g_name = backward_vars[i + 1];
+              VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
+
+              switch (strategy_.reduce_) {
+                case BuildStrategy::ReduceStrategy::kReduce:
+                  CreateReduceOp(&result, g_name, cur_device_id);
+                  var_name_on_devices[cur_device_id].emplace(g_name);
+                  bcast_var_name_set[cur_device_id].emplace(p_name);
+                  cur_device_id = (cur_device_id + 1) % places_.size();
+                  break;
+                case BuildStrategy::ReduceStrategy::kAllReduce:
+                  if (IsSparseGradient(var_types, g_name)) {
+                    CreateReduceOp(&result, g_name, 0);
+                    CreateBroadcastOp(&result, g_name, 0);
+                  } else {
+                    InsertNCCLAllReduceOp(&result, g_name);
+                  }
+                  break;
+              }
             }
+          } catch (boost::bad_get e) {
           }
         }
       }
@@ -467,11 +482,12 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
-  // FIXME(yy): Do not hard code like this
-  return op.OutputArgumentNames().size() == 1 &&
-         op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
+  return boost::get<int>(
+             op.GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+             (static_cast<int>(OpRole::kBackward) |
+              static_cast<int>(OpRole::kLoss)) &&
+         !loss_var_name_.empty();  // If loss_var is empty. This is test mode
 }
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -28,8 +28,8 @@ from contextlib import contextmanager
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'Adadelta', 'ModelAverage',
-    'Optimizer'
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
+    'Adadelta', 'ModelAverage', 'Optimizer'
 ]
 
 
@@ -213,11 +213,13 @@ class Optimizer(object):
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
-                if param_and_grad[0].trainable is True and param_and_grad[
-                        1] is not None:
-                    optimize_op = self._append_optimize_op(loss.block,
-                                                           param_and_grad)
-                    optimize_ops.append(optimize_op)
+                with param_and_grad[0].block.program.optimized_guard(
+                        param_and_grad[0]):
+                    if param_and_grad[0].trainable is True and param_and_grad[
+                            1] is not None:
+                        optimize_op = self._append_optimize_op(loss.block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
 
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies

@@ -41,7 +41,6 @@ option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FO
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
-option(WITH_STYLE_CHECK "Compile PaddlePaddle with style check"         ON)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
@@ -59,7 +58,6 @@ option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
-option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -100,6 +98,9 @@ endif()
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
+set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
+  "A path setting fluid shared and static libraries")
+
 if (WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "
     "when using C-API. It will give an unpredictable behavior when using a "
@@ -117,13 +118,14 @@ else()
 endif()
 
 set(WITH_MKLML ${WITH_MKL})
-if (WITH_MKL AND AVX2_FOUND)
-    set(WITH_MKLDNN ON)
-else()
-    message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
-    set(WITH_MKLDNN OFF)
+if (NOT DEFINED WITH_MKLDNN)
+    if (WITH_MKL AND AVX2_FOUND)
+        set(WITH_MKLDNN ON)
+    else()
+        message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
+        set(WITH_MKLDNN OFF)
+    endif()
 endif()
-
 ########################################################################################
 
 include(external/mklml)     # download mklml package
@@ -152,7 +154,6 @@ include(cupti)
 include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
-include(cpplint)            # set paddle c++ style
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries

@@ -13,7 +13,6 @@ cmake -DCMAKE_SYSTEM_NAME=iOS \
       -DUSE_EIGEN_FOR_BLAS=ON \
       -DWITH_TESTING=OFF \
       -DWITH_SWIG_PY=OFF \
-      -DWITH_STYLE_CHECK=OFF \
       -DCMAKE_BUILD_TYPE=Release \
       ..
 
