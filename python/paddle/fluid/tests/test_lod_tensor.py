@@ -53,11 +53,14 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(_convert_lod(lod), converted_lod)
 
     def test_create_lod_tensor(self):
-        # Only numpy array or a fluid LoDTensor is valid input to
-        # create_lod_tensor function, currently a list of lists is not.
-        data = [[1, 2], [3, 4]]
-        self.assertRaises(Exception, create_lod_tensor, data, [],
+        # Create LoDTensor from a list
+        data = [[1, 2, 3], [3, 4]]
+        wrong_lod = [[2, 2]]
+        correct_lod = [[3, 2]]
+        self.assertRaises(AssertionError, create_lod_tensor, data, wrong_lod,
                           fluid.CPUPlace())
+        tensor = create_lod_tensor(data, correct_lod, fluid.CPUPlace())
+        self.assertEqual(tensor.lod(), [[0, 3, 5]])
 
         # Create LoDTensor from numpy array
         data = numpy.random.random([10, 1])
