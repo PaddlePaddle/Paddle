@@ -34,14 +34,12 @@ Or you can build your own image from source as the optional step below:
    # 2. Optional: build development docker image from source
    docker build -t paddle:dev .
    # 3. Run the following command to build a CPU-Only binaries
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/paddle_build.sh build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh build
    # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
 NOTE: The above command try to mount the current working directory (root directory of source code)
-into :code:`/paddle` directory inside docker container. If you are using your own image
-(Step 4) it will run default entry-point :code:`build.sh` , so you could omit the last
-command in step 3.
+into :code:`/paddle` directory inside docker container.
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local
@@ -74,15 +72,15 @@ Set :code:`WITH_GPU=ON` Can also run tests on GPU.
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh test
 
 If you wish to run only one unit test, like :code:`test_sum_op`:
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
-   bash /paddle/paddle/scripts/docker/build.sh
-   cd /paddle/build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
+   ./paddle/scripts/paddle_build.sh build
+   cd build
    ctest -R test_sum_op -V
 
 .. _faq_docker:
