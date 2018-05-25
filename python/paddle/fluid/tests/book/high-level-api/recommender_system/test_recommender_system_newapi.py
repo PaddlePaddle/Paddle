@@ -197,10 +197,7 @@ def train(use_cuda, train_program, save_path):
         num_epochs=1,
         event_handler=event_handler,
         reader=train_reader,
-        feed_order=[
-            'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id',
-            'category_id', 'movie_title', 'score'
-        ])
+        feed_order=feed_order)
 
 
 def infer(use_cuda, inference_program, save_path):
