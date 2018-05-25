@@ -559,15 +559,16 @@ class Preprocessor(object):
         source_shapes = self.underlying_reader.desc.shapes()
         source_dtypes = self.underlying_reader.desc.dtypes()
         source_lod_levels = self.underlying_reader.desc.lod_levels()
-        self.source_var_names = []
+        self.source_var_names = [
+            unique_name("preprocessor_source")
+            for _ in xrange(len(source_shapes))
+        ]
         source_vars = []
-        for idx in xrange(len(source_shapes)):
-            self.source_var_names.append(unique_name("preprocessor_source"))
+        for var_name, shape, dtype, lod_level in zip(
+                self.source_var_names, source_shapes, source_dtypes,
+                source_lod_levels):
             source_vars.append(self.main_prog.current_block().create_var(
-                name=self.source_var_names[-1],
-                shape=source_shapes[idx],
-                dtype=source_dtypes[idx],
-                lod_level=source_lod_levels[idx]))
+                name=var_name, shape=shape, dtype=dtype, lod_level=lod_level))
         return source_vars
 
     def outputs(self, *outs):
