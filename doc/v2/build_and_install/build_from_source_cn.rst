@@ -35,13 +35,11 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
    # 2. 可选步骤：源码中构建用于编译PaddlePaddle的Docker镜像
    docker build -t paddle:dev .
    # 3. 执行下面的命令编译CPU-Only的二进制
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/paddle_build.sh build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh build
    # 4. 或者也可以使用为上述可选步骤构建的镜像（必须先执行第2步）
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
-注：上述命令把当前目录（源码树根目录）映射为 container 里的 :code:`/paddle` 目录。如果使用自行
-构建的镜像（上述第4步）会执行 :code:`Dockerfile` 描述的默认入口程序 :code:`build.sh` 可以省略步骤3中
-最后的执行脚本的命令。
+注：上述命令把当前目录（源码树根目录）映射为 container 里的 :code:`/paddle` 目录。
 
 编译完成后会在build/python/dist目录下生成输出的whl包，可以选在在当前机器安装也可以拷贝到目标机器安装：
 
@@ -72,15 +70,15 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh test
 
 如果期望执行其中一个单元测试，（比如 :code:`test_sum_op` ）：
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
-   bash /paddle/paddle/scripts/docker/build.sh
-   cd /paddle/build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
+   ./paddle/scripts/paddle_build.sh build
+   cd build
    ctest -R test_sum_op -V
 
 .. _faq_docker:
