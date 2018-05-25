@@ -20,7 +20,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class BoxRestoreCPUKernel : public framework::OpKernel<T> {
+class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -51,15 +51,17 @@ class BoxRestoreCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-class BoxRestoreOp : public framework::OperatorWithKernel {
+class PolygonBoxTransformOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input (Input) of box restore op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output (Output) of box restore op should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("Input"),
+        "Input (Input) of polygon_box transform op should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Output"),
+        "Output (Output) of polygon_box transform op should not be null.");
 
     auto in_dim = ctx->GetInputDim("Input");
 
@@ -71,7 +73,7 @@ class BoxRestoreOp : public framework::OperatorWithKernel {
   }
 };
 
-class BoxRestoreOpMaker : public framework::OpProtoAndCheckerMaker {
+class PolygonBoxTransformOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(
@@ -80,12 +82,12 @@ class BoxRestoreOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Output", "The output with the same shape as input");
 
     AddComment(R"DOC(
-BoxRestore Operator.
+PolygonBoxTransform Operator.
 The input is the final geometry output in detection network.
 We use 2*n numbers to denote the coordinate shift from n corner vertices of
-the box to the pixel location. As each distance offset contains two numbers (xi, yi),
+the polygon_box to the pixel location. As each distance offset contains two numbers (xi, yi),
 the geometry output contains 2*n channels.
-BoxRestore Operator is used to transform the coordinate shift to the real coordinate.
+PolygonBoxTransform Operator is used to transform the coordinate shift to the real coordinate.
 )DOC");
   }
 };
@@ -94,8 +96,10 @@ BoxRestore Operator is used to transform the coordinate shift to the real coordi
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_restore, ops::BoxRestoreOp, ops::BoxRestoreOpMaker,
+REGISTER_OPERATOR(polygon_box_transform, ops::PolygonBoxTransformOp,
+                  ops::PolygonBoxTransformOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    box_restore, ops::BoxRestoreCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::BoxRestoreCPUKernel<paddle::platform::CPUPlace, double>);
+    polygon_box_transform,
+    ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, float>,
+    ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, double>);

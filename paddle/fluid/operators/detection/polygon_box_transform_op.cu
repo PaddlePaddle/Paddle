@@ -24,8 +24,8 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 #define CUDA_BLOCK_SIZE 16
 
 template <typename T>
-__global__ void BoxRestoreKernel(const int n, const int h, const int w,
-                                 const T* input, T* output) {
+__global__ void PolygonBoxTransformKernel(const int n, const int h, const int w,
+                                          const T* input, T* output) {
   int id_n = threadIdx.x + blockDim.x * blockIdx.x;
   int id_h = threadIdx.y + blockDim.y * blockIdx.y;
   int id_w = threadIdx.z + blockDim.z * blockIdx.z;
@@ -40,7 +40,7 @@ __global__ void BoxRestoreKernel(const int n, const int h, const int w,
 }
 
 template <typename T>
-class BoxRestoreOpCUDAKernel : public framework::OpKernel<T> {
+class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -62,7 +62,7 @@ class BoxRestoreOpCUDAKernel : public framework::OpKernel<T> {
                    (height + threadsPerBlock.y - 1) / threadsPerBlock.y,
                    (width + threadsPerBlock.z - 1) / threadsPerBlock.z);
     auto stream = ctx.cuda_device_context().stream();
-    BoxRestoreKernel<T><<<numBlocks, threadsPerBlock, 0, stream>>>(
+    PolygonBoxTransformKernel<T><<<numBlocks, threadsPerBlock, 0, stream>>>(
         batch_size * geo_channels, height, width, in_data, out_data);
   }
 };
@@ -70,6 +70,7 @@ class BoxRestoreOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(box_restore,
-                        paddle::operators::BoxRestoreOpCUDAKernel<float>,
-                        paddle::operators::BoxRestoreOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    polygon_box_transform,
+    paddle::operators::PolygonBoxTransformOpCUDAKernel<float>,
+    paddle::operators::PolygonBoxTransformOpCUDAKernel<double>);
