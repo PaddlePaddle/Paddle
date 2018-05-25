@@ -82,7 +82,7 @@ class RequestSend final : public RequestBase {
     std::string var_name = GetReqName();
     VLOG(3) << "RequestSend " << var_name;
 
-    rpc_processor_->RequestSend(request_);
+    rpc_processor_->ProcessSendImpl(var_name, request_->GetVar());
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -120,19 +120,14 @@ class RequestGet final : public RequestBase {
     std::string var_name = request_.varname();
     VLOG(3) << "RequestGet " << var_name;
 
-    if (var_name != FETCH_BARRIER_MESSAGE) {
-      rpc_processor_->RequestGet(&request_, &reply_);
-    }
+    ::grpc::ByteBuffer reply;
+    framework::Variable* var = nullptr;
+    rpc_processor_->ProcessGetImpl(var_name, &var);
+    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-
-    if (var_name == FETCH_BARRIER_MESSAGE) {
-      sendrecv::VariableMessage msg;
-      MessageWithName msg_with_name = std::make_pair(var_name, msg);
-      queue_->Push(msg_with_name);
-    }
   }
 
  protected:
@@ -165,8 +160,14 @@ class RequestPrefetch final : public RequestBase {
 
   virtual void Process() {
     // prefetch process...
+    std::string var_name = request_->OutVarname();
+    VLOG(3) << "RequestPrefetch " << var_name;
 
-    rpc_processor_->RequestPrefetch(request_.get(), &reply_);
+    framework::Variable* var = nullptr;
+    ::grpc::ByteBuffer reply;
+
+    rpc_processor_->ProcessPrefetchImpl(var_name, &var);
+    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,

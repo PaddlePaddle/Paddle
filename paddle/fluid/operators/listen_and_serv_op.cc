@@ -76,7 +76,9 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
     : OperatorBase(type, inputs, outputs, attrs) {}
 
 void ListenAndServOp::Stop() {
-  rpc_processor_->Push(LISTEN_TERMINATE_MESSAGE);
+  rpc_processor_->SetExit();
+  rpc_service_->ShutDown();
+
   server_thread_->join();
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
   remove(file_path.c_str());
@@ -103,6 +105,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
                                   framework::Scope *recv_scope,
                                   framework::BlockDesc *prefetch_block) const {
   auto fan_in = Attr<int>("Fanin");
+  rpc_processor_->SetFanIn(fan_in);
 
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
@@ -118,49 +121,21 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
-  bool exit_flag = false;
-  // Record received sparse variables, so that
-  // we could reset those after execute optimize program
-  std::vector<framework::Variable *> sparse_vars;
-  while (!exit_flag) {
+  rpc_processor_->clear_to_init();
+  while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
-    size_t recv_var_cnt = 0;
-    int batch_barrier = 0;
-    while (batch_barrier != fan_in) {
-      const detail::ReceivedMessage v = rpc_processor_->Get();
-      auto recv_var_name = v.first;
-      if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
-        LOG(INFO) << "received terminate message and exit";
-        exit_flag = true;
-        break;
-      } else if (recv_var_name == BATCH_BARRIER_MESSAGE) {
-        VLOG(3) << "recv batch barrier message";
-        batch_barrier++;
-        continue;
-      } else {
-        VLOG(3) << "received grad: " << recv_var_name;
-        recv_var_cnt++;
-        auto var = v.second->GetVar();
-        if (var == nullptr) {
-          LOG(ERROR) << "Can not find server side var: " << recv_var_name;
-          PADDLE_THROW("Can not find server side var");
-        }
-        if (var->IsType<framework::SelectedRows>()) {
-          sparse_vars.push_back(var);
-        }
-      }
-    }
-    if (exit_flag) {
+    rpc_processor_->WaitFanInOfSend();
+
+    if (rpc_processor_->IsExit()) {
+      LOG(WARNING) << "get exit!rpc_processor break!";
       rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kGetVariable));
-      rpc_service_->ShutDown();
       break;
     }
 
     // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
     // and this will still work.
-
     // The optimize blocks which have the same parent ID would run parallel
     // TODO(Yancey1989): need to use ParallelExecutor for future
     int32_t last_parent_blkid = program->Block(1).Parent();
@@ -187,40 +162,14 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     // mini-batch.
     // TODO(Yancey1989): move the reset action into an operator, we couldn't
     // have any hide logic in the operator.
-    for (auto &var : sparse_vars) {
+    for (auto &var : rpc_processor_->sparse_vars()) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
-    rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kGetVariable));
-    // FIXME(typhoonzero): use another condition to sync wait clients get.
-    rpc_service_->WaitClientGet(fan_in);
-    sparse_vars.clear();
-  }  // while(true)
-}
 
-static void AsyncUpdateThread(
-    const std::string &var_name, const bool &exit_flag,
-    const std::shared_ptr<detail::ReceivedQueue> &queue,
-    framework::Executor *executor,
-    framework::ExecutorPrepareContext *prepared) {
-  VLOG(3) << "update thread for " << var_name << " started";
-  while (!exit_flag) {
-    const detail::ReceivedMessage v = queue->Pop();
-    auto recv_var_name = v.first;
-    auto var = v.second->GetVar();
-    if (var == nullptr) {
-      LOG(ERROR) << "Can not find server side var: " << recv_var_name;
-      PADDLE_THROW("Can not find server side var");
-    }
-    auto fs = framework::Async([var_name, &executor, &v, prepared] {
-      try {
-        executor->RunPreparedContext(prepared,
-                                     v.second->GetMutableLocalScope());
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-    });
-    fs.wait();
-  }
+    rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kGetVariable));
+    rpc_processor_->WaitFanInOfGet();
+    rpc_processor_->clear_to_init();
+  }  // while(true)
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
@@ -240,6 +189,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
     PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
+
     int block_id = std::stoi(pieces[1]);
     grad_to_block_id[pieces[0]] = block_id;
     grad_to_queue[pieces[0]] = std::make_shared<detail::ReceivedQueue>();
@@ -261,37 +211,16 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
   }
 
-  bool exit_flag = false;
-
-  VLOG(3) << "start async optimize threads";
-  std::vector<std::future<void>> fs;
-  for (auto iter = grad_to_queue.begin(); iter != grad_to_queue.end(); iter++) {
-    std::string grad_name = iter->first;
-    VLOG(3) << "create async update thread for " << grad_name;
-    fs.push_back(framework::AsyncIO([grad_name, &exit_flag, &executor,
-                                     &grad_to_queue, &grad_to_prepared_ctx]() {
-      AsyncUpdateThread(grad_name, exit_flag, grad_to_queue[grad_name],
-                        executor, grad_to_prepared_ctx[grad_name].get());
-    }));
-  }
+  rpc_processor_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   VLOG(3) << "RunAsyncLoop into while";
-  while (!exit_flag) {
-    const detail::ReceivedMessage v = rpc_processor_->Get();
-    auto recv_var_name = v.first;
-    if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
-      LOG(INFO) << "received terminate message and exit";
-      exit_flag = true;
+  while (true) {
+    if (rpc_processor_->IsExit()) {
+      LOG(WARNING) << "get exit!rpc_processor break!";
       break;
-    } else {
-      VLOG(3) << "received grad: " << recv_var_name;
-      grad_to_queue[recv_var_name]->Push(v);
     }
 
-    if (exit_flag) {
-      rpc_service_->ShutDown();
-      break;
-    }
+    sleep(1);
   }  // while(true)
 }
 

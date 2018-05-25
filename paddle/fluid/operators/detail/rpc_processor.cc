@@ -31,34 +31,92 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool GRPCProcessorCtx::RequestSend(std::shared_ptr<VariableResponse> request) {
-  var_recv_queue_.Push(std::make_pair(request->Varname(), request));
-  return true;
+void GRPCProcessorCtx::SetExit() {
+  LOG(WARNING) << "GRPCProcessorCtx setexit";
+  std::unique_lock<std::mutex> lock(mutex_);
+  exit_flag_ = true;
+  condition_send_.notify_all();
+  condition_get_.notify_all();
 }
 
-bool GRPCProcessorCtx::RequestGet(const sendrecv::VariableMessage* request,
-                                  ::grpc::ByteBuffer* reply) {
-  auto var_name = request->varname();
-  auto* var = scope_->FindVar(var_name);
+void GRPCProcessorCtx::IncreaseBatchBarrierSend() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  batch_barrier_send_++;
+  if (batch_barrier_send_ == fan_in_) {
+    condition_send_.notify_all();
+  }
+}
 
-  if (var_name != FETCH_BARRIER_MESSAGE) {
-    SerializeToByteBuffer(var_name, var, *dev_ctx_, reply);
+void GRPCProcessorCtx::IncreaseBatchBarrierGet() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  batch_barrier_get_++;
+  if (batch_barrier_get_ == fan_in_) {
+    condition_get_.notify_all();
+  }
+}
+
+bool GRPCProcessorCtx::ProcessSendImpl(const std::string& msg_name,
+                                       framework::Variable* var,
+                                       framework::Scope* scope) {
+  if (msg_name == LISTEN_TERMINATE_MESSAGE) {
+    LOG(INFO) << "received terminate message and exit";
+    SetExit();
+    return true;
+  }
+
+  // Async
+  if (!sync_mode_) {
+    try {
+      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[msg_name].get(),
+                                    scope);
+    } catch (std::exception& e) {
+      LOG(ERROR) << "run sub program error " << e.what();
+    }
+    return true;
+  }
+
+  // Sync
+  if (msg_name == BATCH_BARRIER_MESSAGE) {
+    VLOG(3) << "recv batch barrier message";
+    IncreaseBatchBarrierSend();
+  } else {
+    VLOG(3) << "received grad: " << msg_name;
+
+    if (var == nullptr) {
+      LOG(ERROR) << "Can not find server side var: " << msg_name;
+      PADDLE_THROW("Can not find server side var");
+    }
+
+    if (var->IsType<framework::SelectedRows>()) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      sparse_vars_.push_back(var);
+    }
   }
 
   return true;
 }
 
-bool GRPCProcessorCtx::RequestPrefetch(const VariableResponse* request,
-                                       ::grpc::ByteBuffer* reply) {
-  std::string var_name = request->OutVarname();
-  VLOG(3) << "RequestPrefetch " << var_name;
-  auto var_desc = program_->Block(0).FindVar(var_name);
-  framework::Scope* local_scope = &scope_->NewScope();
-  auto* var = local_scope->FindVar(var_name);
-  InitializeVariable(var, var_desc->GetType());
-  executor_->RunPreparedContext(prefetch_ctx_.get(), scope_);
+bool GRPCProcessorCtx::ProcessGetImpl(const std::string& msg_name,
+                                      framework::Variable** var) {
+  if (msg_name != FETCH_BARRIER_MESSAGE) {
+    *var = scope_->FindVar(msg_name);
+    return true;
+  }
 
-  SerializeToByteBuffer(var_name, var, *dev_ctx_, reply);
+  sendrecv::VariableMessage msg;
+  if (sync_mode_) IncreaseBatchBarrierGet();
+  return true;
+}
+
+bool GRPCProcessorCtx::ProcessPrefetchImpl(const std::string& msg_name,
+                                           framework::Variable** var) {
+  auto var_desc = program_->Block(0).FindVar(msg_name);
+
+  framework::Scope* local_scope = &scope_->NewScope();
+  *var = local_scope->FindVar(msg_name);
+
+  InitializeVariable(*var, var_desc->GetType());
+  executor_->RunPreparedContext(prefetch_ctx_.get(), scope_);
 
   return true;
 }

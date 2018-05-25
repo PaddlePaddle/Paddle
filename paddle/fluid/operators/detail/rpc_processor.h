@@ -65,6 +65,13 @@ class RPCProcessorCtx {
     prefetch_ctx_.reset(prepared.release());
   }
 
+  // Used for async
+  void SetGradToPreparedCtx(
+      std::unordered_map<
+          std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
+    grad_to_prepared_ctx_ = g;
+  }
+
   bool sync_mode() { return sync_mode_; }
   framework::Scope* scope() { return scope_; }
   const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
@@ -73,12 +80,6 @@ class RPCProcessorCtx {
   }
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
-
-  const ReceivedMessage Get() { return var_recv_queue_.Pop(); }
-
-  void Push(const std::string& msg_name) {
-    var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
-  }
 
  protected:
   bool sync_mode_;
@@ -89,20 +90,81 @@ class RPCProcessorCtx {
   framework::ProgramDesc* program_;
   framework::Executor* executor_;
 
-  // client send variable to this queue.
-  ReceivedQueue var_recv_queue_;
+  // Used for async.
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>*
+      grad_to_prepared_ctx_;
 };
 
 class GRPCProcessorCtx : public RPCProcessorCtx {
  public:
-  GRPCProcessorCtx() {}
+  GRPCProcessorCtx() : exit_flag_(false) { clear_to_init(); }
   virtual ~GRPCProcessorCtx() {}
 
-  bool RequestSend(std::shared_ptr<VariableResponse> request);
-  bool RequestGet(const sendrecv::VariableMessage* request,
-                  ::grpc::ByteBuffer* reply);
-  bool RequestPrefetch(const VariableResponse* request,
-                       ::grpc::ByteBuffer* reply);
+  bool ProcessSendImpl(const std::string& msg_name, framework::Variable* var,
+                       framework::Scope* scope = nullptr);
+
+  bool ProcessGetImpl(const std::string& msg_name, framework::Variable** var);
+
+  bool ProcessPrefetchImpl(const std::string& msg_name,
+                           framework::Variable** var);
+
+  void SetFanIn(int fan_in) { fan_in_ = fan_in; }
+
+  void WaitFanInOfSend() {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    condition_send_.wait(lock, [=] {
+      return (this->batch_barrier_send_ == fan_in_ || exit_flag_);
+    });
+  }
+
+  void WaitFanInOfGet() {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    condition_get_.wait(lock, [=] {
+      return (this->batch_barrier_get_ == fan_in_ || exit_flag_);
+    });
+  }
+
+  void clear_to_init() {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    batch_barrier_send_ = 0;
+    recv_var_cnt_ = 0;
+
+    sparse_vars_.clear();
+    batch_barrier_get_ = 0;
+  }
+
+  void SetExit();
+
+  bool IsExit() {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    return exit_flag_;
+  }
+
+  std::vector<framework::Variable*>& sparse_vars() { return sparse_vars_; }
+
+ private:
+  void IncreaseBatchBarrierGet();
+  void IncreaseBatchBarrierSend();
+  // void IncreaseRecvVarCnt();
+
+ private:
+  // status
+  bool exit_flag_;
+  int fan_in_;
+  std::mutex mutex_;
+
+  // send
+  std::condition_variable condition_send_;
+  int batch_barrier_send_;
+  int recv_var_cnt_;
+
+  // get
+  std::condition_variable condition_get_;
+  int batch_barrier_get_;
+  // Record received sparse variables, so that
+  // we could reset those after execute optimize program
+  std::vector<framework::Variable*> sparse_vars_;
 };
 
 }  // namespace detail
