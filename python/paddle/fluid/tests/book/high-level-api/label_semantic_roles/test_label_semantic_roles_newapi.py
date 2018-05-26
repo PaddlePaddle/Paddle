@@ -141,7 +141,7 @@ def train_program():
     return [avg_cost]
 
 
-def train(use_cuda, train_program, save_path):
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
@@ -172,7 +172,7 @@ def train(use_cuda, train_program, save_path):
             print("avg_cost: %s" % avg_cost)
 
             if float(avg_cost) < 100.0:  # Large value to increase CI speed
-                trainer.save_params(save_path)
+                trainer.save_params(params_dirname)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
                                                               float(avg_cost)))
@@ -183,7 +183,7 @@ def train(use_cuda, train_program, save_path):
             print("Step {0}, Epoch {1} Metrics {2}".format(
                 event.step, event.epoch, map(np.array, event.metrics)))
             if event.step == 1:  # Run 2 iterations to speed CI
-                trainer.save_params(save_path)
+                trainer.save_params(params_dirname)
                 trainer.stop()
 
     train_reader = paddle.batch(
@@ -197,10 +197,10 @@ def train(use_cuda, train_program, save_path):
         feed_order=feed_order)
 
 
-def infer(use_cuda, inference_program, save_path):
+def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        inference_program, param_path=save_path, place=place)
+        inference_program, param_path=params_dirname, place=place)
 
     # Setup inputs by creating LoDTensors to represent sequences of words.
     # Here each word is the basic element of these LoDTensors and the shape of 
@@ -251,9 +251,9 @@ def infer(use_cuda, inference_program, save_path):
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_path = "label_semantic_roles.inference.model"
-    train(use_cuda, train_program, save_path)
-    infer(use_cuda, inference_program, save_path)
+    params_dirname = "label_semantic_roles.inference.model"
+    train(use_cuda, train_program, params_dirname)
+    infer(use_cuda, inference_program, params_dirname)
 
 
 if __name__ == '__main__':
