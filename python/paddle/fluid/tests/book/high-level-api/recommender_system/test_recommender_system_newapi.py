@@ -155,7 +155,7 @@ def train_program():
     return [avg_cost, scale_infer]
 
 
-def train(use_cuda, train_program, save_path):
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.SGD(learning_rate=0.2)
 
@@ -180,7 +180,7 @@ def train(use_cuda, train_program, save_path):
             print("avg_cost: %s" % avg_cost)
 
             if float(avg_cost) < 4:  # Smaller value to increase CI speed
-                trainer.save_params(save_path)
+                trainer.save_params(params_dirname)
                 trainer.stop()
             else:
                 print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
@@ -200,10 +200,10 @@ def train(use_cuda, train_program, save_path):
         feed_order=feed_order)
 
 
-def infer(use_cuda, inference_program, save_path):
+def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        inference_program, param_path=save_path, place=place)
+        inference_program, param_path=params_dirname, place=place)
 
     # Use the first data from paddle.dataset.movielens.test() as input.
     # Use create_lod_tensor(data, lod, place) API to generate LoD Tensor,
@@ -240,12 +240,15 @@ def infer(use_cuda, inference_program, save_path):
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_path = "recommender_system.inference.model"
-    train(use_cuda=use_cuda, train_program=train_program, save_path=save_path)
+    params_dirname = "recommender_system.inference.model"
+    train(
+        use_cuda=use_cuda,
+        train_program=train_program,
+        params_dirname=params_dirname)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
-        save_path=save_path)
+        params_dirname=params_dirname)
 
 
 if __name__ == '__main__':
