@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace {
-// TODO(panyx0718): Where to destroy them.
 std::unique_ptr<std::vector<ncclComm_t>> global_comms;
 std::unique_ptr<std::unordered_map<int, int>> comm_id_map;
 bool inited = false;
