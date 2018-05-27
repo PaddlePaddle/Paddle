@@ -84,8 +84,12 @@ void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
 std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainSendVars(
     const ProgramDesc &program) const {
   std::vector<std::string> send_vars;
+  // since parameters are all in block 0,
+  // it's enough to only scan send ops in block 0
   for (auto *op : program.Block(0).AllOps()) {
-    if (op->Type() == "send_vars" || op->Type() == "send") {
+    // TODO(Yancey1989): use a graceful method to find send op,
+    // instead of the the hard code string
+    if (op->Type() == "send_vars") {
       auto op_vars = op->InputArgumentNames();
       send_vars.reserve(send_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -99,7 +103,9 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainRecvVars(
     const ProgramDesc &program) const {
   std::vector<std::string> recv_vars;
   for (auto *op : program.Block(0).AllOps()) {
-    if (op->Type() == "recv" || op->Type() == "send") {
+    // TODO(Yancey1989): use a graceful method to find recv op,
+    // instead of the hard code string
+    if (op->Type() == "recv") {
       auto op_vars = op->OutputArgumentNames();
       recv_vars.reserve(recv_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -122,6 +128,9 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(
   auto checker = [](const std::vector<std::string> &opvars,
                     const std::vector<std::string> &rpc_vars) -> bool {
     for (auto &var : opvars) {
+      // a variable name with the suffix `.block` means it's a splited
+      // variable by (DistributeTranspiler)
+      // [python/paddle/fluid/transpiler/distribute_transpiler.py]
       if (var.find(".block") != std::string::npos &&
           std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
         return true;
@@ -130,13 +139,8 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(
     return false;
   };
 
-  if (op.Type() == "split" || op.Type() == "split_byref" ||
-      op.Type() == "split_selected_rows") {
-    return checker(op.OutputArgumentNames(), send_vars);
-  } else if (op.Type() == "concat") {
-    return checker(op.InputArgumentNames(), recv_vars);
-  }
-
+  return checker(op.OutputArgumentNames(), send_vars) ||
+         checker(op.InputArgumentNames(), recv_vars);
   return false;
 }
 
