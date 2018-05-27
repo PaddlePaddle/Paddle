@@ -63,6 +63,7 @@ void StartServer() {
   g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
   std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_processor->WaitFanInOfSend();
+
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();
   server_thread.join();

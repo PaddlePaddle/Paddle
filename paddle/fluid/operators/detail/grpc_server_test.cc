@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -100,8 +99,6 @@ void StartServer() {
   auto prepared = exe.Prepare(program, block->ID());
   InitTensorsOnServer(&scope, &place, 10);
 
-  scope.Var(NCCL_ID_VARNAME);
-
   g_rpc_processor->SetSyncMode(true);
   g_rpc_processor->SetProgram(&program);
   g_rpc_processor->SetPrefetchPreparedCtx(std::move(prepared));
@@ -113,9 +110,7 @@ void StartServer() {
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
 
-  g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
-  std::cout << "before WaitFanInOfSend" << std::endl;
-  g_rpc_processor->WaitFanInOfSend();
+  sleep(10);
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();
   server_thread.join();
@@ -155,18 +150,8 @@ TEST(PREFETCH, CPU) {
     }
   }
 
-  {
-    auto var = scope.Var(NCCL_ID_VARNAME);
-    auto id = var->GetMutable<ncclUniqueId>();
-    platform::dynload::ncclGetUniqueId(id);
-
-    client.AsyncSendVariable(ep, ctx, scope, NCCL_ID_VARNAME);
-    client.Wait();
-    client.AsyncSendBatchBarrier(ep);
-    client.Wait();
-  }
-
   server_thread.join();
+  LOG(INFO) << "begin reset";
   g_rpc_service.reset(nullptr);
   g_rpc_processor.reset(nullptr);
 }

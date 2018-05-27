@@ -37,11 +37,12 @@ class RequestBase {
  public:
   explicit RequestBase(GrpcService::AsyncService* service,
                        ::grpc::ServerCompletionQueue* cq,
-                       GRPCProcessorCtx* rpc_processor)
+                       GRPCProcessorCtx* rpc_processor, int req_id)
       : service_(service),
         cq_(cq),
         status_(PROCESS),
-        rpc_processor_(rpc_processor) {
+        rpc_processor_(rpc_processor),
+        req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
   }
   virtual ~RequestBase() {}
@@ -60,6 +61,7 @@ class RequestBase {
   ::grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
   GRPCProcessorCtx* rpc_processor_;
+  int req_id_;
 };
 
 class RequestSend final : public RequestBase {
@@ -67,7 +69,7 @@ class RequestSend final : public RequestBase {
   explicit RequestSend(GrpcService::AsyncService* service,
                        ::grpc::ServerCompletionQueue* cq,
                        GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
+      : RequestBase(service, cq, rpc_processor, req_id), responder_(&ctx_) {
     request_.reset(new VariableResponse(rpc_processor->scope(),
                                         rpc_processor->dev_ctx(),
                                         !rpc_processor->sync_mode()));
@@ -97,7 +99,6 @@ class RequestSend final : public RequestBase {
   sendrecv::VoidMessage reply_;
   std::shared_ptr<VariableResponse> request_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-  int req_id_;
 };
 
 class RequestGet final : public RequestBase {
@@ -106,13 +107,13 @@ class RequestGet final : public RequestBase {
                       ::grpc::ServerCompletionQueue* cq,
                       framework::BlockingQueue<MessageWithName>* queue,
                       GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor),
+      : RequestBase(service, cq, rpc_processor, req_id),
         responder_(&ctx_),
         queue_(queue) {
     auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, &request_, &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
 
   virtual ~RequestGet() {}
@@ -138,7 +139,6 @@ class RequestGet final : public RequestBase {
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::BlockingQueue<MessageWithName>* queue_;
-  int req_id_;
 };
 
 class RequestPrefetch final : public RequestBase {
@@ -146,7 +146,7 @@ class RequestPrefetch final : public RequestBase {
   explicit RequestPrefetch(GrpcService::AsyncService* service,
                            ::grpc::ServerCompletionQueue* cq,
                            GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor), responder_(&ctx_) {
+      : RequestBase(service, cq, rpc_processor, req_id), responder_(&ctx_) {
     request_.reset(new VariableResponse(rpc_processor->scope(),
                                         rpc_processor->dev_ctx(),
                                         !rpc_processor->sync_mode()));
@@ -154,7 +154,7 @@ class RequestPrefetch final : public RequestBase {
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
 
   virtual ~RequestPrefetch() {}
@@ -179,8 +179,6 @@ class RequestPrefetch final : public RequestBase {
   std::shared_ptr<VariableResponse> request_;
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-
-  int req_id_;
 };
 
 void AsyncGRPCServer::WaitClientGet(int count) {
@@ -223,15 +221,12 @@ void AsyncGRPCServer::RunSyncUpdate() {
                 std::placeholders::_1);
 
   for (int i = 0; i < kSendReqsBufSize; ++i) {
-    send_reqs_[i] = nullptr;
     TryToRegisterNewSendOne(i);
   }
   for (int i = 0; i < kGetReqsBufSize; ++i) {
-    get_reqs_[i] = nullptr;
     TryToRegisterNewGetOne(i);
   }
   for (int i = 0; i < kPrefetchReqsBufSize; ++i) {
-    prefetch_reqs_[i] = nullptr;
     TryToRegisterNewPrefetchOne(i);
   }
 
@@ -354,12 +349,6 @@ void AsyncGRPCServer::HandleRequest(
     VLOG(3) << "HandleRequest queue_id:" << rpc_id << ", req_id:" << req_id
             << " get next";
 
-    if (is_shut_down_) {
-      VLOG(3) << "HandleRequest queue_id:" << rpc_id
-              << " meets is_shut_down_, break!";
-      break;
-    }
-
     RequestBase* base = nullptr;
     {
       if (rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
@@ -402,6 +391,7 @@ void AsyncGRPCServer::HandleRequest(
 
     switch (base->Status()) {
       case PROCESS: {
+        std::unique_lock<std::mutex> lock(cq_mutex_);
         base->Process();
         break;
       }
