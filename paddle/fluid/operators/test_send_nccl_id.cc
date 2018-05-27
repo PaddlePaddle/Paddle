@@ -74,9 +74,6 @@ TEST(SendNcclId, GrpcServer) {
       new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
 
   std::thread server_thread(StartServer);
-
-  // wait server to start
-  // sleep(2);
   g_rpc_service->WaitServerReady();
 
   f::Scope scope;
@@ -85,7 +82,6 @@ TEST(SendNcclId, GrpcServer) {
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
   auto var = scope.Var(NCCL_ID_VARNAME);
-  // var->SetType(f::proto::VarType_Type_RAW);
   auto id = var->GetMutable<ncclUniqueId>();
   p::dynload::ncclGetUniqueId(id);
 
@@ -97,10 +93,8 @@ TEST(SendNcclId, GrpcServer) {
   client.Wait();
   client.AsyncSendBatchBarrier(ep);
   client.Wait();
-  server_thread.join();
-  auto* ptr = g_rpc_service.release();
-  delete ptr;
 
-  auto* ptr2 = g_rpc_processor.release();
-  delete ptr2;
+  server_thread.join();
+  g_rpc_service.reset(nullptr);
+  g_rpc_processor.reset(nullptr);
 }

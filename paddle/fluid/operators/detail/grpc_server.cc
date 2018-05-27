@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detail/grpc_server.h"
-
 #include <limits>
 #include <string>
+
+#include "paddle/fluid/operators/detail/grpc_server.h"
 
 using ::grpc::ServerAsyncResponseWriter;
 
@@ -167,7 +167,6 @@ class RequestPrefetch final : public RequestBase {
     VLOG(3) << "RequestPrefetch " << var_name;
 
     framework::Variable* var = nullptr;
-
     rpc_processor_->ProcessPrefetchImpl(var_name, &var);
     SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply_);
 
@@ -261,12 +260,17 @@ void AsyncGRPCServer::RunSyncUpdate() {
   for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
     t_sends_[i]->join();
   }
+  VLOG(3) << "t_sends_ ends";
+
   for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
     t_gets_[i]->join();
   }
+  VLOG(3) << "t_gets_ ends";
+
   for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
     t_prefetchs_[i]->join();
   }
+  VLOG(3) << "t_prefetchs_ ends";
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
@@ -351,7 +355,8 @@ void AsyncGRPCServer::HandleRequest(
             << " get next";
 
     if (is_shut_down_) {
-      VLOG(3) << "HandleRequest found is_shut_down_, break!";
+      VLOG(3) << "HandleRequest queue_id:" << rpc_id
+              << " meets is_shut_down_, break!";
       break;
     }
 
@@ -388,9 +393,8 @@ void AsyncGRPCServer::HandleRequest(
       auto it = barrier_.find(rpc_id);
       if (it != barrier_.end()) {
         WaitCond(rpc_id);
+        VLOG(3) << "HandleRequest waitcond:" << rpc_id << " success!";
       }
-
-      VLOG(3) << "HandleRequest waitcond:" << rpc_id << " success!";
     }
 
     VLOG(3) << "queue id:" << rpc_id << ", req_id:" << req_id

@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -30,7 +31,7 @@ namespace detail = paddle::operators::detail;
 
 USE_OP(lookup_table);
 
-std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
+std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
 std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
@@ -89,12 +90,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   }
 }
 
-void StartServer(const std::string& endpoint) {
-  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
-  g_rpc_processor->SetSyncMode(true);
-  rpc_service_.reset(
-      new detail::AsyncGRPCServer(endpoint, g_rpc_processor.get()));
-
+void StartServer() {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -104,43 +100,73 @@ void StartServer(const std::string& endpoint) {
   auto prepared = exe.Prepare(program, block->ID());
   InitTensorsOnServer(&scope, &place, 10);
 
+  scope.Var(NCCL_ID_VARNAME);
+
+  g_rpc_processor->SetSyncMode(true);
   g_rpc_processor->SetProgram(&program);
   g_rpc_processor->SetPrefetchPreparedCtx(std::move(prepared));
   g_rpc_processor->SetDevCtx(&ctx);
   g_rpc_processor->SetScope(&scope);
   g_rpc_processor->SetExecutor(&exe);
+  g_rpc_processor->SetFanIn(1);
 
-  rpc_service_->RunSyncUpdate();
+  std::thread server_thread(
+      std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
+
+  g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
+  std::cout << "before WaitFanInOfSend" << std::endl;
+  g_rpc_processor->WaitFanInOfSend();
+  LOG(INFO) << "got nccl id and stop server...";
+  g_rpc_service->ShutDown();
+  server_thread.join();
 }
 
-TEST(PREFETCH, DISABLED_CPU) {
-  // start up a server instance backend
-  std::thread server_thread(StartServer, "127.0.0.1:8889");
-  sleep(2);
+TEST(PREFETCH, CPU) {
+  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
+  g_rpc_service.reset(
+      new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
+
+  std::thread server_thread(StartServer);
+  g_rpc_service->WaitServerReady();
+
+  detail::RPCClient client;
+  int port = g_rpc_service->GetSelectedPort();
+  std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
+
   framework::Scope scope;
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
-  // create var on local scope
-  int64_t rows_numel = 5;
-  InitTensorsOnClient(&scope, &place, rows_numel);
-  std::string in_var_name("ids");
-  std::string out_var_name("out");
 
-  detail::RPCClient client;
-  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
-                               out_var_name);
-  client.Wait();
+  {
+    // create var on local scope
+    int64_t rows_numel = 5;
+    InitTensorsOnClient(&scope, &place, rows_numel);
+    std::string in_var_name("ids");
+    std::string out_var_name("out");
 
-  auto var = scope.Var(out_var_name);
-  auto value = var->GetMutable<framework::SelectedRows>()->value();
-  auto ptr = value.mutable_data<float>(place);
+    client.AsyncPrefetchVariable(ep, ctx, scope, in_var_name, out_var_name);
+    client.Wait();
+    auto var = scope.Var(out_var_name);
+    auto value = var->GetMutable<framework::SelectedRows>()->value();
+    auto ptr = value.mutable_data<float>(place);
 
-  rpc_service_->ShutDown();
-  server_thread.join();
-  rpc_service_.reset(nullptr);
-  g_rpc_processor.reset(nullptr);
-
-  for (int64_t i = 0; i < rows_numel; ++i) {
-    EXPECT_EQ(ptr[0 + i * value.dims()[1]], static_cast<float>(i * 2));
+    for (int64_t i = 0; i < rows_numel; ++i) {
+      EXPECT_EQ(ptr[0 + i * value.dims()[1]], static_cast<float>(i * 2));
+    }
   }
+
+  {
+    auto var = scope.Var(NCCL_ID_VARNAME);
+    auto id = var->GetMutable<ncclUniqueId>();
+    platform::dynload::ncclGetUniqueId(id);
+
+    client.AsyncSendVariable(ep, ctx, scope, NCCL_ID_VARNAME);
+    client.Wait();
+    client.AsyncSendBatchBarrier(ep);
+    client.Wait();
+  }
+
+  server_thread.join();
+  g_rpc_service.reset(nullptr);
+  g_rpc_processor.reset(nullptr);
 }
