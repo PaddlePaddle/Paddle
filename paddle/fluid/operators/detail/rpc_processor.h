@@ -106,7 +106,7 @@ class GRPCProcessorCtx : public RPCProcessorCtx {
 
   bool ProcessGetImpl(const std::string& msg_name, framework::Variable** var);
 
-  bool ProcessPrefetchImpl(const std::string& msg_name,
+  bool ProcessPrefetchImpl(const std::string& msg_name, framework::Scope* scope,
                            framework::Variable** var);
 
   void SetFanIn(int fan_in) { fan_in_ = fan_in; }

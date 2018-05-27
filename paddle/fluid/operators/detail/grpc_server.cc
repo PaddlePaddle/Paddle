@@ -146,7 +146,9 @@ class RequestPrefetch final : public RequestBase {
   explicit RequestPrefetch(GrpcService::AsyncService* service,
                            ::grpc::ServerCompletionQueue* cq,
                            GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor, req_id), responder_(&ctx_) {
+      : RequestBase(service, cq, rpc_processor, req_id),
+        responder_(&ctx_),
+        local_scope_(nullptr) {
     request_.reset(new VariableResponse(rpc_processor->scope(),
                                         rpc_processor->dev_ctx(),
                                         !rpc_processor->sync_mode()));
@@ -157,7 +159,11 @@ class RequestPrefetch final : public RequestBase {
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
 
-  virtual ~RequestPrefetch() {}
+  virtual ~RequestPrefetch() {
+    if (local_scope_) {
+      rpc_processor_->scope()->DeleteScope(local_scope_);
+    }
+  }
 
   virtual std::string GetReqName() { return request_->Varname(); }
 
@@ -166,8 +172,11 @@ class RequestPrefetch final : public RequestBase {
     std::string var_name = request_->OutVarname();
     VLOG(3) << "RequestPrefetch " << var_name;
 
+    local_scope_ = &rpc_processor_->scope()->NewScope();
+
     framework::Variable* var = nullptr;
-    rpc_processor_->ProcessPrefetchImpl(var_name, &var);
+    rpc_processor_->ProcessPrefetchImpl(var_name, local_scope_, &var);
+
     SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply_);
 
     status_ = FINISH;
@@ -179,6 +188,7 @@ class RequestPrefetch final : public RequestBase {
   std::shared_ptr<VariableResponse> request_;
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+  framework::Scope* local_scope_;
 };
 
 void AsyncGRPCServer::WaitClientGet(int count) {

@@ -113,11 +113,10 @@ bool GRPCProcessorCtx::ProcessGetImpl(const std::string& msg_name,
 }
 
 bool GRPCProcessorCtx::ProcessPrefetchImpl(const std::string& msg_name,
+                                           framework::Scope* scope,
                                            framework::Variable** var) {
   auto var_desc = program_->Block(0).FindVar(msg_name);
-
-  framework::Scope* local_scope = &scope_->NewScope();
-  *var = local_scope->FindVar(msg_name);
+  *var = scope->FindVar(msg_name);
 
   InitializeVariable(*var, var_desc->GetType());
   executor_->RunPreparedContext(prefetch_ctx_.get(), scope_);
