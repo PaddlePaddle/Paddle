@@ -191,8 +191,7 @@ class RPCClient {
 
  private:
   bool Proceed();
-  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep,
-                                            const std::string& key);
+  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
   grpc::CompletionQueue cq_;
