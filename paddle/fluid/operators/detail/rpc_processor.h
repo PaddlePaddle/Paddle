@@ -114,15 +114,19 @@ class GRPCProcessorCtx : public RPCProcessorCtx {
   void WaitFanInOfSend() {
     std::unique_lock<std::mutex> lock(this->mutex_);
     condition_send_.wait(lock, [=] {
-      return (this->batch_barrier_send_ == fan_in_ || exit_flag_);
+      return (this->batch_barrier_send_ >= fan_in_ || exit_flag_);
     });
+
+    VLOG(3) << "batch_barrier_send_:" << batch_barrier_send_;
   }
 
   void WaitFanInOfGet() {
     std::unique_lock<std::mutex> lock(this->mutex_);
     condition_get_.wait(lock, [=] {
-      return (this->batch_barrier_get_ == fan_in_ || exit_flag_);
+      return (this->batch_barrier_get_ >= fan_in_ || exit_flag_);
     });
+
+    VLOG(3) << "batch_barrier_get_:" << batch_barrier_get_;
   }
 
   void clear_to_init() {

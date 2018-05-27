@@ -65,8 +65,8 @@ void StartServer(std::atomic<bool>* initialized) {
   g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
   std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_processor->WaitFanInOfSend();
+  // g_rpc_processor->SetExit();
   LOG(INFO) << "got nccl id and stop server...";
-  g_rpc_processor->SetExit();
   g_rpc_service->ShutDown();
   server_thread.join();
 }
@@ -104,7 +104,6 @@ TEST(SendNcclId, GrpcServer) {
   client.AsyncSendBatchBarrier(ep);
   client.Wait();
   server_thread.join();
-  sleep(5);
   auto* ptr = g_rpc_service.release();
   delete ptr;
 

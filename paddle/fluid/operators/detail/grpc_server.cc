@@ -270,8 +270,13 @@ void AsyncGRPCServer::RunSyncUpdate() {
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
+  VLOG(3) << "cq_send_ shutdown!";
   cq_send_->Shutdown();
+
+  VLOG(3) << "cq_get_ shutdown!";
   cq_get_->Shutdown();
+
+  VLOG(3) << "cq_prefetch_ shutdown!";
   cq_prefetch_->Shutdown();
 }
 
@@ -279,6 +284,8 @@ void AsyncGRPCServer::ShutDown() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   is_shut_down_ = true;
   ShutdownQueue();
+
+  VLOG(3) << "server_ shutdown!";
   server_->Shutdown();
 }
 
@@ -343,6 +350,11 @@ void AsyncGRPCServer::HandleRequest(
     VLOG(3) << "HandleRequest queue_id:" << rpc_id << ", req_id:" << req_id
             << " get next";
 
+    if (is_shut_down_) {
+      VLOG(3) << "HandleRequest found is_shut_down_, break!";
+      break;
+    }
+
     RequestBase* base = nullptr;
     {
       if (rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
@@ -381,21 +393,17 @@ void AsyncGRPCServer::HandleRequest(
       VLOG(3) << "HandleRequest waitcond:" << rpc_id << " success!";
     }
 
-    VLOG(4) << "queue id:" << rpc_id << " req_id:" << req_id
-            << " PROCESS status:" << base->Status();
+    VLOG(3) << "queue id:" << rpc_id << ", req_id:" << req_id
+            << ", status:" << base->Status();
 
     switch (base->Status()) {
       case PROCESS: {
         base->Process();
-        VLOG(4) << "completion queue" << rpc_id
-                << " PROCESS status:" << base->Status();
         break;
       }
       case FINISH: {
         TryToRegisterNewOne(req_id);
         delete base;
-        VLOG(4) << "complete queue:" << rpc_id
-                << " FINISH status:" << base->Status();
         break;
       }
       default: { assert(false); }

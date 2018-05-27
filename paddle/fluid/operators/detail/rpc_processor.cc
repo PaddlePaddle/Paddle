@@ -42,7 +42,7 @@ void GRPCProcessorCtx::SetExit() {
 void GRPCProcessorCtx::IncreaseBatchBarrierSend() {
   std::unique_lock<std::mutex> lock(mutex_);
   batch_barrier_send_++;
-  if (batch_barrier_send_ == fan_in_) {
+  if (batch_barrier_send_ >= fan_in_) {
     condition_send_.notify_all();
   }
 }
@@ -50,7 +50,7 @@ void GRPCProcessorCtx::IncreaseBatchBarrierSend() {
 void GRPCProcessorCtx::IncreaseBatchBarrierGet() {
   std::unique_lock<std::mutex> lock(mutex_);
   batch_barrier_get_++;
-  if (batch_barrier_get_ == fan_in_) {
+  if (batch_barrier_get_ >= fan_in_) {
     condition_get_.notify_all();
   }
 }
