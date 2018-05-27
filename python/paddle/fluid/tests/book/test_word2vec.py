@@ -174,6 +174,7 @@ def infer(use_cuda, save_dirname=None):
         # Note that lod info should be a list of lists.
         lod = [[1]]
         base_shape = [1]
+        # The range of random integers is [low, high]
         first_word = fluid.create_random_int_lodtensor(
             lod, base_shape, place, low=0, high=dict_size - 1)
         second_word = fluid.create_random_int_lodtensor(

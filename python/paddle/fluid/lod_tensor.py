@@ -93,12 +93,12 @@ def _convert_lod(lod):
 
 
 def create_lod_tensor(data, lod, place):
-    """Create a lod tensor from a numpy array or an existing lod tensor.
+    """Create a lod tensor from a numpy array, a list, or an existing lod tensor.
 
     Create a lod tensor by doing the following:
     1. Check that the length-based input lod is valid.
     2. Convert the length-based lod to a offset-based LoD.
-    3. Copy the data from a numpy array or a existing lod tensor to 
+    3. Copy the data from a numpy array, a list or a existing lod tensor to 
        CPU or GPU device (based on input place).
     4. Set the level of detail (LoD) using the offset-based LoD.
     
@@ -117,7 +117,7 @@ def create_lod_tensor(data, lod, place):
     for more details regarding LoD.
 
     Args:
-        data: a numpy array or a LoDTensor holding the data to be copied.
+        data: a numpy array or a LoDTensor or a list holding the data to be copied.
         lod: a list of lists indicating the length-based LoD info specified by the user. 
         place: CPU or GPU place indicating where the data in the new LoDTensor will be stored.
 
@@ -126,6 +126,18 @@ def create_lod_tensor(data, lod, place):
     """
     if isinstance(data, core.LoDTensor):
         return create_lod_tensor(np.array(data), lod, place)
+    elif isinstance(data, list):
+        # When input data is a list, it only deal with the case where the base element 
+        # is an index of shape [1] and dtype int64 (e.g., word id). Hence, the generated 
+        # LoDTensor will be of shape [n, 1] and dtype int64, where `n` is the total number 
+        # of words or other indexes in the sequence. 
+        new_lod = []
+        for seq in data:
+            new_lod.append(len(seq))
+        assert [new_lod] == lod, "data and lod do not match"
+        flattened_data = np.concatenate(data, axis=0).astype("int64")
+        flattened_data = flattened_data.reshape([len(flattened_data), 1])
+        return create_lod_tensor(flattened_data, lod, place)
     elif isinstance(data, np.ndarray):
         assert _validate_lod(lod,
                              data.shape[0]), "the provided lod info is invalid"
@@ -134,9 +146,8 @@ def create_lod_tensor(data, lod, place):
         tensor.set_lod(_convert_lod(lod))
         return tensor
     else:
-        raise Exception(
-            "data should be either a LoDTensor or a Numpy array, but you pass type %s instead"
-            % (type(data)))
+        raise TypeError(
+            "data should be either a LoDTensor, a Numpy array or a list")
 
 
 def create_random_int_lodtensor(lod, base_shape, place, low, high):
