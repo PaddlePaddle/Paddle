@@ -38,7 +38,7 @@ namespace string = paddle::string;
 std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
 std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
 
-void StartServer() {
+void StartServer(std::atomic<bool>* initialized) {
   f::Scope scope;
   p::CPUPlace place;
   scope.Var(NCCL_ID_VARNAME);
@@ -60,11 +60,13 @@ void StartServer() {
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
 
+  *initialized = true;
+
   g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
   std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_processor->WaitFanInOfSend();
   LOG(INFO) << "got nccl id and stop server...";
-  sleep(1);
+  g_rpc_processor->SetExit();
   g_rpc_service->ShutDown();
   server_thread.join();
 }
@@ -74,7 +76,10 @@ TEST(SendNcclId, GrpcServer) {
   g_rpc_service.reset(
       new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
 
-  std::thread server_thread(StartServer);
+  std::atomic<bool> initialized{false};
+  std::thread server_thread(StartServer, &initialized);
+  while (!initialized) {
+  }
 
   // wait server to start
   // sleep(2);
@@ -99,6 +104,10 @@ TEST(SendNcclId, GrpcServer) {
   client.AsyncSendBatchBarrier(ep);
   client.Wait();
   server_thread.join();
+  sleep(5);
   auto* ptr = g_rpc_service.release();
   delete ptr;
+
+  auto* ptr2 = g_rpc_processor.release();
+  delete ptr2;
 }

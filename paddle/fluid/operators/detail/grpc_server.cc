@@ -270,14 +270,13 @@ void AsyncGRPCServer::RunSyncUpdate() {
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
-  std::unique_lock<std::mutex> lock(cq_mutex_);
   cq_send_->Shutdown();
   cq_get_->Shutdown();
   cq_prefetch_->Shutdown();
 }
 
-// This URL explains why shutdown is complicate:
 void AsyncGRPCServer::ShutDown() {
+  std::unique_lock<std::mutex> lock(cq_mutex_);
   is_shut_down_ = true;
   ShutdownQueue();
   server_->Shutdown();
@@ -334,15 +333,15 @@ void AsyncGRPCServer::HandleRequest(
   bool ok = false;
 
   while (true) {
-    VLOG(3) << "HandleRequest for completion queue:" << rpc_id << " wait Next";
+    VLOG(3) << "HandleRequest queue_id:" << rpc_id << " wait next";
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << "CompletionQueue " << rpc_id << " shutdown!";
       break;
     }
 
-    int req_id = reinterpret_cast<intptr_t>(tag);
-
-    VLOG(4) << "queue id:" << rpc_id << " req_id:" << req_id;
+    int req_id = static_cast<int>(reinterpret_cast<intptr_t>(tag));
+    VLOG(3) << "HandleRequest queue_id:" << rpc_id << ", req_id:" << req_id
+            << " get next";
 
     RequestBase* base = nullptr;
     {
@@ -369,7 +368,7 @@ void AsyncGRPCServer::HandleRequest(
                    << " recv no regular event:argument name["
                    << base->GetReqName() << "]";
       TryToRegisterNewOne(req_id);
-      // delete base;
+      delete base;
       continue;
     }
 
