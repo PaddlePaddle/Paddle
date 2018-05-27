@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <sys/time.h>
 #include <time.h>
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
@@ -55,43 +55,40 @@ TEST(inference, word2vec) {
   cpu_feeds.push_back(&third_word);
   cpu_feeds.push_back(&fourth_word);
 
-  int total_work = 1000;
-  int num_threads = 100;
+  int total_work = 10000;
+  int num_threads = 10;
   int work_per_thread = total_work / num_threads;
   // Run inference on CPU
   std::vector<std::unique_ptr<std::thread>> infer_threads;
   paddle::platform::EnableProfiler(paddle::platform::ProfilerState::kAll);
   for (int i = 0; i < num_threads; ++i) {
     infer_threads.emplace_back(new std::thread([&, i]() {
-      for (int j = 0; j < work_per_thread; ++j) {
-        /*
-        paddle::framework::LoDTensor output1;
-        std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
-        cpu_fetchs1.push_back(&output1);
+/*
+paddle::framework::LoDTensor output1;
+std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+cpu_fetchs1.push_back(&output1);
 
-        TestInference<paddle::platform::CPUPlace>(
-            dirname, cpu_feeds, cpu_fetchs1);*/
+TestInference<paddle::platform::CPUPlace>(
+    dirname, cpu_feeds, cpu_fetchs1);*/
 #ifdef PADDLE_WITH_CUDA
-        paddle::framework::LoDTensor output2;
-        std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
-        cpu_fetchs2.push_back(&output2);
+      paddle::framework::LoDTensor output2;
+      std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
+      cpu_fetchs2.push_back(&output2);
 
-        // Run inference on CUDA GPU
-        TestInference<paddle::platform::CUDAPlace>(
-            dirname, cpu_feeds, cpu_fetchs2);
+      // Run inference on CUDA GPU
+      TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds,
+                                                 cpu_fetchs2, work_per_thread);
 
-        // CheckError<float>(output1, output2);
+// CheckError<float>(output1, output2);
 #endif
-      }
     }));
   }
   uint64_t start_ns = PosixInNsec();
   for (int i = 0; i < num_threads; ++i) {
     infer_threads[i]->join();
   }
-  paddle::platform::DisableProfiler(
-      paddle::platform::EventSortingKey::kDefault,
-      paddle::string::Sprintf("/tmp/profile_infer"));
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
+                                    paddle::string::Sprintf("profile_infer"));
   uint64_t stop_ns = PosixInNsec();
   fprintf(stderr, "total time: %lu\n", stop_ns - start_ns);
 }

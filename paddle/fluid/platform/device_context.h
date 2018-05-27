@@ -28,6 +28,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/thread_local.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "glog/logging.h"
@@ -196,12 +197,16 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  size_t size() const { return device_contexts_.size(); }
+  size_t size() { return device_contexts_.Get()->size(); }
+
+ private:
+  void AddDeviceContext(const platform::Place& place);
 
  private:
   static DeviceContextPool* pool;
-  std::unordered_map<const platform::Place,
-                     std::unique_ptr<platform::DeviceContext>, PlaceHash>
+  ThreadLocalD<
+      std::unordered_map<const platform::Place,
+                         std::unique_ptr<platform::DeviceContext>, PlaceHash>>
       device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
