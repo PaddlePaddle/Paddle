@@ -45,7 +45,7 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements, 0);
   auto* data = tensor->mutable_data<float>(place);
-  for (int i = 0; i < num_elements; i++) {
+  for (size_t i = 0; i < num_elements; i++) {
     *(data + i) = random(0., 1.);
   }
 }
@@ -124,6 +124,7 @@ class TRTConvertValidation {
 
     op_->Run(scope_, place);
 
+    ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
       std::vector<float> trt_out(200);
@@ -133,8 +134,9 @@ class TRTConvertValidation {
       auto tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
       // Compare two output
+      ASSERT_FALSE(fluid_out.empty());
       for (size_t i = 0; i < fluid_out.size(); i++) {
-        EXPECT_TRUE(std::abs(fluid_out[i] - trt_out[i]) < 0.01);
+        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 0.001);
       }
     }
   }
