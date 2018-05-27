@@ -149,12 +149,14 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
     // GPU data is copied to CPU buffer when sending,
     // free the buffer when possible.
     destroy_callback = [](void* backing) {
       platform::CUDAPinnedPlace cuda_pinned;
       memory::Free(cuda_pinned, backing);
     };
+#endif
   }
 
   std::string header;

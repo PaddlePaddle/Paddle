@@ -12,49 +12,65 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+/*
+ * This file contains the definition of a simple Inference API for Paddle.
+ *
+ * ATTENTION: It requires some C++ features, for lower version C++ or C, we
+ * might release another API.
+ */
+
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace paddle {
 
-class Predictor {
-public:
-  struct Attr;
-  Predictor() = default;
+struct PaddleTensor {
+  std::string name;  // variable name.
+  std::vector<int> shape;
+  std::vector<unsigned char> data;         // bytes of data.
+  size_t type{typeid(float).hash_code()};  // hash of type
+};
 
-  // Build the network before inference.
-  bool Init(const Attr& attr);
+/*
+ * A simple Inference API for Paddle. Currently this API might just be used by
+ * non-sequence scenerios.
+ * TODO(Superjomn) Prepare another API for NLP-related usages.
+ */
+class PaddlePredictor {
+public:
+  struct Config;
+  PaddlePredictor() = default;
+  PaddlePredictor(const PaddlePredictor&) = delete;
+
+  // One drived class should has such a constructor
+  // PaddlePredictor(const XConfig& config);
+  // The XConfig is a derived class of Config.
 
   // Predict an record.
-  // Arguments:
-  //   inputs: the name of the input variables.
-  //   outputs: the name of the output varaibles.
-  //   input_shapes: the shape of the input variables.
-  //   output_shapes: the shape of the output variables.
-  //   input_data: the data of the input variables.
-  //   output_data: the data of the output variables.
-  bool Run(const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs,
-           const std::vector<std::vector<int>>& input_shapes,
-           const std::vector<std::vector<int>>& output_shapes,
-           const std::vector<std::vector<float>>& input_data,
-           std::vector<std::vector<float>>* output_data);
+  virtual bool Run(const std::vector<PaddleTensor>& inputs,
+                   std::vector<PaddleTensor>* output_data) = 0;
 
-  // Clone a predictor that share the model weights.
-  Predictor* Clone();
+  // Clone a predictor that share the model weights, the Cloned predictor should
+  // be thread-safe.
+  virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
   // Destroy the Predictor.
-  ~Predictor();
+  virtual ~PaddlePredictor() {}
 
-  struct Attr {
+  friend std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
+      const PaddlePredictor::Config& config);
+
+  // The common configs for all the predictors.
+  struct Config {
     enum class EngineKind;
 
     std::string model_dir;      // path to the model directory.
     bool enable_engine{false};  // Enable to execute (part of) the model on
-                                // third-party engines.
-    EngineKind engine_kind{Attr::EngineKind::kNone};
+    // third-party engines.
+    EngineKind engine_kind{Config::EngineKind::kNone};
 
     enum class EngineKind {
       kNone = -1,          // Use the native Fluid facility.
@@ -65,5 +81,9 @@ public:
     };
   };
 };
+
+// A factory to help create difference predictor.
+template <typename ConfigT>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 }  // namespace paddle
