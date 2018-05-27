@@ -351,6 +351,7 @@ void AsyncGRPCServer::HandleRequest(
 
     RequestBase* base = nullptr;
     {
+      std::lock_guard<std::mutex> lock(cq_mutex_);
       if (rpc_id == static_cast<int>(GrpcMethod::kGetVariable)) {
         PADDLE_ENFORCE(req_id >= 0 && req_id < kGetReqsBufSize);
         base = get_reqs_[req_id];
