@@ -38,7 +38,7 @@ namespace string = paddle::string;
 std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
 std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
 
-void StartServer(std::atomic<bool>* initialized) {
+void StartServer() {
   f::Scope scope;
   p::CPUPlace place;
   scope.Var(NCCL_ID_VARNAME);
@@ -60,12 +60,9 @@ void StartServer(std::atomic<bool>* initialized) {
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
 
-  *initialized = true;
-
   g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
   std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_processor->WaitFanInOfSend();
-  // g_rpc_processor->SetExit();
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();
   server_thread.join();
@@ -76,10 +73,7 @@ TEST(SendNcclId, GrpcServer) {
   g_rpc_service.reset(
       new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
 
-  std::atomic<bool> initialized{false};
-  std::thread server_thread(StartServer, &initialized);
-  while (!initialized) {
-  }
+  std::thread server_thread(StartServer);
 
   // wait server to start
   // sleep(2);
