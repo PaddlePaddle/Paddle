@@ -89,7 +89,7 @@ cd Paddle
 # to `FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04` and similarly for other configurations
 nvidia-docker build -t paddle:float16 .
 # After running this, different results will be written to different log files in Paddle/contrib/float16/
-nvidia-docker run -it -v $PWD:/paddle paddle:float16 /paddle/contrib/float16/run_float16_demo.sh
+nvidia-docker run -it -v $PWD:/paddle paddle:float16 /paddle/paddle/contrib/float16/run_float16_demo.sh
 ```
 
 #### Accuracy
