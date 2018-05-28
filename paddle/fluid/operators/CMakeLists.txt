@@ -186,7 +186,7 @@ endif()
 
 add_subdirectory(detail)
 if(WITH_DISTRIBUTE)
-    
+
     set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     op_library(send_op DEPS ${DISTRIBUTE_DEPS})
