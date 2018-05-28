@@ -121,7 +121,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
-        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+        handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
         cudnn_output_desc, &workspace_size_in_bytes));
     PADDLE_ENFORCE_GT(workspace_size_limit, workspace_size_in_bytes,
         "Required workspace size should be smaller than limit.");
