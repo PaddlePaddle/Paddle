@@ -20,14 +20,26 @@ from op_test import OpTest
 
 class TestRandomCropOp(OpTest):
     def setUp(self):
-        to_crop = np.random.random((1, 10, 15)).astype("float32")
+        to_crop = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] *
+                           5).astype("float32")
+        self.possible_res = [
+            np.array([[1, 2, 3], [5, 6, 7]]), np.array([[2, 3, 4], [6, 7, 8]]),
+            np.array([[5, 6, 7], [9, 10, 11]]),
+            np.array([[6, 7, 8], [10, 11, 12]])
+        ]
         self.op_type = "random_crop"
         self.inputs = {'X': to_crop, 'Seed': np.array([10])}
-        self.outputs = {'Out': np.array([1, 2, 3]), 'SeedOut': np.array([2])}
-        self.attrs = {'shape': [5, 5]}
+        self.outputs = {'Out': np.array([]), 'SeedOut': np.array([])}
+        self.attrs = {'shape': [2, 3]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        out = np.array(outs[1])
+        for ins in out[:]:
+            is_equal = [(ins == res).all() for res in self.possible_res]
+            self.assertIn(True, is_equal)
 
 
 if __name__ == "__main__":

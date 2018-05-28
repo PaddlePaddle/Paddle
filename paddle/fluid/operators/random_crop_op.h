@@ -129,7 +129,7 @@ struct RandomCropFunctor {
     for (int i = num_batchsize_dims_; i < rank_; ++i) {
       typename Random<DeviceContext>::template UniformIntDist<size_t> dist(
           0, x_dims_[i] - out_dims_[i]);
-      offsets[i] = dist(engine);
+      offsets[i - num_batchsize_dims_] = dist(engine);
     }
 
     const T* x = x_ + ins_idx * prod_x_ins_dims_;
