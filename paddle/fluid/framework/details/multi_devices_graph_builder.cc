@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
-#include "paddle/fluid/framework/details/send_op_handle.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -141,7 +140,6 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(
 
   return checker(op.OutputArgumentNames(), send_vars) ||
          checker(op.InputArgumentNames(), recv_vars);
-  return false;
 }
 
 bool MultiDevSSAGraphBuilder::IsRPCOp(const OpDesc &op) const {
@@ -471,17 +469,16 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
     ConnectOp(result, result->ops_.back().get(), "send_barrier");
   } else if (op.Type() == "fetch_barrier") {
     ConnectOp(result, result->ops_.back().get(), "recv");
-  } else if (op.Type() == "send" || op.Type() == "send_vars") {
+  } else if (op.Type() == "send_vars") {
     // do nothing
   } else {
     PADDLE_THROW(
-        "rpc op should be in [send,"
+        "rpc op should be in ["
         "send_vars, send_barrier. recv, fetch_barrier]");
   }
 
-  // FIXME(wuyi): send op always copy from GPU 0
-  // Create inputs for output on original place and no ssa output
-  // is created for send op.
+  // TODO(Yancey1989): schedule rpc op on different place may
+  // increate throughput
   CreateOpHandleIOs(result, op, 0);
 }
 

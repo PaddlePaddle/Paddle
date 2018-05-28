@@ -249,6 +249,7 @@ bool RPCClient::Proceed() {
   return true;
 }
 std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
+  // TODO(Yancey1989): make grpc client completely thread-safe
   std::unique_lock<std::mutex> lock(mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
