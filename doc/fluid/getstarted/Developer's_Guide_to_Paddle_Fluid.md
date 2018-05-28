@@ -1,15 +1,8 @@
-<!-- $theme: gaia -->
-<!-- page_number: true -->
 
 # Paddle Fluid 开发者指南
 
 ---
-<!-- *template: invert -->
 
-# 请大家加入Hi群：1600022
-
----
-<!-- *template: invert -->
 ### ==1==. 为什么需要 PaddlePaddle Fluid？
 
 ---
@@ -33,18 +26,43 @@
 
 <font size=6>
 
-||<small>一组连续执行的layers</small>|<small>variable和operator构成的计算图</small>|<small>不再有模型的概念</small>|
-|:--|:--|:--|:--|
-|<small>2013|<small>Caffe，Theano, Torch, PaddlePaddle</small>||
-|<small>2015||<small>TensorFlow, MxNet, Caffe2, ONNX, n-graph</small>|
-|<small>2016|||<small>PyTorch, TensorFlow Eager Execution, <font color=#483D8B>**==PaddlePaddle Fluid==**|
+<table>
+<thead>
+<tr>
+<th> </th>
+<th>一组连续执行的layers</th>
+<th>variable和operator构成的计算图 </th>
+<th>不再有模型的概念 </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> 2013</td>
+<td> Caffe，Theano, Torch, PaddlePaddle </td>
+<td> </td>
+<td> </td>
+</tr>
 
-</font>
+<tr>
+<td> 2015 </td>
+<td> </td>
+<td> TensorFlow, MxNet, Caffe2, ONNX, n-graph </td>
+<td> </td>
+</tr>
+<tr>
+<td>2016 </td>
+<td> </td>
+<td> </td>
+<td> PyTorch, TensorFlow Eager Execution, <font color=#483D8B>**==PaddlePaddle Fluid==** </td>
+</tr>
+
+</tbody>
+</table>
 
 ---
 
 
-### <p align="center">目标 :smile:</p>
+### <p align="center">目标 </p>
 
 <font size=6>
 
@@ -57,21 +75,22 @@
 </font>
 
 ---
-<!-- *template: invert -->
+
 ## ==2.== Design Overview
 
 ---
 
 # Fluid: 系统形态
 
-- <span style="background-color:#ACD6FF;">[编译器式的执行流程，区分编译时和运行时](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid_compiler.md)</span>
+- <span style="background-color:#ACD6FF;">[编译器式的执行流程，区分编译时和运行时](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/motivation/fluid_compiler.md)</span>
 <br>
 
-![100%](images/fluid-compiler.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/fluid_compiler.png" width=100%>
+</p>
 
 ---
 
-<!-- *template: invert -->
 #### 让我们在Fluid程序实例中，区分编译时和运行时
 
 ---
@@ -104,11 +123,14 @@
 <font size=5>
 
 - 在科学计算领域，计算图是一种描述计算的经典方式。下图展示了从前向计算图（蓝色）开始，通过添加反向（红色）和优化算法相关（绿色）操作，构建出整个计算图的过程：
+- 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/graph_construction_example_all.png" width=60%>
+</p>
 
-  ![60% center](images/graph_construction_example_all.png)
   
 - Fluid ==使用`Program`而不是计算图==来描述模型和优化过程。`Program`由`Block`、`Operator`和`Variable`构成，相关概念会在后文详细展开。
-- 编译时 Fluid 接受前向计算（这里可以先简单的理解为是一段有序的计算流）`Program`，为这段前向计算按照：前向 :arrow_right: 反向 :arrow_right: 梯度 clip :arrow_right: 正则 :arrow_right: 优化 的顺序，添加相关 `Operator`和`Variable`到`Program`到完整的计算。
+- 编译时 Fluid 接受前向计算（这里可以先简单的理解为是一段有序的计算流）`Program`，为这段前向计算按照：前向 -> 反向 -> 梯度 clip -> 正则 -> 优化 的顺序，添加相关 `Operator`和`Variable`到`Program`到完整的计算。
 
 </font>
 
@@ -153,11 +175,25 @@
 <br>
 
 <font size=5>
+<table>
+<thead>
+<tr>
+<th>构建训练</th>
+<th>执行训练</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<span style="background-color:#B3D9D9">用户</span>：描述前向运算<br><span style="background-color:#DAB1D5;">框架</span>：添加反向运算<br><span style="background-color:#DAB1D5;">框架</span>：添加优化运算<br><span style="background-color:#DAB1D5;">框架</span>：添加内存优化<br><span style="background-color:#DAB1D5;">框架</span>：添加并行/多设备/分布式相关的计算单元
+</td>
 
-|构建训练|执行训练|
-|---|---|
-|<span style="background-color:#B3D9D9">用户</span>：描述前向运算<br><span style="background-color:#DAB1D5;">框架</span>：添加反向运算<br><span style="background-color:#DAB1D5;">框架</span>：添加优化运算<br><span style="background-color:#DAB1D5;">框架</span>：添加内存优化<br><span style="background-color:#DAB1D5;">框架</span>：添加并行/多设备/分布式相关的计算单元|<span style="background-color:#DAB1D5;">框架</span>：创建Operator（计算）+ Variable（数据）<br><span style="background-color:#DAB1D5;">框架</span>：创建`Block`<br><span style="background-color:#DAB1D5;">框架</span>：内存管理/设备管理<br><span style="background-color:#DAB1D5;">框架</span>：执行计算|
-
+<td>
+<span style="background-color:#DAB1D5;">框架</span>：创建Operator（计算）+ Variable（数据）<br><span style="background-color:#DAB1D5;">框架</span>：创建`Block`<br><span style="background-color:#DAB1D5;">框架</span>：内存管理/设备管理<br><span style="background-color:#DAB1D5;">框架</span>：执行计算
+</td>
+</tr>
+</tbody>
+</table>
 </font>
 
 ---
@@ -210,7 +246,7 @@
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
     ```
 
-- 条件分支: [swith](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch.md)、[ifelse](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/if_else_op.md)
+- 条件分支: [swith](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/execution/switch.md)、[ifelse](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/execution/if_else_op.md)
 
    ```python
    a = fluid.Var(10)
@@ -236,7 +272,7 @@
 
 <font size=5>
 
-- 循环：[while](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book/test_machine_translation.py#L105)
+- 循环：[while](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_machine_translation.py#L105)
 
   ```python
   d0 = layers.data("d0", shape=[10], dtype='float32')
@@ -252,8 +288,8 @@
       layers.less_than(x=i, y=array_len, cond=cond)
   ```
 
-- 完整实例请点查看 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/a91efdde6910ce92a78e3aa7157412c4c88d9ee8/python/paddle/v2/fluid/tests/test_while_op.py#L36-L44)
-- beam search  [:arrow_right:]( https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book/test_machine_translation.py#L105)
+- 完整实例请点查看 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/unittests/test_while_op.py#L36-L44)
+- beam search  [->]( https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_machine_translation.py#L105)
 
 </font>
 
@@ -271,7 +307,6 @@
 
 ---
 
-<!-- *template: invert -->
 ## ==3.== 核心概念
 
 ---
@@ -279,8 +314,8 @@
 
 <font size=5>
 
-- `VarDesc` + `TensorDesc` + `OpDesc` :arrow_right: `BlockDesc` :arrow_right: `ProgramDesc`
-    - https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto
+- `VarDesc` + `TensorDesc` + `OpDesc` -> `BlockDesc` -> `ProgramDesc`
+    - https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto
 
 - <span style="background-color:#DAB1D5;">什么是 Fluid Program</span>
 
@@ -295,7 +330,7 @@
 
 --- 
 
-### 编译时概念 ：==**[Transpiler](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid_compiler.md)**==
+### 编译时概念 ：==**[Transpiler](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/motivation/fluid_compiler.md)**==
 <font size=5>
 
 1. 接受一段`ProgramDesc`作为输入，生成一段新的`ProgramDesc`
@@ -313,13 +348,17 @@
 ---
 ### Transplier
 
-![70% center](images/transpiler.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/transpiler.png" width=70%>
+</p>
 
 ---
 
 ### 打印 `ProgramDesc`
 
-![85% center](images/print_fluid_program.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/print_fluid_program.png" width=70%>
+</p>
 
 <font size=5>
 
@@ -338,10 +377,18 @@
 
 <font size=5>
 
-|variable in block 0|variable in block 0|
-|:--:|:--:|
-|![73%](images/program_desc1.png)|![75%](images/program_desc2.png)|
-
+<table>
+<thead>
+<th>variable in block 0</th>
+<th>variable in block 0</th>
+</thead>
+<tbody>
+<tr>
+<td><img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/program_desc1.png" width=70%></td>
+<td><img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/program_desc2.png" width=70%></td>
+</tr>
+</tbody>
+</table>
 </font>
 
 ---
@@ -357,12 +404,40 @@
 - 计算相关
   - `Block` 
   - `Kernel`、`OpWithKernel`、`OpWithoutKernel`
-  
-  | | protobuf messages|C++ class objects|
-  |---|---|---|
-  |Data|[VarDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L107)|[Variable](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/variable.h#L24)|
-  |Operation|[OpDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L35)|[Operator](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L64)|
-  |Block|BlockDesc|Block|
+
+<table>
+<thead>
+<th></th>
+<th>protobuf messages</th>
+<th>C++ class objects</th>
+</thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>[VarDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto#L107)
+</td>
+<td>[Variable](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/variable.h#L24)
+</td>
+</tr>
+
+<tr>
+<td>Operation</td>
+<td>[OpDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto#L35)
+</td>
+<td>[Operator](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.h#L64)
+</td>
+</tr>
+<tr>
+<td>Block</td>
+<td>BlockDesc
+</td>
+<td>Block
+</td>
+</tr>
+
+
+</tbody>
+</table>
 
 - 执行相关 ：`Executor` 
 
@@ -379,12 +454,44 @@
   - 可以简单将 LoD 理解为：`std::vector<std::vector<int>>`
   - 对非序列数据，LoD 信息为空
 
-  |                       | TensorFlow | PaddlePaddle |
-  |-----------------------|------------|--------------|
-  | RNN                   | Support    | Support      |
-  | recursive RNN         | Support    | Support      |
-  | padding zeros         | Must       | No need      |
-  | blob data type        | Tensor     | LoDTensor    |
+<table>
+<thead>
+<th></th>
+<th>TensorFlow</th>
+<th>PaddlePaddle</th>
+</thead>
+<tbody>
+<tr>
+<td>RNN</td>
+<td>Support
+</td>
+<td>Support
+</td>
+</tr>
+
+<tr>
+<td>recursive RNN</td>
+<td>Support
+</td>
+<td>Support
+</td>
+</tr>
+<tr>
+<td>padding zeros</td>
+<td>Must
+</td>
+<td>No need
+</td>
+<tr>
+<td>blob data type</td>
+<td>Tensor
+</td>
+<td>LODTensor
+</td>
+
+</tr>
+</tbody>
+</table>
 
 </font>
 
@@ -393,7 +500,9 @@
 
 <font size=4>
 
-![43% center](images/LoDTensor.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/LoDTensor.png" width=43%>
+</p>
 
 - 图(a)的LoD 信息
   ```cpp
@@ -408,8 +517,9 @@
 ---
 #### Tensor, Variable, Scope 之间的关系
 
-![40% center](images/scope_variable_tensor.png)
-
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/scope_variable_tensor.png" width=40%>
+</p>
 <font size=5>
 
 1. `Block` 是一个实现层的概念，不在应用层暴露给用户。目前用户无法自行创建并利用`Block`，用户能够感知的只有`Program`这个概念。
@@ -423,16 +533,29 @@
 
 <font size=5>
 
-|接口|说明|
-|--|--|
-![66% center](images/executor.png)|<span style="background-color:#B3D9D9;">输入</span><br>1. `ProgramDesc`<br>2. `Scope`<br> 3.`block_id`<br><br><span style="background-color:#B3D9D9;">解释执行步骤</span><br>1. 创建所有 Variables<br> 2. 逐一创建 Operator 并运行|
-</font>
+<table>
+<thead>
+<th>接口</th>
+<th>说明</th>
+</thead>
+<tbody>
+<tr>
+<td><p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/executor.png" width=60%>
+</p></td>
+<td><span style="background-color:#B3D9D9;">输入</span><br>1. `ProgramDesc`<br>2. `Scope`<br> 3.`block_id`<br><br><span style="background-color:#B3D9D9;">解释执行步骤</span><br>1. 创建所有 Variables<br> 2. 逐一创建 Operator 并运行
+</td>
+</tr>
+</tbody>
+</table>
 
 ---
 ### Operator/OpWithKernel/Kernel
 <font size=5>
 
-![50% center](images/operator1.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/operator1.png" width=50%>
+</p>
 
 - operator 无状态，Operator的核心是==Run==方法
 - 一个operator可以注册多个kernel
@@ -444,16 +567,32 @@
 #### Fluid Operator vs. PaddlePaddle layers
 <font size=5>
 
-|Layer|Operator|
-|--|--|
-|![70% center](images/layer.png)|![73% center](images/operator2.png)|
-|1. 内部维护状态<br>2. 包含forward和backward方法|1. 内部无状态<br>2. 只有Run方法|
+<table>
+<thead>
+<th>Layer</th>
+<th>Operator</th>
+</thead>
+<tbody>
+<tr>
+<td><p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/layer.png" width=70%>
+</p></td>
+<td><p align="center">
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/operator2.png" width=73%>
+</p></td>
+</tr>
+
+<tr>
+<td>1. 内部维护状态<br>2. 包含forward和backward方法</td>
+<td>1. 内部无状态<br>2. 只有Run方法</td>
+</tr>
+</tbody>
+</table>
 
 </font>
 
 ---
 
-<!-- *template: invert -->
 ### ==4.== 内存管理
 
 ---
@@ -650,7 +789,6 @@ class GPUAllocator : public SystemAllocator {
 </font>
 
 ---
-<!-- *template: invert -->
 ### ==5.== 多设备支持
 
 ---
@@ -661,8 +799,9 @@ class GPUAllocator : public SystemAllocator {
 - step 1：添加Place类型，<span style="background-color:#DAB1D5;">由用户实现添加到框架</span>
    - 可以将Place类型理解为一个整数加上一个枚举型，包括：设备号 + 设备类型
    
-    ![40% center](images/place.png)
-
+    <p align="center">
+    <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/place.png" width=40%>
+    </p>
 - DeviceContext
     - 不同的Place会对应一个相应的DeviceContext，用于组织管理与设备相关的信息
       - 例如，GpuDeviceContext中会管理Cuda stream
@@ -709,16 +848,15 @@ step 3: 运行时的 KernelType 推断和Kernel切换，<span style="background-
 - Expected Kernel：期待调用的Kernel：由（1）`Place`和计算精度决定；或（2）用户在配置中显示指定使用的计算库，如`cudnn`、`mkldnn`等。
 - Actual Kernel：运行时从`Operator`的输入（`Variable`）可以推断出实际需要的`KernelType`
 - 当Expected Kernel和Actual Kernel不一致的时候，框架会插入`data_transformer`或者`data_layerout_transform`等，保证Expected Kernel可以执行，包括：
-   - CPUPlace :arrow_right: GPUPlace ：跨设备内存复制
-   - NCHW :arrow_right: nChw8c ：Layout转换
-   - FP32 :arrow_right: FP16 ：精度转换 _**尚未支持**_
+   - CPUPlace -> GPUPlace ：跨设备内存复制
+   - NCHW -> nChw8c ：Layout转换
+   - FP32 -> FP16 ：精度转换 _**尚未支持**_
    - ……
-- 以上过程实现在OperatorWithKernel类的Run方法中 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.cc#L497)
+- 以上过程实现在OperatorWithKernel类的Run方法中 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.cc#L497)
 
 </font>
 
 ---
-<!-- *template: invert -->
 ## ==6.== while_op
 
 ---
@@ -746,7 +884,7 @@ step 3: 运行时的 KernelType 推断和Kernel切换，<span style="background-
 </font>
 
 ---
-### while_op [Run](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/while_op.cc#L42) 方法概览
+### while_op [Run](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/while_op.cc#L42) 方法概览
 
 <font size=5>
 
@@ -778,7 +916,6 @@ void Run(const framework::Scope &scope,
 </font>
 
 ---
-<!-- *template: invert -->
 ### while_op 的重要应用：Dynamic RNN
 
 ---
@@ -882,14 +1019,14 @@ void Run(const framework::Scope &scope,
 <font size=5>
 
 1. 对一个mini batch中不等长样本进行排序，最长样本变成batch中的第一个，最短样本是batch中最后一个
-      - `LoDTensor` :arrow_right: `LoDRankTable` :heavy_plus_sign: `lod_rank_table operaator`
+      - `LoDTensor` -> `LoDRankTable` :heavy_plus_sign: `lod_rank_table operaator`
           - 可以将`LoDRankTable`理解为对LoDTensor中的多个序列按照长度排序LoDRankTable 存储了排序之后的index
 
 2. 构建每个时间步的batch输入：随着时间步增加，每个时间步的batch输入可能会逐渐缩小
-    - `TensorArray` :heavy_plus_sign: `lod_tensor_to_array` :arrow_right: `LoDTensor` (without LoD)
+    - `TensorArray` :heavy_plus_sign: `lod_tensor_to_array` -> `LoDTensor` (without LoD)
 3. 每个时间步输出写入一个输出 `LoDTensorArray`
 3. `dynamicRNN`循环结束后, 按照`LoDRankTable`中记录的信息对输出`LoDTensorArray`重排序，还原会原始输入顺序
-    - `TensorArray` :heavy_plus_sign: `array_to_lod_tensor` :arrow_right: `LoDTensor`
+    - `TensorArray` :heavy_plus_sign: `array_to_lod_tensor` -> `LoDTensor`
 
 </font>
 
@@ -953,7 +1090,6 @@ void Run(const framework::Scope &scope,
 </p>
 
 ---
-<!-- *template: invert -->
 ### ==7.== Fluid 代码结构
 
 ---
@@ -985,44 +1121,43 @@ void Run(const framework::Scope &scope,
 
 ---
 
-<!-- *template: invert -->
 ### ==8.== 文档总结
 
 ---
 <font size=5>
 
 - 设计概览
-  - 重构概览 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/refactorization.md) 
-  - fluid [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid.md) 
-  - fluid_compiler [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid_compiler.md)
+  - 重构概览 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/refactorization.md) 
+  - fluid [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid.md) 
+  - fluid_compiler [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/motivation/fluid_compiler.md)
 - 核心概念
-  - variable 描述 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/var_desc.md)
-  - Tensor [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/tensor.md)
-  - LoDTensor [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md) 
-  - TensorArray [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/tensor_array.md)
-  - Program [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md)
-  - Block [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md)
-  - Scope [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/scope.md)
+  - variable 描述 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/var_desc.md)
+  - Tensor [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/tensor.md)
+  - LoDTensor [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md) 
+  - TensorArray [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/tensor_array.md)
+  - Program [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md)
+  - Block [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md)
+  - Scope [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/scope.md)
 
 ---
 
 - 重要功能模块
-  - backward [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/backward.md)
-  - 内存优化 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/memory_optimization.md)
-  - evaluator [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/executor.md)
-  - python API [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md)
-  - regularization [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/regularization.md)
+  - backward [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/backward.md)
+  - 内存优化 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/memory_optimization.md)
+  - evaluator [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/executor.md)
+  - python API [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md)
+  - regularization [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/regularization.md)
 
 - 开发指南
-  - 支持新设硬件设备库 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/support_new_device.md)
-  - 添加新的Operator [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_cn.md)
-  - 添加新的Kernel [:arrow_right:](
+  - 支持新设硬件设备库 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/support_new_device.md)
+  - 添加新的Operator [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_cn.md)
+  - 添加新的Kernel [->](
 https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_kernel_en.md) 
 
 </font>
 
 ---
-<!-- *template: invert -->
+
 ### ==9.== 开发指南
 
 ---
@@ -1031,9 +1166,9 @@ https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_kernel_
 
 <font size=5>
 
-Docker编译PaddlePaddle源码: [:arrow_right:](http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/dev/build_cn.html)
+Docker编译PaddlePaddle源码: [->](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/docker_install_cn.html)
     
-PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
+PaddlePaddle 在 Dockerhub 地址：[->](
     https://hub.docker.com/r/paddlepaddle/paddle/tags/)
    
 1. 获取PaddlePaddle的Docker镜像
@@ -1047,7 +1182,7 @@ PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
     docker run -it -v $PWD/Paddle:/paddle paddlepaddle/paddle:latest-dev /bin/bash
     ```
 
-1. 进入docker container后，从源码编译，请参考文档 [:arrow_right:]( http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/build_from_source_cn.html)
+1. 进入docker container后，从源码编译，请参考文档 [->]( http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/build_from_source_cn.html)
   
 </font>
 
@@ -1059,7 +1194,7 @@ PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
 
 1. PaddlePaddle的Docker镜像为了减小体积，默认没有安装vim，可以在容器中执行`apt-get install -y vim`来安装vim。
 1. 开发推荐使用tag为`latest-dev`的镜像，其中打包了所有编译依赖。`latest`及`lastest-gpu`是production镜像，主要用于运行PaddlePaddle程序。
-1. 在Docker中运行GPU程序，推荐使用nvidia-docker，[否则需要将CUDA库和设备挂载到Docker容器内](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_cn.html#dockergpu)。
+2. 在Docker中运行GPU程序，推荐使用nvidia-docker，[否则需要将CUDA库和设备挂载到Docker容器内](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/docker_install_cn.html)。
    <font size=4>
    
    ```bash
@@ -1072,11 +1207,11 @@ PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
 
 ---
 
-### [如何贡献](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/contribute_to_paddle_cn.md)
+### [如何贡献](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/dev/contribute_to_paddle_cn.html)
 
 <font size=5>
 
-- ==提交PullRequest前请务必阅读==： [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/contribute_to_paddle_cn.md)
+- ==提交PullRequest前请务必阅读==： [->](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/dev/contribute_to_paddle_cn.html)
 - 代码要求
     1. 代码注释遵守 Doxygen 的样式
     1. 确保编译器选项 WITH_STYLE_CHECK 已打开，并且编译能通过代码样式检查
@@ -1099,7 +1234,7 @@ PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
 
 1. 开始开发之前请先建立issue。
     - 让其它同学知道某项工作已经有人在进行，以避免多人开发同一功能的情况。
-1. 提交PR必须关联相关的issue。做法请参考：[:arrow_right:](https://help.github.com/articles/closing-issues-using-keywords/)
+1. 提交PR必须关联相关的issue。做法请参考：[->](https://help.github.com/articles/closing-issues-using-keywords/)
     - 目的：为了在提交的版本中留有记录描述这个PR是为了开发什么样的功能，为了解决什么样的问题。
     - 当PR被merge后，关联的issue会被自动关闭。
 1. PR review 中，reviewer的每条comment都必须回复。
@@ -1110,7 +1245,6 @@ PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
 
 ---
 
-<!-- *template: invert -->
 ### ==10.== 添加新的 Operator
 
 ---
@@ -1140,15 +1274,53 @@ PaddlePaddle 在 Dockerhub 地址：[:arrow_right:](
 
 <font size=5>
 
- 内容            | 定义位置
---------------  | :----------------------
-OpProtoMake定义  | `.cc`文件，<span style="background-color:#DAB1D5;">Backward Op不需要OpProtoMaker</span>
-Op定义           | `.cc`文件
-Kernel实现       | <span style="background-color:#DAB1D5;">CPU、CUDA共享Kernel实现在`.h`文件中</span>，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。
-注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>定义位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+OpProtoMake定义
+</td>
+<td>
+`.cc`文件，<span style="background-color:#DAB1D5;">Backward Op不需要OpProtoMaker</span>
+</td>
+</tr>
+<tr>
+<td>
+Op定义
+</td>
+<td>
+`.cc`文件
+</td>
+</tr>
+<tr>
+<td>
+Kernel实现
+</td>
+<td>
+<span style="background-color:#DAB1D5;">CPU、CUDA共享Kernel实现在`.h`文件中</span>，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。
+</td>
+</tr>
 
-- 添加 Operator 之前请阅读：[Operator 命名规范](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/op_documentation/name_convention.md)及[Operator Markdown注释规范](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/op_documentation/op_markdown_format.md)。
-- 实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。
+<tr>
+<td>
+注册Op
+</td>
+<td>
+Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中
+</td>
+</tr>
+
+</tbody>
+</table>
+
+- 添加 Operator 之前请阅读：[Operator 命名规范](https://github.com/PaddlePaddle/Paddle/blob/63cca04cfd488a4dab6d6273fd04a8017ef45932/doc/fluid/dev/name_convention.md)及[Operator Markdown注释规范](https://github.com/PaddlePaddle/Paddle/blob/63cca04cfd488a4dab6d6273fd04a8017ef45932/doc/fluid/dev/op_markdown_format.md)。
+- 实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/fluid/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。
 - 根据文件名自动构建op和Python端绑定，<span style="background-color:#DAB1D5;">请务必遵守以上命名，否则需要进一步修改PyBind相关文件及CMakeLists.txt</span>。
 </font>
 
@@ -1158,7 +1330,7 @@ Kernel实现       | <span style="background-color:#DAB1D5;">CPU、CUDA共享Ker
 
 <font size=5>
 
-下面均以[clip_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/clip_op.h)为例进行介绍
+下面均以[clip_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/clip_op.h)为例进行介绍
 
 - clip_op计算公式：$Out = \min(\max(X, min), max)$
 - 首先定义`ProtoMaker`来描述该Op的输入、输出，并添加注释（<font size=4>*下面代码段的中注释进行了简化，实现时需按照规范添加注释*</font>）：
@@ -1244,8 +1416,8 @@ class ClipOp : public framework::OperatorWithKernel {
 <font size=5>
 
 1. `InferShape`目前支持两种实现方式，<span style="background-color:#DAB1D5;">二者最后都会生成一个functor注册给OpInfo结构体。</span>
-    1. 继承framework::InferShapeBase，实现为一个functor（参考 [mul_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22)）
-    1. override InferShape函数（参考 [clip_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/clip_op.cc#L24)）
+    1. 继承framework::InferShapeBase，实现为一个functor（参考 [mul_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc#L22)）
+    2. override InferShape函数（参考 [clip_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/clip_op.cc#L24)）
 
 1. 什么是`functor` ?
    
@@ -1267,7 +1439,7 @@ class ClipOp : public framework::OperatorWithKernel {
         ```
         </font>
     
-    - 在 clip_op 内也会看到将一段计算函数抽象为functor的使用法： [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/clip_op.h#L27)。
+    - 在 clip_op 内也会看到将一段计算函数抽象为functor的使用法： [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/clip_op.h#L27)。
     
 </font>
 
@@ -1315,7 +1487,7 @@ class ClipKernel : public framework::OpKernel<T> {
 
 - 为了使`OpKernel`的计算过程书写更加简单，并且CPU、CUDA的代码可以复用， Fluid 使用 Eigen 作为基础的矩阵运算库
 - Fluid对Eigen unsupported Tensor提供了一些基本的封装，可以在`Compute`接口中直接调用
-    - 关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
+    - 关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/use_eigen_cn.md)。
 
 </font>
 
@@ -1394,7 +1566,7 @@ class ClipKernel : public framework::OpKernel<T> {
 
 <font size=5>
 
-- 新增Op的单元测试统一添加至：[python/paddle/v2/fluid/tests](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/v2/fluid/tests)目录
+- 新增Op的单元测试统一添加至：[python/paddle/v2/fluid/tests/unittests](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid/tests/unittests)目录
 - 前向Operator单测
 
     1. Op单元测试继承自`OpTest`，各项具体的单元测试在`TestClipOp`里完成，所有单测case都以`TestXX`命名
@@ -1404,7 +1576,7 @@ class ClipKernel : public framework::OpKernel<T> {
         1. 在Python脚本中实现与前向operator相同的计算逻辑，得到输出值，与operator前向计算的输出进行对比
         1. 反向梯度检测流程测试框架已经实现，直接调用相应接口`check_grad`即可
 
-- `clip_op` 单测代码请参考 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/test_clip_op.py)，这里不再展开
+- `clip_op` 单测代码请参考 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/unittests/test_clip_op.py)，这里不再展开
 
 </font>
 
@@ -1444,7 +1616,6 @@ class ClipKernel : public framework::OpKernel<T> {
   
 ---
 
-<!-- *template: invert -->
 ### ==10.== 使用相关问题
 
 ---
@@ -1457,7 +1628,7 @@ class ClipKernel : public framework::OpKernel<T> {
     ```python
     import paddle.v2.fluid as fluid
     ```
-    [`framework.py`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/framework.py#L1040)定义了两个全局`Program`:
+    [`framework.py`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/framework.py#L1040)定义了两个全局`Program`:
     ```python
     # program is a global instance.
     _main_program_ = Program()
@@ -1620,7 +1791,7 @@ class ClipKernel : public framework::OpKernel<T> {
 
 <font size=5>
 
-- 如何使用 evaluator ? [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book/test_label_semantic_roles.py#L168)
+- 如何使用 evaluator ? [->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_label_semantic_roles.py#L168)
 
     ```python
     accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
@@ -1636,17 +1807,13 @@ class ClipKernel : public framework::OpKernel<T> {
          pass_total_acc = accuracy.eval(exe)  # 整个pass的accuracy
     ```
 
-- 如何在训练中测试？[:arrow_right:](https://github.com/dzhwinter/benchmark/blob/master/fluid/vgg16.py#L144)
-- 如何保存训练好的模型？[:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book/test_recognize_digits.py#L143)
-- 如何加载训练好的模型进行预测？[:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book/test_recognize_digits.py#L154)
-- 如何在同一个训练任务中定义多个Program，并交替运行？ [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/demo/fc_gan.py)
-- 如何profile？Fluid 实现了profile 工具，可以直接调用。请参考示例 [:arrow_right:](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/test_profiler.py)
+- 如何在训练中测试？[->](https://github.com/dzhwinter/benchmark/blob/master/fluid/vgg16.py#L144)
+- 如何保存训练好的模型？[->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_recognize_digits.py#L143)
+- 如何加载训练好的模型进行预测？[->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_recognize_digits.py#L154)
+- 如何在同一个训练任务中定义多个Program，并交替运行？ [->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/demo/fc_gan.py)
+- 如何profile？Fluid 实现了profile 工具，可以直接调用。请参考示例 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/unittests/test_profiler.py)
 
 
 </font>
 
 ---
-
-<!-- template: gaia -->
-
-# 谢谢 :heart:
