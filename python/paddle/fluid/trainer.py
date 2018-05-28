@@ -162,7 +162,8 @@ class Trainer(object):
 
         if param_path:
             # load params from param_path into scope
-            io.load_persistables(exe, dirname=param_path)
+            io.load_persist_vars_without_grad(
+                exe, dirname=param_path, program=self.startup_program)
 
     def _transpile_nccl2_dist(self):
         # PADDLE_TRAINER_IPS
