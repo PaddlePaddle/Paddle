@@ -17,3 +17,4 @@
   :maxdepth: 1
 
   concepts/use_concepts_cn.rst
+  developer's_guide_to_paddle_fluid.md

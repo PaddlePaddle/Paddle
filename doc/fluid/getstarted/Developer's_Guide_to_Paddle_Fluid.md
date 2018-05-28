@@ -86,7 +86,7 @@
 <br>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/fluid_compiler.png" width=100%>
+  <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/fluid-compiler.png" width=100%>
 </p>
 
 ---
@@ -123,12 +123,12 @@
 <font size=5>
 
 - 在科学计算领域，计算图是一种描述计算的经典方式。下图展示了从前向计算图（蓝色）开始，通过添加反向（红色）和优化算法相关（绿色）操作，构建出整个计算图的过程：
-- 
+-
 <p align="center">
   <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/graph_construction_example_all.png" width=60%>
 </p>
 
-  
+
 - Fluid ==使用`Program`而不是计算图==来描述模型和优化过程。`Program`由`Block`、`Operator`和`Variable`构成，相关概念会在后文详细展开。
 - 编译时 Fluid 接受前向计算（这里可以先简单的理解为是一段有序的计算流）`Program`，为这段前向计算按照：前向 -> 反向 -> 梯度 clip -> 正则 -> 优化 的顺序，添加相关 `Operator`和`Variable`到`Program`到完整的计算。
 
@@ -328,7 +328,7 @@
 
 </font>
 
---- 
+---
 
 ### 编译时概念 ：==**[Transpiler](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/motivation/fluid_compiler.md)**==
 <font size=5>
@@ -402,7 +402,7 @@
   - `Scope`
 
 - 计算相关
-  - `Block` 
+  - `Block`
   - `Kernel`、`OpWithKernel`、`OpWithoutKernel`
 
 <table>
@@ -439,7 +439,7 @@
 </tbody>
 </table>
 
-- 执行相关 ：`Executor` 
+- 执行相关 ：`Executor`
 
 </font>
 
@@ -798,7 +798,7 @@ class GPUAllocator : public SystemAllocator {
 
 - step 1：添加Place类型，<span style="background-color:#DAB1D5;">由用户实现添加到框架</span>
    - 可以将Place类型理解为一个整数加上一个枚举型，包括：设备号 + 设备类型
-   
+
     <p align="center">
     <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/place.png" width=40%>
     </p>
@@ -824,7 +824,7 @@ class GPUAllocator : public SystemAllocator {
     1. DataType 执行数据类型 FP32/FP64/INT32/INT64
     1. Memory layout： 运行时 Tensor 在内存中的排布格式 NCHW、 NHWC
     1. 使用的库
- 
+
     来区分Kernel，为同一个operator注册多个 Kernel。
 
     ```cpp
@@ -876,7 +876,7 @@ step 3: 运行时的 KernelType 推断和Kernel切换，<span style="background-
     namespace framework {
     using LoDTensorArray = std::vector<LoDTensor>;
     }
-    } 
+    }
     ```
     - 每一次循环，从原始输入中“切出”一个片段
     - LoDTensorArray 在Python端暴露，是Fluid支持的基础数据结构之一，用户可以直接创建并使用
@@ -910,7 +910,7 @@ void Run(const framework::Scope &scope,
                    false /*create_local_scope*/);
   }
 }
-  
+
 ```
 
 </font>
@@ -951,7 +951,7 @@ void Run(const framework::Scope &scope,
 
 ---
 
-#### dynamicRNN 中的 Memory 
+#### dynamicRNN 中的 Memory
 
 <font size=5>
 
@@ -961,7 +961,7 @@ void Run(const framework::Scope &scope,
   - `memory` 在 operator A 前向计算之后，进行前向计算
   - 当 `memory` 的前向计算会 "指向" A 的输出 LoDTensor
   - `memory` 的输出可以是另一个 operator 的输入，于是形成了“循环”连接
-   
+
 </font>
 
 ---
@@ -1107,7 +1107,7 @@ void Run(const framework::Scope &scope,
 <td>
 <p align="center">
 <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/fluid_module_1.png" width=60%>
-</p> 
+</p>
 </td>
 <td>
 <p align="center">
@@ -1127,13 +1127,13 @@ void Run(const framework::Scope &scope,
 <font size=5>
 
 - 设计概览
-  - 重构概览 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/refactorization.md) 
-  - fluid [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid.md) 
+  - 重构概览 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/refactorization.md)
+  - fluid [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/fluid.md)
   - fluid_compiler [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/motivation/fluid_compiler.md)
 - 核心概念
   - variable 描述 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/var_desc.md)
   - Tensor [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/tensor.md)
-  - LoDTensor [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md) 
+  - LoDTensor [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor.md)
   - TensorArray [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/tensor_array.md)
   - Program [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md)
   - Block [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md)
@@ -1152,7 +1152,7 @@ void Run(const framework::Scope &scope,
   - 支持新设硬件设备库 [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/support_new_device.md)
   - 添加新的Operator [->](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_cn.md)
   - 添加新的Kernel [->](
-https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_kernel_en.md) 
+https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_kernel_en.md)
 
 </font>
 
@@ -1167,10 +1167,10 @@ https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_kernel_
 <font size=5>
 
 Docker编译PaddlePaddle源码: [->](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/docker_install_cn.html)
-    
+
 PaddlePaddle 在 Dockerhub 地址：[->](
     https://hub.docker.com/r/paddlepaddle/paddle/tags/)
-   
+
 1. 获取PaddlePaddle的Docker镜像
     ```bash
     docker pull paddlepaddle/paddle:latest-dev
@@ -1183,7 +1183,7 @@ PaddlePaddle 在 Dockerhub 地址：[->](
     ```
 
 1. 进入docker container后，从源码编译，请参考文档 [->]( http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/build_from_source_cn.html)
-  
+
 </font>
 
 ---
@@ -1196,7 +1196,7 @@ PaddlePaddle 在 Dockerhub 地址：[->](
 1. 开发推荐使用tag为`latest-dev`的镜像，其中打包了所有编译依赖。`latest`及`lastest-gpu`是production镜像，主要用于运行PaddlePaddle程序。
 2. 在Docker中运行GPU程序，推荐使用nvidia-docker，[否则需要将CUDA库和设备挂载到Docker容器内](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/docker_install_cn.html)。
    <font size=4>
-   
+
    ```bash
    nvidia-docker run -it -v $PWD/Paddle:/paddle paddlepaddle/paddle:latest-dev /bin/bash
    ```
@@ -1353,9 +1353,9 @@ Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实�
       }
     };
     ```
-  
+
 </font>
-  
+
 ---
 
 ###### 实现带Kernel的Operator <span style="background-color:#c4e1e1;">step2</span>: 定义Operator类
@@ -1420,11 +1420,11 @@ class ClipOp : public framework::OperatorWithKernel {
     2. override InferShape函数（参考 [clip_op](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/clip_op.cc#L24)）
 
 1. 什么是`functor` ?
-   
+
    - 类或结构体仅重载了`()`，一般是可被多个kernel复用的计算函数。
 
         <font size=4>
-        
+
         ```cpp
         template <typename T>
         class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
@@ -1438,9 +1438,9 @@ class ClipOp : public framework::OperatorWithKernel {
         };
         ```
         </font>
-    
+
     - 在 clip_op 内也会看到将一段计算函数抽象为functor的使用法： [->](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/clip_op.h#L27)。
-    
+
 </font>
 
 ---
@@ -1504,7 +1504,7 @@ class ClipKernel : public framework::OpKernel<T> {
             - 需要注意，<span style="background-color:#e1c4c4;">Fluid中，不区分Cost Op和中间层Op，所有Op都必须正确处理接收到的梯度</span>
     2. 反向Op的输出
         - 对可学习参数的求导结果
-        - 对所有输入的求导结果 
+        - 对所有输入的求导结果
 
 
 </font>
@@ -1520,7 +1520,7 @@ class ClipKernel : public framework::OpKernel<T> {
 1. 在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
 
     <font size=4>
-    
+
     ```cpp
     namespace ops = paddle::operators;
     REGISTER_OP(clip, ops::ClipOp, ops::ClipOpMaker<float>, clip_grad,
@@ -1530,13 +1530,13 @@ class ClipKernel : public framework::OpKernel<T> {
     REGISTER_OP_CPU_KERNEL(
         clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>);
     ```
-   
+
    - 在上面的代码片段中：
 
      1. `REGISTER_OP` ： 注册`ops::ClipOp`类，类型名为`clip`，该类的`ProtoMaker`为`ops::ClipOpMaker`，注册`ops::ClipOpGrad`，类型名为`clip_grad`
      1. `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op，例如：优化算法相关的Op
      1. `REGISTER_OP_CPU_KERNEL` ：注册`ops::ClipKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::ClipGradKernel`类
-    
+
     </font>
 1. 按照同样方法，在`.cu`文件中注册GPU Kernel
    -  <span style="background-color:#e1c4c4;">如果CUDA Kernel的实现基于Eigen，需在 `.cu`的开始加上宏定义 `#define EIGEN_USE_GPU` </span>
@@ -1593,7 +1593,7 @@ class ClipKernel : public framework::OpKernel<T> {
   ```bash
   make test ARGS="-R test_mul_op -V"
   ```
-  
+
   或者:
 
   ```
@@ -1613,7 +1613,7 @@ class ClipKernel : public framework::OpKernel<T> {
 - 如果多个Op依赖一些共用的函数，可以创建非`*_op.*`格式的文件来存放，如`gather.h`文件。
 
 </font>
-  
+
 ---
 
 ### ==10.== 使用相关问题
@@ -1735,7 +1735,7 @@ class ClipKernel : public framework::OpKernel<T> {
   y_data = np.random.randint(0, 8, [1]).astype("int32")
   y_tensor = core.Tensor()
   y_tensor.set(y_data, place)
-  
+
   x_data = np.random.uniform(0.1, 1, [11, 8]).astype("float32")
   x_tensor = core.Tensor()
   x_tensor.set(x_data, place)
