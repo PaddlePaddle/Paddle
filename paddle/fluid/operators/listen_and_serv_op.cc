@@ -211,7 +211,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   VLOG(3) << "RunAsyncLoop into while";
   while (true) {
     if (request_handler_->IsExit()) {
-      LOG(WARNING) << "get exit!rpc_processor break!";
+      LOG(INFO) << "get exit!rpc_processor break!";
       break;
     }
 

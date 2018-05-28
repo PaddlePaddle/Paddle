@@ -110,6 +110,7 @@ void StartServer() {
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
 
+  // FIXME(gongwb): don't use hard time.
   sleep(10);
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();

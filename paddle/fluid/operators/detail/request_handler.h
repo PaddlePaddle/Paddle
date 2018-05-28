@@ -99,7 +99,7 @@ class RequestHandler {
   }
 
   void SetExit() {
-    LOG(WARNING) << "RequestHandler SetExit!";
+    LOG(INFO) << "RequestHandler SetExit!";
     {
       std::unique_lock<std::mutex> lock(mutex_);
       exit_flag_ = true;

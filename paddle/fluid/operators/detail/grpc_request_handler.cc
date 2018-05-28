@@ -66,6 +66,7 @@ bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
                                     scope);
     } catch (std::exception& e) {
       LOG(ERROR) << "async: run sub program error " << e.what();
+      return false;
     }
     return true;
   }
@@ -81,6 +82,7 @@ bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
     if (var == nullptr) {
       LOG(ERROR) << "sync: Can not find server side var: " << msg_name;
       PADDLE_THROW("sync: Can not find server side var");
+      return false;
     }
 
     if (var->IsType<framework::SelectedRows>()) {
