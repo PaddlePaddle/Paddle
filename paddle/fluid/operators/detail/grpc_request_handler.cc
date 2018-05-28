@@ -95,9 +95,10 @@ bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
 }
 
 bool GRPCRequestHandler::RequestGetHandler(void* input, void* output) {
-  VariableResponse* req = static_cast<VariableResponse*>(input);
+  sendrecv::VariableMessage* req =
+      static_cast<sendrecv::VariableMessage*>(input);
   ::grpc::ByteBuffer* reply = static_cast<::grpc::ByteBuffer*>(output);
-  std::string msg_name = req->Varname();
+  std::string msg_name = req->varname();
 
   VLOG(3) << "ProcessGetImpl:" << msg_name;
 
