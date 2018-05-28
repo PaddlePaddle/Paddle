@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_request_handler.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
@@ -75,8 +76,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::GRPCProcessorCtx rpc_processor;
-    rpc_processor.SetSyncMode(true);
+    detail::GRPCRequestHandler rpc_processor(true, 1);
     detail::AsyncGRPCServer rpc_service(endpoint, &rpc_processor);
 
     framework::ProgramDesc empty_program;
@@ -85,13 +85,12 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_processor.SetDevCtx(&dev_ctx);
     rpc_processor.SetProgram(&empty_program);
     rpc_processor.SetExecutor(&executor);
-    rpc_processor.SetFanIn(1);
 
     std::thread server_thread(
         std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
     rpc_service.SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
     VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_processor.WaitFanInOfSend();
+    rpc_processor.WaitBarrier();
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";
