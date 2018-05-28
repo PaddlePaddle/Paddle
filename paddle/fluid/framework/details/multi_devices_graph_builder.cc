@@ -29,6 +29,10 @@
 #include <string>
 #include <vector>
 
+DEFINE_string(ssa_graph_path, "/tmp/ssa_graph.dot",
+              "the ssa graph path only print with GLOG_v=10,"
+              "default /tmp/graph.dot");
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -264,7 +268,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   AddOutputToLeafOps(&result);
 
   if (VLOG_IS_ON(10)) {
-    std::ofstream fout("/tmp/graph.dot");
+    std::ofstream fout(FLAGS_ssa_graph_path);
     PrintGraphviz(*graph, fout);
   }
 
