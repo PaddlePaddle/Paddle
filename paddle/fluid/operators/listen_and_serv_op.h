@@ -12,12 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_FLUID_OPERATORS_LISTEN_AND_SERV_OP_H_
+#define PADDLE_FLUID_OPERATORS_LISTEN_AND_SERV_OP_H_
+
 #pragma once
 
 #include <stdint.h>
 #include <atomic>
 #include <mutex>
-#include <ostream>
 #include <set>
 #include <string>
 
@@ -42,8 +44,6 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap& outputs,
                   const framework::AttributeMap& attrs);
 
-  virtual ~ListenAndServOp();
-
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
@@ -65,19 +65,14 @@ class ListenAndServOp : public framework::OperatorBase {
 
   static void ResetPort() { selected_port_ = 0; }
 
-  static void StopAll();
-
  protected:
   mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
   // FIXME(wuyi): it's static so that the operator can be cloned.
   static std::atomic_int selected_port_;
-
-  bool is_stopped_;
-
-  std::mutex set_mutex_;
-  static std::set<std::shared_ptr<ListenAndServOp>> running_op_set_;
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+#endif  // PADDLE_FLUID_OPERATORS_LISTEN_AND_SERV_OP_H_

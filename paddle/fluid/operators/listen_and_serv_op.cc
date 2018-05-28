@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <csignal>
 #include <stdio.h>  // for removing the port file
+#include <csignal>
 #include <fstream>
-#include <ostream>
 #include <thread>  // NOLINT
 #include <vector>
 
@@ -30,24 +29,27 @@ void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   VLOG(4) << "RunServer thread end";
 }
 
-void ListenAndServOp::StopAll() {
-  {
-    std::unique_lock<std::mutex> lock(set_mutex_);
-    std::for_each(running_op_set_.begin(), running_op_set_.end(),
-        [](const shared_ptr<ListenAndServs> op) {
-        op->Stop();
-    }
-  }
-}
-
 namespace {
 
-void StopAndExit(int sig_num) {
-  ListenAndServOp::StopAllServOp();
-  exit(sig_num);
+bool global_exit_flag = false;
+
+typedef std::unordered_set<std::shared_ptr<detail::ReceivedQueue>>
+    BlockingQueueSet;
+BlockingQueueSet global_blocking_queue_set;
+
+// use unnamed namespace to avoid accessing from outside this file
+void StopAndExit(int signal_num) {
+  VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
+  global_exit_flag = true;
+  for (BlockingQueueSet::iterator iter = global_blocking_queue_set.begin();
+       iter != global_blocking_queue_set.end(); iter++) {
+    iter->get()->Push(
+        std::make_pair(std::string(LISTEN_TERMINATE_MESSAGE), nullptr));
+  }
+  exit(signal_num);
 }
 
-} // namespace
+}  // namespace
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -79,7 +81,7 @@ static void ParallelExecuteBlocks(
           int run_block = idx;  // thread local
           try {
             executor->RunPreparedContext(prepared[run_block].get(), scope);
-          } catch (std::exception &e) {
+          } catch(const std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
         }));
@@ -93,37 +95,14 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
                                  const framework::VariableNameMap &outputs,
                                  const framework::AttributeMap &attrs)
-    : OperatorBase(type, inputs, outputs, attrs), is_stopped_(true) {}
+    : OperatorBase(type, inputs, outputs, attrs) {}
 
 void ListenAndServOp::Stop() {
-  // avoid from stopping twice
-  if (is_stopped_) {
-    return;
-  }
-
-  {
-    std::unique_lock<std::mutex> lock(stop_mutex_);
-    // double check
-    if (is_stopped_) {
-      return;
-    }
-    rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
-    server_thread_->join();
-    auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-    remove(file_path.c_str());
-    is_stopped_ = true;
-  }
-
-  // erase self from running_op_set_
-  {
-    std::unique_lock<std::mutex> lock(set_mutex_);
-    std::set<std::shared_ptr<ListenAndServOp>>::iterator iter
-      = running_op_set_.find(this);
-    if (iter == running_op_set_.end()) {
-      return;
-    }
-    running_op_set_.erase(iter);
-  }
+  rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
+  rpc_service_->ShutDown();
+  server_thread_->join();
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
+  remove(file_path.c_str());
 }
 
 void ListenAndServOp::SavePort() const {
@@ -166,7 +145,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
   std::vector<framework::Variable *> sparse_vars;
-  while (!exit_flag) {
+  while (!exit_flag && !global_exit_flag) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(0);
@@ -231,7 +210,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     // mini-batch.
     // TODO(Yancey1989): move the reset action into an operator, we couldn't
     // have any hide logic in the operator.
-    for (auto &var : sparse_vars) {
+    for (framework::Variable *var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
 
@@ -250,6 +229,10 @@ static void AsyncUpdateThread(
   VLOG(3) << "update thread for " << var_name << " started";
   while (!exit_flag) {
     const detail::ReceivedMessage v = queue->Pop();
+    if (global_exit_flag) {
+      VLOG(3) << "update thread exit";
+      break;
+    }
     auto recv_var_name = v.first;
     auto var = v.second->GetVar();
     if (var == nullptr) {
@@ -260,7 +243,7 @@ static void AsyncUpdateThread(
       try {
         executor->RunPreparedContext(prepared,
                                      v.second->GetMutableLocalScope());
-      } catch (std::exception &e) {
+      } catch(const std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
     });
@@ -278,8 +261,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
       grad_to_queue;
 
   auto grad_to_block_id_str =
-      Attr<std::vector<std::string>>("grad_to_block_id");
-  for (auto &grad_and_id : grad_to_block_id_str) {
+      Attr<std::vector<std::string> >("grad_to_block_id");
+  for (const auto &grad_and_id : grad_to_block_id_str) {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
     VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
@@ -287,7 +270,12 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
     int block_id = std::stoi(pieces[1]);
     grad_to_block_id[pieces[0]] = block_id;
-    grad_to_queue[pieces[0]] = std::make_shared<detail::ReceivedQueue>();
+    std::shared_ptr<detail::ReceivedQueue> queue =
+        std::make_shared<detail::ReceivedQueue>();
+    grad_to_queue[pieces[0]] = queue;
+    // record queue in global blocking queue map
+    global_blocking_queue_set.insert(queue);
+
     id_to_grad[block_id] = pieces[0];
   }
   size_t num_blocks = program->Size();
@@ -321,7 +309,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   }
 
   VLOG(3) << "RunAsyncLoop into while";
-  while (!exit_flag) {
+  while (!exit_flag && !global_exit_flag) {
     const detail::ReceivedMessage v = rpc_service_->Get();
     auto recv_var_name = v.first;
     if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
@@ -342,17 +330,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
-  // Resigster self to the running_op_set_
-  {
-    std::unique_lock<std::mutex> lock(set_mutex_);
-    running_op_set_.insert(this);
-  }
-
-  {
-    std::unique_lock<std::mutex> lock(stop_mutex_);
-    is_stopped_ = true;
-  }
-
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::SetProfileListener();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -406,18 +383,17 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
-    AddComment(R"DOC(
-ListenAndServ operator
-
-This operator will start a RPC server which can receive variables
-from send_op and send back variables to recv_op.
-)DOC");
+    AddComment(R"DOC(" + "ListenAndServ operator" + "\n" + "This operator" +
+" will start a RPC server which can receive variables from send_op and send" +
+"back variables to recv_op.)DOC");
     AddAttr<std::string>("endpoint",
                          "(string, default 127.0.0.1:6164)"
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
-        .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
-    AddAttr<std::vector<std::string>>(
+        .AddCustomChecker([](const std::string &ip) {
+              return !ip.empty();
+            });
+    AddAttr<std::vector<std::string> >(
         "grad_to_block_id",
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
         "a map from grad name to it's optimize block id")
