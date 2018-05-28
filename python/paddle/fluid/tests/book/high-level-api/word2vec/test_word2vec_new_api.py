@@ -25,16 +25,6 @@ HIDDEN_SIZE = 256
 N = 5
 BATCH_SIZE = 32
 
-
-def create_random_lodtensor(lod, place, low, high):
-    # The range of data elements is [low, high]
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
 
@@ -90,7 +80,7 @@ def train_program(is_sparse):
     return avg_cost
 
 
-def train(use_cuda, train_program, save_dirname):
+def train(use_cuda, train_program, params_dirname):
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
     test_reader = paddle.batch(
@@ -107,7 +97,7 @@ def train(use_cuda, train_program, save_dirname):
             print("loss= ", avg_cost)
 
             if avg_cost < 10.0:
-                trainer.save_params(save_dirname)
+                trainer.save_params(params_dirname)
                 trainer.stop()
 
             if math.isnan(avg_cost):
@@ -125,16 +115,28 @@ def train(use_cuda, train_program, save_dirname):
         feed_order=['firstw', 'secondw', 'thirdw', 'forthw', 'nextw'])
 
 
-def infer(use_cuda, inference_program, save_dirname=None):
+def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=save_dirname, place=place)
+        infer_func=inference_program, param_path=params_dirname, place=place)
 
-    lod = [0, 1]
-    first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    second_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
+    # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
+    # is simply an index to look up for the corresponding word vector and hence 
+    # the shape of word (base_shape) should be [1]. The length-based level of 
+    # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
+    # one lod_level and there is only one sequence of one word on this level.
+    # Note that lod info should be a list of lists.
+    lod = [[1]]
+    base_shape = [1]
+    # The range of random integers is [low, high]
+    first_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
+    second_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
+    third_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
+    fourth_word = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=dict_size - 1)
 
     result = inferencer.infer(
         {
@@ -151,17 +153,17 @@ def main(use_cuda, is_sparse):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
-    save_path = "word2vec.inference.model"
+    params_dirname = "word2vec.inference.model"
 
     train(
         use_cuda=use_cuda,
         train_program=partial(train_program, is_sparse),
-        save_dirname=save_path)
+        params_dirname=params_dirname)
 
     infer(
         use_cuda=use_cuda,
         inference_program=partial(inference_program, is_sparse),
-        save_dirname=save_path)
+        params_dirname=params_dirname)
 
 
 if __name__ == '__main__':
