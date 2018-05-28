@@ -481,9 +481,9 @@ class OpTest(unittest.TestCase):
     def np_dtype_to_fluid_dtype(input):
         """Change the dtype of float16 numpy array
 
-        numpy float16 is binded to paddle::platform::float16 
+        numpy float16 is binded to paddle::platform::float16
         in tensor_py.h via the help of uint16 data type since
-        the internal memory representation of float16 is 
+        the internal memory representation of float16 is
         uint16_t in paddle and np.uint16 in numpy, which are
         themselves binded together by pybind.
 
@@ -491,9 +491,9 @@ class OpTest(unittest.TestCase):
             input: input numpy array
 
         Returns:
-            input: The dtype of input will be changed to np.uint16 if 
+            input: The dtype of input will be changed to np.uint16 if
                 it is originally np.float16, such that the internal memory
-                of input will be reinterpreted as of dtype np.uint16. 
+                of input will be reinterpreted as of dtype np.uint16.
         """
         if input.dtype == np.float16:
             input.dtype = np.uint16

@@ -95,6 +95,10 @@ def parse_args():
         action='store_true',
         help='If set, optimize runtime memory before start.')
     parser.add_argument(
+        '--use_fake_data',
+        action='store_true',
+        help='If set ommit the actual read data operators.')
+    parser.add_argument(
         '--update_method',
         type=str,
         default='local',
@@ -198,6 +202,10 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         exe.run(train_prog)
         return
 
+    if args.use_fake_data:
+        raise Exception(
+            "fake data is not supported in single GPU test for now.")
+
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     exe = fluid.Executor(place)
     exe.run(startup_prog)
@@ -244,7 +252,31 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
 def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                    batch_acc, args, train_prog, startup_prog, nccl_id_var,
                    num_trainers, trainer_id):
+    feed_var_list = [
+        var for var in train_prog.global_block().vars.itervalues()
+        if var.is_data
+    ]
+    # generate fake:
+    if args.use_fake_data:
+        for var in feed_var_list:
+            v = startup_prog.global_block().clone_variable(var)
+            var.persistable = True
+            v.persistable = True
+
+            real_shape = list(var.shape)
+            real_shape[0] = args.batch_size / args.gpus
+            startup_prog.global_block().append_op(
+                outputs={"Out": v},
+                type="fill_constant",
+                attrs={"shape": real_shape,
+                       "value": 1.0,
+                       "dtype": var.dtype})
+
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
+    if nccl_id_var and trainer_id == 0:
+        #FIXME(wuyi): wait other trainer to start listening
+        time.sleep(30)
+
     startup_exe = fluid.Executor(place)
     startup_exe.run(startup_prog)
     strategy = fluid.ExecutionStrategy()
@@ -256,10 +288,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         exec_strategy=strategy,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
-    feed_var_list = [
-        var for var in train_prog.global_block().vars.itervalues()
-        if var.is_data
-    ]
+
     feeder = fluid.DataFeeder(feed_var_list, place)
     for pass_id in range(args.pass_num):
         num_samples = 0
@@ -271,7 +300,10 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 num_samples = 0
             if iters == args.iterations:
                 break
-            loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
+            if args.use_fake_data:
+                loss, = exe.run([avg_loss.name])
+            else:
+                loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
             if args.update_method == "pserver":
                 exe.bcast_params()
             num_samples += len(data)
