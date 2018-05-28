@@ -24,19 +24,65 @@ from tensor import concat
 import utils
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
-    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
-    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
-    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
-    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
-    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
-    'label_smooth', 'roi_pool', 'dice_loss', 'bilinear_interp', 'random_crop'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'upsampling_bilinear2d',
+    'random_crop',
 ]
 
 
@@ -3881,8 +3927,10 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def bilinear_interp(input, out_h, out_w, name=None):
+def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     """
+    The mathematical meaning of upsampling_bilinear2d is also called
+    Bilinear interpolation.
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
     W-direction in this layer) on a rectilinear 2D grid.
@@ -3894,8 +3942,13 @@ def bilinear_interp(input, out_h, out_w, name=None):
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_h (int): output height of bilinear interpolation layer.
-        out_w (int): output width of bilinear interpolation layer.
+        out_shape(list|tuple|None): Output shape of bilinear interpolation
+                                    layer, the shape is (out_h, out_w).
+                                    Default: None
+        scale(int|None): The multiplier for the input height or width.
+                         At least one of out_shape or scale must be set.
+                         And out_shape has a higher priority than scale.
+                         Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -3906,10 +3959,27 @@ def bilinear_interp(input, out_h, out_w, name=None):
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.bilinear_interp(input, out_h=12, out_w=12)
+            out = fluid.layers.bilinear_interp(input, out_shape=[12, 12])
     """
+    if out_shape is None and scale is None:
+        raise ValueError("One of out_shape and scale must not be None")
     helper = LayerHelper('bilinear_interp', **locals())
     dtype = helper.input_dtype()
+
+    def _is_list_or_turple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if out_shape is not None:
+        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2):
+            raise ValueError('out_shape should be a list or tuple ',
+                             'with length 2, (out_h, out_w).')
+        out_shape = list(map(int, out_shape))
+        out_h = out_shape[0]
+        out_w = out_shape[1]
+    else:
+        out_h = int(input.shape[2] * scale)
+        out_w = int(input.shape[3] * scale)
+
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="bilinear_interp",
