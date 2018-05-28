@@ -109,6 +109,7 @@ bool GRPCRequestHandler::RequestGetHandler(void* input, void* output) {
 
   // FETCH_BARRIER_MESSAGE
   if (sync_mode_) {
+    VLOG(3) << "sync: recv fetch barrier message";
     IncreaseBatchBarrier();
   }
 
