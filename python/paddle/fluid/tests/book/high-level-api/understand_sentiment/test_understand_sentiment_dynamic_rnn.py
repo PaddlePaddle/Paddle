@@ -79,7 +79,7 @@ def train_program(word_dict):
     return [avg_cost, accuracy]
 
 
-def train(use_cuda, train_program, save_dirname):
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.Adagrad(learning_rate=0.002)
 
@@ -100,7 +100,7 @@ def train(use_cuda, train_program, save_dirname):
             print("acc     : %s" % acc)
 
             if acc > 0.2:  # Smaller value to increase CI speed
-                trainer.save_params(save_dirname)
+                trainer.save_params(params_dirname)
                 trainer.stop()
 
             else:
@@ -112,7 +112,7 @@ def train(use_cuda, train_program, save_dirname):
             print("Step {0}, Epoch {1} Metrics {2}".format(
                 event.step, event.epoch, map(np.array, event.metrics)))
             if event.step == 1:  # Run 2 iterations to speed CI
-                trainer.save_params(save_dirname)
+                trainer.save_params(params_dirname)
                 trainer.stop()
 
     train_reader = paddle.batch(
@@ -127,26 +127,30 @@ def train(use_cuda, train_program, save_dirname):
         feed_order=['words', 'label'])
 
 
-def infer(use_cuda, inference_program, save_dirname=None):
+def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     word_dict = paddle.dataset.imdb.word_dict()
 
     inferencer = fluid.Inferencer(
         infer_func=partial(inference_program, word_dict),
-        param_path=save_dirname,
+        param_path=params_dirname,
         place=place)
 
-    def create_random_lodtensor(lod, place, low, high):
-        data = np.random.random_integers(low, high,
-                                         [lod[-1], 1]).astype("int64")
-        res = fluid.LoDTensor()
-        res.set(data, place)
-        res.set_lod([lod])
-        return res
-
-    lod = [0, 4, 10]
-    tensor_words = create_random_lodtensor(
-        lod, place, low=0, high=len(word_dict) - 1)
+    # Setup input by creating LoDTensor to represent sequence of words.
+    # Here each word is the basic element of the LoDTensor and the shape of 
+    # each word (base_shape) should be [1] since it is simply an index to 
+    # look up for the corresponding word vector.
+    # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
+    # which has only one lod level. Then the created LoDTensor will have only 
+    # one higher level structure (sequence of words, or sentence) than the basic 
+    # element (word). Hence the LoDTensor will hold data for three sentences of 
+    # length 3, 4 and 2, respectively. 
+    # Note that lod info should be a list of lists.
+    lod = [[3, 4, 2]]
+    base_shape = [1]
+    # The range of random integers is [low, high]
+    tensor_words = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=len(word_dict) - 1)
     results = inferencer.infer({'words': tensor_words})
     print("infer results: ", results)
 
@@ -154,9 +158,9 @@ def infer(use_cuda, inference_program, save_dirname=None):
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_path = "understand_sentiment_conv.inference.model"
-    train(use_cuda, train_program, save_path)
-    infer(use_cuda, inference_program, save_path)
+    params_dirname = "understand_sentiment_conv.inference.model"
+    train(use_cuda, train_program, params_dirname)
+    infer(use_cuda, inference_program, params_dirname)
 
 
 if __name__ == '__main__':

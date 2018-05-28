@@ -1,5 +1,6 @@
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
 
+# TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})

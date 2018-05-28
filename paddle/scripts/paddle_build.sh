@@ -99,12 +99,13 @@ function cmake_gen() {
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_CONTRIB=ON
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -126,12 +127,12 @@ EOF
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DWITH_CONTRIB=ON
 }
 
 function abort(){
@@ -231,7 +232,6 @@ EOF
             -DUSE_EIGEN_FOR_BLAS=ON \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     elif [ $ANDROID_ABI == "arm64-v8a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -245,7 +245,6 @@ EOF
             -DUSE_EIGEN_FOR_BLAS=OFF \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     elif [ $ANDROID_ABI == "armeabi" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -258,7 +257,6 @@ EOF
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     else
       echo "Invalid ANDROID_ABI: $ANDROID_ABI"
@@ -287,7 +285,6 @@ function build_ios() {
           -DUSE_EIGEN_FOR_BLAS=ON \
           -DWITH_TESTING=OFF \
           -DWITH_SWIG_PY=OFF \
-          -DWITH_STYLE_CHECK=OFF \
           -DCMAKE_BUILD_TYPE=Release
     
     make -j 2
@@ -375,8 +372,7 @@ EOF
         -DCMAKE_BUILD_TYPE=Release \
         -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_STYLE_CHECK=OFF
+        -DWITH_MKL=OFF
 
     make -j `nproc` paddle_docs paddle_apis
 
@@ -496,7 +492,9 @@ function gen_fluid_inference_lib() {
     ========================================
 EOF
         make -j `nproc` inference_lib_dist
-        tar -cf ${PADDLE_ROOT}/build/fluid.tgz ${PADDLE_ROOT}/build/fluid_install_dir
+        cd ${PADDLE_ROOT}/build
+        mv fluid_install_dir fluid
+        tar -cf fluid.tgz fluid
       fi
 }
 
