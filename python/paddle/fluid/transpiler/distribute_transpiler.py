@@ -360,19 +360,6 @@ class DistributeTranspiler:
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
-        #program.global_block().append_op(
-        #    type="recv",
-        #    inputs={},
-        #    outputs={"Out": recv_vars,
-        #             "RPCClient": rpc_client_var},
-        #    attrs={"epmap": eplist})
-
-        #program.global_block().append_op(
-        #    type="fetch_barrier",
-        #    inputs={},
-        #    outputs={"RPCClient": rpc_client_var},
-        #    attrs={"endpoints": pserver_endpoints})
-
         for i, ep in enumerate(eplist):
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])

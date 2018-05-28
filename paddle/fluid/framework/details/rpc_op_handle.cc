@@ -31,6 +31,7 @@ void RPCOpHandle::RunImpl() {
   // Wait input done
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
+    // FIXME(Yancey1989): need a better solution instead of use DebugString()
     if (in->DebugString() == "dummy") {  // HACK
       continue;
     }

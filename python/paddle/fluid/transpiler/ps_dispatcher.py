@@ -41,7 +41,7 @@ class PSDispatcher(object):
 
 class HashName(PSDispatcher):
     """
-      Hash variable names to servral endpoints
+      Hash variable names to several endpoints
     """
 
     def __init__(self, pserver_endpoints):

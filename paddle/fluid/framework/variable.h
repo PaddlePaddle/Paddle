@@ -39,6 +39,7 @@ class Variable {
 
   template <typename T>
   T* GetMutable() {
+    // TODO(Yancey1989): need to make Variable completely thread-safe.
     std::unique_lock<std::mutex> lock(mutex_);
     if (!IsType<T>()) {
       holder_.reset(new PlaceholderImpl<T>(new T()));
