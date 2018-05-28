@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_request_handler.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -36,7 +37,7 @@ namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
 std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
-std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
+std::unique_ptr<detail::GRPCRequestHandler> g_req_handler;
 
 void StartServer() {
   f::Scope scope;
@@ -45,16 +46,13 @@ void StartServer() {
   p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
-  g_rpc_processor->SetSyncMode(true);
-
   f::ProgramDesc empty_program;
   f::Executor executor(dev_ctx.GetPlace());
-  g_rpc_processor->SetScope(&scope);
-  g_rpc_processor->SetDevCtx(&dev_ctx);
-  g_rpc_processor->SetProgram(&empty_program);
-  g_rpc_processor->SetExecutor(&executor);
-  g_rpc_processor->SetFanIn(1);
-  g_rpc_service->RegisterBarrier(
+  g_req_handler->SetScope(&scope);
+  g_req_handler->SetDevCtx(&dev_ctx);
+  g_req_handler->SetProgram(&empty_program);
+  g_req_handler->SetExecutor(&executor);
+  g_rpc_service->RegisterCond(
       static_cast<int>(detail::GrpcMethod::kSendVariable));
 
   std::thread server_thread(
@@ -62,7 +60,7 @@ void StartServer() {
 
   g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
   std::cout << "before WaitFanInOfSend" << std::endl;
-  g_rpc_processor->WaitFanInOfSend();
+  g_req_handler->WaitBarrier();
 
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();
@@ -70,9 +68,9 @@ void StartServer() {
 }
 
 TEST(SendNcclId, GrpcServer) {
-  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
+  g_req_handler.reset(new detail::GRPCRequestHandler(true, 1));
   g_rpc_service.reset(
-      new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
+      new detail::AsyncGRPCServer("127.0.0.1:0", g_req_handler.get()));
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
@@ -97,5 +95,5 @@ TEST(SendNcclId, GrpcServer) {
 
   server_thread.join();
   g_rpc_service.reset(nullptr);
-  g_rpc_processor.reset(nullptr);
+  g_req_handler.reset(nullptr);
 }

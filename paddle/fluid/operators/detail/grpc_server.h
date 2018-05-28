@@ -29,7 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/grpc_service.h"
-#include "paddle/fluid/operators/detail/rpc_processor.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -41,24 +42,18 @@ namespace detail {
 
 class RequestBase;
 
-class AsyncGRPCServer final {
+class AsyncGRPCServer final : public RPCServer {
  public:
   explicit AsyncGRPCServer(const std::string& address,
-                           GRPCProcessorCtx* rpc_processor)
-      : address_(address), ready_(0), rpc_processor_(rpc_processor) {}
+                           RequestHandler* request_handler)
+      : RPCServer(address, request_handler), ready_(0) {}
 
-  ~AsyncGRPCServer() {}
-  void WaitServerReady();
-  void RunSyncUpdate();
-
-  // register rpc call name to a condition id with will be waiting on
-  void RegisterBarrier(int rpc_id);
-  // functions to sync server barrier status.
-  void SetCond(int rpc_id);
-
-  int GetSelectedPort() const { return selected_port_; }
-
-  void ShutDown();
+  virtual ~AsyncGRPCServer() {}
+  void WaitServerReady() override;
+  void RunSyncUpdate() override;
+  void RegisterCond(int rpc_id) override;
+  void SetCond(int rpc_id) override;
+  void ShutDown() override;
 
  protected:
   void HandleRequest(::grpc::ServerCompletionQueue* cq, int rpc_id,
@@ -67,7 +62,7 @@ class AsyncGRPCServer final {
   void TryToRegisterNewGetOne(int req_id);
   void TryToRegisterNewPrefetchOne(int req_id);
   void ShutdownQueue();
-  void WaitCond(int cond);
+  void WaitCond(int cond) override;
 
  private:
   static const int kSendReqsBufSize = 100;
@@ -87,8 +82,6 @@ class AsyncGRPCServer final {
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
 
-  std::string address_;
-
   // condition of the sub program
   std::mutex barrier_mutex_;
   mutable int barrier_cond_step_;
@@ -100,16 +93,10 @@ class AsyncGRPCServer final {
 
   std::unique_ptr<std::thread> t_prefetch_;
 
-  int selected_port_;
-
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;
+
   int ready_;
-
-  GRPCProcessorCtx* rpc_processor_;
-
-  // barrier
-  std::set<int> barrier_;
 };
 
 };  // namespace detail

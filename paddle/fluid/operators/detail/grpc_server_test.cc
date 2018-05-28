@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/detail/grpc_request_handler.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -31,7 +33,7 @@ namespace detail = paddle::operators::detail;
 USE_OP(lookup_table);
 
 std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
-std::unique_ptr<detail::GRPCProcessorCtx> g_rpc_processor;
+std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -99,13 +101,11 @@ void StartServer() {
   auto prepared = exe.Prepare(program, block->ID());
   InitTensorsOnServer(&scope, &place, 10);
 
-  g_rpc_processor->SetSyncMode(true);
-  g_rpc_processor->SetProgram(&program);
-  g_rpc_processor->SetPrefetchPreparedCtx(std::move(prepared));
-  g_rpc_processor->SetDevCtx(&ctx);
-  g_rpc_processor->SetScope(&scope);
-  g_rpc_processor->SetExecutor(&exe);
-  g_rpc_processor->SetFanIn(1);
+  g_req_handler->SetProgram(&program);
+  g_req_handler->SetPrefetchPreparedCtx(std::move(prepared));
+  g_req_handler->SetDevCtx(&ctx);
+  g_req_handler->SetScope(&scope);
+  g_req_handler->SetExecutor(&exe);
 
   std::thread server_thread(
       std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
@@ -117,9 +117,9 @@ void StartServer() {
 }
 
 TEST(PREFETCH, CPU) {
-  g_rpc_processor.reset(new detail::GRPCProcessorCtx());
+  g_req_handler.reset(new detail::GRPCRequestHandler(true, 1));
   g_rpc_service.reset(
-      new detail::AsyncGRPCServer("127.0.0.1:0", g_rpc_processor.get()));
+      new detail::AsyncGRPCServer("127.0.0.1:0", g_req_handler.get()));
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
@@ -153,5 +153,5 @@ TEST(PREFETCH, CPU) {
   server_thread.join();
   LOG(INFO) << "begin reset";
   g_rpc_service.reset(nullptr);
-  g_rpc_processor.reset(nullptr);
+  g_req_handler.reset(nullptr);
 }

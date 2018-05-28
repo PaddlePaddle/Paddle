@@ -21,10 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "grpc++/grpc++.h"
-#include "grpc++/support/byte_buffer.h"
-#include "grpc++/support/slice.h"
-#include "grpc/support/log.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/executor.h"
@@ -34,26 +30,27 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
-typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
-    ReceivedMessage;
-
-class RPCProcessorCtx {
+class RequestHandler {
  public:
-  RPCProcessorCtx()
-      : sync_mode_(true),
-        scope_(nullptr),
+  RequestHandler(bool sync_mode, int num_clients)
+      : sync_mode_(sync_mode),
+        fan_in_(num_clients),
+        exit_flag_(false),
         dev_ctx_(nullptr),
-        program_(nullptr),
-        executor_(nullptr) {}
-  virtual ~RPCProcessorCtx() {}
+        executor_(nullptr),
+        scope_(nullptr),
+        program_(nullptr) {
+    clear_to_init();
+  }
 
-  void SetSyncMode(bool sync_mode) { sync_mode_ = sync_mode; }
+  virtual ~RequestHandler() {}
+
+  // set attribute
   void SetScope(framework::Scope* scope) { scope_ = scope; }
   void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
   void SetProgram(framework::ProgramDesc* program) { program_ = program; }
@@ -70,6 +67,7 @@ class RPCProcessorCtx {
     grad_to_prepared_ctx_ = g;
   }
 
+  // get attribute
   bool sync_mode() { return sync_mode_; }
   framework::Scope* scope() { return scope_; }
   const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
@@ -78,90 +76,78 @@ class RPCProcessorCtx {
   }
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
+  std::vector<framework::Variable*>& sparse_vars() { return sparse_vars_; }
 
- protected:
-  bool sync_mode_;
-  framework::Scope* scope_;
-  const platform::DeviceContext* dev_ctx_;
-
-  std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
-  framework::ProgramDesc* program_;
-  framework::Executor* executor_;
-
-  // Used for async.
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>*
-      grad_to_prepared_ctx_;
-};
-
-class GRPCProcessorCtx : public RPCProcessorCtx {
- public:
-  GRPCProcessorCtx() : exit_flag_(false), fan_in_(-1) { clear_to_init(); }
-  virtual ~GRPCProcessorCtx() {}
-
-  bool ProcessSendImpl(const std::string& msg_name, framework::Variable* var,
-                       framework::Scope* scope = nullptr);
-
-  bool ProcessGetImpl(const std::string& msg_name, framework::Variable** var);
-
-  bool ProcessPrefetchImpl(const std::string& msg_name, framework::Scope* scope,
-                           framework::Variable** var);
-
-  void SetFanIn(int fan_in) { fan_in_ = fan_in; }
-
-  void WaitFanInOfSend() {
-    std::unique_lock<std::mutex> lock(this->mutex_);
-    condition_send_.wait(lock, [=] {
-      return (this->batch_barrier_send_ >= fan_in_ || exit_flag_);
-    });
-
-    VLOG(3) << "batch_barrier_send_:" << batch_barrier_send_;
+  // request handler
+  bool Handler(int method_id, void* input, void* output) {
+    return HandlerImpl(method_id, input, output);
   }
 
-  void WaitFanInOfGet() {
+  // barrier
+  void WaitBarrier() {
     std::unique_lock<std::mutex> lock(this->mutex_);
-    condition_get_.wait(lock, [=] {
-      return (this->batch_barrier_get_ >= fan_in_ || exit_flag_);
-    });
+    condition_.wait(
+        lock, [=] { return (this->batch_barrier_ >= fan_in_ || exit_flag_); });
 
-    VLOG(3) << "batch_barrier_get_:" << batch_barrier_get_;
+    VLOG(3) << "batch_barrier_:" << batch_barrier_;
   }
 
   void clear_to_init() {
     std::unique_lock<std::mutex> lock(this->mutex_);
-    batch_barrier_send_ = 0;
-
+    batch_barrier_ = 0;
     sparse_vars_.clear();
-    batch_barrier_get_ = 0;
   }
 
-  void SetExit();
+  void SetExit() {
+    LOG(WARNING) << "RequestHandler SetExit!";
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      exit_flag_ = true;
+    }
+    condition_.notify_all();
+  }
 
   bool IsExit() {
     std::unique_lock<std::mutex> lock(this->mutex_);
     return exit_flag_;
   }
 
-  std::vector<framework::Variable*>& sparse_vars() { return sparse_vars_; }
+ protected:
+  virtual bool HandlerImpl(int method_id, void* input, void* output) = 0;
 
- private:
-  void IncreaseBatchBarrierGet();
-  void IncreaseBatchBarrierSend();
-  // void IncreaseRecvVarCnt();
+  void IncreaseBatchBarrier() {
+    int b = 0;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      b = ++batch_barrier_;
+    }
 
- private:
-  // status
+    if (b >= fan_in_) {
+      condition_.notify_all();
+    }
+  }
+
+ protected:
+  const bool sync_mode_;
+  const int fan_in_;
   bool exit_flag_;
-  int fan_in_;
-  std::mutex mutex_;
 
-  // send
-  std::condition_variable condition_send_;
-  int batch_barrier_send_;
+  std::mutex mutex_;
+  std::condition_variable condition_;
+  int batch_barrier_;
+
+  const platform::DeviceContext* dev_ctx_;
+  framework::Executor* executor_;
+  framework::Scope* scope_;
+  framework::ProgramDesc* program_;
+  std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
+
+  // Used for async.
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>*
+      grad_to_prepared_ctx_;
 
   // get
-  std::condition_variable condition_get_;
-  int batch_barrier_get_;
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
   std::vector<framework::Variable*> sparse_vars_;
