@@ -32,12 +32,18 @@ class RandomCropOp : public framework::OperatorWithKernel {
 class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "");
-    AddOutput("Out", "");
-    AddInput("Seed", "");
-    AddOutput("SeedOut", "").AsDispensable();
-    AddAttr<std::vector<int>>("shape", "");
-    AddComment("");
+    AddInput("X", "A batch of instances to random crop.");
+    AddInput("Seed", "The random seed.");
+    AddOutput("Out", "The cropped instance batch.");
+    AddOutput("SeedOut", "The random seed after random cropping.")
+        .AsDispensable();
+    AddAttr<std::vector<int>>("shape", "The shape of a cropped instance.");
+    AddComment(R"DOC(
+      This operator takes a batch of instance, and do random cropping on each instance. 
+      It means that cropping positions differs on each instance, which is determined 
+      by an uniform random generator. All cropped instances have the same shape, which 
+      is determined by the operator's attribute 'shape'.
+    )DOC");
   }
 };
 
