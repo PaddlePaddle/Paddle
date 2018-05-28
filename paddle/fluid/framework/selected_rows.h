@@ -82,7 +82,7 @@ class SelectedRows {
    * @return a list of pair which contains the non-exists key and the index in
    * the value
    */
-  std::vector<std::pair<int64_t, int64_t>> Get(std::vector<int64_t> keys,
+  std::vector<std::pair<int64_t, int64_t>> Get(const std::vector<int64_t>& keys,
                                                framework::Tensor* value) const;
 
   /*

@@ -177,11 +177,8 @@ class RequestPrefetch final : public RequestBase {
         program_(program),
         prefetch_ctx_(prefetch_ctx),
         req_id_(req_id) {
-    if (sync_mode_) {
-      request_.reset(new VariableResponse(scope, dev_ctx_, false));
-    } else {
-      request_.reset(new VariableResponse(scope, dev_ctx_, true));
-    }
+    // prefetch always create a new sub scope
+    request_.reset(new VariableResponse(scope, dev_ctx_, true));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -198,10 +195,10 @@ class RequestPrefetch final : public RequestBase {
     std::string var_name = request_->OutVarname();
     VLOG(3) << "RequestPrefetch " << var_name;
     auto var_desc = program_->Block(0).FindVar(var_name);
-    framework::Scope* local_scope = &scope_->NewScope();
+    framework::Scope* local_scope = request_->GetMutableLocalScope();
     auto* var = local_scope->FindVar(var_name);
     InitializeVariable(var, var_desc->GetType());
-    executor_->RunPreparedContext(prefetch_ctx_, scope_);
+    executor_->RunPreparedContext(prefetch_ctx_, local_scope);
 
     SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply_);
 
