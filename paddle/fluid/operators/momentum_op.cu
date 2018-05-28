@@ -68,7 +68,7 @@ class MomentumOpCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (param->numel() + block - 1) / block;
     MomentumKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        p, g, v, lr, mu, param->numel(), use_nesterov, weigth_decay, p_out,
+        p, g, v, lr, mu, param->numel(), use_nesterov, weight_decay, p_out,
         v_out);
   }
 };
