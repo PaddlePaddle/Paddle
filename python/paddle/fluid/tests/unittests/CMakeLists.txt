@@ -67,6 +67,7 @@ list(REMOVE_ITEM TEST_OPS test_parallel_op)
 list(REMOVE_ITEM TEST_OPS test_dynrnn_static_input)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_network_with_dtype)
+list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
 
 # tests that can be bundled together in one python process for speed.
 if(WITH_FAST_BUNDLE_TEST)
@@ -107,3 +108,6 @@ py_test_modules(test_fetch_var MODULES test_fetch_var)
 py_test_modules(test_dynrnn_static_input MODULES test_dynrnn_static_input)
 py_test_modules(test_parallel_op MODULES test_parallel_op)
 py_test_modules(test_dist_train MODULES test_dist_train)
+py_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv_op)
+# tests that need to be done in fixed timeout
+set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 10)

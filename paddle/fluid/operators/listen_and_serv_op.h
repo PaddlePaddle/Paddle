@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <atomic>
+#include <mutex>
 #include <ostream>
+#include <set>
 #include <string>
 
 #include "paddle/fluid/framework/executor.h"
@@ -40,6 +42,8 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap& outputs,
                   const framework::AttributeMap& attrs);
 
+  virtual ~ListenAndServOp();
+
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
@@ -48,8 +52,7 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunAsyncLoop(framework::Executor* executor,
                     framework::ProgramDesc* program) const;
 
-  void SavePort(
-      const std::string& file_path = "/tmp/paddle.selected_port") const;
+  void SavePort() const;
 
   void WaitServerReady();
 
@@ -62,11 +65,18 @@ class ListenAndServOp : public framework::OperatorBase {
 
   static void ResetPort() { selected_port_ = 0; }
 
+  static void StopAll();
+
  protected:
   mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
   // FIXME(wuyi): it's static so that the operator can be cloned.
   static std::atomic_int selected_port_;
+
+  bool is_stopped_;
+
+  std::mutex set_mutex_;
+  static std::set<std::shared_ptr<ListenAndServOp>> running_op_set_;
 };
 
 }  // namespace operators

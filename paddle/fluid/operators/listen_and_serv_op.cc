@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <csignal>
+#include <stdio.h>  // for removing the port file
 #include <fstream>
 #include <ostream>
 #include <thread>  // NOLINT
@@ -27,6 +29,25 @@ void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
 }
+
+void ListenAndServOp::StopAll() {
+  {
+    std::unique_lock<std::mutex> lock(set_mutex_);
+    std::for_each(running_op_set_.begin(), running_op_set_.end(),
+        [](const shared_ptr<ListenAndServs> op) {
+        op->Stop();
+    }
+  }
+}
+
+namespace {
+
+void StopAndExit(int sig_num) {
+  ListenAndServOp::StopAllServOp();
+  exit(sig_num);
+}
+
+} // namespace
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -72,17 +93,43 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
                                  const framework::VariableNameMap &outputs,
                                  const framework::AttributeMap &attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : OperatorBase(type, inputs, outputs, attrs), is_stopped_(true) {}
 
 void ListenAndServOp::Stop() {
-  rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
-  server_thread_->join();
+  // avoid from stopping twice
+  if (is_stopped_) {
+    return;
+  }
+
+  {
+    std::unique_lock<std::mutex> lock(stop_mutex_);
+    // double check
+    if (is_stopped_) {
+      return;
+    }
+    rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
+    server_thread_->join();
+    auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
+    remove(file_path.c_str());
+    is_stopped_ = true;
+  }
+
+  // erase self from running_op_set_
+  {
+    std::unique_lock<std::mutex> lock(set_mutex_);
+    std::set<std::shared_ptr<ListenAndServOp>>::iterator iter
+      = running_op_set_.find(this);
+    if (iter == running_op_set_.end()) {
+      return;
+    }
+    running_op_set_.erase(iter);
+  }
 }
 
-void ListenAndServOp::SavePort(const std::string &file_path) const {
+void ListenAndServOp::SavePort() const {
   // NOTE: default write file to /tmp/paddle.selected_port
   selected_port_ = rpc_service_->GetSelectedPort();
-
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
   std::ofstream port_file;
   port_file.open(file_path);
   port_file << selected_port_.load();
@@ -187,6 +234,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     for (auto &var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
+
     rpc_service_->SetCond(1);
     // FIXME(typhoonzero): use another condition to sync wait clients get.
     rpc_service_->WaitClientGet(fan_in);
@@ -294,6 +342,17 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
+  // Resigster self to the running_op_set_
+  {
+    std::unique_lock<std::mutex> lock(set_mutex_);
+    running_op_set_.insert(this);
+  }
+
+  {
+    std::unique_lock<std::mutex> lock(stop_mutex_);
+    is_stopped_ = true;
+  }
+
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::SetProfileListener();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -328,10 +387,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
 
+  // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
+  signal(SIGINT, StopAndExit);
+  signal(SIGTERM, StopAndExit);
+
   // Write to a file of server selected port for python use.
   std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
                                           static_cast<int>(::getpid()));
-  SavePort(file_path);
+  SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
   } else {
