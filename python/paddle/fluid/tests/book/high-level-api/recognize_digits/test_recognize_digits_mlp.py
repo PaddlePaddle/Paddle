@@ -44,7 +44,7 @@ def train_program():
     return [avg_cost, acc]
 
 
-def train(use_cuda, train_program, save_dirname):
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
@@ -62,7 +62,7 @@ def train(use_cuda, train_program, save_dirname):
             print("acc     : %s" % acc)
 
             if acc > 0.2:  # Smaller value to increase CI speed
-                trainer.save_params(save_dirname)
+                trainer.save_params(params_dirname)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
                     event.epoch + 1, avg_cost, acc))
@@ -81,11 +81,11 @@ def train(use_cuda, train_program, save_dirname):
         feed_order=['img', 'label'])
 
 
-def infer(use_cuda, inference_program, save_dirname=None):
+def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=save_dirname, place=place)
+        infer_func=inference_program, param_path=params_dirname, place=place)
 
     batch_size = 1
     tensor_img = numpy.random.uniform(-1.0, 1.0,
@@ -93,21 +93,21 @@ def infer(use_cuda, inference_program, save_dirname=None):
 
     results = inferencer.infer({'img': tensor_img})
 
-    print("infer results: ", numpy.array(results[0]))
+    print("infer results: ", results[0])
 
 
 def main(use_cuda):
-    save_dirname = "recognize_digits_mlp.inference.model"
+    params_dirname = "recognize_digits_mlp.inference.model"
 
     # call train() with is_local argument to run distributed train
     train(
         use_cuda=use_cuda,
         train_program=train_program,
-        save_dirname=save_dirname)
+        params_dirname=params_dirname)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
-        save_dirname=save_dirname)
+        params_dirname=params_dirname)
 
 
 if __name__ == '__main__':
