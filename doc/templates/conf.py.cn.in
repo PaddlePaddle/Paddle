@@ -16,8 +16,8 @@ import os, subprocess
 sys.path.insert(0, os.path.abspath('@PADDLE_BINARY_DIR@/python'))
 import shlex
 from recommonmark import parser, transform
-import paddle
-import paddle.v2
+@IMPORT_PADDLE_STRING@
+@IMPORT_PADDLEV2_STRING@
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify
