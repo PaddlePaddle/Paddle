@@ -111,6 +111,7 @@ DecayedAdagradOptimizer
     :members:
     :noindex:
 
+
 AdadeltaOptimizer
 -----------------
 
@@ -118,9 +119,17 @@ AdadeltaOptimizer
     :members:
     :noindex:
 
+
 RMSPropOptimizer
 -----------------
 
 ..  autoclass:: paddle.fluid.optimizer.RMSPropOptimizer
+    :members:
+    :noindex:
+    
+Optimizer
+---------
+
+..  autoclass:: paddle.fluid.optimizer.Optimizer
     :members:
     :noindex:
