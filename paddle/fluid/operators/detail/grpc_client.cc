@@ -19,6 +19,7 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -196,9 +197,14 @@ bool RPCClient::Wait() {
   const size_t kReqCnt = req_count_;
   bool a[kReqCnt];
   std::vector<std::future<void>> waits(req_count_);
+  std::mutex mu;
 
   for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::AsyncIO([i, &a, this] { a[i] = Proceed(); });
+    waits[i] = framework::AsyncIO([i, &a, &mu, this] {
+      bool ret = Proceed();
+      std::lock_guard<std::mutex> l(mu);
+      a[i] = ret;
+    });
   }
 
   for (int i = 0; i < req_count_; i++) {

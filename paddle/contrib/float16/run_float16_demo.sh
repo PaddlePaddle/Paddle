@@ -3,7 +3,7 @@
 BUILD_PATH=/paddle/fp16_build
 WHEEL_PATH=$BUILD_PATH/python/dist
 INFER_PATH=$BUILD_PATH/paddle/fluid/inference/tests/book
-DEMO_PATH=/paddle/contrib/float16
+DEMO_PATH=/paddle/paddle/contrib/float16
 
 # Use the single most powerful CUDA GPU on your machine
 export CUDA_VISIBLE_DEVICES=0
@@ -50,7 +50,6 @@ do
          --repeat=1 \
 
   $INFER_PATH/test_inference_image_classification_vgg \
-      --data_set=imagenet \
       --dirname=$DEMO_PATH/image_classification_imagenet_vgg.inference.model \
       --fp16_dirname=$DEMO_PATH/float16_image_classification_imagenet_vgg.inference.model \
       --repeat=$REPEAT \
@@ -68,7 +67,6 @@ do
          --repeat=1 \
 
   $INFER_PATH/test_inference_image_classification_resnet \
-      --data_set=imagenet \
       --dirname=$DEMO_PATH/image_classification_imagenet_resnet.inference.model \
       --fp16_dirname=$DEMO_PATH/float16_image_classification_imagenet_resnet.inference.model \
       --repeat=$REPEAT \
@@ -86,7 +84,6 @@ do
          --repeat=1 \
 
   $INFER_PATH/test_inference_image_classification_vgg \
-      --data_set=cifar10 \
       --dirname=$DEMO_PATH/image_classification_cifar10_vgg.inference.model \
       --fp16_dirname=$DEMO_PATH/float16_image_classification_cifar10_vgg.inference.model \
       --repeat=$REPEAT \
@@ -104,7 +101,6 @@ do
          --repeat=1 \
 
   $INFER_PATH/test_inference_image_classification_vgg \
-      --data_set=cifar10 \
       --dirname=$DEMO_PATH/image_classification_cifar10_resnet.inference.model \
       --fp16_dirname=$DEMO_PATH/float16_image_classification_cifar10_resnet.inference.model \
       --repeat=$REPEAT \
