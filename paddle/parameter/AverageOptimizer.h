@@ -21,7 +21,7 @@ namespace paddle {
 // After Optimization, parameter values are further averaged within
 // time range.
 class AverageOptimizer : public ParameterOptimizer {
-public:
+ public:
   // if *useParameterApply* set, use PARAMETER_APPLY to store averaged parameter
   // else use PARAMETER_VALUE, and value backup in PARAMETER_GRADIENT
   AverageOptimizer(const OptimizationConfig& optConfig,
@@ -65,7 +65,7 @@ public:
 
   virtual void setNoDecay() { optimizer_->setNoDecay(); }
 
-protected:
+ protected:
   std::unique_ptr<ParameterOptimizer> optimizer_;
   bool useApply_;
 
@@ -98,7 +98,7 @@ protected:
 
 // Average Optimizer with Sparse support.
 class AverageSparseOptimizer : public AverageOptimizer {
-public:
+ public:
   AverageSparseOptimizer(const OptimizationConfig& optConfig,
                          ParameterOptimizer* optimizer,
                          bool useParameterApply)
@@ -130,7 +130,7 @@ public:
     t0Vec_.assign(t0Vec_.size(), 0);
   }
 
-protected:
+ protected:
   /**
    *  counting batches, clear after catch up with
    *  t(timer_) is current time,

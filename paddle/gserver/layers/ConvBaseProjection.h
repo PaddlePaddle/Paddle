@@ -23,7 +23,7 @@ namespace paddle {
  * @brief Base class for ConvProjection and ConvTransProjection.
  */
 class ConvBaseProjection : public Projection {
-public:
+ public:
   /**
    * Constructor.
    */
@@ -33,7 +33,7 @@ public:
 
   ~ConvBaseProjection();
 
-protected:
+ protected:
   void getConvParams();
   void initCudnn();
 
