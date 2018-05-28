@@ -89,6 +89,9 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Use Nesterov Momentum")
         .SetDefault(false);
+    AddAttr<float>("weight_decay",
+                   "(float) weight decay (L2 penalty) (default: 0)")
+        .SetDefault(.0);
     AddComment(R"DOC(
 Momentum Optimizer.
 

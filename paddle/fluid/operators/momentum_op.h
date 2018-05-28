@@ -34,6 +34,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
+    T weight_decay = static_cast<T>(ctx.Attr<float>("weight_decay"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
@@ -46,9 +47,9 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     v_out = v * mu + g;
     if (use_nesterov) {
-      p_out = p - (g - v_out * mu) * lr[0];
+      p_out = p - (g - v_out * mu + weight_decay * p) * lr[0];
     } else {
-      p_out = p - lr[0] * v_out;
+      p_out = p - lr[0] * (v_out + weight_decay * p);
     }
   }
 };
