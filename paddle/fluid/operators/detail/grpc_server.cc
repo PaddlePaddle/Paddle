@@ -105,11 +105,8 @@ class RequestGet final : public RequestBase {
  public:
   explicit RequestGet(GrpcService::AsyncService* service,
                       ::grpc::ServerCompletionQueue* cq,
-                      framework::BlockingQueue<MessageWithName>* queue,
                       GRPCProcessorCtx* rpc_processor, int req_id)
-      : RequestBase(service, cq, rpc_processor, req_id),
-        responder_(&ctx_),
-        queue_(queue) {
+      : RequestBase(service, cq, rpc_processor, req_id), responder_(&ctx_) {
     auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, &request_, &responder_, cq_, cq_,
@@ -127,7 +124,10 @@ class RequestGet final : public RequestBase {
 
     framework::Variable* var = nullptr;
     rpc_processor_->ProcessGetImpl(var_name, &var);
-    SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply_);
+
+    if (var_name != FETCH_BARRIER_MESSAGE) {
+      SerializeToByteBuffer(var_name, var, *rpc_processor_->dev_ctx(), &reply_);
+    }
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -138,7 +138,6 @@ class RequestGet final : public RequestBase {
   sendrecv::VariableMessage request_;
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-  framework::BlockingQueue<MessageWithName>* queue_;
 };
 
 class RequestPrefetch final : public RequestBase {
@@ -190,16 +189,6 @@ class RequestPrefetch final : public RequestBase {
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* local_scope_;
 };
-
-void AsyncGRPCServer::WaitClientGet(int count) {
-  int fetch_barriers = 0;
-  while (fetch_barriers < count) {
-    auto msg = var_get_queue_.Pop();
-    if (msg.first == FETCH_BARRIER_MESSAGE) {
-      fetch_barriers++;
-    }
-  }
-}
 
 void AsyncGRPCServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
@@ -320,8 +309,8 @@ void AsyncGRPCServer::TryToRegisterNewGetOne(int req_id) {
   }
 
   VLOG(4) << "register get req_id:" << req_id;
-  RequestGet* get = new RequestGet(&service_, cq_get_.get(), &var_get_queue_,
-                                   rpc_processor_, req_id);
+  RequestGet* get =
+      new RequestGet(&service_, cq_get_.get(), rpc_processor_, req_id);
   get_reqs_[req_id] = static_cast<RequestBase*>(get);
   VLOG(4) << "Create RequestGet status:" << get->Status();
 }

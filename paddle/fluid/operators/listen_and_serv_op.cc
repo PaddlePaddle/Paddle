@@ -178,8 +178,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
-  std::unordered_map<std::string, std::shared_ptr<detail::ReceivedQueue>>
-      grad_to_queue;
 
   auto grad_to_block_id_str =
       Attr<std::vector<std::string>>("grad_to_block_id");
@@ -192,7 +190,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
     int block_id = std::stoi(pieces[1]);
     grad_to_block_id[pieces[0]] = block_id;
-    grad_to_queue[pieces[0]] = std::make_shared<detail::ReceivedQueue>();
     id_to_grad[block_id] = pieces[0];
   }
   size_t num_blocks = program->Size();

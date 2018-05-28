@@ -56,8 +56,6 @@ class AsyncGRPCServer final {
   // functions to sync server barrier status.
   void SetCond(int rpc_id);
 
-  void WaitClientGet(int count);
-
   int GetSelectedPort() const { return selected_port_; }
 
   void ShutDown();
@@ -90,9 +88,6 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
-
-  // received variable from RPC, operators fetch variable from this queue.
-  framework::BlockingQueue<MessageWithName> var_get_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;

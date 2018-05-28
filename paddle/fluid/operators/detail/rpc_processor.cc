@@ -99,12 +99,12 @@ bool GRPCProcessorCtx::ProcessSendImpl(const std::string& msg_name,
 
 bool GRPCProcessorCtx::ProcessGetImpl(const std::string& msg_name,
                                       framework::Variable** var) {
+  VLOG(3) << "ProcessGetImpl:" << msg_name;
   if (msg_name != FETCH_BARRIER_MESSAGE) {
     *var = scope_->FindVar(msg_name);
     return true;
   }
 
-  sendrecv::VariableMessage msg;
   if (sync_mode_) {
     PADDLE_ENFORCE((fan_in_ > 0), "please set fan_in first!");
     IncreaseBatchBarrierGet();

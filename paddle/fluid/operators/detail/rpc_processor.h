@@ -42,8 +42,6 @@ namespace detail {
 
 typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
     ReceivedMessage;
-typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
-typedef framework::BlockingQueue<ReceivedMessage> ReceivedQueue;
 
 class RPCProcessorCtx {
  public:
