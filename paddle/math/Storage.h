@@ -25,7 +25,7 @@ namespace paddle {
  * @brief Storage manager for multiple devices.
  */
 class StorageEngine {
-public:
+ public:
   /**
    * @return Storage singleton
    */
@@ -41,7 +41,7 @@ public:
    */
   PoolAllocator* getCpuAllocator();
 
-protected:
+ protected:
   StorageEngine();
   ~StorageEngine();
   RWLock lock_;

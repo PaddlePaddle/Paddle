@@ -20,7 +20,7 @@ namespace paddle {
 namespace optimizer {
 
 class SGDOptimizer : public ParameterOptimizer {
-public:
+ public:
   SGDOptimizer(Tensor* parameter, LrPolicy* lr, double m, double d, bool n)
       : ParameterOptimizer(parameter, lr),
         momentums_(nullptr),
@@ -39,7 +39,7 @@ public:
   std::string SerializeState();
   void DeserializeState(const std::string& state);
 
-private:
+ private:
   Tensor* momentums_;
   double momentum_;
   double decay_;

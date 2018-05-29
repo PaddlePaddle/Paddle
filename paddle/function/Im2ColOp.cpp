@@ -23,7 +23,7 @@ namespace paddle {
  */
 template <class T>
 class Im2ColFunctor<kCFO, DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,
@@ -75,7 +75,7 @@ public:
  */
 template <class T>
 class Col2ImFunctor<kCFO, DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(T* imData,
                   const TensorShape& imShape,
                   const T* colData,
@@ -130,7 +130,7 @@ template class Col2ImFunctor<kCFO, DEVICE_TYPE_CPU, double>;
  */
 template <class T>
 class Im2ColFunctor<kOCF, DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,
@@ -188,7 +188,7 @@ public:
  */
 template <class T>
 class Col2ImFunctor<kOCF, DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(T* imData,
                   const TensorShape& imShape,
                   const T* colData,

@@ -27,29 +27,38 @@
 
 namespace paddle {
 
+enum PaddleDType {
+  FLOAT32,
+  INT64,
+};
+
+struct PaddleBuf {
+  void* data;     // pointer to the data memory.
+  size_t length;  // number of memory bytes.
+};
+
 struct PaddleTensor {
   std::string name;  // variable name.
   std::vector<int> shape;
-  std::vector<unsigned char> data;         // bytes of data.
-  size_t type{typeid(float).hash_code()};  // hash of type
+  PaddleBuf data;  // blob of data.
+  PaddleDType dtype;
 };
 
 /*
- * A simple Inference API for Paddle. Currently this API might just be used by
- * non-sequence scenerios.
- * TODO(Superjomn) Prepare another API for NLP-related usages.
- */
+* A simple Inference API for Paddle. Currently this API might just be used by
+* non-sequence scenerios.
+* TODO(Superjomn) Prepare another API for NLP-related usages.
+*/
 class PaddlePredictor {
-public:
+ public:
   struct Config;
   PaddlePredictor() = default;
   PaddlePredictor(const PaddlePredictor&) = delete;
 
-  // One drived class should has such a constructor
-  // PaddlePredictor(const XConfig& config);
-  // The XConfig is a derived class of Config.
-
   // Predict an record.
+  // The caller should be responsible for allocating and releasing the memory of
+  // `inputs`. `inputs` should be alive until Run returns. caller should be
+  // responsible for releasing the memory of `output_data`.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data) = 0;
 
@@ -57,6 +66,7 @@ public:
   // be thread-safe.
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
+  virtual bool InitShared() { return false; }
   // Destroy the Predictor.
   virtual ~PaddlePredictor() {}
 

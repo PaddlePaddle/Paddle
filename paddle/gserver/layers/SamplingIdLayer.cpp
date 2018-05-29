@@ -31,7 +31,7 @@ class SamplingIdLayer : public Layer {
   std::uniform_real_distribution<double> rand1_;
   std::vector<Argument> tmpCpuInput_;
 
-public:
+ public:
   explicit SamplingIdLayer(const LayerConfig& config)
       : Layer(config), rand1_(0, 1) {}
 
