@@ -12,35 +12,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-/*
- * MulOp, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
- */
-class MulOpConverter : public OpConverter {
+class FcOpConverter : public OpConverter {
  public:
-  MulOpConverter() {}
   void operator()(const framework::proto::OpDesc& op) override {
-    VLOG(4) << "convert a fluid mul op to tensorrt mul layer without bias";
+    VLOG(4) << "convert a fluid fc op to tensorrt fc layer without bias";
 
     framework::OpDesc op_desc(op, nullptr, nullptr);
+
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
-    // Both the input1 and input2 do not need transpose.
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), false,
-        *const_cast<nvinfer1::ITensor*>(input2), false);
 
-    engine_->DeclareOutput(layer, 0, op_desc.Output("Out")[0]);
+    // Create weights
+    TensorRTEngine::Weight(nvinfer1::DataType::kFLOAT, )
+
+
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+                                       engine_, FullyConnected, *const_cast<nvinfer1::ITensor*>(input1), 
+)
   }
 };
-
-REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);
 
 }  // namespace tensorrt
 }  // namespace inference
