@@ -71,7 +71,7 @@ TEST(paddle_inference_api_impl, word2vec) {
 
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
-  ASSERT_EQ(outputs.size(), 1);
+  ASSERT_EQ(outputs.size(), 1UL);
   size_t len = outputs[0].data.length;
   float* data = static_cast<float*>(outputs[0].data.data);
   for (int j = 0; j < len / sizeof(float); ++j) {
@@ -143,7 +143,7 @@ TEST(paddle_inference_api_impl, image_classification) {
   size_t len = outputs[0].data.length;
   float* data = static_cast<float*>(outputs[0].data.data);
   float* lod_data = output1.data<float>();
-  for (int j = 0; j < len / sizeof(float); ++j) {
+  for (size_t j = 0; j < len / sizeof(float); ++j) {
     EXPECT_LT(lod_data[j] - data[j], 1e-10);
     EXPECT_GT(lod_data[j] - data[j], -1e-10);
   }

@@ -299,7 +299,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
   if (!dynamic_cast<PaddlePredictorImpl *>(predictor.get())->Init()) {
     return nullptr;
   }
-  return predictor;
+  return std::move(predictor);
 }
 
 }  // namespace paddle
