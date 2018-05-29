@@ -1,17 +1,61 @@
-## Define-by-Run
+# Differentiable Programming through Dynamic Graph
 
-All define-by-run frameworks build a computation graph at every iterations. The computation graph doesn't contain any control flow logic because "AD is blind with respect to any operation, including control flow statements, which do not directly alter numeric values."[1] 
+The implemtation of backward lies at the heart of differentiable programming. As the dynamic graph approach gains its popularity in the past a few years, this doc surveys the backward implementations from four major dynamic graph ML frameworks: Autograd, Chainer, Pytorch and Dynet.
+
+Outline
+1. The implementation overview
+1. The Pros and Cons between the frameworks
+1. Static vs Dynamic
+
+## Implementation Overview
+
+In all four frameworks, a computation graph is built at every iteration. And There are two ways to represent the graph.
+
+### 1) Tape
+Dynet uses tape (also known as Wengert list). Consider the following code snippet of an auto-encoder.
+
+```python
+x = Variable(randn(20, 1)))
+W_1, W_2 = Variable(randn(10, 20)), Variable(randn(20, 10))
+h = matmul1(W_1, x)
+x_hat = matmul2(W_2, h)
+loss = distance(x, x_hat)
+loss.backward()
+```
+
+During the forward execution, a list of operators, in this case `matmul1`, `matmul2` and `distance`, are recorded in the tape, along with the necessary information needed to do the backward such as pointers to the inputs and outputs. Then the tape is played in reverse order at `loss.backward`.
+
+### 2) Node Graph
+Autograd, Chainer and Pytorch use graph. 
+
+Take pytorch for example, the graph is composed of `Variable`s and `Function`s. During the forward execution, a `Variable` records its creator function, e.g. `h.creator = matmul1`. And a Function records its inputs' previous/dependent functions `prev_func` through `creator`, e.g. `matmul2.prev_func = matmul1`. At `loss.backward()`, a topological sort is performed on all `prev_func`s. Then the grad op is performed by the sorted order.
+
+Chainer and Autograd uses the similar techniques to record the forward pass. And Chainer uses a rank attribute to encode the topological order.
+
+## The Pros and Cons between the frameworks
+
+## Static vs Dynamic
+
+1. eager
+1. easy to program
+
+exclude the control flow logic in the computation graph.
+1. hard to optimize
+
+
+# Appendix
 
 ### Overview
 
-| Framework | Support In Place | Tape | Core in C++ | First Release Date |
-|-----------|------------------|------|-------------|--------------------|
-| Autograd  |                  | No   | No          | Mar 5, 2015        |
-| Chainer   |                  | No   | No          | Jun 5, 2015        |
-| Pytorch   | Yes              | No   | Yes         | Aug 31, 2016       |
-| Dynet     | Yes              | Yes  | Yes         | Oct 12, 2016       |
+| Framework | Has Tape | Core in C++ | First Release Date |
+|-----------|----------|-------------|--------------------|
+| Autograd  | No       | No          | Mar 5, 2015        |
+| Chainer   | No       | No          | Jun 5, 2015        |
+| Pytorch   | No       | Yes         | Aug 31, 2016       |
+| Dynet     | Yes      | Yes         | Oct 12, 2016       |
 
-### Autograd
+### Source Code
+#### Autograd
 [Backward code](https://github.com/HIPS/autograd/blob/442205dfefe407beffb33550846434baa90c4de7/autograd/core.py#L8-L40). In the forward pass, a graph of VJPNode is constructed.
 ```python
 # User API
@@ -44,7 +88,7 @@ class VJPNode(Node):
         vjpmaker = primitive_vjps[fun]
         self.vjp = vjpmaker(parent_argnums, value, args, kwargs)
 ```
-### Chainer
+#### Chainer
 Example Code
 ```python
 # (1) Function Set definition, creates FunctionNode
@@ -131,7 +175,7 @@ class VariableNode(object):
                     add_cand(x.creator_node)
 ```
 
-### PyTorch
+#### PyTorch
 Example Code
 ```python
 x = Variable(torch.ones(5, 5))
@@ -174,7 +218,7 @@ class Function(obejct):
 ```
 The [backward](https://github.com/pytorch/pytorch/blob/v0.1.1/torch/autograd/engine.py) is similar to Autograd.
 
-### DyNet
+#### DyNet
 Example code
 ```python
 model = dy.model()
