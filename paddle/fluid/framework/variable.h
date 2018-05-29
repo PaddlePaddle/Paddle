@@ -14,7 +14,6 @@
 #pragma once
 
 #include <memory>
-#include <mutex>  // NOLINT
 #include <string>
 #include <typeindex>
 #include <typeinfo>
@@ -39,8 +38,6 @@ class Variable {
 
   template <typename T>
   T* GetMutable() {
-    // TODO(Yancey1989): need to make Variable completely thread-safe.
-    std::unique_lock<std::mutex> lock(mutex_);
     if (!IsType<T>()) {
       holder_.reset(new PlaceholderImpl<T>(new T()));
     }
@@ -93,7 +90,6 @@ class Variable {
   // by its address but not the unreadable name.
   friend class Scope;
   const std::string* name_;
-  std::mutex mutex_;
 };
 
 }  // namespace framework
