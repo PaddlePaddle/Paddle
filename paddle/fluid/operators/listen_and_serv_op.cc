@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <stdio.h>  // for removing the port file
 #include <csignal>
+#include <cstdlib>
 #include <fstream>
 #include <thread>  // NOLINT
 #include <vector>
@@ -73,6 +74,8 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &outputs,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
+
+ListenAndServOp::~ListenAndServOp() { Stop(); }
 
 void ListenAndServOp::Stop() {
   rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
@@ -397,7 +400,7 @@ void SignalHandler::StopAndExit(int signal_num) {
         std::make_pair(std::string(LISTEN_TERMINATE_MESSAGE), nullptr));
   }
 
-  exit(signal_num);
+  exit(EXIT_SUCCESS);
 }
 
 void SignalHandler::RegisterBlockingQueue(BlockingQueue &queue) {

@@ -43,6 +43,8 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap& outputs,
                   const framework::AttributeMap& attrs);
 
+  virtual ~ListenAndServOp();
+
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
