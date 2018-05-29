@@ -3990,15 +3990,16 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     return out
 
 
-def random_crop(input, shape, seed=0):
+def random_crop(input, shape, seed=1):
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()
     out = helper.create_tmp_variable(dtype)
     if isinstance(seed, int):
+        seed_value = seed
         seed = helper.create_global_variable(
             persistable=True, shape=[1], dtype="int32")
         helper.set_variable_initializer(
-            var=seed, initializer=Constant(value=seed))
+            var=seed, initializer=Constant(value=seed_value))
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
     seed_out = helper.create_tmp_variable(dtype="int32")
