@@ -54,7 +54,7 @@ class OpConverter {
     if (!it) {
       it = Registry<OpConverter>::Lookup(op_desc.Type());
     }
-    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", type);
+    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_desc.Type());
     it->SetEngine(engine);
     (*it)(op, scope);
   }

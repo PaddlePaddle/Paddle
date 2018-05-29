@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/place.h"
@@ -40,17 +41,17 @@ class FcOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     auto* weight_data = Y_t->mutable_data<float>(platform::CUDAPlace());
 
-    PADDLE_ENFORCE_EQ(Y_t->ddim().size(), 2UL);
-    size_t n_output = Y_t->ddim()[0];
+    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);
+    size_t n_output = Y_t->dims()[0];
 
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
                                   Y_t->memory_size()};
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
-                                       *const_cast<nvinfer1::ITensor*>(X),
-                                       n_output, weight.get(), bias.get());
+    TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
+                         *const_cast<nvinfer1::ITensor*>(X), n_output,
+                         weight.get(), bias.get());
   }
 };
 

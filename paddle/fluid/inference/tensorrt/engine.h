@@ -37,7 +37,7 @@ class TensorRTEngine : public EngineBase {
   // Weight is model parameter.
   class Weight {
    public:
-    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
+    Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
       w_.count = num_elem;

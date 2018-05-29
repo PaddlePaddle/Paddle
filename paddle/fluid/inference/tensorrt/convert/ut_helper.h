@@ -149,10 +149,10 @@ class TRTConvertValidation {
  private:
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
-  framework::Scope &scope_;
   std::unique_ptr<framework::OperatorBase> op_;
   std::unique_ptr<framework::OpDesc> op_desc_;
   const std::unordered_set<std::string>& parameters_;
+  framework::Scope &scope_;
 };
 
 }  // namespace tensorrt
