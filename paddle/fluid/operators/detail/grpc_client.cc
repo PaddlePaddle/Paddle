@@ -25,6 +25,21 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+std::once_flag RPCClient::init_flag_;
+
+std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+
+RPCClient* RPCClient::GetInstance() {
+  std::call_once(init_flag_, &RPCClient::Init);
+  return rpc_client_.get();
+}
+
+void RPCClient::Init() {
+  if (rpc_client_.get() == nullptr) {
+    rpc_client_.reset(new RPCClient());
+  }
+}
+
 bool RPCClient::AsyncSendVariable(const std::string& ep,
                                   const platform::DeviceContext& ctx,
                                   const framework::Scope& scope,

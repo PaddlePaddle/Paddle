@@ -80,8 +80,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   std::vector<std::string> FindDistTrainRecvVars(
       const ProgramDesc &program) const;
 
-  bool IsRPCOp(const OpDesc &op) const;
-
   void ConnectOp(SSAGraph *result, OpHandleBase *op,
                  const std::string &prev_op_name) const;
 
