@@ -72,7 +72,7 @@ TEST(paddle_inference_api_impl, word2vec) {
   for (size_t i = 0; i < outputs.size(); ++i) {
     size_t len = outputs[i].data.length;
     float* data = static_cast<float*>(outputs[i].data.data);
-    for (int j = 0; j < len / sizeof(float); ++j) {
+    for (size_t j = 0; j < len / sizeof(float); ++j) {
       ASSERT_LT(data[j], 1.0);
       ASSERT_GT(data[j], -1.0);
     }
