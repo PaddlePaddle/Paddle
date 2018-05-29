@@ -64,14 +64,6 @@ class BlockingQueue {
     return rc;
   }
 
-  // T Pop(const bool& flag) {
-  // std::unique_lock<std::mutex> lock(mutex_);
-  // cv_.wait(lock, [=] { return !q_.empty() || flag; });
-  // T rc(std::move(q_.front()));
-  // q_.pop_front();
-  // return rc;
-  // }
-
  private:
   std::mutex mutex_;
   std::condition_variable cv_;

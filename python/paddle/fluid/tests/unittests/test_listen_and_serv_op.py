@@ -62,7 +62,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainer_count, trainer_id):
 
 class TestListenAndServOp(OpTest):
     def setUp(self):
-        self.sleep_time = 6
+        self.sleep_time = 5
         self.ip = "127.0.0.1"
         self.port = "6173"
         self.trainer_count = 1

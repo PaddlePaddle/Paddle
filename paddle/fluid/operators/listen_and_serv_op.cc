@@ -31,22 +31,27 @@ void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
 
 namespace {
 
-bool global_exit_flag = false;
+bool SignalHandler::program_exit_flag_ = false;
 
-typedef std::unordered_set<std::shared_ptr<detail::ReceivedQueue>>
-    BlockingQueueSet;
-BlockingQueueSet global_blocking_queue_set;
+SignalHandler::BlockingQueueSet SignalHandler::blocking_queue_set_{};
 
-// use unnamed namespace to avoid accessing from outside this file
-void StopAndExit(int signal_num) {
+void SignalHandler::StopAndExit(int signal_num) {
   VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
-  global_exit_flag = true;
-  for (BlockingQueueSet::iterator iter = global_blocking_queue_set.begin();
-       iter != global_blocking_queue_set.end(); iter++) {
+
+  program_exit_flag_ = true;
+
+  // awake all blocking queues
+  for (BlockingQueueSet::iterator iter = blocking_queue_set_.begin();
+       iter != blocking_queue_set_.end(); iter++) {
     iter->get()->Push(
         std::make_pair(std::string(LISTEN_TERMINATE_MESSAGE), nullptr));
   }
+
   exit(signal_num);
+}
+
+void SignalHandler::RegisterBlockingQueue(BlockingQueue& queue) {
+  blocking_queue_set_.insert(queue);
 }
 
 }  // namespace
@@ -145,7 +150,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
   std::vector<framework::Variable *> sparse_vars;
-  while (!exit_flag && !global_exit_flag) {
+  while (!exit_flag && !SignalHandler::IsProgramExit()) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(0);
@@ -227,10 +232,10 @@ static void AsyncUpdateThread(
     framework::Executor *executor,
     framework::ExecutorPrepareContext *prepared) {
   VLOG(3) << "update thread for " << var_name << " started";
-  while (!exit_flag) {
+  while (!exit_flag && !SignalHandler::IsProgramExit()) {
     const detail::ReceivedMessage v = queue->Pop();
-    if (global_exit_flag) {
-      VLOG(3) << "update thread exit";
+    if (SignalHandler::IsProgramExit()) {
+      VLOG(3) << "update thread for " << var_name << " exit";
       break;
     }
     auto recv_var_name = v.first;
@@ -273,9 +278,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     std::shared_ptr<detail::ReceivedQueue> queue =
         std::make_shared<detail::ReceivedQueue>();
     grad_to_queue[pieces[0]] = queue;
-    // record queue in global blocking queue map
-    global_blocking_queue_set.insert(queue);
-
+    // record blocking queue in SignalHandler
+    SignalHandler::RegisterBlockingQueue(queue);
     id_to_grad[block_id] = pieces[0];
   }
   size_t num_blocks = program->Size();
@@ -307,9 +311,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                         executor, grad_to_prepared_ctx[grad_name].get());
     }));
   }
-
   VLOG(3) << "RunAsyncLoop into while";
-  while (!exit_flag && !global_exit_flag) {
+  while (!exit_flag && !SignalHandler::IsProgramExit()) {
     const detail::ReceivedMessage v = rpc_service_->Get();
     auto recv_var_name = v.first;
     if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
@@ -365,8 +368,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->WaitServerReady();
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
-  signal(SIGINT, StopAndExit);
-  signal(SIGTERM, StopAndExit);
+  signal(SIGINT, SignalHandler::StopAndExit);
+  signal(SIGTERM, SignalHandler::StopAndExit);
 
   // Write to a file of server selected port for python use.
   std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
