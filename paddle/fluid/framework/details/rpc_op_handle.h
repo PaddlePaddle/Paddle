@@ -27,9 +27,9 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct SendOpHandle : public OpHandleBase {
-  SendOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
-               const platform::Place& place);
+struct RPCOpHandle : public OpHandleBase {
+  RPCOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
+              const platform::Place& place, const std::string& name);
 
   std::string Name() const override;
 
@@ -44,6 +44,7 @@ struct SendOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   const Scope* local_scope_;
   const platform::Place& place_;
+  const std::string name_;
 };
 
 }  // namespace details

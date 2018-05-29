@@ -207,6 +207,7 @@ static void AsyncUpdateThread(
   while (!exit_flag) {
     const detail::ReceivedMessage v = queue->Pop();
     auto recv_var_name = v.first;
+    VLOG(4) << "async update " << recv_var_name;
     auto var = v.second->GetVar();
     if (var == nullptr) {
       LOG(ERROR) << "Can not find server side var: " << recv_var_name;

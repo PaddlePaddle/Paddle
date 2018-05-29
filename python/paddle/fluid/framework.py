@@ -797,7 +797,7 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
         """
         if not self.has_var(name):
-            raise ValueError("var %s is not in current" % name)
+            raise ValueError("var %s is not in current block" % name)
         v = self.var(name)
         if type(v) == Parameter:
             var_type = "Parameter"
@@ -843,6 +843,7 @@ class Block(object):
         self.vars[new_name] = var
         del self.vars[name]
         self.sync_with_cpp()
+        return var
 
     def remove_var(self, name):
         self.sync_with_cpp()

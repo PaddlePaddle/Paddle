@@ -26,7 +26,7 @@ enum GradientMatchineCreateMode {
 namespace paddle {
 
 class MyNeuralNetwork : public NeuralNetwork {
-public:
+ public:
   MyNeuralNetwork(const std::string& name, NeuralNetwork* network)
       : NeuralNetwork(name, network) {}
 };
