@@ -105,6 +105,7 @@ bool GRPCRequestHandler::RequestGetHandler(void* input, void* output) {
   if (msg_name != FETCH_BARRIER_MESSAGE) {
     framework::Variable* var = scope_->FindVar(msg_name);
     SerializeToByteBuffer(msg_name, var, *dev_ctx_, reply);
+    return true;
   }
 
   // FETCH_BARRIER_MESSAGE
