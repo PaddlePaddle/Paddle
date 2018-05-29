@@ -55,12 +55,12 @@ std::string callPythonFunc(const std::string& moduleName,
  * NOTE: the lock of this guard is reentrant or recursive.
  */
 class PyGuard {
-public:
+ public:
   PyGuard();
   PyGuard(const PyGuard& other) = delete;
   PyGuard& operator=(const PyGuard& other) = delete;
 
-private:
+ private:
   std::lock_guard<std::recursive_mutex> guard_;
 };
 
@@ -133,7 +133,7 @@ std::string getPyCallStack();
  * Implements getAttr method for object.
  */
 class ObjectHelper {
-public:
+ public:
   explicit ObjectHelper(const PyObjectPtr& obj) : obj_(obj) {}
 
   /**
@@ -192,7 +192,7 @@ public:
     return PyObject_IsTrue(tmp.get());
   }
 
-private:
+ private:
   const PyObjectPtr& obj_;
 };
 
@@ -202,7 +202,7 @@ private:
  * The python sequence means list or tuple.
  */
 class SequenceHelper {
-public:
+ public:
   explicit SequenceHelper(const PyObjectPtr& seq) : seq_(seq.get()) {
     CHECK(PySequence_Check(seq_));
   }
@@ -248,12 +248,12 @@ public:
     }
   }
 
-private:
+ private:
   PyObject* seq_;
 };
 
 class DictHelper {
-public:
+ public:
   explicit DictHelper(PyObject* d) : dict_(d) {}
 
   explicit DictHelper(const PyObjectPtr& d) : dict_(d.get()) {}
@@ -275,7 +275,7 @@ public:
     this->set(key, list);
   }
 
-private:
+ private:
   inline void checkDict() { CHECK(PyDict_Check(this->dict_)); }
 
   PyObject* dict_;
@@ -289,7 +289,7 @@ inline static bool isCallable(const PyObjectPtr& obj) {
  * Wrap a callable object.
  */
 class CallableHelper {
-public:
+ public:
   explicit CallableHelper(const PyObjectPtr& obj) : obj_(obj) {
     CHECK(py::isCallable(obj_));
   }
@@ -315,7 +315,7 @@ public:
     return PyObject_Call(obj_.get(), args.get(), kwargs.get());
   }
 
-private:
+ private:
   const PyObjectPtr& obj_;
   PyObjectPtr args;
   PyObjectPtr kwargs;

@@ -22,7 +22,7 @@ namespace paddle {
  * LstmStepLayer used in recurrent layer group.
  */
 class LstmStepLayer : public Layer, public LstmCompute {
-protected:
+ protected:
   Argument state_;
   Argument gate_;
   Argument stateActive_;
@@ -30,7 +30,7 @@ protected:
   MatrixPtr checkIgGrad_, checkFgGrad_, checkOgGrad_;
   std::unique_ptr<Weight> weight_;
 
-public:
+ public:
   explicit LstmStepLayer(const LayerConfig& config) : Layer(config) {}
 
   ~LstmStepLayer() {}

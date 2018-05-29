@@ -22,7 +22,7 @@ namespace paddle {
  * \brief  This layer calculate softmax in image channel dimension.
  */
 class SwitchOrderLayer : public Layer {
-public:
+ public:
   explicit SwitchOrderLayer(const LayerConfig& config) : Layer(config) {}
 
   ~SwitchOrderLayer() {}
@@ -34,7 +34,7 @@ public:
   void setInDims();
   void setOutDims();
 
-protected:
+ protected:
   std::vector<std::shared_ptr<FunctionBase>> nchw2nhwc_;
   std::vector<std::shared_ptr<FunctionBase>> nhwc2nchw_;
   TensorShape inDims_;

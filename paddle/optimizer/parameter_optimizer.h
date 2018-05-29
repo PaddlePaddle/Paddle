@@ -26,7 +26,7 @@ namespace paddle {
 namespace optimizer {
 
 class ParameterOptimizer {
-public:
+ public:
   /**
    * @brief  update hook for algorithm need to traverse parameter more than
    * once.
@@ -45,7 +45,7 @@ public:
   virtual std::string SerializeState() = 0;
   virtual void DeserializeState(const std::string &state) = 0;
 
-protected:
+ protected:
   Tensor *parameter_;
   // learning rate policy
   LrPolicy *lr_policy_;

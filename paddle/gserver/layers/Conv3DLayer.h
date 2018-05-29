@@ -26,7 +26,7 @@ namespace paddle {
  * calculate convolution operation.
  */
 class Conv3DLayer : public ConvBaseLayer {
-public:
+ public:
   explicit Conv3DLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
   ~Conv3DLayer() {}
 
@@ -40,7 +40,7 @@ public:
   void bpropWeights(int i);
   size_t getSize();
 
-protected:
+ protected:
   // Figure out the dimensions for individual gemms.
   IntV M_;  /// numFilters_ / filter_group_;
   IntV N_;  /// channels_ * filterSizeZ_ * filterSize_ * filterSizeY_

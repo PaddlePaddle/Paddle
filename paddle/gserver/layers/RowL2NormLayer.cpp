@@ -26,12 +26,12 @@ namespace paddle {
  */
 
 class RowL2NormLayer : public Layer {
-protected:
+ protected:
   MatrixPtr inSquare_;
   MatrixPtr l2NormReciprocal_;
   MatrixPtr dotSum_;
 
-public:
+ public:
   explicit RowL2NormLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
