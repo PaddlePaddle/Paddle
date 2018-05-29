@@ -254,7 +254,7 @@ def decode_main(use_cuda, is_sparse):
         framework.default_main_program().global_block().var(var_name)
         for var_name in feed_order
     ]
-    feeder = fluid.DataFeeder(feed_order, place)
+    feeder = fluid.DataFeeder(feed_list, place)
 
     for data in train_data():
         feed_dict = feeder.feed(map(lambda x: [x[0]], data))
