@@ -131,6 +131,20 @@ void* TensorRTEngine::GetOutputInGPU(const std::string& name) {
   return buffer(name).buffer;
 }
 
+void TensorRTEngine::GetOutputInGPU(const std::string& name, void* dst,
+                                    size_t max_size) {
+  // determine data size
+  auto it = buffer_sizes_.find(name);
+  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  PADDLE_ENFORCE_GT(it->second, 0);
+  PADDLE_ENFORCE_GE(max_size, it->second);
+  auto& buf = buffer(name);
+  PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
+  PADDLE_ENFORCE_EQ(cudaMemcpyAsync(dst, buf.buffer, it->second,
+                                    cudaMemcpyDeviceToDevice, *stream_),
+                    0);
+}
+
 void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
                                     size_t max_size) {
   // determine data size
@@ -152,7 +166,7 @@ Buffer& TensorRTEngine::buffer(const std::string& name) {
   return buffers_[slot_offset];
 }
 
-void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
+void TensorRTEngine::SetInputFromCPU(const std::string& name, const void* data,
                                      size_t size) {
   auto& buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer);

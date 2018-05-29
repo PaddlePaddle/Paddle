@@ -30,17 +30,17 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
   auto max_workspace = context.Attr<int>("max_workspace");
   engine_.reset(new inference::tensorrt::TensorRTEngine(
       max_batch_, max_workspace, nullptr));
-  inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(block, engine_.get());
+  inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
+      block, engine_.get());
   engine_->FreezeNetwork();
 }
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TensorRTEngineOpMaker(framework::OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
-    AddAttr<framework::proto::BlockDesc>("subgraph", "the subgraph");
+    AddAttr<std::string>("subgraph", "the subgraph");
   }
 };
 
@@ -56,7 +56,7 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(tensorrt_engine, ops::TensorRTEngineOp,
-                  ops::TensorRTEngineOpMaker, TensorRTEngineOpMaker);
+                  ops::TensorRTEngineOpMaker, ops::TensorRTEngineOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
     tensorrt_engine,

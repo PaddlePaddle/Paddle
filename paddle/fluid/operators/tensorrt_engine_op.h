@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
@@ -22,7 +23,19 @@ namespace operators {
 
 class TensorRTEngineOp : public framework::OperatorWithKernel {
  public:
-  TensorRTEngineOp() = default;
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>("pre_ids")->type()),
+        platform::CPUPlace());
+    return kt;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -32,12 +45,13 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     if (!engine_) {
       Prepare(context);
     }
-    auto& inputs = context.Inputs("Xs");
-    PADDLE_ENFORCE(!inputs.empty(), "should pass more than one inputs");
-    auto* var0 = context.Input(inputs.front());
-    PADDLE_ENFORCE_NOT_NULL(var0);
-    auto* tensor0 = var0->GetMutable<framework::LoDTensor>();
-    const batch_size = tensor0->dims()[0];
+    auto input_names = context.op().Inputs("Xs");
+    PADDLE_ENFORCE(!input_names.empty(), "should pass more than one inputs");
+    // Try to determine a batch_size
+    auto* tensor0 = context.Input<framework::LoDTensor>(input_names.front());
+    PADDLE_ENFORCE_NOT_NULL(tensor0);
+    int batch_size = tensor0->dims()[0];
+    PADDLE_ENFORCE_LE(batch_size, max_batch_);
 
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
@@ -46,29 +60,35 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NOT_NULL(v, "no variable called %s", x);
       auto& t = v->Get<framework::LoDTensor>();
       if (platform::is_cpu_place(t.place())) {
-        engine_->SetInputFromCPU(x, static_cast<void*>(t.data<void*>()), t.memory_size());
+        engine_->SetInputFromCPU(x, static_cast<const void*>(t.data<void*>()),
+                                 t.memory_size());
       } else {
-        engine_->SetInputFromGPU(x, static_cast<void*>(t.data<void*>()), t.memory_size());
+        engine_->SetInputFromGPU(x, static_cast<const void*>(t.data<void*>()),
+                                 t.memory_size());
       }
     }
     // Execute the engine.
-    PADDLE_ENFORCE_GT(max_batch_, 0);
-    engine_->Execute(max_batch_);
+    PADDLE_ENFORCE_GT(batch_size, 0);
+    engine_->Execute(batch_size);
     // Convert output tensor from engine to fluid
     for (const auto& y : context.Outputs("Ys")) {
       // convert output and copy to fluid.
       nvinfer1::ITensor* trt_t = engine_->GetITensor(y);
-      auto* trt_v = engine_->GetOutputInGPU(y);
       auto dims = trt_t->getDimensions();
       // Use the output ITensor's dims to reshape the Fluid Tensor.
-      std::vector<int> ddim(dims.d, dims.d+dims.nbDims);
+      std::vector<int> ddim(dims.d, dims.d + dims.nbDims);
 
-      auto *fluid_v = context.scope().FindVar(y);
+      auto* fluid_v = context.scope().FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto* fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
+      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
       if (platform::is_cpu_place(fluid_t->place())) {
-        engine_->
+        engine_->GetOutputInCPU(
+            y, fluid_t->mutable_data<float>(platform::CPUPlace()), size);
+      } else {
+        engine_->GetOutputInCPU(
+            y, fluid_t->mutable_data<float>(platform::CUDAPlace()), size);
       }
     }
   }
