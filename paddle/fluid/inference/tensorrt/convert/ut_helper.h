@@ -58,7 +58,10 @@ class TRTConvertValidation {
  public:
   TRTConvertValidation() = delete;
 
-  TRTConvertValidation(int batch_size, int workspace_size = 1 << 10) {
+  TRTConvertValidation(int batch_size,
+                       const std::unordered_set<std::string>& parameters,
+                       framework::Scope& scope, int workspace_size = 1 << 10)
+      : parameters_(parameters), scope_(scope) {
     // create engine.
     engine_.reset(new TensorRTEngine(10, 1 << 10, &stream_));
     engine_->InitNetwork();
@@ -96,7 +99,7 @@ class TRTConvertValidation {
     op_ = framework::OpRegistry::CreateOp(desc);
 
     OpConverter op_converter;
-    op_converter.ConvertOp(desc, engine_.get());
+    op_converter.ConvertOp(desc, parameters_, scope_, engine_.get());
 
     engine_->FreezeNetwork();
 
@@ -146,9 +149,10 @@ class TRTConvertValidation {
  private:
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
-  framework::Scope scope_;
+  framework::Scope &scope_;
   std::unique_ptr<framework::OperatorBase> op_;
   std::unique_ptr<framework::OpDesc> op_desc_;
+  const std::unordered_set<std::string>& parameters_;
 };
 
 }  // namespace tensorrt

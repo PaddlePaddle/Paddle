@@ -31,27 +31,41 @@ namespace tensorrt {
 class OpConverter {
  public:
   OpConverter() {}
-  virtual void operator()(const framework::proto::OpDesc& op) {}
 
-  void Run(const framework::proto::OpDesc& op, TensorRTEngine* engine) {
-    std::string type = op.type();
-    auto* it = Registry<OpConverter>::Lookup(type);
+  // Converter logic for an op.
+  virtual void operator()(const framework::proto::OpDesc& op,
+                          const framework::Scope& scope) {}
+
+  // Convert a single fluid operaotr and add the corresponding layer to TRT.
+  void ConvertOp(const framework::proto::OpDesc& op,
+                 const std::unordered_set<std::string>& parameters,
+                 const framework::Scope& scope, TensorRTEngine* engine) {
+    framework::OpDesc op_desc(op, nullptr, nullptr);
+
+    OpConverter* it{nullptr};
+
+    if (op_desc.Type() == "mul") {
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
+      auto& Y = op_desc.Input("Y")[0];
+      if (parameters.count(Y)) {
+        it = Registry<OpConverter>::Lookup("fc");
+      }
+    }
+    if (!it) {
+      it = Registry<OpConverter>::Lookup(op_desc.Type());
+    }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", type);
     it->SetEngine(engine);
-    (*it)(op);
-  }
-
-  // convert fluid op to tensorrt layer
-  void ConvertOp(const framework::proto::OpDesc& op, TensorRTEngine* engine) {
-    OpConverter::Run(op, engine);
+    (*it)(op, scope);
   }
 
   // convert fluid block to tensorrt network
   void ConvertBlock(const framework::proto::BlockDesc& block,
-                    TensorRTEngine* engine) {
+                    const std::unordered_set<std::string>& parameters,
+                    const framework::Scope& scope, TensorRTEngine* engine) {
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
-      OpConverter::Run(op, engine);
+      ConvertOp(op, parameters, scope, engine);
     }
   }
 
