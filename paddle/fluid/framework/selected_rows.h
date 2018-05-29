@@ -125,6 +125,7 @@ class SelectedRows {
   Vector<int64_t> rows_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
+  std::mutex auto_grown_mutex_;
 };
 
 /*
