@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 
 class SequenceSliceLayer : public Layer {
-public:
+ public:
   explicit SequenceSliceLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -30,7 +30,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-private:
+ private:
   /*
    * TODO(caoying)
    * In PaddePaddle, currently all matrices are real number types,

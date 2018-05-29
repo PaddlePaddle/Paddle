@@ -31,7 +31,7 @@ struct DemoConfig : public PaddlePredictor::Config {
  * Do not use this, just a demo indicating how to customize a Predictor.
  */
 class DemoPredictor : public PaddlePredictor {
-public:
+ public:
   explicit DemoPredictor(const DemoConfig &config) {
     LOG(INFO) << "I get other_config " << config.other_config;
   }

@@ -13,10 +13,45 @@
 # limitations under the License.
 #
 
+function(inference_api_test TARGET_NAME TEST_SRC DEP_TEST)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs ARGS)
+    cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
+    set(arg_list "")
+    if(inference_test_ARGS)
+        foreach(arg ${inference_test_ARGS})
+            list(APPEND arg_list "_${arg}")
+        endforeach()
+    else()
+        list(APPEND arg_list "_")
+    endif()
+    foreach(arg ${arg_list})
+        string(REGEX REPLACE "^_$" "" arg "${arg}")
+        cc_test(${TARGET_NAME}
+                SRCS ${TEST_SRC}
+                DEPS paddle_fluid_api paddle_inference_api paddle_inference_api_impl
+                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+        # set_tests_properties(${TARGET_NAME}
+        #         PROPERTIES DEPENDS ${DEP_TEST})
+    endforeach()
+endfunction(inference_api_test)
+
+
 cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
+cc_library(paddle_inference_api_impl
+           SRCS paddle_inference_api_impl.cc
+           DEPS paddle_inference_api paddle_fluid_api)
+
 cc_test(test_paddle_inference_api
         SRCS test_paddle_inference_api.cc
         DEPS paddle_inference_api)
+
+inference_api_test(test_paddle_inference_api_impl
+                   test_paddle_inference_api_impl.cc
+                   test_word2vec)
