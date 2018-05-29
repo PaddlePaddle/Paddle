@@ -24,6 +24,7 @@ enum class OpRole {
   kForward = 0x0000,
   kBackward = 0x0001,
   kOptimize = 0x0002,
+  kRPC = 0x0003,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and

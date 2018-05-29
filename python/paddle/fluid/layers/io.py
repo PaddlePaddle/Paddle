@@ -195,21 +195,23 @@ def Send(endpoints, send_vars, get_vars=None):
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Send", **locals())
-    rpc_client_var = default_main_program().global_block().create_var(
-        name="RPC_CLIENT_VAR", persistable=True, type=core.VarDesc.VarType.RAW)
     if not get_vars:
         get_vars = []
         for s in send_vars:
             v = helper.create_tmp_variable(dtype=s.dtype, stop_gradient=True)
             get_vars.append(v)
+    rpc_op_role_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
-        outputs={"Out": get_vars,
-                 "RPCClient": rpc_client_var},
-        attrs={"endpoints": endpoints,
-               "epmap": epmap})
+        outputs={"Out": get_vars},
+        attrs={
+            "endpoints": endpoints,
+            "epmap": epmap,
+            rpc_op_role_name: core.op_proto_and_checker_maker.OpRole.RPC
+        })
+
     return get_vars
 
 

@@ -97,7 +97,7 @@ class CosSimForwardFunc : public FunctionBase {
     CosSimForward<Device>(out_mat, in1_mat, in2_mat, scale_);
   }
 
-private:
+ private:
   real scale_;
 };
 
@@ -227,7 +227,7 @@ class CosSimBackwardFunc : public FunctionBase {
         out_grad, out_val, in1_val, in2_val, in1_grad, in2_grad, scale_);
   }
 
-private:
+ private:
   real scale_;
 };
 

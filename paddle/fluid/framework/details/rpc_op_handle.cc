@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/send_op_handle.h"
+#include "paddle/fluid/framework/details/rpc_op_handle.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
-                           const Scope *local_scope,
-                           const platform::Place &place)
+RPCOpHandle::RPCOpHandle(const framework::OpDesc &op_desc,
+                         const Scope *local_scope, const platform::Place &place,
+                         const std::string &name)
     : op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
-      place_(place) {}
+      place_(place),
+      name_(name) {}
 
-void SendOpHandle::RunImpl() {
+void RPCOpHandle::RunImpl() {
   // TODO(wuyi): need further analysis whether wait VarDummyHandle.
   // Wait input done
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
+    // FIXME(Yancey1989): need a better solution instead of use DebugString()
     if (in->DebugString() == "dummy") {  // HACK
       continue;
     }
@@ -43,7 +45,7 @@ void SendOpHandle::RunImpl() {
   op_->Run(*tmp_scope, place_);
 }
 
-std::string SendOpHandle::Name() const { return "send"; }
+std::string RPCOpHandle::Name() const { return name_; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

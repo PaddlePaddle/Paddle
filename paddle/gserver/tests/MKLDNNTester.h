@@ -44,7 +44,7 @@ class MKLDNNTester {
     std::vector<VectorPtr> paraValues;
   };
 
-protected:
+ protected:
   std::vector<TestConfig> configs_;
   vector<string> layerNames_;
   vector<vector<DataLayerPtr>> dataLayers_;
@@ -65,7 +65,7 @@ protected:
   /// passType, PASS_TRAIN, PASS_TEST or PASS_GC (Gradient Check pass)
   PassType passType_;
 
-public:
+ public:
   explicit MKLDNNTester(size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
@@ -75,7 +75,7 @@ public:
 
   ~MKLDNNTester() {}
 
-public:
+ public:
   void run(const TestConfig& dnn,
            const TestConfig& ref,
            size_t batchSize,
@@ -97,7 +97,7 @@ public:
                            bool use_mkldnn,
                            size_t iter = 2);
 
-private:
+ private:
   void reset(const TestConfig& dnn, const TestConfig& ref, size_t batchSize);
   void setInputImgSize();
   void runOnce();

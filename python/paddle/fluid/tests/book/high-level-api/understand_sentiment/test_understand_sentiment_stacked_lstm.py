@@ -71,7 +71,7 @@ def train_program(word_dict):
     return [avg_cost, accuracy]
 
 
-def train(use_cuda, train_program, save_dirname):
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.Adagrad(learning_rate=0.002)
 
@@ -92,7 +92,7 @@ def train(use_cuda, train_program, save_dirname):
             print("acc     : %s" % acc)
 
             if acc > 0.2:  # Smaller value to increase CI speed
-                trainer.save_params(save_dirname)
+                trainer.save_params(params_dirname)
                 trainer.stop()
 
             else:
@@ -104,7 +104,7 @@ def train(use_cuda, train_program, save_dirname):
             print("Step {0}, Epoch {1} Metrics {2}".format(
                 event.step, event.epoch, map(np.array, event.metrics)))
             if event.step == 1:  # Run 2 iterations to speed CI
-                trainer.save_params(save_dirname)
+                trainer.save_params(params_dirname)
                 trainer.stop()
 
     train_reader = paddle.batch(
@@ -119,13 +119,13 @@ def train(use_cuda, train_program, save_dirname):
         feed_order=['words', 'label'])
 
 
-def infer(use_cuda, inference_program, save_dirname=None):
+def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     word_dict = paddle.dataset.imdb.word_dict()
 
     inferencer = fluid.Inferencer(
         infer_func=partial(inference_program, word_dict),
-        param_path=save_dirname,
+        param_path=params_dirname,
         place=place)
 
     # Setup input by creating LoDTensor to represent sequence of words.
@@ -150,9 +150,9 @@ def infer(use_cuda, inference_program, save_dirname=None):
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_path = "understand_sentiment_stacked_lstm.inference.model"
-    train(use_cuda, train_program, save_path)
-    infer(use_cuda, inference_program, save_path)
+    params_dirname = "understand_sentiment_stacked_lstm.inference.model"
+    train(use_cuda, train_program, params_dirname)
+    infer(use_cuda, inference_program, params_dirname)
 
 
 if __name__ == '__main__':
