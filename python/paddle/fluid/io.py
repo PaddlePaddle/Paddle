@@ -529,7 +529,6 @@ def load_checkpoint(executor, checkpoint_dir, serial, main_program):
         raise ValueError("The values of 'main_program'should not be None")
 
     cur_dir = _get_serial_dir(checkpoint_dir, serial)
-    cur_dir = _get_model_dir(cur_dir)
     load_persist_vars_without_grad(executor, cur_dir, main_program)
 
 
