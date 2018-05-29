@@ -107,7 +107,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor, required) A intermedia 2-D Tensor, which the shape is "
               "[batch_size, code_length]")
         .AsIntermediate();
-    AddAttr<AttrType>("num_classes", "(int, required)", "The number of classes")
+    AddAttr<AttrType>("num_classes", "(int, required), The number of classes")
         .SetDefault(2);
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
