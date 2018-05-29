@@ -217,8 +217,6 @@ def infer(use_cuda, inference_program, params_dirname):
     # The range of random integers is [low, high]
     word = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
-    pred = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=PRED_DICT_LEN - 1)
     ctx_n2 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_n1 = fluid.create_random_int_lodtensor(
@@ -229,18 +227,20 @@ def infer(use_cuda, inference_program, params_dirname):
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_p2 = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+    pred = fluid.create_random_int_lodtensor(
+        lod, base_shape, place, low=0, high=PRED_DICT_LEN - 1)
     mark = fluid.create_random_int_lodtensor(
         lod, base_shape, place, low=0, high=MARK_DICT_LEN - 1)
 
     results = inferencer.infer(
         {
             'word_data': word,
-            'verb_data': pred,
             'ctx_n2_data': ctx_n2,
             'ctx_n1_data': ctx_n1,
             'ctx_0_data': ctx_0,
             'ctx_p1_data': ctx_p1,
             'ctx_p2_data': ctx_p2,
+            'verb_data': pred,
             'mark_data': mark
         },
         return_numpy=False)
