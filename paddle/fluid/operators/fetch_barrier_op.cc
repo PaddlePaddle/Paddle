@@ -26,18 +26,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SendBarrierOp : public framework::OperatorBase {
+class FetchBarrierOp : public framework::OperatorBase {
  public:
-  SendBarrierOp(const std::string& type,
-                const framework::VariableNameMap& inputs,
-                const framework::VariableNameMap& outputs,
-                const framework::AttributeMap& attrs)
+  FetchBarrierOp(const std::string& type,
+                 const framework::VariableNameMap& inputs,
+                 const framework::VariableNameMap& outputs,
+                 const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-    bool sync_mode = Attr<bool>("sync_mode");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -46,19 +45,17 @@ class SendBarrierOp : public framework::OperatorBase {
 
     auto rpc_client = detail::RPCClient::GetInstance();
 
-    // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait());
-    if (sync_mode) {
-      for (auto& ep : eps) {
-        VLOG(3) << "send barrier, ep: " << ep;
-        rpc_client->AsyncSendBatchBarrier(ep);
-      }
-      PADDLE_ENFORCE(rpc_client->Wait());
+
+    for (auto& ep : eps) {
+      VLOG(3) << "fetch barrier, ep: " << ep;
+      rpc_client->AsyncSendFetchBarrier(ep);
     }
+    PADDLE_ENFORCE(rpc_client->Wait());
   }
 };
 
-class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
+class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddComment(R"DOC(
@@ -72,11 +69,10 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 
-class SendBarrierOpShapeInference : public framework::InferShapeBase {
+class FetchBarrierOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
@@ -86,6 +82,6 @@ class SendBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send_barrier, ops::SendBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::SendBarrierOpMaker,
-                  ops::SendBarrierOpShapeInference);
+REGISTER_OPERATOR(fetch_barrier, ops::FetchBarrierOp,
+                  paddle::framework::EmptyGradOpMaker, ops::FetchBarrierOpMaker,
+                  ops::FetchBarrierOpShapeInference);
