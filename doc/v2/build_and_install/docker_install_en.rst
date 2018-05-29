@@ -105,7 +105,7 @@ We provide a packaged book image, simply issue the command:
 
 For users in China, we provide a faster mirror:
 
-  .. code-block: bash
+  .. code-block:: bash
 
     docker run -p 8888:8888 docker.paddlepaddlehub.com/book
 
