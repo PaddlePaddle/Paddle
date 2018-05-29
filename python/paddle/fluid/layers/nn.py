@@ -855,7 +855,7 @@ def cos_sim(X, Y):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None):
+def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     """
     Computes dropout.
 
@@ -873,6 +873,8 @@ def dropout(x, dropout_prob, is_test=False, seed=None):
                   parameter is set to None, a random seed is used.
                   NOTE: If an integer seed is given, always the same output
                   units will be dropped. DO NOT use a fixed seed in training.
+       name(str|None): A name for this layer(optional). If set None, the layer
+                    will be named automatically.
 
     Returns:
         Variable: A tensor variable.
@@ -1117,7 +1119,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
     return softmax_out
 
 
-def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
@@ -2609,7 +2611,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def topk(input, k):
+def topk(input, k, name=None):
     """
     This operator is used to find values and indices of the k largest entries
     for the last dimension.
@@ -2625,6 +2627,8 @@ def topk(input, k):
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
         k(int): An integer value to specify the top k largest elements.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         values(Variable): The k largest elements along each last dimensional
