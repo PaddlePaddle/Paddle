@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
+#include <vector>
 
 #include "grpc++/grpc++.h"
 #include "paddle/fluid/framework/blocking_queue.h"
@@ -30,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -47,6 +49,7 @@ class AsyncGRPCServer final {
   explicit AsyncGRPCServer(const std::string &address, bool sync_mode)
       : address_(address), sync_mode_(sync_mode), ready_(0) {}
 
+  ~AsyncGRPCServer() {}
   void WaitServerReady();
   void RunSyncUpdate();
 
@@ -63,8 +66,9 @@ class AsyncGRPCServer final {
 
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
-  void SetPrefetchPreparedCtx(framework::ExecutorPrepareContext *prepared) {
-    prefetch_ctx_ = prepared;
+  void SetPrefetchPreparedCtx(
+      std::unique_ptr<framework::ExecutorPrepareContext> prepared) {
+    prefetch_ctx_.reset(prepared.release());
   }
 
   int GetSelectedPort() const { return selected_port_; }
@@ -80,18 +84,26 @@ class AsyncGRPCServer final {
  protected:
   void HandleRequest(::grpc::ServerCompletionQueue *cq,
                      const std::string &cq_name,
-                     std::function<void()> TryToRegisterNewOne);
-  void TryToRegisterNewSendOne();
-  void TryToRegisterNewGetOne();
-  void TryToRegisterNewPrefetchOne();
+                     std::function<void(int)> TryToRegisterNewOne);
+  void TryToRegisterNewSendOne(int req_id);
+  void TryToRegisterNewGetOne(int req_id);
+  void TryToRegisterNewPrefetchOne(int req_id);
   void ShutdownQueue();
 
  private:
+  static const int kSendReqsBufSize = 100;
+  static const int kGetReqsBufSize = 100;
+  static const int kPrefetchReqsBufSize = 10;
+
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_prefetch_;
+
+  RequestBase *send_reqs_[kSendReqsBufSize];
+  RequestBase *get_reqs_[kGetReqsBufSize];
+  RequestBase *prefetch_reqs_[kPrefetchReqsBufSize];
 
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
@@ -111,11 +123,13 @@ class AsyncGRPCServer final {
   mutable int barrier_cond_step_;
   std::condition_variable barrier_condition_;
 
-  std::unique_ptr<std::thread> t_send_;
-  std::unique_ptr<std::thread> t_get_;
+  std::vector<std::unique_ptr<std::thread>> t_sends_;
+  std::vector<std::unique_ptr<std::thread>> t_gets_;
+  std::vector<std::unique_ptr<std::thread>> t_prefetchs_;
+
   std::unique_ptr<std::thread> t_prefetch_;
 
-  framework::ExecutorPrepareContext *prefetch_ctx_;
+  std::unique_ptr<framework::ExecutorPrepareContext> prefetch_ctx_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
   int selected_port_;

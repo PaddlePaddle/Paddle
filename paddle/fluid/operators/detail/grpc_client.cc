@@ -19,6 +19,7 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -52,7 +53,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     // stub context
     SendProcessor* s = new SendProcessor(ch);
     s->Prepare(var_h, time_out);
-    s->response_call_back_ = NULL;
+    s->response_call_back_ = nullptr;
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
@@ -196,9 +197,14 @@ bool RPCClient::Wait() {
   const size_t kReqCnt = req_count_;
   bool a[kReqCnt];
   std::vector<std::future<void>> waits(req_count_);
+  std::mutex mu;
 
   for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::AsyncIO([i, &a, this] { a[i] = Proceed(); });
+    waits[i] = framework::AsyncIO([i, &a, &mu, this] {
+      bool ret = Proceed();
+      std::lock_guard<std::mutex> l(mu);
+      a[i] = ret;
+    });
   }
 
   for (int i = 0; i < req_count_; i++) {

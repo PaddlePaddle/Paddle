@@ -716,7 +716,7 @@ void HuberTwoClassification::backwardImp(Matrix& output,
  * \f]
  */
 class SumCostLayer : public Layer {
-public:
+ public:
   explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

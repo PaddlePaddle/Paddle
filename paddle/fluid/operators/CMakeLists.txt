@@ -166,6 +166,8 @@ function(op_library TARGET)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
         file(APPEND ${pybind_file} "USE_OP(relu);\n")
+      elseif(${TARGET} STREQUAL "reduce")
+        file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()
@@ -184,6 +186,7 @@ endif()
 
 add_subdirectory(detail)
 if(WITH_DISTRIBUTE)
+    
     set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     op_library(send_op DEPS ${DISTRIBUTE_DEPS})
@@ -198,10 +201,20 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(send_vars_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     op_library(send_barrier_op DEPS ${DISTRIBUTE_DEPS})
     set_source_files_properties(send_barrier_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op listen_and_serv_op sum_op executor)
+    #set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    #cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op
+    #        listen_and_serv_op sum_op executor SERIAL)
+    if(WITH_GPU)
+        set_source_files_properties(test_send_nccl_id.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+        cc_test(test_send_nccl_id SRCS test_send_nccl_id.cc DEPS send_op
+                listen_and_serv_op executor SERIAL)
+        op_library(gen_nccl_id_op DEPS nccl_common sendrecvop_grpc)
+        set_source_files_properties(gen_nccl_id_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    else()
+        set(DEPS_OPS ${DEPS_OPS} gen_nccl_id_op)
+    endif()
 else()
-    set(DEPS_OPS ${DEPS_OPS} send_op prefetch_op recv_op listen_and_serv_op send_vars_op send_barrier_op)
+    set(DEPS_OPS ${DEPS_OPS} send_op prefetch_op recv_op listen_and_serv_op send_vars_op send_barrier_op gen_nccl_id_op)
 endif()
 
 op_library(cross_entropy_op DEPS cross_entropy)
@@ -266,6 +279,11 @@ file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KER
 
 add_subdirectory(reader)
 foreach(src ${READER_LIBRARY})
+    set(OP_LIBRARY ${src} ${OP_LIBRARY})
+endforeach()
+
+add_subdirectory(detection)
+foreach(src ${DETECTION_LIBRARY})
     set(OP_LIBRARY ${src} ${OP_LIBRARY})
 endforeach()
 

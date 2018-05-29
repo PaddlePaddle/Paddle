@@ -34,6 +34,18 @@ struct CBlas<float> {
     cblas_saxpy(args...);
   }
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    vsAdd(args...);
+  }
+#endif
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    cblas_scopy(args...);
+  }
+
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
@@ -57,6 +69,18 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     cblas_daxpy(args...);
+  }
+
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    vdAdd(args...);
+  }
+#endif
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    cblas_dcopy(args...);
   }
 
   template <typename... ARGS>
@@ -141,6 +165,24 @@ void Blas<platform::CPUDeviceContext>::AXPY(int n, T alpha, const T *x,
 
 template <>
 template <typename T>
+void Blas<platform::CPUDeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  CBlas<T>::VCOPY(n, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VADD(n, x, y, z);
+#else
+  this->template VCOPY<T>(n, y, z);
+  this->template AXPY<T>(n, 1., x, z);
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMV(bool trans_a, int M, int N, T alpha,
                                             const T *A, const T *B, T beta,
                                             T *C) const {
@@ -172,12 +214,37 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
                        c_array.data(), &ldc, 1 /* group_count */, &batchCount);
 #else
   for (int k = 0; k < batchCount; ++k) {
-    const float *Ak = &A[k * strideA];
-    const float *Bk = &B[k * strideB];
-    float *Ck = &C[k * M * N];
+    auto *Ak = &A[k * strideA];
+    auto *Bk = &B[k * strideB];
+    auto *Ck = &C[k * M * N];
     this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
   }
 #endif
+}
+
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
+                                 const MatDescriptor &dim_a,
+                                 const framework::Tensor &mat_b,
+                                 const MatDescriptor &dim_b, T alpha,
+                                 framework::Tensor *mat_out, T beta) const {
+  PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
+                           dim_a.width_, alpha, mat_a.data<T>(),
+                           mat_b.data<T>(), beta, mat_out->data<T>());
+  } else {
+    PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
+                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+    this->template BatchedGEMM<T>(
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
+        mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_, dim_b.stride_);
+  }
 }
 
 }  // namespace math

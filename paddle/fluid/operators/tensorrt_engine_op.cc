@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace operators {
@@ -29,13 +30,13 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
   auto max_workspace = context.Attr<int>("max_workspace");
   engine_.reset(new inference::tensorrt::TensorRTEngine(
       max_batch_, max_workspace, nullptr));
-  inference::tensorrt::OpConverter::Global().ConvertBlock(block, engine_.get());
+  inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(block, engine_.get());
   engine_->FreezeNetwork();
 }
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TensorRTEngineOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  TensorRTEngineOpMaker(framework::OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();

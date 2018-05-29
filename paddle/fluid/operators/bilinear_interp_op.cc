@@ -41,8 +41,7 @@ class BilinearInterpOp : public framework::OperatorWithKernel {
 
 class BilinearInterpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BilinearInterpOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input tensor of bilinear interpolation, "
              "This is a 4-D tensor with shape of (N x C x h x w)");

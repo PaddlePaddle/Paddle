@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 
 from .. import core
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program, Program
@@ -21,7 +22,8 @@ from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer'
+    'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
+    'random_data_generator', 'Preprocessor'
 ]
 
 
@@ -78,8 +80,8 @@ def data(name,
         dtype=dtype,
         type=type,
         stop_gradient=stop_gradient,
-        lod_level=lod_level)
-    data_var.is_data = True
+        lod_level=lod_level,
+        is_data=True)
     return data_var
 
 
@@ -321,7 +323,7 @@ def open_recordio_file(filename,
                                           dtypes=['float32', 'int64'])
 
          # Via the reader, we can use 'read_file' layer to get data:
-         image, label = fluid.layers.read_file(reader)
+         image, label = fluid.layers.io.read_file(reader)
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -352,6 +354,73 @@ def open_recordio_file(filename,
 
     if pass_num > 1:
         main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
+
+    if for_parallel:
+        main_prog_var = parallel(reader=main_prog_var)
+
+    return monkey_patch_reader_methods(main_prog_var)
+
+
+def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
+    """
+    Create a uniform random data generator
+
+    This layer returns a Reader Variable.
+    Instead of opening a file and reading data from it, this 
+    Reader Variable generates float uniform random data by itself. 
+    It can be used as a dummy reader to test a network without 
+    opening a real file.
+
+    Args:
+       low(float): The lower bound of data's uniform distribution.
+       high(float): The upper bound of data's uniform distribution.
+       shapes(list): List of tuples which declaring data shapes.
+       lod_levels(list): List of ints which declaring data lod_level.
+       for_parallel(Bool): Set it as True if you are going to run
+            subsequent operators in parallel.
+
+    Returns:
+       Variable: A Reader Variable from which we can get random data.
+
+    Examples:
+       .. code-block:: python
+
+         reader = fluid.layers.io.random_data_generator(
+                                          low=0.0,
+                                          high=1.0,
+                                          shapes=[(3,224,224), (1)],
+                                          lod_levels=[0, 0])
+
+         # Via the reader, we can use 'read_file' layer to get data:
+         image, label = fluid.layers.io.read_file(reader)
+    """
+    dtypes = [core.VarDesc.VarType.FP32] * len(shapes)
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    var_name = unique_name('random_data_generator')
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=var_name)
+    startup_blk.append_op(
+        type='create_random_data_generator',
+        outputs={'Out': [startup_var]},
+        attrs={
+            'low': low,
+            'high': high,
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
 
     if for_parallel:
         main_prog_var = parallel(reader=main_prog_var)
@@ -468,8 +537,6 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
         inputs={'UnderlyingReader': reader},
         outputs={'Out': [new_reader]},
         attrs=attrs)
-    new_reader.persistable = True
-    new_reader.stop_gradient = True
     return monkey_patch_reader_methods(new_reader)
 
 
@@ -514,3 +581,82 @@ def read_file(file_obj):
         return out[0]
     else:
         return out
+
+
+class Preprocessor(object):
+    BEFORE_SUB_BLOCK = 0
+    IN_SUB_BLOCK = 1
+    AFTER_SUB_BLOCK = 2
+
+    def __init__(self, reader, name=None):
+        self.underlying_reader = reader
+        new_reader_name = name if name is not None else unique_name(
+            "create_custom_reader")
+        self.main_prog = default_main_program()
+        self.reader = self.main_prog.current_block().create_var(
+            name=new_reader_name)
+        self.sub_block = None
+        self.source_var_names = None
+        self.sink_var_names = None
+        self.status = Preprocessor.BEFORE_SUB_BLOCK
+
+    def is_completed(self):
+        return self.sub_block and self.source_var_names and self.sink_var_names
+
+    @contextlib.contextmanager
+    def block(self):
+        self.status = Preprocessor.IN_SUB_BLOCK
+        self.sub_block = self.main_prog.create_block()
+        yield
+        self.main_prog.rollback()
+        self.status = Preprocessor.AFTER_SUB_BLOCK
+        if not self.is_completed():
+            raise RuntimeError(
+                "The definition of preprocessor is incompleted! "
+                "Please make sure that you have set input and output "
+                "variables by invoking 'inputs' and 'outputs' in "
+                "Preprocessor's sub-block.")
+
+    def inputs(self):
+        if self.status != Preprocessor.IN_SUB_BLOCK:
+            raise RuntimeError(
+                "Preprocessor.inputs() can only be invoked inside the sub-block."
+            )
+
+        source_shapes = self.underlying_reader.desc.shapes()
+        source_dtypes = self.underlying_reader.desc.dtypes()
+        source_lod_levels = self.underlying_reader.desc.lod_levels()
+        self.source_var_names = [
+            unique_name("preprocessor_source")
+            for _ in xrange(len(source_shapes))
+        ]
+        source_vars = []
+        for var_name, shape, dtype, lod_level in zip(
+                self.source_var_names, source_shapes, source_dtypes,
+                source_lod_levels):
+            source_vars.append(self.main_prog.current_block().create_var(
+                name=var_name, shape=shape, dtype=dtype, lod_level=lod_level))
+        return source_vars
+
+    def outputs(self, *outs):
+        if self.status != Preprocessor.IN_SUB_BLOCK:
+            raise RuntimeError(
+                "Preprocessor.outputs() can only be invoked inside the sub-block."
+            )
+        self.sink_var_names = [var.name for var in outs]
+
+    def __call__(self, *args, **kwargs):
+        if self.status != Preprocessor.AFTER_SUB_BLOCK:
+            raise RuntimeError(
+                "Preprocessor output can only be retrieved after rnn block.")
+
+        self.main_prog.current_block().append_op(
+            type="create_custom_reader",
+            inputs={'UnderlyingReader': self.underlying_reader},
+            outputs={'Out': [self.reader]},
+            attrs={
+                "sub_block": self.sub_block,
+                "source_var_names": self.source_var_names,
+                "sink_var_names": self.sink_var_names
+            })
+        return monkey_patch_reader_methods(self.reader)

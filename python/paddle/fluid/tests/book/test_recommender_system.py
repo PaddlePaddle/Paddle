@@ -160,7 +160,7 @@ def train(use_cuda, save_dirname, is_local=True):
     test_program = fluid.default_main_program().clone(for_test=True)
 
     sgd_optimizer = SGDOptimizer(learning_rate=0.2)
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
@@ -173,63 +173,33 @@ def train(use_cuda, save_dirname, is_local=True):
     test_reader = paddle.batch(
         paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
 
-    feeding = {
-        'user_id': 0,
-        'gender_id': 1,
-        'age_id': 2,
-        'job_id': 3,
-        'movie_id': 4,
-        'category_id': 5,
-        'movie_title': 6,
-        'score': 7
-    }
-
-    def func_feed(feeding, data):
-        feed_tensors = {}
-        for (key, idx) in feeding.iteritems():
-            tensor = fluid.LoDTensor()
-            if key != "category_id" and key != "movie_title":
-                if key == "score":
-                    numpy_data = np.array(map(lambda x: x[idx], data)).astype(
-                        "float32")
-                else:
-                    numpy_data = np.array(map(lambda x: x[idx], data)).astype(
-                        "int64")
-            else:
-                numpy_data = map(lambda x: np.array(x[idx]).astype("int64"),
-                                 data)
-                lod_info = [len(item) for item in numpy_data]
-                offset = 0
-                lod = [offset]
-                for item in lod_info:
-                    offset += item
-                    lod.append(offset)
-                numpy_data = np.concatenate(numpy_data, axis=0)
-                tensor.set_lod([lod])
-
-            numpy_data = numpy_data.reshape([numpy_data.shape[0], 1])
-            tensor.set(numpy_data, place)
-            feed_tensors[key] = tensor
-        return feed_tensors
+    feed_order = [
+        'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id', 'category_id',
+        'movie_title', 'score'
+    ]
 
     def train_loop(main_program):
         exe.run(framework.default_startup_program())
+
+        feed_list = [
+            main_program.global_block().var(var_name) for var_name in feed_order
+        ]
+        feeder = fluid.DataFeeder(feed_list, place)
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for batch_id, data in enumerate(train_reader()):
                 # train a mini-batch
                 outs = exe.run(program=main_program,
-                               feed=func_feed(feeding, data),
+                               feed=feeder.feed(data),
                                fetch_list=[avg_cost])
                 out = np.array(outs[0])
                 if (batch_id + 1) % 10 == 0:
                     avg_cost_set = []
                     for test_data in test_reader():
-                        avg_cost_np = exe.run(
-                            program=test_program,
-                            feed=func_feed(feeding, test_data),
-                            fetch_list=[avg_cost])
+                        avg_cost_np = exe.run(program=test_program,
+                                              feed=feeder.feed(test_data),
+                                              fetch_list=[avg_cost])
                         avg_cost_set.append(avg_cost_np[0])
                         break  # test only 1 segment for speeding up CI
 
@@ -279,23 +249,6 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    def create_lod_tensor(data, lod=None):
-        tensor = fluid.LoDTensor()
-        if lod is None:
-            # Tensor, the shape is [batch_size, 1]
-            index = 0
-            lod_0 = [index]
-            for l in range(len(data)):
-                index += 1
-                lod_0.append(index)
-            lod = [lod_0]
-        tensor.set_lod(lod)
-
-        flattened_data = np.concatenate(data, axis=0).astype("int64")
-        flattened_data = flattened_data.reshape([len(flattened_data), 1])
-        tensor.set(flattened_data, place)
-        return tensor
-
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
@@ -307,26 +260,33 @@ def infer(use_cuda, save_dirname=None):
 
         # Use the first data from paddle.dataset.movielens.test() as input
         assert feed_target_names[0] == "user_id"
-        user_id = create_lod_tensor([[1]])
+        # Use create_lod_tensor(data, lod, place) API to generate LoD Tensor
+        # where `data` is a list of sequences of index numbers, `lod` is 
+        # the level of detail (lod) info associated with `data`.
+        # For example, data = [[10, 2, 3], [2, 3]] means that it contains
+        # two sequences of indexes, of length 3 and 2, respectively.
+        # Correspondingly, lod = [[3, 2]] contains one level of detail info,
+        # indicating that `data` consists of two sequences of length 3 and 2. 
+        user_id = fluid.create_lod_tensor([[1]], [[1]], place)
 
         assert feed_target_names[1] == "gender_id"
-        gender_id = create_lod_tensor([[1]])
+        gender_id = fluid.create_lod_tensor([[1]], [[1]], place)
 
         assert feed_target_names[2] == "age_id"
-        age_id = create_lod_tensor([[0]])
+        age_id = fluid.create_lod_tensor([[0]], [[1]], place)
 
         assert feed_target_names[3] == "job_id"
-        job_id = create_lod_tensor([[10]])
+        job_id = fluid.create_lod_tensor([[10]], [[1]], place)
 
         assert feed_target_names[4] == "movie_id"
-        movie_id = create_lod_tensor([[783]])
+        movie_id = fluid.create_lod_tensor([[783]], [[1]], place)
 
         assert feed_target_names[5] == "category_id"
-        category_id = create_lod_tensor([[10], [8], [9]], [[0, 3]])
+        category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place)
 
         assert feed_target_names[6] == "movie_title"
-        movie_title = create_lod_tensor([[1069], [4140], [2923], [710], [988]],
-                                        [[0, 5]])
+        movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]],
+                                              [[5]], place)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.

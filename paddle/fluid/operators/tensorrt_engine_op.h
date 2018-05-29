@@ -42,6 +42,14 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
       // convert input and copy to TRT engine's buffer
+      auto* v = context.scope().FindVar(x);
+      PADDLE_ENFORCE_NOT_NULL(v, "no variable called %s", x);
+      auto& t = v->Get<framework::LoDTensor>();
+      if (platform::is_cpu_place(t.place())) {
+        engine_->SetInputFromCPU(x, static_cast<void*>(t.data<void*>()), t.memory_size());
+      } else {
+        engine_->SetInputFromGPU(x, static_cast<void*>(t.data<void*>()), t.memory_size());
+      }
     }
     // Execute the engine.
     PADDLE_ENFORCE_GT(max_batch_, 0);
@@ -49,6 +57,19 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     // Convert output tensor from engine to fluid
     for (const auto& y : context.Outputs("Ys")) {
       // convert output and copy to fluid.
+      nvinfer1::ITensor* trt_t = engine_->GetITensor(y);
+      auto* trt_v = engine_->GetOutputInGPU(y);
+      auto dims = trt_t->getDimensions();
+      // Use the output ITensor's dims to reshape the Fluid Tensor.
+      std::vector<int> ddim(dims.d, dims.d+dims.nbDims);
+
+      auto *fluid_v = context.scope().FindVar(y);
+      PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
+      auto* fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      fluid_t->Resize(framework::make_ddim(ddim));
+      if (platform::is_cpu_place(fluid_t->place())) {
+        engine_->
+      }
     }
   }
 
