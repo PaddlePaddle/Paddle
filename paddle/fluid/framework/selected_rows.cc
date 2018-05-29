@@ -34,8 +34,8 @@ struct ReAllocateVisitor {
     tensor_->ShareDataWith(cpu_tensor);
   }
 
-  framework::Tensor* tensor_;
   framework::DDim dims_;
+  framework::Tensor* tensor_;
 };
 
 struct TensorCopyVisitor {
