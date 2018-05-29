@@ -30,7 +30,7 @@ namespace paddle {
  */
 
 class CudnnBatchNormLayer : public BatchNormBaseLayer {
-public:
+ public:
   explicit CudnnBatchNormLayer(const LayerConfig& config)
       : BatchNormBaseLayer(config) {}
 
@@ -46,7 +46,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   /// Epsilon value used in the batch normalization formula.
   /// Same epsilon value should be used in forward and backward functions.
   double eps_;
