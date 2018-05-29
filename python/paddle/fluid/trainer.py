@@ -144,7 +144,7 @@ class Trainer(object):
             raise TypeError(
                 "The checkpoint_config shoule be an instance of CheckpointConfig"
             )
-        self.load_checkpoint_serial = io.need_load_checkpoint(
+        self.checkpoint._load_serial = io.need_load_checkpoint(
             self.checkpoint.checkpoint_dir)
 
         self.scope = core.Scope()
@@ -182,7 +182,7 @@ class Trainer(object):
                                self.startup_program)
 
             epoch_id, step_id = io.load_trainer_args(
-                self.checkpoint.checkpoint_dir, self.load_checkpoint_serial,
+                self.checkpoint.checkpoint_dir, self.checkpoint._load_serial,
                 self.trainer_id, ["epoch_id", "step_id"])
             self.checkpoint._epoch_id = int(epoch_id)
             self.checkpoint._step_id = int(step_id)
