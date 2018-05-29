@@ -70,7 +70,7 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  */
 template <ColFormat Format, DeviceType Device, class T>
 class Im2ColFunctor {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,
@@ -85,7 +85,7 @@ public:
 
 template <ColFormat Format, DeviceType Device, class T>
 class Col2ImFunctor {
-public:
+ public:
   void operator()(T* imData,
                   const TensorShape& imShape,
                   const T* colData,
@@ -100,7 +100,7 @@ public:
 
 template <class T>
 class Im2ColMobileFunctor {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,

@@ -38,7 +38,7 @@ paddle::optimizer::Tensor* FixedTensor(size_t size) {
 }
 
 class OptimizerTest : public testing::Test {
-public:
+ public:
   virtual ~OptimizerTest() {}
   // init paddle::optimizer::Tensor shape
   const size_t kSize = 5;
@@ -115,7 +115,7 @@ public:
     }
   }
 
-private:
+ private:
   std::vector<paddle::optimizer::ParameterOptimizer*> opts_;
   paddle::OptimizerConfig config_;
 };

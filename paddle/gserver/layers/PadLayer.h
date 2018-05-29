@@ -24,7 +24,7 @@ namespace paddle {
  *         the 4th dimenstion according padc_, padh_ and padw_.
  */
 class PadLayer : public Layer {
-public:
+ public:
   explicit PadLayer(const LayerConfig& config) : Layer(config) {}
 
   ~PadLayer() {}
@@ -34,7 +34,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   void setOutDims(const size_t batchSize);
   void setTensorDim(const size_t batchSize);
 

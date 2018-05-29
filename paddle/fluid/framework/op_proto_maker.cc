@@ -66,7 +66,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
       .InEnum(
           {static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kBackward),
-           static_cast<int>(OpRole::kOptimize),
+           static_cast<int>(OpRole::kOptimize), static_cast<int>(OpRole::kRPC),
            static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kLoss) |
                static_cast<int>(OpRole::kBackward),

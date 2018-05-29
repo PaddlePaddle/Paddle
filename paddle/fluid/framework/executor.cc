@@ -24,9 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -76,21 +73,6 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
         "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
         var_type);
   }
-}
-
-static void CheckTensorNANOrInf(const std::string& name,
-                                const framework::Tensor& tensor) {
-  if (tensor.memory_size() == 0) {
-    return;
-  }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
-    return;
-  }
-  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
-  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
@@ -339,15 +321,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
-    }
-    if (FLAGS_check_nan_inf) {
-      for (auto& vname : op->OutputVars(true)) {
-        auto* var = local_scope->FindVar(vname);
-        if (var == nullptr) continue;
-        if (var->IsType<framework::LoDTensor>()) {
-          CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
-        }
-      }
     }
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
