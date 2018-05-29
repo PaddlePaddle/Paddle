@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <atomic>
-#include <mutex>
 #include <set>
 #include <string>
 
@@ -72,35 +71,28 @@ class ListenAndServOp : public framework::OperatorBase {
   static std::atomic_int selected_port_;
 };
 
-namespace {
-
-// use unnamed namespace to avoid accessing from outside this file
 class SignalHandler {
-  public:
-    typedef std::shared_ptr<detail::ReceivedQueue>    BlockingQueue;
-    typedef std::unordered_set<BlockingQueue>         BlockingQueueSet;
+ public:
+  typedef std::shared_ptr<detail::ReceivedQueue> BlockingQueue;
+  typedef std::unordered_set<BlockingQueue> BlockingQueueSet;
 
-  public:
-    // SignalHandler is noncopyable and can NOT be constructed
-    SignalHandler() = delete;
-    SignalHandler(const SignalHandler&) = delete;
-    SignalHandler& operator=(const SignalHandler&) = delete;
+ public:
+  // SignalHandler is noncopyable and can NOT be constructed
+  SignalHandler() = delete;
+  SignalHandler(const SignalHandler&) = delete;
+  SignalHandler& operator=(const SignalHandler&) = delete;
 
-    static void StopAndExit(int signal_num);
+  static void StopAndExit(int signal_num);
 
-    static void RegisterBlockingQueue(BlockingQueue&);
+  static void RegisterBlockingQueue(BlockingQueue&);
 
-    static inline bool IsProgramExit() {
-      return program_exit_flag_;
-    }
+  static inline bool IsProgramExit() { return program_exit_flag_; }
 
-  private:
-    static bool program_exit_flag_;
+ private:
+  static bool program_exit_flag_;
 
-    static BlockingQueueSet blocking_queue_set_;
+  static BlockingQueueSet blocking_queue_set_;
 };
-
-}  // namespace
 
 }  // namespace operators
 }  // namespace paddle

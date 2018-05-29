@@ -28,34 +28,6 @@ void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
 }
-
-namespace {
-
-bool SignalHandler::program_exit_flag_ = false;
-
-SignalHandler::BlockingQueueSet SignalHandler::blocking_queue_set_{};
-
-void SignalHandler::StopAndExit(int signal_num) {
-  VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
-
-  program_exit_flag_ = true;
-
-  // awake all blocking queues
-  for (BlockingQueueSet::iterator iter = blocking_queue_set_.begin();
-       iter != blocking_queue_set_.end(); iter++) {
-    iter->get()->Push(
-        std::make_pair(std::string(LISTEN_TERMINATE_MESSAGE), nullptr));
-  }
-
-  exit(signal_num);
-}
-
-void SignalHandler::RegisterBlockingQueue(BlockingQueue& queue) {
-  blocking_queue_set_.insert(queue);
-}
-
-}  // namespace
-
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -86,7 +58,7 @@ static void ParallelExecuteBlocks(
           int run_block = idx;  // thread local
           try {
             executor->RunPreparedContext(prepared[run_block].get(), scope);
-          } catch(const std::exception &e) {
+          } catch (const std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
         }));
@@ -248,7 +220,7 @@ static void AsyncUpdateThread(
       try {
         executor->RunPreparedContext(prepared,
                                      v.second->GetMutableLocalScope());
-      } catch(const std::exception &e) {
+      } catch (const std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
     });
@@ -266,7 +238,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
       grad_to_queue;
 
   auto grad_to_block_id_str =
-      Attr<std::vector<std::string> >("grad_to_block_id");
+      Attr<std::vector<std::string>>("grad_to_block_id");
   for (const auto &grad_and_id : grad_to_block_id_str) {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
@@ -393,10 +365,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
                          "(string, default 127.0.0.1:6164)"
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
-        .AddCustomChecker([](const std::string &ip) {
-              return !ip.empty();
-            });
-    AddAttr<std::vector<std::string> >(
+        .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
+    AddAttr<std::vector<std::string>>(
         "grad_to_block_id",
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
         "a map from grad name to it's optimize block id")
@@ -410,6 +380,29 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
   }
 };
+
+bool SignalHandler::program_exit_flag_ = false;
+
+SignalHandler::BlockingQueueSet SignalHandler::blocking_queue_set_{};
+
+void SignalHandler::StopAndExit(int signal_num) {
+  VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
+
+  program_exit_flag_ = true;
+
+  // awake all blocking queues
+  for (BlockingQueueSet::iterator iter = blocking_queue_set_.begin();
+       iter != blocking_queue_set_.end(); iter++) {
+    iter->get()->Push(
+        std::make_pair(std::string(LISTEN_TERMINATE_MESSAGE), nullptr));
+  }
+
+  exit(signal_num);
+}
+
+void SignalHandler::RegisterBlockingQueue(BlockingQueue &queue) {
+  blocking_queue_set_.insert(queue);
+}
 
 }  // namespace operators
 }  // namespace paddle
