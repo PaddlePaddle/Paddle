@@ -58,3 +58,14 @@ kubectl create -f myjob/
 ```
 
 The job shall start.
+
+
+## Notes for Run Fluid Distributed with NCCL2 and RDMA
+
+Before running NCCL2 distributed jobs, please check that whether your node has multiple network
+interfaces, try to add the environment variable `export NCCL_SOCKET_IFNAME=eth0` to use your actual
+network device.
+
+To run high-performance distributed training, you must prepare your hardware environment to be
+able to run RDMA enabled network communication, please check out [this](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/howto/cluster/nccl2_rdma_training.md)
+note for details.
