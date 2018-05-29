@@ -34,7 +34,7 @@ Chainer and Autograd uses the similar techniques to record the forward pass. For
 
 ## Design choices
 
-### Tape vs Node Graph
+### 1) Tape vs Node Graph
 
 What's good about Tape:
 1. It avoids a topological sort
@@ -43,13 +43,13 @@ What's good about Tape:
 What's good about Node Graph:
 1. Better flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [1]
 
-### Lazy evaluation vs Immediate evaluation
+### 2) Lazy evaluation vs Immediate evaluation
 
 What's good about lazy evaluation:
 1. It makes JIT optimization possible, e.g. kernel fusion.
 
 What's good about immediate evaluation:
-1. It avoids ever materializing a "forward graph", recording only what is necessary to differentiate the computation (see example below).
+1. It avoids ever materializing a "forward graph"/"tape", recording only what is necessary to differentiate the computation (see example below).
 ```python
 loss1 = BigNet(data)
 loss2 = SmallNet(data)
