@@ -82,6 +82,7 @@ __all__ = [
     'roi_pool',
     'dice_loss',
     'upsampling_bilinear2d',
+    'gather',
 ]
 
 
@@ -3977,4 +3978,54 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
+    return out
+
+
+def gather(input, index):
+    """
+    **Gather Operator**
+
+    Out is obtained by gathering entries of the outer-most dimension 
+    of X indexed by Index and concatenate them together.
+
+    .. math::
+
+	Out = X[Index]
+
+
+    .. code-block:: text
+
+	* Case 1:
+
+    		 X = [[1, 2],
+         	      [3, 4],
+                      [5, 6]]
+
+                Index = [1, 2]
+
+                Then:
+
+                Out = [[3, 4],
+                       [5, 6]]
+
+    Args:
+        input (Variable): The source input with rank>1. 
+        index (Variable): The index input with rang=1.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            output = fluid.layers.gather(x, index)
+    """
+    helper = LayerHelper('gather', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="gather",
+        inputs={"X": input,
+                "Index": index},
+        outputs={"Out": out})
     return out
