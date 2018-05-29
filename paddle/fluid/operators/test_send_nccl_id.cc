@@ -53,6 +53,7 @@ void StartServer() {
   g_req_handler->SetDevCtx(&dev_ctx);
   g_req_handler->SetProgram(&empty_program);
   g_req_handler->SetExecutor(&executor);
+
   g_rpc_service->RegisterRPC(detail::kRequestSend, g_req_handler.get());
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
@@ -85,9 +86,10 @@ TEST(SendNcclId, GrpcServer) {
   p::dynload::ncclGetUniqueId(id);
 
   int port = g_rpc_service->GetSelectedPort();
+
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
   detail::RPCClient client;
-
+  LOG(INFO) << "connect to server" << ep;
   client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
   client.Wait();
   client.AsyncSendBatchBarrier(ep);

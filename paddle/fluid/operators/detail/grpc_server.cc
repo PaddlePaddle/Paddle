@@ -176,16 +176,16 @@ class RequestPrefetch final : public RequestBase {
 };
 
 void AsyncGRPCServer::WaitServerReady() {
+  VLOG(3) << "AsyncGRPCServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
+  VLOG(3) << "AsyncGRPCServer WaitSeverReady";
 }
 
 void AsyncGRPCServer::StartServer() {
   ::grpc::ServerBuilder builder;
-  int selected_port = -1;
   builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
-                           &selected_port);
-  selected_port_ = selected_port;
+                           &selected_port_);
 
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
@@ -207,31 +207,39 @@ void AsyncGRPCServer::StartServer() {
       std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this,
                 std::placeholders::_1);
 
-  for (int i = 0; i < kSendReqsBufSize; ++i) {
-    TryToRegisterNewSendOne(i);
-  }
-  for (int i = 0; i < kGetReqsBufSize; ++i) {
-    TryToRegisterNewGetOne(i);
-  }
-  for (int i = 0; i < kPrefetchReqsBufSize; ++i) {
-    TryToRegisterNewPrefetchOne(i);
+  if (rpc_call_map_.find(kRequestSend) != rpc_call_map_.end()) {
+    for (int i = 0; i < kSendReqsBufSize; ++i) {
+      TryToRegisterNewSendOne(i);
+    }
+    for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
+      t_sends_.emplace_back(new std::thread(std::bind(
+          &AsyncGRPCServer::HandleRequest, this, cq_send_.get(),
+          static_cast<int>(GrpcMethod::kSendVariable), send_register)));
+    }
   }
 
-  for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
-    t_sends_.emplace_back(new std::thread(
-        std::bind(&AsyncGRPCServer::HandleRequest, this, cq_send_.get(),
-                  static_cast<int>(GrpcMethod::kSendVariable), send_register)));
+  if (rpc_call_map_.find(kRequestGet) != rpc_call_map_.end()) {
+    for (int i = 0; i < kGetReqsBufSize; ++i) {
+      TryToRegisterNewGetOne(i);
+    }
+    for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
+      t_gets_.emplace_back(new std::thread(
+          std::bind(&AsyncGRPCServer::HandleRequest, this, cq_get_.get(),
+                    static_cast<int>(GrpcMethod::kGetVariable), get_register)));
+    }
   }
-  for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
-    t_gets_.emplace_back(new std::thread(
-        std::bind(&AsyncGRPCServer::HandleRequest, this, cq_get_.get(),
-                  static_cast<int>(GrpcMethod::kGetVariable), get_register)));
+
+  if (rpc_call_map_.find(kRequestPrefetch) != rpc_call_map_.end()) {
+    for (int i = 0; i < kPrefetchReqsBufSize; ++i) {
+      TryToRegisterNewPrefetchOne(i);
+    }
+    for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
+      t_prefetchs_.emplace_back(new std::thread(std::bind(
+          &AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
+          static_cast<int>(GrpcMethod::kPrefetchVariable), prefetch_register)));
+    }
   }
-  for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
-    t_prefetchs_.emplace_back(new std::thread(std::bind(
-        &AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
-        static_cast<int>(GrpcMethod::kPrefetchVariable), prefetch_register)));
-  }
+
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
     ready_ = 1;
@@ -239,17 +247,17 @@ void AsyncGRPCServer::StartServer() {
   condition_ready_.notify_all();
   // wait server
   server_->Wait();
-  for (int i = 0; i < FLAGS_rpc_server_handle_send_threads; ++i) {
+  for (size_t i = 0; i < t_sends_.size(); ++i) {
     t_sends_[i]->join();
   }
   VLOG(3) << "t_sends_ ends";
 
-  for (int i = 0; i < FLAGS_rpc_server_handle_get_threads; ++i) {
+  for (size_t i = 0; i < t_gets_.size(); ++i) {
     t_gets_[i]->join();
   }
   VLOG(3) << "t_gets_ ends";
 
-  for (int i = 0; i < FLAGS_rpc_server_handle_prefetch_threads; ++i) {
+  for (size_t i = 0; i < t_prefetchs_.size(); ++i) {
     t_prefetchs_[i]->join();
   }
   VLOG(3) << "t_prefetchs_ ends";
@@ -282,7 +290,8 @@ void AsyncGRPCServer::TryToRegisterNewSendOne(int i) {
     return;
   }
 
-  VLOG(4) << "register send req_id:" << i;
+  VLOG(4) << "register send req_id:" << i
+          << ", handler:" << rpc_call_map_[kRequestSend];
   RequestSend* send = new RequestSend(&service_, cq_send_.get(),
                                       rpc_call_map_[kRequestSend], i);
   send_reqs_[i] = send;

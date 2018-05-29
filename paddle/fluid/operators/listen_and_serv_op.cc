@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "paddle/fluid/operators/detail/grpc_request_handler.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -238,6 +239,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   // request_handler_.reset(new detail::GRPCRequestSendHandler(sync_mode));
   rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
+  request_send_handler_.reset(new detail::GrpcRequestSendHandler(sync_mode));
+  request_get_handler_.reset(new detail::GrpcRequestGetHandler(sync_mode));
+  request_prefetch_handler_.reset(
+      new detail::GrpcRequestPrefetchHandler(sync_mode));
 
   rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());

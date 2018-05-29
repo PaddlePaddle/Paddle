@@ -32,7 +32,7 @@ class RPCServer {
       : cur_cond_(0),
         bind_address_(address),
         exit_flag_(false),
-        selected_port_(-1),
+        selected_port_(0),
         thread_pool_size_(thread_num),
         client_num_(client_num) {}
 
@@ -78,8 +78,9 @@ class RPCServer {
  protected:
   std::string bind_address_;
   std::atomic<int> exit_flag_;
-  std::atomic<int> selected_port_;
+  int selected_port_;
 
+  // FIXME(gongwb): need control thread pool size.
   const int thread_pool_size_;
   const int client_num_;
 

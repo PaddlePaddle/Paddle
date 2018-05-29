@@ -55,11 +55,11 @@ bool GrpcRequestSendHandler::Handle(void* input, void* output) {
   // Sync
   if (msg_name == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv batch barrier message";
-    rpc_server_->IncreaseBatchBarrier("RequestSend");
+    rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else {
     VLOG(3) << "sync: received var_name: " << msg_name;
     if (sync_mode_) {
-      rpc_server_->WaitCond("RequestSend");
+      rpc_server_->WaitCond(kRequestSend);
     }
 
     framework::Variable* var = req->GetVar();
@@ -88,7 +88,7 @@ bool GrpcRequestGetHandler::Handle(void* input, void* output) {
 
   if (msg_name != FETCH_BARRIER_MESSAGE) {
     if (sync_mode_) {
-      rpc_server_->WaitCond("RequestGet");
+      rpc_server_->WaitCond(kRequestGet);
     }
     framework::Variable* var = scope_->FindVar(msg_name);
     SerializeToByteBuffer(msg_name, var, *dev_ctx_, reply);
@@ -98,7 +98,7 @@ bool GrpcRequestGetHandler::Handle(void* input, void* output) {
   // FETCH_BARRIER_MESSAGE
   if (sync_mode_) {
     VLOG(3) << "sync: recv fetch barrier message";
-    rpc_server_->IncreaseBatchBarrier("RequestGet");
+    rpc_server_->IncreaseBatchBarrier(kRequestGet);
   }
 
   return true;
