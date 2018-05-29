@@ -38,7 +38,7 @@ def inference_program():
     return y_predict
 
 
-def linear():
+def train_program():
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
     y_predict = inference_program()
 
@@ -102,7 +102,7 @@ def main(use_cuda):
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, linear, save_dirname)
+    train(use_cuda, train_program, save_dirname)
     infer(use_cuda, inference_program, save_dirname)
 
 
