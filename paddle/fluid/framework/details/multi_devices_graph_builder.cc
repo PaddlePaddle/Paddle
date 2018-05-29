@@ -146,15 +146,6 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(
          checker(op.InputArgumentNames(), recv_vars);
 }
 
-bool MultiDevSSAGraphBuilder::IsRPCOp(const OpDesc &op) const {
-  for (auto &name : op.OutputNames()) {
-    if (name == "RPCClient") {
-      return true;
-    }
-  }
-  return false;
-}
-
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
   std::unordered_map<std::string, proto::VarType::Type> var_types;
@@ -184,7 +175,9 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
-    if (IsRPCOp(*op)) {
+    if (boost::get<int>(
+            op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+        static_cast<int>(OpRole::kRPC)) {
       // append rpc op if program is distributed trainer main program.
       // always use the first device
       CreateRPCOp(&result, *op);

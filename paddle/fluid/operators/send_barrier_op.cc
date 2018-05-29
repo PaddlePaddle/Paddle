@@ -43,12 +43,8 @@ class SendBarrierOp : public framework::OperatorBase {
     auto& ctx = *pool.Get(place);
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
-    auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+
+    auto rpc_client = detail::RPCClient::GetInstance();
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait());
@@ -65,9 +61,6 @@ class SendBarrierOp : public framework::OperatorBase {
 class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which is"
-              "initialized at most once.");
     AddComment(R"DOC(
 SendBarrier operator
 
@@ -83,17 +76,6 @@ the Parameter Server would knew all variables have been sent.
   }
 };
 
-class SendBarrierOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output("RPCClient").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
-  }
-};
-
 class SendBarrierOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
@@ -106,5 +88,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_barrier, ops::SendBarrierOp,
                   paddle::framework::EmptyGradOpMaker, ops::SendBarrierOpMaker,
-                  ops::SendBarrierOpVarTypeInference,
                   ops::SendBarrierOpShapeInference);

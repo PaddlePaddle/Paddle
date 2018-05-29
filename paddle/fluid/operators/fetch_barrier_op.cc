@@ -43,12 +43,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    auto rpc_client = detail::RPCClient::GetInstance();
 
     PADDLE_ENFORCE(rpc_client->Wait());
 
@@ -63,9 +58,6 @@ class FetchBarrierOp : public framework::OperatorBase {
 class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which is"
-              "initialized at most once.");
     AddComment(R"DOC(
 SendBarrier operator
 
@@ -77,17 +69,6 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-  }
-};
-
-class FetchBarrierOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output("RPCClient").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
   }
 };
 
@@ -103,5 +84,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(fetch_barrier, ops::FetchBarrierOp,
                   paddle::framework::EmptyGradOpMaker, ops::FetchBarrierOpMaker,
-                  ops::FetchBarrierOpVarTypeInference,
                   ops::FetchBarrierOpShapeInference);

@@ -121,10 +121,13 @@ TEST(PREFETCH, DISABLED_CPU) {
   std::string in_var_name("ids");
   std::string out_var_name("out");
 
-  detail::RPCClient client;
-  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
-                               out_var_name);
-  client.Wait();
+  detail::RPCClient::GetInstance();
+
+  // detail::RPCClient::GetInstance();
+  // client->Wait();
+  // client->AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
+  //                             out_var_name);
+  // client->Wait();
 
   auto var = scope.Var(out_var_name);
   auto value = var->GetMutable<framework::SelectedRows>()->value();

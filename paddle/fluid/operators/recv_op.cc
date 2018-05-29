@@ -37,7 +37,6 @@ class RecvOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    auto client_var_name = Output("RPCClient");
     int sync_mode = Attr<int>("sync_mode");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -45,11 +44,7 @@ class RecvOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    auto rpc_client = detail::RPCClient::GetInstance();
 
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
@@ -65,9 +60,6 @@ class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which is"
-              "initialized at most once.");
     AddComment(R"DOC(
 Recv operator
 
