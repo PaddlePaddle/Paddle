@@ -60,11 +60,24 @@ class CheckpointConfig(object):
     def __init__(self,
                  checkpoint_dir=None,
                  max_num_checkpoints=3,
-                 save_interval_secs=600):
+                 epoch_interval=1,
+                 step_interval=10):
         if checkpoint_dir is None:
             self.checkpoint_dir = os.getcwd()
+        else:
+            self.checkpoint_dir = checkpoint_dir
+
         self.max_num_checkpoints = max_num_checkpoints
-        self.save_interval_secs = save_interval_secs
+
+        if epoch_interval < 1:
+            self.epoch_interval = 1
+        else:
+            self.epoch_interval = epoch_interval
+
+        if step_interval < 1:
+            self.step_interval = 10
+        else:
+            self.step_interval = step_interval
 
 
 def check_and_get_place(place):
@@ -290,14 +303,6 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
-    def _save_checkpoint(self):
-        if self.checkpoint and self.chief:
-            exe = executor.Executor(self.place)
-            io.save_checkpoint(exe, self.checkpoint.checkpoint_dir,
-                               self.checkpoint.max_num_checkpoints,
-                               self.checkpoint.save_interval_secs,
-                               self.train_program)
-
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
         with framework.program_guard(
@@ -343,8 +348,9 @@ class Trainer(object):
                                       ])
                 else:
                     metrics = exe.run(feed=data, fetch_list=[])
+
                 event_handler(EndStepEvent(epoch_id, step_id, metrics))
-                self._save_checkpoint()
+                self._save_checkpoint(epoch_id, step_id)
             event_handler(EndEpochEvent(epoch_id))
 
     def _test_by_executor(self, reader, feed_order, fetch_list):
@@ -383,6 +389,18 @@ class Trainer(object):
                 use_cuda=isinstance(self.place, core.CUDAPlace),
                 loss_name=self.train_func_outputs[0].name)
         return self._get_parallel_executor()
+
+    def _save_checkpoint(self, epoch_id, step_id):
+        if not self.checkpoint or not self.chief:
+            return
+
+        if epoch_id % self.checkpoint.epoch_interval == 0 and step_id % self.checkpoint.step_interval == 0:
+            exe = executor.Executor(self.place)
+            io.save_checkpoint(
+                executor=exe,
+                checkpoint_dir=self.checkpoint.checkpoint_dir,
+                max_num_checkpoints=self.checkpoint.max_num_checkpoints,
+                main_program=self.train_program)
 
 
 def build_feed_var_list(program, feed_order):
