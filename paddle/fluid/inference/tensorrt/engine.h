@@ -97,8 +97,9 @@ class TensorRTEngine : public EngineBase {
   // accessed directly. Fill an input from GPU memory with name and size.
   void SetInputFromGPU(const std::string& name, const void* data, size_t size);
   // Get an output called name, the output of tensorrt is in GPU, so this method
-  // will just return the output's GPU memory address.
+  // Return the output's GPU memory address without copy.
   void* GetOutputInGPU(const std::string& name);
+  // Copy data into dst inside the GPU device.
   void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.

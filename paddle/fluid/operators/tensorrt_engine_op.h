@@ -87,7 +87,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
         engine_->GetOutputInCPU(
             y, fluid_t->mutable_data<float>(platform::CPUPlace()), size);
       } else {
-        engine_->GetOutputInCPU(
+        engine_->GetOutputInGPU(
             y, fluid_t->mutable_data<float>(platform::CUDAPlace()), size);
       }
     }
