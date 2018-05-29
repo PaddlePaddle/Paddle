@@ -25,6 +25,12 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run inference");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
 DEFINE_bool(prepare_context, true, "Prepare Context before executor");
 
+inline double get_current_ms() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
+}
+
 TEST(inference, understand_sentiment) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
@@ -102,4 +108,10 @@ TEST(inference, understand_sentiment) {
       }
     }));
   }
+  auto start_ms = get_current_ms();
+  for (int i = 0; i < num_threads; ++i) {
+    infer_threads[i]->join();
+  }
+  auto stop_ms = get_current_ms();
+  LOG(INFO) << "total: " << stop_ms - start_ms << " ms";
 }
