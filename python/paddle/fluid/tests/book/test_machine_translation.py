@@ -147,28 +147,6 @@ def decoder_decode(context, is_sparse):
     return translation_ids, translation_scores
 
 
-def set_init_lod(data, lod, place):
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod(lod)
-    return res
-
-
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = fluid.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
-
-
 def train_main(use_cuda, is_sparse, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
@@ -192,23 +170,25 @@ def train_main(use_cuda, is_sparse, is_local=True):
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
 
+    feed_order = [
+        'src_word_id', 'target_language_word', 'target_language_next_word'
+    ]
+
     exe = Executor(place)
 
     def train_loop(main_program):
         exe.run(framework.default_startup_program())
 
+        feed_list = [
+            main_program.global_block().var(var_name) for var_name in feed_order
+        ]
+        feeder = fluid.DataFeeder(feed_list, place)
+
         batch_id = 0
         for pass_id in xrange(1):
             for data in train_data():
-                word_data = to_lodtensor(map(lambda x: x[0], data), place)
-                trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-                trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
                 outs = exe.run(main_program,
-                               feed={
-                                   'src_word_id': word_data,
-                                   'target_language_word': trg_word,
-                                   'target_language_next_word': trg_word_next
-                               },
+                               feed=feeder.feed(data),
                                fetch_list=[avg_cost])
                 avg_cost_val = np.array(outs[0])
                 print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
@@ -258,26 +238,32 @@ def decode_main(use_cuda, is_sparse):
         [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
-    init_lod = [i for i in range(batch_size)] + [batch_size]
+    init_lod = [1] * batch_size
     init_lod = [init_lod, init_lod]
+
+    init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
+    init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
-    for _, data in enumerate(train_data()):
-        init_ids = set_init_lod(init_ids_data, init_lod, place)
-        init_scores = set_init_lod(init_scores_data, init_lod, place)
 
-        src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
+    feed_order = ['src_word_id']
+    feed_list = [
+        framework.default_main_program().global_block().var(var_name)
+        for var_name in feed_order
+    ]
+    feeder = fluid.DataFeeder(feed_order, place)
+
+    for data in train_data():
+        feed_dict = feeder.feed(map(lambda x: [x[0]], data))
+        feed_dict['init_ids'] = init_ids
+        feed_dict['init_scores'] = init_scores
 
         result_ids, result_scores = exe.run(
             framework.default_main_program(),
-            feed={
-                'src_word_id': src_word_data,
-                'init_ids': init_ids,
-                'init_scores': init_scores
-            },
+            feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
         print result_ids.lod()
