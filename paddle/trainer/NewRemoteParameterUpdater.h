@@ -29,7 +29,7 @@ namespace paddle {
  * New remote parameter updater for dense parameters that use cclient of go.
  */
 class NewRemoteParameterUpdater : public ParameterUpdater {
-public:
+ public:
   NewRemoteParameterUpdater(const OptimizationConfig& config,
                             const std::string pserverSpec);
   NewRemoteParameterUpdater(const OptimizationConfig& config,
@@ -61,13 +61,13 @@ public:
   virtual void startPass();
   virtual bool finishPass();
 
-protected:
+ protected:
   /**
    * work need to do after finishBatch
    */
   virtual void updateImpl(Parameter* para);
 
-private:
+ private:
   int parameterSize() { return (int)parameters_.size(); }
 
   /**
@@ -104,7 +104,7 @@ private:
     }
   }
 
-protected:
+ protected:
   const OptimizationConfig& trainerConfig_;
   /// internal parameter client object for exchanging data with pserver
   paddle_pserver_client parameterClient_;

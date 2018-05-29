@@ -37,7 +37,7 @@ namespace paddle {
  */
 
 class ExpandLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
   /// if input[0] is dense data, ExpandLevel=kNonSeq;
   /// if input[0] is sequence data, ExpandLevel=kSeq
@@ -48,7 +48,7 @@ protected:
   /// of input[1]
   ICpuGpuVectorPtr expandStartsPos_;
 
-public:
+ public:
   explicit ExpandLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ExpandLayer() {}

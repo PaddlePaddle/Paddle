@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class ConvOperator : public ConvBaseOperator {
-public:
+ public:
   ConvOperator(const OperatorConfig &config, bool useGpu)
       : ConvBaseOperator(config, useGpu) {}
   /**

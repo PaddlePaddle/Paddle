@@ -38,7 +38,7 @@ namespace paddle {
  * It is a private class for Trainer.
  */
 class Tester {
-public:
+ public:
   /**
    * Ctor
    * @param config Trainer Config.
@@ -87,7 +87,7 @@ public:
    */
   void test();
 
-protected:
+ protected:
   std::shared_ptr<ParameterClient2> testParameterClient_;
   std::shared_ptr<TrainerConfigHelper> config_;
   std::unique_ptr<TesterConfig> intconfig_;
@@ -107,7 +107,7 @@ protected:
     real cost;
   } testContext_;
 
-private:
+ private:
   /**
    * Test one batch by batchId. It is only used for testOnePass.
    *
