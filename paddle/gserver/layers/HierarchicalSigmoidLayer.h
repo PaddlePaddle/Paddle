@@ -58,7 +58,7 @@ namespace paddle {
  * The config file api is hsigmod_layer.
  */
 class HierarchicalSigmoidLayer : public Layer {
-public:
+ public:
   explicit HierarchicalSigmoidLayer(const LayerConfig& config)
       : Layer(config) {}
   bool init(const LayerMap& layerMap,
@@ -66,7 +66,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   /**
    * The last of inputs is label layer.
    */

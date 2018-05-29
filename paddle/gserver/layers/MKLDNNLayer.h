@@ -33,7 +33,7 @@ typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
  *
  */
 class MKLDNNLayer : public Layer {
-protected:
+ protected:
   // batch size
   int bs_;
   // their sizes are always from the first input layer
@@ -95,7 +95,7 @@ protected:
   // tmp input argument to save input grad, only used to merge grad
   Argument tmpInArg_;
 
-public:
+ public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
         ih_(0),
@@ -162,7 +162,7 @@ public:
    */
   void addOutputArgument(int deviceId) { Layer::addOutputArgument(deviceId); }
 
-protected:
+ protected:
   /**
    * Some layers may have different condition to reset the forward.
    * The function returns the condition that do not need reset forward.
@@ -233,7 +233,7 @@ protected:
    */
   void resetMergeGrad(MKLDNNMatrixPtr& out);
 
-protected:
+ protected:
   /**
    * Set deviceId of this layer.
    */
@@ -340,7 +340,7 @@ protected:
     }
   }
 
-private:
+ private:
   /**
    * clear all grad
    */

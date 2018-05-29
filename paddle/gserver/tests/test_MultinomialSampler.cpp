@@ -27,7 +27,7 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 class MultinomialSamplerTester : public MultinomialSampler {
-public:
+ public:
   MultinomialSamplerTester(real* prob, int size)
       : MultinomialSampler(prob, size) {}
 

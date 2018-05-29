@@ -50,7 +50,7 @@ struct PaddleTensor {
 * TODO(Superjomn) Prepare another API for NLP-related usages.
 */
 class PaddlePredictor {
-public:
+ public:
   struct Config;
   PaddlePredictor() = default;
   PaddlePredictor(const PaddlePredictor&) = delete;
@@ -66,6 +66,7 @@ public:
   // be thread-safe.
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
+  virtual bool InitShared() { return false; }
   // Destroy the Predictor.
   virtual ~PaddlePredictor() {}
 

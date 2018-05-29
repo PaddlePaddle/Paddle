@@ -26,7 +26,7 @@ DEFINE_string(server_addr, "127.0.0.1", "assign server address");
 DEFINE_int32(server_cpu, 0, "assign server cpu");
 
 class ParameterServer2Tester : public ParameterServer2 {
-public:
+ public:
   ParameterServer2Tester(std::string serverAddr,
                          int port,
                          int rdmaCpu = -1,
@@ -88,7 +88,7 @@ public:
   void waitPassFinishTest();
   void synchronizeTest();
 
-protected:
+ protected:
   ParameterClient2 client_;
   vector<ParameterConfig> clientConfigs_;
   vector<ParameterPtr> parameters_;
