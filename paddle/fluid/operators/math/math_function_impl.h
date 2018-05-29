@@ -154,7 +154,7 @@ class RowwiseSum<platform::CPUDeviceContext, T> {
     auto& in_dims = input.dims();
     PADDLE_ENFORCE_EQ(in_dims.size(), 2U);
     auto height = in_dims[0];
-    // auto size = in_dims[1];
+    auto size = in_dims[1];
     PADDLE_ENFORCE_EQ(out->numel(), height);
 
     T* out_buf = out->mutable_data<T>(out->place());

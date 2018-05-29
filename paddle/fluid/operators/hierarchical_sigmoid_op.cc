@@ -108,7 +108,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
               "[batch_size, code_length]")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, required)", "The number of classes")
-        .setDefault(2);
+        .SetDefault(2);
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
 At each node, a sigmoid function is used to caculate the probability of
