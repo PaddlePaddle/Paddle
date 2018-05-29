@@ -26,6 +26,7 @@ from trainer import BeginEpochEvent
 from trainer import EndEpochEvent
 from trainer import BeginStepEvent
 from trainer import EndStepEvent
+from trainer import CheckpointConfig
 
 import inferencer
 from inferencer import Inferencer
