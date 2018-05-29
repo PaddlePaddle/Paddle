@@ -4,8 +4,8 @@ The implemtation of backward lies at the heart of differentiable programming. As
 
 Outline
 1. The implementation overview
-1. The Pros and Cons between the frameworks
-1. Static vs Dynamic
+1. The design choices between four frameworks
+1. What can fluid learn from them
 
 ## Implementation Overview
 
@@ -30,18 +30,35 @@ Autograd, Chainer and Pytorch use graph.
 
 Take pytorch for example, the graph is composed of `Variable`s and `Function`s. During the forward execution, a `Variable` records its creator function, e.g. `h.creator = matmul1`. And a Function records its inputs' previous/dependent functions `prev_func` through `creator`, e.g. `matmul2.prev_func = matmul1`. At `loss.backward()`, a topological sort is performed on all `prev_func`s. Then the grad op is performed by the sorted order.
 
-Chainer and Autograd uses the similar techniques to record the forward pass. And Chainer uses a rank attribute to encode the topological order.
+Chainer and Autograd uses the similar techniques to record the forward pass. For details please refer to the appendix.
 
-## The Pros and Cons between the frameworks
+## Design choices
 
-## Static vs Dynamic
+### Tape vs Node Graph
 
-1. eager
-1. easy to program
+What's good about Tape:
+1. It avoids a topological sort
+1. It promises effient data parallelism implementations
 
-exclude the control flow logic in the computation graph.
-1. hard to optimize
+What's good about Node Graph:
+1. Better flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [1]
 
+### Lazy evaluation vs Immediate evaluation
+
+What's good about lazy evaluation:
+1. It makes JIT optimization possible, e.g. kernel fusion.
+
+What's good about immediate evaluation:
+1. It avoids ever materializing a "forward graph", recording only what is necessary to differentiate the computation (see example below).
+```python
+loss1 = BigNet(data)
+loss2 = SmallNet(data)
+loss2.backward() # Pytorch only does backward on SmallNet while Dynet does both BigNet and SmallNet
+```
+
+## What can fluid learn from them?
+
+TBD
 
 # Appendix
 
@@ -249,4 +266,4 @@ void SimpleExecutionEngine::backward(VariableIndex from_where, bool full) {
 
 
 
-[1] [Automatic Differentiation in Machine Learning: a Survey](https://arxiv.org/pdf/1502.05767.pdf)
+[1] https://openreview.net/pdf?id=BJJsrmfCZ
