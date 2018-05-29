@@ -102,3 +102,5 @@ TEST(OpConverter, ConvertRelu) {
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+USE_OP(activation);
