@@ -39,7 +39,7 @@ real f(Matrix& mat1,
 }
 
 class Functor {
-public:
+ public:
   real operator()(Matrix& mat1,
                   const Matrix& mat2,
                   IVector& vec1,
@@ -49,7 +49,7 @@ public:
     return a_;
   }
 
-private:
+ private:
   real a_;
 };
 

@@ -60,7 +60,7 @@ enum PADDLE_DEVICE_ID {
  * Define necessary variables and functions for every layer.
  */
 class Layer {
-protected:
+ protected:
   /// Layer config
   LayerConfig config_;
   /// whether to use GPU
@@ -112,7 +112,7 @@ protected:
   /// Layer backward function
   std::vector<std::shared_ptr<FunctionBase>> backward_;
 
-public:
+ public:
   /**
    * Wait until all input value ready.
    * Called before Layer::forward() function.
@@ -137,7 +137,7 @@ public:
    */
   virtual void markAllInputGrad();
 
-protected:
+ protected:
   /**
    * Create layer function. Function is called in forward or backward.
    * \param function, Layer::forward_ or Layer::backward_
@@ -252,7 +252,7 @@ protected:
    */
   void addOutputArgument(int deviceId);
 
-public:
+ public:
   explicit Layer(const LayerConfig& config, bool useGpu = FLAGS_use_gpu);
   virtual ~Layer() {}
 
@@ -490,7 +490,7 @@ public:
    */
   virtual void onPassEnd() {}
 
-protected:
+ protected:
   /**
    * Forward of activation function.
    */

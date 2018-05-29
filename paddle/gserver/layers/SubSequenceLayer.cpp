@@ -27,12 +27,12 @@ namespace paddle {
  */
 
 class SubSequenceLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
 
-public:
+ public:
   explicit SubSequenceLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

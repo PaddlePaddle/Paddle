@@ -73,7 +73,7 @@ class GradientMachine;
 typedef std::shared_ptr<GradientMachine> GradientMachinePtr;
 
 class GradientMachine {
-public:
+ public:
   enum CreateMode {
     kNormal = 0,
     kSgdSparseCpuTraining = 3,
@@ -240,7 +240,7 @@ public:
    */
   virtual void releaseOutput() {}
 
-protected:
+ protected:
   virtual void onLoadParameter() {}
 
   std::vector<ParameterPtr> parameters_;

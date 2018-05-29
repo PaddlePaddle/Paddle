@@ -23,8 +23,6 @@ namespace tensorrt {
 TEST(OpConverter, ConvertBlock) {
   framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);
-  auto* mul_op = block->AppendOp();
-  mul_op->SetType("mul");
   auto* conv2d_op = block->AppendOp();
   conv2d_op->SetType("conv2d");
 
