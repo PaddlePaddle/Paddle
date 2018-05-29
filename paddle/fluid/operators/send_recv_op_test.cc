@@ -156,6 +156,7 @@ TEST(SendRecvOp, CPUDense) {
   std::thread server_thread(StartServerNet, false, &initialized);
   while (!initialized) {
   }
+
   static_cast<paddle::operators::ListenAndServOp *>(listen_and_serv_op.get())
       ->WaitServerReady();
 
@@ -175,77 +176,77 @@ TEST(SendRecvOp, CPUDense) {
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
-  auto send_op = f::OpRegistry::CreateOp(
-      "send", {{"X", {"x1"}}},
-      {{"Out", {"Out"}}, attrs);
-    send_op->Run(scope, place);
+  const f::VariableNameMap &inputs = {{"X", {"x1"}}};
+  const f::VariableNameMap &outputs = {{"Out", {"Out"}}};
 
-    auto in_var = scope.Var("x1");
-    auto tensor = in_var->GetMutable<f::LoDTensor>();
-    float *expected = tensor->data<float>();
-    auto out_var = scope.Var("Out");
-    auto target = out_var->GetMutable<f::LoDTensor>();
-    // x1 * 2 == x0
-    EXPECT_NE(target->memory_size(), size_t(0));
-    float *actual = target->data<float>();
-    for (int64_t i = 0; i < target->numel(); ++i) {
-      EXPECT_EQ(expected[i] * 2, actual[i]);
-    }
-    listen_and_serv_op->Stop();
-    server_thread.join();
-    listen_and_serv_op.reset(nullptr);
-    paddle::operators::ListenAndServOp::ResetPort();
+  auto send_op = f::OpRegistry::CreateOp("send", inputs, outputs, attrs);
+  send_op->Run(scope, place);
+
+  auto in_var = scope.Var("x1");
+  auto tensor = in_var->GetMutable<f::LoDTensor>();
+  float *expected = tensor->data<float>();
+  auto out_var = scope.Var("Out");
+  auto target = out_var->GetMutable<f::LoDTensor>();
+  // x1 * 2 == x0
+  EXPECT_NE(target->memory_size(), size_t(0));
+  float *actual = target->data<float>();
+  for (int64_t i = 0; i < target->numel(); ++i) {
+    EXPECT_EQ(expected[i] * 2, actual[i]);
+  }
+  listen_and_serv_op->Stop();
+  server_thread.join();
+  listen_and_serv_op.reset(nullptr);
+  paddle::operators::ListenAndServOp::ResetPort();
 }
 
 TEST(SendRecvOp, CPUSparse) {
-    std::atomic<bool> initialized;
-    initialized = false;
-    std::thread server_thread(StartServerNet, true, &initialized);
-    while (!initialized) {
-    }
-    auto *listen_and_serv_op_ptr =
-        static_cast<paddle::operators::ListenAndServOp *>(
-            listen_and_serv_op.get());
-    ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
-    listen_and_serv_op_ptr->WaitServerReady();
+  std::atomic<bool> initialized;
+  initialized = false;
+  std::thread server_thread(StartServerNet, true, &initialized);
+  while (!initialized) {
+  }
+  auto *listen_and_serv_op_ptr =
+      static_cast<paddle::operators::ListenAndServOp *>(
+          listen_and_serv_op.get());
+  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
+  listen_and_serv_op_ptr->WaitServerReady();
 
-    // local net
-    f::Scope scope;
-    p::CPUPlace place;
-    p::CPUDeviceContext ctx(place);
-    InitSelectedRowsInScope(place, &scope);
-    scope.Var("RPC_CLIENT_VAR");
-    f::AttributeMap attrs;
-    selected_port = listen_and_serv_op_ptr->GetSelectedPort();
-    std::string endpoint =
-        paddle::string::Sprintf("127.0.0.1:%d", selected_port);
-    attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
-    attrs.insert({"epmap", std::vector<std::string>({endpoint})});
-    auto send_op = f::OpRegistry::CreateOp("send", {{"X", {"x1"}}},
-                                           {{"Out", {"Out"}}}, attrs);
-    send_op->Run(scope, place);
+  // local net
+  f::Scope scope;
+  p::CPUPlace place;
+  p::CPUDeviceContext ctx(place);
+  InitSelectedRowsInScope(place, &scope);
+  scope.Var("RPC_CLIENT_VAR");
+  f::AttributeMap attrs;
+  selected_port = listen_and_serv_op_ptr->GetSelectedPort();
+  std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
+  attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
+  attrs.insert({"epmap", std::vector<std::string>({endpoint})});
+  auto send_op = f::OpRegistry::CreateOp("send", {{"X", {"x1"}}},
+                                         {{"Out", {"Out"}}}, attrs);
+  send_op->Run(scope, place);
 
-    auto x0 = scope.Var("x0")->GetMutable<f::SelectedRows>();
-    auto x1 = scope.Var("x1")->GetMutable<f::SelectedRows>();
-    auto out = scope.Var("Out")->GetMutable<f::SelectedRows>();
-    auto actual = out->mutable_value();
+  auto x0 = scope.Var("x0")->GetMutable<f::SelectedRows>();
+  auto x1 = scope.Var("x1")->GetMutable<f::SelectedRows>();
+  auto out = scope.Var("Out")->GetMutable<f::SelectedRows>();
+  auto actual = out->mutable_value();
 
-    std::unique_ptr<f::SelectedRows> expect{new f::SelectedRows()};
-    auto expect_value = expect->mutable_value();
-    expect_value->mutable_data<float>(f::make_ddim({5, 10}), place);
+  std::unique_ptr<f::SelectedRows> expect{new f::SelectedRows()};
+  auto expect_value = expect->mutable_value();
+  expect_value->mutable_data<float>(f::make_ddim({5, 10}), place);
 
-    m::SelectedRowsAdd<p::CPUDeviceContext, float> add_functor;
-    add_functor(ctx, *x0, *x1, expect.get());
+  m::SelectedRowsAdd<p::CPUDeviceContext, float> add_functor;
+  add_functor(ctx, *x0, *x1, expect.get());
 
-    EXPECT_EQ(actual->numel(), expect_value->numel());
-    EXPECT_EQ(out->rows().size(), x0->rows().size() + x1->rows().size());
+  EXPECT_EQ(actual->numel(), expect_value->numel());
+  EXPECT_EQ(out->rows().size(), x0->rows().size() + x1->rows().size());
 
-    for (int64_t i = 0; i < expect_value->numel(); ++i) {
-      EXPECT_EQ(expect_value->mutable_data<float>(place)[i],
-                actual->mutable_data<float>(place)[i]);
-    }
-    listen_and_serv_op->Stop();
-    server_thread.join();
-    listen_and_serv_op.reset();
-    paddle::operators::ListenAndServOp::ResetPort();
+  for (int64_t i = 0; i < expect_value->numel(); ++i) {
+    EXPECT_EQ(expect_value->mutable_data<float>(place)[i],
+              actual->mutable_data<float>(place)[i]);
+  }
+  listen_and_serv_op->Stop();
+  server_thread.join();
+  listen_and_serv_op.reset();
+  paddle::operators::ListenAndServOp::ResetPort();
 }
