@@ -153,7 +153,7 @@ bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
   }
   PADDLE_ENFORCE_EQ(value.dims()[0], static_cast<size_t>(1),
                     "The first dim of value should be 1.");
-  std::lock_guard<std::mutex> lock(auto_grown_mutex_);
+  std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
   auto index = Index(key);
   bool is_new_key = false;
   if (index == -1) {
