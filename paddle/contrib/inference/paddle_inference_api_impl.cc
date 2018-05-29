@@ -140,7 +140,8 @@ std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
     LOG(ERROR) << "fail to call InitShared";
     return nullptr;
   }
-  return cls;
+  // fix manylinux compile error.
+  return std::move(cls);
 }
 
 // TODO(panyx0718): Consider merge with Init()?

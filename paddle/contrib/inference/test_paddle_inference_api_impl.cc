@@ -68,11 +68,11 @@ TEST(paddle_inference_api_impl, word2vec) {
 
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(cpu_feeds, &outputs));
-  ASSERT_EQ(outputs.size(), 1);
+  ASSERT_EQ(outputs.size(), 1UL);
   for (size_t i = 0; i < outputs.size(); ++i) {
     size_t len = outputs[i].data.length;
     float* data = static_cast<float*>(outputs[i].data.data);
-    for (int j = 0; j < len / sizeof(float); ++j) {
+    for (size_t j = 0; j < len / sizeof(float); ++j) {
       ASSERT_LT(data[j], 1.0);
       ASSERT_GT(data[j], -1.0);
     }
