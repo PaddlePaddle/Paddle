@@ -44,7 +44,7 @@ TEST(paddle_inference_api_impl, word2vec) {
   VisConfig config;
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
-  config.fraction_of_gpu_memory = 0.85;
+  config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
   config.share_variables = true;
 

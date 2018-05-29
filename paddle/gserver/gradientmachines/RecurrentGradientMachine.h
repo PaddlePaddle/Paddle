@@ -30,7 +30,7 @@ class BeamSearchControlCallbacks;
 class BeamSearchStatisticsCallbacks;
 
 class RecurrentGradientMachine : public NeuralNetwork {
-public:
+ public:
   RecurrentGradientMachine(const std::string& subModelName,
                            NeuralNetwork* rootNetwork);
 
@@ -290,7 +290,7 @@ public:
     return this->finalPaths_;
   }
 
-protected:
+ protected:
   std::vector<Argument::SeqInfo> commonSeqInfo_;
   ICpuGpuVectorPtr sequenceStartPositions_;
   void calcSequenceStartPositions();
@@ -447,7 +447,7 @@ protected:
   MatrixPtr cpuProb_;
   IVectorPtr cpuEos_;
 
-private:
+ private:
   /*
    * @return beam size in beam search
    */

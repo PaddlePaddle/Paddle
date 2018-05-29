@@ -33,7 +33,7 @@ namespace paddle {
  */
 
 class L2DistanceLayer : public Layer {
-public:
+ public:
   explicit L2DistanceLayer(const LayerConfig& config) : Layer(config) {}
   ~L2DistanceLayer() {}
 
@@ -43,7 +43,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-private:
+ private:
   // Store the result of subtracting Input2 from Input1 in forward computation,
   // which will be reused in backward computation.
   MatrixPtr inputSub_;

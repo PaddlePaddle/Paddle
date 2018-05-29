@@ -28,7 +28,7 @@ namespace {
 
 // Timer for timer
 class Timer {
-public:
+ public:
   double start;
   double startu;
   void tic() {
@@ -135,8 +135,8 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
 
 std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
   VLOG(3) << "Predictor::clone";
-  std::unique_ptr<PaddlePredictorImpl> cls(new PaddlePredictorImpl(config_));
-  if (!cls->InitShared(this)) {
+  std::unique_ptr<PaddlePredictor> cls(new PaddlePredictorImpl(config_));
+  if (!cls->InitShared()) {
     LOG(ERROR) << "fail to call InitShared";
     return nullptr;
   }
@@ -144,7 +144,7 @@ std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
 }
 
 // TODO(panyx0718): Consider merge with Init()?
-bool PaddlePredictorImpl::InitShared(PaddlePredictorImpl *cls) {
+bool PaddlePredictorImpl::InitShared() {
   VLOG(3) << "Predictor::init_shared";
   // 1. Define place, executor, scope
   if (this->config_.device >= 0) {
