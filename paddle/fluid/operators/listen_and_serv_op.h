@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_FLUID_OPERATORS_LISTEN_AND_SERV_OP_H_
-#define PADDLE_FLUID_OPERATORS_LISTEN_AND_SERV_OP_H_
-
 #pragma once
 
 #include <stdint.h>
@@ -79,11 +76,6 @@ class SignalHandler {
   typedef std::unordered_set<BlockingQueue> BlockingQueueSet;
 
  public:
-  // SignalHandler is noncopyable and can NOT be constructed
-  SignalHandler() = delete;
-  SignalHandler(const SignalHandler&) = delete;
-  SignalHandler& operator=(const SignalHandler&) = delete;
-
   static void StopAndExit(int signal_num);
 
   static void RegisterBlockingQueue(BlockingQueue&);
@@ -94,9 +86,9 @@ class SignalHandler {
   static bool program_exit_flag_;
 
   static BlockingQueueSet blocking_queue_set_;
+
+  DISABLE_COPY_AND_ASSIGN(SignalHandler);
 };
 
 }  // namespace operators
 }  // namespace paddle
-
-#endif  // PADDLE_FLUID_OPERATORS_LISTEN_AND_SERV_OP_H_
