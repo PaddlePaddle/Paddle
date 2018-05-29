@@ -79,6 +79,9 @@ class CheckpointConfig(object):
         else:
             self.step_interval = step_interval
 
+        self.epoch_id = 0
+        self.step_id = 0
+
 
 def check_and_get_place(place):
     """
@@ -132,6 +135,7 @@ class Trainer(object):
 
         # config for checkpoint
         # only chief worker will save variables
+        self.trainer_id = 0
         self.chief = True
         self.checkpoint = checkpoint_config
         if self.checkpoint and \
@@ -139,6 +143,8 @@ class Trainer(object):
             raise TypeError(
                 "The checkpoint_config shoule be an instance of CheckpointConfig"
             )
+        self.load_checkpoint_serial = io.need_load_checkpoint(
+            self.checkpoint.checkpoint_dir)
 
         self.scope = core.Scope()
 
@@ -168,15 +174,25 @@ class Trainer(object):
             exe = executor.Executor(place)
             exe.run(self.startup_program)
 
-        if self.checkpoint:
+        if self.load_checkpoint_serial:
             exe = executor.Executor(place)
             io.load_checkpoint(exe, self.checkpoint.checkpoint_dir,
+                               self.load_checkpoint_serial,
                                self.startup_program)
 
-        if param_path:
+            epoch_id, step_id = io.load_trainer_args(
+                self.checkpoint.checkpoint_dir, self.load_checkpoint_serial,
+                self.trainer_id, ["epoch_id", "step_id"])
+            self.checkpoint.epoch_id = int(epoch_id)
+            self.checkpoint.step_id = int(step_id)
+
+        if param_path and os.path.isdir(param_path):
             # load params from param_path into scope
             io.load_persist_vars_without_grad(
-                exe, dirname=param_path, program=self.startup_program)
+                exe,
+                dirname=param_path,
+                program=self.startup_program,
+                nest=False)
 
     def _transpile_nccl2_dist(self):
         # PADDLE_TRAINER_IPS
@@ -333,11 +349,20 @@ class Trainer(object):
             self._train_by_any_executor(event_handler, exe, num_epochs, reader)
 
     def _train_by_any_executor(self, event_handler, exe, num_epochs, reader):
-        for epoch_id in range(num_epochs):
+        epochs = [
+            epoch_id for epoch_id in range(num_epochs)
+            if epoch_id >= self.checkpoint.epoch_id
+        ]
+        for epoch_id in epochs:
             event_handler(BeginEpochEvent(epoch_id))
             for step_id, data in enumerate(reader()):
                 if self.__stop:
+                    self._clean_checkpoint()
                     return
+
+                if self.checkpoint and self.checkpoint.step_id >= step_id and self.checkpoint.epoch_id == epoch_id:
+                    continue
+
                 begin_event = BeginStepEvent(epoch_id, step_id)
                 event_handler(begin_event)
                 if begin_event.fetch_metrics:
@@ -352,6 +377,7 @@ class Trainer(object):
                 event_handler(EndStepEvent(epoch_id, step_id, metrics))
                 self._save_checkpoint(epoch_id, step_id)
             event_handler(EndEpochEvent(epoch_id))
+        self._clean_checkpoint()
 
     def _test_by_executor(self, reader, feed_order, fetch_list):
         with executor.scope_guard(self.scope):
@@ -390,17 +416,29 @@ class Trainer(object):
                 loss_name=self.train_func_outputs[0].name)
         return self._get_parallel_executor()
 
+    def _clean_checkpoint(self):
+        if not self.checkpoint:
+            return
+        io.clean_checkpoint(checkpoint_dir=self.checkpoint.checkpoint_dir)
+
     def _save_checkpoint(self, epoch_id, step_id):
-        if not self.checkpoint or not self.chief:
+        if not self.checkpoint:
             return
 
         if epoch_id % self.checkpoint.epoch_interval == 0 and step_id % self.checkpoint.step_interval == 0:
+            trainer_args = {}
+            trainer_args["epoch_id"] = epoch_id
+            trainer_args["step_id"] = step_id
+
             exe = executor.Executor(self.place)
             io.save_checkpoint(
                 executor=exe,
                 checkpoint_dir=self.checkpoint.checkpoint_dir,
-                max_num_checkpoints=self.checkpoint.max_num_checkpoints,
-                main_program=self.train_program)
+                trainer_id=self.trainer_id,
+                is_chief=self.chief,
+                trainer_args=trainer_args,
+                main_program=self.train_program,
+                max_num_checkpoints=self.checkpoint.max_num_checkpoints)
 
 
 def build_feed_var_list(program, feed_order):
