@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/detail/grpc_request_handler.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/detail/grpc_service.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
@@ -33,31 +34,11 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool GRPCRequestHandler::HandlerImpl(int method_id, void* input, void* output) {
-  switch (method_id) {
-    case static_cast<int>(GrpcMethod::kSendVariable):
-      return RequestSendHandler(input, output);
-    case static_cast<int>(GrpcMethod::kGetVariable):
-      return RequestGetHandler(input, output);
-    case static_cast<int>(GrpcMethod::kPrefetchVariable):
-      return RequestPrefetchHandler(input, output);
-    default:
-      PADDLE_ENFORCE(false, "not surpported method_id");
-      return false;
-  }
-}
-
-bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
+bool GrpcRequestSendHandler::Handle(void* input, void* output) {
   VariableResponse* req = static_cast<VariableResponse*>(input);
 
   auto scope = req->GetMutableLocalScope();
   std::string msg_name = req->Varname();
-
-  if (msg_name == LISTEN_TERMINATE_MESSAGE) {
-    LOG(INFO) << "received terminate message and exit";
-    SetExit();
-    return true;
-  }
 
   // Async
   if (!sync_mode_) {
@@ -74,9 +55,12 @@ bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
   // Sync
   if (msg_name == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv batch barrier message";
-    IncreaseBatchBarrier();
+    rpc_server_->IncreaseBatchBarrier("RequestSend");
   } else {
     VLOG(3) << "sync: received var_name: " << msg_name;
+    if (sync_mode_) {
+      rpc_server_->WaitCond("RequestSend");
+    }
 
     framework::Variable* var = req->GetVar();
     if (var == nullptr) {
@@ -86,7 +70,7 @@ bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
     }
 
     if (var->IsType<framework::SelectedRows>()) {
-      std::unique_lock<std::mutex> lock(mutex_);
+      std::unique_lock<std::mutex> lock(sparse_var_mutex_);
       sparse_vars_.push_back(var);
     }
   }
@@ -94,7 +78,7 @@ bool GRPCRequestHandler::RequestSendHandler(void* input, void* output) {
   return true;
 }
 
-bool GRPCRequestHandler::RequestGetHandler(void* input, void* output) {
+bool GrpcRequestGetHandler::Handle(void* input, void* output) {
   sendrecv::VariableMessage* req =
       static_cast<sendrecv::VariableMessage*>(input);
   ::grpc::ByteBuffer* reply = static_cast<::grpc::ByteBuffer*>(output);
@@ -103,6 +87,9 @@ bool GRPCRequestHandler::RequestGetHandler(void* input, void* output) {
   VLOG(3) << "ProcessGetImpl:" << msg_name;
 
   if (msg_name != FETCH_BARRIER_MESSAGE) {
+    if (sync_mode_) {
+      rpc_server_->WaitCond("RequestGet");
+    }
     framework::Variable* var = scope_->FindVar(msg_name);
     SerializeToByteBuffer(msg_name, var, *dev_ctx_, reply);
     return true;
@@ -111,13 +98,13 @@ bool GRPCRequestHandler::RequestGetHandler(void* input, void* output) {
   // FETCH_BARRIER_MESSAGE
   if (sync_mode_) {
     VLOG(3) << "sync: recv fetch barrier message";
-    IncreaseBatchBarrier();
+    rpc_server_->IncreaseBatchBarrier("RequestGet");
   }
 
   return true;
 }
 
-bool GRPCRequestHandler::RequestPrefetchHandler(void* input, void* output) {
+bool GrpcRequestPrefetchHandler::Handle(void* input, void* output) {
   VariableResponse* req = static_cast<VariableResponse*>(input);
   ::grpc::ByteBuffer* reply = static_cast<::grpc::ByteBuffer*>(output);
 
@@ -125,7 +112,6 @@ bool GRPCRequestHandler::RequestPrefetchHandler(void* input, void* output) {
   VLOG(3) << "RequestPrefetchHandler " << var_name;
 
   auto var_desc = program_->Block(0).FindVar(var_name);
-  // FIXME(gongwb):need delete.
   framework::Scope* local_scope = &scope_->NewScope();
   auto* var = local_scope->FindVar(var_name);
   InitializeVariable(var, var_desc->GetType());

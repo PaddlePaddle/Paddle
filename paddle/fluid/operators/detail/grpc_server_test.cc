@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/detail/grpc_request_handler.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -107,8 +106,11 @@ void StartServer() {
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);
 
+  g_rpc_service->RegisterRPC(detail::kRequestPrefetch, g_req_handler.get());
+  g_req_handler->SetRPCServer(g_rpc_service.get());
+
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
+      std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
 
   // FIXME(gongwb): don't use hard time.
   sleep(10);
@@ -118,9 +120,8 @@ void StartServer() {
 }
 
 TEST(PREFETCH, CPU) {
-  g_req_handler.reset(new detail::GRPCRequestHandler(true, 1));
-  g_rpc_service.reset(
-      new detail::AsyncGRPCServer("127.0.0.1:0", g_req_handler.get()));
+  g_req_handler.reset(new detail::GrpcRequestPrefetchHandler(true));
+  g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();

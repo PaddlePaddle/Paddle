@@ -84,9 +84,8 @@ class RequestSend final : public RequestBase {
     std::string var_name = GetReqName();
     VLOG(3) << "RequestSend var_name:" << var_name;
 
-    request_handler_->Handler(
-        static_cast<int>(detail::GrpcMethod::kSendVariable),
-        static_cast<void*>(request_.get()), static_cast<void*>(&reply_));
+    request_handler_->Handle(static_cast<void*>(request_.get()),
+                             static_cast<void*>(&reply_));
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -120,9 +119,8 @@ class RequestGet final : public RequestBase {
     std::string var_name = request_.varname();
     VLOG(3) << "RequestGet " << var_name;
 
-    request_handler_->Handler(
-        static_cast<int>(detail::GrpcMethod::kGetVariable),
-        static_cast<void*>(&request_), static_cast<void*>(&reply_));
+    request_handler_->Handle(static_cast<void*>(&request_),
+                             static_cast<void*>(&reply_));
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -162,9 +160,8 @@ class RequestPrefetch final : public RequestBase {
     std::string var_name = request_->OutVarname();
     VLOG(3) << "RequestPrefetch " << var_name;
 
-    request_handler_->Handler(
-        static_cast<int>(detail::GrpcMethod::kPrefetchVariable),
-        static_cast<void*>(request_.get()), static_cast<void*>(&reply_));
+    request_handler_->Handle(static_cast<void*>(request_.get()),
+                             static_cast<void*>(&reply_));
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -183,10 +180,13 @@ void AsyncGRPCServer::WaitServerReady() {
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
 }
 
-void AsyncGRPCServer::RunSyncUpdate() {
+void AsyncGRPCServer::StartServer() {
   ::grpc::ServerBuilder builder;
-  builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials(),
-                           &selected_port_);
+  int selected_port = -1;
+  builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
+                           &selected_port);
+  selected_port_ = selected_port;
+
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   builder.RegisterService(&service_);
@@ -196,7 +196,7 @@ void AsyncGRPCServer::RunSyncUpdate() {
   cq_prefetch_ = builder.AddCompletionQueue();
 
   server_ = builder.BuildAndStart();
-  LOG(INFO) << "Server listening on " << address_
+  LOG(INFO) << "Server listening on " << bind_address_
             << " selected port: " << selected_port_;
 
   std::function<void(int)> send_register = std::bind(
@@ -266,7 +266,7 @@ void AsyncGRPCServer::ShutdownQueue() {
   cq_prefetch_->Shutdown();
 }
 
-void AsyncGRPCServer::ShutDown() {
+void AsyncGRPCServer::ShutDownImpl() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   is_shut_down_ = true;
   ShutdownQueue();
@@ -283,9 +283,9 @@ void AsyncGRPCServer::TryToRegisterNewSendOne(int i) {
   }
 
   VLOG(4) << "register send req_id:" << i;
-  RequestSend* send =
-      new RequestSend(&service_, cq_send_.get(), request_handler_, i);
-  send_reqs_[i] = static_cast<RequestBase*>(send);
+  RequestSend* send = new RequestSend(&service_, cq_send_.get(),
+                                      rpc_call_map_[kRequestSend], i);
+  send_reqs_[i] = send;
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 
@@ -297,9 +297,9 @@ void AsyncGRPCServer::TryToRegisterNewGetOne(int req_id) {
   }
 
   VLOG(4) << "register get req_id:" << req_id;
-  RequestGet* get =
-      new RequestGet(&service_, cq_get_.get(), request_handler_, req_id);
-  get_reqs_[req_id] = static_cast<RequestBase*>(get);
+  RequestGet* get = new RequestGet(&service_, cq_get_.get(),
+                                   rpc_call_map_[kRequestGet], req_id);
+  get_reqs_[req_id] = get;
   VLOG(4) << "Create RequestGet status:" << get->Status();
 }
 
@@ -311,10 +311,10 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne(int req_id) {
   }
 
   VLOG(4) << "register prefetch req_id:" << req_id;
-  RequestPrefetch* prefetch = new RequestPrefetch(&service_, cq_prefetch_.get(),
-                                                  request_handler_, req_id);
+  RequestPrefetch* prefetch = new RequestPrefetch(
+      &service_, cq_prefetch_.get(), rpc_call_map_[kRequestPrefetch], req_id);
 
-  prefetch_reqs_[req_id] = static_cast<RequestBase*>(prefetch);
+  prefetch_reqs_[req_id] = prefetch;
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
@@ -366,14 +366,6 @@ void AsyncGRPCServer::HandleRequest(
       continue;
     }
 
-    if (request_handler_->sync_mode() && !is_shut_down_) {
-      auto it = cond_.find(rpc_id);
-      if (it != cond_.end()) {
-        WaitCond(rpc_id);
-        VLOG(3) << "HandleRequest waitcond:" << rpc_id << " success!";
-      }
-    }
-
     VLOG(3) << "queue id:" << rpc_id << ", req_id:" << req_id
             << ", status:" << base->Status();
 
@@ -391,26 +383,6 @@ void AsyncGRPCServer::HandleRequest(
       default: { assert(false); }
     }
   }
-}
-
-void AsyncGRPCServer::RegisterCond(int rpc_id) {
-  std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  assert(cond_.find(rpc_id) == cond_.end());
-  cond_.insert(rpc_id);
-}
-
-void AsyncGRPCServer::WaitCond(int cond) {
-  std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-  barrier_condition_.wait(lock,
-                          [=] { return this->barrier_cond_step_ == cond; });
-}
-
-void AsyncGRPCServer::SetCond(int rpc_id) {
-  {
-    std::lock_guard<std::mutex> lock(this->barrier_mutex_);
-    barrier_cond_step_ = rpc_id;
-  }
-  barrier_condition_.notify_all();
 }
 
 }  // namespace detail

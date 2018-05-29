@@ -40,20 +40,26 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-class GRPCRequestHandler final : public RequestHandler {
+class GrpcRequestSendHandler final : public RequestHandler {
  public:
-  GRPCRequestHandler(bool sync_mode, int num_clients)
-      : RequestHandler(sync_mode, num_clients) {}
+  explicit GrpcRequestSendHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  virtual ~GrpcRequestSendHandler() {}
+  bool Handle(void* input, void* output) override;
+};
 
-  virtual ~GRPCRequestHandler() {}
+class GrpcRequestGetHandler final : public RequestHandler {
+ public:
+  explicit GrpcRequestGetHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  virtual ~GrpcRequestGetHandler() {}
+  bool Handle(void* input, void* output) override;
+};
 
- protected:
-  bool HandlerImpl(int method_id, void* input, void* output) override;
-
- private:
-  bool RequestSendHandler(void* input, void* output);
-  bool RequestGetHandler(void* input, void* output);
-  bool RequestPrefetchHandler(void* input, void* output);
+class GrpcRequestPrefetchHandler final : public RequestHandler {
+ public:
+  explicit GrpcRequestPrefetchHandler(bool sync_mode)
+      : RequestHandler(sync_mode) {}
+  virtual ~GrpcRequestPrefetchHandler() {}
+  bool Handle(void* input, void* output) override;
 };
 
 }  // namespace detail

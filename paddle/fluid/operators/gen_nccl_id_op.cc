@@ -76,21 +76,23 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::GRPCRequestHandler rpc_processor(true, 1);
-    detail::AsyncGRPCServer rpc_service(endpoint, &rpc_processor);
+    detail::GrpcRequestSendHandler rpc_h(true);
+    detail::AsyncGRPCServer rpc_service(endpoint, 1);
+    rpc_service.RegisterRPC(detail::kRequestSend, &rpc_h);
+    rpc_h.SetRPCServer(&rpc_service);
 
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
-    rpc_processor.SetScope(scope);
-    rpc_processor.SetDevCtx(&dev_ctx);
-    rpc_processor.SetProgram(&empty_program);
-    rpc_processor.SetExecutor(&executor);
+    rpc_h.SetScope(scope);
+    rpc_h.SetDevCtx(&dev_ctx);
+    rpc_h.SetProgram(&empty_program);
+    rpc_h.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
-    rpc_service.SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
+        std::bind(&detail::AsyncGRPCServer::StartServer, &rpc_service));
+    rpc_service.SetCond(detail::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_processor.WaitBarrier();
+    rpc_service.WaitBarrier(detail::kRequestSend);
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";

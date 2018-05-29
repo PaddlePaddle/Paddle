@@ -44,16 +44,13 @@ class RequestBase;
 
 class AsyncGRPCServer final : public RPCServer {
  public:
-  explicit AsyncGRPCServer(const std::string& address,
-                           RequestHandler* request_handler)
-      : RPCServer(address, request_handler), ready_(0) {}
+  explicit AsyncGRPCServer(const std::string& address, int client_num,
+                           int thread_num = 10)
+      : RPCServer(address, client_num, thread_num), ready_(0) {}
 
   virtual ~AsyncGRPCServer() {}
   void WaitServerReady() override;
-  void RunSyncUpdate() override;
-  void RegisterCond(int rpc_id) override;
-  void SetCond(int rpc_id) override;
-  void ShutDown() override;
+  void StartServer() override;
 
  protected:
   void HandleRequest(::grpc::ServerCompletionQueue* cq, int rpc_id,
@@ -62,7 +59,7 @@ class AsyncGRPCServer final : public RPCServer {
   void TryToRegisterNewGetOne(int req_id);
   void TryToRegisterNewPrefetchOne(int req_id);
   void ShutdownQueue();
-  void WaitCond(int cond) override;
+  void ShutDownImpl() override;
 
  private:
   static const int kSendReqsBufSize = 100;

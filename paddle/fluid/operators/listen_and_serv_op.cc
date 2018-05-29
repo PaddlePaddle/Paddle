@@ -18,14 +18,15 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
-  service->RunSyncUpdate();
+void RunServer(std::shared_ptr<detail::RPCServer> service) {
+  service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
 
@@ -67,8 +68,6 @@ static void ParallelExecuteBlocks(
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
 
-std::atomic_int ListenAndServOp::selected_port_{0};
-
 ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
                                  const framework::VariableNameMap &outputs,
@@ -76,7 +75,6 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
     : OperatorBase(type, inputs, outputs, attrs) {}
 
 void ListenAndServOp::Stop() {
-  request_handler_->SetExit();
   rpc_service_->ShutDown();
 
   server_thread_->join();
@@ -86,18 +84,7 @@ void ListenAndServOp::Stop() {
 
 void ListenAndServOp::SavePort() const {
   // NOTE: default write file to /tmp/paddle.selected_port
-  selected_port_ = rpc_service_->GetSelectedPort();
-  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-  std::ofstream port_file;
-  port_file.open(file_path);
-  port_file << selected_port_.load();
-  port_file.close();
-  VLOG(4) << "selected port written to " << file_path;
-}
-
-void ListenAndServOp::WaitServerReady() {
-  while (selected_port_.load() == 0) {
-  }
+  rpc_service_->SavePort();
 }
 
 void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
@@ -118,17 +105,16 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
-  request_handler_->clear_to_init();
+  rpc_service_->ResetBarrierCounter();
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
-    request_handler_->WaitBarrier();
-    request_handler_->clear_to_init();
+    rpc_service_->SetCond(detail::kRequestSend);
+    rpc_service_->WaitBarrier(detail::kRequestSend);
 
-    if (request_handler_->IsExit()) {
+    if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kGetVariable));
+      rpc_service_->SetCond(detail::kRequestGet);
       break;
     }
 
@@ -160,13 +146,13 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     // mini-batch.
     // TODO(Yancey1989): move the reset action into an operator, we couldn't
     // have any hide logic in the operator.
-    for (auto &var : request_handler_->sparse_vars()) {
+    for (auto &var : request_get_handler_->sparse_vars()) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
 
-    rpc_service_->SetCond(static_cast<int>(detail::GrpcMethod::kGetVariable));
-    request_handler_->WaitBarrier();
-    request_handler_->clear_to_init();
+    rpc_service_->SetCond(detail::kRequestGet);
+    rpc_service_->WaitBarrier(detail::kRequestGet);
+    rpc_service_->ResetBarrierCounter();
   }  // while(true)
 }
 
@@ -206,17 +192,34 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
   }
 
-  request_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   VLOG(3) << "RunAsyncLoop into while";
   while (true) {
-    if (request_handler_->IsExit()) {
+    if (rpc_service_->IsExit()) {
       LOG(INFO) << "get exit!rpc_processor break!";
       break;
     }
 
     sleep(1);
   }  // while(true)
+}
+
+static void FillRequestCtx(detail::RequestHandler *h, framework::Scope *scope,
+                           platform::DeviceContext *dev_ctx,
+                           framework::Executor *executor,
+                           framework::ProgramDesc *program,
+                           framework::ExecutorPrepareContext *prefetch_ctx,
+                           detail::RPCServer *rpc_server) {
+  h->SetScope(scope);
+  h->SetDevCtx(dev_ctx);
+  h->SetExecutor(executor);
+  h->SetProgram(program);
+  h->SetPrefetchPreparedCtx(std::move(
+      std::unique_ptr<framework::ExecutorPrepareContext>(prefetch_ctx)));
+  h->SetRPCServer(rpc_server);
 }
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
@@ -233,30 +236,30 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
 
-  request_handler_.reset(new detail::GRPCRequestHandler(sync_mode, fan_in));
-  rpc_service_.reset(
-      new detail::AsyncGRPCServer(endpoint, request_handler_.get()));
+  // request_handler_.reset(new detail::GRPCRequestSendHandler(sync_mode));
+  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
 
-  rpc_service_->RegisterCond(
-      static_cast<int>(detail::GrpcMethod::kSendVariable));
-  rpc_service_->RegisterCond(
-      static_cast<int>(detail::GrpcMethod::kGetVariable));
+  rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
+  rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
+  rpc_service_->RegisterRPC(detail::kRequestPrefetch,
+                            request_prefetch_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);
   auto *program = optimize_block->Program();
   framework::Executor executor(dev_place);
 
-  // prepare rpc processor
-  request_handler_->SetScope(&recv_scope);
-  request_handler_->SetDevCtx(&dev_ctx);
-  request_handler_->SetProgram(program);
-  request_handler_->SetExecutor(&executor);
-
   // prepare for prefetch
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
   auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
-  request_handler_->SetPrefetchPreparedCtx(std::move(prefetch_prepared));
+
+  auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
+                     &dev_ctx, &executor, program, prefetch_prepared.release(),
+                     rpc_service_.get());
+
+  f(request_send_handler_.get());
+  f(request_get_handler_.get());
+  f(request_prefetch_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));

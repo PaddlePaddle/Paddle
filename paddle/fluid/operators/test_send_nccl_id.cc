@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_request_handler.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -37,7 +38,7 @@ namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
 std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
-std::unique_ptr<detail::GRPCRequestHandler> g_req_handler;
+std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 void StartServer() {
   f::Scope scope;
@@ -52,15 +53,15 @@ void StartServer() {
   g_req_handler->SetDevCtx(&dev_ctx);
   g_req_handler->SetProgram(&empty_program);
   g_req_handler->SetExecutor(&executor);
-  g_rpc_service->RegisterCond(
-      static_cast<int>(detail::GrpcMethod::kSendVariable));
+  g_rpc_service->RegisterRPC(detail::kRequestSend, g_req_handler.get());
+  g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, g_rpc_service.get()));
+      std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
 
-  g_rpc_service->SetCond(static_cast<int>(detail::GrpcMethod::kSendVariable));
+  g_rpc_service->SetCond(detail::kRequestSend);
   std::cout << "before WaitFanInOfSend" << std::endl;
-  g_req_handler->WaitBarrier();
+  g_rpc_service->WaitBarrier(detail::kRequestSend);
 
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();
@@ -68,9 +69,8 @@ void StartServer() {
 }
 
 TEST(SendNcclId, GrpcServer) {
-  g_req_handler.reset(new detail::GRPCRequestHandler(true, 1));
-  g_rpc_service.reset(
-      new detail::AsyncGRPCServer("127.0.0.1:0", g_req_handler.get()));
+  g_req_handler.reset(new detail::GrpcRequestSendHandler(true));
+  g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();

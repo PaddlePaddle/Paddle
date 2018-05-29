@@ -27,28 +27,64 @@ namespace detail {
 
 class RPCServer {
  public:
-  explicit RPCServer(const std::string& address,
-                     RequestHandler* request_handler)
-      : address_(address),
-        request_handler_(request_handler),
-        selected_port_(-1) {}
+  explicit RPCServer(const std::string& address, int client_num,
+                     int thread_num = 10)
+      : cur_cond_(0),
+        bind_address_(address),
+        exit_flag_(false),
+        selected_port_(-1),
+        thread_pool_size_(thread_num),
+        client_num_(client_num) {}
 
   virtual ~RPCServer() {}
+  virtual void StartServer() = 0;
   virtual void WaitServerReady() = 0;
-  virtual void RunSyncUpdate() = 0;
-  virtual int GetSelectedPort() const { return selected_port_; }
-  virtual void ShutDown() = 0;
-  virtual void RegisterCond(int rpc_id) = 0;
-  virtual void SetCond(int rpc_id) = 0;
+
+  void ShutDown();
+
+  bool IsExit() { return exit_flag_.load(); }
+
+  int GetSelectedPort() const { return selected_port_; }
+  void SavePort() const;
+
+  // RegisterRPC, register the rpc method name to a handler
+  // class, and auto generate a condition id for this call
+  // to be used for the barrier.
+  void RegisterRPC(const std::string& rpc_name, RequestHandler* handler);
+
+  // Wait util all the clients have reached the barrier for one
+  // rpc method. This function should be called in the
+  // RequestHandler if you want to run the server/client in a
+  // synchronous mode.
+  void WaitBarrier(const std::string& rpc_name);
+
+  void SetCond(const std::string& rpc_name);
+  void WaitCond(const std::string& rpc_name);
+  void IncreaseBatchBarrier(const std::string rpc_name);
+  void ResetBarrierCounter();
 
  protected:
-  virtual void WaitCond(int cond) = 0;
+  virtual void ShutDownImpl() = 0;
+
+ private:
+  std::mutex mutex_;
+  std::unordered_map<std::string, int> barrier_counter_;
+  std::condition_variable barrier_cond_;
+
+  std::unordered_map<std::string, int> rpc_cond_map_;
+  std::atomic<int> cur_cond_;
+  std::condition_variable rpc_cond_;
 
  protected:
-  std::string address_;
-  RequestHandler* request_handler_;
-  std::set<int> cond_;
-  int selected_port_;
+  std::string bind_address_;
+  std::atomic<int> exit_flag_;
+  std::atomic<int> selected_port_;
+
+  const int thread_pool_size_;
+  const int client_num_;
+
+  std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
+  friend class RequestHandler;
 };
 
 };  // namespace detail
