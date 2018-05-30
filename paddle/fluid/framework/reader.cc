@@ -31,7 +31,7 @@ void FileReader::ReadNext(std::vector<LoDTensor> *out) {
   /*
   * Comment from sneaxiy
   *   Is it necessary to use std::vector<LoDTensor>::at() to access the data in 'out'?
-  *   If std::out_of_range is expected while accessing the data in 'out', try to add PADDLE_ENFORCE
+  *   If std::out_of_range is expected while accessing the data in 'out', try to add PADDLE_ENFORCE_EQ to compare out->size() to dims_.size() before loop
   *   @code_start
   *   PADDLE_ENFORCE_EQ(out->size(), dims_.size(), "Expected out->size() == %d but read %d", dims_.size(), out->size());
   *   @code_end
