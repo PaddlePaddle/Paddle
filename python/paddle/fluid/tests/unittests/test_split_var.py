@@ -14,7 +14,7 @@
 
 import math
 import unittest
-from paddle.fluid.transpiler.distribute_transpiler import split_dense_variable
+from paddle.fluid.transpiler.distribute_transpiler import split_variable
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import random
@@ -31,7 +31,7 @@ class TestSplitVar(unittest.TestCase):
                 # dtype=core.VarDesc.VarType.LOD_TENSOR,
                 shape=shape)
             var_list.append(var)
-        blocks = split_dense_variable(var_list, 10, min_size)
+        blocks = split_variable(var_list, 10, min_size)
         all_sizes = []
         for s in expected_sizes:
             for s2 in s:
