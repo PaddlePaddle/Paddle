@@ -81,8 +81,7 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
-  void operator()(const char* op_type,
-                  const char* library_type,
+  void operator()(const char* op_type, const char* library_type,
                   const char* data_layout) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
     OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
@@ -99,8 +98,7 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type,
-                  const char* library_type,
+  void operator()(const char* op_type, const char* library_type,
                   const char* data_layout) const {}
 };
 
@@ -108,8 +106,7 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
-  explicit OpKernelRegistrar(const char* op_type,
-                             const char* library_type,
+  explicit OpKernelRegistrar(const char* op_type, const char* library_type,
                              const char* data_layout) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
     func(op_type, library_type, data_layout);
@@ -156,32 +153,29 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, LIBRARY_TYPE, place_class, ...)        \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##__,                      \
-      "REGISTER_OP_KERNEL must be called in global namespace");            \
-  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
-      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__(#op_type,       \
-                                                           #LIBRARY_TYPE,  \
-                                                           "ANYLAYOUT");   \
-  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE() {                \
-    __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__.Touch();          \
-    return 0;                                                              \
+#define REGISTER_OP_KERNEL(op_type, LIBRARY_TYPE, place_class, ...)       \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##__,                     \
+      "REGISTER_OP_KERNEL must be called in global namespace");           \
+  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
+      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__(               \
+          #op_type, #LIBRARY_TYPE, "ANYLAYOUT");                          \
+  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE() {               \
+    __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__.Touch();         \
+    return 0;                                                             \
   }
 
-#define REGISTER_OP_KERNEL_WITH_LAYOUT(op_type, LIBRARY_TYPE,           \
-                                       LAYOUT, place_class, ...)        \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##_##LAYOUT##__,           \
-      "REGISTER_OP_KERNEL must be called in global namespace");            \
-  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
-      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##_##LAYOUT##__(     \
-                                             #op_type,                     \
-                                             #LIBRARY_TYPE,                \
-                                             #LAYOUT);                     \
-  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##LAYOUT() {     \
+#define REGISTER_OP_KERNEL_WITH_LAYOUT(op_type, LIBRARY_TYPE, LAYOUT,        \
+                                       place_class, ...)                     \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
+      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##_##LAYOUT##__,             \
+      "REGISTER_OP_KERNEL must be called in global namespace");              \
+  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>    \
+      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##_##LAYOUT##__(       \
+          #op_type, #LIBRARY_TYPE, #LAYOUT);                                 \
+  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##LAYOUT() {       \
     __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##_##LAYOUT##__.Touch(); \
-    return 0;                                                              \
+    return 0;                                                                \
   }
 
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
@@ -212,7 +206,7 @@ class OpKernelRegistrar : public Registrar {
       __attribute__((unused)) =                                   \
           TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE()
 
-#define USE_OP_DEVICE_KERNEL_EXTEND(op_type, LIBRARY_TYPE, LAYOUT)      \
+#define USE_OP_DEVICE_KERNEL_EXTEND(op_type, LIBRARY_TYPE, LAYOUT)           \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
       __use_op_kernel_##op_type##_##LIBRARY_TYPE##_##LAYOUT##__,             \
       "USE_OP_DEVICE_KERNEL must be in global namespace");                   \

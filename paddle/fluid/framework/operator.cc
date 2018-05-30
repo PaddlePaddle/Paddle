@@ -444,9 +444,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
-    // TODO(dzhwinter) : reuse ShareLoD in most operators.
-    // Need to call ShareLayout explicitly in sequence related ops.
-    // Shall we have a better method to shared info between in/out Tensor?
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
 #ifdef PADDLE_WITH_MKLDNN
     // Fix me: ugly workaround below
     // Correct solution:
@@ -462,7 +462,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     //    in Compute()
     if (in_tensor.layout() != DataLayout::kMKLDNN)
 #endif
-    out_tensor->set_layout(in_tensor.layout());
+      out_tensor->set_layout(in_tensor.layout());
   }
 
   void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,

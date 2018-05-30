@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 #define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
   class OP_NAME##OpMaker                                                \
       : public ::paddle::framework::OpProtoAndCheckerMaker {            \
@@ -60,15 +58,14 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kAnyLayout;
   }
 #endif
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
       ctx.GetPlace(), layout, library);
@@ -83,7 +80,6 @@ class ActivationOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
@@ -98,7 +94,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
   }
 
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "Out");
