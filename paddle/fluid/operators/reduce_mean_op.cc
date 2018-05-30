@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-struct MeanFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->mean(dim);
-  }
-};
+#include "paddle/fluid/operators/reduce_mean_op.h"
 
-struct MeanGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    dx->device(place) = dy->broadcast(dim) / dx->constant(size);
-  }
-};
+REGISTER_OP_CPU_KERNEL(reduce_mean,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         float, ops::MeanFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         double, ops::MeanFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         int, ops::MeanFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         int64_t, ops::MeanFunctor>);
+REGISTER_OP_CPU_KERNEL(reduce_mean_grad,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             float, ops::MeanGradFunctor>,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             double, ops::MeanGradFunctor>,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             int, ops::MeanGradFunctor>,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             int64_t, ops::MeanGradFunctor>);

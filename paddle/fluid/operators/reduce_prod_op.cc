@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-struct ProdFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->prod(dim);
-  }
-};
+#include "paddle/fluid/operators/reduce_prod_op.h"
 
-struct ProdGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    dx->device(place) = dy->broadcast(dim) * y->broadcast(dim) * x->inverse();
-  }
-};
+REGISTER_OP_CPU_KERNEL(reduce_prod,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         float, ops::ProdFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         double, ops::ProdFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         int, ops::ProdFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         int64_t, ops::ProdFunctor>);
+REGISTER_OP_CPU_KERNEL(reduce_prod_grad,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             float, ops::ProdGradFunctor>,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             double, ops::ProdGradFunctor>,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             int, ops::ProdGradFunctor>,
+                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                             int64_t, ops::ProdGradFunctor>);
