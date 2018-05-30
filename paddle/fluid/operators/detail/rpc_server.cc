@@ -76,9 +76,11 @@ void RPCServer::RegisterRPC(const std::string& rpc_name,
                             RequestHandler* handler, int thread_num) {
   rpc_call_map_[rpc_name] = handler;
   rpc_thread_num_[rpc_name] = thread_num;
+  PADDLE_ENFORCE((thread_num >= 0 && thread_num <= 24),
+                 "thread num should be [0,24]");
 
   static int cond = -1;
-  rpc_cond_map_[rpc_name] = cond + 1;
+  rpc_cond_map_[rpc_name] = ++cond;
   VLOG(4) << "RegisterRPC rpc_name:" << rpc_name << ", handler:" << handler
           << ", cond:" << rpc_cond_map_[rpc_name];
 }

@@ -66,25 +66,17 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<detail::RequestHandler> request_prefetch_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
+
+  static void StopAndExit(int signal);
 };
 
 class SignalHandler {
  public:
-  typedef std::shared_ptr<detail::ReceivedQueue> BlockingQueue;
-  typedef std::unordered_set<BlockingQueue> BlockingQueueSet;
-
- public:
   static void StopAndExit(int signal_num);
-
-  static void RegisterBlockingQueue(BlockingQueue&);
-
-  static inline bool IsProgramExit() { return program_exit_flag_; }
+  static void RegisterOp(framework::OperatorBase* s);
 
  private:
-  static bool program_exit_flag_;
-
-  static BlockingQueueSet blocking_queue_set_;
-
+  static std::unordered_set<framework::OperatorBase*> service_set_;
   DISABLE_COPY_AND_ASSIGN(SignalHandler);
 };
 

@@ -75,7 +75,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
-ListenAndServOp::~ListenAndServOp() { Stop(); }
+ListenAndServOp::~ListenAndServOp() {}
 
 void ListenAndServOp::Stop() {
   rpc_service_->ShutDown();
@@ -111,7 +111,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
   std::vector<framework::Variable *> sparse_vars;
-  while (!SignalHandler::IsProgramExit()) {
+  while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(detail::kRequestSend);
@@ -276,12 +276,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->WaitServerReady();
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
+  SignalHandler::RegisterOp(const_cast<ListenAndServOp *>(this));
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
   // Write to a file of server selected port for python use.
-  std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
-                                          static_cast<int>(::getpid()));
   SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
@@ -317,27 +316,17 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-bool SignalHandler::program_exit_flag_ = false;
-
-SignalHandler::BlockingQueueSet SignalHandler::blocking_queue_set_{};
+std::unordered_set<framework::OperatorBase *> SignalHandler::service_set_{};
 
 void SignalHandler::StopAndExit(int signal_num) {
   VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
-
-  program_exit_flag_ = true;
-
-  // awake all blocking queues
-  for (BlockingQueueSet::iterator iter = blocking_queue_set_.begin();
-       iter != blocking_queue_set_.end(); iter++) {
-    iter->get()->Push(
-        std::make_pair(std::string(LISTEN_TERMINATE_MESSAGE), nullptr));
+  for (auto &s : SignalHandler::service_set_) {
+    s->Stop();
   }
-
-  exit(EXIT_SUCCESS);
 }
 
-void SignalHandler::RegisterBlockingQueue(BlockingQueue &queue) {
-  blocking_queue_set_.insert(queue);
+void SignalHandler::RegisterOp(framework::OperatorBase *s) {
+  service_set_.insert(s);
 }
 
 }  // namespace operators

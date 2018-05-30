@@ -112,10 +112,10 @@ bool GrpcRequestPrefetchHandler::Handle(void* input, void* output) {
   VLOG(3) << "RequestPrefetchHandler " << var_name;
 
   auto var_desc = program_->Block(0).FindVar(var_name);
-  framework::Scope* local_scope = &scope_->NewScope();
+  framework::Scope* local_scope = req->GetMutableLocalScope();
   auto* var = local_scope->FindVar(var_name);
   InitializeVariable(var, var_desc->GetType());
-  executor_->RunPreparedContext(prefetch_ctx_.get(), scope_);
+  executor_->RunPreparedContext(prefetch_ctx_.get(), local_scope);
 
   SerializeToByteBuffer(var_name, var, *dev_ctx_, reply);
 
