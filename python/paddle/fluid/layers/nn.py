@@ -177,11 +177,8 @@ def fc(input,
             inputs={"X": input_var,
                     "Y": w},
             outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": num_flatten_dims,
-                "y_num_col_dims": 1,
-                "use_mkldnn": use_mkldnn
-            })
+            attrs={"x_num_col_dims": num_flatten_dims,
+                   "y_num_col_dims": 1})
         mul_results.append(tmp)
 
     if len(mul_results) == 1:
@@ -3929,10 +3926,10 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
     W-direction in this layer) on a rectilinear 2D grid.
-    
+
     For details, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
-    
+
     Args:
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
@@ -3950,7 +3947,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     Returns:
         out (Variable): The output is a 4-D tensor of the shape
                         (num_batches, channls, out_h, out_w).
-   
+
     Examples:
         .. code-block:: python
 
