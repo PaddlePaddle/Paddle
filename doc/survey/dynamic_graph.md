@@ -1,6 +1,6 @@
-# Differentiable Programming through Dynamic Graph
+# Automatical Differentiation with the Tape
 
-The implemtation of backward lies at the heart of differentiable programming. As the dynamic graph approach gains its popularity in the past a few years, this doc surveys the backward implementations from four major dynamic graph ML frameworks: Autograd, Chainer, Pytorch and Dynet.
+The implementation of automatical differentiation (AD) lies at the heart of differentiable programming. As the dynamic graph approach gains its popularity in the past a few years, this doc surveys the backward implementations of two ML frameworks: Pytorch and Dynet.
 
 Outline
 1. The implementation overview
@@ -9,26 +9,116 @@ Outline
 
 ## Implementation Overview
 
-In all four frameworks, a computation graph is built at every iteration. And There are two ways to represent the graph.
+Both frameworks record a ‘tape’ of the computation and interpreting (or run-time compiling) a transformation of the tape played back in reverse. This tape is a different kind of entity than the original program.[[link]](http://www.bcl.hamilton.ie/~barak/papers/toplas-reverse.pdf)
 
-### 1) Tape
-Dynet uses tape (also known as Wengert list). Consider the following code snippet of an auto-encoder.
+Consider the following code feedforward model.
 
 ```python
 x = Variable(randn(20, 1)))
-W_1, W_2 = Variable(randn(10, 20)), Variable(randn(20, 10))
-h = matmul1(W_1, x)
-x_hat = matmul2(W_2, h)
-loss = distance(x, x_hat)
+label = Variable(randint(1))
+W_1, W_2 = Variable(randn(20, 20)), Variable(randn(10, 20))
+h = matmul(W_1, x)
+pred = matmul(W_2, x)
+loss = softmax(pred, label)
 loss.backward()
 ```
 
-During the forward execution, a list of operators, in this case `matmul1`, `matmul2` and `distance`, are recorded in the tape, along with the necessary information needed to do the backward such as pointers to the inputs and outputs. Then the tape is played in reverse order at `loss.backward`.
+### 1) Dynet uses List to encode the Tape
 
-### 2) Node Graph
-Autograd, Chainer and Pytorch use graph. 
+During the forward execution, a list of operators, in this case `matmul`, `matmul` and `softmax`, are recorded in the tape, along with the necessary information needed to do the backward such as pointers to the inputs and outputs. Then the tape is played in reverse order at `loss.backward()`.
 
-Take pytorch for example, the graph is composed of `Variable`s and `Function`s. During the forward execution, a `Variable` records its creator function, e.g. `h.creator = matmul1`. And a Function records its inputs' previous/dependent functions `prev_func` through `creator`, e.g. `matmul2.prev_func = matmul1`. At `loss.backward()`, a topological sort is performed on all `prev_func`s. Then the grad op is performed by the sorted order.
+<details> 
+<summary></summary>
+digraph g {
+    graph [
+        rankdir = "LR"
+    ];
+    node [
+        fontsize = "16"
+        shape = "ellipse"
+    ];
+    edge [];
+    "node0" [
+        label = "<f0> type: matmul | <f1> input: W_1, x | <f2> output: h"
+        shape = "record"
+    ];
+    "node1" [
+        label = "<f0> type: matmul | <f1> input: W_2, h | <f2> output: pred"
+        shape = "record"
+    ];
+    "node2" [
+        label = "<f0> type: softmax | <f1> input: pred, label | <f2> output: loss"
+        shape = "record"
+    ];
+    "node0":f0 -> "node1":f0 [];
+    "node1":f0 -> "node2":f0 [];
+}
+</details>
+
+![Alt text](https://g.gravizo.com/svg?digraph%20g%20{%20graph%20[%20rankdir%20=%20%22LR%22%20];%20node%20[%20fontsize%20=%20%2216%22%20shape%20=%20%22ellipse%22%20];%20edge%20[];%20%22node0%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20%3Cf1%3E%20input:%20W_1,%20x%20|%20%3Cf2%3E%20output:%20h%22%20shape%20=%20%22record%22%20];%20%22node1%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20%3Cf1%3E%20input:%20W_2,%20h%20|%20%3Cf2%3E%20output:%20pred%22%20shape%20=%20%22record%22%20];%20%22node2%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20softmax%20|%20%3Cf1%3E%20input:%20pred,%20label%20|%20%3Cf2%3E%20output:%20loss%22%20shape%20=%20%22record%22%20];%20%22node0%22:f0%20-%3E%20%22node1%22:f0%20[%20id%20=%200%20];%20%22node1%22:f0%20-%3E%20%22node2%22:f0%20[%20id%20=%201%20];%20})
+
+### 2) Pytorch uses Node Graph to encode the Tape
+
+The graph is composed of `Variable`s and `Function`s. During the forward execution, a `Variable` records its creator function, e.g. `h.creator = matmul`. And a Function records its inputs' previous/dependent functions `prev_func` through `creator`, e.g. `matmul.prev_func = matmul1`. At `loss.backward()`, a topological sort is performed on all `prev_func`s. Then the grad op is performed by the sorted order.
+
+<details> 
+<summary></summary>
+digraph g {
+    graph [
+        rankdir = "LR"
+    ];
+    
+    subgraph function {
+        node [
+            fontsize = "16"
+            style = filled
+            shape = "record"
+        ];
+        "matmul0" [ label = "<f0> type: matmul | prev_func: None" ];
+        "matmul1" [ label = "<f0> type: matmul | prev_func: matmul" ];
+        "softmax" [ label = "<f0> type: softmax | prev_func: matmul" ];
+    }
+    
+    subgraph variable {
+        node [
+            fontsize = "16"
+            shape = "Mrecord"
+            style = filled
+            fillcolor = white
+        ];
+        "x" [ label = "<f0> x | <f1> creator: None" ];
+        "label" [ label = "<f0> label | <f1> creator: None" ];
+        "W_1" [ label = "<f0> W_1 | <f1> creator: None" ];
+        "W_2" [ label = "<f0> W_2 | <f1> creator: None" ];
+        "h" [ label = "<f0> h | <f1> creator: None" ];
+        "pred" [ label = "<f0> pred | <f1> creator: matmul" ];
+        "loss" [ label = "<f0> loss | <f1> creator: softmax" ];
+    }
+    
+    subgraph data_flow {
+        "x":f0 -> "matmul0":f0;
+        "W_1":f0 -> "matmul0":f0;
+        "matmul0":f0 -> "h":f0;
+    
+        "h":f0 -> "matmul1":f0;
+        "W_2":f0 -> "matmul1":f0;
+        "matmul1":f0 -> "pred":f0;
+    
+        "pred":f0 -> "softmax":f0;
+        "label":f0 -> "softmax":f0;
+        "softmax":f0 -> "loss":f0;
+    }
+
+    subgraph prev_func {
+        edge [color="red", arrowsize="0.6", penwidth="1", constraint=false];
+        "matmul1":f1 -> "matmul0":f0;
+        "softmax":f1 -> "matmul1":f0;
+        label = "prev_func";
+    }
+}
+</details>
+
+![Alt text](https://g.gravizo.com/svg?digraph%20g%20{%20graph%20[%20rankdir%20=%20%22LR%22%20];%20subgraph%20function%20{%20node%20[%20fontsize%20=%20%2216%22%20style%20=%20filled%20shape%20=%20%22record%22%20];%20%22matmul0%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20prev_func:%20None%22%20];%20%22matmul1%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20matmul%20|%20prev_func:%20matmul%22%20];%20%22softmax%22%20[%20label%20=%20%22%3Cf0%3E%20type:%20softmax%20|%20prev_func:%20matmul%22%20];%20}%20subgraph%20variable%20{%20node%20[%20fontsize%20=%20%2216%22%20shape%20=%20%22Mrecord%22%20style%20=%20filled%20fillcolor%20=%20white%20];%20%22x%22%20[%20label%20=%20%22%3Cf0%3E%20x%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22label%22%20[%20label%20=%20%22%3Cf0%3E%20label%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22W_1%22%20[%20label%20=%20%22%3Cf0%3E%20W_1%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22W_2%22%20[%20label%20=%20%22%3Cf0%3E%20W_2%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22h%22%20[%20label%20=%20%22%3Cf0%3E%20h%20|%20%3Cf1%3E%20creator:%20None%22%20];%20%22pred%22%20[%20label%20=%20%22%3Cf0%3E%20pred%20|%20%3Cf1%3E%20creator:%20matmul%22%20];%20%22loss%22%20[%20label%20=%20%22%3Cf0%3E%20loss%20|%20%3Cf1%3E%20creator:%20softmax%22%20];%20}%20subgraph%20data_flow%20{%20%22x%22:f0%20-%3E%20%22matmul0%22:f0;%20%22W_1%22:f0%20-%3E%20%22matmul0%22:f0;%20%22matmul0%22:f0%20-%3E%20%22h%22:f0;%20%22h%22:f0%20-%3E%20%22matmul1%22:f0;%20%22W_2%22:f0%20-%3E%20%22matmul1%22:f0;%20%22matmul1%22:f0%20-%3E%20%22pred%22:f0;%20%22pred%22:f0%20-%3E%20%22softmax%22:f0;%20%22label%22:f0%20-%3E%20%22softmax%22:f0;%20%22softmax%22:f0%20-%3E%20%22loss%22:f0;%20}%20subgraph%20prev_func%20{%20edge%20[color=%22red%22,%20arrowsize=%220.6%22,%20penwidth=%221%22,%20constraint=false];%20%22matmul1%22:f1%20-%3E%20%22matmul0%22:f0;%20%22softmax%22:f1%20-%3E%20%22matmul1%22:f0;%20label%20=%20%22prev_func%22;%20}%20})
 
 Chainer and Autograd uses the similar techniques to record the forward pass. For details please refer to the appendix.
 
@@ -41,7 +131,7 @@ What's good about Tape:
 1. It promises effient data parallelism implementations
 
 What's good about Node Graph:
-1. Better flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [1]
+1. More flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [[2]](https://openreview.net/pdf?id=BJJsrmfCZ)
 
 ### 2) Lazy evaluation vs Immediate evaluation
 
@@ -263,7 +353,3 @@ void SimpleExecutionEngine::backward(VariableIndex from_where, bool full) {
   ...
 }
 ```
-
-
-
-[1] https://openreview.net/pdf?id=BJJsrmfCZ
