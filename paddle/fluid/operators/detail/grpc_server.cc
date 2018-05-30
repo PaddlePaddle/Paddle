@@ -300,9 +300,9 @@ void AsyncGRPCServer::HandleRequest(
     auto& reqs = rpc_reqs_[rpc_name];
     RequestBase* base = nullptr;
     {
+      PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
       std::lock_guard<std::mutex> lock(cq_mutex_);
       base = reqs[req_id];
-      PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
     }
 
     // reference:
