@@ -24,64 +24,19 @@ from tensor import concat
 import utils
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'upsampling_bilinear2d',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
+    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'upsampling_bilinear2d'
 ]
 
 
@@ -3933,7 +3888,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|None): Output shape of bilinear interpolation
+        out_shape(list|tuple|Variable|None): Output shape of bilinear interpolation
                                     layer, the shape is (out_h, out_w).
                                     Default: None
         scale(int|None): The multiplier for the input height or width.
@@ -3960,13 +3915,20 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
+    out_h = 0
+    out_w = 0
+    inputs = {"X": Input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2):
+        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2) and (
+                out_shape is not Variable):
             raise ValueError('out_shape should be a list or tuple ',
                              'with length 2, (out_h, out_w).')
-        out_shape = list(map(int, out_shape))
-        out_h = out_shape[0]
-        out_w = out_shape[1]
+        if _is_list_or_turple_(out_shape):
+            out_shape = list(map(int, out_shape))
+            out_h = out_shape[0]
+            out_w = out_shape[1]
+        else:
+            inputs['OutSize'] = out_shape
     else:
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
@@ -3974,7 +3936,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="bilinear_interp",
-        inputs={"X": input},
+        inputs=inputs,
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
