@@ -166,8 +166,6 @@ function(op_library TARGET)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
         file(APPEND ${pybind_file} "USE_OP(relu);\n")
-      elseif(${TARGET} STREQUAL "reduce")
-        file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()
