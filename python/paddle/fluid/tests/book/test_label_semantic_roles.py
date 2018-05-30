@@ -22,6 +22,7 @@ import unittest
 import paddle
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
+import random
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -140,6 +141,9 @@ def create_random_lodtensor(lod, place, low, high):
 
 
 def train(use_cuda, save_dirname=None, is_local=True):
+    seed = 100
+    random.seed(seed) 
+    fluid.default_startup_program().random_seed = seed
     # define network topology
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1)

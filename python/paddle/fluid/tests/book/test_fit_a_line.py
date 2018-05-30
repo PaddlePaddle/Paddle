@@ -20,9 +20,12 @@ import unittest
 import math
 import sys
 import os
-
+import random
 
 def train(use_cuda, save_dirname, is_local):
+    random.seed(100)
+    fluid.default_startup_program().random_seed = 100
+
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
     y_predict = fluid.layers.fc(input=x, size=1, act=None)

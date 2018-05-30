@@ -18,7 +18,17 @@ import unittest
 import os
 import numpy as np
 import math
+import random
 import sys
+
+
+def create_random_lodtensor(lod, place, low, high):    
+    # The range of data elements is [low, high]    
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")    
+    res = fluid.LoDTensor()    
+    res.set(data, place)    
+    res.set_lod([lod])    
+    return res
 
 
 def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
@@ -28,6 +38,10 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     N = 5
     BATCH_SIZE = 32
     IS_SPARSE = is_sparse
+
+    seed=100
+    random.seed(seed)
+    fluid.default_startup_program().random_seed = seed
 
     def __network__(words):
         embed_first = fluid.layers.embedding(
@@ -69,7 +83,6 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
 
     word_dict = paddle.dataset.imikolov.build_dict()
     dict_size = len(word_dict)
-
     first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
     second_word = fluid.layers.data(name='secondw', shape=[1], dtype='int64')
     third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
@@ -90,6 +103,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
             pd.write_output(avg_cost)
 
         avg_cost = fluid.layers.mean(pd())
+        print('avg_cost: {}'.format(avg_cost))
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
@@ -104,6 +118,9 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         place=place)
 
     def train_loop(main_program):
+	#seed=100
+	#random.seed(seed)
+	#fluid.default_startup_program().random_seed = seed
         exe.run(fluid.default_startup_program())
 
         for pass_id in range(PASS_NUM):
@@ -111,6 +128,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
                 avg_cost_np = exe.run(main_program,
                                       feed=feeder.feed(data),
                                       fetch_list=[avg_cost])
+		print(avg_cost_np)
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, [
@@ -172,16 +190,11 @@ def infer(use_cuda, save_dirname=None):
         # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
         # one lod_level and there is only one sequence of one word on this level.
         # Note that lod info should be a list of lists.
-        lod = [[1]]
-        base_shape = [1]
-        first_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
-        second_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
-        third_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
-        fourth_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+        lod = [0, 1]
+        first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
+        second_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
+        third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
+        fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'
@@ -214,7 +227,7 @@ def main(use_cuda, is_sparse, is_parallel):
         save_dirname = None
 
     train(use_cuda, is_sparse, is_parallel, save_dirname)
-    infer(use_cuda, save_dirname)
+    #infer(use_cuda, save_dirname)
 
 
 FULL_TEST = os.getenv('FULL_TEST',
@@ -226,7 +239,8 @@ class W2VTest(unittest.TestCase):
     pass
 
 
-def inject_test_method(use_cuda, is_sparse, is_parallel):
+def inject_test_method(use_cuda, is_sparse, is_parallel): 
+    print('inject_test_method')
     fn_name = "test_{0}_{1}_{2}".format("cuda" if use_cuda else "cpu", "sparse"
                                         if is_sparse else "dense", "parallel"
                                         if is_parallel else "normal")
@@ -251,11 +265,11 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
 
     setattr(W2VTest, fn_name, fn)
 
+#inject_test_method(True,False,False)
+#main(False,False,False)
+main(True,False,False)
+#for use_cuda in (False, True):
+#    for is_sparse in (False, True):
+#        for is_parallel in (False, True):
+#            inject_test_method(use_cuda, is_sparse, is_parallel)
 
-for use_cuda in (False, True):
-    for is_sparse in (False, True):
-        for is_parallel in (False, True):
-            inject_test_method(use_cuda, is_sparse, is_parallel)
-
-if __name__ == '__main__':
-    unittest.main()
