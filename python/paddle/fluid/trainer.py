@@ -252,14 +252,14 @@ class Trainer(object):
         current_endpoint = os.getenv("PADDLE_CURRENT_IP", "") + ":" + port
         # the unique trainer id, starting from 0, needed by trainer
         # only
-        trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self.chief = self.trainer_id == 0
         # the role, should be either PSERVER or TRAINER
         training_role = os.getenv("PADDLE_TRAINING_ROLE")
         with self._prog_and_scope_guard():
             t = distribute_transpiler.DistributeTranspiler()
             t.transpile(
-                trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                self.trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if training_role == "PSERVER":
                 if self.checkpoint:
                     self.is_pserver = True
