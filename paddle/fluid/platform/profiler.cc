@@ -235,7 +235,7 @@ void EnableProfiler(ProfilerState state) {
     return;
   }
   g_state = state;
-  { should_send_profile_state = true; }
+  should_send_profile_state = true;
   GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
@@ -460,7 +460,7 @@ void DisableProfiler(EventSortingKey sorted_key,
     tracer->GenProfile(profile_path);
   }
   g_state = ProfilerState::kDisabled;
-  { should_send_profile_state = true; }
+  should_send_profile_state = true;
 }
 
 bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }

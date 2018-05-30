@@ -76,6 +76,15 @@ def reset_profiler():
 
 
 def start_profiler(state):
+    """Enable the profiler.
+
+    Args:
+        state (string) : The profiling state, which should be 'CPU', 'GPU'
+            or 'All'. 'CPU' means only profile CPU. 'GPU' means profiling
+            GPU as well. 'All' also generates timeline.
+    """
+    if core.is_profiler_enabled():
+        return
     if state not in ['CPU', 'GPU', "All"]:
         raise ValueError("The state must be 'CPU' or 'GPU' or 'All'.")
     if state == "GPU":
@@ -88,6 +97,23 @@ def start_profiler(state):
 
 
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
+    """Stop the profiler.
+
+    Args:
+        sorted_key (string) : If None, the profiling results will be printed
+            in the order of first end time of events. Otherwise, the profiling
+            results will be sorted by the this flag. This flag should be one
+            of 'calls', 'total', 'max', 'min' or 'ave'.
+            The `calls` means sorting by the number of calls.
+            The `total` means sorting by the total execution time.
+            The `max` means sorting by the maximum execution time.
+            The `min` means sorting by the minimum execution time.
+            The `ave` means sorting by the average execution time.
+        profile_path (string) : If state == 'All', it will write a profile
+            proto output file.
+    """
+    if not core.is_profiler_enabled():
+        return
     sorted_key = 'default' if sorted_key is None else sorted_key
     if sorted_key not in ['default', 'calls', 'total', 'max', 'min', 'ave']:
         raise ValueError("The sorted_key must be None or in 'calls', 'total', "
