@@ -41,7 +41,7 @@ struct VisConfig : public PaddlePredictor::Config {
  * Do not use this, just a demo indicating how to customize a Predictor.
  */
 class PaddlePredictorImpl : public PaddlePredictor {
-public:
+ public:
   explicit PaddlePredictorImpl(const VisConfig &config) : config_(config) {}
 
   bool Init();
@@ -53,8 +53,8 @@ public:
 
   ~PaddlePredictorImpl() override{};
 
-private:
-  bool InitShared(PaddlePredictorImpl *cls);
+ private:
+  bool InitShared() override;
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                std::vector<paddle::framework::LoDTensor> *feeds);
   bool GetFetch(const std::vector<paddle::framework::LoDTensor> &fetchs,

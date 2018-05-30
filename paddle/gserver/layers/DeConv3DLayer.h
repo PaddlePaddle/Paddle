@@ -27,7 +27,7 @@ namespace paddle {
  * calculate deconvolution3D operation.
  */
 class DeConv3DLayer : public ConvBaseLayer {
-public:
+ public:
   explicit DeConv3DLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
   ~DeConv3DLayer() {}
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -40,7 +40,7 @@ public:
   void bpropWeights(int i);
   size_t getSize();
 
-protected:
+ protected:
   // Figure out the dimensions for individual gemms.
   IntV M_;  /// numFilters_ / filter_group_;
   IntV N_;  /// channels_ * filterSizeZ_ * filterSize_ * filterSizeY_

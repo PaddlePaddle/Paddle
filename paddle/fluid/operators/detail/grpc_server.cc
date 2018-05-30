@@ -135,9 +135,7 @@ class RequestPrefetch final : public RequestBase {
         responder_(&ctx_),
         local_scope_(nullptr) {
     request_.reset(new VariableResponse(request_handler->scope(),
-                                        request_handler->dev_ctx(),
-                                        !request_handler->sync_mode()));
-
+                                        request_handler->dev_ctx(), true));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -152,7 +150,6 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string var_name = request_->OutVarname();
     VLOG(3) << "RequestPrefetch " << var_name;
-
     request_handler_->Handle(static_cast<void*>(request_.get()),
                              static_cast<void*>(&reply_));
 

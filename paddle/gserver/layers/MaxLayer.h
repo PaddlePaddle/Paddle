@@ -39,11 +39,11 @@ namespace paddle {
  */
 
 class MaxLayer : public SequencePoolLayer {
-protected:
+ protected:
   // maxIndex_[i][j] = k : the value at (i, j) is from input[k].
   IVectorPtr maxIndex_;
 
-public:
+ public:
   explicit MaxLayer(const LayerConfig& config) : SequencePoolLayer(config) {}
 
   bool init(const LayerMap& layerMap,

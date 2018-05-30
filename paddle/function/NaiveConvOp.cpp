@@ -24,7 +24,7 @@ namespace paddle {
  */
 template <class T>
 class NaiveConvFunctor {
-public:
+ public:
   void operator()(const T* inputData,
                   size_t batchSize,
                   size_t inputChannels,
@@ -85,7 +85,7 @@ public:
 
 template <DeviceType Device>
 class NaiveConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }

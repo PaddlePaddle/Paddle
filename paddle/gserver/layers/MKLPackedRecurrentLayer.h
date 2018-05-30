@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class MKLPackedRecurrentLayer : public RecurrentLayer {
-public:
+ public:
   explicit MKLPackedRecurrentLayer(const LayerConfig& config)
       : RecurrentLayer(config) {}
 
@@ -38,7 +38,7 @@ public:
 
   void backward(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   void forwardBatch(int batchSize,
                     size_t numSequences,
                     const int* starts) override;
@@ -47,7 +47,7 @@ protected:
                      size_t numSequences,
                      const int* starts) override;
 
-protected:
+ protected:
   /// packed_weight_ contains same data with
   /// RecurrentLayer::weight_ but is packed
   std::unique_ptr<MKLPackedWeight> packed_weight_;

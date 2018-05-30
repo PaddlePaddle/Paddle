@@ -133,7 +133,6 @@ TEST(PREFETCH, CPU) {
   framework::Scope scope;
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
-
   {
     // create var on local scope
     int64_t rows_numel = 5;
