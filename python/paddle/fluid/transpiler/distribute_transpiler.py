@@ -24,6 +24,7 @@ from ..framework import Program, default_main_program, \
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
+OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -532,8 +533,8 @@ class DistributeTranspiler:
                 pserver_program.num_blocks - 1)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id, merged_var)
-
+                                       grad_to_block_id, None)
+        print("##### grad_to_block_id ", grad_to_block_id)
         # NOT USED: single block version:
         #
         # for _, op in enumerate(self.optimize_ops):
@@ -1311,18 +1312,38 @@ class DistributeTranspiler:
         block = self.origin_program.global_block()
         opt_ops = []
         params_grads = []
+        origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
             if self._is_opt_role_op(op):
                 opt_ops.append(op)
-                if self._is_optimizer_op(op):
-                    params_grads.append((self.origin_program.global_block().var(
-                        op.input("Param")[0]),
-                                         self.origin_program.global_block().var(
-                                             op.input("Grad")[0])))
+                # HACK(wuyi): if we find grad vars from input of optimize
+                # ops, we may get the output of clip op. Use syntax "@GRAD"
+                # and op_role_var to get the pair.
+                for input_name in op.input_arg_names:
+                    if input_name.find("@GRAD") != -1 and \
+                        op.attrs[RPC_OP_ROLE_ATTR_NAME]:
+                        param_name = op.attrs[OP_ROLE_VAR_ATTR_NAME][0]
+                        print("##### appending param grad pair: ", input_name,
+                              param_name)
+                        params_grads.append([
+                            origin_var_dict[param_name],
+                            origin_var_dict[input_name]
+                        ])
+
+                # if self._is_optimizer_op(op):
+                #     params_grads.append((self.origin_program.global_block().var(
+                #         op.input("Param")[0]),
+                #                          self.origin_program.global_block().var(
+                #                              op.input("Grad")[0])))
             elif self._is_adam_connected_op(op):
                 opt_ops.append(op)
             else:
                 pass
+        print("######################")
+        print(opt_ops)
+        print("######################")
+        print(params_grads)
+        print("######################")
         return opt_ops, params_grads
 
     def _is_adam_connected_op(self, op):
