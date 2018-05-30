@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/reduce_sum_op.h"
 
-REGISTER_REDUCE_OP(sum);
+REGISTER_REDUCE_OP(reduce_sum);
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
                                   ops::SumFunctor>,

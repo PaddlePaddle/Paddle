@@ -149,15 +149,15 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, LIBRARY_TYPE, place_class, ...)        \
+#define REGISTER_OP_KERNEL(op_type, library_type, place_class, ...)        \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##__,                      \
+      __reg_op_kernel_##op_type##_##library_type##__,                      \
       "REGISTER_OP_KERNEL must be called in global namespace");            \
   static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
-      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__(#op_type,       \
-                                                           #LIBRARY_TYPE); \
-  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE() {                \
-    __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__.Touch();          \
+      __op_kernel_registrar_##op_type##_##library_type##__(#op_type,       \
+                                                           #library_type); \
+  int TouchOpKernelRegistrar_##op_type##_##library_type() {                \
+    __op_kernel_registrar_##op_type##_##library_type##__.Touch();          \
     return 0;                                                              \
   }
 

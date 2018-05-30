@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/reduce_prod_op.h"
 
+REGISTER_REDUCE_OP(reduce_prod);
 REGISTER_OP_CPU_KERNEL(reduce_prod,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::ProdFunctor>,

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/reduce_min_max_op.h"
 
-REGISTER_REDUCE_OP(min);
+REGISTER_REDUCE_OP(reduce_min);
 REGISTER_OP_CPU_KERNEL(
     reduce_min, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
                                   ops::MinFunctor>,

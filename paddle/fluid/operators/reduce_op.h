@@ -260,19 +260,12 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 
 namespace ops = paddle::operators;
 
-#define REGISTER_REDUCE_OP(op_name)                                        \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {                 \
-   protected:                                                              \
-    virtual std::string GetName() const { return #op_name; }               \
-    virtual std::string GetOpType() const { return "Reduce " #op_name; }   \
-  };                                                                       \
-  REGISTER_OPERATOR(reduce_##op_name, ops::ReduceOp, __##op_name##Maker__, \
-                    paddle::framework::DefaultGradOpDescMaker<true>);      \
-  REGISTER_OPERATOR(reduce_##op_name##_grad, ops::ReduceGradOp)
-
-#define FOR_EACH_KERNEL_FUNCTOR(__macro)                \
-  __macro(reduce_sum, SumFunctor, SumGradFunctor);      \
-  __macro(reduce_mean, MeanFunctor, MeanGradFunctor);   \
-  __macro(reduce_max, MaxFunctor, MaxOrMinGradFunctor); \
-  __macro(reduce_min, MinFunctor, MaxOrMinGradFunctor); \
-  __macro(reduce_prod, ProdFunctor, ProdGradFunctor);
+#define REGISTER_REDUCE_OP(op_name)                                      \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+   protected:                                                            \
+    virtual std::string GetName() const { return #op_name; }             \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; } \
+  };                                                                     \
+  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
+                    paddle::framework::DefaultGradOpDescMaker<true>);    \
+  REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)

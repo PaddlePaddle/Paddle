@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/reduce_mean_op.h"
 
+REGISTER_REDUCE_OP(reduce_mean);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,
