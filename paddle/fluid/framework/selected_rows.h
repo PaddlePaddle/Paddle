@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
 
