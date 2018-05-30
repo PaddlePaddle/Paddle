@@ -39,7 +39,7 @@ void FileReader::ReadNext(std::vector<LoDTensor> *out) {
   *   If std::out_of_range is not expected, try to change to upper bound of the loop to be std::min(out->size(), dims_.size())
   */
   for (size_t i = 0; i < std::min(out->size(), dims_.size()); ++i) {
-    auto& actual = (*out)[i].dims();
+    auto &actual = (*out)[i].dims();
     //auto &actual = out->at(i).dims();
     auto &expect = dims_[i];
 
