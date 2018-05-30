@@ -3976,7 +3976,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
 
     out_h = 0
     out_w = 0
-    inputs = {"X": Input}
+    inputs = {"X": input}
     if out_shape is not None:
         if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2) and (
                 out_shape is not Variable):
