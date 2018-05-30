@@ -12,14 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cast_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/operators/fake_dequantize_op.h"
 
-template <typename T>
-using CastOpKernel =
-    paddle::operators::CastOpKernel<paddle::platform::CUDADeviceContext, T>;
-
-REGISTER_OP_CUDA_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
-                        CastOpKernel<int>, CastOpKernel<int64_t>,
-                        CastOpKernel<bool>, CastOpKernel<uint8_t>,
-                        CastOpKernel<paddle::platform::float16>);
+namespace ops = paddle::operators;
+using CUDA = paddle::platform::CUDADeviceContext;
+REGISTER_OP_CUDA_KERNEL(fake_dequantize_max_abs,
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, float>,
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, double>);

@@ -35,7 +35,7 @@ TEST(DataFlowGraph, BFS) {
 
   GraphTraits<DataFlowGraph> trait(&dfg);
   auto nodes = trait.nodes();
-  int count = 0;
+  size_t count = 0;
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     LOG(INFO) << "visiting " << it->name();
     ++count;
@@ -49,7 +49,7 @@ TEST(DataFlowGraph, DFS) {
   dfg.Build();
   GraphTraits<DataFlowGraph> trait(&dfg);
   auto nodes = trait.nodes_in_DFS();
-  int count = 0;
+  size_t count = 0;
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     LOG(INFO) << "visiting " << it->name();
     ++count;
