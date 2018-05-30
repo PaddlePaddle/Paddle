@@ -102,8 +102,8 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
   Timer timer;
   timer.tic();
   // set feed variable
-  std::map<std::string, const paddle::framework::LoDTensor *> feed_targets;
-  std::vector<paddle::framework::LoDTensor> feeds;
+  std::map<std::string, const framework::LoDTensor *> feed_targets;
+  std::vector<framework::LoDTensor> feeds;
   if (!SetFeed(inputs, &feeds)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -112,8 +112,8 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
     feed_targets[feed_target_names_[i]] = &feeds[i];
   }
   // get fetch variable
-  std::map<std::string, paddle::framework::LoDTensor *> fetch_targets;
-  std::vector<paddle::framework::LoDTensor> fetchs;
+  std::map<std::string, framework::LoDTensor *> fetch_targets;
+  std::vector<framework::LoDTensor> fetchs;
   fetchs.resize(fetch_target_names_.size());
   for (size_t i = 0; i < fetch_target_names_.size(); ++i) {
     fetch_targets[fetch_target_names_[i]] = &fetchs[i];
@@ -149,28 +149,27 @@ bool PaddlePredictorImpl::InitShared() {
   VLOG(3) << "Predictor::init_shared";
   // 1. Define place, executor, scope
   if (this->config_.device >= 0) {
-    place_ = paddle::platform::CUDAPlace();
+    place_ = platform::CUDAPlace();
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = platform::CPUPlace();
   }
-  this->executor_.reset(new paddle::framework::Executor(this->place_));
-  this->scope_.reset(new paddle::framework::Scope());
+  this->executor_.reset(new framework::Executor(this->place_));
+  this->scope_.reset(new framework::Scope());
   // Initialize the inference program
   if (!this->config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
-    this->inference_program_ = paddle::inference::Load(
+    this->inference_program_ = inference::Load(
         this->executor_.get(), this->scope_.get(), this->config_.model_dir);
   } else if (!this->config_.prog_file.empty() &&
              !this->config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
-    this->inference_program_ =
-        paddle::inference::Load(this->executor_.get(),
-                                this->scope_.get(),
-                                this->config_.prog_file,
-                                this->config_.param_file);
+    this->inference_program_ = inference::Load(this->executor_.get(),
+                                               this->scope_.get(),
+                                               this->config_.prog_file,
+                                               this->config_.param_file);
   }
   this->ctx_ = this->executor_->Prepare(*this->inference_program_, 0);
   // 3. create variables
@@ -185,24 +184,21 @@ bool PaddlePredictorImpl::InitShared() {
   return true;
 }
 
-bool PaddlePredictorImpl::SetFeed(
-    const std::vector<PaddleTensor> &inputs,
-    std::vector<paddle::framework::LoDTensor> *feeds) {
+bool PaddlePredictorImpl::SetFeed(const std::vector<PaddleTensor> &inputs,
+                                  std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feed_target_names_.size()) {
     LOG(ERROR) << "wrong feed input size.";
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
-    paddle::framework::LoDTensor input;
-    paddle::framework::DDim ddim =
-        paddle::framework::make_ddim(inputs[i].shape);
+    framework::LoDTensor input;
+    framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr =
-          input.mutable_data<int64_t>(ddim, paddle::platform::CPUPlace());
+      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, paddle::platform::CPUPlace());
+      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
@@ -213,13 +209,12 @@ bool PaddlePredictorImpl::SetFeed(
                 inputs[i].data.data,
                 inputs[i].data.length);
     feeds->push_back(input);
-    LOG(ERROR) << "Actual feed type " << feeds->back().type().name();
   }
   return true;
 }
 
 bool PaddlePredictorImpl::GetFetch(
-    const std::vector<paddle::framework::LoDTensor> &fetchs,
+    const std::vector<framework::LoDTensor> &fetchs,
     std::vector<PaddleTensor> *outputs) {
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs.size());
@@ -284,8 +279,9 @@ bool PaddlePredictorImpl::GetFetch(
   return true;
 }
 
-std::unique_ptr<PaddlePredictorImpl> CreatePaddlePredictorImpl(
-    const VisConfig &config) {
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
+    const ConfigImpl &config) {
   VLOG(3) << "create PaddlePredictorImpl";
   // 1. GPU memeroy
   std::vector<std::string> flags;
@@ -299,12 +295,11 @@ std::unique_ptr<PaddlePredictorImpl> CreatePaddlePredictorImpl(
     framework::InitGflags(flags);
   }
 
-  std::unique_ptr<PaddlePredictorImpl> predictor(
-      new PaddlePredictorImpl(config));
-  if (!predictor->Init()) {
+  std::unique_ptr<PaddlePredictor> predictor(new PaddlePredictorImpl(config));
+  if (!dynamic_cast<PaddlePredictorImpl *>(predictor.get())->Init()) {
     return nullptr;
   }
-  return predictor;
+  return std::move(predictor);
 }
 
 }  // namespace paddle

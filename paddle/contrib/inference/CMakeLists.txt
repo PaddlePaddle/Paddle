@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-function(inference_api_test TARGET_NAME TEST_SRC DEP_TEST)
+function(inference_api_test TARGET_NAME TEST_SRC)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs ARGS)
@@ -34,6 +34,8 @@ function(inference_api_test TARGET_NAME TEST_SRC DEP_TEST)
                 SRCS ${TEST_SRC}
                 DEPS paddle_fluid_api paddle_inference_api paddle_inference_api_impl
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+        # TODO(panyx0178): Figure out how to add word2vec and image_classification
+        # as deps.
         # set_tests_properties(${TARGET_NAME}
         #         PROPERTIES DEPENDS ${DEP_TEST})
     endforeach()
@@ -53,5 +55,4 @@ cc_test(test_paddle_inference_api
         DEPS paddle_inference_api)
 
 inference_api_test(test_paddle_inference_api_impl
-                   test_paddle_inference_api_impl.cc
-                   test_word2vec)
+                   test_paddle_inference_api_impl.cc)
