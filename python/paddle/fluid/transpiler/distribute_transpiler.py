@@ -429,7 +429,6 @@ class DistributeTranspiler:
             # we don't need to create them when grad arrives.
             # change client side var name to origin name by
             # removing ".trainer_%d" suffix
-
             suff_idx = v.name.find(".trainer_")
             if suff_idx >= 0:
                 orig_var_name = v.name[:suff_idx]
@@ -492,12 +491,12 @@ class DistributeTranspiler:
             if self._is_adam_connected_op(op):
                 global_ops.append(op)
 
-        def __append_optimize_op__(op, block, grad_to_block_id):
+        def __append_optimize_op__(op, block, grad_to_block_id, merged_var):
             if self._is_optimizer_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         self.origin_program)
+                                         self.origin_program, merged_var)
             else:
-                self._append_pserver_non_opt_ops(block, op)
+                self._append_pserver_non_opt_ops(block, op, endpoint)
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
@@ -505,7 +504,7 @@ class DistributeTranspiler:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
             for _, op in enumerate(lr_ops):
-                self._append_pserver_non_opt_ops(lr_decay_block, op)
+                self._append_pserver_non_opt_ops(lr_decay_block, op, endpoint)
 
         # append op to the current block
         grad_to_block_id = []
@@ -513,15 +512,19 @@ class DistributeTranspiler:
         for idx, opt_op in enumerate(opt_op_on_pserver):
             print("##### append op for opt: ", opt_op.output_arg_names)
             per_opt_block = pserver_program.create_block(pre_block_idx)
+            print("### appending merging ops")
+            merged_var = self._append_pserver_grad_merge_ops(
+                per_opt_block, opt_op, endpoint, grad_to_block_id,
+                self.origin_program)
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and op not in global_ops:
-                    print("##### append op", op)
                     # append grad merging ops before head.
                     # append weigth decay/clipping ops
                     # append optimizer op.
 
-                    __append_optimize_op__(op, per_opt_block, grad_to_block_id)
+                    __append_optimize_op__(op, per_opt_block, grad_to_block_id,
+                                           merged_var)
 
         # append global ops
         if global_ops:
@@ -529,7 +532,7 @@ class DistributeTranspiler:
                 pserver_program.num_blocks - 1)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id)
+                                       grad_to_block_id, merged_var)
 
         # NOT USED: single block version:
         #
@@ -981,10 +984,12 @@ class DistributeTranspiler:
 
     def _append_pserver_grad_merge_ops(self, optimize_block, opt_op, endpoint,
                                        grad_to_block_id, origin_program):
+        program = optimize_block.program
+        pserver_block = program.global_block()
         for g in self.param_grad_ep_mapping[endpoint]["grads"]:
             if same_or_split_var(
                     self._orig_varname(g.name),
-                    self._orig_varname(opt_op.input(key)[0])):
+                    self._orig_varname(opt_op.input("Grad")[0])):
                 grad_block = g
                 break
         if not grad_block:
@@ -1115,17 +1120,33 @@ class DistributeTranspiler:
             outputs=outputs,
             attrs=opt_op.attrs)
 
-    def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
+    def _is_splited_grad_var(self, var, var_dict):
+        grad_block = None
+        for pserver_var_name, g in var_dict.iteritems():
+            if same_or_split_var(
+                    self._orig_varname(g.name), self._orig_varname(var.name)):
+                print("### find one: ", g.name)
+                if g.name.find(".trainer_") == -1:
+                    grad_block = g
+                    break
+        return grad_block
+
+    def _append_pserver_non_opt_ops(self, optimize_block, opt_op, endpoint):
         program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for varlist in inputs.itervalues():
+        for key, varlist in inputs.iteritems():
             if not isinstance(varlist, list):
                 varlist = [varlist]
-
             for var in varlist:
-                if not program.global_block().vars.has_key(var.name):
+                # for ops like clipping and weight decay, get the splited var
+                # for inputs/outputs
+                grad_block = self._is_splited_grad_var(
+                    var, program.global_block().vars)
+                if grad_block:
+                    inputs[key] = grad_block
+                elif not program.global_block().vars.has_key(var.name):
                     program.global_block().create_var(
                         name=var.name,
                         persistable=var.persistable,
@@ -1134,13 +1155,15 @@ class DistributeTranspiler:
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-
-        for varlist in outputs.itervalues():
+        for key, varlist in outputs.iteritems():
             if not isinstance(varlist, list):
                 varlist = [varlist]
-
             for var in varlist:
-                if var.name not in program.global_block().vars:
+                grad_block = self._is_splited_grad_var(
+                    var, program.global_block().vars)
+                if grad_block:
+                    outputs[key] = grad_block
+                elif not program.global_block().vars.has_key(var.name):
                     program.global_block().clone_variable(var)
 
         optimize_block.append_op(
