@@ -25,10 +25,10 @@ REGISTER_OP_CUDA_KERNEL(reduce_min,
                                           int64_t, ops::MinFunctor>);
 REGISTER_OP_CUDA_KERNEL(
     reduce_min_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                           float, ops::MinGradFunctor>,
+                                           float, ops::MaxOrMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::MinGradFunctor>,
+                          ops::MaxOrMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
-                          ops::MinGradFunctor>,
+                          ops::MaxOrMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
-                          ops::MinGradFunctor>);
+                          ops::MaxOrMinGradFunctor>);

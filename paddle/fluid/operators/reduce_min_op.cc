@@ -23,12 +23,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::MinFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::MinFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_min_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             float, ops::MinGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             double, ops::MinGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             int, ops::MinGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             int64_t, ops::MinGradFunctor>);
+REGISTER_OP_CPU_KERNEL(
+    reduce_min_grad, ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+                                           float, ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,
+                          ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int,
+                          ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,
+                          ops::MaxOrMinGradFunctor>);
