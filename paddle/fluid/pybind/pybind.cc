@@ -495,6 +495,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
+  m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
 
   // -- python binds for parallel executor.
