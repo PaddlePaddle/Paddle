@@ -66,16 +66,18 @@ class NeonDepthwiseConvFunction : public ConvFunctionBase {
     float* inputPadding = inputData;
     int padInputHeight = inputHeight + 2 * paddingH();
     int padInputWidth = inputWidth + 2 * paddingW();
-    int newSize = batchSize * (inputChannels + 1) * padInputHeight * padInputWidth;
+    int newSize =
+        batchSize * (inputChannels + 1) * padInputHeight * padInputWidth;
+
     resizeBuffer<Device>(newSize);
     inputPadding = reinterpret_cast<float*>(memory_->getBuf());
     neon::Padding<float>::run(inputData,
-                                inputPadding,
-                                batchSize * inputChannels,
-                                inputHeight,
-                                inputWidth,
-                                padInputHeight,
-                                padInputWidth);
+                              inputPadding,
+                              batchSize * inputChannels,
+                              inputHeight,
+                              inputWidth,
+                              padInputHeight,
+                              padInputWidth);
 
     std::function<void(
         const float*, const float*, int, int, int, int, int, int, float*)>
