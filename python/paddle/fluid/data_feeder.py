@@ -36,9 +36,11 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'float64'
         elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
+        elif dtype == core.VarDesc.VarType.UINT8:
+            self.dtype = 'uint8'
         else:
             raise ValueError("dtype must be any of [int32, float32, int64, "
-                             "float64]")
+                             "float64, uint8]")
 
         self.data = []
         self.lod = []
