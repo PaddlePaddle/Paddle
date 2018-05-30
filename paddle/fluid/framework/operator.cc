@@ -444,10 +444,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
-    // TODO(dzhwinter) : reuse ShareLoD in most operators.
-    // Need to call ShareLayout explicitly in sequence related ops.
-    // Shall we have a better method to shared info between in/out Tensor?
-    out_tensor->set_layout(in_tensor.layout());
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
+#ifdef PADDLE_WITH_MKLDNN
+    // Fix me: ugly workaround below
+    // Correct solution:
+    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor should be set "manually" in Compute()
+    //    of each OPKernel. The reason layout should NOT be shared between
+    //    input and output "automatically" (now by InferShape()->ShareLoD())
+    //    is that layout transform may occur after InferShape().
+    // Workaround:
+    //    Skip set_layout() when input layout is kMKLDNN
+    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    in Compute()
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+      out_tensor->set_layout(in_tensor.layout());
   }
 
   void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
@@ -664,7 +679,8 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
 OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
     const OpKernelType& expected_kernel_type) const {
-  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
+                      tensor.layout());
 }
 
 }  // namespace framework

@@ -26,6 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/framework/mkldnn_tensor.h"
+#endif
 
 namespace paddle {
 
@@ -33,7 +36,11 @@ namespace framework {
 
 class LoDTensor;
 
-class Tensor {
+class Tensor
+#ifdef PADDLE_WITH_MKLDNN
+    : public MKLDNNTensor
+#endif
+{
  public:
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -197,8 +204,10 @@ class Tensor {
    *       N,C,H,W for respectively the batch size, the number of
    *       feature maps, the height.
    */
-
-  DataLayout layout_ = DataLayout::kNHWC;
+  // Fix me: here just change the default layout to kNCHW
+  // it doesn't fix the real issue, i.e. feeder should set up tensor layout
+  // according to actual input data
+  DataLayout layout_ = DataLayout::kNCHW;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
