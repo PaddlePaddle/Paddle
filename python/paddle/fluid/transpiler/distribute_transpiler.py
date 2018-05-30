@@ -11,6 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Transpile the program to distributed data-parallelism programs.
+The main_program will be transformed to use a remote parameter server
+to do parameter optimization. And the optimization graph will be put
+into a parameter server program.
+
+Use different methods to split trainable variables to different
+parameter servers.
+
+Steps to transpile trainer:
+1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
+2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
+3. modify trainer program add split_op to each grad variable.
+4. append send_op to send splited variables to server and fetch
+    params(splited blocks or origin param) from server.
+5. append concat_op to merge splited blocks to update local weights.
+
+Steps to transpile pserver:
+1. create new program for parameter server.
+2. create params and grad variables that assigned to current server instance.
+3. create a sub-block in the server side program
+4. append ops that should run on current server instance.
+5. add listen_and_serv op
+"""
 
 from __future__ import print_function
 
@@ -21,6 +45,7 @@ from .. import core, framework
 from ..framework import Program, default_main_program, \
                         default_startup_program, \
                         Variable, Parameter, grad_var_name
+from details import *
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -40,62 +65,11 @@ class VarBlock:
         return "%s:%d:%d" % (self.varname, self.offset, self.size)
 
 
-class UnionFind(object):
-    """ Union-find data structure.
-
-    Union-find is a data structure that keeps track of a set of elements partitioned
-    into a number of disjoint (non-overlapping) subsets.
-
-    Reference:
-    https://en.wikipedia.org/wiki/Disjoint-set_data_structure
-
-    Args:
-      elements(list): The initialize element list.
-    """
-
-    def __init__(self, elementes=None):
-        self._parents = []  # index -> parent index
-        self._index = {}  # element -> index
-        self._curr_idx = 0
-        if not elementes:
-            elementes = []
-        for ele in elementes:
-            self._parents.append(self._curr_idx)
-            self._index.update({ele: self._curr_idx})
-            self._curr_idx += 1
-
-    def find(self, x):
-        # Find the root index of given element x,
-        # execute the path compress while findind the root index
-        if not x in self._index:
-            return -1
-        idx = self._index[x]
-        while idx != self._parents[idx]:
-            t = self._parents[idx]
-            self._parents[idx] = self._parents[t]
-            idx = t
-        return idx
-
-    def union(self, x, y):
-        # Union two given element
-        x_root = self.find(x)
-        y_root = self.find(y)
-
-        if x_root == y_root:
-            return
-        self._parents[x_root] = y_root
-
-    def is_connected(self, x, y):
-        # If two given elements have the same root index,
-        # then they are connected.
-        return self.find(x) == self.find(y)
-
-
 def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def split_dense_variable(var_list, service_count, min_block_size=8192):
+def split_variable(var_list, service_count, min_block_size=8192):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
@@ -141,31 +115,113 @@ def split_dense_variable(var_list, service_count, min_block_size=8192):
     return blocks
 
 
-def delete_ops(block, ops):
-    try:
-        start = list(block.ops).index(ops[0])
-        end = list(block.ops).index(ops[-1])
-        [block.remove_op(start) for _ in xrange(end - start + 1)]
-    except Exception, e:
-        raise e
-    block.program.sync_with_cpp()
-
-
-def find_op_by_input_arg(block, arg_name):
-    for index, op in enumerate(block.ops):
-        if arg_name in op.input_arg_names:
-            return index
-    return -1
-
-
-def find_op_by_output_arg(block, arg_name):
-    for index, op in enumerate(block.ops):
-        if arg_name in op.output_arg_names:
-            return index
-    return -1
-
-
 class DistributeTranspiler:
+    def _has_distributed_lookup_table(self):
+        # process lookup_table_op
+        # 1. check all lookup_table_op is distributed
+        # 2. check all lookup_table_op share the same table.
+        distributed_lookup_table_ops = []
+        # support only one distributed_lookup_table now
+        self.table_name = None
+        for op in self.origin_program.global_block().ops:
+            if op.type == LOOKUP_TABLE_TYPE:
+                if op.attrs['is_distributed'] is True:
+                    if self.table_name is None:
+                        self.table_name = op.input("W")[0]
+                    if self.table_name != op.input("W")[0]:
+                        raise RuntimeError("all distributed lookup_table_ops"
+                                           " should have only one table")
+                    distributed_lookup_table_ops.append(op)
+                else:
+                    if self.table_name is not None:
+                        assert op.input("W")[0] != self.table_name
+
+        return len(distributed_lookup_table_ops) > 0
+
+    def _update_dist_lookup_table_vars(self, param_list, grad_list,
+                                       params_grads):
+        # update self.table_param_grad and self.trainer_side_table_grad_list
+        program = self.origin_program
+        if self.has_distributed_lookup_table:
+            param_list = [
+                param for param in param_list if param.name != self.table_name
+            ]
+            grad_list = [
+                grad for grad in grad_list
+                if grad.name != grad_var_name(self.table_name)
+            ]
+            self.table_param_grad = [
+                param_grad for param_grad in params_grads
+                if param_grad[0].name == self.table_name
+            ][0]
+            table_grad_var = self.table_param_grad[1]
+            if self.sync_mode:
+                self.trainer_side_table_grad_list = [
+                    program.global_block().create_var(
+                        name="%s.trainer_%d.pserver_%d" %
+                        (table_grad_var.name, self.trainer_id, index),
+                        type=table_grad_var.type,
+                        shape=table_grad_var.shape,
+                        dtype=table_grad_var.dtype)
+                    for index in range(len(self.pserver_endpoints))
+                ]
+            else:
+                self.trainer_side_table_grad_list = [
+                    program.global_block().create_var(
+                        name="%s.pserver_%d" % (table_grad_var.name, index),
+                        type=table_grad_var.type,
+                        shape=table_grad_var.shape,
+                        dtype=table_grad_var.dtype)
+                    for index in range(len(self.pserver_endpoints))
+                ]
+
+    def _init_splited_vars(self, split_method):
+        # update these mappings for further transpile:
+        # 1. param_var_mapping: param var name -> [splited params vars]
+        # 2. grad_var_mapping: grad var name -> [splited grads vars]
+        # 3. grad_param_mapping: grad.blockx -> param.blockx
+        # 4. param_grad_ep_mapping: ep -> {"params": [], "grads": []}
+
+        param_list = []
+        grad_list = []
+        for p, g in self.params_grads:
+            # skip parameter marked not trainable
+            if type(p) == Parameter and p.trainable == False:
+                continue
+            param_list.append(p)
+            grad_list.append(g)
+
+        self._update_dist_lookup_table_vars(param_list, grad_list,
+                                            self.params_grads)
+
+        grad_blocks = split_variable(grad_list, len(self.pserver_endpoints))
+        param_blocks = split_variable(param_list, len(self.pserver_endpoints))
+        assert (len(grad_blocks) == len(param_blocks))
+        # origin_varname -> [splited_var]
+        self.param_var_mapping = self._create_vars_from_blocklist(
+            self.origin_program, param_blocks)
+        self.grad_var_mapping = self._create_vars_from_blocklist(
+            self.origin_program,
+            grad_blocks,
+            add_trainer_suffix=self.trainer_num > 1)
+        self.grad_param_mapping = dict()
+        for g, p in zip(grad_blocks, param_blocks):
+            g_name, g_bid, _ = g.split(":")
+            p_name, p_bid, _ = p.split(":")
+            self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_bid)]] =  \
+                    self.param_var_mapping[p_name][int(p_bid)]
+
+        # create mapping of endpoint -> split var to create pserver side program
+        self.param_grad_ep_mapping = dict()
+        [
+            self.param_grad_ep_mapping.update({
+                ep: {
+                    "params": [],
+                    "grads": []
+                }
+            }) for ep in self.pserver_endpoints
+        ]
+
     def transpile(self,
                   trainer_id,
                   program=None,
@@ -174,29 +230,6 @@ class DistributeTranspiler:
                   split_method=RoundRobin,
                   sync_mode=True):
         """
-        Transpile the program to distributed data-parallelism programs.
-        The main_program will be transformed to use a remote parameter server
-        to do parameter optimization. And the optimization graph will be put
-        into a parameter server program.
-
-        Use different methods to split trainable variables to different
-        parameter servers.
-
-        Steps to transpile trainer:
-        1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
-        2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
-        3. modify trainer program add split_op to each grad variable.
-        4. append send_op to send splited variables to server and fetch
-            params(splited blocks or origin param) from server.
-        5. append concat_op to merge splited blocks to update local weights.
-
-        Steps to transpile pserver:
-        1. create new program for parameter server.
-        2. create params and grad variables that assigned to current server instance.
-        3. create a sub-block in the server side program
-        4. append ops that should run on current server instance.
-        5. add listen_and_serv op
-
         :param trainer_id: one unique id for each trainer in a job.
         :type trainer_id: int
         :param program: program to transpile, default is default_main_program
@@ -218,114 +251,21 @@ class DistributeTranspiler:
         self.origin_program = program
         self.trainer_num = trainers
         self.sync_mode = sync_mode
-        # TODO(typhoonzero): currently trainer_id is fetched from cluster system
-        # like Kubernetes, we should port this to use etcd later when developing
-        # fluid distributed training with fault-tolerance.
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
-        self.optimize_ops, params_grads = self._get_optimize_pass()
-        ps_dispatcher = split_method(pserver_endpoints)
+        self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
-        # process lookup_table_op
-        # 1. check all lookup_table_op is distributed
-        # 2. check all lookup_table_op share the same table.
-        distributed_lookup_table_ops = []
-        # support only one distributed_lookup_table now
-        self.table_name = None
-        for op in program.global_block().ops:
-            if op.type == LOOKUP_TABLE_TYPE:
-                if op.attrs['is_distributed'] is True:
-                    if self.table_name is None:
-                        self.table_name = op.input("W")[0]
-                    if self.table_name != op.input("W")[0]:
-                        raise RuntimeError("all distributed lookup_table_ops"
-                                           " should have only one table")
-                    distributed_lookup_table_ops.append(op)
-                else:
-                    if self.table_name is not None:
-                        assert op.input("W")[0] != self.table_name
+        ps_dispatcher = split_method(self.pserver_endpoints)
+        self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
-        self.has_distributed_lookup_table = len(
-            distributed_lookup_table_ops) > 0
-
-        # step1: For large parameters and gradients, split them into smaller
-        # blocks.
-        param_list = []
-        grad_list = []
-        for p, g in params_grads:
-            # skip parameter marked not trainable
-            if type(p) == Parameter and p.trainable == False:
-                continue
-            param_list.append(p)
-            grad_list.append(g)
-
-        if self.has_distributed_lookup_table:
-            param_list = [
-                param for param in param_list if param.name != self.table_name
-            ]
-            grad_list = [
-                grad for grad in grad_list
-                if grad.name != grad_var_name(self.table_name)
-            ]
-            self.table_param_grad = [
-                param_grad for param_grad in params_grads
-                if param_grad[0].name == self.table_name
-            ][0]
-            table_grad_var = self.table_param_grad[1]
-            if self.sync_mode:
-                self.trainer_side_table_grad_list = [
-                    program.global_block().create_var(
-                        name="%s.trainer_%d.pserver_%d" %
-                        (table_grad_var.name, trainer_id, index),
-                        type=table_grad_var.type,
-                        shape=table_grad_var.shape,
-                        dtype=table_grad_var.dtype)
-                    for index in range(len(self.pserver_endpoints))
-                ]
-            else:
-                self.trainer_side_table_grad_list = [
-                    program.global_block().create_var(
-                        name="%s.pserver_%d" % (table_grad_var.name, index),
-                        type=table_grad_var.type,
-                        shape=table_grad_var.shape,
-                        dtype=table_grad_var.dtype)
-                    for index in range(len(self.pserver_endpoints))
-                ]
-
-        grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
-        param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
-        assert (len(grad_blocks) == len(param_blocks))
-        # step2: Create new vars for the parameters and gradients blocks and
-        # add ops to do the split.
-        param_var_mapping = self._create_vars_from_blocklist(program,
-                                                             param_blocks)
-        grad_var_mapping = self._create_vars_from_blocklist(
-            program, grad_blocks, add_trainer_suffix=self.trainer_num > 1)
-        grad_param_mapping = dict()
-        for g, p in zip(grad_blocks, param_blocks):
-            g_name, g_bid, _ = g.split(":")
-            p_name, p_bid, _ = p.split(":")
-            grad_param_mapping[grad_var_mapping[g_name][int(g_bid)]] =  \
-                    param_var_mapping[p_name][int(p_bid)]
-
-        # step 3: transpile trainer side program, insert recv op and send op.
-
-        # create mapping of endpoint -> split var to create pserver side program
-        self.param_grad_ep_mapping = dict()
-        [
-            self.param_grad_ep_mapping.update({
-                ep: {
-                    "params": [],
-                    "grads": []
-                }
-            }) for ep in self.pserver_endpoints
-        ]
+        # split and create vars, then put splited vars in dicts for later use.
+        self._init_splited_vars(split_method)
 
         # step 3.1: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
         send_vars = []
-        for orig_varname, splited_vars in grad_var_mapping.items():
+        for orig_varname, splited_vars in self.grad_var_mapping.items():
             eplist = ps_dispatcher.dispatch(splited_vars)
             if len(splited_vars) == 1:
                 orig_varname = splited_vars[0].name
@@ -367,7 +307,7 @@ class DistributeTranspiler:
         # step 3.2: insert recv op to receive parameters from parameter server
         recv_vars = []
         for _, var in enumerate(send_vars):
-            recv_vars.append(grad_param_mapping[var])
+            recv_vars.append(self.grad_param_mapping[var])
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
@@ -375,7 +315,7 @@ class DistributeTranspiler:
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
         # step4: Concat the parameters splits together after recv.
-        for varname, splited_var in param_var_mapping.iteritems():
+        for varname, splited_var in self.param_var_mapping.iteritems():
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
@@ -399,7 +339,7 @@ class DistributeTranspiler:
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-        for varname, splited_var in param_var_mapping.iteritems():
+        for varname, splited_var in self.param_var_mapping.iteritems():
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[varname]
@@ -484,17 +424,6 @@ class DistributeTranspiler:
         # which located on current pserver are in one set, then
         # append it into the sub program.
 
-        # We try to put optimization program run parallelly, assume
-        # optimization program always looks like:
-        #
-        # prevop -> prevop -> opt op -> following op -> following op; ->
-        # prevop -> prevop -> opt op -> following op -> following op; ->
-        # global op -> global op
-        #
-        # we put operators that can run parallelly to many program blocks.
-        # in above example, we seperate ops by the ";". Global ops must run
-        # after all the optimize ops finished.
-
         global_ops = []
         # HACK: optimization global ops only used to scale beta1 and beta2
         # replace it with dependency engine.
@@ -534,14 +463,6 @@ class DistributeTranspiler:
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
                                        grad_to_block_id)
-
-        # NOT USED: single block version:
-        #
-        # for _, op in enumerate(self.optimize_ops):
-        #     for _, opt_op in enumerate(opt_op_on_pserver):
-        #         if ufind.is_connected(op, opt_op):
-        #             __append_optimize_op__(glb_op, optimize_block)
-        #             break
 
         # process distributed lookup_table
         prefetch_block = None
@@ -630,6 +551,8 @@ class DistributeTranspiler:
                     outputs=new_outputs,
                     attrs=op.attrs)
         return s_prog
+
+    # ====================== private transpiler functions =====================
 
     # transpiler function for dis lookup_table
     def _replace_lookup_table_op_with_prefetch(self, program,
@@ -836,7 +759,6 @@ class DistributeTranspiler:
 
         return table_opt_block
 
-    # ====================== private transpiler functions =====================
     def _create_vars_from_blocklist(self,
                                     program,
                                     block_list,
