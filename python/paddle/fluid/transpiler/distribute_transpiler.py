@@ -457,9 +457,7 @@ class DistributeTranspiler:
         grad_to_block_id = []
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):
-            print("##### append op for opt: ", opt_op.output_arg_names)
             per_opt_block = pserver_program.create_block(pre_block_idx)
-            print("### appending merging ops")
             # append grad merging ops before clip and weight decay
             for _, op in enumerate(self.optimize_ops):
                 # find the origin @GRAD var before clipping
@@ -481,7 +479,6 @@ class DistributeTranspiler:
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
                                        grad_to_block_id, None)
-        print("##### grad_to_block_id ", grad_to_block_id)
 
         # process distributed lookup_table
         prefetch_block = None
@@ -936,7 +933,6 @@ class DistributeTranspiler:
         pserver_block = program.global_block()
         grad_block = None
         for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-            print("getting block grad var: ", g.name, grad_varname_for_block)
             if same_or_split_var(
                     self._orig_varname(g.name),
                     self._orig_varname(grad_varname_for_block)):
@@ -1075,7 +1071,6 @@ class DistributeTranspiler:
         for pserver_var_name, g in var_dict.iteritems():
             if same_or_split_var(
                     self._orig_varname(g.name), self._orig_varname(var.name)):
-                print("### find one: ", g.name)
                 if g.name.find(".trainer_") == -1:
                     grad_block = g
                     break
@@ -1161,11 +1156,8 @@ class DistributeTranspiler:
         return ufind
 
     def _is_opt_role_op(self, op):
-        # NOTE: It's a HACK implement.
-        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc...
-        # if "Param" in op.input_names and \
-        #     "LearningRate" in op.input_names:
-        #     return True
+        # NOTE: depend on oprole to find out whether this op is for
+        # optimize
         op_maker = core.op_proto_and_checker_maker
         optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
         if op_maker.kOpRoleAttrName() in op.attrs and \
@@ -1272,27 +1264,14 @@ class DistributeTranspiler:
                     if input_name.find("@GRAD") != -1 and \
                         op.attrs[RPC_OP_ROLE_ATTR_NAME]:
                         param_name = op.attrs[OP_ROLE_VAR_ATTR_NAME][0]
-                        print("##### appending param grad pair: ", input_name,
-                              param_name)
                         params_grads.append([
                             origin_var_dict[param_name],
                             origin_var_dict[input_name]
                         ])
-
-                # if self._is_optimizer_op(op):
-                #     params_grads.append((self.origin_program.global_block().var(
-                #         op.input("Param")[0]),
-                #                          self.origin_program.global_block().var(
-                #                              op.input("Grad")[0])))
             elif self._is_adam_connected_op(op):
                 opt_ops.append(op)
             else:
                 pass
-        print("######################")
-        print(opt_ops)
-        print("######################")
-        print(params_grads)
-        print("######################")
         return opt_ops, params_grads
 
     def _is_adam_connected_op(self, op):
