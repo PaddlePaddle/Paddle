@@ -66,6 +66,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'hsigmoid',
     'beam_search',
     'row_conv',
     'multiplex',
@@ -2972,6 +2973,64 @@ def nce(input,
         },
         attrs=attrs)
     return cost / (num_neg_samples + 1)
+
+
+def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
+    """
+    The hierarchical sigmoid operator is used to accelerate the training
+    process of language model. This operator organizes the classes into a complete
+    binary tree, each leaf node represents a class and each internal node acts like
+    a binary classifier. This idea is from "F. Morin, Y. Bengio (AISTATS 05):Hierar-
+    -chical Probabilistic Neural Network Language Model."
+
+    Args:
+        input (Variable): (Tensor) The input Tensor, which the shape is
+             [N * D], which N is the size of mini-batch,D is the embded size
+        label (Variable): (Tensor), The labels of training data. It's a
+             1-D tensor, which the shape is [1, N]
+        num_classes: (int, required), The number of classes
+
+    Returns:
+        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[3, 2],
+                                dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1, 3],
+                                dtype='float32')
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=2)
+    """
+
+    helper = LayerHelper('hsigmoid', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    pre_out = helper.create_tmp_variable(dtype)
+    dim = input.shape[1]
+
+    weights = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[num_classes - 1, dim],
+        is_bias=False,
+        dtype=input.dtype)
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=[1, num_classes - 1],
+        is_bias=True,
+        dtype=input.dtype)
+
+    helper.append_op(
+        type="hsigmoid",
+        inputs={"X": input,
+                "W": weights,
+                "Ids": label,
+                "Bias": bias},
+        outputs={"Out": out,
+                 "PreOut": pre_out},
+        attrs={"num_classes": num_classes})
+    return out
 
 
 def transpose(x, perm, name=None):
