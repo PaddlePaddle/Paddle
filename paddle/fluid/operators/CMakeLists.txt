@@ -181,7 +181,9 @@ if(WITH_GPU)
     op_library(nccl_op DEPS nccl_common)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
 else()
-    set(DEPS_OPS ${DEPS_OPS} nccl_op)
+    set(DEPS_OPS ${DEPS_OPS} nccl_op
+)
+
 endif()
 
 add_subdirectory(detail)
