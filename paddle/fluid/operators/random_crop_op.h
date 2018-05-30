@@ -60,7 +60,7 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-    PADDLE_ENFORCE(x_stride == 1 && out_stride == 1);
+    PADDLE_ASSERT(x_stride == 1 && out_stride == 1);
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
@@ -105,12 +105,12 @@ struct RandomCropFunctor {
     prod_batchsize_dims_ = 1;
     prod_x_ins_dims_ = 1;
     prod_out_ins_dims_ = 1;
-    for (size_t i = 0; i < rank_; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(rank_); ++i) {
       size_t x_dim_i = x_dims[i];
       size_t out_dim_i = out_dims[i];
       x_dims_[i] = x_dim_i;
       out_dims_[i] = out_dim_i;
-      if (i < num_batchsize_dims_) {
+      if (i < static_cast<size_t>(num_batchsize_dims_)) {
         PADDLE_ENFORCE_EQ(x_dim_i, out_dim_i);
         prod_batchsize_dims_ *= x_dim_i;
       } else {
