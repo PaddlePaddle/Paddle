@@ -49,6 +49,7 @@ from details import *
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
+OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -380,7 +381,6 @@ class DistributeTranspiler:
             # we don't need to create them when grad arrives.
             # change client side var name to origin name by
             # removing ".trainer_%d" suffix
-
             suff_idx = v.name.find(".trainer_")
             if suff_idx >= 0:
                 orig_var_name = v.name[:suff_idx]
@@ -417,7 +417,8 @@ class DistributeTranspiler:
         # located on current pserver
         opt_op_on_pserver = []
         for _, op in enumerate(self.optimize_ops):
-            if self._is_opt_op(op) and self._is_opt_op_on_pserver(endpoint, op):
+            if self._is_optimizer_op(op) and self._is_opt_op_on_pserver(
+                    endpoint, op):
                 opt_op_on_pserver.append(op)
         # step 3.3
         # Iterate through the ops, and if an op and the optimize ops
@@ -431,12 +432,18 @@ class DistributeTranspiler:
             if self._is_adam_connected_op(op):
                 global_ops.append(op)
 
-        def __append_optimize_op__(op, block, grad_to_block_id):
-            if self._is_opt_op(op):
+        def __append_optimize_op__(op, block, grad_to_block_id, merged_var):
+            if self._is_optimizer_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         self.origin_program)
+                                         self.origin_program, merged_var)
             else:
-                self._append_pserver_non_opt_ops(block, op)
+                self._append_pserver_non_opt_ops(block, op, endpoint)
+
+        def __op_have_grad_input__(op):
+            for varname in op.input_arg_names:
+                if varname.find("@GRAD") >= 0:
+                    return varname
+            return ""
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
@@ -444,17 +451,28 @@ class DistributeTranspiler:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
             for _, op in enumerate(lr_ops):
-                self._append_pserver_non_opt_ops(lr_decay_block, op)
+                self._append_pserver_non_opt_ops(lr_decay_block, op, endpoint)
 
         # append op to the current block
         grad_to_block_id = []
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):
+            print("##### append op for opt: ", opt_op.output_arg_names)
             per_opt_block = pserver_program.create_block(pre_block_idx)
+            print("### appending merging ops")
+            # append grad merging ops before clip and weight decay
+            for _, op in enumerate(self.optimize_ops):
+                # find the origin @GRAD var before clipping
+                grad_varname_for_block = __op_have_grad_input__(op)
+                if ufind.is_connected(op, opt_op) and grad_varname_for_block:
+                    merged_var = self._append_pserver_grad_merge_ops(
+                        per_opt_block, grad_varname_for_block, endpoint,
+                        grad_to_block_id, self.origin_program)
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and op not in global_ops:
-                    __append_optimize_op__(op, per_opt_block, grad_to_block_id)
+                    __append_optimize_op__(op, per_opt_block, grad_to_block_id,
+                                           merged_var)
 
         # append global ops
         if global_ops:
@@ -462,7 +480,8 @@ class DistributeTranspiler:
                 pserver_program.num_blocks - 1)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id)
+                                       grad_to_block_id, None)
+        print("##### grad_to_block_id ", grad_to_block_id)
 
         # process distributed lookup_table
         prefetch_block = None
@@ -910,8 +929,48 @@ class DistributeTranspiler:
             orig_var_name = varname
         return orig_var_name
 
+    def _append_pserver_grad_merge_ops(self, optimize_block,
+                                       grad_varname_for_block, endpoint,
+                                       grad_to_block_id, origin_program):
+        program = optimize_block.program
+        pserver_block = program.global_block()
+        grad_block = None
+        for g in self.param_grad_ep_mapping[endpoint]["grads"]:
+            print("getting block grad var: ", g.name, grad_varname_for_block)
+            if same_or_split_var(
+                    self._orig_varname(g.name),
+                    self._orig_varname(grad_varname_for_block)):
+                grad_block = g
+                break
+        if not grad_block:
+            # do not append this op if current endpoint
+            # is not dealing with this grad block
+            return
+        merged_var = \
+            pserver_block.vars[self._orig_varname(grad_block.name)]
+        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
+        if self.sync_mode and self.trainer_num > 1:
+            vars2merge = []
+            for i in xrange(self.trainer_num):
+                per_trainer_name = "%s.trainer_%d" % \
+                (self._orig_varname(grad_block.name), i)
+                vars2merge.append(pserver_block.vars[per_trainer_name])
+
+            optimize_block.append_op(
+                type="sum",
+                inputs={"X": vars2merge},
+                outputs={"Out": merged_var})
+            # TODO(panyx0718): What if it's SELECTED_ROWS.
+            if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                optimize_block.append_op(
+                    type="scale",
+                    inputs={"X": merged_var},
+                    outputs={"Out": merged_var},
+                    attrs={"scale": 1.0 / float(self.trainer_num)})
+        return merged_var
+
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
-                            grad_to_block_id, origin_program):
+                            grad_to_block_id, origin_program, merged_var):
         program = optimize_block.program
         pserver_block = program.global_block()
         new_inputs = dict()
@@ -919,39 +978,39 @@ class DistributeTranspiler:
         # moment can use the updated shape
         for key in opt_op.input_names:
             if key == "Grad":
-                grad_block = None
-                for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-                    if same_or_split_var(
-                            self._orig_varname(g.name),
-                            self._orig_varname(opt_op.input(key)[0])):
-                        grad_block = g
-                        break
-                if not grad_block:
-                    # do not append this op if current endpoint
-                    # is not dealing with this grad block
-                    return
-                merged_var = \
-                    pserver_block.vars[self._orig_varname(grad_block.name)]
-                grad_to_block_id.append(merged_var.name + ":" + str(
-                    optimize_block.idx))
-                if self.sync_mode and self.trainer_num > 1:
-                    vars2merge = []
-                    for i in xrange(self.trainer_num):
-                        per_trainer_name = "%s.trainer_%d" % \
-                        (self._orig_varname(grad_block.name), i)
-                        vars2merge.append(pserver_block.vars[per_trainer_name])
+                #     grad_block = None
+                #     for g in self.param_grad_ep_mapping[endpoint]["grads"]:
+                #         if same_or_split_var(
+                #                 self._orig_varname(g.name),
+                #                 self._orig_varname(opt_op.input(key)[0])):
+                #             grad_block = g
+                #             break
+                #     if not grad_block:
+                #         # do not append this op if current endpoint
+                #         # is not dealing with this grad block
+                #         return
+                #     merged_var = \
+                #         pserver_block.vars[self._orig_varname(grad_block.name)]
+                #     grad_to_block_id.append(merged_var.name + ":" + str(
+                #         optimize_block.idx))
+                #     if self.sync_mode and self.trainer_num > 1:
+                #         vars2merge = []
+                #         for i in xrange(self.trainer_num):
+                #             per_trainer_name = "%s.trainer_%d" % \
+                #             (self._orig_varname(grad_block.name), i)
+                #             vars2merge.append(pserver_block.vars[per_trainer_name])
 
-                    optimize_block.append_op(
-                        type="sum",
-                        inputs={"X": vars2merge},
-                        outputs={"Out": merged_var})
-                    # TODO(panyx0718): What if it's SELECTED_ROWS.
-                    if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                        optimize_block.append_op(
-                            type="scale",
-                            inputs={"X": merged_var},
-                            outputs={"Out": merged_var},
-                            attrs={"scale": 1.0 / float(self.trainer_num)})
+                #         optimize_block.append_op(
+                #             type="sum",
+                #             inputs={"X": vars2merge},
+                #             outputs={"Out": merged_var})
+                #         # TODO(panyx0718): What if it's SELECTED_ROWS.
+                #         if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                #             optimize_block.append_op(
+                #                 type="scale",
+                #                 inputs={"X": merged_var},
+                #                 outputs={"Out": merged_var},
+                #                 attrs={"scale": 1.0 / float(self.trainer_num)})
 
                 new_inputs[key] = merged_var
             elif key == "Param":
@@ -1011,17 +1070,33 @@ class DistributeTranspiler:
             outputs=outputs,
             attrs=opt_op.attrs)
 
-    def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
+    def _is_splited_grad_var(self, var, var_dict):
+        grad_block = None
+        for pserver_var_name, g in var_dict.iteritems():
+            if same_or_split_var(
+                    self._orig_varname(g.name), self._orig_varname(var.name)):
+                print("### find one: ", g.name)
+                if g.name.find(".trainer_") == -1:
+                    grad_block = g
+                    break
+        return grad_block
+
+    def _append_pserver_non_opt_ops(self, optimize_block, opt_op, endpoint):
         program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for varlist in inputs.itervalues():
+        for key, varlist in inputs.iteritems():
             if not isinstance(varlist, list):
                 varlist = [varlist]
-
             for var in varlist:
-                if not program.global_block().vars.has_key(var.name):
+                # for ops like clipping and weight decay, get the splited var
+                # for inputs/outputs
+                grad_block = self._is_splited_grad_var(
+                    var, program.global_block().vars)
+                if grad_block:
+                    inputs[key] = grad_block
+                elif not program.global_block().vars.has_key(var.name):
                     program.global_block().create_var(
                         name=var.name,
                         persistable=var.persistable,
@@ -1030,13 +1105,16 @@ class DistributeTranspiler:
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-
-        for varlist in outputs.itervalues():
+        for key, varlist in outputs.iteritems():
             if not isinstance(varlist, list):
                 varlist = [varlist]
-
             for var in varlist:
-                program.global_block().clone_variable(var)
+                grad_block = self._is_splited_grad_var(
+                    var, program.global_block().vars)
+                if grad_block:
+                    outputs[key] = grad_block
+                elif not program.global_block().vars.has_key(var.name):
+                    program.global_block().clone_variable(var)
 
         optimize_block.append_op(
             type=opt_op.type,
@@ -1082,9 +1160,20 @@ class DistributeTranspiler:
                     ufind.union(op1, op2)
         return ufind
 
-    def _is_opt_op(self, op):
+    def _is_opt_role_op(self, op):
         # NOTE: It's a HACK implement.
         # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc...
+        # if "Param" in op.input_names and \
+        #     "LearningRate" in op.input_names:
+        #     return True
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attrs and \
+            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
+
+    def _is_optimizer_op(self, op):
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
             return True
@@ -1134,7 +1223,7 @@ class DistributeTranspiler:
         # find learning rate variables by optimize op
         lr_vars = set()
         for op in self.optimize_ops:
-            if self._is_opt_op(op):
+            if self._is_optimizer_op(op):
                 lr_vars.add(op.input("LearningRate")[0])
 
         find_ops = []
@@ -1151,7 +1240,7 @@ class DistributeTranspiler:
                 # NOTE: we need to skip all optimize ops, since it is connected
                 # with forward/backward ops and lr ops, we only need the lr ops.
                 if op1 != op2 and self._is_op_connected(op1, op2) and \
-                    not self._is_opt_op(op1) and not self._is_opt_op(op2):
+                    not self._is_optimizer_op(op1) and not self._is_optimizer_op(op2):
                     ufind.union(op1, op2)
         # find all ops which is related with lr var
         for op1 in block.ops:
@@ -1172,17 +1261,38 @@ class DistributeTranspiler:
         block = self.origin_program.global_block()
         opt_ops = []
         params_grads = []
+        origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
-            if self._is_opt_op(op):
+            if self._is_opt_role_op(op):
                 opt_ops.append(op)
-                params_grads.append((self.origin_program.global_block().var(
-                    op.input("Param")[0]),
-                                     self.origin_program.global_block().var(
-                                         op.input("Grad")[0])))
+                # HACK(wuyi): if we find grad vars from input of optimize
+                # ops, we may get the output of clip op. Use syntax "@GRAD"
+                # and op_role_var to get the pair.
+                for input_name in op.input_arg_names:
+                    if input_name.find("@GRAD") != -1 and \
+                        op.attrs[RPC_OP_ROLE_ATTR_NAME]:
+                        param_name = op.attrs[OP_ROLE_VAR_ATTR_NAME][0]
+                        print("##### appending param grad pair: ", input_name,
+                              param_name)
+                        params_grads.append([
+                            origin_var_dict[param_name],
+                            origin_var_dict[input_name]
+                        ])
+
+                # if self._is_optimizer_op(op):
+                #     params_grads.append((self.origin_program.global_block().var(
+                #         op.input("Param")[0]),
+                #                          self.origin_program.global_block().var(
+                #                              op.input("Grad")[0])))
             elif self._is_adam_connected_op(op):
                 opt_ops.append(op)
             else:
                 pass
+        print("######################")
+        print(opt_ops)
+        print("######################")
+        print(params_grads)
+        print("######################")
         return opt_ops, params_grads
 
     def _is_adam_connected_op(self, op):
