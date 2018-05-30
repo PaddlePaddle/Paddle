@@ -124,27 +124,38 @@ Chainer and Autograd uses the similar techniques to record the forward pass. For
 
 ## Design choices
 
-### 1) Tape vs Node Graph
+### 1) Dynet's List vs Pytorch's Node Graph
 
-What's good about Tape:
-1. It avoids a topological sort
-1. It promises effient data parallelism implementations
+What's good about List:
+1. It avoids a topological sort. One only needs to traverse the list of operators in reverse and calling the corresponding backward operator.
+1. It promises effient data parallelism implementations. One could count the time of usage of a certain variable during the construction list. Then in the play back, one knows the calculation of a variable has completed. This enables communication and computation overlapping.
 
 What's good about Node Graph:
-1. More flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [[2]](https://openreview.net/pdf?id=BJJsrmfCZ)
-
-### 2) Lazy evaluation vs Immediate evaluation
-
-What's good about lazy evaluation:
-1. It makes JIT optimization possible, e.g. kernel fusion.
-
-What's good about immediate evaluation:
-1. It avoids ever materializing a "forward graph"/"tape", recording only what is necessary to differentiate the computation (see example below).
+1. More flexibility. PyTorch users can mix and match independent graphs however they like, in whatever threads they like (without explicit synchronization). An added benefit of structuring graphs this way is that when a portion of the graph becomes dead, it is automatically freed. [[2]](https://openreview.net/pdf?id=BJJsrmfCZ) Consider the following example, Pytorch only does backward on SmallNet while Dynet does both BigNet and SmallNet.
 ```python
-loss1 = BigNet(data)
-loss2 = SmallNet(data)
-loss2.backward() # Pytorch only does backward on SmallNet while Dynet does both BigNet and SmallNet
+result = BigNet(data)
+loss = SmallNet(data)
+loss.backward()
 ```
+
+### 2) Dynet's Lazy evaluation vs Pytorch's Immediate evaluation
+
+Dynet builds the list in a symbolic matter. Consider the following example
+```python
+for epoch in range(num_epochs):
+    for in_words, out_label in training_data:
+        dy.renew_cg()
+        W = dy.parameter(W_p)
+        b = dy.parameter(b_p)
+        score_sym = dy.softmax(W*dy.concatenate([E[in_words[0]],E[in_words[1]]])+b)
+        loss_sym = dy.pickneglogsoftmax(score_sym, out_label)
+        loss_val = loss_sym.value()
+        loss_sym.backward()
+```
+The computation of `lookup`, `concat`, `matmul` and `softmax` didn't happen until the call of `loss_sym.value()`. This defered execution is useful because it allows some graph-like optimization possible, e.g. kernel fusion.
+
+Pytorch chooses immediate evaluation. It avoids ever materializing a "forward graph"/"tape" (no need to explicitly call `dy.renew_cg()` to reset the list), recording only what is necessary to differentiate the computation, i.e. `creator` and `prev_func`.
+
 
 ## What can fluid learn from them?
 
