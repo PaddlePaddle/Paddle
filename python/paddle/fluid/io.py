@@ -499,7 +499,8 @@ def save_checkpoint(executor,
 
     if is_chief:
         save_persist_vars_without_grad(executor, cur_dir, main_program)
-        _lru_delete(checkpoint_dir, max_num_checkpoints)
+
+    _lru_delete(checkpoint_dir, max_num_checkpoints)
 
 
 def need_load_checkpoint(checkpoint_dir):

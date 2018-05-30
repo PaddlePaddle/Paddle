@@ -425,7 +425,7 @@ class Trainer(object):
         return self._get_parallel_executor()
 
     def _clean_checkpoint(self):
-        if not self.checkpoint and not self.chief:
+        if not self.checkpoint:
             return
         io.clean_checkpoint(checkpoint_dir=self.checkpoint.checkpoint_dir)
 
