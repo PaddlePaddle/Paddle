@@ -3996,13 +3996,19 @@ def random_crop(input, shape, seed=1):
     out = helper.create_tmp_variable(dtype)
     if isinstance(seed, int):
         seed_value = seed
-        seed = helper.create_global_variable(
-            persistable=True, shape=[1], dtype="int32")
-        helper.set_variable_initializer(
-            var=seed, initializer=Constant(value=seed_value))
+        seed = helper.create_tmp_variable(dtype="int64")
+        helper.append_op(
+            type="fill_constant",
+            inputs={},
+            outputs={"Out": seed},
+            attrs={
+                "dtype": seed.dtype,
+                "shape": [1],
+                "value": float(seed_value)
+            })
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
-    seed_out = helper.create_tmp_variable(dtype="int32")
+    seed_out = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="random_crop",
         inputs={"X": input,
