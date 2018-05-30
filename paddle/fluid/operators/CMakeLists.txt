@@ -272,8 +272,6 @@ if(NOT WITH_MKLDNN)
     list(REMOVE_ITEM GENERAL_OPS fc_op)
 endif(NOT WITH_MKLDNN)
 
-list(REMOVE_ITEM GENERAL_OPS reduce_op)
-
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
