@@ -63,6 +63,7 @@ class InferShapeContext {
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(const std::string &name);
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(const std::string &name);
+  virtual InferShapeVarPtr GetVarPtr(const std::string &name) = 0;
 
   // Note: In while op, we need this to be public
   void SetDims(const std::vector<std::string> &names,
@@ -81,8 +82,6 @@ class InferShapeContext {
       const std::vector<std::string> &names) const;
 
   virtual proto::VarType::Type GetVarType(const std::string &name) const = 0;
-
-  virtual InferShapeVarPtr GetVarPtr(const std::string &name) = 0;
 };
 
 }  // namespace framework

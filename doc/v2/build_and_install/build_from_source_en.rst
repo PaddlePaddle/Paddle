@@ -23,7 +23,7 @@ You need to use Docker to build PaddlePaddle
 to avoid installing dependencies by yourself. We have several pre-built
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ ,
 you can also find how to build and use paddle_manylinux_devel Docker image from
-`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`_
+`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__
 Or you can build your own image from source as the optional step below:
 
 .. code-block:: bash
@@ -34,14 +34,12 @@ Or you can build your own image from source as the optional step below:
    # 2. Optional: build development docker image from source
    docker build -t paddle:dev .
    # 3. Run the following command to build a CPU-Only binaries
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/paddle_build.sh build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh build
    # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
 NOTE: The above command try to mount the current working directory (root directory of source code)
-into :code:`/paddle` directory inside docker container. If you are using your own image
-(Step 4) it will run default entry-point :code:`build.sh` , so you could omit the last
-command in step 3.
+into :code:`/paddle` directory inside docker container.
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local
@@ -74,21 +72,21 @@ Set :code:`WITH_GPU=ON` Can also run tests on GPU.
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh test
 
 If you wish to run only one unit test, like :code:`test_sum_op`:
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
-   bash /paddle/paddle/scripts/docker/build.sh
-   cd /paddle/build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
+   ./paddle/scripts/paddle_build.sh build
+   cd build
    ctest -R test_sum_op -V
 
 .. _faq_docker:
 
 Frequently Asked Questions
-----------------
+---------------------------
 
 - What is Docker?
 
@@ -118,11 +116,10 @@ Frequently Asked Questions
 
   Many PaddlePaddle developers are using Emacs.  They add the following few lines into their `~/.emacs` configure file:
 
-  ```emacs
-  (global-set-key "\C-cc" 'compile)
-  (setq compile-command
-   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
-  ```
+  .. code-block:: emacs
+
+    (global-set-key "\C-cc" 'compile)
+    (setq compile-command "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
 
   so they could type `Ctrl-C` and `c` to build PaddlePaddle from source.
 
@@ -145,7 +142,7 @@ Frequently Asked Questions
 .. _compile_deps:
 
 Appendix: Compile Dependencies
-----------------
+-------------------------------
 
 PaddlePaddle need the following dependencies when compiling, other dependencies
 will be downloaded automatically.
@@ -166,11 +163,11 @@ will be downloaded automatically.
 .. _build_options:
 
 Appendix: Build Options
-----------------
+-------------------------
 
 Build options include whether build binaries for CPU or GPU, which BLAS
 library to use etc. You may pass these settings when running cmake.
-For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`_ 。
+For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`__ 。
 
 
 You can add :code:`-D` argument to pass such options, like:
@@ -219,7 +216,7 @@ keep on with latest cuDNN versions. Be sure to run with the same version of cuDN
 you built.
 
 Pass Compile Options
-++++++++++++++
+++++++++++++++++++++++
 
 You can pass compile options to use intended BLAS/CUDA/Cudnn libraries.
 When running cmake command, it will search system paths like

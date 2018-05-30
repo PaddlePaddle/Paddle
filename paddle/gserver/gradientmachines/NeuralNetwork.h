@@ -56,7 +56,7 @@ void parameterInitNN(int paramId,
                      std::vector<ParameterPtr>* sharedParams);
 
 class NeuralNetwork : public GradientMachine {
-public:
+ public:
   virtual void init(const ModelConfig& config,
                     ParamInitCallback callback = nullptr,
                     const std::vector<ParameterType>& parameterTypes =
@@ -144,7 +144,7 @@ public:
    */
   void releaseOutput();
 
-protected:
+ protected:
   /**
    * The constructor of NeuralNetwork.
    * The sub networks can get parameters_ and parameterMap_

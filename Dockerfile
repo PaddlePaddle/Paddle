@@ -79,6 +79,9 @@ RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
 
+#For docstring checker
+RUN pip install pylint pytest astroid isort
+
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
 
@@ -101,6 +104,3 @@ RUN echo 'root:root' | chpasswd
 RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
-
-# development image default do build work
-CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
