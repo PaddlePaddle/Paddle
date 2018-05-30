@@ -82,6 +82,7 @@ __all__ = [
     'roi_pool',
     'dice_loss',
     'upsampling_bilinear2d',
+    'random_crop',
 ]
 
 
@@ -154,7 +155,8 @@ def fc(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          data = fluid.layers.data(
+              name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
 
@@ -349,7 +351,8 @@ def dynamic_lstm(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              Choices = ["sigmoid", "tanh",
+                                  "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -516,10 +519,12 @@ def dynamic_lstmp(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              Choices = ["sigmoid", "tanh",
+                                  "relu", "identity"],
                               default "tanh".
         proj_activation(str): The activation for projection output.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              Choices = ["sigmoid", "tanh",
+                                  "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -2174,7 +2179,8 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
-            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+            fluid.layers.reduce_mean(
+                x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
 
             # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
@@ -2393,7 +2399,8 @@ def split(input, num_or_sections, dim=-1, name=None):
             x0.shape  # [3, 3, 5]
             x1.shape  # [3, 3, 5]
             x2.shape  # [3, 3, 5]
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=[2, 3, 4], dim=1)
+            x0, x1, x2 = fluid.layers.split(
+                x, num_or_sections=[2, 3, 4], dim=1)
             x0.shape  # [3, 2, 5]
             x1.shape  # [3, 3, 5]
             x2.shape  # [3, 4, 5]
@@ -3305,7 +3312,8 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.softmax_with_cross_entropy(logits=fc, label=label)
+            out = fluid.layers.softmax_with_cross_entropy(
+                logits=fc, label=label)
     """
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_tmp_variable(dtype=logits.dtype)
@@ -3352,7 +3360,8 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
         .. code-block:: python
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[100], dtype='float32')
+            label = fluid.layers.data(
+                name='label', shape=[100], dtype='float32')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
@@ -3674,7 +3683,8 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          data = fluid.layers.data(
+              name="data", shape=[3, 112, 112], dtype="float32")
           lrn = fluid.layers.lrn(input=data)
     """
     helper = LayerHelper('lrn', **locals())
@@ -3929,10 +3939,10 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
     W-direction in this layer) on a rectilinear 2D grid.
-    
+
     For details, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
-    
+
     Args:
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
@@ -3950,7 +3960,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     Returns:
         out (Variable): The output is a 4-D tensor of the shape
                         (num_batches, channls, out_h, out_w).
-   
+
     Examples:
         .. code-block:: python
 
@@ -3982,4 +3992,33 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
+    return out
+
+
+def random_crop(input, shape, seed=1):
+    helper = LayerHelper("random_crop", **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    if isinstance(seed, int):
+        seed_value = seed
+        seed = helper.create_tmp_variable(dtype="int64")
+        helper.append_op(
+            type="fill_constant",
+            inputs={},
+            outputs={"Out": seed},
+            attrs={
+                "dtype": seed.dtype,
+                "shape": [1],
+                "value": float(seed_value)
+            })
+    elif not isinstance(seed, Variable):
+        raise ValueError("'seed' must be a Variable or an int.")
+    seed_out = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="random_crop",
+        inputs={"X": input,
+                "Seed": seed},
+        outputs={"Out": out,
+                 "SeedOut": seed_out},
+        attrs={"shape": shape})
     return out
