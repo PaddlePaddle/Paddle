@@ -66,8 +66,6 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<detail::RequestHandler> request_prefetch_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
-
-  static void StopAndExit(int signal);
 };
 
 class SignalHandler {
