@@ -25,3 +25,4 @@ third_party/
 
 # clion workspace.
 cmake-build-*
+paddle/fluid/tags

@@ -51,13 +51,20 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
-    auto imgRealSize_vec = imgRealSize->data<float>();
+    auto imgRealSize_vec = imgRealSize->data<T>();
+    float* imgreal_size = (float*) malloc(batch_size * 2 * sizeof(float));
+    // TODO(fuhailong): fix gpu inference
+    if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+        cudaMemcpy(imgreal_size, imgRealSize_vec,
+                     sizeof(float) * 2 * batch_size, cudaMemcpyDeviceToHost);
+    } else if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+        memcpy(imgreal_size, imgRealSize_vec, sizeof(float) * 2 * batch_size);
+    }
     auto imgRealSize_dim = imgRealSize->dims();
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    auto conv_count = ctx.Attr<int>("conv_count");
-    auto conv_kernel = ctx.Attr<std::vector<int>>("conv_kernel");
+    auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
     auto is_inference = ctx.Attr<bool>("is_inference");
     if (is_inference && batch_size > 1) {
         std::vector<int> imgReal_H;
@@ -66,13 +73,17 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         std::vector<int> output_width;
         int result = 0;
         for (int i = 0; i < batch_size; i++) {
-            int tmp_real_H = int(imgRealSize_vec[2 * i]);
-            int tmp_real_W = int(imgRealSize_vec[2 * i + 1]);
-            for (int j = 0; j < conv_count; j++) {
-                tmp_real_H = tmp_real_H / conv_kernel[0] +
-                                       tmp_real_H % conv_kernel[0];
-                tmp_real_W = tmp_real_W / conv_kernel[1] +
-                                       tmp_real_W % conv_kernel[1];
+            int tmp_real_H = int(imgreal_size[2 * i]);
+            int tmp_real_W = int(imgreal_size[2 * i + 1]);
+            if (tmp_real_H % out_stride[0] == 0) {
+                tmp_real_H = tmp_real_H / out_stride[0];
+            } else {
+                tmp_real_H = tmp_real_H / out_stride[0] + 1;
+            }
+            if (tmp_real_W % out_stride[1] == 0) {
+                tmp_real_W = tmp_real_W / out_stride[1];
+            } else {
+                tmp_real_W = tmp_real_W / out_stride[1] + 1;
             }
             imgReal_H.push_back(tmp_real_H);
             imgReal_W.push_back(tmp_real_W);
@@ -100,7 +111,6 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
      // {batchsize*output_height*output_width,channel*kernel[0],*kernel[1]},
      // multi batch ,the first place is output_height[i]*output_width[i].
         int offset_out = 0;
-
         for (int i = 0; i < batch_size; i++) {
             const Tensor src =
                 in->Slice(i, i + 1).Resize({img_channels,
