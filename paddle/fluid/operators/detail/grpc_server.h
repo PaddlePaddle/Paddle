@@ -62,7 +62,7 @@ class AsyncGRPCServer final : public RPCServer {
   void ShutDownImpl() override;
 
  private:
-  static const int kRequestBufSize = 5;
+  static const int kRequestBufSize = 100;
 
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;

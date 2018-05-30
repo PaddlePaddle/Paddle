@@ -19,13 +19,6 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
-DEFINE_int32(rpc_server_handle_send_threads, 5,
-             "Number of threads used to handle send at rpc server.");
-DEFINE_int32(rpc_server_handle_get_threads, 5,
-             "Number of threads used to handle get at rpc server.");
-DEFINE_int32(rpc_server_handle_prefetch_threads, 1,
-             "Number of threads used to handle prefetch at rpc server.");
-
 namespace paddle {
 namespace operators {
 namespace detail {
