@@ -23,13 +23,12 @@ namespace reader {
 class CustomReader : public framework::DecoratedReader {
  public:
   CustomReader(ReaderBase* reader, const framework::BlockDesc& sub_block,
-               const platform::Place& dev_place,
                const std::vector<std::string>& source_var_names,
                const std::vector<std::string>& sink_var_names)
       : DecoratedReader(reader),
         program_(*sub_block.Program()),
         sub_block_id_(sub_block.ID()),
-        exe_(framework::Executor(dev_place)),
+        exe_(framework::Executor(platform::CPUPlace())),
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
@@ -60,7 +59,7 @@ class CreateCustomReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     out->Reset(
-        new CustomReader(underlying_reader.Get(), *sub_block, dev_place,
+        new CustomReader(underlying_reader.Get(), *sub_block,
                          Attr<std::vector<std::string>>("source_var_names"),
                          Attr<std::vector<std::string>>("sink_var_names")));
   }
@@ -85,9 +84,10 @@ class CreateCustomReaderOpMaker : public DecoratedReaderMakerBase {
       CreateCustomReader Operator
 
       A custom reader can be used for input data preprocessing. 
-      A custom reader holds its own sub-block, which will be executed in its 
-      'ReadNext()' function. Users can configurate their own preprocessing 
-      pipelines by inserting operators into custom reader's sub-block.
+      A custom reader holds its own sub-block, which will be executed in CPU 
+      in its 'ReadNext()' function. Users can configurate their own 
+      preprocessing pipelines by inserting operators into custom reader's 
+      sub-block.
     )DOC");
   }
 };

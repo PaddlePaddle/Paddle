@@ -4009,7 +4009,8 @@ def random_crop(input, shape, seed=1):
             attrs={
                 "dtype": seed.dtype,
                 "shape": [1],
-                "value": float(seed_value)
+                "value": float(seed_value),
+                "force_cpu": True
             })
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
