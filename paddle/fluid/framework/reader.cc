@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -25,8 +27,20 @@ void FileReader::ReadNext(std::vector<LoDTensor> *out) {
   if (out->empty()) {
     return;
   }
-  for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
+  
+  /*
+  * Comment from sneaxiy
+  *   Is it necessary to use std::vector<LoDTensor>::at() to access the data in 'out'?
+  *   If std::out_of_range is expected while accessing the data in 'out', try to add PADDLE_ENFORCE_EQ to compare out->size() to dims_.size() before loop
+  *   @code_start
+  *   PADDLE_ENFORCE_EQ(out->size(), dims_.size(), "Expected out->size() == %d but read %d", dims_.size(), out->size());
+  *   @code_end
+  *
+  *   If std::out_of_range is not expected, try to change the upper bound of the loop to be std::min(out->size(), dims_.size())
+  */
+  for (size_t i = 0; i < std::min(out->size(), dims_.size()); ++i) {
+    auto &actual = (*out)[i].dims();
+    //auto &actual = out->at(i).dims();
     auto &expect = dims_[i];
 
     PADDLE_ENFORCE_EQ(actual.size(), expect.size());
