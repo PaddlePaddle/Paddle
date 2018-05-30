@@ -74,8 +74,8 @@ namespace ops = paddle::operators;
 namespace f = paddle::framework;
 REGISTER_OPERATOR(random_crop, ops::RandomCropOp, ops::RandomCropOpMaker,
                   ops::RandomCropOpInferShape, f::EmptyGradOpMaker);
+
 template <typename T>
 using Kernel = ops::RandomCropKernel<paddle::platform::CPUDeviceContext, T>;
-
 REGISTER_OP_CPU_KERNEL(random_crop, Kernel<float>, Kernel<int>, Kernel<double>,
                        Kernel<uint8_t>, Kernel<int16_t>);
