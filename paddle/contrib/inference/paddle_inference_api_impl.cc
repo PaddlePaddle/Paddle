@@ -141,7 +141,7 @@ std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
     return nullptr;
   }
   // fix manylinux compile error.
-  return cls;
+  return std::move(cls);
 }
 
 // TODO(panyx0718): Consider merge with Init()?
