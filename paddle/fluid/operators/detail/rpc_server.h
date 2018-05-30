@@ -27,13 +27,11 @@ namespace detail {
 
 class RPCServer {
  public:
-  explicit RPCServer(const std::string& address, int client_num,
-                     int thread_num = 10)
+  explicit RPCServer(const std::string& address, int client_num)
       : cur_cond_(0),
         bind_address_(address),
         exit_flag_(false),
         selected_port_(0),
-        thread_pool_size_(thread_num),
         client_num_(client_num) {}
 
   virtual ~RPCServer() {}
@@ -50,7 +48,8 @@ class RPCServer {
   // RegisterRPC, register the rpc method name to a handler
   // class, and auto generate a condition id for this call
   // to be used for the barrier.
-  void RegisterRPC(const std::string& rpc_name, RequestHandler* handler);
+  void RegisterRPC(const std::string& rpc_name, RequestHandler* handler,
+                   int thread_num = 5);
 
   // Wait util all the clients have reached the barrier for one
   // rpc method. This function should be called in the
@@ -80,11 +79,10 @@ class RPCServer {
   std::atomic<int> exit_flag_;
   int selected_port_;
 
-  // FIXME(gongwb): need control thread pool size.
-  const int thread_pool_size_;
   const int client_num_;
 
   std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
+  std::unordered_map<std::string, int> rpc_thread_num_;
   friend class RequestHandler;
 };
 
