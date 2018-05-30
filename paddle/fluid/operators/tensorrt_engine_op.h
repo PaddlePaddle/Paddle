@@ -62,10 +62,10 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NOT_NULL(v, "no variable called %s", x);
       auto& t = v->Get<framework::LoDTensor>();
       if (platform::is_cpu_place(t.place())) {
-        engine_->SetInputFromCPU(x, static_cast<const void*>(t.data<void*>()),
+        engine_->SetInputFromCPU(x, static_cast<const void*>(t.data<void>()),
                                  t.memory_size());
       } else {
-        engine_->SetInputFromGPU(x, static_cast<const void*>(t.data<void*>()),
+        engine_->SetInputFromGPU(x, static_cast<const void*>(t.data<void>()),
                                  t.memory_size());
       }
     }
