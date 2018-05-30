@@ -40,17 +40,18 @@ void ReduceFunctor(const DeviceContext& context, const framework::Tensor& input,
   auto x = EigenTensor<T, D>::From(input);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto reduce_dim = Eigen::array<int, R_D>();
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] < 0) dims[i] = x_rank + dims[i];
-    reduce_dim[i] = dims[i];
+  std::vector<int> dims_ref = dims;
+  for (size_t i = 0; i < dims_ref.size(); ++i) {
+    if (dims_ref[i] < 0) dims_ref[i] = x_rank + dims_ref[i];
+    reduce_dim[i] = dims_ref[i];
   }
   // construct the squeezed output tensor
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
     auto dims_vector = framework::vectorize(out_dims);
-    for (size_t i = 0; i < dims.size(); ++i) {
-      dims_vector[dims[i]] = kDelFlag;
+    for (size_t i = 0; i < dims_ref.size(); ++i) {
+      dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
@@ -80,15 +81,18 @@ void ReduceGradFunctor(const DeviceContext& context,
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
   auto reduced_dims_v = framework::vectorize(x_dims);
+  std::vector<int> dims_ref = dims;
   Eigen::array<int, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
 
   int broad_cats_times = 1;
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] < 0) dims[i] = x_rank + dims[i];
-    reduced_dims_v[dims[i]] = 1;
-    broadcast_dim[dims[i]] = x_dims[dims[i]];
-    broad_cats_times *= x_dims[dims[i]];
+  for (size_t i = 0; i < dims_ref.size(); ++i) {
+    if (dims_ref[i] < 0) {
+      dims_ref[i] = x_rank + dims_ref[i];
+    }
+    reduced_dims_v[dims_ref[i]] = 1;
+    broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
+    broad_cats_times *= x_dims[dims_ref[i]];
   }
   auto reduced_dims = framework::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);

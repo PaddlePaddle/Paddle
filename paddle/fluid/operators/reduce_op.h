@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -102,8 +103,34 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       int rank = input0->dims().size();
       switch (rank) {
         case 1:
-          ReduceGradFunctor<1>(context.template device_context<DeviceContext>(),
-                               *input0, *input1, *input2, output, dims);
+          ReduceGradFunctor<DeviceContext, T, 1, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 2:
+          ReduceGradFunctor<DeviceContext, T, 2, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 3:
+          ReduceGradFunctor<DeviceContext, T, 3, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 4:
+          ReduceGradFunctor<DeviceContext, T, 4, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 5:
+          ReduceGradFunctor<DeviceContext, T, 5, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 6:
+          ReduceGradFunctor<DeviceContext, T, 6, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
       }
     }
