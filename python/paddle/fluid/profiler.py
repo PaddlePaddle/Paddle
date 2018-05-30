@@ -16,7 +16,10 @@ import core
 from contextlib import contextmanager
 import os
 
-__all__ = ['cuda_profiler', 'reset_profiler', 'profiler']
+__all__ = [
+    'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
+    'stop_profiler'
+]
 
 NVPROF_CONFIG = [
     "gpustarttimestamp",
@@ -72,6 +75,36 @@ def reset_profiler():
     core.reset_profiler()
 
 
+def start_profiler(state):
+    if state not in ['CPU', 'GPU', "All"]:
+        raise ValueError("The state must be 'CPU' or 'GPU' or 'All'.")
+    if state == "GPU":
+        prof_state = core.ProfilerState.kCUDA
+    elif state == "CPU":
+        prof_state = core.ProfilerState.kCPU
+    else:
+        prof_state = core.ProfilerState.kAll
+    core.enable_profiler(prof_state)
+
+
+def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
+    sorted_key = 'default' if sorted_key is None else sorted_key
+    if sorted_key not in ['default', 'calls', 'total', 'max', 'min', 'ave']:
+        raise ValueError("The sorted_key must be None or in 'calls', 'total', "
+                         "'max', 'min' and 'ave'")
+    key_map = {
+        'default': core.EventSortingKey.kDefault,
+        'calls': core.EventSortingKey.kCalls,
+        'total': core.EventSortingKey.kTotal,
+        'max': core.EventSortingKey.kMax,
+        'min': core.EventSortingKey.kMin,
+        'ave': core.EventSortingKey.kAve,
+    }
+    # TODO(qingqing) : redirect C++ ostream to Python stream.
+    # with core.ostream_redirect(stdout=True, stderr=True):
+    core.disable_profiler(key_map[sorted_key], profile_path)
+
+
 @contextmanager
 def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     """The profiler interface.
@@ -98,29 +131,6 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
         profile_path (string) : If state == 'All', it will write a profile
             proto output file.
     """
-    if state not in ['CPU', 'GPU', "All"]:
-        raise ValueError("The state must be 'CPU' or 'GPU' or 'All'.")
-    if state == "GPU":
-        prof_state = core.ProfilerState.kCUDA
-    elif state == "CPU":
-        prof_state = core.ProfilerState.kCPU
-    else:
-        prof_state = core.ProfilerState.kAll
-    core.enable_profiler(prof_state)
+    start_profiler(state)
     yield
-
-    sorted_key = 'default' if sorted_key is None else sorted_key
-    if sorted_key not in ['default', 'calls', 'total', 'max', 'min', 'ave']:
-        raise ValueError("The sorted_key must be None or in 'calls', 'total', "
-                         "'max', 'min' and 'ave'")
-    key_map = {
-        'default': core.EventSortingKey.kDefault,
-        'calls': core.EventSortingKey.kCalls,
-        'total': core.EventSortingKey.kTotal,
-        'max': core.EventSortingKey.kMax,
-        'min': core.EventSortingKey.kMin,
-        'ave': core.EventSortingKey.kAve,
-    }
-    # TODO(qingqing) : redirect C++ ostream to Python stream.
-    # with core.ostream_redirect(stdout=True, stderr=True):
-    core.disable_profiler(key_map[sorted_key], profile_path)
+    stop_profiler(sorted_key, profile_path)

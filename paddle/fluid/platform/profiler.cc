@@ -38,6 +38,7 @@ struct EventList;
 
 static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
+std::mutex profiler_mu;
 
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
@@ -228,11 +229,13 @@ void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enbale profling, since the input state is ",
                  "ProfilerState::kDisabled");
+
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (state == g_state) {
     return;
   }
   g_state = state;
-  should_send_profile_state = true;
+  { should_send_profile_state = true; }
   GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
@@ -295,7 +298,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   } else if (g_state == ProfilerState::kAll) {
     place = "All";
   } else {
-    PADDLE_THROW("Invalid profiler state");
+    PADDLE_THROW("Invalid profiler state", g_state);
   }
 
   std::cout << "Place: " << place << std::endl;
@@ -443,6 +446,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path) {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_", nullptr);
@@ -456,7 +460,7 @@ void DisableProfiler(EventSortingKey sorted_key,
     tracer->GenProfile(profile_path);
   }
   g_state = ProfilerState::kDisabled;
-  should_send_profile_state = true;
+  { should_send_profile_state = true; }
 }
 
 bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
@@ -466,7 +470,7 @@ void SetProfileListener() {
   std::mt19937 rng;
   rng.seed(std::random_device()());
   std::uniform_int_distribution<std::mt19937::result_type> dist6(
-      1, std::numeric_limits<std::mt19937::result_type>::max());
+      1, std::numeric_limits<int>::max());
   profiler_lister_id = dist6(rng);
 }
 int64_t ListenerId() { return profiler_lister_id; }
