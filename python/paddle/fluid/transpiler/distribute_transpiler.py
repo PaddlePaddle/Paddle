@@ -917,14 +917,27 @@ class DistributeTranspiler:
             pass
         return orig_shape
 
-    def _orig_varname(self, varname):
-        suff_idx = varname.find(".trainer_")
+    def _get_varname_parts(self, varname):
+        # returns origin, blockid, trainerid
         orig_var_name = ""
-        if suff_idx >= 0:
-            orig_var_name = varname[:suff_idx]
+        trainer_part = ""
+        block_part = ""
+        trainer_idx = varname.find(".trainer_")
+        if trainer_idx >= 0:
+            trainer_part = varname[trainer_idx + 1:]
         else:
-            orig_var_name = varname
-        return orig_var_name
+            trainer_idx = len(varname)
+        block_index = varname.find(".block")
+        if block_index >= 0:
+            block_part = varname[block_index + 1:trainer_idx]
+        else:
+            block_index = len(varname)
+        orig_var_name = varname[0:min(block_index, trainer_idx)]
+        return orig_var_name, block_part, trainer_part
+
+    def _orig_varname(self, varname):
+        orig, _, _ = self._get_varname_parts(varname)
+        return orig
 
     def _append_pserver_grad_merge_ops(self, optimize_block,
                                        grad_varname_for_block, endpoint,
@@ -933,23 +946,28 @@ class DistributeTranspiler:
         pserver_block = program.global_block()
         grad_block = None
         for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-            if same_or_split_var(
-                    self._orig_varname(g.name),
-                    self._orig_varname(grad_varname_for_block)):
+            if self._orig_varname(g.name) == \
+                    self._orig_varname(grad_varname_for_block):
                 grad_block = g
                 break
         if not grad_block:
             # do not append this op if current endpoint
             # is not dealing with this grad block
             return
+        orig_varname, block_name, trainer_name = self._get_varname_parts(
+            grad_block.name)
+        if block_name:
+            merged_var_name = '.'.join([orig_varname, block_name])
+        else:
+            merged_var_name = orig_varname
         merged_var = \
-            pserver_block.vars[self._orig_varname(grad_block.name)]
+            pserver_block.vars[merged_var_name]
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if self.sync_mode and self.trainer_num > 1:
             vars2merge = []
             for i in xrange(self.trainer_num):
                 per_trainer_name = "%s.trainer_%d" % \
-                (self._orig_varname(grad_block.name), i)
+                (merged_var_name, i)
                 vars2merge.append(pserver_block.vars[per_trainer_name])
 
             optimize_block.append_op(
@@ -974,40 +992,6 @@ class DistributeTranspiler:
         # moment can use the updated shape
         for key in opt_op.input_names:
             if key == "Grad":
-                #     grad_block = None
-                #     for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-                #         if same_or_split_var(
-                #                 self._orig_varname(g.name),
-                #                 self._orig_varname(opt_op.input(key)[0])):
-                #             grad_block = g
-                #             break
-                #     if not grad_block:
-                #         # do not append this op if current endpoint
-                #         # is not dealing with this grad block
-                #         return
-                #     merged_var = \
-                #         pserver_block.vars[self._orig_varname(grad_block.name)]
-                #     grad_to_block_id.append(merged_var.name + ":" + str(
-                #         optimize_block.idx))
-                #     if self.sync_mode and self.trainer_num > 1:
-                #         vars2merge = []
-                #         for i in xrange(self.trainer_num):
-                #             per_trainer_name = "%s.trainer_%d" % \
-                #             (self._orig_varname(grad_block.name), i)
-                #             vars2merge.append(pserver_block.vars[per_trainer_name])
-
-                #         optimize_block.append_op(
-                #             type="sum",
-                #             inputs={"X": vars2merge},
-                #             outputs={"Out": merged_var})
-                #         # TODO(panyx0718): What if it's SELECTED_ROWS.
-                #         if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                #             optimize_block.append_op(
-                #                 type="scale",
-                #                 inputs={"X": merged_var},
-                #                 outputs={"Out": merged_var},
-                #                 attrs={"scale": 1.0 / float(self.trainer_num)})
-
                 new_inputs[key] = merged_var
             elif key == "Param":
                 # param is already created on global program
@@ -1068,9 +1052,8 @@ class DistributeTranspiler:
 
     def _is_splited_grad_var(self, var, var_dict):
         grad_block = None
-        for pserver_var_name, g in var_dict.iteritems():
-            if same_or_split_var(
-                    self._orig_varname(g.name), self._orig_varname(var.name)):
+        for _, g in var_dict.iteritems():
+            if self._orig_varname(g.name) == self._orig_varname(var.name):
                 if g.name.find(".trainer_") == -1:
                     grad_block = g
                     break
