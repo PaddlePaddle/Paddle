@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import math
+import numpy as np
 
 from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -103,7 +104,7 @@ def split_dense_variable(var_list, service_count, min_block_size=8192):
 
     We need to have a minimal block size so that the calculations in
     the parameter server side can gain better performance. By default
-    minimum block size 8K elements (maybe 16bit or 32bit or 64bit). 
+    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
 
     Args:
         var_list (list): List of variables.
@@ -111,7 +112,7 @@ def split_dense_variable(var_list, service_count, min_block_size=8192):
             or more listening ports.
         min_block_size (int): Minimum splitted block size.
     Returns:
-        blocks (list[(varname, block_id, current_block_size)]): A list 
+        blocks (list[(varname, block_id, current_block_size)]): A list
             of VarBlocks. Each VarBlock specifies a shard of the var.
     """
     blocks = []
@@ -171,6 +172,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
+                  align_var_to_block=True,
                   split_method=RoundRobin,
                   sync_mode=True):
         """
@@ -183,7 +185,8 @@ class DistributeTranspiler:
         parameter servers.
 
         Steps to transpile trainer:
-        1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
+        1. split variable to multiple blocks, aligned by product(dim[1:]) (width)
+            if align_var_to_block is True
         2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
         3. modify trainer program add split_op to each grad variable.
         4. append send_op to send splited variables to server and fetch
@@ -293,9 +296,18 @@ class DistributeTranspiler:
                     for index in range(len(self.pserver_endpoints))
                 ]
 
-        grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
-        param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
+        if align_var_to_block:
+            grad_blocks = split_dense_variable(grad_list,
+                                               len(pserver_endpoints))
+            param_blocks = split_dense_variable(param_list,
+                                                len(pserver_endpoints))
+        else:
+            # when we do NOT align var to block, we will always split params
+            # grads into one block.
+            grad_blocks = split_dense_variable(grad_list, 1)
+            param_blocks = split_dense_variable(param_list, 1)
         assert (len(grad_blocks) == len(param_blocks))
+
         # step2: Create new vars for the parameters and gradients blocks and
         # add ops to do the split.
         param_var_mapping = self._create_vars_from_blocklist(program,
@@ -325,8 +337,22 @@ class DistributeTranspiler:
         # step 3.1: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
         send_vars = []
-        for orig_varname, splited_vars in grad_var_mapping.items():
+
+        # in general cases, the number of pservers is times of 2, and this
+        # will lead to uneven distribution among weights and bias:
+        #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
+        #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
+        # shuffle the map will avoid the uneven distribution above
+        grad_var_mapping_items = grad_var_mapping.items()
+        if not align_var_to_block:
+            np.random.shuffle(grad_var_mapping_items)
+
+        for orig_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
+
+            if not align_var_to_block:
+                assert (len(splited_vars) == 1)
+
             if len(splited_vars) == 1:
                 orig_varname = splited_vars[0].name
                 index = find_op_by_output_arg(program.global_block(),
@@ -374,7 +400,7 @@ class DistributeTranspiler:
         for i, ep in enumerate(eplist):
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
-        # step4: Concat the parameters splits together after recv.
+
         for varname, splited_var in param_var_mapping.iteritems():
             eps = []
             for var in splited_var:
@@ -399,6 +425,7 @@ class DistributeTranspiler:
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
+        # step4: Concat the parameters splits together after recv.
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:
                 continue
@@ -849,8 +876,8 @@ class DistributeTranspiler:
             program (ProgramDesc): ProgramDesc which gradients blong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
-        Returns: 
-            var_mapping (dict(varname->[new_varname_variable])):A dict mapping 
+        Returns:
+            var_mapping (dict(varname->[new_varname_variable])):A dict mapping
                 from original var name to each var split.
         """
 
