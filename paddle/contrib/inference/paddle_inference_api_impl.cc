@@ -135,11 +135,10 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
 
 std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
   VLOG(3) << "Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(nullptr);
+  std::unique_ptr<PaddlePredictor> cls(new PaddlePredictorImpl(config_));
   if (!cls->InitShared()) {
     LOG(ERROR) << "fail to call InitShared";
-  } else {
-    cls.reset(new PaddlePredictorImpl(config_));
+    return nullptr;
   }
   // fix manylinux compile error.
   return cls;
