@@ -92,7 +92,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W",
              "(Tensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is s a 3-D tensor, the shape is"
-             "[N, num_classes - 1, D]");
+             "[num_classes - 1, D]");
     AddInput("Ids",
              "(Tensor, required), The labels of training data. It's a"
              "1-D tensor, which the shape is [1, N]");
