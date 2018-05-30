@@ -13,7 +13,9 @@
 # limitations under the License.
 #
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
+if(APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
+endif(APPLE)
 
 function(inference_api_test TARGET_NAME TEST_SRC DEP_TEST)
     set(options "")
