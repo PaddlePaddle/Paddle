@@ -14,6 +14,8 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -104,3 +106,5 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+
+#endif  // PADDLE_WITH_CUDA

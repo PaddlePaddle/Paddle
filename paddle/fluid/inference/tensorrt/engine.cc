@@ -176,6 +176,16 @@ void TensorRTEngine::SetInputFromCPU(const std::string& name, const void* data,
                                        cudaMemcpyHostToDevice, *stream_));
 }
 
+void TensorRTEngine::SetInputFromGPU(const std::string& name, const void* data,
+                                     size_t size) {
+  auto& buf = buffer(name);
+  PADDLE_ENFORCE_NOT_NULL(buf.buffer);
+  PADDLE_ENFORCE_LE(size, buf.max_size, "buffer is too small");
+  PADDLE_ENFORCE(buf.device == DeviceType::GPU);
+  PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
+                                       cudaMemcpyDeviceToDevice, *stream_));
+}
+
 void TensorRTEngine::SetITensor(const std::string& name,
                                 nvinfer1::ITensor* tensor) {
   PADDLE_ENFORCE(tensor != nullptr);

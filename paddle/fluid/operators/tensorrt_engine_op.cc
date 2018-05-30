@@ -12,6 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
+
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
@@ -40,6 +42,7 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph");
+    AddComment("TensorRT engine operator.");
   }
 };
 
@@ -63,3 +66,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+#endif  // PADDLE_WITH_CUDA
