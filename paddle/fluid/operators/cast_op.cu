@@ -21,5 +21,5 @@ using CastOpKernel =
 
 REGISTER_OP_CUDA_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
                         CastOpKernel<int>, CastOpKernel<int64_t>,
-                        CastOpKernel<bool>,
+                        CastOpKernel<bool>, CastOpKernel<uint8_t>,
                         CastOpKernel<paddle::platform::float16>);
