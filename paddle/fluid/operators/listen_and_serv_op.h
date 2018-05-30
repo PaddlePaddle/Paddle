@@ -73,10 +73,8 @@ class ListenAndServOp : public framework::OperatorBase {
 class SignalHandler {
  public:
   static void StopAndExit(int signal_num);
-  static void RegisterOp(framework::OperatorBase* s);
 
  private:
-  static std::unordered_set<framework::OperatorBase*> service_set_;
   DISABLE_COPY_AND_ASSIGN(SignalHandler);
 };
 

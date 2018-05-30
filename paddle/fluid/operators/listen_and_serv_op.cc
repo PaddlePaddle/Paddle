@@ -75,7 +75,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
-ListenAndServOp::~ListenAndServOp() {}
+ListenAndServOp::~ListenAndServOp() { Stop(); }
 
 void ListenAndServOp::Stop() {
   rpc_service_->ShutDown();
@@ -276,7 +276,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->WaitServerReady();
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
-  SignalHandler::RegisterOp(const_cast<ListenAndServOp *>(this));
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
@@ -316,17 +315,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-std::unordered_set<framework::OperatorBase *> SignalHandler::service_set_{};
-
 void SignalHandler::StopAndExit(int signal_num) {
   VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
-  for (auto &s : SignalHandler::service_set_) {
-    s->Stop();
-  }
-}
-
-void SignalHandler::RegisterOp(framework::OperatorBase *s) {
-  service_set_.insert(s);
+  exit(0);
 }
 
 }  // namespace operators
