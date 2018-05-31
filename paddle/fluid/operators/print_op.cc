@@ -14,7 +14,6 @@
 
 #include <algorithm>
 #include <ctime>
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
 
