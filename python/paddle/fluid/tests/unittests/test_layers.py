@@ -379,6 +379,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_polygon_box_transform(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8, 4, 4], dtype="float32")
+            output = layers.polygon_box_transform(input=x)
+            self.assertIsNotNone(output)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
