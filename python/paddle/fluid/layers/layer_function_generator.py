@@ -230,15 +230,22 @@ def templatedoc():
         and AddInput. The ${name} is Python snake style. i.e., xxx_xxx.
     * ${{name}_type}: The type of ${name}.
 
-
     Returns:
-        Decorated funciton.
+        Decorated function.
     """
 
     def __impl__(func):
         op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
         tmpl = string.Template(func.__doc__)
-        args = {"comment": " ".join(op_proto.comment.split())}
+
+        comment_lines = op_proto.comment.split("\n")
+        comment = ""
+        for line in comment_lines:
+            line = line.lstrip()
+            comment += line
+            comment += "\n"
+
+        args = {"comment": comment}
         for each_input in op_proto.inputs:
             input_name = _convert_(each_input.name)
             args["{0}_comment".format(input_name)] = each_input.comment

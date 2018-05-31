@@ -799,7 +799,22 @@ def gru_unit(input,
     return updated_hidden, reset_hidden_pre, gate
 
 
+@templatedoc()
 def linear_chain_crf(input, label, param_attr=None):
+    """
+    Linear Chain CRF.
+
+    ${comment}
+
+    Args:
+        input(${emission_type}): ${emission_comment}
+        label(${label_type}): ${label_comment}
+        param_attr(ParamAttr): The attribute of the learnable parameter.
+
+    Returns:
+        ${log_likelihood_comment}
+
+    """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
@@ -825,7 +840,19 @@ def linear_chain_crf(input, label, param_attr=None):
     return log_likelihood
 
 
+@templatedoc()
 def crf_decoding(input, param_attr, label=None):
+    """
+    ${comment}
+
+    Args:
+        input(${emission_type}): ${emission_comment}
+        param_attr(ParamAttr): The parameter attribute for training.
+        label(${label_type}): ${label_comment}
+
+    Returns:
+        ${viterbi_path_comment}
+    """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
