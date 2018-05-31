@@ -5,10 +5,10 @@ class BinaryDistribution(Distribution):
         return True
 
 MAJOR   = 0
-MINOR   = 11
+MINOR   = 13
 PATCH   = 0
 RC      = 0
-ISTAGED = False
+ISTAGED = True
 
 
 
