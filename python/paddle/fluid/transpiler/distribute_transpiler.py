@@ -178,7 +178,7 @@ class DistributeTranspiler:
                     for index in range(len(self.pserver_endpoints))
                 ]
 
-    def _init_splited_vars(self, split_method):
+    def _init_splited_vars(self, split_method, align_var_to_block=True):
         # update these mappings for further transpile:
         # 1. param_var_mapping: param var name -> [splited params vars]
         # 2. grad_var_mapping: grad var name -> [splited grads vars]
@@ -198,15 +198,14 @@ class DistributeTranspiler:
                                             self.params_grads)
 
         if align_var_to_block:
-            grad_blocks = split_dense_variable(grad_list,
-                                               len(pserver_endpoints))
-            param_blocks = split_dense_variable(param_list,
-                                                len(pserver_endpoints))
+            grad_blocks = split_variable(grad_list, len(self.pserver_endpoints))
+            param_blocks = split_variable(param_list,
+                                          len(self.pserver_endpoints))
         else:
             # when we do NOT align var to block, we will always split params
             # grads into one block.
-            grad_blocks = split_dense_variable(grad_list, 1)
-            param_blocks = split_dense_variable(param_list, 1)
+            grad_blocks = split_variable(grad_list, 1)
+            param_blocks = split_variable(param_list, 1)
         assert (len(grad_blocks) == len(param_blocks))
         # origin_varname -> [splited_var]
         self.param_var_mapping = self._create_vars_from_blocklist(
@@ -272,7 +271,7 @@ class DistributeTranspiler:
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
         # split and create vars, then put splited vars in dicts for later use.
-        self._init_splited_vars(split_method)
+        self._init_splited_vars(split_method, align_var_to_block)
 
         # step 3.1: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
