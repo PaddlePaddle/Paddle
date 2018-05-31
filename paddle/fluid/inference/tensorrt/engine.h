@@ -44,6 +44,8 @@ class TensorRTEngine : public EngineBase {
     }
     const nvinfer1::Weights& get() { return w_; }
 
+    std::vector<int64_t> dims;
+
    private:
     nvinfer1::Weights w_;
   };

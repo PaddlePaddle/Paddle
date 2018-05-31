@@ -25,9 +25,9 @@ TEST(fc_op, test) {
   framework::Scope scope;
   TRTConvertValidation validator(20, parameters, scope, 1000);
 
-  validator.DeclInputVar("mul-X", nvinfer1::Dims4(12, 6, 1, 1));
-  validator.DeclParamVar("mul-Y", nvinfer1::Dims2(6, 3));
-  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(12, 3));
+  validator.DeclInputVar("mul-X", nvinfer1::Dims4(8, 3, 1, 1));
+  validator.DeclParamVar("mul-Y", nvinfer1::Dims2(3, 2));
+  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(8, 2));
 
   // Prepare Op description
   framework::OpDesc desc;

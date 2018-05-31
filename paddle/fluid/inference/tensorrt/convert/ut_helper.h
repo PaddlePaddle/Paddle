@@ -115,10 +115,6 @@ class TRTConvertValidation {
       auto* var = scope_.FindVar(input);
       PADDLE_ENFORCE(var);
       auto tensor = var->GetMutable<framework::LoDTensor>();
-      LOG(INFO) << "set input for TRT " << input;
-      LOG(INFO) << tensor->data<float>()[0];
-      LOG(INFO) << tensor->data<float>()[1];
-      LOG(INFO) << "set data size " << analysis::AccuDims(tensor->dims(), tensor->dims().size());
 
       engine_->SetInputFromCPU(
           input, static_cast<void*>(tensor->data<void>()),
@@ -140,7 +136,6 @@ class TRTConvertValidation {
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
       std::vector<float> trt_out(200, 2008.);
-      LOG(INFO) << "get TRT output " << output;
       engine_->GetOutputInCPU(output, &trt_out[0], 200 * sizeof(float));
       cudaStreamSynchronize(*engine_->stream());
 
@@ -150,7 +145,6 @@ class TRTConvertValidation {
       // Compare two output
       ASSERT_FALSE(fluid_out.empty());
       for (size_t i = 0; i < fluid_out.size(); i++) {
-        LOG(INFO) << fluid_out[i] << " " << trt_out[i];
         EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 1e-6);
       }
     }

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
@@ -21,6 +22,29 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+template <typename T>
+void Reorder2(nvinfer1::DimsHW shape, const T* idata, nvinfer1::DimsHW istrides,
+              T* odata, nvinfer1::DimsHW ostrides) {
+  for (int h = 0; h < shape.h(); ++h) {
+    for (int w = 0; w < shape.w(); ++w) {
+      odata[h * ostrides.h() + w * ostrides.w()] =
+          idata[h * ostrides.h() + w * ostrides.w()];
+    }
+  }
+}
+
+void ReorderCKtoKC(TensorRTEngine::Weight& iweights,
+                   TensorRTEngine::Weight* oweights) {
+  int c = iweights.dims[0];
+  int k = iweights.dims[1];
+  oweights->dims.assign({k, c});
+  nvinfer1::DimsHW istrides = {1, k};
+  nvinfer1::DimsHW ostrides = {c, 1};
+  Reorder2({k, c}, static_cast<float const*>(iweights.get().values), istrides,
+           static_cast<float*>(const_cast<void*>(oweights->get().values)),
+           ostrides);
+}
 
 /*
  * FC converter convert a MUL op in Fluid to a FC layer in TRT.
@@ -49,16 +73,28 @@ class FcOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);  // a matrix
     size_t n_output = Y_t->dims()[1];
 
+    framework::LoDTensor tmp;
+    tmp.Resize(Y_t->dims());
+    memcpy(tmp.mutable_data<float>(platform::CPUPlace()), Y_t->data<float>(),
+           Y_t->dims()[0] * Y_t->dims()[1]);
+
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
                                   Y_t->memory_size() / sizeof(float)};
+    TensorRTEngine::Weight tmp_weight(nvinfer1::DataType::kFLOAT,
+                                      static_cast<void*>(tmp.data<float>()),
+                                      Y_t->memory_size() / sizeof(float));
+    weight.dims.assign({Y_t->dims()[0], Y_t->dims()[1]});
+    tmp_weight.dims = weight.dims;
+
+    TensorRTEngine::Weight transposed = weight;
+    ReorderCKtoKC(tmp_weight, &weight);
 
     // Currently, the framework can only handle one fluid op -> one TRT layer,
     // but fc fuses `mul` and `bias` (2 fluid ops), so here is a trick, just
     // handle `mul`, leave `add` as another layer.
     // DEBUG
-    TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr,
-                                0};
+    TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
                                        *const_cast<nvinfer1::ITensor*>(X),
@@ -66,11 +102,6 @@ class FcOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out").front();
     engine_->DeclareOutput(layer, 0, output_name);
-    auto* output = engine_->GetITensor(output_name);
-    LOG(INFO) << "output dim";
-    for (int i = 0; i < output->getDimensions().nbDims; i++) {
-      LOG(INFO) << output->getDimensions().d[i];
-    }
   }
 };
 
