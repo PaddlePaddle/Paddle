@@ -250,6 +250,7 @@ op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 op_library(cos_sim_op DEPS cos_sim_functor)
+op_library(hierarchical_sigmoid_op DEPS matrix_bit_code)
 op_library(parallel_do_op DEPS executor)
 
 if (WITH_GPU)
