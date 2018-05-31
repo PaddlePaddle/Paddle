@@ -14,7 +14,6 @@
 
 import core
 import contextlib
-from ..batch import batch
 __all__ = ['convert_reader_to_recordio_file']
 
 
@@ -46,9 +45,6 @@ def convert_reader_to_recordio_file(
             writer.complete_append_tensor()
             counter += 1
     return counter
-
-
-import paddle
 
 
 def convert_reader_to_recordio_files(
