@@ -5,14 +5,19 @@ cc_library(paddle_fluid_api
     SRCS io.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
-# Create static library
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-cc_library(paddle_fluid DEPS ${fluid_modules})
 
+if(WITH_CONTRIB)
+  set(fluid_modules "${fluid_modules}" paddle_inference_api)
+endif()
+
+# Create static library
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
-    DEPS ${fluid_modules})
+    DEPS ${fluid_modules} paddle_fluid_api)
+
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
