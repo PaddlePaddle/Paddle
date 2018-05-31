@@ -9,7 +9,7 @@ get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
 if(WITH_CONTRIB)
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
@@ -17,7 +17,7 @@ cc_library(paddle_fluid_shared SHARED
 
 else()
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
