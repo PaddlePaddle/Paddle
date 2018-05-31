@@ -69,29 +69,6 @@ def _validate_lod(lod, tensor_height=-1):
         return lod_sum[-1] == tensor_height
 
 
-def _convert_lod(lod):
-    """Convert a length-based lod to a offset-based lod.
-
-    If the length-based lod is [[2, 3], [2, 1, 2, 3, 4]],
-    then the offset-based lod is [[0, 2, 5], [0, 2, 3, 5, 8, 12]].
-
-    Args:
-        lod: a length-based lod info. 
-
-    Returns:
-        A list of lists as the offset-based lod converted to from the input lod.
-    """
-    new_lod = []
-    for level in lod:
-        cur_len = 0
-        new_level = [cur_len]
-        for lod_len in level:
-            cur_len += lod_len
-            new_level.append(cur_len)
-        new_lod.append(new_level)
-    return new_lod
-
-
 def create_lod_tensor(data, lod, place):
     """Create a lod tensor from a numpy array, a list, or an existing lod tensor.
 
@@ -143,7 +120,7 @@ def create_lod_tensor(data, lod, place):
                              data.shape[0]), "the provided lod info is invalid"
         tensor = core.LoDTensor()
         tensor.set(data, place)
-        tensor.set_lod(_convert_lod(lod))
+        tensor.set_lod(lod)
         return tensor
     else:
         raise TypeError(
@@ -181,9 +158,8 @@ def create_random_int_lodtensor(lod, base_shape, place, low, high):
         A fluid LoDTensor object with tensor data and lod info. 
     """
     assert isinstance(base_shape, list), "base_shape should be a list"
-    converted_lod = _convert_lod(lod)
     # append the total number of basic elements to the front of its shape
-    overall_shape = [converted_lod[-1][-1]] + base_shape
+    overall_shape = [sum(lod[-1])] + base_shape
     # the range of integer data elements is [low, high]    
     data = np.random.random_integers(low, high, overall_shape).astype("int64")
     return create_lod_tensor(data, lod, place)

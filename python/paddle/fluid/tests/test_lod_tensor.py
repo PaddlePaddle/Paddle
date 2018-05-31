@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor, _validate_lod, _convert_lod
+from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor, _validate_lod
 import numpy
 import unittest
 
@@ -43,14 +43,14 @@ class TestLoDTensor(unittest.TestCase):
         lod = [[1, 3], [2, 1, 3, 4]]
         self.assertFalse(_validate_lod(lod, tensor_height=5))
 
-    def test_convert_lod(self):
+    def test_pybind_lod(self):
         lod = [[1, 2, 3]]
-        converted_lod = [[0, 1, 3, 6]]
-        self.assertEqual(_convert_lod(lod), converted_lod)
-
+        tensor = fluid.LoDTensor()
+        tensor.set_lod(lod)
+        self.assertEqual(tensor.lod(), lod)
         lod = [[2, 3], [1, 3, 1, 2, 1]]
-        converted_lod = [[0, 2, 5], [0, 1, 4, 5, 7, 8]]
-        self.assertEqual(_convert_lod(lod), converted_lod)
+        tensor.set_lod(lod)
+        self.assertEqual(tensor.lod(), lod)
 
     def test_create_lod_tensor(self):
         # Create LoDTensor from a list
@@ -60,19 +60,19 @@ class TestLoDTensor(unittest.TestCase):
         self.assertRaises(AssertionError, create_lod_tensor, data, wrong_lod,
                           fluid.CPUPlace())
         tensor = create_lod_tensor(data, correct_lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), [[0, 3, 5]])
+        self.assertEqual(tensor.lod(), correct_lod)
 
         # Create LoDTensor from numpy array
         data = numpy.random.random([10, 1])
         lod = [[2, 1], [3, 3, 4]]
         tensor = create_lod_tensor(data, lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), [[0, 2, 3], [0, 3, 6, 10]])
+        self.assertEqual(tensor.lod(), lod)
 
         # Create LoDTensor from another LoDTensor, they are differnt instances
         new_lod = [[2, 2, 1], [1, 2, 2, 3, 2]]
         new_tensor = create_lod_tensor(tensor, new_lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), [[0, 2, 3], [0, 3, 6, 10]])
-        self.assertEqual(new_tensor.lod(), [[0, 2, 4, 5], [0, 1, 3, 5, 8, 10]])
+        self.assertEqual(tensor.lod(), lod)
+        self.assertEqual(new_tensor.lod(), new_lod)
 
     def test_create_random_int_lodtensor(self):
         # The shape of a word, commonly used in speech and NLP problem, is [1]
@@ -83,7 +83,7 @@ class TestLoDTensor(unittest.TestCase):
         high = dict_size - 1
         tensor = create_random_int_lodtensor(lod, shape,
                                              fluid.CPUPlace(), low, high)
-        self.assertEqual(tensor.lod(), [[0, 2, 5, 10]])
+        self.assertEqual(tensor.lod(), lod)
         self.assertEqual(tensor.shape(), [10, 1])
 
 
