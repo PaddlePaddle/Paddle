@@ -469,6 +469,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
