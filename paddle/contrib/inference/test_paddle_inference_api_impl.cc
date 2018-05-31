@@ -144,7 +144,7 @@ TEST(paddle_inference_api_impl, image_classification) {
   float* data = static_cast<float*>(outputs[0].data.data);
   float* lod_data = output1.data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
-    EXPECT_NEAR (lod_data[j], data[j], 1e-6);
+    EXPECT_NEAR(lod_data[j], data[j], 1e-6);
   }
   free(data);
 }
