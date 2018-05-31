@@ -81,7 +81,7 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
-    'upsampling_bilinear2d',
+    'resize_bilinear',
     'random_crop',
 ]
 
@@ -3929,9 +3929,9 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
+def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
-    The mathematical meaning of upsampling_bilinear2d is also called
+    The mathematical meaning of resize_bilinear is
     Bilinear interpolation.
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
@@ -3941,13 +3941,13 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
     Args:
-        input (Variable): The input tensor of bilinear interpolation,
+        input (Variable): The input tensor of resize_bilinear layer,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|None): Output shape of bilinear interpolation
+        out_shape(list|tuple|None): Output shape of resize_bilinear
                                     layer, the shape is (out_h, out_w).
                                     Default: None
-        scale(int|None): The multiplier for the input height or width.
+        scale(float|None): The multiplier for the input height or width.
                          At least one of out_shape or scale must be set.
                          And out_shape has a higher priority than scale.
                          Default: None
@@ -3961,7 +3961,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.bilinear_interp(input, out_shape=[12, 12])
+            out = fluid.layers.resize_bilinear(input, scale=0.5)
     """
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None")
