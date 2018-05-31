@@ -86,6 +86,7 @@ class PaddlePredictor {
 };
 
 struct NativeConfig : public PaddlePredictor::Config {
+  bool use_gpu{false};
   int device;
   float fraction_of_gpu_memory;
   std::string prog_file;

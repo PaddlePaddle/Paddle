@@ -245,16 +245,18 @@ std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<NativeConfig, PaddlePredictor::EngineKind::kNative>(
     const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
-  // 1. GPU memeroy
-  std::vector<std::string> flags;
-  if (config.fraction_of_gpu_memory >= 0.0f ||
-      config.fraction_of_gpu_memory <= 0.95f) {
-    flags.push_back("dummpy");
-    std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                       num2str<float>(config.fraction_of_gpu_memory);
-    flags.push_back(flag);
-    VLOG(3) << "set flag: " << flag;
-    framework::InitGflags(flags);
+  if (config.use_gpu) {
+    // 1. GPU memeroy
+    std::vector<std::string> flags;
+    if (config.fraction_of_gpu_memory >= 0.0f ||
+        config.fraction_of_gpu_memory <= 0.95f) {
+      flags.push_back("dummpy");
+      std::string flag = "--fraction_of_gpu_memory_to_use=" +
+                         num2str<float>(config.fraction_of_gpu_memory);
+      flags.push_back(flag);
+      VLOG(3) << "set flag: " << flag;
+      framework::InitGflags(flags);
+    }
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));

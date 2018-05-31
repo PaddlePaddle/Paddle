@@ -45,6 +45,7 @@ NativeConfig GetConfig() {
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
+  config.use_gpu = true;
   config.device = 0;
   config.share_variables = true;
   return config;
