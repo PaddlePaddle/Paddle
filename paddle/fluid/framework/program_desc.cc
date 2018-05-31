@@ -51,16 +51,6 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
   }
-  for (auto &block : blocks_) {
-    for (auto *op : block->AllOps()) {
-      for (const auto &attr : op->Proto()->attrs()) {
-        if (attr.type() == proto::AttrType::BLOCK) {
-          size_t blk_idx = attr.block_idx();
-          op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
-        }
-      }
-    }
-  }
 }
 
 ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
