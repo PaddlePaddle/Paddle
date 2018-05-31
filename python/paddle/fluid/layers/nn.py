@@ -19,9 +19,10 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
+import random
 
 __all__ = [
     'fc',
@@ -3992,10 +3993,34 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     return out
 
 
-def random_crop(input, shape, seed=1):
+@templatedoc()
+def random_crop(x, shape, seed=None):
+    """
+    **Random crop operator**
+    
+    ${comment}
+
+    Examples:
+        >>> img = fluid.layers.data("img", [3, 256, 256])
+        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
+
+    Args:
+        x(${x_type}): ${x_comment}
+        shape(${shape_type}): ${shape_comment}
+        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
+            get from `random.randint(-65536, 65535)`.
+
+    Returns:
+        ${out_comment}
+
+    """
+
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()
     out = helper.create_tmp_variable(dtype)
+    if seed is None:
+        seed = random.randint(-65536, 65535)
+
     if isinstance(seed, int):
         seed_value = seed
         seed = helper.create_tmp_variable(dtype="int64")
