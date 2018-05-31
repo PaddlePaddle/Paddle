@@ -12,7 +12,7 @@ if(WITH_CONTRIB)
 endif()
 
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
