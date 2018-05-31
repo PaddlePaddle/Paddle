@@ -32,7 +32,8 @@ void BindConstValue(pybind11::module* m) {
       .value("Forward", framework::OpRole::kForward)
       .value("Backward", framework::OpRole::kBackward)
       .value("Optimize", framework::OpRole::kOptimize)
-      .value("Loss", framework::OpRole::kLoss);
+      .value("Loss", framework::OpRole::kLoss)
+      .value("RPC", framework::OpRole::kRPC);
 
   op_proto_and_checker_maker.def(
       "kOpRoleAttrName", framework::OpProtoAndCheckerMaker::OpRoleAttrName);

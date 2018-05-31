@@ -53,7 +53,7 @@ def encoder(is_sparse):
     return encoder_out
 
 
-def decoder_train(context, is_sparse):
+def train_decoder(context, is_sparse):
     # decoder
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
@@ -81,7 +81,7 @@ def decoder_train(context, is_sparse):
     return rnn()
 
 
-def decoder_decode(context, is_sparse):
+def decode(context, is_sparse):
     init_state = context
     array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
     counter = pd.zeros(shape=[1], dtype='int64', force_cpu=True)
@@ -148,31 +148,9 @@ def decoder_decode(context, is_sparse):
     return translation_ids, translation_scores
 
 
-def set_init_lod(data, lod, place):
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod(lod)
-    return res
-
-
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = fluid.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
-
-
 def train_program(is_sparse):
     context = encoder(is_sparse)
-    rnn_out = decoder_train(context, is_sparse)
+    rnn_out = train_decoder(context, is_sparse)
     label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = pd.cross_entropy(input=rnn_out, label=label)
@@ -218,13 +196,12 @@ def train(use_cuda, is_sparse, is_local=True):
 
 
 def decode_main(use_cuda, is_sparse):
-
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     context = encoder(is_sparse)
-    translation_ids, translation_scores = decoder_decode(context, is_sparse)
+    translation_ids, translation_scores = decode(context, is_sparse)
 
     exe = Executor(place)
     exe.run(framework.default_startup_program())
@@ -234,26 +211,32 @@ def decode_main(use_cuda, is_sparse):
         [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
-    init_lod = [i for i in range(batch_size)] + [batch_size]
+    init_lod = [1] * batch_size
     init_lod = [init_lod, init_lod]
+
+    init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
+    init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
-    for _, data in enumerate(train_data()):
-        init_ids = set_init_lod(init_ids_data, init_lod, place)
-        init_scores = set_init_lod(init_scores_data, init_lod, place)
 
-        src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
+    feed_order = ['src_word_id']
+    feed_list = [
+        framework.default_main_program().global_block().var(var_name)
+        for var_name in feed_order
+    ]
+    feeder = fluid.DataFeeder(feed_list, place)
+
+    for data in train_data():
+        feed_dict = feeder.feed(map(lambda x: [x[0]], data))
+        feed_dict['init_ids'] = init_ids
+        feed_dict['init_scores'] = init_scores
 
         result_ids, result_scores = exe.run(
             framework.default_main_program(),
-            feed={
-                'src_word_id': src_word_data,
-                'init_ids': init_ids,
-                'init_scores': init_scores
-            },
+            feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
         print result_ids.lod()

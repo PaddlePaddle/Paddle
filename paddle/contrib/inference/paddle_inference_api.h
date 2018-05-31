@@ -45,10 +45,10 @@ struct PaddleTensor {
 };
 
 /*
-* A simple Inference API for Paddle. Currently this API might just be used by
-* non-sequence scenerios.
-* TODO(Superjomn) Prepare another API for NLP-related usages.
-*/
+ * A simple Inference API for Paddle. Currently this API can be used by
+ * non-sequence scenerios.
+ * TODO(Superjomn) Support another API for NLP-related usages.
+ */
 class PaddlePredictor {
  public:
   struct Config;
@@ -66,34 +66,38 @@ class PaddlePredictor {
   // be thread-safe.
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
-  virtual bool InitShared() { return false; }
   // Destroy the Predictor.
   virtual ~PaddlePredictor() {}
 
-  friend std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
-      const PaddlePredictor::Config& config);
+  enum class EngineKind {
+    kNative = -1,  // Use the native Fluid facility.
+    // TODO(Superjomn) support latter.
+    // kAnakin,             // Use Anakin for inference.
+    // kTensorRT,           // Use TensorRT for inference.
+    // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
+    // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
+  };
 
   // The common configs for all the predictors.
   struct Config {
-    enum class EngineKind;
-
     std::string model_dir;      // path to the model directory.
     bool enable_engine{false};  // Enable to execute (part of) the model on
-    // third-party engines.
-    EngineKind engine_kind{Config::EngineKind::kNone};
-
-    enum class EngineKind {
-      kNone = -1,          // Use the native Fluid facility.
-      kAnakin,             // Use Anakin for inference.
-      kTensorRT,           // Use TensorRT for inference.
-      kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
-      kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
-    };
   };
 };
 
+struct NativeConfig : public PaddlePredictor::Config {
+  bool use_gpu{false};
+  int device;
+  float fraction_of_gpu_memory;
+  std::string prog_file;
+  std::string param_file;
+  bool share_variables;
+};
+
 // A factory to help create difference predictor.
-template <typename ConfigT>
+template <
+    typename ConfigT,
+    PaddlePredictor::EngineKind engine = PaddlePredictor::EngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 }  // namespace paddle
