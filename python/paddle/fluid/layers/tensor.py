@@ -112,7 +112,7 @@ def cast(x, dtype):
     return out
 
 
-def concat(input, axis=0):
+def concat(input, axis=0, name=None):
     """
     **Concat**
 
@@ -122,6 +122,8 @@ def concat(input, axis=0):
     Args:
         input(list): List of tensors to be concatenated
         axis(int): Integer axis along which the tensors will be concatenated
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: Output variable of the concatenation
