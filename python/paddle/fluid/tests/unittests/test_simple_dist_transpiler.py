@@ -12,39 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import numpy as np
 
+import paddle.fluid as fluid
+from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 
-class TestSimpleDistTranspiler(unittest.TestCase):
+from transpiler_test import TranspilerTest
+
+
+class TestSimpleDistTranspiler(TranspilerTest):
     def setUp(self):
-        self.trainer_id = 0
-        self.trainers = 2
-        self.pservers = 2
-        self.pserver_eps = "127.0.0.1:6174,127.0.0.1:6175"
         self.current_pserver_ep = "127.0.0.1:6175"
-
-    def net_conf(self):
-        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-
-        y_predict = fluid.layers.fc(input=x,
-                                    size=1000,
-                                    act=None,
-                                    param_attr=fluid.ParamAttr(name='fc_w'))
-
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-
-        optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
-        return optimize_ops, params_grads
 
     def test_simple_transpiler(self):
         np.random.seed(1)
@@ -73,14 +51,6 @@ class TestSimpleDistTranspiler(unittest.TestCase):
         fc_w_var = startup.global_block().var("fc_w@GRAD.trainer_0")
         self.assertEqual(fc_w_var.shape, (1000, 1000))
 
-    def get_main_program(self):
-        main = fluid.Program()
-
-        with fluid.program_guard(main):
-            self.net_conf()
-
-        return main
-
     def get_expect_trainer_ops(self):
         trainer = fluid.Program()
 
@@ -93,15 +63,6 @@ class TestSimpleDistTranspiler(unittest.TestCase):
         ]
         ops.insert(ops.index("elementwise_add_grad") + 1, "send_vars")
         return ops
-
-    def get_trainer(self):
-        return self._transpiler_instance().get_trainer_program()
-
-    def get_pserver(self, ep):
-        t = self._transpiler_instance()
-        pserver = t.get_pserver_program(ep)
-        startup = t.get_startup_program(ep, pserver)
-        return pserver, startup
 
     def _transpiler_instance(self):
         main = self.get_main_program()
