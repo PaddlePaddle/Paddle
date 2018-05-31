@@ -4023,8 +4023,6 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
-    **Random crop operator**
-    
     ${comment}
 
     Examples:
