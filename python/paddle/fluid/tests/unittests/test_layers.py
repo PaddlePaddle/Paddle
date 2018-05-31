@@ -177,7 +177,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[2, 2], dtype='float32')
-            y = layers.data(name='y', shape=[1, 3], dtype='int64')
+            y = layers.data(name='y', shape=[1, 2], dtype='int64')
             self.assertIsNotNone(
                 layers.hsigmoid(
                     input=x, label=y, num_classes=2))
