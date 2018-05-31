@@ -95,6 +95,19 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
+OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
+  need_update_ = true;
+  *this = other;
+  block_ = block;
+  for (const std::string &attr_name : AttrNames()) {
+    if (GetAttrType(attr_name) == proto::AttrType::BLOCK) {
+      int sub_block_id = other.GetBlockAttr(attr_name);
+      auto *sub_block = block->Program()->MutableBlock(sub_block_id);
+      SetBlockAttr(attr_name, sub_block);
+    }
+  }
+}
+
 void OpDesc::CopyFrom(const OpDesc &op_desc) {
   desc_.set_type(op_desc.Type());
   inputs_ = op_desc.inputs_;

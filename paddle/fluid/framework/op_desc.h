@@ -37,10 +37,7 @@ class OpDesc {
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
-  OpDesc(const OpDesc &other, BlockDesc *block) {
-    *this = other;
-    block_ = block;
-  }
+  OpDesc(const OpDesc &other, BlockDesc *block);
 
   void CopyFrom(const OpDesc &op_desc);
 
