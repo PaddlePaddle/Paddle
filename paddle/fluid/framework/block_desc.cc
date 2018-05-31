@@ -200,7 +200,7 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
     vars_[var_desc.name()].reset(new VarDesc(var_desc));
   }
   for (const proto::OpDesc &op_desc : desc_->ops()) {
-    ops_.emplace_back(new OpDesc(op_desc, prog, this));
+    ops_.emplace_back(new OpDesc(op_desc, this));
   }
 }
 

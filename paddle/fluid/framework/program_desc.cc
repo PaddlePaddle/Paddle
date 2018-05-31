@@ -89,6 +89,16 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
+  for (auto &block : blocks_) {
+    for (auto *op : block->AllOps()) {
+      for (const auto &attr : op->Proto()->attrs()) {
+        if (attr.type() == proto::AttrType::BLOCK) {
+          size_t blk_idx = attr.block_idx();
+          op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
+        }
+      }
+    }
+  }
 }
 
 const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
