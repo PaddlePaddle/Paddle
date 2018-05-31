@@ -62,7 +62,6 @@ class TestSimpleDistTranspiler(unittest.TestCase):
         self.assertEqual([op.type for op in pserver.blocks[1].ops],
                          ["sum", "scale", "sgd"])
 
-        print("xxx", [op.output_arg_names for op in startup.global_block().ops])
         # confirm startup program
         self.assertEqual([op.type for op in startup.global_block().ops],
                          ["fill_constant", "uniform_random", "uniform_random"])
