@@ -316,7 +316,7 @@ void AsyncGRPCServer::HandleRequest(
     RequestBase* base = nullptr;
     {
       PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
-      std::lock_guard<std::mutex> lock(cq_mutex_);
+      std::unique_lock<std::mutex> lock(cq_mutex_);
       base = reqs[req_id];
     }
 
@@ -338,7 +338,6 @@ void AsyncGRPCServer::HandleRequest(
 
     switch (base->Status()) {
       case PROCESS: {
-        std::unique_lock<std::mutex> lock(cq_mutex_);
         base->Process();
         break;
       }

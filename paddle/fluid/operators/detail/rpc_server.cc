@@ -51,12 +51,15 @@ void RPCServer::WaitBarrier(const std::string& rpc_name) {
 }
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
-  VLOG(3) << "RPCServer IncreaseBatchBarrier " << rpc_name;
+  VLOG(3) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
   int b = 0;
   {
     std::unique_lock<std::mutex> lock(mutex_);
     b = ++barrier_counter_[rpc_name];
   }
+
+  VLOG(3) << "RPCServer IncreaseBatchBarrier " << rpc_name
+          << ", barrier_count:" << b << ", fan_in" << client_num_;
 
   if (b >= client_num_) {
     barrier_cond_.notify_all();

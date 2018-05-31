@@ -241,6 +241,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
 
+  LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
+            << ", end_point:" << endpoint;
+
   // request_handler_.reset(new detail::GRPCRequestSendHandler(sync_mode));
   rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
   request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
