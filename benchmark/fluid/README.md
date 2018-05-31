@@ -44,6 +44,20 @@ Currently supported `--model` argument include:
 
 ## Run Distributed Benchmark on Kubernetes Cluster
 
+You may need to build a Docker image before submitting a cluster job onto Kubernetes, or you will
+have to start all those processes mannually on each node, which is not recommended.
+
+To build the Docker image, you need to choose a paddle "whl" package to run with, you may either
+download it from
+http://www.paddlepaddle.org/docs/develop/documentation/zh/build_and_install/pip_install_en.html or
+build it by your own. Once you've got the "whl" package, put it under the current directory and run:
+
+```bash
+docker build -t [your docker image name]:[your docker image tag] .
+```
+
+Then push the image to a Docker registry that your Kubernetes cluster can reach.
+
 We provide a script `kube_gen_job.py` to generate Kubernetes yaml files to submit
 distributed benchmark jobs to your cluster. To generate a job yaml, just run:
 
