@@ -23,11 +23,11 @@ namespace tensorrt {
 TEST(fc_op, test) {
   std::unordered_set<std::string> parameters({"mul-Y"});
   framework::Scope scope;
-  TRTConvertValidation validator(10, parameters, scope, 1000);
+  TRTConvertValidation validator(20, parameters, scope, 1000);
 
-  validator.DeclInputVar("mul-X", nvinfer1::Dims2(10, 6));
-  validator.DeclInputVar("mul-Y", nvinfer1::Dims2(6, 10));
-  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(10, 10));
+  validator.DeclInputVar("mul-X", nvinfer1::Dims4(12, 6, 1, 1));
+  validator.DeclParamVar("mul-Y", nvinfer1::Dims2(6, 3));
+  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(12, 3));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -37,6 +37,8 @@ TEST(fc_op, test) {
   desc.SetOutput("Out", {"mul-Out"});
 
   validator.SetOp(*desc.Proto());
+
+  validator.Execute(10);
 }
 
 }  // namespace tensorrt

@@ -46,7 +46,7 @@ class OpConverter {
 
     if (op_desc.Type() == "mul") {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
-      auto& Y = op_desc.Input("Y")[0];
+      std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
         it = Registry<OpConverter>::Lookup("fc");
       }
@@ -54,7 +54,8 @@ class OpConverter {
     if (!it) {
       it = Registry<OpConverter>::Lookup(op_desc.Type());
     }
-    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_desc.Type());
+    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
+                            op_desc.Type());
     it->SetEngine(engine);
     (*it)(op, scope);
   }

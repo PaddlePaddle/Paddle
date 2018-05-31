@@ -106,6 +106,7 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                     name);
 
   auto* output = layer->getOutput(offset);
+  SetITensor(name, output);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
   infer_network_->markOutput(*output);
@@ -136,6 +137,7 @@ void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
   // determine data size
   auto it = buffer_sizes_.find(name);
   PADDLE_ENFORCE(it != buffer_sizes_.end());
+  LOG(INFO) << "output size " << it->second;
   PADDLE_ENFORCE_GT(it->second, 0);
   PADDLE_ENFORCE_GE(max_size, it->second);
   auto& buf = buffer(name);
