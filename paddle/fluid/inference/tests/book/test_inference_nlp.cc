@@ -200,6 +200,14 @@ TEST(inference, nlp) {
     LOG(INFO) << "Total infer time: " << (stop_ms - start_ms) / 1000.0 / 60
               << " min, avg time per seq: "
               << (stop_ms - start_ms) / datasets.size() << " ms";
+    {  // just for test
+      auto* scope = new paddle::framework::Scope();
+      paddle::framework::LoDTensor outtensor;
+      TestInference<paddle::platform::CPUPlace, false, true>(
+          dirname, {&(datasets[0])}, {&outtensor}, FLAGS_repeat, model_combined,
+          false);
+      delete scope;
+    }
   }
   delete scope;
 }
