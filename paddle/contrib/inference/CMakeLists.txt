@@ -39,9 +39,11 @@ cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
-cc_test(test_paddle_inference_api
-        SRCS test_paddle_inference_api.cc
-        DEPS paddle_inference_api)
+if(WITH_TESTING)
+    cc_test(test_paddle_inference_api
+            SRCS test_paddle_inference_api.cc
+            DEPS paddle_inference_api)
 
-inference_api_test(api_impl
-                   ARGS test_word2vec test_image_classification)
+    inference_api_test(api_impl
+                       ARGS test_word2vec test_image_classification)
+endif()
