@@ -209,7 +209,7 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
     : prog_(prog), desc_(desc) {
   need_update_ = true;
   for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op->Proto(), prog, this));
+    ops_.emplace_back(new OpDesc(*op, this));
   }
   for (auto &it : other.vars_) {
     auto *var = new VarDesc(*it.second);
