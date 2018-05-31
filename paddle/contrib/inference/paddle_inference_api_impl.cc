@@ -54,7 +54,7 @@ std::string num2str(T a) {
 }
 }  // namespace
 
-bool PaddlePredictorImpl::Init() {
+bool NativePaddlePredictor::Init() {
   VLOG(3) << "Predictor::init()";
 
   // TODO(panyx0718): Should CPU vs GPU device be decided by id?
@@ -96,8 +96,8 @@ bool PaddlePredictorImpl::Init() {
   return true;
 }
 
-bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
-                              std::vector<PaddleTensor> *output_data) {
+bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
+                                std::vector<PaddleTensor> *output_data) {
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
@@ -133,9 +133,9 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
-std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
+std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   VLOG(3) << "Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(new PaddlePredictorImpl(config_));
+  std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
   if (!cls->InitShared()) {
     LOG(ERROR) << "fail to call InitShared";
     return nullptr;
@@ -145,7 +145,7 @@ std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
 }
 
 // TODO(panyx0718): Consider merge with Init()?
-bool PaddlePredictorImpl::InitShared() {
+bool NativePaddlePredictor::InitShared() {
   VLOG(3) << "Predictor::init_shared";
   // 1. Define place, executor, scope
   if (this->config_.device >= 0) {
@@ -184,8 +184,8 @@ bool PaddlePredictorImpl::InitShared() {
   return true;
 }
 
-bool PaddlePredictorImpl::SetFeed(const std::vector<PaddleTensor> &inputs,
-                                  std::vector<framework::LoDTensor> *feeds) {
+bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
+                                    std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feed_target_names_.size()) {
     LOG(ERROR) << "wrong feed input size.";
@@ -213,7 +213,7 @@ bool PaddlePredictorImpl::SetFeed(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
-bool PaddlePredictorImpl::GetFetch(
+bool NativePaddlePredictor::GetFetch(
     const std::vector<framework::LoDTensor> &fetchs,
     std::vector<PaddleTensor> *outputs) {
   VLOG(3) << "Predictor::get_fetch";
@@ -280,9 +280,10 @@ bool PaddlePredictorImpl::GetFetch(
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
-    const ConfigImpl &config) {
-  VLOG(3) << "create PaddlePredictorImpl";
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddlePredictor::EngineKind::kNative>(
+    const NativeConfig &config) {
+  VLOG(3) << "create NativePaddlePredictor";
   // 1. GPU memeroy
   std::vector<std::string> flags;
   if (config.fraction_of_gpu_memory >= 0.0f ||
@@ -295,8 +296,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
     framework::InitGflags(flags);
   }
 
-  std::unique_ptr<PaddlePredictor> predictor(new PaddlePredictorImpl(config));
-  if (!dynamic_cast<PaddlePredictorImpl *>(predictor.get())->Init()) {
+  std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
+  if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init()) {
     return nullptr;
   }
   return std::move(predictor);

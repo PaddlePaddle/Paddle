@@ -29,17 +29,9 @@
 
 namespace paddle {
 
-struct ConfigImpl : public PaddlePredictor::Config {
-  int device;
-  float fraction_of_gpu_memory;
-  std::string prog_file;
-  std::string param_file;
-  bool share_variables;
-};
-
-class PaddlePredictorImpl : public PaddlePredictor {
+class NativePaddlePredictor : public PaddlePredictor {
  public:
-  explicit PaddlePredictorImpl(const ConfigImpl &config) : config_(config) {}
+  explicit NativePaddlePredictor(const NativeConfig &config) : config_(config) {}
 
   bool Init();
 
@@ -48,7 +40,7 @@ class PaddlePredictorImpl : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  ~PaddlePredictorImpl() override{};
+  ~NativePaddlePredictor() override{};
 
  private:
   bool InitShared() override;
@@ -57,7 +49,7 @@ class PaddlePredictorImpl : public PaddlePredictor {
   bool GetFetch(const std::vector<framework::LoDTensor> &fetchs,
                 std::vector<PaddleTensor> *output_data);
 
-  ConfigImpl config_;
+  NativeConfig config_;
   platform::Place place_;
   std::unique_ptr<framework::Executor> executor_;
   std::unique_ptr<framework::Scope> scope_;

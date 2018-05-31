@@ -40,8 +40,8 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   return pt;
 }
 
-ConfigImpl GetConfig() {
-  ConfigImpl config;
+NativeConfig GetConfig() {
+  NativeConfig config;
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
@@ -51,8 +51,8 @@ ConfigImpl GetConfig() {
 }
 
 TEST(paddle_inference_api_impl, word2vec) {
-  ConfigImpl config = GetConfig();
-  std::unique_ptr<PaddlePredictor> predictor = CreatePaddlePredictor(config);
+  NativeConfig config = GetConfig();
+  auto predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   framework::LoDTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -104,7 +104,7 @@ TEST(paddle_inference_api_impl, image_classification) {
   int batch_size = 2;
   bool use_mkldnn = false;
   bool repeat = false;
-  ConfigImpl config = GetConfig();
+  NativeConfig config = GetConfig();
   config.model_dir =
       FLAGS_dirname + "image_classification_resnet.inference.model";
 
@@ -117,8 +117,8 @@ TEST(paddle_inference_api_impl, image_classification) {
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
   framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
-  SetupTensor<float>(
-      &input, input_dims, static_cast<float>(0), static_cast<float>(1));
+  SetupTensor<float>(&input, input_dims, static_cast<float>(0),
+                     static_cast<float>(1));
   std::vector<framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -126,14 +126,11 @@ TEST(paddle_inference_api_impl, image_classification) {
   std::vector<framework::LoDTensor*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace, false, true>(config.model_dir,
-                                                 cpu_feeds,
-                                                 cpu_fetchs1,
-                                                 repeat,
-                                                 is_combined,
-                                                 use_mkldnn);
+  TestInference<platform::CPUPlace, false, true>(config.model_dir, cpu_feeds,
+                                                 cpu_fetchs1, repeat,
+                                                 is_combined, use_mkldnn);
 
-  std::unique_ptr<PaddlePredictor> predictor = CreatePaddlePredictor(config);
+  auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> paddle_tensor_feeds;
   paddle_tensor_feeds.push_back(LodTensorToPaddleTensor(&input));
 
