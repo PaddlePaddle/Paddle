@@ -30,7 +30,8 @@ def merge_v2_model(net, param_file, output_file):
     which ends with .tar.gz.
 
     @param  net            The output layer of the network for inference.
-    @param  param_file     Path of the parameters (.tar.gz) which is stored by v2 api.
+    @param  param_file     Path of the parameters (.tar.gz) which is stored by
+                           v2 api.
     @param  output_file    Path of the merged file which will be generated.
 
     Usage:

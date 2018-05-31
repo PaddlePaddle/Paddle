@@ -31,7 +31,6 @@ ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh \
 BUILD_ROOT=/paddle/build_android
 DEST_ROOT=/paddle/install_android
 
-rm -rf $BUILD_ROOT 2>/dev/null || true
 mkdir -p $BUILD_ROOT
 cd $BUILD_ROOT
 

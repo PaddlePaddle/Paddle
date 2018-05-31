@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/gserver/layers/MKLDNNLayer.h"
 #endif
 
@@ -187,6 +187,31 @@ void NeuralNetwork::init(const ModelConfig& config,
     CHECK(it != layerMap_.end());
     outputLayers_.push_back(it->second);
   }
+
+  for (const auto& layer : layers_) {
+    const auto& name = layer->getName();
+    bool isMiddleLayer = true;
+
+    // if data layer
+    for (const auto& dataLayer : dataLayers_) {
+      if (name == dataLayer->getName()) {
+        isMiddleLayer = false;
+        break;
+      }
+    }
+
+    // if output layer
+    for (const auto& dataLayer : outputLayers_) {
+      if (name == dataLayer->getName()) {
+        isMiddleLayer = false;
+        break;
+      }
+    }
+
+    if (isMiddleLayer) {
+      middleLayers_.push_back(layer);
+    }
+  }
 }
 
 void NeuralNetwork::connect(LayerPtr agentLayer,
@@ -307,7 +332,7 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
 }
 
 void NeuralNetwork::finish() {
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   FOR_EACH_R(layer, layers_) {
     MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(*layer);
     if (dnnLayer) {
@@ -324,6 +349,13 @@ Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {
 void NeuralNetwork::onPassEnd() {
   for (auto& layer : layers_) {
     layer->onPassEnd();
+  }
+}
+
+void NeuralNetwork::releaseOutput() {
+  for (auto& layer : middleLayers_) {
+    Argument& arg = layer->getOutput();
+    arg.value.reset();
   }
 }
 

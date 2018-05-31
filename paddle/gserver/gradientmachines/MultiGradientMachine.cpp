@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
   } else {
     numDevices_ = 0;
   }
-  ParamInitCallback mainParamInitCb = [this](int paramId, Parameter* para) {
+  ParamInitCallback mainParamInitCb = [](int paramId, Parameter* para) {
     // only create buf for CPU parameters
     // GPU parameters will be created in each thread
     if (para->useGpu()) return;

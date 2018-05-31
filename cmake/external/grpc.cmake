@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,16 +24,16 @@ SET(GRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/grpc)
 SET(GRPC_INCLUDE_DIR "${GRPC_INSTALL_DIR}/include/" CACHE PATH "grpc include directory." FORCE)
 SET(GRPC_CPP_PLUGIN "${GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin" CACHE FILEPATH "GRPC_CPP_PLUGIN" FORCE)
 IF(APPLE)
-  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j8 static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
+  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j8 static grpc_cpp_plugin)
+  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j static grpc_cpp_plugin)
 ENDIF()
 
 ExternalProject_Add(
     extern_grpc
     DEPENDS protobuf zlib
     GIT_REPOSITORY "https://github.com/grpc/grpc.git"
-    GIT_TAG "v1.7.x"
+    GIT_TAG "v1.10.x"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
