@@ -189,11 +189,9 @@ void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      VLOG(10) << "PE start "
-               << " " << op->Name() << " : " << op->DebugString();
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       op->Run(strategy_.use_event_);
-      VLOG(10) << "PE end "
-               << " " << op->Name() << " Done ";
+      VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
