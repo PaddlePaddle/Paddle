@@ -3029,10 +3029,6 @@ def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
     dim = input.shape[1]
     if num_classes < 2:
         raise ValueError("num_classes must be lager or equal than 2.")
-    if input.shape[0] != label.shape[1]:
-        raise ValueError(
-            "input's 1-st dimension and label's 2-nd dimension must be equal, they both equal to batch size."
-        )
     weights = helper.create_parameter(
         attr=helper.param_attr,
         shape=[num_classes - 1, dim],
