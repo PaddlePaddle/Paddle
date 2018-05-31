@@ -52,7 +52,7 @@ class AsyncGRPCServer final : public RPCServer {
   void WaitServerReady() override;
   void StartServer() override;
 
- protected:
+ private:
   void HandleRequest(
       ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
       std::function<void(const std::string&, int)> TryToRegisterNewOne);
@@ -62,7 +62,7 @@ class AsyncGRPCServer final : public RPCServer {
   void ShutDownImpl() override;
 
  private:
-  static const int kRequestBufSize = 5;
+  static const int kRequestBufSize = 100;
 
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;

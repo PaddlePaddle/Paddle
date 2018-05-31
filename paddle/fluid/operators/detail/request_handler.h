@@ -86,7 +86,6 @@ class RequestHandler {
   // The implemention is in request_handler_impl.
   // example:
   //    std::string varname = request_.varname();
-  //    VLOG(3) << "RequestGet " << varname;
   //
   //    auto scope = request_handler_->scope();
   //    auto invar = scope->FindVar(varname);

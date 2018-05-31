@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 
 namespace framework = paddle::framework;
