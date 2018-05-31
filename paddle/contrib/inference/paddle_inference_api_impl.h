@@ -31,7 +31,8 @@ namespace paddle {
 
 class NativePaddlePredictor : public PaddlePredictor {
  public:
-  explicit NativePaddlePredictor(const NativeConfig &config) : config_(config) {}
+  explicit NativePaddlePredictor(const NativeConfig &config)
+      : config_(config) {}
 
   bool Init();
 

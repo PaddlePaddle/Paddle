@@ -117,8 +117,8 @@ TEST(paddle_inference_api_impl, image_classification) {
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
   framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
-  SetupTensor<float>(&input, input_dims, static_cast<float>(0),
-                     static_cast<float>(1));
+  SetupTensor<float>(
+      &input, input_dims, static_cast<float>(0), static_cast<float>(1));
   std::vector<framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -126,9 +126,12 @@ TEST(paddle_inference_api_impl, image_classification) {
   std::vector<framework::LoDTensor*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace, false, true>(config.model_dir, cpu_feeds,
-                                                 cpu_fetchs1, repeat,
-                                                 is_combined, use_mkldnn);
+  TestInference<platform::CPUPlace, false, true>(config.model_dir,
+                                                 cpu_feeds,
+                                                 cpu_fetchs1,
+                                                 repeat,
+                                                 is_combined,
+                                                 use_mkldnn);
 
   auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> paddle_tensor_feeds;
