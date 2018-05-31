@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -53,7 +52,7 @@ class RequestHandler {
 
   virtual ~RequestHandler() {}
 
-  // set attribute
+  // Set attributes.
   void SetScope(framework::Scope* scope) { scope_ = scope; }
   void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
   void SetProgram(framework::ProgramDesc* program) { program_ = program; }
@@ -63,7 +62,7 @@ class RequestHandler {
     prefetch_ctx_.reset(prepared.release());
   }
 
-  // Used for async
+  // Used for async.
   void SetGradToPreparedCtx(
       std::unordered_map<
           std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
@@ -72,7 +71,7 @@ class RequestHandler {
 
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
-  // get attribute
+  // Get attributes.
   bool sync_mode() { return sync_mode_; }
   framework::Scope* scope() { return scope_; }
   const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
@@ -83,8 +82,24 @@ class RequestHandler {
   framework::Executor* executor() { return executor_; }
   std::vector<framework::Variable*>& sparse_vars() { return sparse_vars_; }
 
-  // request handler
-  virtual bool Handle(void* input, void* output) = 0;
+  // This function processes user's rpc request.
+  // The implemention is in request_handler_impl.
+  // example:
+  //    std::string varname = request_.varname();
+  //    VLOG(3) << "RequestGet " << varname;
+  //
+  //    auto scope = request_handler_->scope();
+  //    auto invar = scope->FindVar(varname);
+  //    framework::Variable* outvar = nullptr;
+  //
+  //    request_handler_->Handle(varname, scope, invar, &outvar);
+  //    if (outvar) {
+  //        SerializeToByteBuffer(varname, outvar,
+  //           *request_handler_->dev_ctx(), &reply_);
+  //    }
+  virtual bool Handle(const std::string& varname, framework::Scope* scope,
+                      framework::Variable* var,
+                      framework::Variable** outvar) = 0;
 
  protected:
   const bool sync_mode_;
@@ -100,7 +115,6 @@ class RequestHandler {
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
 
-  // get
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
   std::vector<framework::Variable*> sparse_vars_;

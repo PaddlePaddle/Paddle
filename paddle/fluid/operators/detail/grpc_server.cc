@@ -74,11 +74,14 @@ class RequestSend final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
-    std::string var_name = GetReqName();
-    VLOG(3) << "RequestSend var_name:" << var_name;
+    std::string varname = GetReqName();
+    VLOG(3) << "RequestSend var_name:" << varname;
 
-    request_handler_->Handle(static_cast<void*>(request_.get()),
-                             static_cast<void*>(&reply_));
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = request_->GetVar();
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -109,11 +112,19 @@ class RequestGet final : public RequestBase {
 
   void Process() override {
     // proc request.
-    std::string var_name = request_.varname();
-    VLOG(3) << "RequestGet " << var_name;
+    std::string varname = request_.varname();
+    VLOG(3) << "RequestGet " << varname;
 
-    request_handler_->Handle(static_cast<void*>(&request_),
-                             static_cast<void*>(&reply_));
+    auto scope = request_handler_->scope();
+    auto invar = scope->FindVar(varname);
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar);
+
+    if (outvar) {
+      SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
+                            &reply_);
+    }
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
@@ -148,10 +159,17 @@ class RequestPrefetch final : public RequestBase {
 
   void Process() override {
     // prefetch process...
-    std::string var_name = request_->OutVarname();
-    VLOG(3) << "RequestPrefetch " << var_name;
-    request_handler_->Handle(static_cast<void*>(request_.get()),
-                             static_cast<void*>(&reply_));
+    std::string varname = request_->OutVarname();
+    VLOG(3) << "RequestPrefetch " << varname;
+
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = scope->FindVar(varname);
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar);
+
+    SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
+                          &reply_);
 
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,

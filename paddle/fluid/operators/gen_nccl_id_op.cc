@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_request_handler.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
@@ -76,7 +76,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::GrpcRequestSendHandler rpc_h(true);
+    detail::RequestSendHandler rpc_h(true);
     detail::AsyncGRPCServer rpc_service(endpoint, 1);
     rpc_service.RegisterRPC(detail::kRequestSend, &rpc_h);
     rpc_h.SetRPCServer(&rpc_service);

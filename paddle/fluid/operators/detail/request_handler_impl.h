@@ -21,11 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "grpc++/grpc++.h"
-#include "grpc++/support/byte_buffer.h"
-#include "grpc++/support/slice.h"
-#include "grpc/support/log.h"
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -40,26 +35,28 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-class GrpcRequestSendHandler final : public RequestHandler {
+class RequestSendHandler final : public RequestHandler {
  public:
-  explicit GrpcRequestSendHandler(bool sync_mode) : RequestHandler(sync_mode) {}
-  virtual ~GrpcRequestSendHandler() {}
-  bool Handle(void* input, void* output) override;
+  explicit RequestSendHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  virtual ~RequestSendHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar) override;
 };
 
-class GrpcRequestGetHandler final : public RequestHandler {
+class RequestGetHandler final : public RequestHandler {
  public:
-  explicit GrpcRequestGetHandler(bool sync_mode) : RequestHandler(sync_mode) {}
-  virtual ~GrpcRequestGetHandler() {}
-  bool Handle(void* input, void* output) override;
+  explicit RequestGetHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  virtual ~RequestGetHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar) override;
 };
 
-class GrpcRequestPrefetchHandler final : public RequestHandler {
+class RequestPrefetchHandler final : public RequestHandler {
  public:
-  explicit GrpcRequestPrefetchHandler(bool sync_mode)
-      : RequestHandler(sync_mode) {}
-  virtual ~GrpcRequestPrefetchHandler() {}
-  bool Handle(void* input, void* output) override;
+  explicit RequestPrefetchHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  virtual ~RequestPrefetchHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar) override;
 };
 
 }  // namespace detail

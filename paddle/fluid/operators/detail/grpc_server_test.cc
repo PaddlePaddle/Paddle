@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/detail/grpc_request_handler.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -120,7 +120,7 @@ void StartServer() {
 }
 
 TEST(PREFETCH, CPU) {
-  g_req_handler.reset(new detail::GrpcRequestPrefetchHandler(true));
+  g_req_handler.reset(new detail::RequestPrefetchHandler(true));
   g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);

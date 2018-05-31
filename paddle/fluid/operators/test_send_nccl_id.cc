@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_request_handler.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -70,7 +70,7 @@ void StartServer() {
 }
 
 TEST(SendNcclId, GrpcServer) {
-  g_req_handler.reset(new detail::GrpcRequestSendHandler(true));
+  g_req_handler.reset(new detail::RequestSendHandler(true));
   g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);

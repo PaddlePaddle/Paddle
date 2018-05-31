@@ -16,17 +16,13 @@
 #include <string>
 #include <vector>
 
-#include "grpc++/grpc++.h"
-#include "grpc++/support/byte_buffer.h"
-#include "grpc/support/log.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/detail/grpc_request_handler.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/grpc_service.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
 
@@ -34,16 +30,16 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool GrpcRequestSendHandler::Handle(void* input, void* output) {
-  VariableResponse* req = static_cast<VariableResponse*>(input);
-
-  auto scope = req->GetMutableLocalScope();
-  std::string msg_name = req->Varname();
+bool RequestSendHandler::Handle(const std::string& varname,
+                                framework::Scope* scope,
+                                framework::Variable* invar,
+                                framework::Variable** outvar) {
+  VLOG(4) << "RequestSendHandler:" << varname;
 
   // Async
   if (!sync_mode_) {
     try {
-      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[msg_name].get(),
+      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                     scope);
     } catch (std::exception& e) {
       LOG(ERROR) << "async: run sub program error " << e.what();
@@ -53,45 +49,41 @@ bool GrpcRequestSendHandler::Handle(void* input, void* output) {
   }
 
   // Sync
-  if (msg_name == BATCH_BARRIER_MESSAGE) {
+  if (varname == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv batch barrier message";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else {
-    VLOG(3) << "sync: received var_name: " << msg_name;
+    VLOG(3) << "sync: received var_name: " << varname;
     if (sync_mode_) {
       rpc_server_->WaitCond(kRequestSend);
     }
 
-    framework::Variable* var = req->GetVar();
-    if (var == nullptr) {
-      LOG(ERROR) << "sync: Can not find server side var: " << msg_name;
+    if (invar == nullptr) {
+      LOG(ERROR) << "sync: Can not find server side var: " << varname;
       PADDLE_THROW("sync: Can not find server side var");
       return false;
     }
 
-    if (var->IsType<framework::SelectedRows>()) {
+    if (invar->IsType<framework::SelectedRows>()) {
       std::unique_lock<std::mutex> lock(sparse_var_mutex_);
-      sparse_vars_.push_back(var);
+      sparse_vars_.push_back(invar);
     }
   }
 
   return true;
 }
 
-bool GrpcRequestGetHandler::Handle(void* input, void* output) {
-  sendrecv::VariableMessage* req =
-      static_cast<sendrecv::VariableMessage*>(input);
-  ::grpc::ByteBuffer* reply = static_cast<::grpc::ByteBuffer*>(output);
-  std::string msg_name = req->varname();
+bool RequestGetHandler::Handle(const std::string& varname,
+                               framework::Scope* scope,
+                               framework::Variable* invar,
+                               framework::Variable** outvar) {
+  VLOG(4) << "RequestGetHandler:" << varname;
 
-  VLOG(3) << "ProcessGetImpl:" << msg_name;
-
-  if (msg_name != FETCH_BARRIER_MESSAGE) {
+  if (varname != FETCH_BARRIER_MESSAGE) {
     if (sync_mode_) {
       rpc_server_->WaitCond(kRequestGet);
     }
-    framework::Variable* var = scope_->FindVar(msg_name);
-    SerializeToByteBuffer(msg_name, var, *dev_ctx_, reply);
+    *outvar = scope_->FindVar(varname);
     return true;
   }
 
@@ -104,20 +96,16 @@ bool GrpcRequestGetHandler::Handle(void* input, void* output) {
   return true;
 }
 
-bool GrpcRequestPrefetchHandler::Handle(void* input, void* output) {
-  VariableResponse* req = static_cast<VariableResponse*>(input);
-  ::grpc::ByteBuffer* reply = static_cast<::grpc::ByteBuffer*>(output);
+bool RequestPrefetchHandler::Handle(const std::string& varname,
+                                    framework::Scope* scope,
+                                    framework::Variable* invar,
+                                    framework::Variable** outvar) {
+  VLOG(4) << "RequestPrefetchHandler " << varname;
 
-  std::string var_name = req->OutVarname();
-  VLOG(3) << "RequestPrefetchHandler " << var_name;
-
-  auto var_desc = program_->Block(0).FindVar(var_name);
-  framework::Scope* local_scope = req->GetMutableLocalScope();
-  auto* var = local_scope->FindVar(var_name);
-  InitializeVariable(var, var_desc->GetType());
-  executor_->RunPreparedContext(prefetch_ctx_.get(), local_scope);
-
-  SerializeToByteBuffer(var_name, var, *dev_ctx_, reply);
+  auto var_desc = program_->Block(0).FindVar(varname);
+  *outvar = scope->FindVar(varname);
+  InitializeVariable(*outvar, var_desc->GetType());
+  executor_->RunPreparedContext(prefetch_ctx_.get(), scope);
 
   return true;
 }

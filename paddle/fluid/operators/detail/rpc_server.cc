@@ -33,7 +33,6 @@ void RPCServer::ShutDown() {
 }
 
 void RPCServer::SavePort() const {
-  // NOTE: default write file to /tmp/paddle.selected_port
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
   std::ofstream port_file;
   port_file.open(file_path);
@@ -76,8 +75,6 @@ void RPCServer::RegisterRPC(const std::string& rpc_name,
                             RequestHandler* handler, int thread_num) {
   rpc_call_map_[rpc_name] = handler;
   rpc_thread_num_[rpc_name] = thread_num;
-  PADDLE_ENFORCE((thread_num >= 0 && thread_num <= 24),
-                 "thread num should be [0,24]");
 
   static int cond = -1;
   rpc_cond_map_[rpc_name] = ++cond;
