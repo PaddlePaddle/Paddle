@@ -45,9 +45,9 @@ struct PaddleTensor {
 };
 
 /*
- * A simple Inference API for Paddle. Currently this API might just be used by
+ * A simple Inference API for Paddle. Currently this API can be used by
  * non-sequence scenerios.
- * TODO(Superjomn) Prepare another API for NLP-related usages.
+ * TODO(Superjomn) Support another API for NLP-related usages.
  */
 class PaddlePredictor {
  public:
