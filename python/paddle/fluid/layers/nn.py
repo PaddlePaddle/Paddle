@@ -3030,7 +3030,8 @@ def transpose(x, perm, name=None):
     return out
 
 
-def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
+def im2sequence(input, inputImgSize, filter_size=1, stride=1, padding=0,
+                conv_count=1, conv_kernel=1, is_inference=False, name=None):
     """
     Extracts image patches from the input tensor to form a tensor of shape
     {input.batch_size * output_height * output_width, filter_size_H *
@@ -3141,17 +3142,23 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
     if len(padding) == 2:
         padding.append(padding[0])
         padding.append(padding[1])
+    if isinstance(conv_kernel, int):
+        conv_kernel = [conv_kernel, conv_kernel]
 
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='im2sequence',
-        inputs={'X': input},
+        inputs={'X': input,
+                'Y': inputImgSize},
         outputs={'Out': out},
         attrs={
             'kernels': filter_size,
             'strides': stride,
             'paddings': padding,
+            'conv_count': conv_count,
+            'conv_kernel': conv_kernel,
+            'is_inference': is_inference
         })
     return out
 
