@@ -8,21 +8,15 @@ cc_library(paddle_fluid_api
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
 if(WITH_CONTRIB)
-# Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
-# Create shared library
-cc_library(paddle_fluid_shared SHARED
-    SRCS io.cc
-    DEPS ${fluid_modules} paddle_fluid_api)
+  set(fluid_modules "${fluid_modules}" paddle_inference_api)
+endif()
 
-else()
 # Create static library
 cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
     DEPS ${fluid_modules} paddle_fluid_api)
-endif(WITH_CONTRIB)
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE)

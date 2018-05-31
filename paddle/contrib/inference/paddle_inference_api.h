@@ -66,7 +66,6 @@ class PaddlePredictor {
   // be thread-safe.
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
-  virtual bool InitShared() { return false; }
   // Destroy the Predictor.
   virtual ~PaddlePredictor() {}
 

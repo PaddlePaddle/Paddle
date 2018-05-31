@@ -71,8 +71,8 @@ bool NativePaddlePredictor::Init() {
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
-    inference_program_ = paddle::inference::Load(
-        executor_.get(), scope_.get(), config_.model_dir);
+    inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
+                                                 config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
@@ -120,11 +120,8 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
-  executor_->RunPreparedContext(ctx_.get(),
-                                scope_.get(),
-                                &feed_targets,
-                                &fetch_targets,
-                                !config_.share_variables);
+  executor_->RunPreparedContext(ctx_.get(), scope_.get(), &feed_targets,
+                                &fetch_targets, !config_.share_variables);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
@@ -136,52 +133,13 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
-  if (!cls->InitShared()) {
-    LOG(ERROR) << "fail to call InitShared";
+
+  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init()) {
+    LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
   // fix manylinux compile error.
   return std::move(cls);
-}
-
-// TODO(panyx0718): Consider merge with Init()?
-bool NativePaddlePredictor::InitShared() {
-  VLOG(3) << "Predictor::init_shared";
-  // 1. Define place, executor, scope
-  if (this->config_.device >= 0) {
-    place_ = platform::CUDAPlace();
-  } else {
-    place_ = platform::CPUPlace();
-  }
-  this->executor_.reset(new framework::Executor(this->place_));
-  this->scope_.reset(new framework::Scope());
-  // Initialize the inference program
-  if (!this->config_.model_dir.empty()) {
-    // Parameters are saved in separate files sited in
-    // the specified `dirname`.
-    this->inference_program_ = inference::Load(
-        this->executor_.get(), this->scope_.get(), this->config_.model_dir);
-  } else if (!this->config_.prog_file.empty() &&
-             !this->config_.param_file.empty()) {
-    // All parameters are saved in a single file.
-    // The file names should be consistent with that used
-    // in Python API `fluid.io.save_inference_model`.
-    this->inference_program_ = inference::Load(this->executor_.get(),
-                                               this->scope_.get(),
-                                               this->config_.prog_file,
-                                               this->config_.param_file);
-  }
-  this->ctx_ = this->executor_->Prepare(*this->inference_program_, 0);
-  // 3. create variables
-  // TODO(panyx0718): why test share_variables.
-  if (config_.share_variables) {
-    this->executor_->CreateVariables(
-        *this->inference_program_, this->scope_.get(), 0);
-  }
-  // 4. Get the feed_target_names and fetch_target_names
-  this->feed_target_names_ = this->inference_program_->GetFeedTargetNames();
-  this->fetch_target_names_ = this->inference_program_->GetFetchTargetNames();
-  return true;
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
@@ -205,8 +163,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     }
 
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr),
-                inputs[i].data.data,
+    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data,
                 inputs[i].data.length);
     feeds->push_back(input);
   }
@@ -256,8 +213,7 @@ bool NativePaddlePredictor::GetFetch(
         size_t start = lod[0][j - 1] * common_dim;
         size_t end = lod[0][j] * common_dim;
         if (end > start) {
-          std::copy(output_ptr + start,
-                    output_ptr + end,
+          std::copy(output_ptr + start, output_ptr + end,
                     data.begin() + (j - 1) * max_dim * common_dim);
         }
       }
@@ -271,8 +227,8 @@ bool NativePaddlePredictor::GetFetch(
     outputs->at(i).shape = shape;
     outputs->at(i).data.length = sizeof(float) * data.size();
     outputs->at(i).data.data = malloc(outputs->at(i).data.length);
-    std::memcpy(
-        outputs->at(i).data.data, data.data(), outputs->at(i).data.length);
+    std::memcpy(outputs->at(i).data.data, data.data(),
+                outputs->at(i).data.length);
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }

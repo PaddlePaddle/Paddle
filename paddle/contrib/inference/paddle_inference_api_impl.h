@@ -43,7 +43,6 @@ class NativePaddlePredictor : public PaddlePredictor {
   ~NativePaddlePredictor() override{};
 
  private:
-  bool InitShared() override;
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                std::vector<framework::LoDTensor> *feeds);
   bool GetFetch(const std::vector<framework::LoDTensor> &fetchs,
