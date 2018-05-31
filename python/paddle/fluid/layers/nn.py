@@ -180,11 +180,8 @@ def fc(input,
             inputs={"X": input_var,
                     "Y": w},
             outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": num_flatten_dims,
-                "y_num_col_dims": 1,
-                "use_mkldnn": use_mkldnn
-            })
+            attrs={"x_num_col_dims": num_flatten_dims,
+                   "y_num_col_dims": 1})
         mul_results.append(tmp)
 
     if len(mul_results) == 1:
