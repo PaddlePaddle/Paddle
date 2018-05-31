@@ -30,16 +30,19 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run inference");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
 DEFINE_bool(prepare_context, true, "Prepare Context before executor");
 
+DEFINE_int32(num_threads, 1, "Number of threads should be used");
+
 inline double get_current_ms() {
   struct timeval time;
   gettimeofday(&time, NULL);
   return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
 }
 
-void read_data(
-    std::vector<std::vector<int64_t>>* out,
-    const std::string& filename = "/home/tangjian/paddle-tj/out.ids.txt") {
+// return size of total words
+size_t read_datasets(std::vector<paddle::framework::LoDTensor>* out,
+                     const std::string& filename) {
   using namespace std;  // NOLINT
+  size_t sz = 0;
   fstream fin(filename);
   string line;
   out->clear();
@@ -50,94 +53,153 @@ void read_data(
     while (getline(iss, field, ' ')) {
       ids.push_back(stoi(field));
     }
-    out->push_back(ids);
+    if (ids.size() >= 1024 || out->size() >= 100) {
+      continue;
+    }
+
+    paddle::framework::LoDTensor words;
+    paddle::framework::LoD lod{{0, ids.size()}};
+    words.set_lod(lod);
+    int64_t* pdata = words.mutable_data<int64_t>(
+        {static_cast<int64_t>(ids.size()), 1}, paddle::platform::CPUPlace());
+    memcpy(pdata, ids.data(), words.numel() * sizeof(int64_t));
+    out->emplace_back(words);
+    sz += ids.size();
   }
+  return sz;
 }
 
-TEST(inference, understand_sentiment) {
+void test_multi_threads() {
+  /*
+    size_t jobs_per_thread = std::min(inputdatas.size() / FLAGS_num_threads,
+    inputdatas.size());
+    std::vector<size_t> workers(FLAGS_num_threads, jobs_per_thread);
+    workers[FLAGS_num_threads - 1] += inputdatas.size() % FLAGS_num_threads;
+
+    std::vector<std::unique_ptr<std::thread>> infer_threads;
+
+    for (size_t i = 0; i < workers.size(); ++i) {
+      infer_threads.emplace_back(new std::thread([&, i]() {
+        size_t start = i * jobs_per_thread;
+        for (size_t j = start; j < start + workers[i]; ++j ) {
+          // 0. Call `paddle::framework::InitDevices()` initialize all the
+    devices
+          // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
+          paddle::framework::LoDTensor words;
+          auto& srcdata = inputdatas[j];
+          paddle::framework::LoD lod{{0, srcdata.size()}};
+          words.set_lod(lod);
+          int64_t* pdata = words.mutable_data<int64_t>(
+              {static_cast<int64_t>(srcdata.size()), 1},
+              paddle::platform::CPUPlace());
+          memcpy(pdata, srcdata.data(), words.numel() * sizeof(int64_t));
+
+          LOG(INFO) << "thread id: " << i << ", words size:" << words.numel();
+          std::vector<paddle::framework::LoDTensor*> cpu_feeds;
+          cpu_feeds.push_back(&words);
+
+          paddle::framework::LoDTensor output1;
+          std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+          cpu_fetchs1.push_back(&output1);
+
+          // Run inference on CPU
+          if (FLAGS_prepare_vars) {
+            if (FLAGS_prepare_context) {
+              TestInference<paddle::platform::CPUPlace, false, true>(
+                  dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
+                  FLAGS_use_mkldnn);
+            } else {
+              TestInference<paddle::platform::CPUPlace, false, false>(
+                  dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
+                  FLAGS_use_mkldnn);
+            }
+          } else {
+            if (FLAGS_prepare_context) {
+              TestInference<paddle::platform::CPUPlace, true, true>(
+                  dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
+                  FLAGS_use_mkldnn);
+            } else {
+              TestInference<paddle::platform::CPUPlace, true, false>(
+                  dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
+                  FLAGS_use_mkldnn);
+            }
+          }
+          //LOG(INFO) << output1.lod();
+          //LOG(INFO) << output1.dims();
+        }
+      }));
+    }
+    auto start_ms = get_current_ms();
+    for (int i = 0; i < FLAGS_num_threads; ++i) {
+      infer_threads[i]->join();
+    }
+    auto stop_ms = get_current_ms();
+    LOG(INFO) << "total: " << stop_ms - start_ms << " ms";*/
+}
+
+TEST(inference, nlp) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
-  std::vector<std::vector<int64_t>> inputdatas;
-  read_data(&inputdatas);
-  LOG(INFO) << "---------- dataset size: " << inputdatas.size();
   LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
+  std::vector<paddle::framework::LoDTensor> datasets;
+  size_t num_total_words =
+      read_datasets(&datasets, "/home/tangjian/paddle-tj/out.ids.txt");
+  LOG(INFO) << "Number of dataset samples(seq len<1024): " << datasets.size();
+  LOG(INFO) << "Total number of words: " << num_total_words;
+
   const bool model_combined = false;
-  int total_work = 10;
-  int num_threads = 2;
-  int work_per_thread = total_work / num_threads;
-  std::vector<std::unique_ptr<std::thread>> infer_threads;
-  for (int i = 0; i < num_threads; ++i) {
-    infer_threads.emplace_back(new std::thread([&, i]() {
-      for (int j = 0; j < work_per_thread; ++j) {
-        // 0. Call `paddle::framework::InitDevices()` initialize all the devices
-        // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
-        paddle::framework::LoDTensor words;
-        /*
-          paddle::framework::LoD lod{{0, 83}};
-          int64_t word_dict_len = 198392;
-          SetupLoDTensor(&words, lod, static_cast<int64_t>(0),
-                         static_cast<int64_t>(word_dict_len - 1));
-         */
-        std::vector<int64_t> srcdata{
-            784,   784,    1550,   6463,   56,     75693,  6189,  784,    784,
-            1550,  198391, 6463,   42468,  4376,   10251,  10760, 6189,   297,
-            396,   6463,   6463,   1550,   198391, 6463,   22564, 1612,   291,
-            68,    164,    784,    784,    1550,   198391, 6463,  13659,  3362,
-            42468, 6189,   2209,   198391, 6463,   2209,   2209,  198391, 6463,
-            2209,  1062,   3029,   1831,   3029,   1065,   2281,  100,    11216,
-            1110,  56,     10869,  9811,   100,    198391, 6463,  100,    9280,
-            100,   288,    40031,  1680,   1335,   100,    1550,  9280,   7265,
-            244,   1550,   198391, 6463,   1550,   198391, 6463,  42468,  4376,
-            10251, 10760};
-        paddle::framework::LoD lod{{0, srcdata.size()}};
-        words.set_lod(lod);
-        int64_t* pdata = words.mutable_data<int64_t>(
-            {static_cast<int64_t>(srcdata.size()), 1},
-            paddle::platform::CPUPlace());
-        memcpy(pdata, srcdata.data(), words.numel() * sizeof(int64_t));
 
-        LOG(INFO) << "number of input size:" << words.numel();
-        std::vector<paddle::framework::LoDTensor*> cpu_feeds;
-        cpu_feeds.push_back(&words);
+  // 0. Call `paddle::framework::InitDevices()` initialize all the devices
+  // 1. Define place, executor, scope
+  auto place = paddle::platform::CPUPlace();
+  auto executor = paddle::framework::Executor(place);
+  auto* scope = new paddle::framework::Scope();
 
-        paddle::framework::LoDTensor output1;
-        std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
-        cpu_fetchs1.push_back(&output1);
-
-        // Run inference on CPU
-        if (FLAGS_prepare_vars) {
-          if (FLAGS_prepare_context) {
-            TestInference<paddle::platform::CPUPlace, false, true>(
-                dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
-                FLAGS_use_mkldnn);
-          } else {
-            TestInference<paddle::platform::CPUPlace, false, false>(
-                dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
-                FLAGS_use_mkldnn);
-          }
-        } else {
-          if (FLAGS_prepare_context) {
-            TestInference<paddle::platform::CPUPlace, true, true>(
-                dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
-                FLAGS_use_mkldnn);
-          } else {
-            TestInference<paddle::platform::CPUPlace, true, false>(
-                dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, model_combined,
-                FLAGS_use_mkldnn);
-          }
-        }
-        LOG(INFO) << output1.lod();
-        LOG(INFO) << output1.dims();
-      }
-    }));
+  // 2. Initialize the inference_program and load parameters
+  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
+  inference_program = InitProgram(&executor, scope, dirname, model_combined);
+  if (FLAGS_use_mkldnn) {
+    EnableMKLDNN(inference_program);
   }
-  auto start_ms = get_current_ms();
-  for (int i = 0; i < num_threads; ++i) {
-    infer_threads[i]->join();
+
+  if (FLAGS_num_threads > 1) {
+    test_multi_threads();
+  } else {
+    if (FLAGS_prepare_vars) {
+      executor.CreateVariables(*inference_program, scope, 0);
+    }
+    // always prepare context and burning first time
+    std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
+    ctx = executor.Prepare(*inference_program, 0);
+
+    // preapre fetch
+    const std::vector<std::string>& fetch_target_names =
+        inference_program->GetFetchTargetNames();
+    PADDLE_ENFORCE_EQ(fetch_target_names.size(), 1UL);
+    std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+    paddle::framework::LoDTensor outtensor;
+    fetch_targets[fetch_target_names[0]] = &outtensor;
+
+    // prepare feed
+    const std::vector<std::string>& feed_target_names =
+        inference_program->GetFeedTargetNames();
+    PADDLE_ENFORCE_EQ(feed_target_names.size(), 1UL);
+    std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+
+    // for data and run
+    auto start_ms = get_current_ms();
+    for (size_t i = 0; i < datasets.size(); ++i) {
+      feed_targets[feed_target_names[0]] = &(datasets[i]);
+      executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
+                                  &fetch_targets, !FLAGS_prepare_vars);
+    }
+    auto stop_ms = get_current_ms();
+    LOG(INFO) << "Total infer time: " << (stop_ms - start_ms) / 1000.0 / 60
+              << " min, avg time per seq: "
+              << (stop_ms - start_ms) / datasets.size() << " ms";
   }
-  auto stop_ms = get_current_ms();
-  LOG(INFO) << "total: " << stop_ms - start_ms << " ms";
+  delete scope;
 }
