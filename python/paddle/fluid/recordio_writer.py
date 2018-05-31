@@ -14,7 +14,7 @@
 
 import core
 import contextlib
-
+from ..batch import batch
 __all__ = ['convert_reader_to_recordio_file']
 
 
@@ -45,4 +45,37 @@ def convert_reader_to_recordio_file(
                 writer.append_tensor(res[each])
             writer.complete_append_tensor()
             counter += 1
+    return counter
+
+
+import paddle
+
+
+def convert_reader_to_recordio_files(
+        filename_suffix,
+        batch_per_file,
+        reader_creator,
+        feeder,
+        compressor=core.RecordIOWriter.Compressor.Snappy,
+        max_num_records=1000,
+        feed_order=None):
+    if feed_order is None:
+        feed_order = feeder.feed_names
+    lines = []
+    f_idx = 0
+    counter = 0
+    for idx, batch in enumerate(reader_creator()):
+        lines.append(batch)
+        if idx >= batch_per_file and idx % batch_per_file == 0:
+            filename = "%s-%05d" % (filename_suffix, f_idx)
+            with create_recordio_writer(filename, compressor,
+                                        max_num_records) as writer:
+                for l in lines:
+                    res = feeder.feed(l)
+                    for each in feed_order:
+                        writer.append_tensor(res[each])
+                    writer.complete_append_tensor()
+                    counter += 1
+                lines = []
+                f_idx += 1
     return counter

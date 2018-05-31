@@ -21,7 +21,7 @@ from ..layer_helper import LayerHelper
 from ..executor import global_scope
 
 __all__ = [
-    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
+    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_files',
     'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
     'random_data_generator', 'Preprocessor'
 ]
@@ -291,12 +291,12 @@ def _copy_reader_create_op_(block, op):
     return new_op
 
 
-def open_recordio_file(filename,
-                       shapes,
-                       lod_levels,
-                       dtypes,
-                       pass_num=1,
-                       for_parallel=True):
+def open_recordio_files(filenames,
+                        shapes,
+                        lod_levels,
+                        dtypes,
+                        pass_num=1,
+                        for_parallel=True):
     """
     Open a RecordIO file
 
@@ -304,7 +304,7 @@ def open_recordio_file(filename,
     Via the Reader Variable, we can get data from the given RecordIO file.
 
     Args:
-       filename(str): The RecordIO file's name.
+       filename(str) or list(str): The RecordIO file's name.
        shapes(list): List of tuples which declaring data shapes.
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
@@ -336,6 +336,8 @@ def open_recordio_file(filename,
         ranks.append(len(shape))
 
     var_name = unique_name('open_recordio_file')
+    if isinstance(filenames, str):
+        filenames = [filenames]
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=var_name)
@@ -345,7 +347,7 @@ def open_recordio_file(filename,
         attrs={
             'shape_concat': shape_concat,
             'lod_levels': lod_levels,
-            'filename': filename,
+            'filenames': filenames,
             'ranks': ranks
         })
 
