@@ -18,57 +18,6 @@ import numpy as np
 __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 
 
-def _validate_lod(lod, tensor_height=-1):
-    """Check whether the input length-based lod info is valid.
-
-    There are several things to check:
-    1. lod should be a list of lists. Empty list is fine.
-    2. The length of each sublist (a lod level) should be at least one.
-    3. Each element in each lod level should be an integer greater than 0.
-    4. The sum of one lod level should be equal to the length of the next lod level.
-    5. The sum of the last lod level should be equal to the tensor height. 
-       Bypass this check if user does not provide tensor_height as input.
-
-    Args:
-        lod: the length-based lod info, e.g., [[2, 3], [2, 1, 2, 3, 4]].
-        tensor_height: the outermost dimension of the tensor with which the input 
-            lod is associated with. 
-
-    Returns:
-        A boolean indicating whether the input lod is valid or not.
-    """
-    assert isinstance(lod, list), "lod should be a list"
-    # Empty lod is fine
-    if len(lod) == 0:
-        return True
-
-    lod_sum = []
-    for level in lod:
-        assert isinstance(level, list), "each item in lod should be a list"
-        # Each level of lod should have at least one length info
-        if len(level) < 1:
-            return False
-        level_sum = 0
-        for lod_len in level:
-            # Each length in a level should be > 0
-            if lod_len <= 0:
-                return False
-            level_sum += lod_len
-        lod_sum.append(level_sum)
-
-    for idx, val in enumerate(lod_sum[:-1]):
-        # Each level's sum should be equal to 
-        # the number of items in the next level
-        if val != len(lod[idx + 1]):
-            return False
-
-    if tensor_height == -1:
-        return True
-    else:
-        # Last level's sum should be equal to the tensor height
-        return lod_sum[-1] == tensor_height
-
-
 def create_lod_tensor(data, lod, place):
     """Create a lod tensor from a numpy array, a list, or an existing lod tensor.
 
@@ -116,11 +65,10 @@ def create_lod_tensor(data, lod, place):
         flattened_data = flattened_data.reshape([len(flattened_data), 1])
         return create_lod_tensor(flattened_data, lod, place)
     elif isinstance(data, np.ndarray):
-        assert _validate_lod(lod,
-                             data.shape[0]), "the provided lod info is invalid"
         tensor = core.LoDTensor()
         tensor.set(data, place)
         tensor.set_lod(lod)
+        assert tensor.has_valid_lod(), "the provided lod info is invalid"
         return tensor
     else:
         raise TypeError(

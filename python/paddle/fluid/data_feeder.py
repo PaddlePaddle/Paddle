@@ -66,6 +66,7 @@ class DataToLoDTensorConverter(object):
         t.set(arr, self.place)
         if self.lod_level > 0:
             t.set_lod(self.lod)
+            assert t.has_valid_lod(), "the provided lod info is invalid"
         return t
 
 

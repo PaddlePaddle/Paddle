@@ -155,30 +155,23 @@ PYBIND11_PLUGIN(core) {
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-             // LoD new_lod;
-             // new_lod.reserve(lod.size());
-             // for (size_t lvl = 0; lvl < lod.size(); ++lvl) {
-             //  std::vector<size_t> new_lvl;
-             //  new_lvl.reserve(lod[lvl].size() + 1);
-             //  size_t tmp = 0;
-             //  new_lvl.push_back(tmp);
-             //  for (size_t idx = 0; idx < lod[lvl].size(); ++idx) {
-             //    tmp += lod[lvl][idx];
-             //    new_lvl.push_back(tmp);
-             //  }
-             //  new_lod.push_back(new_lvl);
-             // }
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              self.set_lod(ConvertToOffsetBasedLoD(new_lod));
            })
-      .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-        LoD lod = ConvertToLengthBasedLoD(self.lod());
-        std::vector<std::vector<size_t>> new_lod;
-        new_lod.reserve(lod.size());
-        std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-        return new_lod;
+      .def("lod",
+           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+             LoD lod = ConvertToLengthBasedLoD(self.lod());
+             std::vector<std::vector<size_t>> new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return new_lod;
+           })
+      .def("has_valid_lod", [](LoDTensor &self) -> bool {
+        // Check that the lod info is valid and match the outermost
+        // dimension of the LoDTensor data
+        return CheckLoD(self.lod(), vectorize(self.dims()).front());
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")

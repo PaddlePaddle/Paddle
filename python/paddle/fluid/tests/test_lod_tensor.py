@@ -13,44 +13,44 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor, _validate_lod
-import numpy
+from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor
+import numpy as np
 import unittest
 
 
 class TestLoDTensor(unittest.TestCase):
-    def test_validate_lod(self):
-        lod = (1, 2, 1)
-        self.assertRaises(AssertionError, _validate_lod, lod, -1)
-        lod = [[1, 2], (2, 3)]
-        self.assertRaises(AssertionError, _validate_lod, lod, -1)
-        lod = [1, 2, 3]
-        self.assertRaises(AssertionError, _validate_lod, lod, -1)
-
+    def test_pybind_lod(self):
+        tensor = fluid.LoDTensor()
         lod = []
-        self.assertTrue(_validate_lod(lod, -1))
+        tensor.set_lod(lod)
+        self.assertTrue(tensor.has_valid_lod())
         lod = [[], [1], [3]]
-        self.assertFalse(_validate_lod(lod, -1))
-        lod = [[0], [-1], [3]]
-        self.assertFalse(_validate_lod(lod, -1))
+        tensor.set_lod(lod)
+        self.assertFalse(tensor.has_valid_lod())
+        lod = [[0], [2], [3]]
+        tensor.set_lod(lod)
+        self.assertFalse(tensor.has_valid_lod())
+
+        lod = [[1, 2, 3]]
+        tensor.set_lod(lod)
+        self.assertEqual(tensor.lod(), lod)
+        tensor.set(np.random.random([6, 1]), fluid.CPUPlace())
+        self.assertTrue(tensor.has_valid_lod())
+        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
+        self.assertFalse(tensor.has_valid_lod())
 
         # Each level's sum should be equal to the number of items in the next level
         # Moreover, last level's sum should be equal to the tensor height
-        lod = [[2, 3], [1, 3, 1, 2, 1]]
-        self.assertTrue(_validate_lod(lod, tensor_height=8))
-        lod = [[1, 3], [2, 1, 3]]
-        self.assertFalse(_validate_lod(lod, tensor_height=6))
-        lod = [[1, 3], [2, 1, 3, 4]]
-        self.assertFalse(_validate_lod(lod, tensor_height=5))
-
-    def test_pybind_lod(self):
-        lod = [[1, 2, 3]]
-        tensor = fluid.LoDTensor()
+        lod = [[2, 1], [1, 3, 1, 2, 1]]
         tensor.set_lod(lod)
         self.assertEqual(tensor.lod(), lod)
+        tensor.set(np.random.random([8, 1]), fluid.CPUPlace())
+        self.assertFalse(tensor.has_valid_lod())
         lod = [[2, 3], [1, 3, 1, 2, 1]]
         tensor.set_lod(lod)
-        self.assertEqual(tensor.lod(), lod)
+        self.assertTrue(tensor.has_valid_lod())
+        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
+        self.assertFalse(tensor.has_valid_lod())
 
     def test_create_lod_tensor(self):
         # Create LoDTensor from a list
@@ -63,7 +63,7 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(tensor.lod(), correct_lod)
 
         # Create LoDTensor from numpy array
-        data = numpy.random.random([10, 1])
+        data = np.random.random([10, 1])
         lod = [[2, 1], [3, 3, 4]]
         tensor = create_lod_tensor(data, lod, fluid.CPUPlace())
         self.assertEqual(tensor.lod(), lod)

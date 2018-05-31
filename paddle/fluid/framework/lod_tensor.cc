@@ -411,8 +411,6 @@ void LoDTensor::MergeLoDTensor(
 }
 
 LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
-  // TODO(kexinzhao): check that offset_lod is valid
-  // before doing conversion.
   LoD length_lod;
   length_lod.reserve(offset_lod.size());
   for (size_t lvl = 0; lvl < offset_lod.size(); ++lvl) {
@@ -427,8 +425,6 @@ LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
 }
 
 LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
-  // TODO(kexinzhao): check that length_lod is valid
-  // before doing conversion.
   LoD offset_lod;
   offset_lod.reserve(length_lod.size());
   for (size_t lvl = 0; lvl < length_lod.size(); ++lvl) {
