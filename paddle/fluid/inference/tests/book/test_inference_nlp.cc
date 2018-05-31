@@ -53,7 +53,7 @@ size_t read_datasets(std::vector<paddle::framework::LoDTensor>* out,
     while (getline(iss, field, ' ')) {
       ids.push_back(stoi(field));
     }
-    if (ids.size() >= 1024 || out->size() >= 100) {
+    if (ids.size() >= 1024 ) {
       continue;
     }
 
@@ -200,14 +200,14 @@ TEST(inference, nlp) {
     LOG(INFO) << "Total infer time: " << (stop_ms - start_ms) / 1000.0 / 60
               << " min, avg time per seq: "
               << (stop_ms - start_ms) / datasets.size() << " ms";
-    {  // just for test
-      auto* scope = new paddle::framework::Scope();
-      paddle::framework::LoDTensor outtensor;
-      TestInference<paddle::platform::CPUPlace, false, true>(
-          dirname, {&(datasets[0])}, {&outtensor}, FLAGS_repeat, model_combined,
-          false);
-      delete scope;
-    }
+//    {  // just for test
+//      auto* scope = new paddle::framework::Scope();
+//      paddle::framework::LoDTensor outtensor;
+//      TestInference<paddle::platform::CPUPlace, false, true>(
+//          dirname, {&(datasets[0])}, {&outtensor}, FLAGS_repeat, model_combined,
+//          false);
+//      delete scope;
+//    }
   }
   delete scope;
 }
