@@ -23,6 +23,14 @@ __all__ = [
 
 g_scope = core.Scope()
 
+def _to_name_str(var):
+    if isinstance(var, Variable):
+        return var.desc.name()
+    elif isinstance(var, str):
+        return var
+    else:
+        raise TypeError(str(var) + " should be Variable or str")
+
 
 def global_scope():
     return g_scope
@@ -114,15 +122,14 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
         that match the info contained in fetch_targets and fetch_holder_name.
     """
 
+    fetch_var_names = map(_to_name_str, fetch_targets)
     fetch_count = 0
     for op in block.ops:
         if op.desc.type() == 'fetch':
             fetch_count += 1
             assert op.desc.output('Out')[0] == fetch_holder_name
             fetch_target_name = op.desc.input('X')[0]
-            if fetch_target_name not in [
-                    var.desc.name() for var in fetch_targets
-            ]:
+            if fetch_target_name not in fetch_var_names:
                 raise Exception("'fetch_targets' does not have {} variable".
                                 format(fetch_target_name))
             idx = op.desc.attr('col')
@@ -164,16 +171,7 @@ def fetch_var(name, scope=None, return_numpy=True):
 
 def get_program_cache_key(feed, fetch_list):
     feed_var_names = feed.keys()
-
-    def to_name_str(var):
-        if isinstance(var, Variable):
-            return var.desc.name()
-        elif isinstance(var, str):
-            return var
-        else:
-            raise TypeError(str(var) + " should be Variable or str")
-
-    fetch_var_names = map(to_name_str, fetch_list)
+    fetch_var_names = map(_to_name_str, fetch_list)
 
     return str(feed_var_names + fetch_var_names)
 
