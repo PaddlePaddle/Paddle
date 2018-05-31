@@ -141,6 +141,7 @@ class DistributeTranspiler:
 
     def _update_dist_lookup_table_vars(self, param_list, grad_list,
                                        params_grads):
+        # TODO(wuyi): put find a way to put dist lookup table stuff all together.
         # update self.table_param_grad and self.trainer_side_table_grad_list
         program = self.origin_program
         if self.has_distributed_lookup_table:
