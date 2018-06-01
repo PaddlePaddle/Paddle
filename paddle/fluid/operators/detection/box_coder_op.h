@@ -34,7 +34,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
   void EncodeCenterSize(const framework::Tensor& target_box,
                         const framework::Tensor& prior_box,
                         const framework::Tensor& prior_box_var,
-                        T* output) const {
+                        const bool normalized, T* output) const {
     int64_t row = target_box.dims()[0];
     int64_t col = prior_box.dims()[0];
     int64_t len = prior_box.dims()[1];
@@ -44,10 +44,11 @@ class BoxCoderKernel : public framework::OpKernel<T> {
 
     for (int64_t i = 0; i < row; ++i) {
       for (int64_t j = 0; j < col; ++j) {
-        T prior_box_width =
-            prior_box_data[j * len + 2] - prior_box_data[j * len];
-        T prior_box_height =
-            prior_box_data[j * len + 3] - prior_box_data[j * len + 1];
+        T prior_box_width = prior_box_data[j * len + 2] -
+                            prior_box_data[j * len] + (normalized == false);
+        T prior_box_height = prior_box_data[j * len + 3] -
+                             prior_box_data[j * len + 1] +
+                             (normalized == false);
         T prior_box_center_x =
             (prior_box_data[j * len + 2] + prior_box_data[j * len]) / 2;
         T prior_box_center_y =
@@ -57,10 +58,11 @@ class BoxCoderKernel : public framework::OpKernel<T> {
             (target_box_data[i * len + 2] + target_box_data[i * len]) / 2;
         T target_box_center_y =
             (target_box_data[i * len + 3] + target_box_data[i * len + 1]) / 2;
-        T target_box_width =
-            target_box_data[i * len + 2] - target_box_data[i * len];
-        T target_box_height =
-            target_box_data[i * len + 3] - target_box_data[i * len + 1];
+        T target_box_width = target_box_data[i * len + 2] -
+                             target_box_data[i * len] + (normalized == false);
+        T target_box_height = target_box_data[i * len + 3] -
+                              target_box_data[i * len + 1] +
+                              (normalized == false);
 
         size_t offset = i * col * len + j * len;
         output[offset] = (target_box_center_x - prior_box_center_x) /
@@ -79,7 +81,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
   void DecodeCenterSize(const framework::Tensor& target_box,
                         const framework::Tensor& prior_box,
                         const framework::Tensor& prior_box_var,
-                        T* output) const {
+                        const bool normalized, T* output) const {
     int64_t row = target_box.dims()[0];
     int64_t col = prior_box.dims()[0];
     int64_t len = prior_box.dims()[1];
@@ -91,10 +93,11 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < row; ++i) {
       for (int64_t j = 0; j < col; ++j) {
         size_t offset = i * col * len + j * len;
-        T prior_box_width =
-            prior_box_data[j * len + 2] - prior_box_data[j * len];
-        T prior_box_height =
-            prior_box_data[j * len + 3] - prior_box_data[j * len + 1];
+        T prior_box_width = prior_box_data[j * len + 2] -
+                            prior_box_data[j * len] + (normalized == false);
+        T prior_box_height = prior_box_data[j * len + 3] -
+                             prior_box_data[j * len + 1] +
+                             (normalized == false);
         T prior_box_center_x =
             (prior_box_data[j * len + 2] + prior_box_data[j * len]) / 2;
         T prior_box_center_y =
@@ -116,8 +119,10 @@ class BoxCoderKernel : public framework::OpKernel<T> {
 
         output[offset] = target_box_center_x - target_box_width / 2;
         output[offset + 1] = target_box_center_y - target_box_height / 2;
-        output[offset + 2] = target_box_center_x + target_box_width / 2;
-        output[offset + 3] = target_box_center_y + target_box_height / 2;
+        output[offset + 2] =
+            target_box_center_x + target_box_width / 2 - (normalized == false);
+        output[offset + 3] =
+            target_box_center_y + target_box_height / 2 - (normalized == false);
       }
     }
   }
@@ -139,11 +144,14 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     output_box->mutable_data<T>({row, col, len}, context.GetPlace());
 
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
+    bool normalized = context.Attr<bool>("box_normalized");
     T* output = output_box->data<T>();
     if (code_type == BoxCodeType::kEncodeCenterSize) {
-      EncodeCenterSize(*target_box, *prior_box, *prior_box_var, output);
+      EncodeCenterSize(*target_box, *prior_box, *prior_box_var, normalized,
+                       output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
-      DecodeCenterSize(*target_box, *prior_box, *prior_box_var, output);
+      DecodeCenterSize(*target_box, *prior_box, *prior_box_var, normalized,
+                       output);
     }
   }
 };
