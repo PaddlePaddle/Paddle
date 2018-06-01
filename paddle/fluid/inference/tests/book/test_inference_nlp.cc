@@ -24,23 +24,22 @@ limitations under the License. */
 #include <omp.h>
 #endif
 
-DEFINE_string(dirname, "", "Directory of the inference model.");
+DEFINE_string(modelpath, "", "Directory of the inference model.");
+DEFINE_string(datafile, "", "File of input index data.");
 DEFINE_int32(repeat, 100, "Running the inference program repeat times");
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run inference");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
-DEFINE_bool(prepare_context, true, "Prepare Context before executor");
-
 DEFINE_int32(num_threads, 1, "Number of threads should be used");
 
-inline double get_current_ms() {
+inline double GetCurrentMs() {
   struct timeval time;
   gettimeofday(&time, NULL);
   return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
 }
 
 // return size of total words
-size_t read_datasets(std::vector<paddle::framework::LoDTensor>* out,
-                     const std::string& filename) {
+size_t LoadData(std::vector<paddle::framework::LoDTensor>* out,
+                const std::string& filename) {
   size_t sz = 0;
   std::fstream fin(filename);
   std::string line;
@@ -68,47 +67,7 @@ size_t read_datasets(std::vector<paddle::framework::LoDTensor>* out,
   return sz;
 }
 
-void ThreadRunInfer(
-    const int tid, paddle::framework::Executor* executor,
-    paddle::framework::Scope* scope,
-    const std::unique_ptr<paddle::framework::ProgramDesc>& inference_program,
-    const std::vector<std::vector<const paddle::framework::LoDTensor*>>& jobs) {
-  auto copy_program = std::unique_ptr<paddle::framework::ProgramDesc>(
-      new paddle::framework::ProgramDesc(*inference_program));
-  std::string feed_holder_name = "feed_" + paddle::string::to_string(tid);
-  std::string fetch_holder_name = "fetch_" + paddle::string::to_string(tid);
-  copy_program->SetFeedHolderName(feed_holder_name);
-  copy_program->SetFetchHolderName(fetch_holder_name);
-
-  // 3. Get the feed_target_names and fetch_target_names
-  const std::vector<std::string>& feed_target_names =
-      copy_program->GetFeedTargetNames();
-  const std::vector<std::string>& fetch_target_names =
-      copy_program->GetFetchTargetNames();
-
-  PADDLE_ENFORCE_EQ(fetch_target_names.size(), 1UL);
-  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
-  paddle::framework::LoDTensor outtensor;
-  fetch_targets[fetch_target_names[0]] = &outtensor;
-
-  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
-  PADDLE_ENFORCE_EQ(feed_target_names.size(), 1UL);
-
-  auto& inputs = jobs[tid];
-  auto start_ms = get_current_ms();
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    feed_targets[feed_target_names[0]] = inputs[i];
-    executor->Run(*copy_program, scope, &feed_targets, &fetch_targets, true,
-                  true, feed_holder_name, fetch_holder_name);
-  }
-  auto stop_ms = get_current_ms();
-  LOG(INFO) << "Tid: " << tid << ", process " << inputs.size()
-            << " samples, avg time per sample: "
-
-            << (stop_ms - start_ms) / inputs.size() << " ms";
-}
-
-void bcast_datasets(
+void SplitData(
     const std::vector<paddle::framework::LoDTensor>& datasets,
     std::vector<std::vector<const paddle::framework::LoDTensor*>>* jobs,
     const int num_threads) {
@@ -125,21 +84,58 @@ void bcast_datasets(
   }
 }
 
-TEST(inference, nlp) {
-  if (FLAGS_dirname.empty()) {
-    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+void ThreadRunInfer(
+    const int tid, paddle::framework::Executor* executor,
+    paddle::framework::Scope* scope,
+    const std::unique_ptr<paddle::framework::ProgramDesc>& inference_program,
+    const std::vector<std::vector<const paddle::framework::LoDTensor*>>& jobs) {
+  auto copy_program = std::unique_ptr<paddle::framework::ProgramDesc>(
+      new paddle::framework::ProgramDesc(*inference_program));
+  std::string feed_holder_name = "feed_" + paddle::string::to_string(tid);
+  std::string fetch_holder_name = "fetch_" + paddle::string::to_string(tid);
+  copy_program->SetFeedHolderName(feed_holder_name);
+  copy_program->SetFetchHolderName(fetch_holder_name);
+
+  const std::vector<std::string>& feed_target_names =
+      copy_program->GetFeedTargetNames();
+  const std::vector<std::string>& fetch_target_names =
+      copy_program->GetFetchTargetNames();
+
+  PADDLE_ENFORCE_EQ(fetch_target_names.size(), 1UL);
+  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+  paddle::framework::LoDTensor outtensor;
+  fetch_targets[fetch_target_names[0]] = &outtensor;
+
+  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+  PADDLE_ENFORCE_EQ(feed_target_names.size(), 1UL);
+
+  auto& inputs = jobs[tid];
+  auto start_ms = GetCurrentMs();
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    feed_targets[feed_target_names[0]] = inputs[i];
+    executor->Run(*copy_program, scope, &feed_targets, &fetch_targets, true,
+                  true, feed_holder_name, fetch_holder_name);
   }
-  LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
-  std::string dirname = FLAGS_dirname;
+  auto stop_ms = GetCurrentMs();
+  LOG(INFO) << "Tid: " << tid << ", process " << inputs.size()
+            << " samples, avg time per sample: "
+            << (stop_ms - start_ms) / inputs.size() << " ms";
+}
+
+TEST(inference, nlp) {
+  if (FLAGS_modelpath.empty() || FLAGS_datafile.empty()) {
+    LOG(FATAL) << "Usage: ./example --modelpath=path/to/your/model "
+               << "--datafile=path/to/your/data";
+  }
+  LOG(INFO) << "Model Path: " << FLAGS_modelpath;
+  LOG(INFO) << "Data File: " << FLAGS_datafile;
 
   std::vector<paddle::framework::LoDTensor> datasets;
-  size_t num_total_words =
-      read_datasets(&datasets, "/home/tangjian/paddle-tj/out.ids.txt");
-  LOG(INFO) << "Number of dataset samples(seq len<1024): " << datasets.size();
+  size_t num_total_words = LoadData(&datasets, FLAGS_datafile);
+  LOG(INFO) << "Number of samples (seq_len<1024): " << datasets.size();
   LOG(INFO) << "Total number of words: " << num_total_words;
 
   const bool model_combined = false;
-
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // 1. Define place, executor, scope
   auto place = paddle::platform::CPUPlace();
@@ -148,13 +144,14 @@ TEST(inference, nlp) {
 
   // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
-  inference_program = InitProgram(&executor, scope, dirname, model_combined);
+  inference_program =
+      InitProgram(&executor, scope, FLAGS_modelpath, model_combined);
   if (FLAGS_use_mkldnn) {
     EnableMKLDNN(inference_program);
   }
 
 #ifdef PADDLE_WITH_MKLML
-  // only use 1 core per thread
+  // only use 1 thread number per std::thread
   omp_set_dynamic(0);
   omp_set_num_threads(1);
   mkl_set_num_threads(1);
@@ -163,24 +160,23 @@ TEST(inference, nlp) {
   double start_ms = 0, stop_ms = 0;
   if (FLAGS_num_threads > 1) {
     std::vector<std::vector<const paddle::framework::LoDTensor*>> jobs;
-    bcast_datasets(datasets, &jobs, FLAGS_num_threads);
+    SplitData(datasets, &jobs, FLAGS_num_threads);
     std::vector<std::unique_ptr<std::thread>> threads;
     for (int i = 0; i < FLAGS_num_threads; ++i) {
       threads.emplace_back(new std::thread(ThreadRunInfer, i, &executor, scope,
                                            std::ref(inference_program),
                                            std::ref(jobs)));
     }
-    start_ms = get_current_ms();
+    start_ms = GetCurrentMs();
     for (int i = 0; i < FLAGS_num_threads; ++i) {
       threads[i]->join();
     }
-    stop_ms = get_current_ms();
-
+    stop_ms = GetCurrentMs();
   } else {
     if (FLAGS_prepare_vars) {
       executor.CreateVariables(*inference_program, scope, 0);
     }
-    // always prepare context and burning first time
+    // always prepare context
     std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
     ctx = executor.Prepare(*inference_program, 0);
 
@@ -198,14 +194,14 @@ TEST(inference, nlp) {
     PADDLE_ENFORCE_EQ(feed_target_names.size(), 1UL);
     std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
 
-    // for data and run
-    start_ms = get_current_ms();
+    // feed data and run
+    start_ms = GetCurrentMs();
     for (size_t i = 0; i < datasets.size(); ++i) {
       feed_targets[feed_target_names[0]] = &(datasets[i]);
       executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
                                   &fetch_targets, !FLAGS_prepare_vars);
     }
-    stop_ms = get_current_ms();
+    stop_ms = GetCurrentMs();
   }
 
   LOG(INFO) << "Total inference time with " << FLAGS_num_threads
