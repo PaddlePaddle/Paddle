@@ -40,6 +40,11 @@ def parse_args():
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
     parser.add_argument(
+        '--batch_size_per_gpu',
+        type=int,
+        default=32,
+        help='The minibatch size.')
+    parser.add_argument(
         '--learning_rate',
         type=float,
         default=0.001,
@@ -100,6 +105,10 @@ def parse_args():
         help='If set ommit the actual read data operators.')
     parser.add_argument(
         '--profile', action='store_true', help='If set, profile a few steps.')
+    parser.add_argument(
+        '--use_recordio',
+        action='store_true',
+        help='If set, input data is from recordio.')
     parser.add_argument(
         '--update_method',
         type=str,
@@ -217,20 +226,33 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         train_losses = []
-        for batch_id, data in enumerate(train_reader()):
-            if iters == args.skip_batch_num:
-                start_time = time.time()
-                num_samples = 0
-            if iters == args.iterations:
-                break
-            loss = exe.run(train_prog,
-                           feed=feeder.feed(data),
-                           fetch_list=[avg_loss])
-            iters += 1
-            num_samples += len(data)
-            train_losses.append(loss)
-            print("Pass: %d, Iter: %d, Loss: %f\n" %
-                  (pass_id, iters, np.mean(train_losses)))
+        if args.use_recordio:
+            for iters in xrange(args.iterations):
+                if iters == args.skip_batch_num:
+                    start_time = time.time()
+                    num_samples = 0
+                if iters == args.iterations:
+                    break
+                loss = exe.run(train_prog, fetch_list=[avg_loss])
+                num_samples += args.batch_size
+                train_losses.append(loss)
+                print("Pass: %d, Iter: %d, Loss: %f\n" %
+                      (pass_id, iters, np.mean(train_losses)))
+        else:
+            for batch_id, data in enumerate(train_reader()):
+                if iters == args.skip_batch_num:
+                    start_time = time.time()
+                    num_samples = 0
+                if iters == args.iterations:
+                    break
+                loss = exe.run(train_prog,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_loss])
+                iters += 1
+                num_samples += len(data)
+                train_losses.append(loss)
+                print("Pass: %d, Iter: %d, Loss: %f\n" %
+                      (pass_id, iters, np.mean(train_losses)))
         train_elapsed = time.time() - start_time
         examples_per_sec = num_samples / train_elapsed
         print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
@@ -291,30 +313,53 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
     feeder = fluid.DataFeeder(feed_var_list, place)
     for pass_id in range(args.pass_num):
         num_samples = 0
-        iters = 0
         start_time = time.time()
-        for batch_id, data in enumerate(train_reader()):
-            if args.profile and pass_id == 0 and batch_id == 5:
-                profiler.start_profiler("All")
-            elif args.profile and pass_id == 0 and batch_id == 10:
-                profiler.stop_profiler("total", "/tmp/profile_%d" % trainer_id)
 
-            if iters == args.skip_batch_num:
-                start_time = time.time()
-                num_samples = 0
-            if iters == args.iterations:
-                break
-            if args.use_fake_data:
+        if args.use_recordio:
+            for iters in xrange(args.iterations):
+                if args.profile and pass_id == 0 and iters == 5:
+                    profiler.start_profiler("All")
+                elif args.profile and pass_id == 0 and iters == 10:
+                    profiler.stop_profiler("total",
+                                           "/tmp/profile_%d" % trainer_id)
+
+                if iters == args.skip_batch_num:
+                    start_time = time.time()
+                    num_samples = 0
+                if iters == args.iterations:
+                    break
                 loss, = exe.run([avg_loss.name])
-            else:
-                loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
-            if args.update_method == "pserver":
-                exe.bcast_params()
-            num_samples += len(data)
-            iters += 1
-            if batch_id % 1 == 0:
-                print("Pass %d, batch %d, loss %s" %
-                      (pass_id, batch_id, np.array(loss)))
+                if args.update_method == "pserver":
+                    exe.bcast_params()
+                num_samples += args.batch_size  # dev_cnt * args.batch_size?
+                if iters % 1 == 0:
+                    print("Pass %d, batch %d, loss %s" %
+                          (pass_id, iters, np.array(loss)))
+        else:
+            iters = 0
+            for batch_id, data in enumerate(train_reader()):
+                if args.profile and pass_id == 0 and batch_id == 5:
+                    profiler.start_profiler("All")
+                elif args.profile and pass_id == 0 and batch_id == 10:
+                    profiler.stop_profiler("total",
+                                           "/tmp/profile_%d" % trainer_id)
+
+                if iters == args.skip_batch_num:
+                    start_time = time.time()
+                    num_samples = 0
+                if iters == args.iterations:
+                    break
+                if args.use_fake_data:
+                    loss, = exe.run([avg_loss.name])
+                else:
+                    loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
+                if args.update_method == "pserver":
+                    exe.bcast_params()
+                num_samples += len(data)
+                iters += 1
+                if batch_id % 1 == 0:
+                    print("Pass %d, batch %d, loss %s" %
+                          (pass_id, batch_id, np.array(loss)))
         train_elapsed = time.time() - start_time
         examples_per_sec = num_samples / train_elapsed
         print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
@@ -337,12 +382,13 @@ def print_arguments(args):
 
 def main():
     args = parse_args()
+    args.batch_size_per_gpu = args.batch_size / args.gpus
     print_arguments(args)
 
     # the unique trainer id, starting from 0, needed by trainer
     # only
     nccl_id_var, num_trainers, trainer_id = (
-        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "-1")))
+        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "0")))
 
     if args.use_cprof:
         pr = cProfile.Profile()

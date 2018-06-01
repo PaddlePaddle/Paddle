@@ -113,8 +113,27 @@ def resnet_cifar10(input, class_dim, depth=32, data_format='NCHW'):
     return out
 
 
+# import numpy as np
+# import paddle
+# import paddle.fluid as fluid
+# import paddle.dataset.flowers as flowers
+
+# def generate_recordio(data_shape, batch_size=1):
+#     with fluid.program_guard(fluid.Program(), fluid.Program()):
+#         reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=batch_size)
+#     feeder = fluid.DataFeeder(
+#         feed_list=[
+#             fluid.layers.data(
+#                 name='data', shape=data_shape, dtype='float32'),
+#             fluid.layers.data(
+#                 name='label', shape=[1], dtype='int64'),
+#         ],
+#         place=fluid.CPUPlace())
+#     fluid.recordio_writer.convert_reader_to_recordio_file(
+#         './flowers_1.recordio', reader, feeder)
+
+
 def get_model(args):
-    model = resnet_cifar10
     if args.data_set == "cifar10":
         class_dim = 10
         if args.data_format == 'NCHW':
@@ -130,8 +149,29 @@ def get_model(args):
             dshape = [224, 224, 3]
         model = resnet_imagenet
 
-    input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    if args.use_recordio:
+        file_list = [
+            "./flowers_1.recordio", "./flowers_1.recordio",
+            "./flowers_1.recordio", "./flowers_1.recordio",
+            "./flowers_1.recordio", "./flowers_1.recordio",
+            "./flowers_1.recordio", "./flowers_1.recordio"
+        ]
+        data_file = fluid.layers.io.open_files(
+            filenames=file_list,
+            shapes=[[-1] + dshape, [-1, 1]],
+            lod_levels=[0, 0],
+            dtypes=['float32', 'int64'],
+            thread_num=4,
+            pass_num=10)
+        # data_file = fluid.layers.io.shuffle(data_file, buffer_size=128)
+        data_file = fluid.layers.io.batch(
+            data_file, batch_size=args.batch_size_per_gpu)
+        data_file = fluid.layers.io.double_buffer(data_file)
+        input, label = fluid.layers.io.read_file(data_file)
+    else:
+        input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
     predict = model(input, class_dim)
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(x=cost)
