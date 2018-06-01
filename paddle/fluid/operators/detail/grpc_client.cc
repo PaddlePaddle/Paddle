@@ -19,10 +19,26 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
+
+std::once_flag RPCClient::init_flag_;
+
+std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+
+RPCClient* RPCClient::GetInstance() {
+  std::call_once(init_flag_, &RPCClient::Init);
+  return rpc_client_.get();
+}
+
+void RPCClient::Init() {
+  if (rpc_client_.get() == nullptr) {
+    rpc_client_.reset(new RPCClient());
+  }
+}
 
 bool RPCClient::AsyncSendVariable(const std::string& ep,
                                   const platform::DeviceContext& ctx,
@@ -52,14 +68,13 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     // stub context
     SendProcessor* s = new SendProcessor(ch);
     s->Prepare(var_h, time_out);
-    s->response_call_back_ = NULL;
+    s->response_call_back_ = nullptr;
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
-
   req_count_++;
 
   return true;
@@ -196,9 +211,14 @@ bool RPCClient::Wait() {
   const size_t kReqCnt = req_count_;
   bool a[kReqCnt];
   std::vector<std::future<void>> waits(req_count_);
+  std::mutex mu;
 
   for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::AsyncIO([i, &a, this] { a[i] = Proceed(); });
+    waits[i] = framework::AsyncIO([i, &a, &mu, this] {
+      bool ret = Proceed();
+      std::lock_guard<std::mutex> l(mu);
+      a[i] = ret;
+    });
   }
 
   for (int i = 0; i < req_count_; i++) {
@@ -243,8 +263,9 @@ bool RPCClient::Proceed() {
   delete c;
   return true;
 }
-
 std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
+  // TODO(Yancey1989): make grpc client completely thread-safe
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;
@@ -257,7 +278,6 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
 
   auto ch =
       grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
-
   channels_[ep] = ch;
   return ch;
 }

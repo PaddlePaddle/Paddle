@@ -1,7 +1,6 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-
-# When you modify it, please be aware of cudnn-runtime version 
+# When you modify it, please be aware of cudnn-runtime version
 # and libcudnn.so.x in paddle/scripts/docker/build.sh
 FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -24,16 +23,16 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --allow-downgrades \
     git python-pip python-dev openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
-    automake locales clang-format swig doxygen cmake  \
+    automake locales clang-format swig cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools libtool && \
+    net-tools libtool ccache && \
     apt-get clean -y
 
 # Install Go and glide
@@ -71,7 +70,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip install --upgrade pip==9.0.3 && \
+RUN easy_install -U pip && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
@@ -79,6 +78,9 @@ RUN pip install --upgrade pip==9.0.3 && \
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
+
+#For docstring checker
+RUN pip install pylint pytest astroid isort
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
@@ -102,6 +104,3 @@ RUN echo 'root:root' | chpasswd
 RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
-
-# development image default do build work
-CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

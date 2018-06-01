@@ -95,8 +95,8 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
-    auto maker = T(info->proto_, info->checker_);
-    maker.Validate();
+    T maker;
+    maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
     PADDLE_ENFORCE(
         info->proto_->IsInitialized(),

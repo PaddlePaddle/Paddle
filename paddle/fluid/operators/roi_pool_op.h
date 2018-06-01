@@ -21,12 +21,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static constexpr int kROISize = 4;
+
 template <typename DeviceContext, typename T>
 class CPUROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::Tensor>("ROIs");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* argmax = ctx.Output<framework::Tensor>("Argmax");
 
@@ -47,24 +49,36 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
     auto out_stride = framework::stride(out->dims());
 
     const T* input_data = in->data<T>();
-    const int64_t* rois_data = rois->data<int64_t>();
+
+    framework::Tensor roi_batch_id_list;
+    roi_batch_id_list.Resize({rois_num});
+    int* roi_batch_id_data =
+        roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
+
+    auto rois_lod = rois->lod().back();
+    int rois_batch_size = rois_lod.size() - 1;
+    PADDLE_ENFORCE_EQ(
+        rois_batch_size, batch_size,
+        "The rois_batch_size and imgs batch_size must be the same.");
+    int rois_num_with_lod = rois_lod[rois_batch_size];
+    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
+                      "The rois_num from input and lod must be the same.");
+    for (int n = 0; n < rois_batch_size; ++n) {
+      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+        roi_batch_id_data[i] = n;
+      }
+    }
+
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     int64_t* argmax_data = argmax->mutable_data<int64_t>(ctx.GetPlace());
 
+    const int64_t* rois_data = rois->data<int64_t>();
     for (int n = 0; n < rois_num; ++n) {
-      int roi_batch_id = rois_data[0];
-      PADDLE_ENFORCE_GE(roi_batch_id, 0);
-      PADDLE_ENFORCE_LT(roi_batch_id, batch_size);
-      rois_data += roi_stride[0];
-    }
-
-    rois_data = rois->data<int64_t>();
-    for (int n = 0; n < rois_num; ++n) {
-      int roi_batch_id = rois_data[0];
-      int roi_start_w = round(rois_data[1] * spatial_scale);
-      int roi_start_h = round(rois_data[2] * spatial_scale);
-      int roi_end_w = round(rois_data[3] * spatial_scale);
-      int roi_end_h = round(rois_data[4] * spatial_scale);
+      int roi_batch_id = roi_batch_id_data[n];
+      int roi_start_w = round(rois_data[0] * spatial_scale);
+      int roi_start_h = round(rois_data[1] * spatial_scale);
+      int roi_end_w = round(rois_data[2] * spatial_scale);
+      int roi_end_h = round(rois_data[3] * spatial_scale);
 
       // Force malformed ROIs to be 1x1
       int roi_height = std::max(roi_end_h - roi_start_h + 1, 1);
@@ -133,7 +147,7 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::Tensor>("ROIs");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
     auto* argmax = ctx.Input<framework::Tensor>("Argmax");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -143,6 +157,20 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
 
     if (in_grad) {
+      int rois_num = rois->dims()[0];
+      framework::Tensor roi_batch_id_list;
+      roi_batch_id_list.Resize({rois_num});
+      int* roi_batch_id_data =
+          roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
+
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+      }
+
       const int64_t* rois_data = rois->data<int64_t>();
       const T* out_grad_data = out_grad->data<T>();
       const int64_t* argmax_data = argmax->data<int64_t>();
@@ -156,11 +184,10 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       auto roi_stride = framework::stride(rois->dims());
       auto out_stride = framework::stride(out_grad->dims());
 
-      int rois_num = rois->dims()[0];
       int channels = in->dims()[1];
 
       for (int n = 0; n < rois_num; ++n) {
-        int roi_batch_idx = rois_data[0];
+        int roi_batch_idx = roi_batch_id_data[n];
         T* batch_grad_data = in_grad_data + roi_batch_idx * in_stride[0];
         for (int c = 0; c < channels; ++c) {
           for (int ph = 0; ph < pooled_height; ++ph) {

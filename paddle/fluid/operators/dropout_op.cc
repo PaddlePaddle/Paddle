@@ -37,8 +37,7 @@ class DropoutOp : public framework::OperatorWithKernel {
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DropoutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();

@@ -24,7 +24,7 @@ namespace paddle {
  * It is used by recurrent layer group.
  */
 class EosIdCheckLayer : public Layer {
-public:
+ public:
   explicit EosIdCheckLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

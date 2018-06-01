@@ -29,6 +29,7 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
 ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
 
 void ScaleLossGradOpHandle::RunImpl() {
+  // Doesn't wait any event
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
   auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
@@ -46,6 +47,7 @@ void ScaleLossGradOpHandle::RunImpl() {
               ->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
+      VLOG(1) << place_ << "RUN Scale loss grad op";
     });
 #endif
   }

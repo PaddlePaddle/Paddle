@@ -51,10 +51,6 @@ else()
 endif()
 
 
-
-add_style_check_target(paddle_math ${MATH_SOURCES})
-add_style_check_target(paddle_math ${MATH_HEADERS})
-
 add_dependencies(paddle_math paddle_proto ${external_project_dependencies})  # depends
 if(WITH_TESTING)
     add_subdirectory(tests)

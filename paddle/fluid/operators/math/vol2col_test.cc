@@ -72,7 +72,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    paddle::framework::TensorCopy(input_tmp, *place, *context, &input);
+    paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
   output.mutable_data<float>({1, filter_size, filter_size, filter_size,
                               output_depth, output_height, output_width},
@@ -86,7 +86,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    TensorCopy(output, paddle::platform::CPUPlace(), *context, &output_tmp);
+    TensorCopySync(output, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -100,7 +100,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    TensorCopy(input_tmp, *place, *context, &input);
+    TensorCopySync(input_tmp, *place, &input);
   }
 
   paddle::operators::math::Col2VolFunctor<DeviceContext, float> col2vol;
@@ -110,7 +110,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    TensorCopy(input, paddle::platform::CPUPlace(), *context, &input_tmp);
+    TensorCopySync(input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 

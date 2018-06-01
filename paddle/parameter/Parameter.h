@@ -58,7 +58,7 @@ class Parameter;
 typedef std::shared_ptr<Parameter> ParameterPtr;
 
 class Parameter {
-public:
+ public:
   Parameter(const ParameterConfig& config, bool useGpu, bool doInit = true);
   const std::string& getName() const { return config_.name(); }
 
@@ -311,7 +311,7 @@ public:
     }
   }
 
-protected:
+ protected:
   /**
    * @brief create matrix to matType.
    *
@@ -326,7 +326,7 @@ protected:
 
   void clearUpdate() { updateCounter_ = 0; }
 
-protected:
+ protected:
   ParameterConfig config_;
 
   bool useGpu_;
@@ -363,7 +363,7 @@ protected:
 
   std::vector<std::shared_ptr<IParameterUpdaterHook>> updaterHooks_;
 
-public:
+ public:
   void setSharedCount(int cnt) { sharedCount_ = cnt; }
   int getSharedCount() { return sharedCount_; }
 

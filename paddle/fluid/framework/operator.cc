@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
+DEFINE_bool(check_nan_inf, false,
+            "Checking whether operator produce NAN/INF or not. It will be "
+            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -93,6 +96,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   RunImpl(scope, place);
 }
 
+bool OperatorBase::HasInputs(const std::string& name) const {
+  if (inputs_.find(name) != inputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -107,6 +118,14 @@ const std::vector<std::string>& OperatorBase::Inputs(
   PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
                  type_, name);
   return it->second;
+}
+
+bool OperatorBase::HasOutputs(const std::string& name) const {
+  if (outputs_.find(name) != outputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
@@ -220,13 +239,18 @@ void OperatorBase::CheckAllInputOutputSet() const {
   if (op_info == nullptr || op_info->proto_ == nullptr) return;
 
   for (auto& in : op_info->Proto().inputs()) {
-    PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
-                   "Type %s's input %s is not set", Type(), in.name());
+    if (!in.dispensable()) {
+      PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
+                     "Operator %s's input, %s, is not set", Type(), in.name());
+    }
   }
 
   for (auto& out : op_info->Proto().outputs()) {
-    PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
-                   "Type %s's output %s is not set", Type(), out.name());
+    if (!out.dispensable()) {
+      PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
+                     "Operator %s's output, %s, is not set", Type(),
+                     out.name());
+    }
   }
 }
 
@@ -332,6 +356,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto& ins = Inputs(name);
     size_t length = ins.size();
     if (length == 0) {
@@ -345,6 +372,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutput(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto& outs = Outputs(name);
     size_t length = outs.size();
     if (length == 0) {
@@ -358,6 +388,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasInputs(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto inputs = op_.Inputs(name);
     if (inputs.empty()) {
       return false;
@@ -371,6 +404,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto outputs = op_.Outputs(name);
     if (outputs.empty()) {
       return false;
@@ -433,6 +469,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
@@ -479,6 +516,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const OperatorBase& op_;
   const Scope& scope_;
 };
+
+static void CheckTensorNANOrInf(const std::string& name,
+                                const framework::Tensor& tensor) {
+  if (tensor.memory_size() == 0) {
+    return;
+  }
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
+      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+    return;
+  }
+  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
+                 "Tensor %s contains Inf", name);
+  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
+                 "Tensor %s contains NAN", name);
+}
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
@@ -563,6 +615,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
+  }
+
+  if (FLAGS_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      auto* var = new_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      }
+    }
   }
 }
 

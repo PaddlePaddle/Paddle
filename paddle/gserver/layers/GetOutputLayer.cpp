@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 
 class GetOutputLayer : public Layer {
-public:
+ public:
   explicit GetOutputLayer(const LayerConfig& config) : Layer(config) {}
 
   ~GetOutputLayer() {}
