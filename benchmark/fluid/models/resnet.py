@@ -19,6 +19,7 @@ from __future__ import print_function
 import functools
 import numpy as np
 import time
+import os
 
 import cProfile, pstats, StringIO
 
@@ -113,24 +114,19 @@ def resnet_cifar10(input, class_dim, depth=32, data_format='NCHW'):
     return out
 
 
-# import numpy as np
-# import paddle
-# import paddle.fluid as fluid
-# import paddle.dataset.flowers as flowers
-
-# def generate_recordio(data_shape, batch_size=1):
-#     with fluid.program_guard(fluid.Program(), fluid.Program()):
-#         reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=batch_size)
-#     feeder = fluid.DataFeeder(
-#         feed_list=[
-#             fluid.layers.data(
-#                 name='data', shape=data_shape, dtype='float32'),
-#             fluid.layers.data(
-#                 name='label', shape=[1], dtype='int64'),
-#         ],
-#         place=fluid.CPUPlace())
-#     fluid.recordio_writer.convert_reader_to_recordio_file(
-#         './flowers_1.recordio', reader, feeder)
+def generate_recordio(data_shape, data_set_iterator, output_file, batch_size=1):
+    with fluid.program_guard(fluid.Program(), fluid.Program()):
+        reader = paddle.batch(data_set_iterator(), batch_size=batch_size)
+    feeder = fluid.DataFeeder(
+        feed_list=[
+            fluid.layers.data(
+                name='data', shape=data_shape, dtype='float32'),
+            fluid.layers.data(
+                name='label', shape=[1], dtype='int64'),
+        ],
+        place=fluid.CPUPlace())
+    fluid.recordio_writer.convert_reader_to_recordio_file(output_file, reader,
+                                                          feeder)
 
 
 def get_model(args):
@@ -150,12 +146,16 @@ def get_model(args):
         model = resnet_imagenet
 
     if args.use_recordio:
-        file_list = [
-            "./flowers_1.recordio", "./flowers_1.recordio",
-            "./flowers_1.recordio", "./flowers_1.recordio",
-            "./flowers_1.recordio", "./flowers_1.recordio",
-            "./flowers_1.recordio", "./flowers_1.recordio"
-        ]
+        recordio_name = './cifar10_1.recordio' if args.data_set == 'cifar10' else './flowers_1.recordio'
+        if not os.path.exists(recordio_name):
+            if args.data_set == 'cifar10':
+                data_set_iterator = paddle.dataset.cifar.train10
+            else:
+                data_set_iterator = paddle.dataset.flowers.train
+            print("generate {0} ... ".format(recordio_name))
+            generate_recordio(dshape, data_set_iterator, recordio_name)
+
+        file_list = [recordio_name] * 8
         data_file = fluid.layers.io.open_files(
             filenames=file_list,
             shapes=[[-1] + dshape, [-1, 1]],
@@ -163,7 +163,6 @@ def get_model(args):
             dtypes=['float32', 'int64'],
             thread_num=4,
             pass_num=10)
-        # data_file = fluid.layers.io.shuffle(data_file, buffer_size=128)
         data_file = fluid.layers.io.batch(
             data_file, batch_size=args.batch_size_per_gpu)
         data_file = fluid.layers.io.double_buffer(data_file)

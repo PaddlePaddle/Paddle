@@ -215,8 +215,15 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
             "fake data is not supported in single GPU test for now.")
 
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    exe.run(startup_prog)
+
+    startup_exe = fluid.Executor(place)
+    startup_exe.run(startup_prog)
+    strategy = fluid.ExecutionStrategy()
+    strategy.num_threads = 1
+    strategy.allow_op_delay = False
+    train_exe = fluid.ParallelExecutor(
+        True, avg_loss.name, exec_strategy=strategy)
+
     feed_var_list = [
         var for var in train_prog.global_block().vars.itervalues()
         if var.is_data
@@ -224,48 +231,46 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     feeder = fluid.DataFeeder(feed_var_list, place)
 
     iters, num_samples, start_time = 0, 0, time.time()
-    for pass_id in range(args.pass_num):
-        train_losses = []
-        if args.use_recordio:
-            for iters in xrange(args.iterations):
-                if iters == args.skip_batch_num:
-                    start_time = time.time()
-                    num_samples = 0
-                if iters == args.iterations:
-                    break
-                loss = exe.run(train_prog, fetch_list=[avg_loss])
-                num_samples += args.batch_size
-                train_losses.append(loss)
-                print("Pass: %d, Iter: %d, Loss: %f\n" %
-                      (pass_id, iters, np.mean(train_losses)))
-        else:
+    train_losses = []
+    if args.use_recordio:
+        pass_id = 0
+        for iters in xrange(args.iterations):
+            if iters == args.skip_batch_num:
+                start_time = time.time()
+                num_samples = 0
+            loss, = train_exe.run(fetch_list=[avg_loss.name])
+            num_samples += args.batch_size
+            train_losses.append(np.array(loss))
+            print("Pass: %d, Iter: %d, Loss: %f" %
+                  (pass_id, iters, np.mean(train_losses)))
+    else:
+        for pass_id in range(args.pass_num):
             for batch_id, data in enumerate(train_reader()):
                 if iters == args.skip_batch_num:
                     start_time = time.time()
                     num_samples = 0
                 if iters == args.iterations:
                     break
-                loss = exe.run(train_prog,
-                               feed=feeder.feed(data),
-                               fetch_list=[avg_loss])
+                loss, = train_exe.run(fetch_list=[avg_loss.name],
+                                      feed=feeder.feed(data))
                 iters += 1
                 num_samples += len(data)
-                train_losses.append(loss)
-                print("Pass: %d, Iter: %d, Loss: %f\n" %
+                train_losses.append(np.array(loss))
+                print("Pass: %d, Iter: %d, Loss: %f" %
                       (pass_id, iters, np.mean(train_losses)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
-        # evaluation
-        if not args.no_test and batch_acc != None:
-            pass_test_acc = test(exe, infer_prog, test_reader, feeder,
-                                 batch_acc)
-            print(", Test Accuracy: %f" % pass_test_acc)
-        print("\n")
-        # TODO(wuyi): add warmup passes to get better perf data.
-        exit(0)
+    train_elapsed = time.time() - start_time
+    examples_per_sec = num_samples / train_elapsed
+    print('Total examples: %d, total time: %.5f, %.5f examples/sec' %
+          (num_samples, train_elapsed, examples_per_sec))
+    print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
+    # evaluation
+    if not args.no_test and batch_acc != None:
+        pass_test_acc = test(startup_exe, infer_prog, test_reader, feeder,
+                             batch_acc)
+        print(", Test Accuracy: %f" % pass_test_acc)
+    print("\n")
+    # TODO(wuyi): add warmup passes to get better perf data.
+    exit(0)
 
 
 # TODO(wuyi): replace train, train_parallel, test functions with new trainer
@@ -303,7 +308,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = 1
     strategy.allow_op_delay = False
-    exe = fluid.ParallelExecutor(
+    train_exe = fluid.ParallelExecutor(
         True,
         avg_loss.name,
         exec_strategy=strategy,
@@ -311,31 +316,32 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         trainer_id=trainer_id)
 
     feeder = fluid.DataFeeder(feed_var_list, place)
-    for pass_id in range(args.pass_num):
-        num_samples = 0
-        start_time = time.time()
 
-        if args.use_recordio:
-            for iters in xrange(args.iterations):
-                if args.profile and pass_id == 0 and iters == 5:
-                    profiler.start_profiler("All")
-                elif args.profile and pass_id == 0 and iters == 10:
-                    profiler.stop_profiler("total",
-                                           "/tmp/profile_%d" % trainer_id)
+    num_samples = 0
+    start_time = time.time()
 
-                if iters == args.skip_batch_num:
-                    start_time = time.time()
-                    num_samples = 0
-                if iters == args.iterations:
-                    break
-                loss, = exe.run([avg_loss.name])
-                if args.update_method == "pserver":
-                    exe.bcast_params()
-                num_samples += args.batch_size  # dev_cnt * args.batch_size?
-                if iters % 1 == 0:
-                    print("Pass %d, batch %d, loss %s" %
-                          (pass_id, iters, np.array(loss)))
-        else:
+    if args.use_recordio:
+        pass_id = 0
+        for iters in xrange(args.iterations):
+            if args.profile and pass_id == 0 and iters == 5:
+                profiler.start_profiler("All")
+            elif args.profile and pass_id == 0 and iters == 10:
+                profiler.stop_profiler("total", "/tmp/profile_%d" % trainer_id)
+
+            if iters == args.skip_batch_num:
+                start_time = time.time()
+                num_samples = 0
+
+            loss, = train_exe.run(fetch_list=[avg_loss.name])
+
+            if args.update_method == "pserver":
+                exe.bcast_params()
+            num_samples += args.batch_size  # dev_cnt * args.batch_size?
+            if iters % 1 == 0:
+                print("Pass %d, batch %d, loss %s" %
+                      (pass_id, iters, np.array(loss)))
+    else:
+        for pass_id in range(args.pass_num):
             iters = 0
             for batch_id, data in enumerate(train_reader()):
                 if args.profile and pass_id == 0 and batch_id == 5:
@@ -350,25 +356,26 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 if iters == args.iterations:
                     break
                 if args.use_fake_data:
-                    loss, = exe.run([avg_loss.name])
+                    loss, = train_exe.run(fetch_list=[avg_loss.name])
                 else:
-                    loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
+                    loss, = train_exe.run(fetch_list=[avg_loss.name],
+                                          feed=feeder.feed(data))
                 if args.update_method == "pserver":
-                    exe.bcast_params()
+                    train_exe.bcast_params()
                 num_samples += len(data)
                 iters += 1
                 if batch_id % 1 == 0:
                     print("Pass %d, batch %d, loss %s" %
                           (pass_id, batch_id, np.array(loss)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        if not args.no_test and batch_acc != None:
-            test_acc = test(startup_exe, infer_prog, test_reader, feeder,
-                            batch_acc)
-            print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
-        exit(0)
+
+    train_elapsed = time.time() - start_time
+    examples_per_sec = num_samples / train_elapsed
+    print('Total examples: %d, total time: %.5f, %.5f examples/sed' %
+          (num_samples, train_elapsed, examples_per_sec))
+    if not args.no_test and batch_acc != None:
+        test_acc = test(startup_exe, infer_prog, test_reader, feeder, batch_acc)
+        print("Pass: %d, Test Accuracy: %f" % (pass_id, test_acc))
+    exit(0)
 
 
 def print_arguments(args):
@@ -382,6 +389,8 @@ def print_arguments(args):
 
 def main():
     args = parse_args()
+    cards = os.getenv("CUDA_VISIBLE_DEVICES") or ""
+    args.gpus = len(cards.split(","))
     args.batch_size_per_gpu = args.batch_size / args.gpus
     print_arguments(args)
 
@@ -393,11 +402,13 @@ def main():
     if args.use_cprof:
         pr = cProfile.Profile()
         pr.enable()
+
     model_def = __import__("models.%s" % args.model, fromlist=["models"])
     train_args = list(model_def.get_model(args))
     train_args.append(args)
     # Run optimizer.minimize(avg_loss)
     train_args[2].minimize(train_args[0])
+
     if args.memory_optimize:
         fluid.memory_optimize(fluid.default_main_program())
 
