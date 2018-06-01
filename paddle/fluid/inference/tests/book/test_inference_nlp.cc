@@ -37,7 +37,8 @@ inline double GetCurrentMs() {
   return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
 }
 
-// return size of total words
+// Load the input word index data from file and save into LodTensor.
+// Return the size of words.
 size_t LoadData(std::vector<paddle::framework::LoDTensor>* out,
                 const std::string& filename) {
   size_t sz = 0;
@@ -67,6 +68,8 @@ size_t LoadData(std::vector<paddle::framework::LoDTensor>* out,
   return sz;
 }
 
+// Split input data samples into small pieces jobs as balanced as possible,
+// according to the number of threads.
 void SplitData(
     const std::vector<paddle::framework::LoDTensor>& datasets,
     std::vector<std::vector<const paddle::framework::LoDTensor*>>* jobs,
@@ -116,7 +119,8 @@ void ThreadRunInfer(
   for (size_t i = 0; i < inputs.size(); ++i) {
     feed_targets[feed_target_names[0]] = inputs[i];
     executor->Run(*copy_program, &sub_scope, &feed_targets, &fetch_targets,
-                  true, true, feed_holder_name, fetch_holder_name);
+                  true /*create_local_scope*/, true /*create_vars*/,
+                  feed_holder_name, fetch_holder_name);
   }
   auto stop_ms = GetCurrentMs();
   scope->DeleteScope(&sub_scope);
@@ -143,12 +147,13 @@ TEST(inference, nlp) {
   // 1. Define place, executor, scope
   auto place = paddle::platform::CPUPlace();
   auto executor = paddle::framework::Executor(place);
-  auto* scope = new paddle::framework::Scope();
+  std::unique_ptr<paddle::framework::Scope> scope(
+      new paddle::framework::Scope());
 
   // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
   inference_program =
-      InitProgram(&executor, scope, FLAGS_modelpath, model_combined);
+      InitProgram(&executor, scope.get(), FLAGS_modelpath, model_combined);
   if (FLAGS_use_mkldnn) {
     EnableMKLDNN(inference_program);
   }
@@ -166,9 +171,9 @@ TEST(inference, nlp) {
     SplitData(datasets, &jobs, FLAGS_num_threads);
     std::vector<std::unique_ptr<std::thread>> threads;
     for (int i = 0; i < FLAGS_num_threads; ++i) {
-      threads.emplace_back(new std::thread(ThreadRunInfer, i, &executor, scope,
-                                           std::ref(inference_program),
-                                           std::ref(jobs)));
+      threads.emplace_back(
+          new std::thread(ThreadRunInfer, i, &executor, scope.get(),
+                          std::ref(inference_program), std::ref(jobs)));
     }
     start_ms = GetCurrentMs();
     for (int i = 0; i < FLAGS_num_threads; ++i) {
@@ -177,7 +182,7 @@ TEST(inference, nlp) {
     stop_ms = GetCurrentMs();
   } else {
     if (FLAGS_prepare_vars) {
-      executor.CreateVariables(*inference_program, scope, 0);
+      executor.CreateVariables(*inference_program, scope.get(), 0);
     }
     // always prepare context
     std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
@@ -201,7 +206,7 @@ TEST(inference, nlp) {
     start_ms = GetCurrentMs();
     for (size_t i = 0; i < datasets.size(); ++i) {
       feed_targets[feed_target_names[0]] = &(datasets[i]);
-      executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
+      executor.RunPreparedContext(ctx.get(), scope.get(), &feed_targets,
                                   &fetch_targets, !FLAGS_prepare_vars);
     }
     stop_ms = GetCurrentMs();
@@ -209,9 +214,7 @@ TEST(inference, nlp) {
               << " samples, avg time per sample: "
               << (stop_ms - start_ms) / datasets.size() << " ms";
   }
-
   LOG(INFO) << "Total inference time with " << FLAGS_num_threads
             << " threads : " << (stop_ms - start_ms) / 1000.0
             << " sec, QPS: " << datasets.size() / ((stop_ms - start_ms) / 1000);
-  delete scope;
 }
