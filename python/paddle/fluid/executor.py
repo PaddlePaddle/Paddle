@@ -23,6 +23,7 @@ __all__ = [
 
 g_scope = core.Scope()
 
+
 def _to_name_str(var):
     if isinstance(var, Variable):
         return var.desc.name()
