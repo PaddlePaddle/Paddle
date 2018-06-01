@@ -20,8 +20,9 @@ from op_test import OpTest
 class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
-        xnp = np.random.random((10, 20)).astype("float32")
-        self.inputs = {'X': xnp, 'Index': np.array([1, 3, 5]).astype("int32")}
+        self.config()
+        xnp = np.random.random(self.x_shape).astype("float32")
+        self.inputs = {'X': xnp, 'Index': np.array(self.index).astype("int32")}
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
@@ -29,6 +30,16 @@ class TestGatherOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+    def config(self):
+        self.x_shape = (10, 20)
+        self.index = [1, 3, 5]
+
+
+class TestCase1(TestGatherOp):
+    def config(self):
+        self.x_shape = (10)
+        self.index = [1, 3, 5]
 
 
 if __name__ == "__main__":

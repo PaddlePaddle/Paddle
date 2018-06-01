@@ -3878,7 +3878,6 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
 def dice_loss(input, label, epsilon=0.00001):
     """
-    **Dice loss Layer**
     Dice loss for comparing the similarity of two batch of data,
     usually is used for binary image segmentation i.e. labels are binary.
     The dice loss can be defined as below equation:
@@ -3983,10 +3982,8 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
 
 def gather(input, index):
     """
-    **Gather Operator**
-
-    Out is obtained by gathering entries of the outer-most dimension 
-    of X indexed by Index and concatenate them together.
+    Output is obtained by gathering entries of the outer-most dimension 
+    of X indexed by `index` and concatenate them together.
 
     .. math::
 
@@ -3995,11 +3992,12 @@ def gather(input, index):
 
     .. code-block:: text
 
-	* Case 1:
 
-    		 X = [[1, 2],
-         	      [3, 4],
-                      [5, 6]]
+                Given:
+
+    		X = [[1, 2],
+         	     [3, 4],
+                     [5, 6]]
 
                 Index = [1, 2]
 
@@ -4009,11 +4007,11 @@ def gather(input, index):
                        [5, 6]]
 
     Args:
-        input (Variable): The source input with rank>1. 
+        input (Variable): The source input with rank>=1. 
         index (Variable): The index input with rang=1.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape as input.
+        output (Variable): The output is a tensor with the same rank as input.
 
     Examples:
         .. code-block:: python
