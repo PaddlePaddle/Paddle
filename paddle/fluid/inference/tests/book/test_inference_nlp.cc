@@ -91,6 +91,8 @@ void ThreadRunInfer(
     const std::vector<std::vector<const paddle::framework::LoDTensor*>>& jobs) {
   auto copy_program = std::unique_ptr<paddle::framework::ProgramDesc>(
       new paddle::framework::ProgramDesc(*inference_program));
+  auto& sub_scope = scope->NewScope();
+
   std::string feed_holder_name = "feed_" + paddle::string::to_string(tid);
   std::string fetch_holder_name = "fetch_" + paddle::string::to_string(tid);
   copy_program->SetFeedHolderName(feed_holder_name);
@@ -113,10 +115,11 @@ void ThreadRunInfer(
   auto start_ms = GetCurrentMs();
   for (size_t i = 0; i < inputs.size(); ++i) {
     feed_targets[feed_target_names[0]] = inputs[i];
-    executor->Run(*copy_program, scope, &feed_targets, &fetch_targets, true,
-                  true, feed_holder_name, fetch_holder_name);
+    executor->Run(*copy_program, &sub_scope, &feed_targets, &fetch_targets,
+                  true, true, feed_holder_name, fetch_holder_name);
   }
   auto stop_ms = GetCurrentMs();
+  scope->DeleteScope(&sub_scope);
   LOG(INFO) << "Tid: " << tid << ", process " << inputs.size()
             << " samples, avg time per sample: "
             << (stop_ms - start_ms) / inputs.size() << " ms";
