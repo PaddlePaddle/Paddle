@@ -182,9 +182,6 @@ void TestInference(const std::string& dirname,
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
     inference_program = InitProgram(&executor, scope, dirname, is_combined);
-    // std::string binary_str;
-    // inference_program->Proto()->SerializeToString(&binary_str);
-    // LOG(INFO) << binary_str;
     if (use_mkldnn) {
       EnableMKLDNN(inference_program);
     }
