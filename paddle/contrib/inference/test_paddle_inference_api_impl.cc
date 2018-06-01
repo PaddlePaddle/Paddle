@@ -40,19 +40,20 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   return pt;
 }
 
-ConfigImpl GetConfig() {
-  ConfigImpl config;
+NativeConfig GetConfig() {
+  NativeConfig config;
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
+  config.use_gpu = true;
   config.device = 0;
   config.share_variables = true;
   return config;
 }
 
 TEST(paddle_inference_api_impl, word2vec) {
-  ConfigImpl config = GetConfig();
-  std::unique_ptr<PaddlePredictor> predictor = CreatePaddlePredictor(config);
+  NativeConfig config = GetConfig();
+  auto predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   framework::LoDTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -104,7 +105,7 @@ TEST(paddle_inference_api_impl, image_classification) {
   int batch_size = 2;
   bool use_mkldnn = false;
   bool repeat = false;
-  ConfigImpl config = GetConfig();
+  NativeConfig config = GetConfig();
   config.model_dir =
       FLAGS_dirname + "image_classification_resnet.inference.model";
 
@@ -133,7 +134,7 @@ TEST(paddle_inference_api_impl, image_classification) {
                                                  is_combined,
                                                  use_mkldnn);
 
-  std::unique_ptr<PaddlePredictor> predictor = CreatePaddlePredictor(config);
+  auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> paddle_tensor_feeds;
   paddle_tensor_feeds.push_back(LodTensorToPaddleTensor(&input));
 
@@ -144,8 +145,7 @@ TEST(paddle_inference_api_impl, image_classification) {
   float* data = static_cast<float*>(outputs[0].data.data);
   float* lod_data = output1.data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
-    EXPECT_LT(lod_data[j] - data[j], 1e-10);
-    EXPECT_GT(lod_data[j] - data[j], -1e-10);
+    EXPECT_NEAR(lod_data[j], data[j], 1e-3);
   }
   free(data);
 }
