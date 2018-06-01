@@ -185,12 +185,12 @@ TEST(inference, nlp) {
     std::vector<std::vector<const paddle::framework::LoDTensor*>> jobs;
     SplitData(datasets, &jobs, FLAGS_num_threads);
     std::vector<std::unique_ptr<std::thread>> threads;
+    start_ms = GetCurrentMs();
     for (int i = 0; i < FLAGS_num_threads; ++i) {
       threads.emplace_back(
           new std::thread(ThreadRunInfer, i, &executor, scope.get(),
                           std::ref(inference_program), std::ref(jobs)));
     }
-    start_ms = GetCurrentMs();
     for (int i = 0; i < FLAGS_num_threads; ++i) {
       threads[i]->join();
     }
