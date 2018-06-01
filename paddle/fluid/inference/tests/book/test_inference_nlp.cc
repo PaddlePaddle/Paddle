@@ -37,10 +37,22 @@ inline double GetCurrentMs() {
   return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
 }
 
+// This function just give dummy data for recognize_digits model.
+size_t DummyData(std::vector<paddle::framework::LoDTensor>* out) {
+  paddle::framework::LoDTensor input;
+  SetupTensor<float>(&input, {1, 1, 28, 28}, -1.f, 1.f);
+  out->emplace_back(input);
+  return 1;
+}
+
 // Load the input word index data from file and save into LodTensor.
 // Return the size of words.
 size_t LoadData(std::vector<paddle::framework::LoDTensor>* out,
                 const std::string& filename) {
+  if (filename.empty()) {
+    return DummyData(out);
+  }
+
   size_t sz = 0;
   std::fstream fin(filename);
   std::string line;
@@ -130,9 +142,12 @@ void ThreadRunInfer(
 }
 
 TEST(inference, nlp) {
-  if (FLAGS_modelpath.empty() || FLAGS_datafile.empty()) {
-    LOG(FATAL) << "Usage: ./example --modelpath=path/to/your/model "
-               << "--datafile=path/to/your/data";
+  if (FLAGS_modelpath.empty()) {
+    LOG(FATAL) << "Usage: ./example --modelpath=path/to/your/model";
+  }
+  if (FLAGS_datafile.empty()) {
+    LOG(WARNING) << " Not data file provided, will use dummy data!"
+                 << "Note: if you use nlp model, please provide data file.";
   }
   LOG(INFO) << "Model Path: " << FLAGS_modelpath;
   LOG(INFO) << "Data File: " << FLAGS_datafile;
