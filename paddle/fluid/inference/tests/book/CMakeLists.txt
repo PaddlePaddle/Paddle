@@ -35,7 +35,13 @@ inference_test(image_classification ARGS vgg resnet)
 inference_test(label_semantic_roles)
 inference_test(recognize_digits ARGS mlp conv)
 inference_test(recommender_system)
-inference_test(nlp)
 #inference_test(rnn_encoder_decoder)
 #inference_test(understand_sentiment ARGS conv)
 inference_test(word2vec)
+
+# This is an unly work around to make this test run
+cc_test(test_inference_nlp
+  SRCS test_inference_nlp.cc
+  DEPS paddle_fluid
+  ARGS
+  --modelpath=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
