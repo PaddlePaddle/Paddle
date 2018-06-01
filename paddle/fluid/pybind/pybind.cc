@@ -150,7 +150,7 @@ PYBIND11_PLUGIN(core) {
             LoD new_lod;
             new_lod.reserve(lod.size());
             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-            new (&instance) LoDTensor(new_lod);
+            new (&instance) LoDTensor(ConvertToOffsetBasedLoD(new_lod));
           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",

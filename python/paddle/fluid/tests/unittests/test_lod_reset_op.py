@@ -21,8 +21,8 @@ class TestLodResetOpByAttr(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
-        target_lod_0 = [0, 7, 10]
+        lod = [[3, 2, 5]]
+        target_lod_0 = [7, 3]
         self.inputs = {'X': (x, lod)}
         self.attrs = {'target_lod': target_lod_0}
         self.outputs = {'Out': (x, [target_lod_0])}
@@ -38,8 +38,8 @@ class TestLodResetOpByInput(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
-        target_lod_0 = [0, 4, 7, 10]
+        lod = [[3, 2, 5]]
+        target_lod_0 = [4, 3, 3]
         self.inputs = {
             'X': (x, lod),
             'Y': np.array([target_lod_0]).astype('int32')
@@ -57,9 +57,9 @@ class TestLodResetOpBoth(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
-        target_lod_0_attr = [0, 7, 10]
-        target_lod_0_in = [0, 4, 7, 10]
+        lod = [[3, 2, 5]]
+        target_lod_0_attr = [7, 3]
+        target_lod_0_in = [4, 3, 3]
         self.inputs = {
             'X': (x, lod),
             'Y': np.array(target_lod_0_in).astype('int32')
@@ -78,9 +78,9 @@ class TestLodResetOpYIsLoDTensor(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
+        lod = [[3, 2, 5]]
         y = np.random.random((10, 10)).astype("float32")
-        target_lod_0 = [[0, 4, 7, 10]]
+        target_lod_0 = [[4, 3, 3]]
         self.inputs = {'X': (x, lod), 'Y': (y, target_lod_0)}
         self.outputs = {'Out': (x, target_lod_0)}
 
