@@ -125,7 +125,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 scope_.get(),
                                 &feed_targets,
                                 &fetch_targets,
-                                true /*create_variable*/);
+                                false /* don't create variable eatch time */);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
