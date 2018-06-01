@@ -17,30 +17,31 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestGatherOp(OpTest):
+class TestShapeOp(OpTest):
     def setUp(self):
-        self.op_type = "gather"
+        self.op_type = "shape"
         self.config()
-        xnp = np.random.random(self.x_shape).astype("float32")
-        self.inputs = {'X': xnp, 'Index': np.array(self.index).astype("int32")}
-        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+        self.shape = [2, 3]
+        input = np.zeros(self.shape)
+        self.inputs = {'Input': input}
+        self.outputs = {'Out': np.array(self.shape)}
+
+    def config(self):
+        self.shape = [2, 3]
 
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
+class case1(TestShapeOp):
     def config(self):
-        self.x_shape = (10, 20)
-        self.index = [1, 3, 5]
+        self.shape = [2]
 
 
-class TestCase1(TestGatherOp):
+class case2(TestShapeOp):
     def config(self):
-        self.x_shape = (10)
-        self.index = [1, 3, 5]
+        self.shape = [1, 2, 3]
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
