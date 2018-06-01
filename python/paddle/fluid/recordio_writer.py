@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import core
 import contextlib
-__all__ = ['convert_reader_to_recordio_file']
+__all__ = [
+    'convert_reader_to_recordio_file', 'convert_reader_to_recordio_files'
+]
 
 
 @contextlib.contextmanager
@@ -48,7 +51,7 @@ def convert_reader_to_recordio_file(
 
 
 def convert_reader_to_recordio_files(
-        filename_suffix,
+        filename,
         batch_per_file,
         reader_creator,
         feeder,
@@ -57,13 +60,16 @@ def convert_reader_to_recordio_files(
         feed_order=None):
     if feed_order is None:
         feed_order = feeder.feed_names
+    f_name, f_ext = os.path.splitext(filename)
+    assert (f_ext == ".recordio")
+
     lines = []
     f_idx = 0
     counter = 0
     for idx, batch in enumerate(reader_creator()):
         lines.append(batch)
         if idx >= batch_per_file and idx % batch_per_file == 0:
-            filename = "%s-%05d" % (filename_suffix, f_idx)
+            filename = "%s-%05d%s" % (f_name, f_idx, f_ext)
             with create_recordio_writer(filename, compressor,
                                         max_num_records) as writer:
                 for l in lines:

@@ -89,14 +89,14 @@ The above codes would generate multiple RecordIO files on your host like:
 
 ```bash
 .
- \_mnist.recordio-00000
- |-mnist.recordio-00001
- |-mnist.recordio-00002
- |-mnist.recordio-00003
- |-mnist.recordio-00004
+ \_mnist-00000.recordio
+ |-mnist-00001.recordio
+ |-mnist-00002.recordio
+ |-mnist-00003.recordio
+ |-mnist-00004.recordio
 ```
 
-1. read these RecordIO files with `fluid.layers.io.open_recordio_file`
+1. open multiple RecordIO files by `fluid.layers.io.open_files`
 
 For a distributed training job, the distributed operator system will schedule trainer process on multiple nodes,
 each trainer process reads parts of the whole training data, we usually take the following approach to make the training
@@ -113,10 +113,12 @@ def gen_train_list(file_pattern, trainers, trainer_id):
 
 trainers = int(os.getenv("TRAINERS"))
 trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-data_file = fluid.layers.io.open_recordio_file(
-        filename=gen_train_list("./mnist.recordio*", trainers, trainer_id),
-        shapes=[(-1, 784),(-1, 1)],
-        lod_levels=[0, 0],
-        dtypes=["float32", "int32"])
-data_file = fluid.layers.io.batch(data_file, batch_size=4)
+data_file = fluid.layers.io.open_files(
+    filenames=gen_train_list("./mnist-[0-9]*.recordio", 2, 0),
+    thread_num=1,
+    shapes=[(-1, 784),(-1, 1)],
+    lod_levels=[0, 0],
+    dtypes=["float32", "int32"])
+img, label = fluid.layers.io.read_file(data_files)
+...
 ```

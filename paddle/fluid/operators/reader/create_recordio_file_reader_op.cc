@@ -65,22 +65,20 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
                       static_cast<int>(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
-    auto filenames = Attr<std::vector<std::string>>("filenames");
+    std::string filename = Attr<std::string>("filename");
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    for (auto& fn : filenames) {
-      out->Reset(
-          new RecordIOFileReader<true>(fn, RestoreShapes(shape_concat, ranks)));
-    }
+
+    out->Reset(new RecordIOFileReader<true>(
+        filename, RestoreShapes(shape_concat, ranks)));
   }
 };
 
 class CreateRecordIOReaderOpMaker : public FileReaderMakerBase {
  protected:
   void Apply() override {
-    AddAttr<std::vector<std::string>>("filenames",
-                                      "The filenames of record io reader");
+    AddAttr<std::string>("filename", "The filename of record io reader");
     AddComment(R"DOC(
       CreateRecordIOReader Operator
 
