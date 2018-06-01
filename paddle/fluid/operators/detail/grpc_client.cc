@@ -205,6 +205,8 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
 }
 
 bool RPCClient::Wait() {
+  VLOG(3) << "RPCClient begin Wait()"
+          << " req_count_:" << req_count_;
   if (req_count_ <= 0) {
     return true;
   }
