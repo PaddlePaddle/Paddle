@@ -54,11 +54,10 @@ std::string num2str(T a) {
 }
 }  // namespace
 
-bool PaddlePredictorImpl::Init() {
+bool NativePaddlePredictor::Init() {
   VLOG(3) << "Predictor::init()";
 
-  // TODO(panyx0718): Should CPU vs GPU device be decided by id?
-  if (config_.device >= 0) {
+  if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
@@ -85,19 +84,21 @@ bool PaddlePredictorImpl::Init() {
   }
   ctx_ = executor_->Prepare(*inference_program_, 0);
 
-  // Create variables
-  // TODO(panyx0718): Why need to test share_variables here?
-  if (config_.share_variables) {
-    executor_->CreateVariables(*inference_program_, scope_.get(), 0);
-  }
+  // Create temporary variables first, so that the first batch do not need to
+  // create variables in the runtime. This is the logics of the old inference
+  // API.
+  // TODO(Superjomn) this should be modified when `Clone` is valid for
+  // multi-thread application.
+  executor_->CreateVariables(*inference_program_, scope_.get(), 0);
+
   // Get the feed_target_names and fetch_target_names
   feed_target_names_ = inference_program_->GetFeedTargetNames();
   fetch_target_names_ = inference_program_->GetFetchTargetNames();
   return true;
 }
 
-bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
-                              std::vector<PaddleTensor> *output_data) {
+bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
+                                std::vector<PaddleTensor> *output_data) {
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
@@ -124,7 +125,7 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
                                 scope_.get(),
                                 &feed_targets,
                                 &fetch_targets,
-                                !config_.share_variables);
+                                false /* don't create variable eatch time */);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
@@ -133,59 +134,20 @@ bool PaddlePredictorImpl::Run(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
-std::unique_ptr<PaddlePredictor> PaddlePredictorImpl::Clone() {
+std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   VLOG(3) << "Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(new PaddlePredictorImpl(config_));
-  if (!cls->InitShared()) {
-    LOG(ERROR) << "fail to call InitShared";
+  std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
+
+  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init()) {
+    LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
   // fix manylinux compile error.
   return std::move(cls);
 }
 
-// TODO(panyx0718): Consider merge with Init()?
-bool PaddlePredictorImpl::InitShared() {
-  VLOG(3) << "Predictor::init_shared";
-  // 1. Define place, executor, scope
-  if (this->config_.device >= 0) {
-    place_ = platform::CUDAPlace();
-  } else {
-    place_ = platform::CPUPlace();
-  }
-  this->executor_.reset(new framework::Executor(this->place_));
-  this->scope_.reset(new framework::Scope());
-  // Initialize the inference program
-  if (!this->config_.model_dir.empty()) {
-    // Parameters are saved in separate files sited in
-    // the specified `dirname`.
-    this->inference_program_ = inference::Load(
-        this->executor_.get(), this->scope_.get(), this->config_.model_dir);
-  } else if (!this->config_.prog_file.empty() &&
-             !this->config_.param_file.empty()) {
-    // All parameters are saved in a single file.
-    // The file names should be consistent with that used
-    // in Python API `fluid.io.save_inference_model`.
-    this->inference_program_ = inference::Load(this->executor_.get(),
-                                               this->scope_.get(),
-                                               this->config_.prog_file,
-                                               this->config_.param_file);
-  }
-  this->ctx_ = this->executor_->Prepare(*this->inference_program_, 0);
-  // 3. create variables
-  // TODO(panyx0718): why test share_variables.
-  if (config_.share_variables) {
-    this->executor_->CreateVariables(
-        *this->inference_program_, this->scope_.get(), 0);
-  }
-  // 4. Get the feed_target_names and fetch_target_names
-  this->feed_target_names_ = this->inference_program_->GetFeedTargetNames();
-  this->fetch_target_names_ = this->inference_program_->GetFetchTargetNames();
-  return true;
-}
-
-bool PaddlePredictorImpl::SetFeed(const std::vector<PaddleTensor> &inputs,
-                                  std::vector<framework::LoDTensor> *feeds) {
+bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
+                                    std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feed_target_names_.size()) {
     LOG(ERROR) << "wrong feed input size.";
@@ -213,7 +175,7 @@ bool PaddlePredictorImpl::SetFeed(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
-bool PaddlePredictorImpl::GetFetch(
+bool NativePaddlePredictor::GetFetch(
     const std::vector<framework::LoDTensor> &fetchs,
     std::vector<PaddleTensor> *outputs) {
   VLOG(3) << "Predictor::get_fetch";
@@ -280,23 +242,29 @@ bool PaddlePredictorImpl::GetFetch(
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
-    const ConfigImpl &config) {
-  VLOG(3) << "create PaddlePredictorImpl";
-  // 1. GPU memeroy
-  std::vector<std::string> flags;
-  if (config.fraction_of_gpu_memory >= 0.0f ||
-      config.fraction_of_gpu_memory <= 0.95f) {
-    flags.push_back("dummpy");
-    std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                       num2str<float>(config.fraction_of_gpu_memory);
-    flags.push_back(flag);
-    VLOG(3) << "set flag: " << flag;
-    framework::InitGflags(flags);
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig &config) {
+  VLOG(3) << "create NativePaddlePredictor";
+  if (config.use_gpu) {
+    // 1. GPU memeroy
+    PADDLE_ENFORCE(
+        config.fraction_of_gpu_memory > 0.f,
+        "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+    std::vector<std::string> flags;
+    if (config.fraction_of_gpu_memory >= 0.0f ||
+        config.fraction_of_gpu_memory <= 0.95f) {
+      flags.push_back("dummpy");
+      std::string flag = "--fraction_of_gpu_memory_to_use=" +
+                         num2str<float>(config.fraction_of_gpu_memory);
+      flags.push_back(flag);
+      VLOG(3) << "set flag: " << flag;
+      framework::InitGflags(flags);
+    }
   }
 
-  std::unique_ptr<PaddlePredictor> predictor(new PaddlePredictorImpl(config));
-  if (!dynamic_cast<PaddlePredictorImpl *>(predictor.get())->Init()) {
+  std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
+  if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init()) {
     return nullptr;
   }
   return std::move(predictor);

@@ -71,6 +71,7 @@ __all__ = [
     'cumsum',
     'scatter',
     'sum',
+    'shape',
 ] + __activations__
 
 for _OP in set(__all__):
