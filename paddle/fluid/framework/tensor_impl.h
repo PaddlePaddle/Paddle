@@ -39,7 +39,7 @@ template <typename T>
 inline const T* Tensor::data() const {
   check_memory_size();
   PADDLE_ENFORCE(std::is_same<T, void>::value ||
-                     holder_->type().hash_code() == typeid(T).hash_code(),
+                     holder_->type() == std::type_index(typeid(T)),
                  "Tensor holds the wrong type, it holds %s",
                  this->holder_->type().name());
 
@@ -53,7 +53,7 @@ template <typename T>
 inline T* Tensor::data() {
   check_memory_size();
   PADDLE_ENFORCE(std::is_same<T, void>::value ||
-                     holder_->type().hash_code() == typeid(T).hash_code(),
+                     holder_->type() == std::type_index(typeid(T)),
                  "Tensor holds the wrong type, it holds %s",
                  this->holder_->type().name());
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +

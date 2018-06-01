@@ -33,13 +33,14 @@ class OpDesc {
   OpDesc(const std::string &type, const VariableNameMap &inputs,
          const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block);
+  OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
   OpDesc(const OpDesc &other, BlockDesc *block) {
     *this = other;
     block_ = block;
+    need_update_ = true;
   }
 
   void CopyFrom(const OpDesc &op_desc);
