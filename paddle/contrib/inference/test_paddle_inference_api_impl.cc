@@ -47,7 +47,6 @@ NativeConfig GetConfig() {
   config.fraction_of_gpu_memory = 0.15;
   config.use_gpu = true;
   config.device = 0;
-  config.share_variables = true;
   return config;
 }
 

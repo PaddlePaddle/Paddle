@@ -82,6 +82,7 @@ __all__ = [
     'roi_pool',
     'dice_loss',
     'upsampling_bilinear2d',
+    'gather',
     'random_crop',
 ]
 
@@ -3889,7 +3890,6 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
 def dice_loss(input, label, epsilon=0.00001):
     """
-    **Dice loss Layer**
     Dice loss for comparing the similarity of two batch of data,
     usually is used for binary image segmentation i.e. labels are binary.
     The dice loss can be defined as below equation:
@@ -3944,7 +3944,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|None): Output shape of bilinear interpolation
+        out_shape(list|tuple|Variable|None): Output shape of bilinear interpolation
                                     layer, the shape is (out_h, out_w).
                                     Default: None
         scale(int|None): The multiplier for the input height or width.
@@ -3971,13 +3971,20 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
+    out_h = 0
+    out_w = 0
+    inputs = {"X": input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2):
+        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2) and (
+                out_shape is not Variable):
             raise ValueError('out_shape should be a list or tuple ',
                              'with length 2, (out_h, out_w).')
-        out_shape = list(map(int, out_shape))
-        out_h = out_shape[0]
-        out_w = out_shape[1]
+        if _is_list_or_turple_(out_shape):
+            out_shape = list(map(int, out_shape))
+            out_h = out_shape[0]
+            out_w = out_shape[1]
+        else:
+            inputs['OutSize'] = out_shape
     else:
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
@@ -3985,10 +3992,59 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="bilinear_interp",
-        inputs={"X": input},
+        inputs=inputs,
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
+    return out
+
+
+def gather(input, index):
+    """
+    Output is obtained by gathering entries of the outer-most dimension 
+    of X indexed by `index` and concatenate them together.
+
+    .. math::
+
+	Out = X[Index]
+
+
+    .. code-block:: text
+
+
+                Given:
+
+    		X = [[1, 2],
+         	     [3, 4],
+                     [5, 6]]
+
+                Index = [1, 2]
+
+                Then:
+
+                Out = [[3, 4],
+                       [5, 6]]
+
+    Args:
+        input (Variable): The source input with rank>=1. 
+        index (Variable): The index input with rank=1.
+
+    Returns:
+        output (Variable): The output is a tensor with the same rank as input.
+
+    Examples:
+        .. code-block:: python
+
+            output = fluid.layers.gather(x, index)
+    """
+    helper = LayerHelper('gather', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="gather",
+        inputs={"X": input,
+                "Index": index},
+        outputs={"Out": out})
     return out
 
 
