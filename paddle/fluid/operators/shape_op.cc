@@ -25,6 +25,8 @@ class ShapeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input (Input) of get_shape op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output (Out) of get_shape op should not be null.");
     auto in_dim = ctx->GetInputDim("Input");
     ctx->SetOutputDim("Out", {in_dim.size()});
   }
@@ -33,8 +35,8 @@ class ShapeOp : public framework::OperatorWithKernel {
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "The input tensor.");
-    AddOutput("Out", "The shape of input tensor.");
+    AddInput("Input", "(Tensor), The input tensor.");
+    AddOutput("Out", "(Tensor), The shape of input tensor.");
     AddComment(R"DOC(
 Shape Operator. 
 Get the shape of input tensor.
