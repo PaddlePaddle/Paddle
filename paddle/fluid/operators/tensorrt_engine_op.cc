@@ -31,8 +31,7 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
   auto max_workspace = context.Attr<int>("max_workspace");
   engine_.reset(new inference::tensorrt::TensorRTEngine(
       max_batch_, max_workspace, nullptr));
-  // TODO(Superjomn) parameters should be passed be analysised and passed from
-  // outside.
+  // TODO(Superjomn) parameters should be passed after analysised from outside.
   inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
       block, {}, context.scope(), engine_.get());
   engine_->FreezeNetwork();

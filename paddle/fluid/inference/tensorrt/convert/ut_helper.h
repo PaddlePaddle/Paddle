@@ -133,10 +133,12 @@ class TRTConvertValidation {
     cudaStreamSynchronize(*engine_->stream());
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
+    const size_t output_space_size = 200;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
-      std::vector<float> trt_out(200, 2008.);
-      engine_->GetOutputInCPU(output, &trt_out[0], 200 * sizeof(float));
+      std::vector<float> trt_out(output_space_size);
+      engine_->GetOutputInCPU(output, &trt_out[0],
+                              output_space_size * sizeof(float));
       cudaStreamSynchronize(*engine_->stream());
 
       auto* var = scope_.FindVar(output);
