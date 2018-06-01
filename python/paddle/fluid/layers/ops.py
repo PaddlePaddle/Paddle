@@ -72,6 +72,7 @@ __all__ = [
     'scatter',
     'sum',
     'polygon_box_transform',
+    'shape',
 ] + __activations__
 
 for _OP in set(__all__):
