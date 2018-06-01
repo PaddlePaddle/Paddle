@@ -62,7 +62,7 @@ We provide a script `kube_gen_job.py` to generate Kubernetes yaml files to submi
 distributed benchmark jobs to your cluster. To generate a job yaml, just run:
 
 ```bash
-python kube_gen_job.py --jobname myjob --pscpu 4 --cpu 8 --gpu 8 --psmemory 20 --memory 40 --pservers 4 --trainers 4 --entry "python fluid_benchmark.py --model mnist --parallel 1 --device GPU --update_method pserver " --disttype pserver
+python kube_gen_job.py --jobname myjob --pscpu 4 --cpu 8 --gpu 8 --psmemory 20 --memory 40 --pservers 4 --trainers 4 --entry "python fluid_benchmark.py --model mnist --gpus 8 --device GPU --update_method pserver " --disttype pserver
 ```
 
 Then the yaml files are generated under directory `myjob`, you can run:
