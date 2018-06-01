@@ -3944,7 +3944,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         input (Variable): The input tensor of bilinear interpolation,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|None): Output shape of bilinear interpolation
+        out_shape(list|tuple|Variable|None): Output shape of bilinear interpolation
                                     layer, the shape is (out_h, out_w).
                                     Default: None
         scale(int|None): The multiplier for the input height or width.
@@ -3971,13 +3971,20 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
+    out_h = 0
+    out_w = 0
+    inputs = {"X": input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2):
+        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2) and (
+                out_shape is not Variable):
             raise ValueError('out_shape should be a list or tuple ',
                              'with length 2, (out_h, out_w).')
-        out_shape = list(map(int, out_shape))
-        out_h = out_shape[0]
-        out_w = out_shape[1]
+        if _is_list_or_turple_(out_shape):
+            out_shape = list(map(int, out_shape))
+            out_h = out_shape[0]
+            out_w = out_shape[1]
+        else:
+            inputs['OutSize'] = out_shape
     else:
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
@@ -3985,7 +3992,7 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="bilinear_interp",
-        inputs={"X": input},
+        inputs=inputs,
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
