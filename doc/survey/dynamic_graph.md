@@ -1,13 +1,25 @@
-# Automatical Differentiation with the Tape
+# Automatic Differentiation with the Tape
 
-The implementation of automatical differentiation (AD) lies at the heart of differentiable programming. As the dynamic graph approach gains its popularity in the past a few years, this doc surveys the backward implementations of two ML frameworks: Pytorch and Dynet.
+## Automatic Differentiation
 
-Outline
-1. The implementation overview
-1. The design choices between four frameworks
-1. What can fluid learn from them
+A key challenge in the field of deep learning is to automatically derive the backward pass from the forward pass described algorithmically by researchers.  Such a derivation, or a transformation of the forward pass program, has been long studied before the recent prosperity of deep learning in the field known as [automatic differentiation](https://arxiv.org/pdf/1502.05767.pdf).
 
-## Implementation Overview
+## The Tape
+
+Given the forward pass program (usually in Python in practices), there are two strategies to derive the backward pass:
+
+1. from the forward pass program itself, or
+1. from the execution trace of the forward pass program, which is often known as the *tape*.
+
+This article surveys systems that follow the latter strategy.
+
+## Dynamic Network
+
+When we train a deep learning model, the tape changes every iteration as the input data change, so we have to re-derive the backward pass every iteration.  This is known as *dynamic network*.
+
+Deep learning systems that utilize the idea of dynamic network gained their popularities in recent years.  This article surveys two representative systems: [PyTorch](https://pytorch.org/) and [DyNet](https://dynet.readthedocs.io/en/latest/).
+
+## An Overview
 
 Both frameworks record a ‘tape’ of the computation and interpreting (or run-time compiling) a transformation of the tape played back in reverse. This tape is a different kind of entity than the original program.[[link]](http://www.bcl.hamilton.ie/~barak/papers/toplas-reverse.pdf)
 
