@@ -13,32 +13,4 @@
 # limitations under the License.
 #
 
-function(inference_api_demo TARGET_NAME TEST_SRC)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs ARGS)
-    cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-    set(arg_list "")
-    if(inference_test_ARGS)
-        foreach(arg ${inference_test_ARGS})
-            list(APPEND arg_list "_${arg}")
-        endforeach()
-    else()
-        list(APPEND arg_list "_")
-    endif()
-    foreach(arg ${arg_list})
-        string(REGEX REPLACE "^_$" "" arg "${arg}")
-        cc_test(${TARGET_NAME}
-                SRCS ${TEST_SRC}
-                DEPS paddle_fluid_api
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
-        # TODO(panyx0178): Figure out how to add word2vec and image_classification
-        # as deps.
-        # set_tests_properties(${TARGET_NAME}
-        #         PROPERTIES DEPENDS ${DEP_TEST})
-    endforeach()
-endfunction(inference_api_demo)
-
-inference_api_demo(inference_word2vec_demo simple_on_word2vec.cc)
+inference_api_test(simple_on_word2vec ARGS test_word2vec)

@@ -28,39 +28,35 @@ DEFINE_string(dirname, "", "Directory of the inference model.");
 
 void PrepareInputs(std::vector<PaddleTensor>* slots) {
   const int num_slots = 4;
-  const int data_size = 6;
   slots->clear();
   // word id type is int64_t
-  std::unique_ptr<std::vector<int64_t>> data(
-      new std::vector<int64_t>(data_size));
+  int64_t data[4] = {1, 2, 3, 4};
 
-  // Set scratch data
-  for (int i = 0; i < data_size; i++) {
-    data->at(i) = i;
-  }
+  PaddleBuf buf{.data = data, .length = sizeof(data)};
+  PaddleTensor tensor{.name = "",
+                      .shape = std::vector<int>({4, 1}),
+                      .data = buf,
+                      .dtype = PaddleDType::INT64};
 
   // For simplicity, we set all the slots with the same data.
   for (int i = 0; i < num_slots; i++) {
-    PaddleBuf buf{.data = data.get(), .length = data_size};
-    slots->emplace_back(PaddleTensor{.data = buf,
-                                     .dtype = PaddleDType::INT64,
-                                     .shape = std::vector<int>({6, 1})});
+    slots->emplace_back(tensor);
   }
 }
 
 void Main() {
-  std::vector<PaddleTensor> slots;
-  PrepareInputs(&slots);
-
-  NativeConfig config{.use_gpu = true,
-                      .fraction_of_gpu_memory = 0.3,
-                      .device = 0,
-                      .model_dir = FLAGS_dirname + "word2vec.inference.model"};
+  NativeConfig config;
+  config.use_gpu = false;
+  config.fraction_of_gpu_memory = 0.3;
+  config.device = -1;
+  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<PaddleTensor> slots;
+  PrepareInputs(&slots);
 
+  std::vector<PaddleTensor> outputs;
   CHECK(predictor->Run(slots, &outputs));
 }
 
