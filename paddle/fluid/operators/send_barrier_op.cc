@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -36,31 +37,32 @@ class SendBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
+    bool sync_mode = Attr<bool>("sync_mode");
 
-    auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(place);
+    // For profiling
+    platform::RecordEvent record_event(Type(), &ctx);
+
+    auto rpc_client = detail::RPCClient::GetInstance();
+
+    VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait());
-
-    for (auto& ep : eps) {
-      VLOG(3) << "send barrier, ep: " << ep;
-      rpc_client->AsyncSendBatchBarrier(ep);
+    if (sync_mode) {
+      for (auto& ep : eps) {
+        VLOG(3) << "send barrier, ep: " << ep;
+        rpc_client->AsyncSendBatchBarrier(ep);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
   }
 };
 
 class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which is"
-              "initialized at most once.");
     AddComment(R"DOC(
 SendBarrier operator
 
@@ -72,17 +74,7 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-  }
-};
-
-class SendBarrierOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output("RPCClient").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
+    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 
@@ -98,5 +90,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_barrier, ops::SendBarrierOp,
                   paddle::framework::EmptyGradOpMaker, ops::SendBarrierOpMaker,
-                  ops::SendBarrierOpVarTypeInference,
                   ops::SendBarrierOpShapeInference);

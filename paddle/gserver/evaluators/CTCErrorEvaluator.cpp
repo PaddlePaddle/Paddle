@@ -22,7 +22,7 @@ namespace paddle {
  * calculate sequence-to-sequence edit distance
  */
 class CTCErrorEvaluator : public Evaluator {
-private:
+ private:
   MatrixPtr outActivations_;
   int numTimes_, numClasses_, numSequences_, blank_;
   real deletions_, insertions_, substitutions_;
@@ -197,7 +197,7 @@ private:
         (real)seqClassficationError_ / numSequences_;
   }
 
-public:
+ public:
   CTCErrorEvaluator()
       : numTimes_(0),
         numClasses_(0),

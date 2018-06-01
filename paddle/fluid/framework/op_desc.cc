@@ -103,7 +103,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   need_update_ = true;
 }
 
-OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
+OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -243,13 +243,8 @@ const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
 }
 
 void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
-  for (auto &input : inputs_) {
-    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
-  }
-  for (auto &output : outputs_) {
-    std::replace(output.second.begin(), output.second.end(), old_name,
-                 new_name);
-  }
+  RenameInput(old_name, new_name);
+  RenameOutput(old_name, new_name);
   need_update_ = true;
 }
 
@@ -274,6 +269,13 @@ void OpDesc::RenameInput(const std::string &old_name,
   for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
+
+  auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (it != attrs_.end()) {
+    auto &op_vars = boost::get<std::vector<std::string>>(it->second);
+    std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
+  }
+
   need_update_ = true;
 }
 

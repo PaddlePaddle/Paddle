@@ -155,7 +155,7 @@ def train_program():
     return [avg_cost, scale_infer]
 
 
-def train(use_cuda, train_program, save_path):
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     optimizer = fluid.optimizer.SGD(learning_rate=0.2)
 
@@ -180,7 +180,7 @@ def train(use_cuda, train_program, save_path):
             print("avg_cost: %s" % avg_cost)
 
             if float(avg_cost) < 4:  # Smaller value to increase CI speed
-                trainer.save_params(save_path)
+                trainer.save_params(params_dirname)
                 trainer.stop()
             else:
                 print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
@@ -197,43 +197,30 @@ def train(use_cuda, train_program, save_path):
         num_epochs=1,
         event_handler=event_handler,
         reader=train_reader,
-        feed_order=[
-            'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id',
-            'category_id', 'movie_title', 'score'
-        ])
+        feed_order=feed_order)
 
 
-def infer(use_cuda, inference_program, save_path):
+def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        inference_program, param_path=save_path, place=place)
+        inference_program, param_path=params_dirname, place=place)
 
-    def create_lod_tensor(data, lod=None):
-        tensor = fluid.LoDTensor()
-        if lod is None:
-            # Tensor, the shape is [batch_size, 1]
-            index = 0
-            lod_0 = [index]
-            for l in range(len(data)):
-                index += 1
-                lod_0.append(index)
-            lod = [lod_0]
-        tensor.set_lod(lod)
-
-        flattened_data = np.concatenate(data, axis=0).astype("int64")
-        flattened_data = flattened_data.reshape([len(flattened_data), 1])
-        tensor.set(flattened_data, place)
-        return tensor
-
-    # Generate a random input for inference
-    user_id = create_lod_tensor([[1]])
-    gender_id = create_lod_tensor([[1]])
-    age_id = create_lod_tensor([[0]])
-    job_id = create_lod_tensor([[10]])
-    movie_id = create_lod_tensor([[783]])
-    category_id = create_lod_tensor([[10], [8], [9]], [[0, 3]])
-    movie_title = create_lod_tensor([[1069], [4140], [2923], [710], [988]],
-                                    [[0, 5]])
+    # Use the first data from paddle.dataset.movielens.test() as input.
+    # Use create_lod_tensor(data, lod, place) API to generate LoD Tensor,
+    # where `data` is a list of sequences of index numbers, `lod` is 
+    # the level of detail (lod) info associated with `data`.
+    # For example, data = [[10, 2, 3], [2, 3]] means that it contains
+    # two sequences of indexes, of length 3 and 2, respectively.
+    # Correspondingly, lod = [[3, 2]] contains one level of detail info,
+    # indicating that `data` consists of two sequences of length 3 and 2. 
+    user_id = fluid.create_lod_tensor([[1]], [[1]], place)
+    gender_id = fluid.create_lod_tensor([[1]], [[1]], place)
+    age_id = fluid.create_lod_tensor([[0]], [[1]], place)
+    job_id = fluid.create_lod_tensor([[10]], [[1]], place)
+    movie_id = fluid.create_lod_tensor([[783]], [[1]], place)
+    category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place)
+    movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]],
+                                          place)
 
     results = inferencer.infer(
         {
@@ -253,12 +240,15 @@ def infer(use_cuda, inference_program, save_path):
 def main(use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_path = "recommender_system.inference.model"
-    train(use_cuda=use_cuda, train_program=train_program, save_path=save_path)
+    params_dirname = "recommender_system.inference.model"
+    train(
+        use_cuda=use_cuda,
+        train_program=train_program,
+        params_dirname=params_dirname)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
-        save_path=save_path)
+        params_dirname=params_dirname)
 
 
 if __name__ == '__main__':

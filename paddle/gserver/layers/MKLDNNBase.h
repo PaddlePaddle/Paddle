@@ -31,7 +31,7 @@ typedef enum {
  *
  */
 class CPUEngine {
-public:
+ public:
   static CPUEngine& Instance() {
     // Thread-safe in C++11.
     static CPUEngine myInstance;
@@ -46,12 +46,12 @@ public:
 
   mkldnn::engine& getEngine() { return cpuEngine_; }
 
-protected:
+ protected:
   CPUEngine() : cpuEngine_(mkldnn::engine::cpu, 0) {}
   //    CPUEngine() : cpuEngine_(mkldnn::engine::cpu_lazy, 0) {}
   ~CPUEngine() {}
 
-private:
+ private:
   mkldnn::engine cpuEngine_;
 };
 
@@ -60,7 +60,7 @@ private:
  *
  */
 class MKLDNNStream {
-public:
+ public:
   MKLDNNStream() : ready_(false) { resetState(); }
 
   virtual ~MKLDNNStream() {}
@@ -89,7 +89,7 @@ public:
     ready_ = true;
   }
 
-private:
+ private:
   bool ready_;
   std::shared_ptr<mkldnn::stream> stream_;
 };

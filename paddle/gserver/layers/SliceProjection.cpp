@@ -44,14 +44,14 @@ namespace paddle {
  * The config file api is slice_projection.
  */
 class SliceProjection : public Projection {
-public:
+ public:
   SliceProjection(const ProjectionConfig& config,
                   const ParameterPtr& parameter,
                   bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-protected:
+ protected:
   std::vector<std::pair<size_t, size_t>> slices_;
 };
 

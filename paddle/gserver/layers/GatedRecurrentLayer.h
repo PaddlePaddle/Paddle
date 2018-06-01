@@ -47,7 +47,7 @@ namespace paddle {
  */
 
 class GatedRecurrentLayer : public Layer, public GruCompute {
-public:
+ public:
   explicit GatedRecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -63,7 +63,7 @@ public:
 
   LayerStatePtr getState() override;
 
-protected:
+ protected:
   void forwardSequence(int batchSize,
                        size_t numSequences,
                        const int* starts,
@@ -79,7 +79,7 @@ protected:
                     MatrixPtr inputValue);
   void backwardBatch(int batchSize, MatrixPtr inputGrad);
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> gateWeight_;
   std::unique_ptr<Weight> stateWeight_;

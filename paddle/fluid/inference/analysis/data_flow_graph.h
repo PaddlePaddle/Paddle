@@ -21,7 +21,10 @@ limitations under the License. */
 
 #include <deque>
 #include <stack>
+#include <string>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "paddle/fluid/inference/analysis/graph_traits.h"
 #include "paddle/fluid/inference/analysis/node.h"

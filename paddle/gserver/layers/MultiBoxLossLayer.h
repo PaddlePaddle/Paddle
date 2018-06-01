@@ -41,7 +41,7 @@ namespace paddle {
  */
 
 class MultiBoxLossLayer : public CostLayer {
-public:
+ public:
   explicit MultiBoxLossLayer(const LayerConfig& config) : CostLayer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -54,7 +54,7 @@ public:
 
   void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad) {}
 
-protected:
+ protected:
   inline LayerPtr getPriorBoxLayer() { return inputLayers_[0]; }
   inline LayerPtr getLabelLayer() { return inputLayers_[1]; }
   inline LayerPtr getLocInputLayer(size_t index) {
@@ -64,7 +64,7 @@ protected:
     return inputLayers_[2 + inputNum_ + index];
   }
 
-protected:
+ protected:
   size_t numClasses_;
   real overlapThreshold_;
   real negPosRatio_;

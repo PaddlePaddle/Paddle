@@ -37,12 +37,14 @@ class TensorRTEngine : public EngineBase {
   // Weight is model parameter.
   class Weight {
    public:
-    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
+    Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
       w_.count = num_elem;
     }
     const nvinfer1::Weights& get() { return w_; }
+
+    std::vector<int64_t> dims;
 
    private:
     nvinfer1::Weights w_;
@@ -92,13 +94,15 @@ class TensorRTEngine : public EngineBase {
   cudaStream_t* stream() { return stream_; }
 
   // Fill an input from CPU memory with name and size.
-  void SetInputFromCPU(const std::string& name, void* data, size_t size);
+  void SetInputFromCPU(const std::string& name, const void* data, size_t size);
   // TODO(Superjomn) is this method necessary given that buffer(xxx) can be
   // accessed directly. Fill an input from GPU memory with name and size.
-  void SetInputFromGPU(const std::string& name, void* data, size_t size);
+  void SetInputFromGPU(const std::string& name, const void* data, size_t size);
   // Get an output called name, the output of tensorrt is in GPU, so this method
-  // will just return the output's GPU memory address.
+  // Return the output's GPU memory address without copy.
   void* GetOutputInGPU(const std::string& name);
+  // Copy data into dst inside the GPU device.
+  void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.
   void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
