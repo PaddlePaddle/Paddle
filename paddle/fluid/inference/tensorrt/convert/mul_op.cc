@@ -27,7 +27,7 @@ class MulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op) override {
     VLOG(4) << "convert a fluid mul op to tensorrt fc layer without bias";
 
-    framework::OpDesc op_desc(op, nullptr, nullptr);
+    framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
