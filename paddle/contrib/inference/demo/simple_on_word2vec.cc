@@ -26,14 +26,13 @@ namespace demo {
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-//
-void Main() {
+void Main(bool use_gpu) {
   //# 1. Create PaddlePredictor with a config.
   NativeConfig config;
-  config.use_gpu = false;
-  config.fraction_of_gpu_memory = 0.3;
-  config.device = -1;
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config.use_gpu = use_gpu;
+  config.fraction_of_gpu_memory = 0.15;
+  config.device = 0;
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
@@ -65,7 +64,8 @@ void Main() {
   }
 }
 
-TEST(demo, word2vec) { Main(); }
+TEST(demo, word2vec_cpu) { Main(false /*use_gpu*/); }
+TEST(demo, word2vec_gpu) { Main(true /*use_gpu*/); }
 
 }  // namespace demo
 }  // namespace paddle
