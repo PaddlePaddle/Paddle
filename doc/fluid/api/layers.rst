@@ -1009,3 +1009,9 @@ ____
 ..  autofunction:: paddle.fluid.layers.upsampling_bilinear2d
     :noindex:
 
+gather
+____
+
+..  autofunction:: paddle.fluid.layers.gather
+    :noindex:
+
