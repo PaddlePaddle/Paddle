@@ -3931,7 +3931,7 @@ def dice_loss(input, label, epsilon=0.00001):
 
 def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
-    The mathematical meaning of resize_bilinear is
+    The mathematical meaning of resize bilinear layer is
     Bilinear interpolation.
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
@@ -3947,7 +3947,7 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
                                     layer, the shape is (out_h, out_w).
                                     Default: None
-        scale(int|None): The multiplier for the input height or width.
+        scale(float|None): The multiplier for the input height or width.
                          At least one of out_shape or scale must be set.
                          And out_shape has a higher priority than scale.
                          Default: None
