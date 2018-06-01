@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include <string>
 #include <vector>
+
+#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 
 namespace paddle {
 namespace inference {

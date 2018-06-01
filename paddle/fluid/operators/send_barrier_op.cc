@@ -46,6 +46,8 @@ class SendBarrierOp : public framework::OperatorBase {
 
     auto rpc_client = detail::RPCClient::GetInstance();
 
+    VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
+
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait());
     if (sync_mode) {
