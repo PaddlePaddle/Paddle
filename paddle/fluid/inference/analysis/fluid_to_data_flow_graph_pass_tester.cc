@@ -32,6 +32,6 @@ TEST_F(DFG_Tester, Init) {
   LOG(INFO) << '\n' << graph.DotString();
 }
 
-}  // analysis
-}  // inference
-}  // paddle
+}  // namespace analysis
+}  // namespace inference
+}  // namespace paddle

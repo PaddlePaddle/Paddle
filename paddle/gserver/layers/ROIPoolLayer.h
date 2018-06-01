@@ -33,7 +33,7 @@ namespace paddle {
  */
 
 class ROIPoolLayer : public Layer {
-protected:
+ protected:
   size_t channels_;
   size_t width_;
   size_t height_;
@@ -44,7 +44,7 @@ protected:
   // Since there is no int matrix, use real maxtrix instead.
   MatrixPtr maxIdxs_;
 
-public:
+ public:
   explicit ROIPoolLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

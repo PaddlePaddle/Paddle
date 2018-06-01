@@ -44,7 +44,7 @@ namespace paddle {
  */
 template <DeviceType Device, class T>
 class DepthwiseConvFunctor {
-public:
+ public:
   void operator()(const T* inputData,
                   const T* filterData,
                   int batchSize,
@@ -89,7 +89,7 @@ public:
  */
 template <DeviceType Device, class T>
 class DepthwiseConvGradInputFunctor {
-public:
+ public:
   void operator()(const T* outputGrad,
                   const T* filterData,
                   int batchSize,
@@ -135,7 +135,7 @@ public:
  */
 template <DeviceType Device, class T>
 class DepthwiseConvGradFilterFunctor {
-public:
+ public:
   void operator()(const T* outputGrad,
                   const T* inputData,
                   int batchSize,

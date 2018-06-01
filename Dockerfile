@@ -29,7 +29,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
-    automake locales clang-format swig doxygen cmake  \
+    automake locales clang-format swig cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools libtool ccache && \
@@ -78,6 +78,9 @@ RUN easy_install -U pip && \
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
+
+#For docstring checker
+RUN pip install pylint pytest astroid isort
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
