@@ -106,6 +106,7 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                     name);
 
   auto* output = layer->getOutput(offset);
+  SetITensor(name, output);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
   infer_network_->markOutput(*output);
