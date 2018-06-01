@@ -24,7 +24,7 @@ class ReluOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
-    framework::OpDesc op_desc(op, nullptr, nullptr);
+    framework::OpDesc op_desc(op, nullptr);
     LOG(INFO) << "convert a fluid relu op to tensorrt activation layer whose "
                  "type is Relu";
     const nvinfer1::ITensor* input_tensor =
