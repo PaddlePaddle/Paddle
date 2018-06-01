@@ -128,7 +128,7 @@ def create_or_get_tensor(scope, var_name, var, place):
     tensor = scope.var(var_name).get_tensor()
     if var is not None:
         assert isinstance(var, np.ndarray)
-        tensor.set_lod([[]])
+        tensor.set_lod([])
         tensor.set_dims(var.shape)
         tensor.set(var, place)
     return tensor

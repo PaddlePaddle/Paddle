@@ -33,29 +33,29 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
     def test_get_set(self):
         ids = self.scope.var("ids").get_lod_tensor_array()
         self.append_lod_tensor(
-            ids, [[0, 3, 6], [0, 1, 2, 3, 4, 5, 6]],
+            ids, [[3, 3], [1, 1, 1, 1, 1, 1]],
             np.array(
                 [1, 2, 3, 4, 5, 6], dtype="int64"))
         self.append_lod_tensor(
-            ids, [[0, 3, 6], [0, 1, 1, 3, 5, 5, 6]],
+            ids, [[3, 3], [1, 0, 2, 2, 0, 1]],
             np.array(
                 [0, 1, 2, 3, 4, 5], dtype="int64"))
         self.append_lod_tensor(
-            ids, [[0, 3, 6], [0, 0, 1, 2, 3, 4, 5]],
+            ids, [[3, 3], [0, 1, 1, 1, 1, 1]],
             np.array(
                 [0, 1, 2, 3, 4], dtype="int64"))
 
         scores = self.scope.var("scores").get_lod_tensor_array()
         self.append_lod_tensor(
-            scores, [[0, 3, 6], [0, 1, 2, 3, 4, 5, 6]],
+            scores, [[3, 3], [1, 1, 1, 1, 1, 1]],
             np.array(
                 [1, 2, 3, 4, 5, 6], dtype="float64"))
         self.append_lod_tensor(
-            scores, [[0, 3, 6], [0, 1, 1, 3, 5, 5, 6]],
+            scores, [[3, 3], [1, 0, 2, 2, 0, 1]],
             np.array(
                 [0, 1, 2, 3, 4, 5], dtype="float64"))
         self.append_lod_tensor(
-            scores, [[0, 3, 6], [0, 0, 1, 2, 3, 4, 5]],
+            scores, [[3, 3], [0, 1, 1, 1, 1, 1]],
             np.array(
                 [0, 1, 2, 3, 4], dtype="float64"))
 
@@ -73,7 +73,7 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
 
         beam_search_decode_op.run(self.scope, self.place)
 
-        expected_lod = [[0, 4, 8], [0, 1, 3, 6, 9, 10, 13, 16, 19]]
+        expected_lod = [[4, 4], [1, 2, 3, 3, 1, 3, 3, 3]]
         self.assertEqual(sentence_ids.lod(), expected_lod)
         self.assertEqual(sentence_scores.lod(), expected_lod)
 

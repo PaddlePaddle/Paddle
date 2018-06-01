@@ -55,7 +55,7 @@ class BeamSearchOpTester(unittest.TestCase):
         tensor = create_tensor(self.scope, "pre_ids", np_data)
 
     def _create_ids(self):
-        self.lod = [[0, 1, 4], [0, 1, 2, 3, 4]]
+        self.lod = [[1, 3], [1, 1, 1, 1]]
         np_data = np.array(
             [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64')
         tensor = create_tensor(self.scope, "ids", np_data)
