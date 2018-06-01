@@ -61,7 +61,10 @@ class TRTConvertValidation {
  public:
   TRTConvertValidation() = delete;
 
-  explicit TRTConvertValidation(int batch_size, int workspace_size = 1024) {
+  TRTConvertValidation(int batch_size,
+                       const std::unordered_set<std::string>& parameters,
+                       framework::Scope& scope, int workspace_size = 1 << 10)
+      : parameters_(parameters), scope_(scope) {
     // create engine.
     engine_.reset(new TensorRTEngine(10, 1 << 10, &stream_));
     engine_->InitNetwork();
@@ -76,19 +79,22 @@ class TRTConvertValidation {
     engine_->DeclareInput(name, nvinfer1::DataType::kFLOAT, dims);
   }
 
+  // Declare a parameter varaible in the scope.
+  void DeclParamVar(const std::string& name, const nvinfer1::Dims& dims) {
+    DeclVar(name, dims);
+  }
+
   void DeclOutputVar(const std::string& name, const nvinfer1::Dims& dims) {
     DeclVar(name, dims);
   }
 
+  // Declare a variable in a fluid Scope.
   void DeclVar(const std::string& name, const nvinfer1::Dims& dims) {
     platform::CPUPlace place;
     platform::CPUDeviceContext ctx(place);
 
     // Init Fluid tensor.
-    std::vector<int> dim_vec(dims.nbDims);
-    for (int i = 0; i < dims.nbDims; i++) {
-      dim_vec[i] = dims.d[i];
-    }
+    std::vector<int> dim_vec(dims.d, dims.d + dims.nbDims);
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
@@ -99,7 +105,7 @@ class TRTConvertValidation {
     op_ = framework::OpRegistry::CreateOp(desc);
 
     OpConverter op_converter;
-    op_converter.ConvertOp(desc, engine_.get());
+    op_converter.ConvertOp(desc, parameters_, scope_, engine_.get());
 
     engine_->FreezeNetwork();
 
@@ -108,11 +114,13 @@ class TRTConvertValidation {
 
     // Set Inputs.
     for (const auto& input : op_desc_->InputArgumentNames()) {
+      if (parameters_.count(input)) continue;
       auto* var = scope_.FindVar(input);
       PADDLE_ENFORCE(var);
       auto tensor = var->GetMutable<framework::LoDTensor>();
+
       engine_->SetInputFromCPU(
-          input, static_cast<void*>(tensor->data<float>()),
+          input, static_cast<void*>(tensor->data<void>()),
           sizeof(float) *
               analysis::AccuDims(tensor->dims(), tensor->dims().size()));
     }
@@ -120,18 +128,21 @@ class TRTConvertValidation {
 
   void Execute(int batch_size) {
     // Execute Fluid Op
-    // Execute TRT
     platform::CPUPlace place;
     platform::CPUDeviceContext ctx(place);
-    engine_->Execute(batch_size);
-
     op_->Run(scope_, place);
+    // Execute TRT.
+    engine_->Execute(batch_size);
+    cudaStreamSynchronize(*engine_->stream());
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
+    const size_t output_space_size = 200;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
-      std::vector<float> trt_out(200);
-      engine_->GetOutputInCPU(output, &trt_out[0], 200 * sizeof(float));
+      std::vector<float> trt_out(output_space_size);
+      engine_->GetOutputInCPU(output, &trt_out[0],
+                              output_space_size * sizeof(float));
+      cudaStreamSynchronize(*engine_->stream());
 
       auto* var = scope_.FindVar(output);
       auto tensor = var->GetMutable<framework::LoDTensor>();
@@ -139,7 +150,7 @@ class TRTConvertValidation {
       // Compare two output
       ASSERT_FALSE(fluid_out.empty());
       for (size_t i = 0; i < fluid_out.size(); i++) {
-        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 0.001);
+        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 1e-6);
       }
     }
   }
@@ -149,9 +160,10 @@ class TRTConvertValidation {
  private:
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
-  framework::Scope scope_;
   std::unique_ptr<framework::OperatorBase> op_;
   std::unique_ptr<framework::OpDesc> op_desc_;
+  const std::unordered_set<std::string>& parameters_;
+  framework::Scope& scope_;
 };
 
 }  // namespace tensorrt
