@@ -202,11 +202,13 @@ TEST(inference, nlp) {
                                   &fetch_targets, !FLAGS_prepare_vars);
     }
     stop_ms = GetCurrentMs();
+    LOG(INFO) << "Tid: 0, process " << datasets.size()
+              << " samples, avg time per sample: "
+              << (stop_ms - start_ms) / datasets.size() << " ms";
   }
 
   LOG(INFO) << "Total inference time with " << FLAGS_num_threads
             << " threads : " << (stop_ms - start_ms) / 1000.0
-            << " sec, avg time per seq: "
-            << (stop_ms - start_ms) / datasets.size() << " ms";
+            << " sec, QPS: " << datasets.size() / ((stop_ms - start_ms) / 1000);
   delete scope;
 }
