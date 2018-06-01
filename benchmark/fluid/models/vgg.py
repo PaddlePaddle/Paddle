@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import argparse
 import functools
+import os
 
 
 def vgg16_bn_drop(input):
@@ -65,9 +66,23 @@ def get_model(args):
         else:
             data_shape = [224, 224, 3]
 
-    # Input data
-    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    if args.use_reader_op:
+        filelist = [
+            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
+        ]
+        data_file = fluid.layers.open_files(
+            filenames=filelist,
+            shapes=[[-1] + data_shape, (-1, 1)],
+            lod_levels=[0, 0],
+            dtypes=["float32", "int64"],
+            thread_num=args.gpus)
+        data_file = fluid.layers.double_buffer(
+            fluid.layers.batch(
+                data_file, batch_size=args.batch_size))
+        images, label = fluid.layers.read_file(data_file)
+    else:
+        images = fluid.layers.data(name='data', shape=dshape, dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
     # Train program
     net = vgg16_bn_drop(images)

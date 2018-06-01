@@ -44,7 +44,6 @@ def parse_args():
         type=float,
         default=0.001,
         help='The minibatch size.')
-    # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
         type=int,
@@ -106,6 +105,16 @@ def parse_args():
         default='local',
         choices=['local', 'pserver', 'nccl2'],
         help='Choose parameter update method, can be local, pserver, nccl2.')
+    parser.add_argument(
+        '--use_reader_op',
+        action='store_true',
+        help='Whether to use reader op, and must specify the data path if set this to true.'
+    )
+    parser.add_argument(
+        '--data_path',
+        type=str,
+        default="",
+        help='Directory that contains all the training recordio files.')
     args = parser.parse_args()
     return args
 
@@ -208,11 +217,13 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     exe = fluid.Executor(place)
     exe.run(startup_prog)
-    feed_var_list = [
-        var for var in train_prog.global_block().vars.itervalues()
-        if var.is_data
-    ]
-    feeder = fluid.DataFeeder(feed_var_list, place)
+
+    if not args.use_reader_op:
+        feed_var_list = [
+            var for var in train_prog.global_block().vars.itervalues()
+            if var.is_data
+        ]
+        feeder = fluid.DataFeeder(feed_var_list, place)
 
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
@@ -223,9 +234,12 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
                 num_samples = 0
             if iters == args.iterations:
                 break
-            loss = exe.run(train_prog,
-                           feed=feeder.feed(data),
-                           fetch_list=[avg_loss])
+            if args.use_reader_op:
+                loss = exe.run(train_prog, fetch_list=[avg_loss])
+            else:
+                loss = exe.run(train_prog,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_loss])
             iters += 1
             num_samples += len(data)
             train_losses.append(loss)
@@ -251,10 +265,14 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
 def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                    batch_acc, args, train_prog, startup_prog, nccl_id_var,
                    num_trainers, trainer_id):
-    feed_var_list = [
-        var for var in train_prog.global_block().vars.itervalues()
-        if var.is_data
-    ]
+    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
+    if not args.use_reader_op:
+        feed_var_list = [
+            var for var in train_prog.global_block().vars.itervalues()
+            if var.is_data
+        ]
+        feeder = fluid.DataFeeder(feed_var_list, place)
+
     # generate fake:
     if args.use_fake_data:
         for var in feed_var_list:
@@ -271,7 +289,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                        "value": 1.0,
                        "dtype": var.dtype})
 
-    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     if nccl_id_var and trainer_id == 0:
         #FIXME(wuyi): wait other trainer to start listening
         time.sleep(30)
@@ -288,7 +305,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
 
-    feeder = fluid.DataFeeder(feed_var_list, place)
     for pass_id in range(args.pass_num):
         num_samples = 0
         iters = 0
@@ -304,7 +320,10 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 num_samples = 0
             if iters == args.iterations:
                 break
-            if args.use_fake_data:
+            # NOTE: if use reader ops, the input data is not splited to multiple cards
+            if args.use_reader_op and iters >= args.iterations / args.gpus:
+                break
+            if args.use_fake_data or args.use_reader_op:
                 loss, = exe.run([avg_loss.name])
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
@@ -316,6 +335,8 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 print("Pass %d, batch %d, loss %s" %
                       (pass_id, batch_id, np.array(loss)))
         train_elapsed = time.time() - start_time
+        if args.use_reader_op:
+            num_samples = num_samples * args.gpus
         examples_per_sec = num_samples / train_elapsed
         print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
               (num_samples, train_elapsed, examples_per_sec))
@@ -342,7 +363,7 @@ def main():
     # the unique trainer id, starting from 0, needed by trainer
     # only
     nccl_id_var, num_trainers, trainer_id = (
-        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "-1")))
+        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "0")))
 
     if args.use_cprof:
         pr = cProfile.Profile()

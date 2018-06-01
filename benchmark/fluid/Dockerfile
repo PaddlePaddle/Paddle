@@ -19,4 +19,4 @@ ADD *.whl /
 RUN pip install /*.whl && rm -f /*.whl && chmod +x /usr/bin/paddle_k8s
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
-ADD fluid_benchmark.py dataset.py models/ /workspace/
+ADD fluid_benchmark.py recordio_converter.py models/ /workspace/

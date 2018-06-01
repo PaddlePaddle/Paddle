@@ -19,6 +19,7 @@ from __future__ import print_function
 import functools
 import numpy as np
 import time
+import os
 
 import cProfile, pstats, StringIO
 
@@ -129,9 +130,24 @@ def get_model(args):
         else:
             dshape = [224, 224, 3]
         model = resnet_imagenet
+    if args.use_reader_op:
+        filelist = [
+            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
+        ]
+        data_file = fluid.layers.open_files(
+            filenames=filelist,
+            shapes=[[-1] + dshape, (-1, 1)],
+            lod_levels=[0, 0],
+            dtypes=["float32", "int64"],
+            thread_num=args.gpus)
+        data_file = fluid.layers.double_buffer(
+            fluid.layers.batch(
+                data_file, batch_size=args.batch_size))
+        input, label = fluid.layers.read_file(data_file)
+    else:
+        input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     predict = model(input, class_dim)
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(x=cost)
