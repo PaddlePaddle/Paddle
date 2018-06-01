@@ -12,58 +12,98 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+/*
+ * This file contains the definition of a simple Inference API for Paddle.
+ *
+ * ATTENTION: It requires some C++ features, for lower version C++ or C, we
+ * might release another API.
+ */
+
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace paddle {
 
-class Predictor {
-public:
-  struct Attr;
-  Predictor() = default;
+enum PaddleDType {
+  FLOAT32,
+  INT64,
+};
 
-  // Build the network before inference.
-  bool Init(const Attr& attr);
+struct PaddleBuf {
+  void* data;     // pointer to the data memory.
+  size_t length;  // number of memory bytes.
+};
+
+struct PaddleTensor {
+  std::string name;  // variable name.
+  std::vector<int> shape;
+  // TODO(Superjomn) for LoD support, add a vector<vector<int>> field if needed.
+  PaddleBuf data;  // blob of data.
+  PaddleDType dtype;
+};
+
+enum class PaddleEngineKind {
+  kNative = 0,  // Use the native Fluid facility.
+  // TODO(Superjomn) support following engines latter.
+  // kAnakin,             // Use Anakin for inference.
+  // kTensorRT,           // Use TensorRT for inference.
+  // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
+  // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
+};
+
+/*
+ * A simple Inference API for Paddle. Currently this API can be used by
+ * non-sequence scenerios.
+ */
+class PaddlePredictor {
+ public:
+  struct Config;
+  PaddlePredictor() = default;
+  PaddlePredictor(const PaddlePredictor&) = delete;
 
   // Predict an record.
-  // Arguments:
-  //   inputs: the name of the input variables.
-  //   outputs: the name of the output varaibles.
-  //   input_shapes: the shape of the input variables.
-  //   output_shapes: the shape of the output variables.
-  //   input_data: the data of the input variables.
-  //   output_data: the data of the output variables.
-  bool Run(const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs,
-           const std::vector<std::vector<int>>& input_shapes,
-           const std::vector<std::vector<int>>& output_shapes,
-           const std::vector<std::vector<float>>& input_data,
-           std::vector<std::vector<float>>* output_data);
+  // The caller should be responsible for allocating and releasing the memory of
+  // `inputs`. `inputs` should be alive until Run returns. caller should be
+  // responsible for releasing the memory of `output_data`.
+  virtual bool Run(const std::vector<PaddleTensor>& inputs,
+                   std::vector<PaddleTensor>* output_data) = 0;
 
-  // Clone a predictor that share the model weights.
-  Predictor* Clone();
+  // Clone a predictor that share the model weights, the Cloned predictor should
+  // be thread-safe.
+  virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
   // Destroy the Predictor.
-  ~Predictor();
+  virtual ~PaddlePredictor() {}
 
-  struct Attr {
-    enum class EngineKind;
-
+  // The common configs for all the predictors.
+  struct Config {
     std::string model_dir;      // path to the model directory.
     bool enable_engine{false};  // Enable to execute (part of) the model on
-                                // third-party engines.
-    EngineKind engine_kind{Attr::EngineKind::kNone};
-
-    enum class EngineKind {
-      kNone = -1,          // Use the native Fluid facility.
-      kAnakin,             // Use Anakin for inference.
-      kTensorRT,           // Use TensorRT for inference.
-      kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
-      kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
-    };
   };
 };
+
+struct NativeConfig : public PaddlePredictor::Config {
+  // GPU related fields.
+  bool use_gpu{false};
+  int device{0};
+  float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
+
+  std::string prog_file;
+  std::string param_file;
+};
+
+// A factory to help create different predictors.
+//
+// FOR EXTENSION DEVELOPER:
+// Different predictors are designated by config type and engine kind. Similar
+// configs can be merged, but there shouldn't be a huge config containing
+// different fields for more than one kind of predictors.
+//
+// Similarly, each engine kind should map to a unique predictor implementation.
+template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 }  // namespace paddle

@@ -23,10 +23,10 @@ namespace paddle {
  * @brief Basic parent layer of different kinds of pooling
  */
 class MaxPoolWithMaskLayer : public PoolLayer {
-protected:
+ protected:
   Argument mask_;
 
-public:
+ public:
   explicit MaxPoolWithMaskLayer(const LayerConfig& config)
       : PoolLayer(config) {}
 

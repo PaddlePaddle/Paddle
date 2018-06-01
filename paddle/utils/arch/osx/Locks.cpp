@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 
 class SemaphorePrivate {
-public:
+ public:
   ~SemaphorePrivate() { dispatch_release(sem); }
 
   dispatch_semaphore_t sem;
@@ -45,7 +45,7 @@ void Semaphore::wait() {
 void Semaphore::post() { dispatch_semaphore_signal(m->sem); }
 
 class SpinLockPrivate {
-public:
+ public:
   std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
   char padding_[64 - sizeof(lock_)];  // Padding to cache line size
 };
@@ -61,7 +61,7 @@ void SpinLock::lock() {
 void SpinLock::unlock() { m->lock_.clear(std::memory_order_release); }
 
 class ThreadBarrierPrivate {
-public:
+ public:
   pthread_mutex_t mutex_;
   pthread_cond_t cond_;
   int count_;

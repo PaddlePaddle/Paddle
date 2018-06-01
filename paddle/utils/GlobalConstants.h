@@ -78,7 +78,7 @@ enum ParameterType {
 using namespace enumeration_wrapper;  // NOLINT
 
 class TrainAlgorithm {
-public:
+ public:
   static const std::string SGD;
   static const std::string AsyncSGD;
   static const std::string OWLQN;

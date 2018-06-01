@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument(
         '--fluid', default=1, type=int, help='whether is fluid job')
     parser.add_argument(
-        '--rdma', action='store_ture', help='whether mount rdma libs')
+        '--rdma', action='store_true', help='whether mount rdma libs')
     parser.add_argument(
         '--disttype',
         default="pserver",
@@ -112,6 +112,7 @@ def gen_job():
     envs.append({"name": "PSERVERS", "value": str(args.pservers)})
     envs.append({"name": "ENTRY", "value": args.entry})
     envs.append({"name": "PADDLE_INIT_PORT", "value": str(args.port)})
+    envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
     # NOTE: these directories below are cluster specific, please modify
     # this settings before you run on your own cluster.
     envs.append({

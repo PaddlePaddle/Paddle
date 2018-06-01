@@ -26,7 +26,7 @@ namespace paddle {
  * The config file api is identity_projection.
  */
 class IdentityProjection : public Projection {
-public:
+ public:
   IdentityProjection(const ProjectionConfig& config,
                      const ParameterPtr& parameter,
                      bool useGpu);
@@ -68,7 +68,7 @@ void IdentityProjection::backward(const UpdateCallback& callback) {
  * The config file api is identity_projection.
  */
 class IdentityOffsetProjection : public Projection {
-public:
+ public:
   IdentityOffsetProjection(const ProjectionConfig& config,
                            const ParameterPtr& parameter,
                            bool useGpu);

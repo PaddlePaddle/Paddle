@@ -32,7 +32,7 @@ namespace paddle {
  */
 
 class CosSimVecMatLayer : public Layer {
-protected:
+ protected:
   MatrixPtr tmpMtx0;
   MatrixPtr tmpMtx1;
   MatrixPtr tmpRow0;
@@ -40,7 +40,7 @@ protected:
   MatrixPtr tmpRow2;
   MatrixPtr tmpRow3;
 
-public:
+ public:
   explicit CosSimVecMatLayer(const LayerConfig& config) : Layer(config) {}
 
   ~CosSimVecMatLayer() {}

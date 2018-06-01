@@ -38,7 +38,7 @@ DECLARE_int32(num_passes);
 DECLARE_int32(saving_period);
 
 class TrainerForTest : public paddle::Trainer {
-public:
+ public:
   inline const std::shared_ptr<ParameterUpdater>& getParameterUpdaterForTest() {
     return this->trainerInternal_.getParameterUpdater();
   }

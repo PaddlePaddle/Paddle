@@ -64,12 +64,24 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
-  void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateRPCOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
    */
-  bool IsDistTrainOp(const OpDesc &op, OpDesc *send_op) const;
+  bool IsDistTrainOp(const OpDesc &op,
+                     const std::vector<std::string> &send_vars,
+                     const std::vector<std::string> &recv_vars) const;
+
+  std::vector<std::string> FindDistTrainSendVars(
+      const ProgramDesc &program) const;
+
+  std::vector<std::string> FindDistTrainRecvVars(
+      const ProgramDesc &program) const;
+
+  void ConnectOp(SSAGraph *result, OpHandleBase *op,
+                 const std::string &prev_op_name) const;
 
   void CreateComputationalOps(SSAGraph *result, const OpDesc &op,
                               size_t num_places) const;
@@ -93,14 +105,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
-  /**
-   * Get send op in the global block of program.
-   * nullptr if not found.
-   */
-  OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
-
   bool IsSparseGradient(
-      const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+      const std::unordered_map<std::string, VarDesc *> &all_vars,
       const std::string &og) const;
 
  private:
