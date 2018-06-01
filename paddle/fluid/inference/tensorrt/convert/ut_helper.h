@@ -19,6 +19,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -58,7 +61,7 @@ class TRTConvertValidation {
  public:
   TRTConvertValidation() = delete;
 
-  TRTConvertValidation(int batch_size, int workspace_size = 1 << 10) {
+  explicit TRTConvertValidation(int batch_size, int workspace_size = 1024) {
     // create engine.
     engine_.reset(new TensorRTEngine(10, 1 << 10, &stream_));
     engine_->InitNetwork();
