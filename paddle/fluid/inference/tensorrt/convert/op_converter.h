@@ -40,7 +40,7 @@ class OpConverter {
   void ConvertOp(const framework::proto::OpDesc& op,
                  const std::unordered_set<std::string>& parameters,
                  const framework::Scope& scope, TensorRTEngine* engine) {
-    framework::OpDesc op_desc(op, nullptr, nullptr);
+    framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
 
