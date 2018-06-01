@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
-
 #include <memory>  // for unique_ptr
 #include <set>
+#include "ThreadPool.h"  // NOLINT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
@@ -30,6 +30,11 @@ DEFINE_bool(
     eager_delete_scope, true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
+
+static ThreadPool& gPool() {
+  static ThreadPool pool(1);
+  return pool;
+}
 
 namespace paddle {
 namespace framework {
@@ -105,7 +110,7 @@ void Scope::DeleteScope(Scope* scope) const {
   if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
     delete scope;
   } else {
-    Async([scope] { delete scope; });
+    gPool().enqueue([=] { delete scope; });
   }
 }
 
