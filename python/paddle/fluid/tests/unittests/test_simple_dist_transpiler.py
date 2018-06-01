@@ -72,7 +72,7 @@ class TestSimpleDistTranspiler(TranspilerTest):
             program=main,
             pservers=self.pserver_eps,
             trainers=self.trainers,
-            align_var_to_block=False)
+            slice_var_up=False)
         return t
 
 
