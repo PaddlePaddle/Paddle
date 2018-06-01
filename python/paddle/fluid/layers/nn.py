@@ -82,6 +82,7 @@ __all__ = [
     'roi_pool',
     'dice_loss',
     'upsampling_bilinear2d',
+    'gather',
     'random_crop',
 ]
 
@@ -3889,7 +3890,6 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
 def dice_loss(input, label, epsilon=0.00001):
     """
-    **Dice loss Layer**
     Dice loss for comparing the similarity of two batch of data,
     usually is used for binary image segmentation i.e. labels are binary.
     The dice loss can be defined as below equation:
@@ -3996,6 +3996,55 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
+    return out
+
+
+def gather(input, index):
+    """
+    Output is obtained by gathering entries of the outer-most dimension 
+    of X indexed by `index` and concatenate them together.
+
+    .. math::
+
+	Out = X[Index]
+
+
+    .. code-block:: text
+
+
+                Given:
+
+    		X = [[1, 2],
+         	     [3, 4],
+                     [5, 6]]
+
+                Index = [1, 2]
+
+                Then:
+
+                Out = [[3, 4],
+                       [5, 6]]
+
+    Args:
+        input (Variable): The source input with rank>=1. 
+        index (Variable): The index input with rank=1.
+
+    Returns:
+        output (Variable): The output is a tensor with the same rank as input.
+
+    Examples:
+        .. code-block:: python
+
+            output = fluid.layers.gather(x, index)
+    """
+    helper = LayerHelper('gather', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="gather",
+        inputs={"X": input,
+                "Index": index},
+        outputs={"Out": out})
     return out
 
 

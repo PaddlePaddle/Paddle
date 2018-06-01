@@ -57,8 +57,7 @@ std::string num2str(T a) {
 bool NativePaddlePredictor::Init() {
   VLOG(3) << "Predictor::init()";
 
-  // TODO(panyx0718): Should CPU vs GPU device be decided by id?
-  if (config_.device >= 0) {
+  if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
@@ -85,11 +84,13 @@ bool NativePaddlePredictor::Init() {
   }
   ctx_ = executor_->Prepare(*inference_program_, 0);
 
-  // Create variables
-  // TODO(panyx0718): Why need to test share_variables here?
-  if (config_.share_variables) {
-    executor_->CreateVariables(*inference_program_, scope_.get(), 0);
-  }
+  // Create temporary variables first, so that the first batch do not need to
+  // create variables in the runtime. This is the logics of the old inference
+  // API.
+  // TODO(Superjomn) this should be modified when `Clone` is valid for
+  // multi-thread application.
+  executor_->CreateVariables(*inference_program_, scope_.get(), 0);
+
   // Get the feed_target_names and fetch_target_names
   feed_target_names_ = inference_program_->GetFeedTargetNames();
   fetch_target_names_ = inference_program_->GetFetchTargetNames();
@@ -124,7 +125,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 scope_.get(),
                                 &feed_targets,
                                 &fetch_targets,
-                                !config_.share_variables);
+                                false /* don't create variable eatch time */);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
@@ -247,6 +248,9 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
+    PADDLE_ENFORCE(
+        config.fraction_of_gpu_memory > 0.f,
+        "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
