@@ -44,6 +44,15 @@ struct PaddleTensor {
   PaddleDType dtype;
 };
 
+enum class PaddleEngineKind {
+  kNative = -1,  // Use the native Fluid facility.
+  // TODO(Superjomn) support latter.
+  // kAnakin,             // Use Anakin for inference.
+  // kTensorRT,           // Use TensorRT for inference.
+  // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
+  // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
+};
+
 /*
  * A simple Inference API for Paddle. Currently this API can be used by
  * non-sequence scenerios.
@@ -69,15 +78,6 @@ class PaddlePredictor {
   // Destroy the Predictor.
   virtual ~PaddlePredictor() {}
 
-  enum class EngineKind {
-    kNative = -1,  // Use the native Fluid facility.
-    // TODO(Superjomn) support latter.
-    // kAnakin,             // Use Anakin for inference.
-    // kTensorRT,           // Use TensorRT for inference.
-    // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
-    // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
-  };
-
   // The common configs for all the predictors.
   struct Config {
     std::string model_dir;      // path to the model directory.
@@ -95,9 +95,7 @@ struct NativeConfig : public PaddlePredictor::Config {
 };
 
 // A factory to help create difference predictor.
-template <
-    typename ConfigT,
-    PaddlePredictor::EngineKind engine = PaddlePredictor::EngineKind::kNative>
+template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 }  // namespace paddle

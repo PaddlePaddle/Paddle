@@ -56,3 +56,5 @@ cc_test(test_paddle_inference_api
 
 inference_api_test(test_paddle_inference_api_impl
                    test_paddle_inference_api_impl.cc)
+
+add_subdirectory(demo)

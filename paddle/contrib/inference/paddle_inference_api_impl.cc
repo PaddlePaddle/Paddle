@@ -242,7 +242,7 @@ bool NativePaddlePredictor::GetFetch(
 
 template <>
 std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig, PaddlePredictor::EngineKind::kNative>(
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
