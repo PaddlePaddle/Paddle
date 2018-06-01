@@ -70,8 +70,8 @@ bool NativePaddlePredictor::Init() {
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
-    inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
-                                                 config_.model_dir);
+    inference_program_ = paddle::inference::Load(
+        executor_.get(), scope_.get(), config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
@@ -114,8 +114,11 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
-  executor_->RunPreparedContext(ctx_.get(), scope_.get(), &feed_targets,
-                                &fetch_targets, true /*create_variable*/);
+  executor_->RunPreparedContext(ctx_.get(),
+                                scope_.get(),
+                                &feed_targets,
+                                &fetch_targets,
+                                true /*create_variable*/);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
@@ -157,7 +160,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     }
 
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data,
+    std::memcpy(static_cast<void *>(input_ptr),
+                inputs[i].data.data,
                 inputs[i].data.length);
     feeds->push_back(input);
   }
@@ -207,7 +211,8 @@ bool NativePaddlePredictor::GetFetch(
         size_t start = lod[0][j - 1] * common_dim;
         size_t end = lod[0][j] * common_dim;
         if (end > start) {
-          std::copy(output_ptr + start, output_ptr + end,
+          std::copy(output_ptr + start,
+                    output_ptr + end,
                     data.begin() + (j - 1) * max_dim * common_dim);
         }
       }
@@ -221,8 +226,8 @@ bool NativePaddlePredictor::GetFetch(
     outputs->at(i).shape = shape;
     outputs->at(i).data.length = sizeof(float) * data.size();
     outputs->at(i).data.data = malloc(outputs->at(i).data.length);
-    std::memcpy(outputs->at(i).data.data, data.data(),
-                outputs->at(i).data.length);
+    std::memcpy(
+        outputs->at(i).data.data, data.data(), outputs->at(i).data.length);
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }
@@ -230,8 +235,9 @@ bool NativePaddlePredictor::GetFetch(
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
