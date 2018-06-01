@@ -84,11 +84,6 @@ bool NativePaddlePredictor::Init() {
   }
   ctx_ = executor_->Prepare(*inference_program_, 0);
 
-  // Create variables
-  // TODO(panyx0718): Why need to test share_variables here?
-  if (config_.share_variables) {
-    executor_->CreateVariables(*inference_program_, scope_.get(), 0);
-  }
   // Get the feed_target_names and fetch_target_names
   feed_target_names_ = inference_program_->GetFeedTargetNames();
   fetch_target_names_ = inference_program_->GetFetchTargetNames();
@@ -120,7 +115,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Run the inference program
   // if share variables, we need not create variables
   executor_->RunPreparedContext(ctx_.get(), scope_.get(), &feed_targets,
-                                &fetch_targets, !config_.share_variables);
+                                &fetch_targets, true /*create_variable*/);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
