@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ namespace paddle {
  */
 
 class LstmLayer : public Layer, public LstmCompute {
-public:
+ public:
   explicit LstmLayer(const LayerConfig &config) : Layer(config) {}
 
   bool init(const LayerMap &layerMap,
@@ -87,7 +87,7 @@ public:
 
   LayerStatePtr getState() override;
 
-protected:
+ protected:
   /**
    * @brief Compute lstm forward one sequence by one sequence.
    * @param batchSize The batchSize is not equal to the batch_size in
@@ -165,7 +165,7 @@ protected:
    */
   void getPrevBatchState(size_t numSequences);
 
-protected:
+ protected:
   /// Learned parameters, shape: (size, 4*size).
   /// The weight ([size, 4*size]) contains \f$W_{hi}, W_{hf}, W_{hc}, W_{ho}\f$.
   std::unique_ptr<Weight> weight_;

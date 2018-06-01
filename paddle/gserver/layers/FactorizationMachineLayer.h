@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ namespace paddle {
  */
 
 class FactorizationMachineLayer : public Layer {
-protected:
+ protected:
   // The latent vectors, shape: (size, factorSize_)
   // Each row of the latentVectors_ matrix is the latent vector
   // corresponding to one input feature dimension
@@ -50,7 +50,7 @@ protected:
   // The hyperparameter that defines the dimensionality of the factorization
   size_t factorSize_;
 
-private:
+ private:
   // Store the square values of the letent vectors matrix
   MatrixPtr latentVectorsSquare_;
   // Store the square values of input matrix
@@ -65,7 +65,7 @@ private:
   // Negative identity matrix
   MatrixPtr negOnes_;
 
-public:
+ public:
   explicit FactorizationMachineLayer(const LayerConfig& config)
       : Layer(config) {}
   ~FactorizationMachineLayer() {}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace paddle {
  * handled by the base class.
  */
 class CostLayer : public Layer {
-public:
+ public:
   explicit CostLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -51,7 +51,7 @@ public:
                            Argument& label,
                            Matrix& outputGrad) = 0;
 
-protected:
+ protected:
   LayerPtr weightLayer_;
   real coeff_;
 };
@@ -65,7 +65,7 @@ protected:
  * \f]
  */
 class MultiClassCrossEntropy : public CostLayer {
-public:
+ public:
   explicit MultiClassCrossEntropy(const LayerConfig& config)
       : CostLayer(config) {}
 
@@ -95,7 +95,7 @@ public:
  *     In Proceedings of the ACL 2014 Conference.
  */
 class MultiClassCrossEntropyWithSelfNorm : public CostLayer {
-public:
+ public:
   explicit MultiClassCrossEntropyWithSelfNorm(const LayerConfig& config)
       : CostLayer(config) {}
 
@@ -108,7 +108,7 @@ public:
                    Argument& label,
                    Matrix& outputGrad) override;
 
-protected:
+ protected:
   MatrixPtr sftMaxSum_;
   MatrixPtr sumInv_;
 };
@@ -120,7 +120,7 @@ protected:
  * \f]
  */
 class SoftBinaryClassCrossEntropy : public CostLayer {
-public:
+ public:
   explicit SoftBinaryClassCrossEntropy(const LayerConfig& config)
       : CostLayer(config) {}
 
@@ -133,7 +133,7 @@ public:
                    Argument& label,
                    Matrix& outputGrad) override;
 
-protected:
+ protected:
   MatrixPtr targetPerDim_;
 };
 
@@ -145,7 +145,7 @@ protected:
  * \f]
  */
 class SumOfSquaresCostLayer : public CostLayer {
-public:
+ public:
   explicit SumOfSquaresCostLayer(const LayerConfig& config)
       : CostLayer(config) {}
 
@@ -171,7 +171,7 @@ public:
  * x = output - label
  */
 class SmoothL1CostLayer : public CostLayer {
-public:
+ public:
   explicit SmoothL1CostLayer(const LayerConfig& config) : CostLayer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -197,7 +197,7 @@ public:
  *      Rank useing Gradient Descent.
  */
 class RankingCost : public Layer {
-public:
+ public:
   explicit RankingCost(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -225,7 +225,7 @@ public:
     (void)outputGrad;
   }
 
-private:
+ private:
   double posPairCount_;
   double negPairCount_;
   MatrixPtr margin_;
@@ -250,7 +250,7 @@ private:
  *     with Nonsmooth Cost Functions.
  */
 class LambdaCost : public Layer {
-public:
+ public:
   explicit LambdaCost(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -270,7 +270,7 @@ public:
                 real* gradData,
                 int size);
 
-private:
+ private:
   MatrixPtr marginGrad_;
   int truncationSize_;
   int maxSortSize_;
@@ -287,10 +287,10 @@ private:
  * \f]
  */
 class MultiBinaryLabelCrossEntropy : public CostLayer {
-protected:
+ protected:
   MatrixPtr targetPerDim_;
 
-public:
+ public:
   explicit MultiBinaryLabelCrossEntropy(const LayerConfig& config)
       : CostLayer(config) {}
 
@@ -308,7 +308,7 @@ public:
  * A base layer for HuberRegressionLoss and HuberTwoClassification.
  */
 class HuberCost : public CostLayer {
-public:
+ public:
   std::vector<Argument> tmpCpuInput_;
 
   explicit HuberCost(const LayerConfig& config) : CostLayer(config) {}
@@ -331,7 +331,7 @@ public:
  * Loss = delta * abs(y - f) - 0.5 * delta^2, otherwise
  */
 class HuberRegressionLoss : public HuberCost {
-public:
+ public:
   explicit HuberRegressionLoss(const LayerConfig& config) : HuberCost(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -343,7 +343,7 @@ public:
                    Argument& label,
                    Matrix& outputGrad) override;
 
-protected:
+ protected:
   real delta_;
 };
 
@@ -356,7 +356,7 @@ protected:
  * Loss = 0, otherwise
  */
 class HuberTwoClassification : public HuberCost {
-public:
+ public:
   explicit HuberTwoClassification(const LayerConfig& config)
       : HuberCost(config) {}
 

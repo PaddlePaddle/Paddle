@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ typedef mkldnn::pooling_backward pool_bwd;
  * The config file api is mkldnn_pool
  */
 class MKLDNNPoolLayer : public MKLDNNLayer {
-protected:
+ protected:
   // padding height and width
   int ph_, pw_;
   // stride height and width
@@ -44,7 +44,7 @@ protected:
   // test_pooling_forward.cpp, pool need workspace for backward
   std::shared_ptr<mkldnn::memory> workspace_;
 
-public:
+ public:
   explicit MKLDNNPoolLayer(const LayerConfig& config) : MKLDNNLayer(config) {}
 
   ~MKLDNNPoolLayer() {}
@@ -70,7 +70,7 @@ public:
                        << ", sw: " << sw_;
   }
 
-protected:
+ protected:
   void resetFwdBuffers(MKLDNNMatrixPtr& in, MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<pool_fwd::primitive_desc>& pd,
                   MKLDNNMatrixPtr in,

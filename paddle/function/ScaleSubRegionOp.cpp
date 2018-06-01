@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ void ScaleSubRegionGrad<DEVICE_TYPE_CPU>(const real* inGrad,
  */
 template <DeviceType Device>
 class ScaleSubRegionFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override { conf_ = config; }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -109,7 +109,7 @@ public:
                            conf_);
   }
 
-private:
+ private:
   FuncConfig conf_;
 };
 
@@ -124,7 +124,7 @@ private:
 
 template <DeviceType Device>
 class ScaleSubRegionGradFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override { conf_ = config; }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -141,7 +141,7 @@ public:
                                conf_);
   }
 
-private:
+ private:
   FuncConfig conf_;
 };
 

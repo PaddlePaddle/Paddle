@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,17 +31,17 @@ namespace paddle {
 
 template <typename Arg>
 class CopyToCpu {
-public:
+ public:
   explicit CopyToCpu(Arg& arg) : arg_(arg) {}
   Arg& copiedArg() const { return arg_; }
 
-private:
+ private:
   Arg& arg_;
 };
 
 template <>
 class CopyToCpu<Matrix> {
-public:
+ public:
   explicit CopyToCpu(Matrix& arg) : arg_(arg) {
     if (arg.useGpu()) {
       CHECK(!arg.isTransposed()) << "Not supported";
@@ -59,14 +59,14 @@ public:
   }
   Matrix& copiedArg() const { return copied_ ? *copied_ : arg_; }
 
-private:
+ private:
   Matrix& arg_;
   MatrixPtr copied_;
 };
 
 template <>
 class CopyToCpu<const Matrix> {
-public:
+ public:
   explicit CopyToCpu(const Matrix& arg) : arg_(arg) {
     if (arg.useGpu()) {
       CHECK(!arg.isTransposed()) << "Not supported";
@@ -79,14 +79,14 @@ public:
   }
   const Matrix& copiedArg() const { return copied_ ? *copied_ : arg_; }
 
-private:
+ private:
   const Matrix& arg_;
   MatrixPtr copied_;
 };
 
 template <>
 class CopyToCpu<IVector> {
-public:
+ public:
   explicit CopyToCpu(IVector& arg) : arg_(arg) {
     if (arg.useGpu()) {
       copied_ = IVector::create(arg.getSize(), /* useGpu= */ false);
@@ -100,14 +100,14 @@ public:
   }
   IVector& copiedArg() const { return copied_ ? *copied_ : arg_; }
 
-private:
+ private:
   IVector& arg_;
   IVectorPtr copied_;
 };
 
 template <>
 class CopyToCpu<const IVector> {
-public:
+ public:
   explicit CopyToCpu(const IVector& arg) : arg_(arg) {
     if (arg.useGpu()) {
       copied_ = IVector::create(arg.getSize(), /* useGpu= */ false);
@@ -116,7 +116,7 @@ public:
   }
   const IVector& copiedArg() const { return copied_ ? *copied_ : arg_; }
 
-private:
+ private:
   const IVector& arg_;
   IVectorPtr copied_;
 };
@@ -128,7 +128,7 @@ class GpuFuncWrapperImp;
 
 template <typename F, typename R, typename... Args>
 class GpuFuncWrapperBase {
-public:
+ public:
   typedef R ResultType;
   R operator()(F&& f, Args... args) {
     return f(CopyToCpu<typename std::remove_reference<Args>::type>(args)

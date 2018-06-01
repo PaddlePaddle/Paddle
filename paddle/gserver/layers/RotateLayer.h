@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ namespace paddle {
  */
 
 class RotateLayer : public Layer {
-public:
+ public:
   explicit RotateLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -40,7 +40,7 @@ public:
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
 
-private:
+ private:
   int batchSize_;
   int size_;
   int height_;

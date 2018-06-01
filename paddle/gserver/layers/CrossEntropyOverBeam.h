@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ struct BeamExpansion {
 typedef std::shared_ptr<BeamExpansion> BeamExpansionPtr;
 
 class CostForOneSequence {
-public:
+ public:
   CostForOneSequence()
       : beamSize_(0), validExpansionCount_(0), goldAsExtraPath_(false) {}
   void setData(const BeamExpansionPtr bPtr, size_t beamSize) {
@@ -64,7 +64,7 @@ public:
   real forward();
   void backward();
 
-private:
+ private:
   void calValidExpandStep();
   void constructTotalExpansion();
   size_t initLastExpansion();
@@ -93,14 +93,14 @@ private:
 };
 
 class CrossEntropyOverBeam : public Layer {
-public:
+ public:
   explicit CrossEntropyOverBeam(const LayerConfig& config) : Layer(config) {}
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-private:
+ private:
   void checkInputs();
   void copyInputsToCpu();
   void resizeOutput();

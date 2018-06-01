@@ -4,53 +4,38 @@ cache:
     - $HOME/.ccache
     - $HOME/.cache/pip
     - $TRAVIS_BUILD_DIR/build/third_party
+    - $TRAVIS_BUILD_DIR/build_android/third_party
 sudo: required
 dist: trusty
+services:
+  - docker
 os:
   - linux
 env:
-  - JOB=build_doc
+  - JOB=doc
   - JOB=check_style
+  - JOB=build_android
 addons:
-  apt:
-    packages:
-      - gcc-4.8
-      - g++-4.8
-      - git
-      - build-essential
-      - python
-      - python-pip
-      - python2.7-dev
-      - python-wheel
-      - libboost-dev
-      - curl
-      - swig
-      - graphviz
-      - clang-format-3.8
-      - automake
-      - libtool
-      - ccache
-  ssh_known_hosts: 52.76.173.135
+  ssh_known_hosts: 13.229.163.131
 before_install:
-  - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
-  # protobuf version.
-  - sudo pip install -r $TRAVIS_BUILD_DIR/python/requirements.txt
-  - sudo pip install wheel sphinx==1.5.6 recommonmark sphinx-rtd-theme==0.1.9 virtualenv pre-commit LinkChecker
+  # For pylint dockstring checker
+  - sudo pip install pylint pytest astroid isort
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
   - |
-    timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
-    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true ;else exit 1; fi;
+    # 43min timeout
+    paddle/scripts/paddle_docker_build.sh ${JOB}
+    if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
   - |
-    if [[ "$JOB" != "build_doc" ]]; then exit 0; fi;
+    if [[ "$JOB" != "doc" ]]; then exit 0; fi;
+    # For document only
     if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
     if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
     export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/master/scripts/deploy/deploy_docs.sh
     export DOCS_DIR=`pwd`
     cd ..
-    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH $DOCS_DIR $DOCS_DIR/build/doc   
+    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH $DOCS_DIR $DOCS_DIR/build/doc/
 notifications:
   email:
     on_success: change

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ namespace paddle {
 
 // Plain SGD optimization.
 class SgdOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit SgdOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {
     addParameterType(PARAMETER_MOMENTUM);
@@ -38,7 +38,7 @@ public:
     real torch_learningRate = optConfig_.learning_method() == "torch_momentum"
                                   ? 1.0 - paraConfig.momentum()
                                   : 1.0;
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
     sgdUpdate(learningRate_ * paraConfig.learning_rate() *
                   (firstTime_ ? 1.0 : torch_learningRate),
               paraConfig.momentum(),
@@ -77,7 +77,7 @@ class SparseMomentumParameterOptimizer : public ParameterOptimizer {
     \gamma_t: learning rate at the t'th step
   */
 
-public:
+ public:
   explicit SparseMomentumParameterOptimizer(
       const OptimizationConfig& optConfig);
   virtual void init(size_t numRows, const ParameterConfig* config);
@@ -89,7 +89,7 @@ public:
       const ParameterConfig& config) const;
   virtual void finishBatch();
 
-private:
+ private:
   real alpha_;
   real beta_;
   real tau_;
@@ -98,7 +98,7 @@ private:
   real momentum_;
   real decayRate_;
 
-protected:
+ protected:
   int64_t timer_;
   mutable std::vector<int64_t> t0Vec_;
   bool isParameterSparse_;
@@ -109,7 +109,7 @@ protected:
  * http://www.magicbroom.info/Papers/DuchiHaSi10.pdf
  */
 class AdagradParameterOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit AdagradParameterOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {
     addParameterType(PARAMETER_MOMENTUM);
@@ -129,7 +129,7 @@ public:
   virtual TraverseCallback needSpecialTraversal(
       const ParameterConfig& config) const;
 
-protected:
+ protected:
   int64_t numUpdates_;
   static const int64_t kMaxNumAccumulates = 16384;
 };
@@ -139,7 +139,7 @@ protected:
  * http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf
  */
 class AdaDeltaParameterOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit AdaDeltaParameterOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {
     addParameterType(PARAMETER_MOMENTUM);
@@ -158,14 +158,14 @@ public:
                       const ParameterConfig& config,
                       size_t sparseId) const;
 
-protected:
+ protected:
   real rou_;
   real epsilon_;
 };
 
 // RMSProp Parameter Optimization.
 class RMSPropParameterOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit RMSPropParameterOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {
     addParameterType(PARAMETER_MOMENTUM);
@@ -191,7 +191,7 @@ public:
                       const ParameterConfig& config,
                       size_t sparseId) const;
 
-protected:
+ protected:
   real rou_;
   real epsilon_;
 
@@ -208,7 +208,7 @@ protected:
 
 // Decayed AdaGrad Optimization.
 class DecayedAdagradParameterOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit DecayedAdagradParameterOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {
     addParameterType(PARAMETER_MOMENTUM);
@@ -233,7 +233,7 @@ public:
                       const ParameterConfig& config,
                       size_t sparseId) const;
 
-protected:
+ protected:
   real rou_;
   real epsilon_;
 
@@ -253,7 +253,7 @@ protected:
  * Reference Paper: http://arxiv.org/abs/1412.6980 Algorithm 1
  */
 class AdamParameterOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit AdamParameterOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig),
         beta1_(optConfig.adam_beta1()),
@@ -275,7 +275,7 @@ public:
                       const ParameterConfig& config,
                       size_t sparseId) const;
 
-protected:
+ protected:
   real beta1_;
   real beta2_;
   real epsilon_;
@@ -288,7 +288,7 @@ protected:
  * Reference Paper: http://arxiv.org/abs/1412.6980 Algorithm 2
  */
 class AdamaxParameterOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit AdamaxParameterOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig),
         beta1_(optConfig.adam_beta1()),
@@ -305,7 +305,7 @@ public:
                       const ParameterConfig& config,
                       size_t sparseId) const;
 
-protected:
+ protected:
   real beta1_;
   real beta2_;
   int64_t step_;
@@ -315,7 +315,7 @@ protected:
 // Used in pserver,
 // when PARAMETER_DELTA stores in PARAMETER_GRADIENT.
 class AddOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit AddOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {}
 
@@ -333,7 +333,7 @@ public:
 
 // A optimizer which does nothing.
 class DummyOptimizer : public ParameterOptimizer {
-public:
+ public:
   explicit DummyOptimizer(const OptimizationConfig& optConfig)
       : ParameterOptimizer(optConfig) {}
 
@@ -344,7 +344,7 @@ public:
 
 // Do gradient clipping before sgd update
 class OptimizerWithGradientClipping : public ParameterOptimizer {
-public:
+ public:
   OptimizerWithGradientClipping(const OptimizationConfig& optConfig,
                                 ParameterOptimizer* optimizer)
       : ParameterOptimizer(optConfig), optimizer_(optimizer) {
@@ -374,7 +374,7 @@ public:
 
   virtual void setNoDecay() { optimizer_->setNoDecay(); }
 
-protected:
+ protected:
   std::unique_ptr<ParameterOptimizer> optimizer_;
 };
 

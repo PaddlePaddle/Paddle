@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -199,7 +199,7 @@ __global__ void ConvolutionDepthwiseFilterBackward(const int num_i,
 
 template <class T>
 class DepthwiseConvFunctor<DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(const T* inputData,
                   const T* filterData,
                   int batchSize,
@@ -249,7 +249,7 @@ public:
 
 template <class T>
 class DepthwiseConvGradInputFunctor<DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(const T* outputGrad,
                   const T* filterData,
                   int batchSize,
@@ -300,7 +300,7 @@ public:
 
 template <class T>
 class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(const T* outputGrad,
                   const T* inputData,
                   int batchSize,

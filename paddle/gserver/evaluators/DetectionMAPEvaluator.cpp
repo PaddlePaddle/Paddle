@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ namespace paddle {
  * The config file api is detection_map_evaluator.
  */
 class DetectionMAPEvaluator : public Evaluator {
-public:
+ public:
   DetectionMAPEvaluator()
       : evaluateDifficult_(false), cpuOutput_(nullptr), cpuLabel_(nullptr) {}
 
@@ -132,7 +132,7 @@ public:
     LOG(FATAL) << "Distribute detection evaluation not implemented.";
   }
 
-protected:
+ protected:
   void calcTFPos(const size_t batchSize,
                  const vector<map<size_t, vector<NormalizedBBox>>>& allGTBBoxes,
                  const vector<map<size_t, vector<pair<real, NormalizedBBox>>>>&
@@ -287,7 +287,7 @@ protected:
 
   real getValueImpl() const { return calcMAP(); }
 
-private:
+ private:
   real overlapThreshold_;  // overlap threshold when determining whether matched
   bool evaluateDifficult_;  // whether evaluate difficult ground truth
   size_t backgroundId_;     // class index of background

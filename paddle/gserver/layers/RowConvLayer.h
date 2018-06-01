@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ namespace paddle {
  * \brief Row Convolution Layer.
  */
 class RowConvLayer : public Layer {
-public:
+ public:
   explicit RowConvLayer(const LayerConfig& config) : Layer(config) {}
 
   ~RowConvLayer() {}
@@ -32,7 +32,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   // Row convolution weight, context_lenght_ * fan_out.
   // fan_out is the size of output feature.
   std::unique_ptr<Weight> weight_;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,14 +28,14 @@ DEFINE_double(max_diff, 1e-13, "max diff allowed");
 #endif
 
 class SetMaxDiff {
-public:
+ public:
   explicit SetMaxDiff(double max_diff) {
     max_diff_ = FLAGS_max_diff;
     FLAGS_max_diff = max_diff;
   }
   ~SetMaxDiff() { FLAGS_max_diff = max_diff_; }
 
-private:
+ private:
   double max_diff_;
 };
 

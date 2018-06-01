@@ -33,10 +33,7 @@ add_library(paddle_capi STATIC ${CAPI_HEADERS} ${CAPI_PRIVATE_HEADER}
 
 target_include_directories(paddle_capi PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
-add_style_check_target(paddle_capi ${CAPI_SOURCES} ${CAPI_HEADER}
-  ${CAPI_PRIVATE_HEADER})
-
-add_dependencies(paddle_capi paddle_proto)
+add_dependencies(paddle_capi paddle_proto paddle_gserver)
 
 # TODO: paddle_capi_whole will be removed.
 set(PADDLE_CAPI_LAYERS_LIBS

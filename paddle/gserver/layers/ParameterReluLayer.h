@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ namespace paddle {
  */
 
 class ParameterReluLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
 
   /**
@@ -51,7 +51,7 @@ protected:
    */
   size_t partialSum_;
 
-public:
+ public:
   explicit ParameterReluLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ParameterReluLayer() {}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 
 class CoordIterator {
-public:
+ public:
   std::vector<int> dims_;
   std::vector<bool> directions_;
   std::vector<int> curPos_;
@@ -51,7 +51,7 @@ public:
     }
   }
 
-public:
+ public:
   CoordIterator(std::vector<int> dim, std::vector<bool> directions)
       : dims_(dim), directions_(directions), end_(false) {
     CHECK_EQ(dims_.size(), directions_.size());
@@ -178,7 +178,7 @@ public:
  * */
 
 class MDLstmLayer : public LstmLayer {
-public:
+ public:
   explicit MDLstmLayer(const LayerConfig& config) : LstmLayer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -188,13 +188,13 @@ public:
 
   void backward(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   void forwardOneSequence(int start, CoordIterator& coordIter);
   void backwardOneSequence(int start, CoordIterator& coordIter);
   void forwardGate2OutputSequence(int start, CoordIterator& coordIter);
   void backwardGate2OutputSequence(int start, CoordIterator& coordIter);
 
-protected:
+ protected:
   std::vector<Argument> frameInputGate_;
   std::vector<Argument> frameForgetGate_;
   std::vector<Argument> frameOutputGate_;

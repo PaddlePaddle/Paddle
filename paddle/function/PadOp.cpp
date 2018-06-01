@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -132,7 +132,7 @@ static inline PadConf castToPadConf(const FuncConfig& conf) {
 
 template <DeviceType Device>
 class PadFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override { pad_ = castToPadConf(config); }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -157,7 +157,7 @@ public:
                 pad_);
   }
 
-private:
+ private:
   PadConf pad_;
 };
 
@@ -173,7 +173,7 @@ private:
 
 template <DeviceType Device>
 class PadGradFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override { pad_ = castToPadConf(config); }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -201,7 +201,7 @@ public:
                     pad_);
   }
 
-private:
+ private:
   PadConf pad_;
 };
 

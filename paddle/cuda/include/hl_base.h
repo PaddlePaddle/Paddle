@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef HL_BASE_H_
-#define HL_BASE_H_
+#pragma once
 
 #include <cstddef>
 
@@ -207,8 +206,8 @@ typedef struct {
 
 #ifdef __NVCC__
 
-#include "cuda_runtime.h"
-#include "hl_cuda.h"
+#include <cuda_runtime.h>
+#include "paddle/cuda/include/hl_cuda.h"
 #include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
@@ -228,6 +227,24 @@ extern __thread cudaStream_t default_stream;
         << "CUDA error: " << hl_get_device_error_string((size_t)err); \
   }
 
-#endif /* __NVCC__ */
+// __shfl has been deprecated as of CUDA 9.0.
+#if CUDA_VERSION < 9000
+template <typename T>
+__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
+  return __shfl_down(val, delta);
+}
 
-#endif /* HL_BASE_H_ */
+template <typename T>
+__forceinline__ __device__ T
+__shfl_sync(unsigned, T val, int src_line, int width) {
+  return __shfl(val, src_line, width);
+}
+
+#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
+#else
+#define FULL_WARP_MASK 0xFFFFFFFF
+#define CREATE_SHFL_MASK(mask, predicate) \
+  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
+#endif
+
+#endif  // __NVCC__

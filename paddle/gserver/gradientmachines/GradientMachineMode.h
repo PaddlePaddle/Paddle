@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@ limitations under the License. */
 namespace paddle {
 
 class IGradientMachineMode {
-public:
+ public:
   virtual ~IGradientMachineMode() {}
 
-public:  // interfaces
-         /**
-          * @brief create current mode's gradient machine by model config.
-          * @param config model config
-          */
+ public:  // interfaces
+          /**
+           * @brief create current mode's gradient machine by model config.
+           * @param config model config
+           */
   virtual GradientMachine* create(const ModelConfig& config) = 0;
 
   /**
@@ -55,14 +55,14 @@ public:  // interfaces
    */
   virtual bool needTrainWholeDataInOneBatch() const = 0;
 
-public:  // static methods.
-         /**
-          * @brief register a custom gradient machine mode.
-          * @note For user to register a custom gradient machine mode, id should >=
-          * kCustom.
-          * @param mode mode id.
-          * @param ptr mode description object.
-          */
+ public:  // static methods.
+          /**
+           * @brief register a custom gradient machine mode.
+           * @note For user to register a custom gradient machine mode, id should >=
+           * kCustom.
+           * @param mode mode id.
+           * @param ptr mode description object.
+           */
   static void regGradientMachineMode(
       int32_t mode, std::unique_ptr<IGradientMachineMode>&& ptr) {
     modes_.insert(std::make_pair(mode, std::move(ptr)));
@@ -141,7 +141,7 @@ public:  // static methods.
     }
   }
 
-private:
+ private:
   static std::unordered_map<int32_t, std::unique_ptr<IGradientMachineMode>>
       modes_;
 };

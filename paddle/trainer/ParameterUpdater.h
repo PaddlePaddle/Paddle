@@ -36,7 +36,7 @@ namespace paddle {
  * @brief Parameter Updater for SGD, and local(not cluster) run.
  */
 class SgdLocalUpdater : public ParameterUpdater {
-public:
+ public:
   /**
    * @brief Ctor. Initialize optimizer locally by optConfig.
    * @param optConfig optimization config.
@@ -131,7 +131,7 @@ public:
     }
   }
 
-protected:
+ protected:
   /**
    * @brief update method. Update value from gradient.
    * @param para parameter that will be updated.
@@ -159,7 +159,7 @@ protected:
  * @deprecated
  */
 class SgdCpuUpdater : public SgdLocalUpdater, public Deprecated {
-public:
+ public:
   explicit SgdCpuUpdater(const OptimizationConfig& optConfig)
       : SgdLocalUpdater(optConfig),
         Deprecated(
@@ -178,7 +178,7 @@ public:
     optimizer_->finishBatch();
   }
 
-protected:
+ protected:
   /**
    * @brief do nothing.
    * @param para
@@ -192,7 +192,7 @@ protected:
  * It will do model average in cpu to reduce gpu memory comsuption.
  */
 class SgdUpdaterWithCpuAverager : public SgdLocalUpdater {
-public:
+ public:
   /**
    * @brief Ctor.
    *
@@ -233,12 +233,12 @@ public:
    */
   virtual void restore();
 
-protected:
+ protected:
   virtual void updateImpl(Parameter* para);
 
   void updateFunc(Parameter* para);
 
-protected:
+ protected:
   std::unique_ptr<ParameterOptimizer> averager_;
 
   /**

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ enum GradientMatchineCreateMode {
 namespace paddle {
 
 class MyNeuralNetwork : public NeuralNetwork {
-public:
+ public:
   MyNeuralNetwork(const std::string& name, NeuralNetwork* network)
       : NeuralNetwork(name, network) {}
 };
@@ -166,5 +166,15 @@ paddle_error paddle_gradient_machine_get_layer_output(
 
   auto layerOutput = m->machine->getLayerOutput(layerName);
   out->args.push_back(layerOutput);
+  return kPD_NO_ERROR;
+}
+
+paddle_error paddle_gradient_machine_release_layer_output(
+    paddle_gradient_machine machine) {
+  auto m = cast(machine);
+  if (m == nullptr || m->machine == nullptr) {
+    return kPD_NULLPTR;
+  }
+  m->machine->releaseOutput();
   return kPD_NO_ERROR;
 }

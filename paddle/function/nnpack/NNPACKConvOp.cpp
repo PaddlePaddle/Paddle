@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ nnp_convolution_algorithm get_nnp_convolution_algorithm(
 
 template <DeviceType Device>
 class NNPACKConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
     algorithm_ = get_nnp_convolution_algorithm(config.get<std::string>("algo"));
@@ -231,7 +231,7 @@ public:
     }
   }
 
-private:
+ private:
   nnp_convolution_algorithm algorithm_;
   nnp_convolution_transform_strategy transform_strategy_;
   void* workspaceBuffer_;

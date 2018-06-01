@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ namespace paddle {
  * messages from/to i/ostream.
  */
 class ProtoReader {
-public:
+ public:
   explicit ProtoReader(std::istream* s, bool dataCompression = false) {
     CHECK(s) << "istream pointer is nullptr";
     istreamInput_.reset(new google::protobuf::io::IstreamInputStream(s));
@@ -109,7 +109,7 @@ public:
     return true;
   }
 
-protected:
+ protected:
   std::unique_ptr<google::protobuf::io::ZeroCopyInputStream> istreamInput_;
   std::unique_ptr<google::protobuf::io::GzipInputStream> gzipInput_;
   std::unique_ptr<google::protobuf::io::CodedInputStream> codedInput_;
@@ -144,7 +144,7 @@ protected:
 };
 
 class ProtoWriter {
-public:
+ public:
   explicit ProtoWriter(std::ostream* s, bool dataCompression = false) {
     CHECK(s) << "ostream pointer is nullptr";
     ostreamOutput_.reset(new google::protobuf::io::OstreamOutputStream(s));
@@ -168,7 +168,7 @@ public:
     return ret;
   }
 
-protected:
+ protected:
   std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> ostreamOutput_;
   std::unique_ptr<google::protobuf::io::GzipOutputStream> gzipOutput_;
   std::unique_ptr<google::protobuf::io::CodedOutputStream> codedOutput_;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ struct Allocator<DEVICE_TYPE_GPU> {
 // Copy argument1 to argument2
 template <DeviceType DType1, DeviceType DType2>
 class CopyArgument {
-public:
+ public:
   void operator()(const BufferArg& arg1, BufferArg& arg2) {
     CHECK_EQ(arg1.valueType(), arg2.valueType());
     CHECK_LE(arg1.shape().getElements(), arg2.shape().getElements());
@@ -95,7 +95,7 @@ public:
  */
 template <DeviceType DType1, DeviceType DType2>
 class Compare2Function {
-public:
+ public:
   typedef typename test::Allocator<DType1>::type Allocator1;
   typedef typename test::Allocator<DType2>::type Allocator2;
   typedef typename Tensor<real, DType1>::Vector Vector1;
@@ -305,7 +305,7 @@ public:
 
   std::shared_ptr<FunctionBase> getFunction2() const { return function2_; }
 
-protected:
+ protected:
   // only init cpu argument, gpu argument copy from cpu argument.
   void initArg(BufferArg& arg) {
     Vector1 vector(arg.shape().getElements(), (real*)arg.data());
@@ -381,7 +381,7 @@ protected:
     }
   }
 
-protected:
+ protected:
   std::shared_ptr<FunctionBase> function1_;
   std::shared_ptr<FunctionBase> function2_;
   std::vector<std::shared_ptr<Allocator1>> func1Memory_;
@@ -400,7 +400,7 @@ protected:
 
 class CpuGpuFuncCompare
     : public Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> {
-public:
+ public:
   CpuGpuFuncCompare(const std::string& name, const FuncConfig& config)
       : Compare2Function(name + "-CPU", name + "-GPU", config) {}
 

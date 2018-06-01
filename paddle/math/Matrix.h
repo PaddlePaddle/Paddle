@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ typedef std::shared_ptr<CpuSparseMatrix> CpuSparseMatrixPtr;
  * instead.
  */
 class Matrix : public BaseMatrix {
-protected:
+ protected:
   Matrix(MemoryHandlePtr memHandle,
          size_t height,
          size_t width,
@@ -95,11 +95,11 @@ protected:
 
   static ThreadLocal<MatrixPtr> tmpMat_;
 
-public:
+ public:
   size_t elementCnt_;  // maximal number of elements which can be held in data_
   MemoryHandlePtr memoryHandle_;
 
-public:
+ public:
   virtual ~Matrix() {}
 
   static MatrixPtr create(MemoryHandlePtr memHandle,
@@ -412,7 +412,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-public:
+ public:
   /// Only set all variables to 0 or NULL but not free them.
   virtual void clear() {
     height_ = 0;
@@ -859,6 +859,26 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void upsampleForward(Matrix& input,
+                               Matrix& mask,
+                               size_t imgSizeH,
+                               size_t imgSizeW,
+                               size_t channels,
+                               size_t outputH,
+                               size_t outputW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void upsampleBackward(Matrix& outputGrad,
+                                Matrix& mask,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
   /**
    * Pooling forward operation, pick out the largest element
    * in the sizeX of value, if the maskMatP is not NULL, it will
@@ -1208,7 +1228,7 @@ inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
 }
 
 class GpuMatrix : public Matrix {
-public:
+ public:
   GpuMatrix();
 
   GpuMatrix(size_t height, size_t width, bool trans = false);
@@ -1420,6 +1440,22 @@ public:
 
   void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
+  void upsampleForward(Matrix& input,
+                       Matrix& mask,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       size_t channels,
+                       size_t outputH,
+                       size_t outputW);
+
+  void upsampleBackward(Matrix& outputGrad,
+                        Matrix& mask,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t channels,
+                        size_t outputH,
+                        size_t outputW);
+
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
                       size_t imgSizeW,
@@ -1624,11 +1660,11 @@ public:
 };
 
 class CpuMatrix : public Matrix {
-private:
+ private:
   MatrixPtr sftmaxSum_;
   MatrixPtr sftmaxDot_;
 
-public:
+ public:
   CpuMatrix(size_t height, size_t width, bool trans = false);
   CpuMatrix(real* data, size_t height, size_t width, bool trans = false)
       : Matrix(data, height, width, trans, false) {}
@@ -1693,6 +1729,22 @@ public:
   void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
+
+  void upsampleForward(Matrix& input,
+                       Matrix& mask,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       size_t channels,
+                       size_t outputH,
+                       size_t outputW);
+
+  void upsampleBackward(Matrix& outputGrad,
+                        Matrix& mask,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t channels,
+                        size_t outputH,
+                        size_t outputW);
 
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
@@ -1840,7 +1892,7 @@ public:
   real* getRow(size_t row) { return BaseMatrix::rowBuf(row); }
   virtual real* getRowBuf(size_t row) { return getRow(row); }
 
-public:
+ public:
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
   void addSharedBias(Matrix& b, real scale);
@@ -2076,7 +2128,7 @@ public:
 };
 
 class SharedCpuMatrix : public CpuMatrix {
-public:
+ public:
 #ifndef PADDLE_MOBILE_INFERENCE
   /* blockNum is number of partitions of the matrix  */
   SharedCpuMatrix(int blockNum, size_t height, size_t width, bool trans = false)
@@ -2108,12 +2160,12 @@ public:
 
   ~SharedCpuMatrix() {}
 
-public:
+ public:
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
   virtual void add(Matrix& b, real p1, real p2);
   virtual void add(real p1, real p2);
 
-private:
+ private:
   using Matrix::mul;
   void initShared(int blockNum);
   void initBlock(int blockNum);

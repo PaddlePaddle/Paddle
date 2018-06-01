@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class ExpandConvLayer : public ConvBaseLayer {
-public:
+ public:
   explicit ExpandConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
 
   ~ExpandConvLayer() {}
@@ -42,7 +42,7 @@ public:
 
   size_t getOutputSize();
 
-protected:
+ protected:
   std::vector<TensorShape> inputShape_;
   std::vector<TensorShape> filterShape_;
   std::vector<TensorShape> outputShape_;

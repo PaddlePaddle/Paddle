@@ -2,8 +2,8 @@
 
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://doc.paddlepaddle.org/develop/doc/)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://doc.paddlepaddle.org/develop/doc_cn/)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html)
 [![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/PaddlePaddle/Paddle?branch=develop)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
@@ -36,7 +36,8 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
     examples:
 
       - Optimized math operations through SSE/AVX intrinsics, BLAS libraries
-      (e.g. MKL, ATLAS, cuBLAS) or customized CPU/GPU kernels.
+      (e.g. MKL, OpenBLAS, cuBLAS) or customized CPU/GPU kernels.
+      - Optimized CNN networks through MKL-DNN library.
       - Highly optimized recurrent networks which can handle **variable-length**
       sequence without padding.
       - Optimized local and distributed training for models with high dimensional
@@ -61,32 +62,32 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 ## Installation
 
 It is recommended to check out the
-[Docker installation guide](http://doc.paddlepaddle.org/develop/doc/getstarted/build_and_install/docker_install_en.html)
+[Docker installation guide](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/docker_install_en.html)
 before looking into the
-[build from source guide](http://doc.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html).
+[build from source guide](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/build_from_source_en.html).
 
 ## Documentation
 
-We provide [English](http://doc.paddlepaddle.org/develop/doc/) and
-[Chinese](http://doc.paddlepaddle.org/doc_cn/) documentation.
+We provide [English](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html) and
+[Chinese](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html) documentation.
 
-- [Deep Learning 101](http://book.paddlepaddle.org/index.html)
+- [Deep Learning 101](http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.html)
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](http://doc.paddlepaddle.org/develop/doc/howto/usage/cluster/cluster_train_en.html)
+- [Distributed Training](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/cluster/index_en.html)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Distributed Training on Kubernetes](http://doc.paddlepaddle.org/develop/doc/howto/usage/k8s/k8s_en.html)
+- [Distributed Training on Kubernetes](http://www.paddlepaddle.org/docs/develop/documentation/en/howto/cluster/multi_cluster/k8s_en.html)
 
    You can also run distributed training jobs on Kubernetes clusters.
 
-- [Python API](http://doc.paddlepaddle.org/develop/doc/api/index_en.html)
+- [Python API](http://www.paddlepaddle.org/docs/develop/api/en/overview.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://doc.paddlepaddle.org/develop/doc/howto/dev/contribute_to_paddle_en.html)
+- [How to Contribute](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/dev/contribute_to_paddle_en.html)
 
    We appreciate your contributions!
 

@@ -1,0 +1,6 @@
+mnist.recordio
+mnist_0.recordio
+mnist_1.recordio
+mnist_2.recordio
+flowers.recordio
+wmt16.recordio

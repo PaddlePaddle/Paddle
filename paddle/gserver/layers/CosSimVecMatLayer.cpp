@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ namespace paddle {
  */
 
 class CosSimVecMatLayer : public Layer {
-protected:
+ protected:
   MatrixPtr tmpMtx0;
   MatrixPtr tmpMtx1;
   MatrixPtr tmpRow0;
@@ -40,7 +40,7 @@ protected:
   MatrixPtr tmpRow2;
   MatrixPtr tmpRow3;
 
-public:
+ public:
   explicit CosSimVecMatLayer(const LayerConfig& config) : Layer(config) {}
 
   ~CosSimVecMatLayer() {}

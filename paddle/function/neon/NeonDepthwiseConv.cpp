@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace paddle {
 
 template <DeviceType Device>
 class NeonDepthwiseConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }
@@ -66,18 +66,18 @@ public:
     float* inputPadding = inputData;
     int padInputHeight = inputHeight + 2 * paddingH();
     int padInputWidth = inputWidth + 2 * paddingW();
-    if (paddingH() > 0 || paddingW() > 0) {
-      int newSize = batchSize * inputChannels * padInputHeight * padInputWidth;
-      resizeBuffer<Device>(newSize);
-      inputPadding = reinterpret_cast<float*>(memory_->getBuf());
-      neon::Padding<float>::run(inputData,
-                                inputPadding,
-                                batchSize * inputChannels,
-                                inputHeight,
-                                inputWidth,
-                                padInputHeight,
-                                padInputWidth);
-    }
+    int newSize =
+        batchSize * (inputChannels + 1) * padInputHeight * padInputWidth;
+
+    resizeBuffer<Device>(newSize);
+    inputPadding = reinterpret_cast<float*>(memory_->getBuf());
+    neon::Padding<float>::run(inputData,
+                              inputPadding,
+                              batchSize * inputChannels,
+                              inputHeight,
+                              inputWidth,
+                              padInputHeight,
+                              padInputWidth);
 
     std::function<void(
         const float*, const float*, int, int, int, int, int, int, float*)>

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ namespace paddle {
  * to prevent from being polluted.
  */
 class ParameterServer2 : public ProtoServer {
-protected:
+ protected:
   /// parameter_ mutex.
   RWLock parameterMutex_;
 
@@ -169,7 +169,7 @@ protected:
   template <typename T, size_t AlignBytes>
   class ReadWriteBuffer
       : public std::vector<T, AlignedAllocator<T, AlignBytes>> {
-  public:
+   public:
     static_assert(sizeof(T) % AlignBytes == 0 || AlignBytes % sizeof(T) == 0,
                   "Type T must be able to aligned.");
 
@@ -229,7 +229,7 @@ protected:
       return r;
     }
 
-  private:
+   private:
     size_t curOffset_;
   };
 
@@ -298,17 +298,17 @@ protected:
   /// barrier performance tuning sync-sgd required
   std::atomic<int64_t> batchId_;
 
-public:
+ public:
   struct Buffer {
     real* base;
     size_t size;
   };
 
-protected:
+ protected:
   /// async gradient commit control
   bool asyncGrdientCommitCheckAndStat(const SendParameterRequest& request);
 
-public:
+ public:
   /// disable default parameter for overloading
   /// @rdmaCpu:the id of cpu core hosting RDMA server(0-N)
   /// -1 means using TCP transport instead of RDMA
@@ -437,7 +437,7 @@ public:
   void saveValueVector(const SaveValueRequest& request,
                        ProtoResponseCallback callback);
 
-public:
+ public:
   /**
    * @brief initialize parameter server
    */
@@ -512,7 +512,7 @@ public:
                           SendParameterResponse* response,
                           std::vector<Buffer>* outputBuffers);
 
-protected:
+ protected:
   void mergeSegments(BlockSegments* segments);
 
   /// set the unused segments to zero
@@ -641,7 +641,7 @@ protected:
                      const VectorPtr vecs[],
                      const ParameterOptimizer::TraverseCallback& callback);
 
-public:
+ public:
   typedef void (ParameterServer2::*OperatorFunction)(const Operation& operation,
                                                      OperationResult* result);
 

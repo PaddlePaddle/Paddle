@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,11 +39,11 @@ namespace paddle {
  */
 
 class MaxLayer : public SequencePoolLayer {
-protected:
+ protected:
   // maxIndex_[i][j] = k : the value at (i, j) is from input[k].
   IVectorPtr maxIndex_;
 
-public:
+ public:
   explicit MaxLayer(const LayerConfig& config) : SequencePoolLayer(config) {}
 
   bool init(const LayerMap& layerMap,

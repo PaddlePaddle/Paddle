@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ namespace paddle {
  * The config file api is linear_comb_layer.
  */
 class ConvexCombinationLayer : public Layer {
-protected:
+ protected:
   /// A matrix pointer pointing to second input.
   MatrixPtr tmpMtx0;
   /// A matrix pointer pointing to first input.
@@ -44,7 +44,7 @@ protected:
   /// A matrix pointer pointing to output.
   MatrixPtr tmpRow1;
 
-public:
+ public:
   explicit ConvexCombinationLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ConvexCombinationLayer() {}

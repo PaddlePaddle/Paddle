@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,14 +27,14 @@ namespace paddle {
  * See class LinearChainCRF for the detail of the CRF formulation.
  */
 class CRFLayer : public Layer {
-public:
+ public:
   explicit CRFLayer(const LayerConfig& config) : Layer(config) {}
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   size_t numClasses_;
   ParameterPtr parameter_;
   std::vector<LinearChainCRF> crfs_;

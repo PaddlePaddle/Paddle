@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ bool hl_lstm_sequence_parallel(int frameSize) {
 }
 
 class frameValue {
-public:
+ public:
   real *value_;
   __device__ frameValue(real *value) : value_(value) {}
   template <int reversed, int frameSize>
@@ -341,12 +341,15 @@ void hl_lstm_parallel_forward(real *gateValue,
 }
 
 __device__ __forceinline__ void transpose_32x32(real a[], const int idx) {
-  int addr = idx % 32;
+  const int warp_size = 32;
+  int addr = idx % warp_size;
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, addr < warp_size);
 #pragma unroll
   for (int k = 1; k < 32; k++) {
-    // rSrc[k] = __shfl(rSrc[k], (threadIdx.x + k) % 32, 32);
-    addr = __shfl(addr, (idx + 1) % 32, 32);
-    a[k] = __shfl(a[k], addr, 32);
+    // rSrc[k] = __shfl_sync(rSrc[k], (threadIdx.x + k) % 32, 32);
+    addr = __shfl_sync(mask, addr, (idx + 1) % 32, 32);
+    a[k] = __shfl_sync(mask, a[k], addr, 32);
   }
 
 #pragma unroll
@@ -360,10 +363,11 @@ __device__ __forceinline__ void transpose_32x32(real a[], const int idx) {
   }
 
   addr = (32 - idx) % 32;
+  CREATE_SHFL_MASK(mask, idx % 32 < warp_size);
 #pragma unroll
   for (int k = 0; k < 32; k++) {
-    a[k] = __shfl(a[k], addr, 32);
-    addr = __shfl(addr, (idx + 31) % 32, 32);
+    a[k] = __shfl_sync(mask, a[k], addr, 32);
+    addr = __shfl_sync(mask, addr, (idx + 31) % 32, 32);
   }
 }
 

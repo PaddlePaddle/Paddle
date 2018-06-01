@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ static InitFunction __init__diy_prob_method(
     std::numeric_limits<int>::max());
 
 class BeamSearchControlCallbacks {
-public:
+ public:
   RecurrentGradientMachine::BeamSearchCandidatesAdjustCallback
       beamSearchCandidateAdjust;
   RecurrentGradientMachine::NormOrDropNodeCallback normOrDropNode;
@@ -115,7 +115,7 @@ public:
 };
 
 class BeamSearchStatisticsCallbacks {
-public:
+ public:
   RecurrentGradientMachine::EachStepCallback onEachStepStarted;
   RecurrentGradientMachine::EachStepCallback onEachStepStoped;
 
@@ -148,11 +148,11 @@ RecurrentGradientMachine::RecurrentGradientMachine(
  *    so it's should not be placed in root network.
  */
 class BootBiasLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
   IVectorPtr cpuIds_;
 
-public:
+ public:
   explicit BootBiasLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

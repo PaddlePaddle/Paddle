@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ const int TGT_SIZE = 21;
 const int CHANNELS = 3;
 
 class PerturbationTest : public testing::Test {
-protected:
+ protected:
   virtual void SetUp() { generateTestImages(gpuImages_); }
 
   virtual void TearDown() {}

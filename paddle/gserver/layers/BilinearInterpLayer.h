@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,13 +26,13 @@ namespace paddle {
  * @note  The config file api is bilinear_interp_layer.
  */
 class BilinearInterpLayer : public Layer {
-protected:
+ protected:
   size_t outImgH_, outImgW_;
   size_t inImgH_, inImgW_;
   real ratioH_, ratioW_;
   size_t numChannels_;
 
-public:
+ public:
   explicit BilinearInterpLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual ~BilinearInterpLayer() {}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ DEFINE_string(server_addr, "127.0.0.1", "assign server address");
 DEFINE_int32(server_cpu, 0, "assign server cpu");
 
 class ParameterServer2Tester : public ParameterServer2 {
-public:
+ public:
   ParameterServer2Tester(std::string serverAddr,
                          int port,
                          int rdmaCpu = -1,
@@ -88,7 +88,7 @@ public:
   void waitPassFinishTest();
   void synchronizeTest();
 
-protected:
+ protected:
   ParameterClient2 client_;
   vector<ParameterConfig> clientConfigs_;
   vector<ParameterPtr> parameters_;

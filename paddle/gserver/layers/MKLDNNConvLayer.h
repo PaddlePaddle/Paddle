@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ typedef mkldnn::convolution_backward_data conv_bwdData;
  * The config file api is mkldnn_conv
  */
 class MKLDNNConvLayer : public MKLDNNLayer {
-protected:
+ protected:
   // padding height and width
   int ph_, pw_;
   // stride height and width
@@ -59,7 +59,7 @@ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit MKLDNNConvLayer(const LayerConfig& config)
       : MKLDNNLayer(config), hasInitedWgt_(false), caffeMode_(true) {}
 
@@ -92,7 +92,7 @@ public:
                        << ", sw: " << sw_ << ", dh: " << dh_ << ", dw: " << dw_;
   }
 
-protected:
+ protected:
   /**
    * load the dims settings of this conv
    */

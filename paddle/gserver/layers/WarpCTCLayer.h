@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ namespace paddle {
  * The config file api is warp_ctc_layer.
  */
 class WarpCTCLayer : public Layer {
-public:
+ public:
   explicit WarpCTCLayer(const LayerConfig& config) : Layer(config) {}
   ~WarpCTCLayer() {}
 
@@ -35,7 +35,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   /**
    * sequence matrix and batch matrix copy:
    * sequence (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
@@ -49,7 +49,7 @@ protected:
                         const ICpuGpuVectorPtr& seqStartPositions,
                         bool normByTimes);
 
-protected:
+ protected:
   size_t numClasses_;
   size_t blank_;
   size_t maxSequenceLength_;

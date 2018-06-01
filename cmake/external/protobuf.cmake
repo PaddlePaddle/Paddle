@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -212,6 +212,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
             ${OPTIONAL_ARGS}
             -Dprotobuf_BUILD_TESTS=OFF
+            -DCMAKE_SKIP_RPATH=ON
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
@@ -253,9 +254,9 @@ IF(NOT PROTOBUF_FOUND)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
         IF(ANDROID)
-            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
+            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
         ELSE()
-            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib)
+            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib)
         ENDIF()
     ENDIF()
 

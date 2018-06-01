@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -81,9 +81,9 @@ ParameterOptimizer::TraverseCallback AverageOptimizer::needSpecialTraversal(
   if (numUpdates_ % kMaxNumAccumulates == 0) {
     // Move the sum to a different buffer to avoid loss of precision
     // due to too many sums.
-    callbacks.emplace_back([this](const VectorPtr vecs[],
-                                  const ParameterConfig& config,
-                                  size_t sparseId) {
+    callbacks.emplace_back([](const VectorPtr vecs[],
+                              const ParameterConfig& config,
+                              size_t sparseId) {
       vecs[PARAMETER_SUM2]->add(*vecs[PARAMETER_SUM1]);
       vecs[PARAMETER_SUM1]->zeroMem();
     });
@@ -94,9 +94,9 @@ ParameterOptimizer::TraverseCallback AverageOptimizer::needSpecialTraversal(
     if (auto callback = this->startCatchUpWith()) {
       callbacks.emplace_back(callback);
     }
-    callbacks.emplace_back([this](const VectorPtr vecs[],
-                                  const ParameterConfig& config,
-                                  size_t sparseId) {
+    callbacks.emplace_back([](const VectorPtr vecs[],
+                              const ParameterConfig& config,
+                              size_t sparseId) {
       vecs[PARAMETER_SUM3]->add(*vecs[PARAMETER_SUM1], *vecs[PARAMETER_SUM2]);
       vecs[PARAMETER_SUM1]->zeroMem();
       vecs[PARAMETER_SUM2]->zeroMem();

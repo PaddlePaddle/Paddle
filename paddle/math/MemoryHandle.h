@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,16 +20,16 @@ limitations under the License. */
 namespace paddle {
 
 class MemoryHandle {
-protected:
+ protected:
   explicit MemoryHandle(size_t size);
   virtual ~MemoryHandle() {}
 
-public:
+ public:
   void* getBuf() const { return buf_; }
   size_t getSize() const { return size_; }
   size_t getAllocSize() const { return allocSize_; }
 
-protected:
+ protected:
   PoolAllocator* allocator_;
   size_t size_;       // the requested size
   size_t allocSize_;  // the allocated size
@@ -43,7 +43,7 @@ protected:
  * The raw handle will be released at destructor
  */
 class GpuMemoryHandle : public MemoryHandle {
-public:
+ public:
   explicit GpuMemoryHandle(size_t size);
   virtual ~GpuMemoryHandle();
 };
@@ -54,7 +54,7 @@ public:
  * The raw handle will be released at destructor
  */
 class CpuMemoryHandle : public MemoryHandle {
-public:
+ public:
   explicit CpuMemoryHandle(size_t size);
   virtual ~CpuMemoryHandle();
 };

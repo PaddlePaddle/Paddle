@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ namespace paddle {
  * The config file api is context_projection.
  */
 class ContextProjection : public Projection {
-public:
+ public:
   /**
    * Constructor. If context_start is zero and context_lenth is one, it will
    * set trainable_padding false. trainable_padding is an optional arguments
@@ -63,7 +63,7 @@ public:
 
   virtual bool init();
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
   /// number of extra timesteps added at the beginning
   size_t beginPad_;

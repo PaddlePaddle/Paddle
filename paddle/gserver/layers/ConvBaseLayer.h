@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ namespace paddle {
  */
 
 class ConvBaseLayer : public Layer {
-protected:
+ protected:
   typedef std::vector<int> IntV;
 
   /// True if it's deconv layer, false if it's convolution layer
@@ -88,7 +88,7 @@ protected:
   /// of output size.
   bool caffeMode_;
 
-public:
+ public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

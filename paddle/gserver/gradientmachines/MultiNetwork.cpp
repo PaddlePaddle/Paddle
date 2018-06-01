@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -122,7 +122,7 @@ void MultiNetwork::finish() {
 }
 
 class MultiCombinedEvaluator : public Evaluator {
-public:
+ public:
   MultiCombinedEvaluator() {}
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
@@ -167,7 +167,7 @@ public:
     }
   }
 
-protected:
+ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 

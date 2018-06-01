@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ namespace paddle {
  *      H and W is height and width of filter.
  */
 class ConvFunctionBase : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     // function arguments
     strides_ = config.get<std::vector<size_t>>("strides");
@@ -101,7 +101,7 @@ public:
     }
   }
 
-protected:
+ protected:
   size_t getFilterHeight(const TensorShape& filter) const {
     return filter[filter.ndims() - 2];
   }

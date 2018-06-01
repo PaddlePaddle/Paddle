@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ struct SimpleCode {
   inline bool calcBit(int bit) const { return c_ & (1 << bit); }
   inline int getLength() const { return findLastSet(c_) - 1; }
 
-private:
+ private:
   size_t c_;
 };
 
@@ -39,7 +39,7 @@ struct SimpleCodeTable {
   size_t size() const { return numClasses_; }
   int getMaxCodeLength() const { return findLastSet(numClasses_ - 1); }
 
-private:
+ private:
   size_t numClasses_;
   int maxCodeLength_;
 };

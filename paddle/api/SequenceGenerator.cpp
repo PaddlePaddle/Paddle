@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -138,7 +138,7 @@ struct SequenceGeneratorPrivate {
         maxLength(0UL),
         feedback(__create_feedback__()) {}
 
-private:
+ private:
   static paddle::Argument __create_feedback__() {
     paddle::Argument feedback;
     feedback.ids = paddle::IVector::create(/* size= */ 1, FLAGS_use_gpu);
@@ -157,7 +157,7 @@ SequenceGenerator::~SequenceGenerator() { delete m; }
 
 class PathSequenceResults : public ISequenceResults {
   // ISequenceResults interface
-public:
+ public:
   PathSequenceResults(const std::shared_ptr<std::vector<Path>>& path,
                       const std::shared_ptr<std::vector<std::string>>& dict)
       : path_(path), dict_(dict) {}
@@ -196,7 +196,7 @@ public:
     }
   }
 
-private:
+ private:
   std::shared_ptr<std::vector<Path>> path_;
   std::shared_ptr<std::vector<std::string>> dict_;
 };

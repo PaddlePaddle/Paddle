@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class SpatialPyramidPoolLayer : public Layer {
-protected:
+ protected:
   size_t channels_;
   size_t imgSizeW_;
   size_t imgSizeH_;
@@ -40,7 +40,7 @@ protected:
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;
 
-public:
+ public:
   explicit SpatialPyramidPoolLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

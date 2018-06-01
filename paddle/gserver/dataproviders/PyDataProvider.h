@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 
 class PyDataProvider : public DataProvider {
-public:
+ public:
   PyDataProvider(const DataConfig& config,
                  bool useGpu,
                  bool loadDataAll = true);
@@ -40,7 +40,7 @@ public:
 
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch);
 
-protected:
+ protected:
   struct ProtoSlot;
   // return false if each each sample is one sequence, i.e., independent
   // of other samples.
@@ -73,7 +73,7 @@ protected:
   void resetSlots();
   void loadData(const std::vector<std::string>& fileList);
 
-protected:
+ protected:
   struct ProtoSlot {
     SlotDef::SlotType type;
     int dim;

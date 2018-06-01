@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace paddle {
  * including mkldnn_relu, mkldnn_elu, mkldnn_tanh, mkldnn_softmax
  */
 class MKLDNNActivation : public ActivationFunction {
-protected:
+ protected:
   // input value element count
   size_t cnt_;
   // should not merge the resetBwd into resetFwd,
@@ -43,7 +43,7 @@ protected:
   std::vector<mkldnn::primitive> pipelineFwd_;
   std::vector<mkldnn::primitive> pipelineBwd_;
 
-public:
+ public:
   MKLDNNActivation() : cnt_(0), needResetBwd_(true) {}
   ~MKLDNNActivation() {}
   static ActivationFunction* create(const std::string& type);
@@ -72,7 +72,7 @@ class MKLDNNEltwiseActivation : public MKLDNNActivation {
   typedef mkldnn::eltwise_backward eltwise_bwd;
   typedef mkldnn::algorithm algorithm;
 
-protected:
+ protected:
   // save the forward primitive desc, which can be used backward
   std::shared_ptr<eltwise_fwd::primitive_desc> fwdPD_;
   // eltwise_bwd need src input value
@@ -80,7 +80,7 @@ protected:
   // use for copy data
   std::shared_ptr<mkldnn::reorder> copyInVal_;
 
-public:
+ public:
   MKLDNNEltwiseActivation() {}
   ~MKLDNNEltwiseActivation() {}
   virtual const std::string& getName() const = 0;
@@ -102,12 +102,12 @@ public:
 class MKLDNNSoftmaxActivation : public MKLDNNActivation {
   typedef mkldnn::softmax_forward softmax_fwd;
 
-private:
+ private:
   // for backward
   MatrixPtr sftMaxSum_;
   MatrixPtr sftMaxDot_;
 
-public:
+ public:
   MKLDNNSoftmaxActivation() {}
   ~MKLDNNSoftmaxActivation() {}
   virtual const std::string& getName() const = 0;

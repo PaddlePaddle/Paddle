@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 
 class LstmCompute {
-public:
+ public:
   void init(LayerConfig &config);
 
   /**
@@ -57,7 +57,7 @@ public:
                            hl_lstm_grad grad,
                            int frameSize);
 
-public:
+ public:
   hl_activation_mode_t activeNode_;
   hl_activation_mode_t activeGate_;
   hl_activation_mode_t activeState_;

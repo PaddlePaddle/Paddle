@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <glog/logging.h>
-#include "unsupported/Eigen/CXX11/Tensor"
+#include "paddle/function/EigenThreadDevice.h"
 
 namespace paddle {
 
@@ -70,25 +70,26 @@ struct EigenBlasGemm {
     dims[0].first = transA ? 0 : 1;
     dims[0].second = transB ? 1 : 0;
 
-    Eigen::DefaultDevice device;
+    auto* device = EigenDeviceWarpper::device();
     if (N == ldc) {
       if (alpha == T(1) && beta == T(0)) {
-        c.device(device) = a.contract(b, dims);
+        c.device(*device) = a.contract(b, dims);
       } else if (alpha == T(1) && beta == T(1)) {
-        c.device(device) += a.contract(b, dims);
+        c.device(*device) += a.contract(b, dims);
       } else {
-        c.device(device) = alpha * a.contract(b, dims) + beta * c;
+        c.device(*device) = alpha * a.contract(b, dims) + beta * c;
       }
     } else {
       if (alpha == T(1) && beta == T(0)) {
-        c.slice(offsetC, extentC).device(device) = a.contract(b, dims);
+        c.slice(offsetC, extentC).device(*device) = a.contract(b, dims);
       } else if (alpha == T(1) && beta == T(1)) {
-        c.slice(offsetC, extentC).device(device) += a.contract(b, dims);
+        c.slice(offsetC, extentC).device(*device) += a.contract(b, dims);
       } else {
-        c.slice(offsetC, extentC).device(device) =
+        c.slice(offsetC, extentC).device(*device) =
             alpha * a.contract(b, dims) + beta * c.slice(offsetC, extentC);
       }
     }
+    EigenDeviceWarpper::free_device(device);
   }
 };
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ class SamplingIdLayer : public Layer {
   std::uniform_real_distribution<double> rand1_;
   std::vector<Argument> tmpCpuInput_;
 
-public:
+ public:
   explicit SamplingIdLayer(const LayerConfig& config)
       : Layer(config), rand1_(0, 1) {}
 

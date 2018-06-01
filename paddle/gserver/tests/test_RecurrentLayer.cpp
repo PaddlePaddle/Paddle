@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -222,9 +222,10 @@ TEST(Layer, RecurrentLayer) {
 #define protected public
 #include "paddle/gserver/layers/GatedRecurrentLayer.h"
 #include "paddle/gserver/layers/LstmLayer.h"
+#include "paddle/gserver/layers/RecurrentLayer.h"
 template <class T>
 class TestRecurrentLayer {
-public:
+ public:
   LayerConfig config_;
   bool useGpu_;
   bool useBatch_;
@@ -420,12 +421,151 @@ TEST(Layer, LstmLayer) {
   }
 }
 
-int main(int argc, char** argv) {
-  if (version::isWithGpu()) {
-    testing::InitGoogleTest(&argc, argv);
-    initMain(argc, argv);
-    return RUN_ALL_TESTS();
-  } else {
-    return 0;
+#ifdef PADDLE_WITH_MKLML
+
+#include "paddle/gserver/layers/MKLPackedRecurrentLayer.h"
+
+LayerPtr initMKLPackedLayer(LayerConfig layerConfig,
+                            bool reversed,
+                            int layerSize,
+                            LayerPtr dataLayer,
+                            ParameterPtr para,
+                            ParameterPtr bias = nullptr) {
+  LayerMap layerMap;
+  ParameterMap parameterMap;
+  layerMap[dataLayer->getName()] = dataLayer;
+  parameterMap[para->getName()] = para;
+  if (bias) {
+    parameterMap[bias->getName()] = bias;
+    layerConfig.set_bias_parameter_name("bias_0");
   }
+
+  layerConfig.set_size(layerSize);
+  layerConfig.set_reversed(reversed);
+  layerConfig.add_inputs();
+  LayerInputConfig& input = *(layerConfig.mutable_inputs(0));
+  input.set_input_layer_name("layer_0");
+  input.set_input_parameter_name("para_0");
+
+  LayerPtr testLayer = Layer::create(layerConfig);
+  layerMap[testLayer->getName()] = testLayer;
+
+  testLayer->init(layerMap, parameterMap);
+  testLayer->setNeedGradient(true);
+
+  return testLayer;
+}
+
+void checkMKLPackedLayer(LayerConfig layerConfig1,
+                         LayerConfig layerConfig2,
+                         bool reversed,
+                         int layerSize,
+                         int batchSize,
+                         bool useBatch1,
+                         bool useBatch2) {
+  LayerPtr dataLayer;
+  ParameterPtr para, bias;
+
+  if (layerConfig1.type() == "recurrent") {
+    dataLayer = creatDataLayer("layer_0", batchSize, layerSize, false);
+    para = creatParameter("para_0", 0, layerSize * layerSize, false);
+    bias = nullptr;
+  } else if (layerConfig1.type() == "gated_recurrent") {
+    dataLayer = creatDataLayer("layer_0", batchSize, layerSize * 3, false);
+    para = creatParameter("para_0", 0, layerSize * layerSize * 3, false);
+    bias = creatParameterBias("bias_0", 1, layerSize * 3, false);
+  }
+
+  LayerPtr testLayer1 = initMKLPackedLayer(
+      layerConfig1, reversed, layerSize, dataLayer, para, bias);
+  LayerPtr testLayer2 = initMKLPackedLayer(
+      layerConfig2, reversed, layerSize, dataLayer, para, bias);
+
+  const VectorPtr& weightGrad =
+      (testLayer1->getParameters()[0])->getBuf(PARAMETER_GRADIENT);
+  const MatrixPtr& inputGrad = testLayer1->getPrev(0)->getOutputGrad();
+  CpuVector wgt_grad1(weightGrad->getSize());
+  CpuVector wgt_grad2(weightGrad->getSize());
+  CpuMatrix input_grad1(inputGrad->getHeight(), inputGrad->getWidth());
+  CpuMatrix input_grad2(inputGrad->getHeight(), inputGrad->getWidth());
+
+  for (int i = 0; i < 2; i++) {
+    FLAGS_rnn_use_batch = useBatch1;
+
+    testLayer1->forward(PASS_GC);
+
+    FLAGS_rnn_use_batch = useBatch2;
+    testLayer2->forward(PASS_GC);
+
+    testLayer1->getOutputGrad()->randomizeUniform();
+    testLayer2->getOutputGrad()->copyFrom(*testLayer1->getOutputGrad());
+
+    weightGrad->zero();
+    inputGrad->zero();
+    FLAGS_rnn_use_batch = useBatch1;
+    testLayer1->backward(nullptr);
+
+    wgt_grad1.copyFrom(*weightGrad);
+    input_grad1.copyFrom(*inputGrad);
+
+    weightGrad->zero();
+    inputGrad->zero();
+    FLAGS_rnn_use_batch = useBatch2;
+    testLayer2->backward(nullptr);
+
+    wgt_grad2.copyFrom(*weightGrad);
+    input_grad2.copyFrom(*inputGrad);
+
+    checkError(*testLayer1->getOutputValue(), *testLayer2->getOutputValue());
+    checkError(wgt_grad1, wgt_grad2);
+    checkError(input_grad1, input_grad2);
+  }
+}
+
+TEST(MKLPackedLayer, RecurrentLayer) {
+  LayerConfig layerConfig1;
+  LayerConfig layerConfig2;
+
+  layerConfig1.set_name("paddle-rnn");
+  layerConfig1.set_type("recurrent");
+  layerConfig1.set_active_type("relu");
+
+  layerConfig2.set_name("mkl-packed-rnn");
+  layerConfig2.set_type("mkl_packed_recurrent");
+  layerConfig2.set_active_type("relu");
+
+  FLAGS_use_gpu = false;
+
+  for (auto layerSize : {32, 64, 128, 256, 512}) {
+    for (auto batchSize : {1, 5, 100, 500}) {
+      for (auto reversed : {true, false}) {
+        for (auto paddle_use_batch : {true, false}) {
+          for (auto MKLPacked_use_batch : {true, false}) {
+            LOG(INFO) << " layerSize=" << layerSize
+                      << " batchSize=" << batchSize << " reversed=" << reversed
+                      << " paddle_use_batch=" << paddle_use_batch
+                      << " MKLPacked_use_batch=" << MKLPacked_use_batch;
+
+            checkMKLPackedLayer(layerConfig1,
+                                layerConfig2,
+                                reversed,
+                                layerSize,
+                                batchSize,
+                                paddle_use_batch,
+                                MKLPacked_use_batch);
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  initMain(argc, argv);
+  if (!version::isWithGpu()) {
+    testing::GTEST_FLAG(filter) = "-Layer.*";
+  }
+  return RUN_ALL_TESTS();
 }

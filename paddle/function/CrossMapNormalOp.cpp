@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -160,7 +160,7 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
  */
 template <DeviceType Device>
 class CrossMapNormalFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     // function arguments
     size_ = config.get<size_t>("size");
@@ -220,7 +220,7 @@ public:
     return ops;
   }
 
-private:
+ private:
   size_t size_;
   real scale_;
   real pow_;
@@ -260,7 +260,7 @@ private:
  */
 template <DeviceType Device>
 class CrossMapNormalGradFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     // function arguments
     size_ = config.get<size_t>("size");
@@ -328,7 +328,7 @@ public:
     return ops;
   }
 
-private:
+ private:
   size_t size_;
   real scale_;
   real pow_;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  */
 template <ColFormat Format, DeviceType Device, class T>
 class Im2ColFunctor {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,
@@ -85,7 +85,7 @@ public:
 
 template <ColFormat Format, DeviceType Device, class T>
 class Col2ImFunctor {
-public:
+ public:
   void operator()(T* imData,
                   const TensorShape& imShape,
                   const T* colData,
@@ -96,6 +96,59 @@ public:
                   int paddingWidth,
                   int dilationHeight = 1,
                   int dilationWidth = 1);
+};
+
+template <class T>
+class Im2ColMobileFunctor {
+ public:
+  void operator()(const T* imData,
+                  const TensorShape& imShape,
+                  T* colData,
+                  const TensorShape& colShape,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth,
+                  int inputChannels,
+                  int colOffset,
+                  int colOutputHeight,
+                  int colWidth) {
+    int inputHeight = imShape[1];
+    int inputWidth = imShape[2];
+    int filterHeight = colShape[1];
+    int filterWidth = colShape[2];
+    int outputWidth = colShape[4];
+
+    for (int ic = 0; ic < inputChannels; ic++) {
+      for (int oh = 0; oh < colOutputHeight; oh++) {
+        T* dstData = colData + oh * outputWidth;
+        for (int fh = 0; fh < filterHeight; fh++) {
+          for (int fw = 0; fw < filterWidth; fw++) {
+            int imRowIdx = (oh + colOffset) * strideHeight +
+                           fh * dilationHeight - paddingHeight;
+            if (imRowIdx < 0 || imRowIdx >= inputHeight) {
+              memset(dstData, 0, outputWidth * sizeof(T));
+            } else {
+              for (int ow = 0; ow < outputWidth; ow++) {
+                int imColIdx =
+                    ow * strideWidth + fw * dilationWidth - paddingWidth;
+                if (imColIdx < 0 || imColIdx >= inputWidth) {
+                  dstData[ow] = T(0);
+                } else {
+                  dstData[ow] = imData[imRowIdx * inputWidth + imColIdx];
+                }
+              }
+            }
+            dstData += colWidth;
+          }
+        }
+      }
+      colData += filterHeight * filterWidth * colWidth;
+      imData += inputHeight * inputWidth;
+    }
+  }
 };
 
 }  // namespace paddle

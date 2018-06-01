@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -132,6 +132,8 @@ void MKLDNNLayer::reshapeInput(int& batchsize,
   if (w != 0) {
     width = w;
   }
+  height = height != 0 ? height : 1;
+  width = width != 0 ? width : 1;
 }
 
 void MKLDNNLayer::reshapeOutput(size_t height, size_t width) {

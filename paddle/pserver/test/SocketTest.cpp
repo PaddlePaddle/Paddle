@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,12 +30,12 @@ struct MessageHeader {
 };
 
 class Thread {
-public:
+ public:
   void start();
   virtual void run() = 0;
   virtual ~Thread() {}
 
-protected:
+ protected:
   std::unique_ptr<std::thread> thread_;
 };
 
@@ -44,13 +44,13 @@ void Thread::start() {
 }
 
 class SocketChannel {
-public:
+ public:
   explicit SocketChannel(int socket) : socket_(socket) {}
   int getSocketFd() const { return socket_; }
   uint64_t readAll(void* buf, size_t size);
   uint64_t writeAll(const void* buf, size_t size);
 
-protected:
+ protected:
   int socket_;
 };
 
@@ -79,7 +79,7 @@ uint64_t SocketChannel::writeAll(const void* buf, size_t size) {
 }
 
 class SocketWorker : public Thread {
-public:
+ public:
   explicit SocketWorker(int socket) : channel_(socket) {}
   virtual void run();
 
@@ -88,19 +88,19 @@ public:
 
   // write n bytes
 
-protected:
+ protected:
   SocketChannel channel_;
   std::string buffer_;
 };
 
 class SocketServer : public Thread {
-public:
+ public:
   explicit SocketServer(int port)
       : port_(port), socket_(0), maxPendingConnections_(100) {}
 
   virtual void run();
 
-protected:
+ protected:
   int port_;
   int socket_;
   int maxPendingConnections_;
@@ -161,11 +161,11 @@ void SocketWorker::run() {
 }
 
 class SocketClient {
-public:
+ public:
   SocketClient(const std::string& serverAddr, int serverPort);
   SocketChannel* getChannel() const { return channel_.get(); }
 
-protected:
+ protected:
   std::unique_ptr<SocketChannel> channel_;
 };
 

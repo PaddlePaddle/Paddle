@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ namespace paddle {
  * The config file api is mkldnn_concat
  */
 class MKLDNNConcatLayer : public MKLDNNLayer {
-protected:
+ protected:
   std::vector<std::shared_ptr<mkldnn::primitive>> bwds_;
   // input channel numbers
   std::vector<int> channels_;
@@ -35,7 +35,7 @@ protected:
   // if axis_ == 1, concat channel (default)
   int axis_;
 
-public:
+ public:
   explicit MKLDNNConcatLayer(const LayerConfig& config)
       : MKLDNNLayer(config), axis_(1) {}
 
@@ -75,7 +75,7 @@ public:
     return totalSize;
   }
 
-protected:
+ protected:
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<mkldnn::concat::primitive_desc>& pd,

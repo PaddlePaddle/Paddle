@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
  *
  */
 class MKLDNNLayer : public Layer {
-protected:
+ protected:
   // batch size
   int bs_;
   // their sizes are always from the first input layer
@@ -95,9 +95,11 @@ protected:
   // tmp input argument to save input grad, only used to merge grad
   Argument tmpInArg_;
 
-public:
+ public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
+        ih_(0),
+        iw_(0),
         condition_(0),
         needResetBwd_(true),
         outputOnlyMKLDNN_(false),
@@ -160,7 +162,7 @@ public:
    */
   void addOutputArgument(int deviceId) { Layer::addOutputArgument(deviceId); }
 
-protected:
+ protected:
   /**
    * Some layers may have different condition to reset the forward.
    * The function returns the condition that do not need reset forward.
@@ -231,7 +233,7 @@ protected:
    */
   void resetMergeGrad(MKLDNNMatrixPtr& out);
 
-protected:
+ protected:
   /**
    * Set deviceId of this layer.
    */
@@ -338,7 +340,7 @@ protected:
     }
   }
 
-private:
+ private:
   /**
    * clear all grad
    */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ namespace paddle {
  * called to set one and only one real layer
  */
 class AgentLayer : public Layer {
-protected:
+ protected:
   LayerPtr realLayer_;
   int numSamples_;
 
-public:
+ public:
   explicit AgentLayer(const LayerConfig& config) : Layer(config) {}
 
   ~AgentLayer() {}
@@ -55,14 +55,14 @@ public:
  * GatherAgentLayer collect a complete sequence.
  */
 class GatherAgentLayer : public Layer {
-protected:
+ protected:
   std::vector<LayerPtr> realLayers_;
   std::vector<IVectorPtr> idsVec_;
   // we don't clear idsVec_ vector to aviod IVector alloc/free
   IVectorPtr allIds_;
   std::vector<int> idIndex_;
 
-public:
+ public:
   explicit GatherAgentLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual ~GatherAgentLayer() {}
@@ -95,7 +95,7 @@ public:
  * if it is, the agent will select a few ids in real layer.
  */
 class ScatterAgentLayer : public Layer {
-protected:
+ protected:
   LayerPtr realLayer_;
   IVectorPtr ids_;
   IVectorPtr cpuIds_;
@@ -113,7 +113,7 @@ protected:
   // true for setRealLayer, false for setRealLayerAndOutput
   bool selectionMode_;
 
-public:
+ public:
   explicit ScatterAgentLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual ~ScatterAgentLayer() {}

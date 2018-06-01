@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ namespace paddle {
  */
 
 class GatedRecurrentLayer : public Layer, public GruCompute {
-public:
+ public:
   explicit GatedRecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -63,7 +63,7 @@ public:
 
   LayerStatePtr getState() override;
 
-protected:
+ protected:
   void forwardSequence(int batchSize,
                        size_t numSequences,
                        const int* starts,
@@ -79,7 +79,7 @@ protected:
                     MatrixPtr inputValue);
   void backwardBatch(int batchSize, MatrixPtr inputGrad);
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> gateWeight_;
   std::unique_ptr<Weight> stateWeight_;

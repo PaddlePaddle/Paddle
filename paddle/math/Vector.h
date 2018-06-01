@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,13 +40,13 @@ class Matrix;
 
 template <class T>
 class BaseVector : public BaseMatrixT<T> {
-public:
+ public:
   BaseVector(size_t size, T* data, bool useGpu)
       : BaseMatrixT<T>(1, size, data, false, useGpu), size_(this->width_) {}
 
   ~BaseVector() {}
 
-protected:
+ protected:
   size_t& size_;
 };
 
@@ -57,7 +57,7 @@ protected:
  */
 template <class T>
 class VectorT : public BaseVector<T> {
-protected:
+ protected:
   VectorT(size_t size, MemoryHandlePtr memoryHandle, size_t offset, bool useGpu)
       : BaseVector<T>(size,
                       reinterpret_cast<T*>(memoryHandle->getBuf()) + offset,
@@ -71,7 +71,7 @@ protected:
   VectorT(size_t size, T* data, bool useGpu)
       : BaseVector<T>(size, data, useGpu) {}
 
-public:
+ public:
   virtual ~VectorT() {}
 
   static std::shared_ptr<VectorT<T>> create(size_t size, bool useGpu);
@@ -281,7 +281,7 @@ public:
     }
   }
 
-protected:
+ protected:
   friend class GpuVectorT<T>;
   friend class CpuVectorT<T>;
   virtual void copyTo(CpuVectorT<T>* dest) const = 0;
@@ -297,7 +297,7 @@ std::ostream& operator<<(std::ostream& os, const VectorT<T>& vec) {
 
 template <class T>
 class GpuVectorT : public VectorT<T> {
-public:
+ public:
   explicit GpuVectorT(size_t size);
   GpuVectorT(size_t size, GpuMemHandlePtr memHandle, size_t offset)
       : VectorT<T>(size, memHandle, offset, true) {}
@@ -343,14 +343,14 @@ public:
     TensorGpuApply<T>(*this, expr);
   }
 
-protected:
+ protected:
   virtual void copyTo(CpuVectorT<T>* dest) const;
   virtual void copyTo(GpuVectorT<T>* dest) const;
 };
 
 template <class T>
 class CpuVectorT : public VectorT<T> {
-public:
+ public:
   explicit CpuVectorT(size_t size);
   CpuVectorT(size_t size, MemoryHandlePtr memoryHandle, size_t offset)
       : VectorT<T>(size, memoryHandle, offset, false) {}
@@ -415,7 +415,7 @@ public:
 
 template <class T>
 class ParallelCpuVectorT : public CpuVectorT<T> {
-public:
+ public:
   ParallelCpuVectorT(size_t size, SyncThreadPool* pool)
       : CpuVectorT<T>(size), pool_(pool) {}
 
@@ -434,7 +434,7 @@ public:
 
   virtual void exec(SyncThreadPool::JobFunc jobFunc);
 
-private:
+ private:
   typedef std::function<void(CpuVectorT<T>& vec)> ExecFunc;
   void parallelExec(ExecFunc func);
   SyncThreadPool* pool_;
@@ -445,7 +445,7 @@ private:
  */
 template <class T>
 class CpuGpuVectorT {
-public:
+ public:
   /**
    * @brief An enum type of SyncedFlag using to
    *        mark data memory is in CPU or GPU.
@@ -670,7 +670,7 @@ public:
     setSync(flag);
   }
 
-protected:
+ protected:
   void resizeOrCreate(size_t size, bool useGpu);
 
   /**

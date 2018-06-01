@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const SlotHeader& header) {
  * prepare step, fill data into argument during fill step.
  */
 class IFieldScanner {
-public:
+ public:
   DISABLE_COPY(IFieldScanner);
   /**
    * Ctor.
@@ -146,7 +146,7 @@ public:
    */
   static IFieldScanner* create(SlotHeader* header);
 
-protected:
+ protected:
   SlotHeader* headerPtr_;
 };
 
@@ -154,7 +154,7 @@ protected:
  * Py Data Provider Cache Interface.
  */
 class IPyDataProviderCache {
-public:
+ public:
   virtual ~IPyDataProviderCache() {}
 
   /**
@@ -193,7 +193,7 @@ public:
  * data. And it support cache strategies.
  */
 class PyDataProvider2 : public DataProvider {
-public:
+ public:
   /**
    * Ctor
    */
@@ -234,7 +234,7 @@ public:
    */
   virtual ~PyDataProvider2() { resetImpl(false); }
 
-private:
+ private:
   void createPyDataObj(const std::string& model,
                        const std::string& className,
                        const std::string& fileListName,
@@ -390,9 +390,7 @@ private:
 
       if (this->loadThread_) {  // wait poolActualSize < poolSize;
         std::unique_lock<std::mutex> l(mtx_);
-        pushCV_.wait(l, [this, additionalBatchSize] {
-          return this->poolActualSize_ < poolSize_;
-        });
+        pushCV_.wait(l, [this] { return this->poolActualSize_ < poolSize_; });
       }
 
       {
@@ -437,7 +435,7 @@ private:
     exit_ = false;
   }
 
-private:
+ private:
   std::unique_ptr<std::thread> loadThread_;
   std::atomic<bool> exit_;
   std::deque<PyObjectPtr> callingContexts_;
@@ -463,7 +461,7 @@ private:
   static PyObjectPtr zeroTuple_;
 
   class PositionRandom {
-  public:
+   public:
     inline explicit PositionRandom(bool skipRand)
         : eng_(ThreadLocalRandomEngine::get()), skipRand_(skipRand) {}
 
@@ -478,14 +476,14 @@ private:
       }
     }
 
-  private:
+   private:
     std::default_random_engine& eng_;
     std::unique_ptr<std::uniform_int_distribution<size_t>> dist_;
     bool skipRand_;
   };
 
   // DataProvider interface
-public:
+ public:
   /**
    * Resetting the PyDataProvider. May start reading thread here.
    */
@@ -668,7 +666,7 @@ REGISTER_DATA_PROVIDER_EX(py2, PyDataProvider2);
  * Scanner for dense slot.
  */
 class DenseScanner : public IFieldScanner {
-public:
+ public:
   explicit DenseScanner(SlotHeader* ptr) : IFieldScanner(ptr), height_(0) {}
 
   /**
@@ -710,7 +708,7 @@ public:
     ++height_;
   }
 
-private:
+ private:
   size_t height_;
 };
 
@@ -718,7 +716,7 @@ private:
  * Scanner for index slot
  */
 class IndexScanner : public IFieldScanner {
-public:
+ public:
   explicit IndexScanner(SlotHeader* ptr) : IFieldScanner(ptr), cnt_(0) {}
 
   /**
@@ -742,12 +740,12 @@ public:
     CHECK(ok) << "Cannot cast int " << py::repr(obj);
   }
 
-private:
+ private:
   size_t cnt_;
 };
 
 class SparseNonValueScanner : public IFieldScanner {
-public:
+ public:
   explicit SparseNonValueScanner(SlotHeader* ptr)
       : IFieldScanner(ptr), nnz_(0), height_(0) {}
 
@@ -792,7 +790,7 @@ public:
     ++height_;
   }
 
-protected:
+ protected:
   /**
    * Set a single sparse index and value.
    * @param [out] col sparse index
@@ -811,7 +809,7 @@ protected:
 };
 
 class SparseValueScanner : public SparseNonValueScanner {
-public:
+ public:
   explicit SparseValueScanner(SlotHeader* ptr) : SparseNonValueScanner(ptr) {}
 
   virtual void finishPrepare(Argument& argument) {
@@ -819,7 +817,7 @@ public:
         argument.value, height_, headerPtr_->dim, nnz_, FLOAT_VALUE);
   }
 
-protected:
+ protected:
   virtual void setData(int* col, real* dat, PyObject* obj) {
     py::SequenceHelper s(obj);
     SparseNonValueScanner::setData(col, dat, s[0]);
@@ -831,7 +829,7 @@ protected:
  * Sequence Scanner. Scanner for sequence or sub-sequence.
  */
 class SequenceScanner : public IFieldScanner {
-public:
+ public:
   /**
    * Ctor
    * @param innerScanner inner scanner for each timestep or sub-sequence.
@@ -904,7 +902,7 @@ public:
    */
   virtual void finishFill(Argument& argument) { inner_->finishFill(argument); }
 
-protected:
+ protected:
   size_t getSize(PyObject* obj) {
     py::SequenceHelper s(obj);
     auto sc = dynamic_cast<SequenceScanner*>(inner_.get());
@@ -919,7 +917,7 @@ protected:
     }
   }
 
-private:
+ private:
   std::unique_ptr<IFieldScanner> inner_;
   size_t cnt_;
   std::function<ICpuGpuVectorPtr&(Argument&)> getSeqStartPos_;
@@ -971,7 +969,7 @@ IFieldScanner* IFieldScanner::create(SlotHeader* header) {
  * python every pass.
  */
 class NoCacheStrategy : public IPyDataProviderCache {
-public:
+ public:
   virtual bool reset() { return true; }
 
   virtual void drop(std::deque<PyObjectPtr>* data) { data->clear(); }
@@ -986,7 +984,7 @@ public:
  * The rest passes, will load data from memory.
  */
 class CacheOnePassInMemory : public IPyDataProviderCache {
-public:
+ public:
   CacheOnePassInMemory()
       : objPool_(new std::deque<PyObjectPtr>()),
         droppedPool_(new std::deque<PyObjectPtr>()) {}
@@ -1013,7 +1011,7 @@ public:
 
   virtual std::deque<PyObjectPtr>* load() { return objPool_.get(); }
 
-private:
+ private:
   std::unique_ptr<std::deque<PyObjectPtr>> objPool_;
   std::unique_ptr<std::deque<PyObjectPtr>> droppedPool_;
 };

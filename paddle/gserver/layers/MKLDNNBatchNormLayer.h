@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ typedef mkldnn::batch_normalization_backward bn_bwd;
  * The config file api is mkldnn_batch_norm
  */
 class MKLDNNBatchNormLayer : public MKLDNNLayer {
-protected:
+ protected:
   // save forward primitive_desc, which can be used backward
   std::shared_ptr<bn_fwd::primitive_desc> fwdPD_;
 
@@ -62,7 +62,7 @@ protected:
   MKLDNNMatrixPtr mean_;
   MKLDNNMatrixPtr var_;
 
-public:
+ public:
   explicit MKLDNNBatchNormLayer(const LayerConfig& config)
       : MKLDNNLayer(config), useGlobalStats_(true), hasInitedWgt_(false) {}
 
@@ -88,7 +88,7 @@ public:
 
   void convertWeightsFromPaddle() override;
 
-protected:
+ protected:
   void initWeight();
   /**
    * cal moving mean and variance.

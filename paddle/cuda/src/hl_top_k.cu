@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_base.h"
-#include "hl_sparse.ph"
-#include "hl_top_k.h"
+#include "paddle/cuda/include/hl_base.h"
+#include "paddle/cuda/include/hl_sparse.ph"
+#include "paddle/cuda/include/hl_top_k.h"
 #include "paddle/utils/Logging.h"
 
 // using namespace hppl;
@@ -244,13 +244,17 @@ __device__ __forceinline__ void blockReduce(Pair* shTopK,
     if (--beamSize == 0) break;
     __syncthreads();
 
+    // NOTE(zcd): temporary solution
+    unsigned mask = 0u;
+    CREATE_SHFL_MASK(mask, true);
+
     if (tid == maxId[0]) {
       if (beam < maxLength) {
         shTopK[tid] = topK[beam];
       }
     }
     if (maxId[0] / 32 == warp) {
-      if (__shfl(beam, (maxId[0]) % 32, 32) == maxLength) break;
+      if (__shfl_sync(mask, beam, (maxId[0]) % 32, 32) == maxLength) break;
     }
   }
 }

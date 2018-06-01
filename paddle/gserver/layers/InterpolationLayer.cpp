@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,12 +33,12 @@ namespace paddle {
  */
 
 class InterpolationLayer : public Layer {
-protected:
+ protected:
   /// weightLast = 1 - weight
   MatrixPtr weightLast_;
   MatrixPtr tmpMatrix;
 
-public:
+ public:
   explicit InterpolationLayer(const LayerConfig& config) : Layer(config) {}
 
   ~InterpolationLayer() {}
