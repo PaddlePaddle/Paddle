@@ -17,7 +17,10 @@ import numpy as np
 from op_test import OpTest
 
 
-def bilinear_interp_np(input, out_h, out_w):
+def bilinear_interp_np(input, out_h, out_w, out_size):
+    if out_size is not None:
+        out_h = out_size[0]
+        out_w = out_size[1]
     batch_size, channel, in_h, in_w = input.shape
     if out_h > 1:
         ratio_h = (in_h - 1.0) / (out_h - 1.0)
@@ -49,12 +52,15 @@ def bilinear_interp_np(input, out_h, out_w):
 
 class TestBilinearInterpOp(OpTest):
     def setUp(self):
+        self.out_size = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
-        output_np = bilinear_interp_np(input_np, self.out_h, self.out_w)
-
+        output_np = bilinear_interp_np(input_np, self.out_h, self.out_w,
+                                       self.out_size)
         self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
         self.attrs = {'out_h': self.out_h, 'out_w': self.out_w}
         self.outputs = {'Out': output_np}
 
@@ -68,6 +74,7 @@ class TestBilinearInterpOp(OpTest):
         self.input_shape = [2, 3, 4, 4]
         self.out_h = 2
         self.out_w = 2
+        self.out_size = np.array([3, 3]).astype("int32")
 
 
 class TestCase1(TestBilinearInterpOp):
@@ -89,6 +96,30 @@ class TestCase3(TestBilinearInterpOp):
         self.input_shape = [1, 1, 128, 64]
         self.out_h = 64
         self.out_w = 128
+
+
+class TestCase4(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.out_size = np.array([2, 2]).astype("int32")
+
+
+class TestCase5(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.out_size = np.array([11, 11]).astype("int32")
+
+
+class TestCase6(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.input_shape = [1, 1, 128, 64]
+        self.out_h = 64
+        self.out_w = 128
+        self.out_size = np.array([65, 129]).astype("int32")
 
 
 if __name__ == "__main__":
