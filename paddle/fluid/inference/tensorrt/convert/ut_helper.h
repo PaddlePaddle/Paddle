@@ -101,7 +101,7 @@ class TRTConvertValidation {
     engine_->FreezeNetwork();
 
     // Declare outputs.
-    op_desc_.reset(new framework::OpDesc(desc, nullptr, nullptr));
+    op_desc_.reset(new framework::OpDesc(desc, nullptr));
 
     // Set Inputs.
     for (const auto& input : op_desc_->InputArgumentNames()) {
