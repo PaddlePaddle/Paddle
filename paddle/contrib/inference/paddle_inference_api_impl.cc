@@ -248,9 +248,11 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
-    PADDLE_ENFORCE(
-        config.fraction_of_gpu_memory > 0.f,
+    PADDLE_ENFORCE_GT(
+        config.fraction_of_gpu_memory,
+        0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+    PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
