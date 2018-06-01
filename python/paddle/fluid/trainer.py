@@ -178,10 +178,11 @@ class Trainer(object):
             exe.run(self.startup_program)
 
         if self.checkpoint and self.checkpoint.load_serial:
-            exe = executor.Executor(place)
-            io.load_checkpoint(exe, self.checkpoint.checkpoint_dir,
-                               self.checkpoint.load_serial,
-                               self.startup_program)
+            with self._prog_and_scope_guard():
+                exe = executor.Executor(place)
+                io.load_checkpoint(exe, self.checkpoint.checkpoint_dir,
+                                   self.checkpoint.load_serial,
+                                   self.startup_program)
 
             if not self.checkpoint.is_pserver:
                 epoch_id, step_id = io.load_trainer_args(
