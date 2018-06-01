@@ -4008,7 +4008,7 @@ def gather(input, index):
 
     Args:
         input (Variable): The source input with rank>=1. 
-        index (Variable): The index input with rang=1.
+        index (Variable): The index input with rank=1.
 
     Returns:
         output (Variable): The output is a tensor with the same rank as input.
