@@ -1245,8 +1245,8 @@ class DistributeTranspiler:
                 # ops, we may get the output of clip op. Use syntax "@GRAD"
                 # and op_role_var to get the pair.
                 for input_name in op.input_arg_names:
-                    if input_name.find("@GRAD") != -1 and \
-                        op.attrs[RPC_OP_ROLE_ATTR_NAME]:
+                    if input_name.find("@GRAD") != -1 and op.attrs[
+                            RPC_OP_ROLE_ATTR_NAME] and "LearningRate" in op.input_names:
                         param_name = op.attrs[OP_ROLE_VAR_ATTR_NAME][0]
                         params_grads.append([
                             origin_var_dict[param_name],
