@@ -14,12 +14,106 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/context_project.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+#define CLOG std::cout
+
 namespace paddle {
 namespace operators {
+
+struct Formater {
+  std::string message;
+  std::string name;
+  std::vector<int> dims;
+  std::type_index dtype{typeid(const char)};
+  framework::LoD lod;
+  int summarize;
+  void* data{nullptr};
+
+  void operator()(size_t size) {
+    // PrintMessage();
+    // PrintName();
+    // PrintDims();
+    // PrintDtype();
+    // PrintLod();
+    PrintData(size);
+  }
+
+ private:
+  void PrintMessage() { CLOG << std::time(nullptr) << "\t" << message << "\t"; }
+  void PrintName() {
+    if (!name.empty()) {
+      CLOG << "Tensor[" << name << "]" << std::endl;
+    }
+  }
+  void PrintDims() {
+    if (!dims.empty()) {
+      CLOG << "\tshape: [";
+      for (auto i : dims) {
+        CLOG << i << ",";
+      }
+      CLOG << "]" << std::endl;
+    }
+  }
+  void PrintDtype() {
+    if (dtype.hash_code() != typeid(const char).hash_code()) {
+      CLOG << "\tdtype: " << dtype.name() << std::endl;
+    }
+  }
+  void PrintLod() {
+    if (!lod.empty()) {
+      CLOG << "\tLoD: [";
+      for (auto level : lod) {
+        CLOG << "[ ";
+        for (auto i : level) {
+          CLOG << i << ",";
+        }
+        CLOG << " ]";
+      }
+      CLOG << "]" << std::endl;
+    }
+  }
+
+  void PrintData(size_t size) {
+    PADDLE_ENFORCE_NOT_NULL(data);
+    // print float
+    if (dtype.hash_code() == typeid(const float).hash_code()) {
+      Display<float>(size);
+    } else if (dtype.hash_code() == typeid(const double).hash_code()) {
+      Display<double>(size);
+    } else if (dtype.hash_code() == typeid(const int).hash_code()) {
+      Display<int>(size);
+    } else if (dtype.hash_code() == typeid(const int64_t).hash_code()) {
+      Display<int64_t>(size);
+    } else if (dtype.hash_code() == typeid(const bool).hash_code()) {
+      Display<bool>(size);
+    } else {
+      CLOG << "\tdata: unprintable type: " << dtype.name() << std::endl;
+    }
+  }
+
+  template <typename T>
+  void Display(size_t size) {
+    auto* d = reinterpret_cast<T*>(data);
+    CLOG << "\tdata: " << size << std::endl;
+    if (summarize != -1) {
+      summarize = 10000;
+      CLOG << "Value of summarize = " << summarize << std::endl;
+      for (int i = 0; i < summarize; i++) {
+        CLOG << d[i] << ",";
+      }
+    } else {
+      for (size_t i = 0; i < size; i++) {
+        CLOG << d[i] << ",";
+      }
+    }
+    CLOG << std::endl;
+  }
+};
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
@@ -69,6 +163,25 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     blas.MatMul(col, filter, out);
   }
 };
+
+static void print_sid_stuff(const framework::LoDTensor* in_g) {
+  framework::LoDTensor print_tensor_din;
+  print_tensor_din.Resize(in_g->dims());
+  std::cout << print_tensor_din.dims() << std::endl;
+
+  if (paddle::platform::is_cpu_place(in_g->place())) {
+    print_tensor_din.ShareDataWith(*in_g);
+  } else {
+    // copy data to cpu to print
+    std::cout << "Should be printed, part 2" << std::endl;
+    paddle::platform::CPUPlace place;
+    framework::TensorCopy(*in_g, place, &print_tensor_din);
+  }
+  Formater formater5;
+  formater5.dtype = print_tensor_din.type();
+  formater5.data = reinterpret_cast<void*>(print_tensor_din.data<void>());
+  formater5(print_tensor_din.numel());
+}
 
 template <typename DeviceContext, typename T>
 class SequenceConvGradKernel : public framework::OpKernel<T> {
@@ -120,6 +233,38 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       seq_project_grad_functor(dev_ctx, *in_g, padding_trainable, context_start,
                                context_length, context_stride, up_pad, down_pad,
                                false, true, padding_data_g, &col);
+
+      std::cout << "Will print in_g (which is the output) in sequence_conv"
+                << std::endl;
+
+      print_sid_stuff(in_g);
+      std::cout << "Will print in (which is input) in sequence_conv"
+                << std::endl;
+      print_sid_stuff(in);
+
+      std::cout << "Will print out_g (which is input) in sequence_conv"
+                << std::endl;
+      print_sid_stuff(out_g);
+      /*
+            framework::LoDTensor print_tensor_din;
+            print_tensor_din.Resize(in_g->dims());
+            std::cout << "Printing d_input" << std::endl;
+            std::cout << print_tensor_din.dims() << std::endl;
+
+            if (paddle::platform::is_cpu_place(in_g->place())) {
+              print_tensor_din.ShareDataWith(*in_g);
+            } else {
+              // copy data to cpu to print
+              std::cout << "Should be printed, part 2" << std::endl;
+              paddle::platform::CPUPlace place;
+              framework::TensorCopy(*in_g, place, &print_tensor_din);
+            }
+            Formater formater5;
+            formater5.dtype = print_tensor_din.type();
+            formater5.data =
+         reinterpret_cast<void*>(print_tensor_din.data<void>());
+            formater5(print_tensor_din.numel());
+      */
     }
 
     if (padding_trainable && padding_data_g) {

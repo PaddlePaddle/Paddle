@@ -306,8 +306,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     }
 
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
-    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
-    dim3 grid(col_width, col_height);
+    // dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z,
+    // im_channels));
+    // dim3 grid(col_width, col_height);
+    dim3 threads(1, 1);
+    dim3 grid(1, 1);
     im2colOCF<T><<<grid, threads, 0, context.stream()>>>(
         im.data<T>(), im_channels, im_height, im_width, filter_height,
         filter_width, stride[0], stride[1], padding[0], padding[1], col_height,
