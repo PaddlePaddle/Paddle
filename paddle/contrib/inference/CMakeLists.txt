@@ -17,6 +17,24 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
+set(ANAKIN_INCLUDE "" CACHE STRING "root of Anakin header files")
+set(ANAKIN_LIBRARY "" CACHE STRING "path of Anakin library")
+
+
+set(inference_deps paddle_inference_api paddle_fluid_api)
+
+# if anakin is set enable anakin api implementation
+if (NOT ANAKIN_INCLUDE STREQUAL "")
+    message(WARNING "Anakin for inference is enabled")
+    message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
+    include_directories(ANAKIN_INCLUDE)
+    link_directories(ANAKIN_LIBRARY)
+
+    nv_library(inference_anakin_api paddle_inference_api_anakin_engine.cc DEPS anakin)
+    list(APPEND inference_deps inference_anakin_api)
+endif()
+
+
 function(inference_api_test TARGET_NAME)
     set(options "")
     set(oneValueArgs "")
@@ -26,7 +44,7 @@ function(inference_api_test TARGET_NAME)
     set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
     cc_test(test_paddle_inference_${TARGET_NAME}
             SRCS test_paddle_inference_${TARGET_NAME}.cc
-            DEPS paddle_fluid_api paddle_inference_api
+            DEPS "${inference_deps}"
             ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
     if(inference_test_ARGS)
         set_tests_properties(test_paddle_inference_${TARGET_NAME}
@@ -47,3 +65,4 @@ if(WITH_TESTING)
     inference_api_test(api_impl
                        ARGS test_word2vec test_image_classification)
 endif()
+
