@@ -47,8 +47,8 @@ struct PaddleTensor {
 
 enum class PaddleEngineKind {
   kNative = 0,  // Use the native Fluid facility.
+  kAnakin,             // Use Anakin for inference.
   // TODO(Superjomn) support following engines latter.
-  // kAnakin,             // Use Anakin for inference.
   // kTensorRT,           // Use TensorRT for inference.
   // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
   // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.

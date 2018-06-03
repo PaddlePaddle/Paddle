@@ -20,8 +20,8 @@ bool PaddleInferenceAnakinPredictor::Run(
     std::vector<PaddleTensor> *output_data) {
   for (const auto &input : inputs) {
     CHECK(input.dtype == PaddleDType::FLOAT32);
-    engine_.SetInputFromCPU(
-        input.name, static_cast<float *>(input.data.data), input.data.length);
+    engine_.SetInputFromCPU(input.name, static_cast<float *>(input.data.data),
+                            input.data.length);
   }
 
   // TODO(Superjomn) Tell anakin to support return code.
@@ -33,9 +33,7 @@ bool PaddleInferenceAnakinPredictor::Run(
     auto *tensor = engine_.GetOutputInGPU(output.name);
     output.shape = tensor->shape();
     // Copy data from GPU -> CPU
-    CHECK_EQ(cudaMemcpy(output.data.data,
-                        tensor->data(),
-                        tensor->size(),
+    CHECK_EQ(cudaMemcpy(output.data.data, tensor->data(), tensor->size(),
                         cudaMemcpyDeviceToHost),
              0);
   }
@@ -47,10 +45,13 @@ std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
   return nullptr;
 }
 
-
 // A factory to help create difference predictor.
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnakinConfig,  (const ConfigT& config);
-
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    AnakinConfig, PaddleEngineKind::kAnakin>(const AnakinConfig &config) {
+  std::unique_ptr<PaddlePredictor> x(
+      new PaddleInferenceAnakinPredictor(config));
+  return x;
+};
 
 }  // namespace paddle

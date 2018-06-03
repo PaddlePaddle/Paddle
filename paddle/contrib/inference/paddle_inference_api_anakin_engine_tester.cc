@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "paddle/contrib/inference/paddle_inference_api.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
 
 TEST(inference, anakin) {
+  AnakinConfig config;
 
-
-
+  auto engine =
+      CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
 }
-
 
 }  // namespace paddle

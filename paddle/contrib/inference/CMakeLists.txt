@@ -77,6 +77,11 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
+if (NOT ANAKIN_INCLUDE STREQUAL "")
+  nv_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
+    DEPS ${inference_deps} protobuf)
+endif()
+
 if(WITH_TESTING)
     add_subdirectory(demo)
 endif()
