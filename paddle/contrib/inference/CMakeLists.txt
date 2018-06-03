@@ -25,12 +25,24 @@ set(inference_deps paddle_inference_api paddle_fluid_api)
 
 # if anakin is set enable anakin api implementation
 if (NOT ANAKIN_INCLUDE STREQUAL "")
-    message(WARNING "Anakin for inference is enabled")
-    message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
-    include_directories(ANAKIN_INCLUDE)
-    link_directories(ANAKIN_LIBRARY)
+    # Anakin's code style doesn't follow google c style.
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=comment")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=reorder")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=format")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=switch")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=return-type")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=non-virtual-dtor")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=cpp")
 
-    nv_library(inference_anakin_api paddle_inference_api_anakin_engine.cc DEPS anakin)
+    message(STATUS "Anakin for inference is enabled")
+    message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
+    include_directories("${ANAKIN_INCLUDE}")
+    # Anakin's source path is a mass, need to set sub-directories trivially.
+    include_directories("${ANAKIN_INCLUDE}/saber")
+    link_directories("${ANAKIN_LIBRARY}")
+
+    nv_library(inference_anakin_api SRCS paddle_inference_api_anakin_engine.cc)
+    target_link_libraries(inference_anakin_api anakin)
     list(APPEND inference_deps inference_anakin_api)
 endif()
 

@@ -19,10 +19,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/contrib/inference/paddle_inference_api.h"
 // NOTE This header file do not have namespace.
 // TODO(Superjomn) Tell Anakin to provide better APIs.
-#include "Anakin/test/framework/net/paddle_api.h"
+#include <test/framework/net/paddle_api.h>
+#include "paddle/contrib/inference/paddle_inference_api.h"
 
 namespace paddle {
 
@@ -42,7 +42,9 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  private:
   bool Init(const AnakinConfig& config);
 
-  AnakinEngine<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+  anakin::AnakinEngine<anakin::NV,
+                       anakin::saber::AK_FLOAT,
+                       anakin::Precision::FP32>
       engine_;
 };
 
