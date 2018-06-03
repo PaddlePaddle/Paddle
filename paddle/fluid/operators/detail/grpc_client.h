@@ -84,7 +84,7 @@ class BaseProcessor {
     context_->set_deadline(deadline);
   }
 
-  virtual void Process() = 0;
+  virtual void Process() {}
 
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
