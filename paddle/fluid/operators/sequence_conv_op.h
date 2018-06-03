@@ -233,38 +233,20 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       seq_project_grad_functor(dev_ctx, *in_g, padding_trainable, context_start,
                                context_length, context_stride, up_pad, down_pad,
                                false, true, padding_data_g, &col);
-
-      std::cout << "Will print in_g (which is the output) in sequence_conv"
-                << std::endl;
-
-      print_sid_stuff(in_g);
-      std::cout << "Will print in (which is input) in sequence_conv"
-                << std::endl;
-      print_sid_stuff(in);
-
-      std::cout << "Will print out_g (which is input) in sequence_conv"
-                << std::endl;
-      print_sid_stuff(out_g);
       /*
-            framework::LoDTensor print_tensor_din;
-            print_tensor_din.Resize(in_g->dims());
-            std::cout << "Printing d_input" << std::endl;
-            std::cout << print_tensor_din.dims() << std::endl;
+            std::cout << "Will print in_g (which is the output) in
+         sequence_conv"
+                      << std::endl;
 
-            if (paddle::platform::is_cpu_place(in_g->place())) {
-              print_tensor_din.ShareDataWith(*in_g);
-            } else {
-              // copy data to cpu to print
-              std::cout << "Should be printed, part 2" << std::endl;
-              paddle::platform::CPUPlace place;
-              framework::TensorCopy(*in_g, place, &print_tensor_din);
-            }
-            Formater formater5;
-            formater5.dtype = print_tensor_din.type();
-            formater5.data =
-         reinterpret_cast<void*>(print_tensor_din.data<void>());
-            formater5(print_tensor_din.numel());
-      */
+            print_sid_stuff(in_g);
+            std::cout << "Will print in (which is input) in sequence_conv"
+                      << std::endl;
+            print_sid_stuff(in);
+
+            std::cout << "Will print out_g (which is input) in sequence_conv"
+                      << std::endl;
+            print_sid_stuff(out_g);
+            */
     }
 
     if (padding_trainable && padding_data_g) {

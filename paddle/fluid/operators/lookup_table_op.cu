@@ -167,9 +167,6 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::cout << "Okay man, we are inside the forward prop function"
-              << std::endl;
-
     auto* table_t = context.Input<LoDTensor>("W");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
     auto* ids_var = context.InputVar("Ids");
@@ -178,7 +175,6 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     framework::LoDTensor print_tensor_table;
     print_tensor_table.set_lod(table_t->lod());
     print_tensor_table.Resize(table_t->dims());
-    std::cout << print_tensor_table.dims() << std::endl;
 
     if (paddle::platform::is_cpu_place(table_t->place())) {
       print_tensor_table.ShareDataWith(*table_t);
@@ -200,7 +196,6 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     // when Ids's type is SelectedRows, the rows of Ids contains the
     // ids to be looked up in W.
     if (ids_var->IsType<framework::LoDTensor>()) {
-      std::cout << "We are dealing with regular IDs" << std::endl;
       auto* ids_t = context.Input<LoDTensor>("Ids");
       ids = const_cast<int64_t*>(ids_t->data<int64_t>());
       K = ids_t->numel();
@@ -208,7 +203,6 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
       framework::LoDTensor print_tensor_ids;
       print_tensor_ids.set_lod(ids_t->lod());
       print_tensor_ids.Resize(ids_t->dims());
-      std::cout << print_tensor_ids.dims() << std::endl;
 
       if (paddle::platform::is_cpu_place(ids_t->place())) {
         print_tensor_ids.ShareDataWith(*ids_t);
@@ -223,7 +217,7 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
       // formater2(print_tensor_ids.numel());
 
     } else if (ids_var->IsType<framework::SelectedRows>()) {
-      std::cout << "Oh this is dealing with selected rows" << std::endl;
+      // std::cout << "Oh this is dealing with selected rows" << std::endl;
       auto* ids_t = context.Input<framework::SelectedRows>("Ids");
       ids = const_cast<int64_t*>(ids_t->rows().CUDAData(context.GetPlace()));
       K = ids_t->rows().size();
@@ -253,7 +247,7 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
 
     framework::LoDTensor print_tensor_output;
     print_tensor_output.Resize(output_t->dims());
-    std::cout << print_tensor_output.dims() << std::endl;
+    // std::cout << print_tensor_output.dims() << std::endl;
 
     if (paddle::platform::is_cpu_place(output_t->place())) {
       print_tensor_table.ShareDataWith(*output_t);
@@ -273,14 +267,14 @@ template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::cout << "Now we are in the backward kernel" << std::endl;
+    // std::cout << "Now we are in the backward kernel" << std::endl;
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      std::cout << "Is_sparse is true" << std::endl;
+      // std::cout << "Is_sparse is true" << std::endl;
       auto* ids = context.Input<LoDTensor>("Ids");
       auto* table = context.Input<LoDTensor>("W");
       auto* d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -314,33 +308,32 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       framework::LoDTensor print_tensor_table;
       print_tensor_table.Resize(table->dims());
-      std::cout << "Printing table W" << std::endl;
-      std::cout << print_tensor_table.dims() << std::endl;
+      // std::cout << "Printing table W" << std::endl;
+      // std::cout << print_tensor_table.dims() << std::endl;
 
       if (paddle::platform::is_cpu_place(table->place())) {
         print_tensor_table.ShareDataWith(*table);
       } else {
         // copy data to cpu to print
-        std::cout << "Should be printed" << std::endl;
+        // std::cout << "Should be printed" << std::endl;
         paddle::platform::CPUPlace place;
         framework::TensorCopy(*table, place, &print_tensor_table);
       }
       Formater formater3;
       formater3.dtype = print_tensor_table.type();
       formater3.data = reinterpret_cast<void*>(print_tensor_table.data<void>());
-      formater3(print_tensor_table.numel());
+      // formater3(print_tensor_table.numel());
 
       // Printing doutput
       framework::LoDTensor print_tensor_doutput;
       print_tensor_doutput.Resize(d_output->dims());
-      std::cout << "Printing d_output" << std::endl;
-      std::cout << print_tensor_doutput.dims() << std::endl;
+      // std::cout << "Printing d_output" << std::endl;
+      // std::cout << print_tensor_doutput.dims() << std::endl;
 
       if (paddle::platform::is_cpu_place(d_output->place())) {
         print_tensor_doutput.ShareDataWith(*d_output);
       } else {
         // copy data to cpu to print
-        std::cout << "Should be printed, part 2" << std::endl;
         paddle::platform::CPUPlace place;
         framework::TensorCopy(*d_output, place, &print_tensor_doutput);
       }
@@ -348,10 +341,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       formater5.dtype = print_tensor_doutput.type();
       formater5.data =
           reinterpret_cast<void*>(print_tensor_doutput.data<void>());
-      formater5(print_tensor_doutput.numel());
+      // formater5(print_tensor_doutput.numel());
 
     } else {
-      std::cout << "Is_sparse is false, hence we are here" << std::endl;
+      // std::cout << "Is_sparse is false, hence we are here" << std::endl;
       auto ids_t = context.Input<LoDTensor>("Ids");
       auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
@@ -370,44 +363,6 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       dim3 grids(1, 1);
       LookupTableGrad<T, 1, 1, 1><<<grids, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids, N, K, D);
-
-      framework::LoDTensor print_tensor_dtable;
-      print_tensor_dtable.Resize(d_table_t->dims());
-      std::cout << "Printing d_table" << std::endl;
-      std::cout << print_tensor_dtable.dims() << std::endl;
-
-      if (paddle::platform::is_cpu_place(d_table_t->place())) {
-        print_tensor_dtable.ShareDataWith(*d_table_t);
-      } else {
-        // copy data to cpu to print
-        std::cout << "Should be printed" << std::endl;
-        paddle::platform::CPUPlace place;
-        framework::TensorCopy(*d_table_t, place, &print_tensor_dtable);
-      }
-      Formater formater4;
-      formater4.dtype = print_tensor_dtable.type();
-      formater4.data =
-          reinterpret_cast<void*>(print_tensor_dtable.data<void>());
-      formater4(print_tensor_dtable.numel());
-
-      framework::LoDTensor print_tensor_doutput;
-      print_tensor_doutput.Resize(d_output_t->dims());
-      std::cout << "Printing d_output" << std::endl;
-      std::cout << print_tensor_doutput.dims() << std::endl;
-
-      if (paddle::platform::is_cpu_place(d_output_t->place())) {
-        print_tensor_doutput.ShareDataWith(*d_output_t);
-      } else {
-        // copy data to cpu to print
-        std::cout << "Should be printed, part 2" << std::endl;
-        paddle::platform::CPUPlace place;
-        framework::TensorCopy(*d_output_t, place, &print_tensor_doutput);
-      }
-      Formater formater5;
-      formater5.dtype = print_tensor_doutput.type();
-      formater5.data =
-          reinterpret_cast<void*>(print_tensor_doutput.data<void>());
-      formater5(print_tensor_doutput.numel());
     }
   }
 };
