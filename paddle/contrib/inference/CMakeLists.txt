@@ -48,33 +48,36 @@ endif()
 
 
 function(inference_api_test TARGET_NAME)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs ARGS)
-    cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if (WITH_TESTING)
+        set(options "")
+        set(oneValueArgs "")
+        set(multiValueArgs ARGS)
+        cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-    cc_test(test_paddle_inference_${TARGET_NAME}
-            SRCS test_paddle_inference_${TARGET_NAME}.cc
-            DEPS "${inference_deps}"
-            ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
-    if(inference_test_ARGS)
-        set_tests_properties(test_paddle_inference_${TARGET_NAME}
-                 PROPERTIES DEPENDS "${inference_test_ARGS}")
-    endif()
+        set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
+        cc_test(${TARGET_NAME}
+                SRCS ${TARGET_NAME}.cc
+                DEPS "${inference_deps}"
+                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+        if(inference_test_ARGS)
+            set_tests_properties(${TARGET_NAME}
+                    PROPERTIES DEPENDS "${inference_test_ARGS}")
+        endif()
+    endif(WITH_TESTING)
 endfunction(inference_api_test)
-
 
 cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
-if(WITH_TESTING)
-    cc_test(test_paddle_inference_api
-            SRCS test_paddle_inference_api.cc
-            DEPS paddle_inference_api)
+cc_test(test_paddle_inference_api
+        SRCS test_paddle_inference_api.cc
+        DEPS paddle_inference_api)
 
-    inference_api_test(api_impl
-                       ARGS test_word2vec test_image_classification)
+inference_api_test(test_paddle_inference_api_impl
+                    ARGS test_word2vec test_image_classification)
+
+if(WITH_TESTING)
+    add_subdirectory(demo)
 endif()
 

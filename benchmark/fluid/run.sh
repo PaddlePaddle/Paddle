@@ -37,7 +37,8 @@ nohup stdbuf -oL nvidia-smi \
       -l 1 &
 # mnist
 # mnist gpu mnist 128
-FLAGS_benchmark=true stdbuf -oL python fluid/mnist.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=mnist \
                --device=GPU \
                --batch_size=128 \
                --skip_batch_num=5 \
@@ -46,7 +47,8 @@ FLAGS_benchmark=true stdbuf -oL python fluid/mnist.py \
 
 # vgg16
 # gpu cifar10 128
-FLAGS_benchmark=true stdbuf -oL python fluid/vgg16.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=vgg16 \
                --device=GPU \
                --batch_size=128 \
                --skip_batch_num=5 \
@@ -54,7 +56,8 @@ FLAGS_benchmark=true stdbuf -oL python fluid/vgg16.py \
                2>&1 | tee -a vgg16_gpu_128.log
 
 # flowers gpu  128
-FLAGS_benchmark=true stdbuf -oL python fluid/vgg16.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=vgg16 \
                --device=GPU \
                --batch_size=32 \
                --data_set=flowers \
@@ -64,40 +67,39 @@ FLAGS_benchmark=true stdbuf -oL python fluid/vgg16.py \
 
 # resnet50
 # resnet50 gpu cifar10 128
-FLAGS_benchmark=true stdbuf -oL python fluid/resnet50.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=resnet50 \
                --device=GPU \
                --batch_size=128 \
                --data_set=cifar10 \
-               --model=resnet_cifar10 \
                --skip_batch_num=5 \
                --iterations=30 \
                2>&1 | tee -a resnet50_gpu_128.log
 
 # resnet50 gpu flowers 64
-FLAGS_benchmark=true stdbuf -oL python fluid/resnet50.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=resnet50 \
                --device=GPU \
                --batch_size=64 \
                --data_set=flowers \
-               --model=resnet_imagenet \
                --skip_batch_num=5 \
                --iterations=30 \
                2>&1 | tee -a resnet50_gpu_flowers_64.log
 
 # lstm
 # lstm gpu imdb 32 # tensorflow only support batch=32
-FLAGS_benchmark=true stdbuf -oL python fluid/stacked_dynamic_lstm.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=stacked_dynamic_lstm \
                --device=GPU \
                --batch_size=32 \
                --skip_batch_num=5 \
                --iterations=30 \
-               --hidden_dim=512 \
-               --emb_dim=512 \
-               --crop_size=1500 \
                2>&1 | tee -a lstm_gpu_32.log
 
 # seq2seq
 # seq2seq gpu wmb 128
-FLAGS_benchmark=true stdbuf -oL python fluid/machine_translation.py \
+FLAGS_benchmark=true stdbuf -oL python fluid_benchmark.py \
+               --model=machine_translation \
                --device=GPU \
                --batch_size=128 \
                --skip_batch_num=5 \
