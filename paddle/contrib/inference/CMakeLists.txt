@@ -85,4 +85,3 @@ endif()
 if(WITH_TESTING)
     add_subdirectory(demo)
 endif()
-
