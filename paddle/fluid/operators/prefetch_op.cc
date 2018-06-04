@@ -41,7 +41,7 @@ class PrefetchOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    auto rpc_client = detail::GRPCClient::GetInstance();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {

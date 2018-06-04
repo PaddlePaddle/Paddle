@@ -61,7 +61,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
-    detail::RPCClient client;
+    detail::GRPCClient client;
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
       client.AsyncSendVariable(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
