@@ -103,7 +103,7 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
   }
 }
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class BoxCoderCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -113,6 +113,22 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
     auto* output_box = context.Output<framework::Tensor>("OutputBox");
+
+    const T* prior_box_data = prior_box->data<T>();
+    const T* target_box_data = target_box->data<T>();
+    const T* prior_box_var_data;
+    if (!prior_box_var) {
+      framework::Tensor default_box_var;
+      default_box_var.mutable_data<T>(
+          framework::make_ddim({prior_box->dims()[0], prior_box->dims()[1]}),
+          context.GetPlace());
+      math::SetConstant<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), &default_box_var,
+          static_cast<T>(1));
+      prior_box_var_data = default_box_var.data<T>();
+    } else {
+      prior_box_var_data = prior_box_var->data<T>();
+    }
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
@@ -124,10 +140,6 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (row * col + block - 1) / block;
     auto& device_ctx = context.cuda_device_context();
-
-    const T* prior_box_data = prior_box->data<T>();
-    const T* prior_box_var_data = prior_box_var->data<T>();
-    const T* target_box_data = target_box->data<T>();
 
     output_box->mutable_data<T>({row, col, len}, context.GetPlace());
     T* output = output_box->data<T>();
@@ -150,5 +162,7 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(box_coder, ops::BoxCoderCUDAKernel<float>,
-                        ops::BoxCoderCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    box_coder,
+    ops::BoxCoderCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::BoxCoderCUDAKernel<paddle::platform::CUDADeviceContext, double>);

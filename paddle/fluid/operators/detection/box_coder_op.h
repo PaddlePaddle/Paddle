@@ -28,7 +28,7 @@ inline BoxCodeType GetBoxCodeType(const std::string& type) {
   PADDLE_THROW("Not support type %s.", type);
 }
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class BoxCoderKernel : public framework::OpKernel<T> {
  public:
   void EncodeCenterSize(const framework::Tensor& target_box,
@@ -133,6 +133,16 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
     auto* output_box = context.Output<framework::Tensor>("OutputBox");
 
+    framework::Tensor default_box_var;
+    if (!prior_box_var) {
+      default_box_var.mutable_data<T>(
+          framework::make_ddim({prior_box->dims()[0], prior_box->dims()[1]}),
+          context.GetPlace());
+      math::SetConstant<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), &default_box_var,
+          static_cast<T>(1));
+    }
+
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1UL,
                         "Only support 1 level of LoD.");
@@ -146,12 +156,22 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     bool normalized = context.Attr<bool>("box_normalized");
     T* output = output_box->data<T>();
-    if (code_type == BoxCodeType::kEncodeCenterSize) {
-      EncodeCenterSize(*target_box, *prior_box, *prior_box_var, normalized,
-                       output);
-    } else if (code_type == BoxCodeType::kDecodeCenterSize) {
-      DecodeCenterSize(*target_box, *prior_box, *prior_box_var, normalized,
-                       output);
+    if (prior_box_var) {
+      if (code_type == BoxCodeType::kEncodeCenterSize) {
+        EncodeCenterSize(*target_box, *prior_box, *prior_box_var, normalized,
+                         output);
+      } else if (code_type == BoxCodeType::kDecodeCenterSize) {
+        DecodeCenterSize(*target_box, *prior_box, *prior_box_var, normalized,
+                         output);
+      }
+    } else {
+      if (code_type == BoxCodeType::kEncodeCenterSize) {
+        EncodeCenterSize(*target_box, *prior_box, default_box_var, normalized,
+                         output);
+      } else if (code_type == BoxCodeType::kDecodeCenterSize) {
+        DecodeCenterSize(*target_box, *prior_box, default_box_var, normalized,
+                         output);
+      }
     }
   }
 };
