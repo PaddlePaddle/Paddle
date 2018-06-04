@@ -146,7 +146,10 @@ def get_model(args):
         model = resnet_imagenet
 
     if args.use_recordio:
-        recordio_name = './cifar10_1.recordio' if args.data_set == 'cifar10' else './flowers_1.recordio'
+        if args.data_set == 'cifar10':
+            recordio_name = './cifar10_1.recordio'
+        else:
+            recordio_name = './flowers_1.recordio'
         if not os.path.exists(recordio_name):
             if args.data_set == 'cifar10':
                 data_set_iterator = paddle.dataset.cifar.train10
@@ -155,6 +158,7 @@ def get_model(args):
             print("generate {0} ... ".format(recordio_name))
             generate_recordio(dshape, data_set_iterator, recordio_name)
 
+        batch_size_per_gpu = args.batch_size / args.gpus
         file_list = [recordio_name] * 8
         data_file = fluid.layers.io.open_files(
             filenames=file_list,
@@ -162,9 +166,9 @@ def get_model(args):
             lod_levels=[0, 0],
             dtypes=['float32', 'int64'],
             thread_num=4,
-            pass_num=10)
+            pass_num=args.pass_num)
         data_file = fluid.layers.io.batch(
-            data_file, batch_size=args.batch_size_per_gpu)
+            data_file, batch_size=batch_size_per_gpu)
         data_file = fluid.layers.io.double_buffer(data_file)
         input, label = fluid.layers.io.read_file(data_file)
     else:
