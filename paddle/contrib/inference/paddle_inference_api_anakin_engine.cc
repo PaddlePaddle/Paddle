@@ -33,7 +33,11 @@ bool PaddleInferenceAnakinPredictor::Run(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data) {
   for (const auto &input : inputs) {
-    CHECK(input.dtype == PaddleDType::FLOAT32);
+    if (input.dtype != PaddleDType::FLOAT32) {
+      LOG(ERROR) << "Only support float type inputs. " << input.name
+                 << "'s type is not float";
+      return false;
+    }
     engine_.SetInputFromCPU(
         input.name, static_cast<float *>(input.data.data), input.data.length);
   }
@@ -41,17 +45,21 @@ bool PaddleInferenceAnakinPredictor::Run(
   // TODO(Superjomn) Tell anakin to support return code.
   engine_.Execute();
 
-  CHECK(!output_data->empty())
-      << "At least one output should be set with tensors' names.";
+  if (output_data->empty()) {
+    LOG(ERROR) << "At least one output should be set with tensors' names.";
+    return false;
+  }
   for (auto &output : *output_data) {
     auto *tensor = engine_.GetOutputInGPU(output.name);
     output.shape = tensor->shape();
     // Copy data from GPU -> CPU
-    CHECK_EQ(cudaMemcpy(output.data.data,
-                        tensor->data(),
-                        tensor->size(),
-                        cudaMemcpyDeviceToHost),
-             0);
+    if (cudaMemcpy(output.data.data,
+                   tensor->data(),
+                   tensor->size(),
+                   cudaMemcpyDeviceToHost) != 0) {
+      LOG(ERROR) << "copy data from GPU to CPU error";
+      return false;
+    }
   }
   return true;
 }

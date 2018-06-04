@@ -24,15 +24,21 @@ set(ANAKIN_LIBRARY "" CACHE STRING "path of Anakin library")
 set(inference_deps paddle_inference_api paddle_fluid_api)
 
 # if anakin is set enable anakin api implementation
-if (NOT ANAKIN_INCLUDE STREQUAL "")
+if(ANAKIN_INCLUDE_DIR AND ANAKIN_LIBRARY)
+    set(ANAKIN_FOUND ON)
+else()
+    set(ANAKIN_FOUND OFF)
+endif()
+
+if (ANAKIN_FOUND)
     # Anakin's code style doesn't follow google c style.
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=comment")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=reorder")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=format")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=switch")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=return-type")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=non-virtual-dtor")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=cpp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=comment
+                                            -Wno-error=reorder
+                                            -Wno-error=format
+                                            -Wno-error=switch
+                                            -Wno-error=return-type
+                                            -Wno-error=non-virtual-dtor
+                                            -Wno-error=cpp")
 
     message(STATUS "Anakin for inference is enabled")
     message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
@@ -77,7 +83,7 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
-if (NOT ANAKIN_INCLUDE STREQUAL "")
+if (ANAKIN_FOUND)
   nv_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
     DEPS ${inference_deps} protobuf)
 endif()
