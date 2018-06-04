@@ -39,7 +39,8 @@ class BlockDesc {
  public:
   BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc);
 
-  BlockDesc(const BlockDesc &other, proto::BlockDesc *desc, ProgramDesc *prog);
+  BlockDesc(const BlockDesc &other, proto::BlockDesc *desc, ProgramDesc *prog,
+            bool is_test=false);
 
   ~BlockDesc() {
     this->ClearPBVars();

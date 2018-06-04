@@ -114,6 +114,11 @@ void BindProgramDesc(pybind11::module *m) {
   pybind11::class_<pd::ProgramDesc>(*m, "ProgramDesc", "")
       .def(pybind11::init<>())
       .def("__init__",
+           [](pd::ProgramDesc &self, const pd::ProgramDesc &other,
+              bool is_test=false) {
+             new (&self) pd::ProgramDesc(other, is_test);
+           })
+      .def("__init__",
            [](pd::ProgramDesc &self, const pd::ProgramDesc &other) {
              new (&self) pd::ProgramDesc(other);
            })

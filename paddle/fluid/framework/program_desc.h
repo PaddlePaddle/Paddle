@@ -33,7 +33,7 @@ class ProgramDesc {
 
   explicit ProgramDesc(const proto::ProgramDesc &desc);
 
-  ProgramDesc(const ProgramDesc &o);
+  ProgramDesc(const ProgramDesc &o, bool is_test=false);
 
   explicit ProgramDesc(const std::string &binary_str);
 

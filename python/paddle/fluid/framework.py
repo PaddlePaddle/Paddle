@@ -1020,7 +1020,9 @@ class Block(object):
 
 
 class Program(object):
-    def __init__(self):
+    def __init__(self, is_test=False):
+        if is_test:
+            return
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
@@ -1101,13 +1103,19 @@ class Program(object):
         if for_test:
             p = self.inference_optimize()
         else:
-            p = Program()
-            p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-            p.sync_with_cpp()
+            p = Program(is_test=True)
+            p.desc = core.ProgramDesc()
+            p.blocks = [Block(p, 0)]
+            p.current_block_idx = 0
+            p._seed = 0
+            p._current_role = core.op_proto_and_checker_maker.OpRole.Forward
+            p._op_role_var = []
+            p.desc = core.ProgramDesc(self.desc, True)
+            # p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            # p.sync_with_cpp()
 
-        p.copy_param_info_from(self)
-        p.copy_data_info_from(self)
+        # p.copy_param_info_from(self)
+        # p.copy_data_info_from(self)
         return p
 
     def prune(self, targets):

@@ -46,6 +46,8 @@ class OpDesc {
 
   proto::OpDesc *Proto();
 
+  const proto::OpDesc& ConstProto() const;
+
   std::string Type() const { return desc_.type(); }
 
   void SetType(const std::string &type) { desc_.set_type(type); }

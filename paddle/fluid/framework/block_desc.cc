@@ -205,7 +205,7 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
 }
 
 BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
-                     ProgramDesc *prog)
+                     ProgramDesc *prog, bool is_test)
     : prog_(prog), desc_(desc) {
   need_update_ = true;
   for (auto &op : other.ops_) {
@@ -218,19 +218,12 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
 }
 
 void BlockDesc::ClearPBOps() {
-  auto ops = this->desc_->mutable_ops();
-  while (!ops->empty()) {
-    // we do not own the OpDesc, so release the ownership.
-    ops->ReleaseLast();
-  }
+  this->desc_->mutable_ops()->Clear();
 }
 
 void BlockDesc::ClearPBVars() {
-  auto vars = this->desc_->mutable_vars();
-  while (!vars->empty()) {
-    // we do not own the VarDesc, so release the ownership.
-    vars->ReleaseLast();
-  }
+  this->desc_->mutable_vars()->Clear();
+
 }
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {

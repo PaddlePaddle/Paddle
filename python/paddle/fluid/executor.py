@@ -16,6 +16,7 @@ import numpy as np
 import contextlib
 from framework import Program, default_main_program, Variable
 from . import core
+import sys
 
 __all__ = [
     'Executor', 'global_scope', 'scope_guard', 'switch_scope', 'fetch_var'
@@ -207,7 +208,7 @@ class Executor(object):
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
                             fetch_var_name):
         tmp_program = program.clone()
-
+        """
         global_block = tmp_program.global_block()
 
         if feed_var_name in global_block.vars:
@@ -246,7 +247,7 @@ class Executor(object):
                     inputs={'X': [var]},
                     outputs={'Out': [fetch_var]},
                     attrs={'col': i})
-
+        """
         return tmp_program
 
     def _feed_data(self, program, feed, feed_var_name, scope):
@@ -277,7 +278,8 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False,
+            keep_create=False):
         """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
 
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -329,12 +331,14 @@ class Executor(object):
             program = cached_program
         else:
             self.program_caches.pop(cache_key, None)
-            program = self._add_feed_fetch_ops(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name)
+            while keep_create:
+                program = self._add_feed_fetch_ops(
+                    program=program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name)
+                sys.stderr.write('created a program\n')
 
         self._feed_data(program, feed, feed_var_name, scope)
         self.executor.run(program.desc, scope, 0, True, True)

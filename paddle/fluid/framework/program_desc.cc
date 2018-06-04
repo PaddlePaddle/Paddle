@@ -45,11 +45,11 @@ ProgramDesc::ProgramDesc() {
   blocks_.emplace_back(new BlockDesc(this, block));
 }
 
-ProgramDesc::ProgramDesc(const ProgramDesc &o) {
+ProgramDesc::ProgramDesc(const ProgramDesc &o, bool is_test) {
   desc_ = o.desc_;
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
-    blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
+    blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this, is_test));
   }
   for (auto &block : blocks_) {
     for (auto *op : block->AllOps()) {

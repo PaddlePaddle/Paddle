@@ -109,7 +109,9 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=False):
             for batch_id, data in enumerate(train_reader()):
                 avg_cost_np = exe.run(main_program,
                                       feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
+                                      fetch_list=[avg_cost],
+                                      use_program_cache=False,
+                                      keep_create=True)
                 sys.stderr.write('pass: %d, batch_id: %d, cost: %s\n' %
                                  (pass_id, batch_id, avg_cost_np))
                 if math.isnan(float(avg_cost_np[0])):

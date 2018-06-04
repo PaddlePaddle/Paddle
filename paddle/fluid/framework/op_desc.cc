@@ -144,6 +144,10 @@ proto::OpDesc *OpDesc::Proto() {
   return &desc_;
 }
 
+const proto::OpDesc& OpDesc::ConstProto() const {
+  return desc_;
+}
+
 const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
   PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s", name,
