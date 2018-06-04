@@ -72,8 +72,8 @@ class TestListenAndServOp(OpTest):
     def _wait_ps_ready(self, pid):
         retry_times = self.ps_timeout
         while True:
-            time.sleep(1)
             assert retry_times >= 0, "wait ps ready failed"
+            time.sleep(0.5)
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
                 # on the /tmp directory until it was ready to process all the RPC call.
@@ -87,15 +87,15 @@ class TestListenAndServOp(OpTest):
         pid = self._start_pserver(False, True)
         self._wait_ps_ready(pid)
 
-        # raise SIGINT to pserver
-        os.kill(pid, signal.SIGINT)
+        # raise SIGTERM to pserver
+        os.kill(pid, signal.SIGTERM)
 
         # run pserver on CPU in async mode
         pid = self._start_pserver(False, False)
         self._wait_ps_ready(pid)
 
         # raise SIGTERM to pserver
-        os.kill(pid, signal.SIGINT)
+        os.kill(pid, signal.SIGTERM)
 
 
 if __name__ == '__main__':
