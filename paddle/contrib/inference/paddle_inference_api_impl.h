@@ -34,14 +34,15 @@ class NativePaddlePredictor : public PaddlePredictor {
   explicit NativePaddlePredictor(const NativeConfig &config)
       : config_(config) {}
 
-  bool Init();
+  // will only create sub scope if have global scope
+  bool Init(std::shared_ptr<framework::Scope> scope = nullptr);
 
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  ~NativePaddlePredictor() override{};
+  ~NativePaddlePredictor() override;
 
  private:
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
@@ -52,11 +53,13 @@ class NativePaddlePredictor : public PaddlePredictor {
   NativeConfig config_;
   platform::Place place_;
   std::unique_ptr<framework::Executor> executor_;
-  std::unique_ptr<framework::Scope> scope_;
+  std::shared_ptr<framework::Scope> scope_;
   std::unique_ptr<framework::ExecutorPrepareContext> ctx_;
   std::unique_ptr<framework::ProgramDesc> inference_program_;
   std::vector<std::string> feed_target_names_;
   std::vector<std::string> fetch_target_names_;
+  // Do not use unique_ptr, use parent scope to delete
+  framework::Scope *sub_scope_{nullptr};
 };
 
 }  // namespace paddle
