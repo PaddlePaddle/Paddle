@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fuse_all_reduce_graph_builder.h"
+#include <unordered_set>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -20,8 +22,22 @@ namespace details {
 std::unique_ptr<SSAGraph> FuseAllReduceGraphBuilder::Build(
     const ProgramDesc &program) const {
   // TODO(yy): Complete this method.
-  return builder_->Build(program);
+  auto graph = builder_->Build(program);
+
+  auto all_reduce_ops = GetNotDependedAllReduceOp(graph.get());
+
+  for (auto &op_group : all_reduce_ops) {
+    FuseAllReduceOp(graph.get(), std::move(op_group));
+  }
+  return graph;
 }
+std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>
+FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
+  return std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>();
+}
+void FuseAllReduceGraphBuilder::FuseAllReduceOp(
+    SSAGraph *graph,
+    std::unordered_set<std::unique_ptr<OpHandleBase>> &&ops) const {}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -14,6 +14,8 @@
 
 #pragma once
 #include <memory>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 namespace paddle {
 namespace framework {
@@ -26,6 +28,17 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
   std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override;
 
  private:
+  /**
+   * Get All-Reduce operator into multiple sets.
+   * The order of set is the order of execution.
+   */
+  std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>
+  GetNotDependedAllReduceOp(SSAGraph* graph) const;
+
+  void FuseAllReduceOp(
+      SSAGraph* graph,
+      std::unordered_set<std::unique_ptr<OpHandleBase>>&& ops) const;
+
   std::unique_ptr<SSAGraphBuilder> builder_;
 };
 
