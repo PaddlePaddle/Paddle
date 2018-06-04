@@ -127,7 +127,7 @@ TEST(PREFETCH, CPU) {
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
 
-  detail::RPCClient client;
+  std::unique_ptr<detail::RPCClient> client(new detail::GRPCClient);
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
@@ -141,8 +141,8 @@ TEST(PREFETCH, CPU) {
     std::string in_var_name("ids");
     std::string out_var_name("out");
 
-    client.AsyncPrefetchVariable(ep, ctx, scope, in_var_name, out_var_name);
-    client.Wait();
+    client->AsyncPrefetchVariable(ep, ctx, scope, in_var_name, out_var_name);
+    client->Wait();
     auto var = scope.Var(out_var_name);
     auto value = var->GetMutable<framework::SelectedRows>()->value();
     auto ptr = value.mutable_data<float>(place);

@@ -43,7 +43,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    auto rpc_client = detail::GRPCClient::GetInstance();
 
     PADDLE_ENFORCE(rpc_client->Wait());
 

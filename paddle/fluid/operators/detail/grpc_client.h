@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
@@ -161,38 +162,39 @@ class FetchBarrierProcessor : public BaseProcessor {
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
-class RPCClient {
+class GRPCClient : public RPCClient {
  public:
-  RPCClient() {}
+  GRPCClient() {}
 
-  static RPCClient* GetInstance();
+  static GRPCClient* GetInstance();
 
   bool AsyncSendVariable(const std::string& ep,
                          const platform::DeviceContext& ctx,
                          const framework::Scope& scope,
                          const std::string& var_name,
-                         int64_t time_out = 600 * 1000);
+                         int64_t time_out = RPCClient::rpc_time_out) override;
 
   bool AsyncGetVariable(const std::string& ep,
                         const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& var_name,
-                        int64_t time_out = 600 * 1000);
+                        int64_t time_out = RPCClient::rpc_time_out) override;
 
-  bool AsyncPrefetchVariable(const std::string& ep,
-                             const platform::DeviceContext& ctx,
-                             const framework::Scope& scope,
-                             const std::string& in_var_name,
-                             const std::string& out_var_name,
-                             int64_t time_out = 600 * 1000);
+  bool AsyncPrefetchVariable(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& in_var_name,
+      const std::string& out_var_name,
+      int64_t time_out = RPCClient::rpc_time_out) override;
 
-  void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = 600 * 1000);
+  void AsyncSendBatchBarrier(
+      const std::string& ep,
+      int64_t time_out = RPCClient::rpc_time_out) override;
 
-  void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = 600 * 1000);
+  void AsyncSendFetchBarrier(
+      const std::string& ep,
+      int64_t time_out = RPCClient::rpc_time_out) override;
 
-  bool Wait();
+  bool Wait() override;
 
  private:
   bool Proceed();
@@ -205,9 +207,9 @@ class RPCClient {
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   std::atomic<int64_t> req_count_{0};
   std::mutex mutex_;
-  static std::unique_ptr<RPCClient> rpc_client_;
+  static std::unique_ptr<GRPCClient> rpc_client_;
   static std::once_flag init_flag_;
-  DISABLE_COPY_AND_ASSIGN(RPCClient);
+  DISABLE_COPY_AND_ASSIGN(GRPCClient);
 };
 
 }  // namespace detail

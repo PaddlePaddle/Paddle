@@ -88,12 +88,12 @@ TEST(SendNcclId, GrpcServer) {
   int port = g_rpc_service->GetSelectedPort();
 
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient client;
+  std::unique_ptr<detail::RPCClient> client(new detail::GRPCClient);
   LOG(INFO) << "connect to server" << ep;
-  client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
-  client.Wait();
-  client.AsyncSendBatchBarrier(ep);
-  client.Wait();
+  client->AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
+  client->Wait();
+  client->AsyncSendBatchBarrier(ep);
+  client->Wait();
 
   server_thread.join();
   g_rpc_service.reset(nullptr);
