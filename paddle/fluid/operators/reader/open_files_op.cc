@@ -63,9 +63,6 @@ void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
 
 void MultiFileReader::ReInit() {
   EndScheduler();
-  for (auto& reader : readers_) {
-    reader->ReInit();
-  }
   StartNewScheduler();
 }
 
@@ -141,6 +138,7 @@ void MultiFileReader::PrefetchThreadFunc(size_t reader_idx, size_t thread_idx) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
     if (ins.empty()) {
+      reader->ReInit();
       break;
     }
     try {
