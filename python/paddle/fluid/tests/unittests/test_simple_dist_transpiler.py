@@ -12,39 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 
 from transpiler_test import TranspilerTest
 
 
-class TestDistTranspiler(TranspilerTest):
+class TestSimpleDistTranspiler(TranspilerTest):
     def setUp(self):
-        self.current_pserver_ep = "127.0.0.1:6174"
+        self.current_pserver_ep = "127.0.0.1:6175"
 
-    def test_transpiler(self):
+    def test_simple_transpiler(self):
+        np.random.seed(1)
+
         trainer = self.get_trainer()
         pserver, startup = self.get_pserver(self.current_pserver_ep)
         self.assertEqual([op.type for op in trainer.global_block().ops],
                          self.get_expect_trainer_ops())
 
-        self.assertEqual(len(pserver.blocks), 3)
+        self.assertEqual(len(pserver.blocks), 2)
         # block0: listen_and_serv
         self.assertEqual([op.type for op in pserver.blocks[0].ops],
                          ["listen_and_serv"])
-        # block2: optimize pass
+        # block1: optimize pass
         self.assertEqual([op.type for op in pserver.blocks[1].ops],
                          ["sum", "scale", "sgd"])
 
         # confirm startup program
+        self.assertEqual([op.type for op in startup.global_block().ops],
+                         ["fill_constant", "uniform_random", "uniform_random"])
 
-        self.assertEqual([op.type for op in startup.global_block().ops], [
-            "fill_constant", "fill_constant", "uniform_random", "uniform_random"
-        ])
+        # the variable #fc_w will NOT be splited
+        fc_w_var = startup.global_block().var("fc_w@GRAD")
+        self.assertEqual(fc_w_var.shape, (1000, 1000))
 
-        # the variable #fc_w will be split into two blocks
-        fc_w_var = startup.global_block().var("fc_w.block1")
-        self.assertEqual(fc_w_var.shape, (500, 1000))
+        fc_w_var = startup.global_block().var("fc_w@GRAD.trainer_0")
+        self.assertEqual(fc_w_var.shape, (1000, 1000))
 
     def get_expect_trainer_ops(self):
         trainer = fluid.Program()
@@ -54,11 +59,21 @@ class TestDistTranspiler(TranspilerTest):
 
         delete_ops(trainer.global_block(), optimize_ops)
         ops = [op.type for op in trainer.global_block().ops] + [
-            "split_byref", "send_vars", "send_barrier", "recv", "recv",
-            "fetch_barrier", "concat"
+            "send_vars", "send_barrier", "recv", "recv", "fetch_barrier"
         ]
         ops.insert(ops.index("elementwise_add_grad") + 1, "send_vars")
         return ops
+
+    def _transpiler_instance(self):
+        main = self.get_main_program()
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            self.trainer_id,
+            program=main,
+            pservers=self.pserver_eps,
+            trainers=self.trainers,
+            slice_var_up=False)
+        return t
 
 
 if __name__ == "__main__":
