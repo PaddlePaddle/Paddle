@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     http://w_idxw.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -81,10 +81,10 @@ class TestAnchorGeneratorOp(OpTest):
         out_dim = (self.layer_h, self.layer_w, self.num_priors, 4)
         out_boxes = np.zeros(out_dim).astype('float32')
 
-        for hh in range(self.layer_h):
-            for ww in range(self.layer_w):
-                x_ctr = (ww * self.stride[0]) + offset * (self.stride[0] - 1)
-                y_ctr = (hh * self.stride[1]) + offset * (self.stride[1] - 1)
+        for h_idx in range(self.layer_h):
+            for w_idx in range(self.layer_w):
+                x_ctr = (w_idx * self.stride[0]) + offset * (self.stride[0] - 1)
+                y_ctr = (h_idx * self.stride[1]) + offset * (self.stride[1] - 1)
                 idx = 0
                 for r in range(len(self.aspect_ratios)):
                     ar = self.aspect_ratios[r]
@@ -98,7 +98,7 @@ class TestAnchorGeneratorOp(OpTest):
                         scale_h = anchor_size / self.stride[1]
                         w = scale_w * base_w
                         h = scale_h * base_h
-                        out_boxes[hh, ww, idx, :] = [(x_ctr - 0.5 * (w - 1)),
+                        out_boxes[h_idx, w_idx, idx, :] = [(x_ctr - 0.5 * (w - 1)),
                                                    (y_ctr - 0.5 * (h - 1)),
                                                    (x_ctr + 0.5 * (w - 1)),
                                                    (y_ctr + 0.5 * (h - 1))]
