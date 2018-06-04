@@ -16,6 +16,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -39,8 +40,19 @@ struct SSAGraph {
   // aux variables to represent dependency. Useful to resolve data hazard.
   std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
 
-  // all operators.
-  std::unordered_set<std::unique_ptr<OpHandleBase>> ops_;
+  // all operators. THIS FIELD IS UNORDERED.
+  // NOTE: because C++ 11 lacks of `set.extract` method to remove a move-only
+  // item from a set, here we use a vector to simulate a set.
+  std::vector<std::unique_ptr<OpHandleBase>> ops_;
+
+  std::unique_ptr<OpHandleBase> ExtractOp(size_t i) {
+    std::unique_ptr<OpHandleBase> res = std::move(ops_[i]);
+    if (i != ops_.size() - 1) {
+      std::swap(ops_[i], ops_.back());
+    }
+    ops_.pop_back();
+    return res;
+  }
 };
 
 }  // namespace details

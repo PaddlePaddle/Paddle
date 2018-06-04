@@ -301,7 +301,7 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
       new BroadcastOpHandle(local_scopes_, places_);
 #endif
 
-  result->ops_.emplace(op_handle);
+  result->ops_.emplace_back(op_handle);
   auto *in = result->vars_.at(src_dev_id).at(p_name).back().get();
   op_handle->AddInput(in);
 
@@ -323,7 +323,7 @@ OpHandleBase *MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
                                                              int dev_id) const {
   auto *res =
       new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]);
-  result->ops_.emplace(res);
+  result->ops_.emplace_back(res);
   CreateOpHandleIOs(result, res, op, dev_id);
   return res;
 }
@@ -333,7 +333,7 @@ void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
 #ifdef PADDLE_WITH_CUDA
   auto *op_handle =
       new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_);
-  result->ops_.emplace(op_handle);
+  result->ops_.emplace_back(op_handle);
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
@@ -384,7 +384,7 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
     auto *op_handle =
         new ScaleLossGradOpHandle(local_scopes_.size(), local_scopes_[i],
                                   places_[i], communication_dev_ctx);
-    result->ops_.emplace(op_handle);
+    result->ops_.emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
     // factor. So it does not depend on any other operators.
@@ -404,7 +404,7 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
     auto p = places_[scope_idx];
     auto s = local_scopes_[scope_idx];
     auto *op_handle = new ComputationOpHandle(op, s, p);
-    result->ops_.emplace(op_handle);
+    result->ops_.emplace_back(op_handle);
     CreateOpHandleIOs(result, op_handle, op, scope_idx);
   }
 }
@@ -418,7 +418,7 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
 #else
       new ReduceOpHandle(local_scopes_, places_);
 #endif
-  result->ops_.emplace(op_handle);
+  result->ops_.emplace_back(op_handle);
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &vars = result->vars_[i][og];
@@ -464,7 +464,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
   auto &p = places_[0];
   auto *s = local_scopes_[0];
   auto *op_handle = new RPCOpHandle(op, s, p, op.Type());
-  result->ops_.emplace(op_handle);
+  result->ops_.emplace_back(op_handle);
 
   if (op.Type() == "send_barrier") {
     ConnectOp(result, op_handle, "send_vars");
