@@ -16,6 +16,11 @@
 #include <fstream>
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/ssa_graph_printer.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/details/fuse_all_reduce_graph_builder.h"
+#endif
+
 DEFINE_string(debug_ssa_graphviz_filename, "",
               "If this field is set, the graphviz format of ssa graph will be "
               "written to this file");
@@ -33,6 +38,14 @@ std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
                                   local_scopes_, strategy_)
 #endif
           );  // NOLINT
+
+  if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kFusedAllReduce) {
+#ifdef PADDLE_WITH_CUDA
+    res.reset(new FuseAllReduceGraphBuilder(std::move(res)));
+#else
+    PADDLE_THROW("Fused All Reduce Strategy is not supported in CPU.");
+#endif
+  }
 
   if (!FLAGS_debug_ssa_graphviz_filename.empty()) {
     std::ofstream fout(FLAGS_debug_ssa_graphviz_filename);

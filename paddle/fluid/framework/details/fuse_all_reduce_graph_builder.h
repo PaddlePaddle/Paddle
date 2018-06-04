@@ -13,38 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include <stdint.h>
-
+#include <memory>
+#include "paddle/fluid/framework/details/ssa_graph_builder.h"
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct BuildStrategy {
-  enum class ReduceStrategy {
-    kAllReduce = 0x0000,
-    kReduce = 0x0001,
+class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
+ public:
+  explicit FuseAllReduceGraphBuilder(std::unique_ptr<SSAGraphBuilder>&& builder)
+      : builder_(std::move(builder)) {}
+  std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override;
 
-    kOperationMask = 0x00FF,
-    kFusedBit = 0x0100,
-
-    kFusedAllReduce = kFusedBit | kAllReduce,
-    kFusedReduce = kFusedBit | kReduce,
-  };
-
-  ReduceStrategy ReduceOperation() const {
-    return static_cast<ReduceStrategy>(
-        static_cast<uint16_t>(reduce_) &
-        static_cast<uint16_t>(ReduceStrategy::kOperationMask));
-  }
-
-  enum class GradientScaleStrategy {
-    kCoeffNumDevice = 0,
-    kOne = 1,
-    kCustomized = 2,
-  };
-
-  ReduceStrategy reduce_{ReduceStrategy::kFusedAllReduce};
-  GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
+ private:
+  std::unique_ptr<SSAGraphBuilder> builder_;
 };
 
 }  // namespace details
