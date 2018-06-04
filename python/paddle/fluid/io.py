@@ -639,13 +639,14 @@ def _is_checkpoint_var(var):
             var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
             var.desc.type() == core.VarDesc.VarType.RAW:
         return False
-
+    # @GRAD are named for gradient varibales, checkpoint will not save it.
     if "@GRAD" in var.name:
         return False
-
+    # .trainer_ are named for distribute trian variables, checkpoint will not save it.
     if ".trainer_" in var.name:
         return False
 
+    # .block is named for distribute trian variables, checkpoint will not save it.
     if ".block" in var.name:
         return False
 
