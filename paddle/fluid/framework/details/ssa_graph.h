@@ -39,9 +39,8 @@ struct SSAGraph {
   // aux variables to represent dependency. Useful to resolve data hazard.
   std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
 
-  // all operators. NOTE that even we use a vector here, the operators is
-  // unordered.
-  std::vector<std::unique_ptr<OpHandleBase>> ops_;
+  // all operators.
+  std::unordered_set<std::unique_ptr<OpHandleBase>> ops_;
 };
 
 }  // namespace details
