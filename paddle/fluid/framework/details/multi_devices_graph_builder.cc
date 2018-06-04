@@ -231,7 +231,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
               auto &g_name = backward_vars[i + 1];
               VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
-              switch (strategy_.reduce_) {
+              switch (strategy_.ReduceOperation()) {
                 case BuildStrategy::ReduceStrategy::kReduce:
                   cur_device_id = get_appropriate_dev(g_name);
                   CreateReduceOp(&result, g_name, cur_device_id);
@@ -245,6 +245,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
                   } else {
                     InsertNCCLAllReduceOp(&result, g_name);
                   }
+                  break;
+                default:
+                  PADDLE_THROW(
+                      "Unknown reduce operation %d",
+                      static_cast<uint32_t>(strategy_.ReduceOperation()));
                   break;
               }
             }
