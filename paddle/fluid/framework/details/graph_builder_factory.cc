@@ -41,7 +41,8 @@ std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
 
   if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kFusedAllReduce) {
 #ifdef PADDLE_WITH_CUDA
-    res.reset(new FuseAllReduceGraphBuilder(std::move(res)));
+    res.reset(new FuseAllReduceGraphBuilder(std::move(res), places_,
+                                            local_scopes_, nccl_ctxs_));
 #else
     PADDLE_THROW("Fused All Reduce Strategy is not supported in CPU.");
 #endif
