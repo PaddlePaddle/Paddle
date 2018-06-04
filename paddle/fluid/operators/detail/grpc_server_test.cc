@@ -120,7 +120,7 @@ void StartServer() {
   server_thread.join();
 }
 
-TEST(PREFETCH, CPU) {
+TEST(PREFETCH, DISABLED_CPU) {
   g_req_handler.reset(new detail::RequestPrefetchHandler(true));
   g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
 
