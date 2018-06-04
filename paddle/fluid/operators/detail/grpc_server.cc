@@ -22,7 +22,7 @@ using ::grpc::ServerAsyncResponseWriter;
 namespace paddle {
 namespace operators {
 namespace detail {
-enum CallStatus { PROCESS = 0, FINISH, DESTROY };
+enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
@@ -82,11 +82,8 @@ class RequestSend final : public RequestBase {
 
     request_handler_->Handle(varname, scope, invar, &outvar);
     status_ = FINISH;
-  }
-  void Finish() override {
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-    status_ = DESTROY;
   }
 
  protected:
@@ -127,11 +124,8 @@ class RequestGet final : public RequestBase {
                             &reply_);
     }
     status_ = FINISH;
-  }
-  void Finish() override {
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-    status_ = DESTROY;
   }
 
  protected:
@@ -173,13 +167,9 @@ class RequestPrefetch final : public RequestBase {
 
     SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
                           &reply_);
-
-    status_ = FINISH;
-  }
-  void Finish() {
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-    status_ = DESTROY;
+    status_ = FINISH;
   }
 
  protected:
@@ -349,10 +339,6 @@ void AsyncGRPCServer::HandleRequest(
       }
       case FINISH: {
         TryToRegisterNewOne(rpc_name, req_id);
-        base->Finish();
-        break;
-      }
-      case DESTROY: {
         delete base;
         break;
       }
