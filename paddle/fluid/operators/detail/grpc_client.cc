@@ -27,16 +27,16 @@ namespace detail {
 
 std::once_flag GRPCClient::init_flag_;
 
-std::unique_ptr<GRPCClient> GRPCClient::rpc_client_(nullptr);
+std::unique_ptr<GRPCClient> GRPCClient::grpc_client_(nullptr);
 
 GRPCClient* GRPCClient::GetInstance() {
   std::call_once(init_flag_, &GRPCClient::Init);
-  return rpc_client_.get();
+  return grpc_client_.get();
 }
 
 void GRPCClient::Init() {
-  if (rpc_client_.get() == nullptr) {
-    rpc_client_.reset(new GRPCClient());
+  if (grpc_client_.get() == nullptr) {
+    grpc_client_.reset(new GRPCClient());
   }
 }
 

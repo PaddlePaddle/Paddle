@@ -207,7 +207,7 @@ class GRPCClient : public RPCClient {
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   std::atomic<int64_t> req_count_{0};
   std::mutex mutex_;
-  static std::unique_ptr<GRPCClient> rpc_client_;
+  static std::unique_ptr<GRPCClient> grpc_client_;
   static std::once_flag init_flag_;
   DISABLE_COPY_AND_ASSIGN(GRPCClient);
 };
