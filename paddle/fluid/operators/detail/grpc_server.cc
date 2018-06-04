@@ -40,7 +40,6 @@ class RequestBase {
   }
   virtual ~RequestBase() {}
   virtual void Process() = 0;
-  virtual void Finish() = 0;
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
