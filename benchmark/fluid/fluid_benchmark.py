@@ -40,10 +40,7 @@ def parse_args():
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
     parser.add_argument(
-        '--learning_rate',
-        type=float,
-        default=0.001,
-        help='The minibatch size.')
+        '--learning_rate', type=float, default=0.001, help='The learning rate.')
     # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
@@ -72,6 +69,11 @@ def parse_args():
         type=int,
         default=1,
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
+    parser.add_argument(
+        '--cpus',
+        type=int,
+        default=1,
+        help='If cpus > 1, will use ParallelDo to run, else use Executor.')
     parser.add_argument(
         '--data_set',
         type=str,
@@ -231,10 +233,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
             train_losses.append(loss)
             print("Pass: %d, Iter: %d, Loss: %f\n" %
                   (pass_id, iters, np.mean(train_losses)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
-              (num_samples, train_elapsed, examples_per_sec))
+        print_train_time(start_time, time.time(), num_samples)
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
         # evaluation
         if not args.no_test and batch_acc != None:
@@ -315,10 +314,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if batch_id % 1 == 0:
                 print("Pass %d, batch %d, loss %s" %
                       (pass_id, batch_id, np.array(loss)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
+        print_train_time(start_time, time.time(), num_samples)
         if not args.no_test and batch_acc != None:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
@@ -329,10 +325,17 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
 def print_arguments(args):
     vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
                                 vars(args)['device'] == 'GPU')
-    print('----------- resnet Configuration Arguments -----------')
+    print('----------- Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
         print('%s: %s' % (arg, value))
     print('------------------------------------------------')
+
+
+def print_train_time(start_time, end_time, num_samples):
+    train_elapsed = end_time - start_time
+    examples_per_sec = num_samples / train_elapsed
+    print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+          (num_samples, train_elapsed, examples_per_sec))
 
 
 def main():
@@ -342,7 +345,7 @@ def main():
     # the unique trainer id, starting from 0, needed by trainer
     # only
     nccl_id_var, num_trainers, trainer_id = (
-        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "-1")))
+        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "0")))
 
     if args.use_cprof:
         pr = cProfile.Profile()
