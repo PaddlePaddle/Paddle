@@ -217,9 +217,10 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     feeder = fluid.DataFeeder(feed_var_list, place)
 
     iters, num_samples, start_time = 0, 0, time.time()
+    data = train_reader().next()
     for pass_id in range(args.pass_num):
         train_losses = []
-        for batch_id, data in enumerate(train_reader()):
+        for batch_id, _ in enumerate(range(10000000)):
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
@@ -233,21 +234,13 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
             train_losses.append(loss)
             print("Pass: %d, Iter: %d, Loss: %f\n" %
                   (pass_id, iters, np.mean(train_losses)))
-            if batch_id == 2:
-                break
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
-        # evaluation
-        if not args.no_test and batch_acc != None:
-            pass_test_acc = test(exe, infer_prog, test_reader, feeder,
-                                 batch_acc)
-            print(", Test Accuracy: %f" % pass_test_acc)
-        print("\n")
-        # TODO(wuyi): add warmup passes to get better perf data.
-        # exit(0)
+            # if batch_id == 2:
+            #     break
+        # train_elapsed = time.time() - start_time
+        # examples_per_sec = num_samples / train_elapsed
+        # print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
+        #       (num_samples, train_elapsed, examples_per_sec))
+        print("Pass: %d, Loss: %f\n" % (pass_id, np.mean(train_losses)))
 
 
 # TODO(wuyi): replace train, train_parallel, test functions with new trainer

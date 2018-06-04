@@ -14,15 +14,14 @@
 
 import paddle
 import paddle.fluid as fluid
-import unittest
 import os
 import numpy as np
 import math
 import sys
 
 
-def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
-    PASS_NUM = 100
+def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=False):
+    PASS_NUM = 10000
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
     N = 5
@@ -107,16 +106,12 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         exe.run(fluid.default_startup_program())
 
         for pass_id in range(PASS_NUM):
-            for data in train_reader():
+            for batch_id, data in enumerate(train_reader()):
                 avg_cost_np = exe.run(main_program,
                                       feed=feeder.feed(data),
                                       fetch_list=[avg_cost])
-                if avg_cost_np[0] < 5.0:
-                    if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, [
-                            'firstw', 'secondw', 'thirdw', 'forthw'
-                        ], [predict_word], exe)
-                    return
+                sys.stderr.write('pass: %d, batch_id: %d, cost: %s\n' %
+                                 (pass_id, batch_id, avg_cost_np))
                 if math.isnan(float(avg_cost_np[0])):
                     sys.exit("got NaN loss, training failed.")
 
@@ -125,17 +120,20 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
         trainers = int(os.getenv("TRAINERS"))
-        current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        current_endpoint = os.getenv("PADDLE_CURRENT_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE")
         t = fluid.DistributeTranspiler()
+        sys.stderr.write('%s %s %s %s %s\n' %
+                         (pserver_endpoints, trainers, current_endpoint,
+                          trainer_id, training_role))
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
@@ -215,48 +213,7 @@ def main(use_cuda, is_sparse, is_parallel):
         save_dirname = None
 
     train(use_cuda, is_sparse, is_parallel, save_dirname)
-    infer(use_cuda, save_dirname)
 
-
-FULL_TEST = os.getenv('FULL_TEST',
-                      '0').lower() in ['true', '1', 't', 'y', 'yes', 'on']
-SKIP_REASON = "Only run minimum number of tests in CI server, to make CI faster"
-
-
-class W2VTest(unittest.TestCase):
-    pass
-
-
-def inject_test_method(use_cuda, is_sparse, is_parallel):
-    fn_name = "test_{0}_{1}_{2}".format("cuda" if use_cuda else "cpu", "sparse"
-                                        if is_sparse else "dense", "parallel"
-                                        if is_parallel else "normal")
-
-    def __impl__(*args, **kwargs):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
-                main(
-                    use_cuda=use_cuda,
-                    is_sparse=is_sparse,
-                    is_parallel=is_parallel)
-
-    if use_cuda and is_sparse:
-        fn = __impl__
-    else:
-        # skip the other test when on CI server
-        fn = unittest.skipUnless(
-            condition=FULL_TEST, reason=SKIP_REASON)(__impl__)
-
-    setattr(W2VTest, fn_name, fn)
-
-
-for use_cuda in (False, True):
-    for is_sparse in (False, True):
-        for is_parallel in (False, True):
-            inject_test_method(use_cuda, is_sparse, is_parallel)
 
 if __name__ == '__main__':
-    unittest.main()
+    main(True, False, False)
