@@ -14,11 +14,12 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
-
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+
+#if PADDLE_WITH_CUDA
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -32,14 +33,18 @@ class TensorRTEngineOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto input0 = ctx.Inputs("Xs").front();
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("pre_ids")->type()),
+        framework::ToDataType(ctx.scope()
+                                  .FindVar(input0)
+                                  ->GetMutable<framework::LoDTensor>()
+                                  ->type()),
         platform::CPUPlace());
     return kt;
   }
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <typename DeviceContext, typename T>
 class TensorRTEngineKernel : public framework::OpKernel<T> {
  public:
@@ -55,8 +60,10 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     int batch_size = tensor0->dims()[0];
     PADDLE_ENFORCE_LE(batch_size, max_batch_);
 
+    LOG(INFO) << "set inputs";
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
+      LOG(INFO) << "set input " << x;
       // convert input and copy to TRT engine's buffer
       auto* v = context.scope().FindVar(x);
       PADDLE_ENFORCE_NOT_NULL(v, "no variable called %s", x);
@@ -73,7 +80,9 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(batch_size, 0);
     engine_->Execute(batch_size);
     // Convert output tensor from engine to fluid
+    LOG(INFO) << "set outputs";
     for (const auto& y : context.Outputs("Ys")) {
+      LOG(INFO) << "set output " << y;
       // convert output and copy to fluid.
       nvinfer1::ITensor* trt_t = engine_->GetITensor(y);
       auto dims = trt_t->getDimensions();
@@ -100,11 +109,12 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
   void Prepare(const framework::ExecutionContext& context) const;
 
  private:
+  mutable cudaStream_t stream_;
   mutable std::unique_ptr<inference::tensorrt::TensorRTEngine> engine_;
   mutable int max_batch_{0};
 };
 
+#endif  // PADDLE_WITH_CUDA
+
 }  // namespace operators
 }  // namespace paddle
-
-#endif  // PADDLE_WITH_CUDA
