@@ -36,7 +36,7 @@ ENDIF()
 ExternalProject_Add(
     extern_grpc
     DEPENDS protobuf zlib
-    URL "http://paddlepaddledeps.bj.bcebos.com/grpc.tar.xz"
+    URL "http://paddlepaddledeps.cdn.bcebos.com/grpc-v1.8.6.tar.gz"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
