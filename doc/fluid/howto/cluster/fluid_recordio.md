@@ -23,7 +23,10 @@ as follows:
     fluid.recordio_writer.convert_reader_to_recordio_file('./mnist.recordio', reader, feeder)
 ```
 
-The above codes would generate a RecordIO `./mnist.recordio` on your host.
+The above code snippet would generate a RecordIO `./mnist.recordio` on your host.
+
+**NOTE**: we recommend users to set `batch_size=1` when generating the recordio files so that users can
+adjust it flexibly while reading it.
 
 ## Use the RecordIO file in a Local Training Job
 
@@ -96,7 +99,7 @@ The above codes would generate multiple RecordIO files on your host like:
  |-mnist-00004.recordio
 ```
 
-1. open multiple RecordIO files by `fluid.layers.io.open_files`
+2. open multiple RecordIO files by `fluid.layers.io.open_files`
 
 For a distributed training job, the distributed operator system will schedule trainer process on multiple nodes,
 each trainer process reads parts of the whole training data, we usually take the following approach to make the training
