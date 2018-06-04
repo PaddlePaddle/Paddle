@@ -146,7 +146,7 @@ class Trainer(object):
                     "The checkpoint_config shoule be an instance of CheckpointConfig"
                 )
             else:
-                self.checkpoint.load_serial = io.need_load_checkpoint(
+                self.checkpoint.load_serial = io.get_latest_checkpoint_serial(
                     self.checkpoint.checkpoint_dir)
 
         self.scope = core.Scope()

@@ -25,7 +25,7 @@ __all__ = [
     'load_persistables', 'save_inference_model', 'load_inference_model',
     'get_inference_program', 'save_checkpoint', 'load_checkpoint',
     'clean_checkpoint', 'load_persist_vars_without_grad',
-    'save_persist_vars_without_grad'
+    'save_persist_vars_without_grad', 'get_latest_checkpoint_serial'
 ]
 
 
@@ -503,7 +503,7 @@ def save_checkpoint(executor,
     _lru_delete(checkpoint_dir, max_num_checkpoints)
 
 
-def need_load_checkpoint(checkpoint_dir):
+def get_latest_checkpoint_serial(checkpoint_dir):
     """
     If the directory have checkpoint files, it will return lastest checkpoint directory serial number
 
