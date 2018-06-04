@@ -19,11 +19,25 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 
 
+class VarHandle(object):
+    def __init__(self, **kwargs):
+        self._version = kwargs.get("version", -1)
+        self._name = kwargs.get("name", "")
+        self._generated_op = kwargs.get("op", None)
+        self._scope_idx = kwargs.get("scope", -1)
+        self._place = kwargs.get("place", None)
+
+
+class OpHandle(object):
+    def __init__(self):
+        self._inputs
+        self._outputs
+
+
 class SSAGraph(object):
-    def __init__(self, program):
-        self._program = program
+    def __init__(self, block):
+        self._block = block
         self._vars = []
-        self._domainant_frointers = defaultdict(list)
         self._ops = []
         self._ssa_vars = defaultdict(list)
 
@@ -31,18 +45,6 @@ class SSAGraph(object):
         """
         build ssa graph
         """
-        block = self._program.block(0)
-        self._find_dominators(block)
-
-    def _insert_phi(self):
-        pass
-
-    def _compute_dom_tree(self):
-        pass
-
-    def _find_dominators(self, cfg):
-        counter = []
-        # for var in block:
 
 
 def GenTestProgram():
