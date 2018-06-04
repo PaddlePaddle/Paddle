@@ -27,7 +27,7 @@ class MultiFileReader : public framework::ReaderBase {
                   const std::vector<framework::DDim>& dims, size_t thread_num,
                   size_t buffer_size)
       : buffer_size_(buffer_size) {
-    readers_.resize(file_names.size());
+    readers_.reserve(file_names.size());
     for (const std::string& f_name : file_names) {
       readers_.emplace_back(CreateReaderByFileName(f_name, dims));
     }
