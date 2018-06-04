@@ -141,12 +141,16 @@ def train_program():
     return [avg_cost]
 
 
+def optimize_func():
+    return fluid.optimizer.SGD(learning_rate=fluid.layers.exponential_decay(
+        learning_rate=0.01, decay_steps=100000, decay_rate=0.5, staircase=True))
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer=optimizer)
+        train_func=train_program, place=place, optimizer_func=optimize_func)
 
     feed_order = [
         'word_data', 'ctx_n2_data', 'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
@@ -245,7 +249,7 @@ def infer(use_cuda, inference_program, params_dirname):
         },
         return_numpy=False)
 
-    print("infer results: ", np.array(results[0]))
+    print("infer results: ", np.array(results[0]).shape)
 
 
 def main(use_cuda):
