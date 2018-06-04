@@ -33,8 +33,8 @@ enum PaddleDType {
 };
 
 struct PaddleBuf {
-  void* data{nullptr};  // pointer to the data memory.
-  size_t length;        // number of memory bytes.
+  void* data;     // pointer to the data memory.
+  size_t length;  // number of memory bytes.
 };
 
 struct PaddleTensor {
