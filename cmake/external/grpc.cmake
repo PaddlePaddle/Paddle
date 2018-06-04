@@ -33,10 +33,14 @@ ELSE()
   SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
 ENDIF()
 
+SET(GRPC_DOWNLOAD_SRC_MD5 "468aeea0b603b0260742fd028cf9017f")
+
 ExternalProject_Add(
     extern_grpc
     DEPENDS protobuf zlib
+    # version:1.10.x
     URL "http://paddlepaddledeps.bj.bcebos.com/grpc.tar.xz"
+    URL_MD5  ${GRPC_DOWNLOAD_SRC_MD5}
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
