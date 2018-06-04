@@ -49,8 +49,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
  private:
-  void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
-                         size_t place_id) const;
+  void CreateOpHandleIOs(SSAGraph *result, OpHandleBase *op_handle,
+                         const OpDesc &op, size_t place_id) const;
 
  private:
   std::string loss_var_name_;
@@ -89,12 +89,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateScaleLossGradOp(SSAGraph *result) const;
   VarHandle *CreateReduceOp(SSAGraph *result, const std::string &og,
                             int dst_dev_id) const;
-  void CreateComputationalOp(SSAGraph *result, const OpDesc &op,
-                             int dev_id) const;
-
-  bool IsParameterGradientOnce(
-      const std::string &og,
-      std::unordered_set<std::string> *og_has_been_broadcast) const;
+  OpHandleBase *CreateComputationalOp(SSAGraph *result, const OpDesc &op,
+                                      int dev_id) const;
 
   int GetOpDeviceID(
       const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
