@@ -91,6 +91,10 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                          "the code type used with the target box")
         .SetDefault("encode_center_size")
         .InEnum({"encode_center_size", "decode_center_size"});
+    AddAttr<bool>("box_normalized",
+                  "(bool, default true) "
+                  "whether treat the priorbox as a noramlized box")
+        .SetDefault(true);
     AddOutput("OutputBox",
               "(LoDTensor or Tensor) "
               "When code_type is 'encode_center_size', the output tensor of "

@@ -181,6 +181,12 @@ Print
 ..  autofunction:: paddle.fluid.layers.Print
     :noindex:
 
+is_empty
+--------
+
+..  autofunction:: paddle.fluid.layers.is_empty
+    :noindex:
+
 device
 ======
 
@@ -253,6 +259,19 @@ double_buffer
 -------------
 
 ..  autofunction:: paddle.fluid.layers.double_buffer
+    :noindex:
+
+random_data_generator
+---------------------
+
+..  autofunction:: paddle.fluid.layers.random_data_generator
+    :noindex:
+
+Preprocessor
+------------
+
+..  autoclass:: paddle.fluid.layers.Preprocessor
+    :members:
     :noindex:
 
 nn
@@ -594,6 +613,29 @@ roi_pool
 ..  autofunction:: paddle.fluid.layers.roi_pool
     :noindex:
 
+dice_loss
+---------
+
+..  autofunction:: paddle.fluid.layers.dice_loss
+    :noindex:
+
+resize_bilinear
+---------------
+
+..  autofunction:: paddle.fluid.layers.resize_bilinear
+    :noindex:
+
+gather
+------
+
+..  autofunction:: paddle.fluid.layers.gather
+    :noindex:
+
+random_crop
+-----------
+
+..  autofunction:: paddle.fluid.layers.random_crop
+    :noindex:
 
 ops
 ===
@@ -740,6 +782,12 @@ sum
 ---
 
 ..  autofunction:: paddle.fluid.layers.sum
+    :noindex:
+
+shape
+-----
+
+..  autofunction:: paddle.fluid.layers.shape
     :noindex:
 
 sigmoid
@@ -989,29 +1037,5 @@ zeros
 -----
 
 ..  autofunction:: paddle.fluid.layers.zeros
-    :noindex:
-
-topk
-----
-
-..  autofunction:: paddle.fluid.layers.topk
-    :noindex:
-
-dice_loss
-----
-
-..  autofunction:: paddle.fluid.layers.dice_loss
-    :noindex:
-
-resize_bilinear
-____
-
-..  autofunction:: paddle.fluid.layers.resize_bilinear
-    :noindex:
-
-gather
-____
-
-..  autofunction:: paddle.fluid.layers.gather
     :noindex:
 
