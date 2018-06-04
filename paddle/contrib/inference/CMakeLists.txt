@@ -13,45 +13,40 @@
 # limitations under the License.
 #
 
-function(inference_api_test TARGET_NAME TEST_SRC DEP_TEST)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs ARGS)
-    cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+if(APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
+endif(APPLE)
 
-    set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-    set(arg_list "")
-    if(inference_test_ARGS)
-        foreach(arg ${inference_test_ARGS})
-            list(APPEND arg_list "_${arg}")
-        endforeach()
-    else()
-        list(APPEND arg_list "_")
-    endif()
-    foreach(arg ${arg_list})
-        string(REGEX REPLACE "^_$" "" arg "${arg}")
+function(inference_api_test TARGET_NAME)
+    if (WITH_TESTING)
+        set(options "")
+        set(oneValueArgs "")
+        set(multiValueArgs ARGS)
+        cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+        set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
         cc_test(${TARGET_NAME}
-                SRCS ${TEST_SRC}
-                DEPS paddle_fluid_api paddle_inference_api paddle_inference_api_impl
+                SRCS ${TARGET_NAME}.cc
+                DEPS paddle_fluid paddle_inference_api
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
-        # set_tests_properties(${TARGET_NAME}
-        #         PROPERTIES DEPENDS ${DEP_TEST})
-    endforeach()
+        if(inference_test_ARGS)
+            set_tests_properties(${TARGET_NAME}
+                    PROPERTIES DEPENDS "${inference_test_ARGS}")
+        endif()
+    endif(WITH_TESTING)
 endfunction(inference_api_test)
 
-
 cc_library(paddle_inference_api
-    SRCS paddle_inference_api.cc
+    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
-
-cc_library(paddle_inference_api_impl
-           SRCS paddle_inference_api_impl.cc
-           DEPS paddle_inference_api paddle_fluid_api)
 
 cc_test(test_paddle_inference_api
         SRCS test_paddle_inference_api.cc
         DEPS paddle_inference_api)
 
 inference_api_test(test_paddle_inference_api_impl
-                   test_paddle_inference_api_impl.cc
-                   test_word2vec)
+                    ARGS test_word2vec test_image_classification)
+
+if(WITH_TESTING)
+    add_subdirectory(demo)
+endif()

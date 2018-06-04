@@ -105,7 +105,7 @@ class BlockDesc {
 
   size_t OpSize() const { return ops_.size(); }
 
-  OpDesc *Op(int idx) { return ops_.at(idx).get(); }
+  OpDesc *Op(int idx) const { return ops_.at(idx).get(); }
 
   void Flush();
 
