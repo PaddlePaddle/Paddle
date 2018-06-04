@@ -48,6 +48,16 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
+  const std::vector<platform::Place> GetPlaces() const { return places_; }
+
+  const std::vector<Scope *> GetScopes() const { return local_scopes_; }
+
+#ifdef PADDLE_WITH_CUDA
+  const platform::NCCLContextMap &GetNCCLContextMap() const {
+    return *nccl_ctxs_;
+  }
+#endif
+
  private:
   void CreateOpHandleIOs(SSAGraph *result, OpHandleBase *op_handle,
                          const OpDesc &op, size_t place_id) const;
@@ -61,6 +71,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
+  BuildStrategy strategy_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
@@ -104,9 +115,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   bool IsSparseGradient(
       const std::unordered_map<std::string, VarDesc *> &all_vars,
       const std::string &og) const;
-
- private:
-  BuildStrategy strategy_;
 };
 }  // namespace details
 }  // namespace framework
