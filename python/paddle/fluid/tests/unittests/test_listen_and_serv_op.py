@@ -82,6 +82,10 @@ class TestListenAndServOp(OpTest):
             except os.error:
                 retry_times -= 1
 
+    def test_rpc_interfaces(self):
+        # TODO(Yancey1989): need to make sure the rpc interface correctly.
+        pass
+
     def test_handle_signal_in_serv_op(self):
         # run pserver on CPU in sync mode
         pid = self._start_pserver(False, True)
