@@ -134,24 +134,24 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     VLOG(3) << "Input: " << alg->data<int>()
             << " Output: " << algOut->mutable_data<int>(ctx.GetPlace());
     Tensor alg_tmp;
-    alg_tmp.mutable_data<int>(framework::CPUPlace(), alg->dims());
-    framework::TensorCopy(*alg, framework::CPUPlace(), &alg_tmp);
-    int pre_alg = (alg_tmp->data<int>())[0];
+    alg_tmp.mutable_data<int>(framework::platform::CPUPlace(), alg->dims());
+    framework::TensorCopy(*alg, framework::platform::CPUPlace(), &alg_tmp);
+    int pre_alg = (alg_tmp.data<int>())[0];
     // New allocated memory is initialized as 0
     if (pre_alg == 0) {
       PADDLE_ENFORCE(platform::dynload::miopenFindConvolutionForwardAlgorithm(
           handle, cudnn_input_desc, input_data, cudnn_filter_desc, filter_data,
           cudnn_conv_desc, cudnn_output_desc, output_data, 1, &algoCount,
           &perfRes, cudnn_workspace, workspace_size_in_bytes, false));
-      (algo_tmp->mutable_data<int>())[0] = (int)(perfRes.fwd_algo) + 1;
-      VLOG(3) << "Find Kernel: store " << (alg_tmp->data<int>())
+      (algo_tmp.mutable_data<int>())[0] = (int)(perfRes.fwd_algo) + 1;
+      VLOG(3) << "Find Kernel: store " << (alg_tmp.data<int>())
               << " kernel :" << perfRes.fwd_algo;
     } else {
       perfRes.fwd_algo = (miopenConvFwdAlgorithm_t)(pre_alg - 1);
-      VLOG(3) << "Find Kernel:  load  " << (alg_tmp->data<int>())
+      VLOG(3) << "Find Kernel:  load  " << (alg_tmp.data<int>())
               << " kernel :" << perfRes.fwd_algo;
     }
-    framework::TensorCopy(algo_tmp, ctx.GetPlace(), algOut);
+    framework::TensorCopy(alg_tmp, ctx.GetPlace(), algOut);
 
     for (int i = 0; i < groups; i++) {
       // ------------------- cudnn conv forward ---------------------
