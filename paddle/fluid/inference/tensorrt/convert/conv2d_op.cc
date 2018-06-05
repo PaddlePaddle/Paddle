@@ -28,8 +28,8 @@ class Conv2dOpConverter : public OpConverter {
   }
 };
 
-REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
