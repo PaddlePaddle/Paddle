@@ -74,7 +74,7 @@ env HEAPPROFILE="./perf_log/test.log" HEAP_PROFILE_ALLOCATION_INTERVAL=209715200
 	```
 	上述命令会生成一个profile00x.pdf的文件，可以直接打开，例如：[allocator](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_cpu_allocator.pdf)。从下图可以看出，在CPU版本fluid的运行过程中，分配存储最多的模块式CPUAllocator. 而别的模块相对而言分配内存较少，所以被忽略了，这对于分配内存泄露是很不方便的，因为泄露是一个缓慢的过程，在这种图中是无法看到的。
 	
-	![result](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_cpu_allocator.jpg)
+	![result](https://user-images.githubusercontent.com/3048612/40964027-a54033e4-68dc-11e8-836a-144910c4bb8c.png)
 	
 	- Diff模式。可以对两个时刻的heap做diff，把一些内存分配没有发生变化的模块去掉，而把增量部分显示出来。
 	```
@@ -84,6 +84,6 @@ env HEAPPROFILE="./perf_log/test.log" HEAP_PROFILE_ALLOCATION_INTERVAL=209715200
 	
 	从图中可以看出：ProgramDesc这个结构，在两个版本之间增长了200MB+，所以这里有很大的内存泄露的可能性，最终结果也确实证明是这里造成了泄露。
 	
-	![result](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_program_desc.png)
-	![result](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_protobuf_arena.png)
+	![result](https://user-images.githubusercontent.com/3048612/40964057-b434d5e4-68dc-11e8-894b-8ab62bcf26c2.png)
+	![result](https://user-images.githubusercontent.com/3048612/40964063-b7dbee44-68dc-11e8-9719-da279f86477f.png)
 	
