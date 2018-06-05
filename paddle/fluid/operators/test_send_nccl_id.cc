@@ -69,7 +69,7 @@ void StartServer() {
   server_thread.join();
 }
 
-TEST(SendNcclId, DISABLED_GrpcServer) {
+TEST(SendNcclId, GrpcServer) {
   g_req_handler.reset(new detail::RequestSendHandler(true));
   g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
 
