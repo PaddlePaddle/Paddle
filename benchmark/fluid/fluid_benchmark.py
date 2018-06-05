@@ -70,11 +70,6 @@ def parse_args():
         default=1,
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
     parser.add_argument(
-        '--cpus',
-        type=int,
-        default=1,
-        help='If cpus > 1, will use ParallelDo to run, else use Executor.')
-    parser.add_argument(
         '--data_set',
         type=str,
         default='flowers',
