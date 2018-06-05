@@ -169,17 +169,13 @@ void BlockDesc::Flush() {
   }
 
   if (need_update_) {
-    auto &op_field = *this->desc_->mutable_ops();
-    this->ClearPBOps();
-    op_field.Reserve(static_cast<int>(ops_.size()));
+    this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
-      op_field.AddAllocated(op_desc->Proto());
+      this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
     }
-    auto &var_field = *this->desc_->mutable_vars();
-    this->ClearPBVars();
-    var_field.Reserve(static_cast<int>(vars_.size()));
+    this->desc_->mutable_vars()->Clear();
     for (auto &var_desc : vars_) {
-      var_field.AddAllocated(var_desc.second->Proto());
+      this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
     }
     need_update_ = false;
   }
@@ -216,10 +212,6 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
     vars_[it.first].reset(var);
   }
 }
-
-void BlockDesc::ClearPBOps() { this->desc_->mutable_ops()->Clear(); }
-
-void BlockDesc::ClearPBVars() { this->desc_->mutable_vars()->Clear(); }
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
