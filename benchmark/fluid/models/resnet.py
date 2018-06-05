@@ -26,6 +26,10 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
+from models.model_base import get_decay_learning_rate
+from models.model_base import get_regularization
+from models.model_base import set_error_clip
+from models.model_base import set_gradient_clip
 
 
 def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
@@ -70,7 +74,7 @@ def layer_warp(block_func, input, ch_out, count, stride):
     return res_out
 
 
-def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
+def resnet_imagenet(input, class_dim, args, depth=50, data_format='NCHW'):
 
     cfg = {
         18: ([2, 2, 2, 1], basicblock),
@@ -94,10 +98,12 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
         pool_stride=1,
         global_pooling=True)
     out = fluid.layers.fc(input=pool2, size=class_dim, act='softmax')
+    set_error_clip(args.error_clip_method, out.name, args.error_clip_min,
+                   args.error_clip_max)
     return out
 
 
-def resnet_cifar10(input, class_dim, depth=32, data_format='NCHW'):
+def resnet_cifar10(input, class_dim, args, depth=32, data_format='NCHW'):
     assert (depth - 2) % 6 == 0
 
     n = (depth - 2) // 6
@@ -110,6 +116,8 @@ def resnet_cifar10(input, class_dim, depth=32, data_format='NCHW'):
     pool = fluid.layers.pool2d(
         input=res3, pool_size=8, pool_type='avg', pool_stride=1)
     out = fluid.layers.fc(input=pool, size=class_dim, act='softmax')
+    set_error_clip(args.error_clip_method, out.name, args.error_clip_min,
+                   args.error_clip_max)
     return out
 
 
@@ -132,7 +140,7 @@ def get_model(args):
 
     input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    predict = model(input, class_dim)
+    predict = model(input, class_dim, args=args)
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(x=cost)
 
@@ -145,7 +153,19 @@ def get_model(args):
         inference_program = fluid.io.get_inference_program(
             target_vars=[batch_acc, batch_size_tensor])
 
-    optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+    # set gradient clip
+    set_gradient_clip(args.gradient_clip_method, args.gradient_clip_norm)
+
+    optimizer = fluid.optimizer.Momentum(
+        learning_rate=get_decay_learning_rate(
+            decay_method=args.learning_rate_decay_method,
+            learning_rate=0.01,
+            decay_steps=args.learning_rate_decay_steps,
+            decay_rate=args.learning_rate_decay_rate),
+        regularization=get_regularization(
+            regularizer_method=args.weight_decay_regularizer_method,
+            regularizer_coeff=args.weight_decay_regularizer_coeff),
+        momentum=0.9)
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(

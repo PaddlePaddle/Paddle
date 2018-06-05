@@ -39,8 +39,67 @@ def parse_args():
         help='The model to run benchmark with.')
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
+    #  args related to learning rate
     parser.add_argument(
         '--learning_rate', type=float, default=0.001, help='The learning rate.')
+    parser.add_argument(
+        '--learning_rate_decay_method',
+        type=str,
+        default=None,
+        choices=['exponential', 'natural_exp', 'inverse_time'],
+        help='Learning rate decay method, can be exponential, natural_exp, inverse_time'
+    )
+    parser.add_argument(
+        '--learning_rate_decay_steps',
+        type=int,
+        default=100000,
+        help='Decay steps for learning rate decay method')
+    parser.add_argument(
+        '--learning_rate_decay_rate',
+        type=float,
+        default=0.5,
+        help='Decay rate for learning rate decay method')
+    #  args related to regularization
+    parser.add_argument(
+        '--weight_decay_regularizer_method',
+        type=str,
+        default=None,
+        choices=['L1', 'L2'],
+        help='Weight decay regularizer method, can be L1, L2')
+    parser.add_argument(
+        '--weight_decay_regularizer_coeff',
+        type=float,
+        default=0.1,
+        help='Weight decay regularizer coeff, 0.1 for default')
+    #  args related to gradient clipping
+    parser.add_argument(
+        '--gradient_clip_method',
+        type=str,
+        default=None,
+        choices=['Norm', 'GlobalNorm'],
+        help='Gradient clipping method, can be Norm, GlobalNorm')
+    parser.add_argument(
+        '--gradient_clip_norm',
+        type=float,
+        default=1.,
+        help='Gradient clipping norm, 1. for default')
+    #  args related to error clipping
+    parser.add_argument(
+        '--error_clip_method',
+        type=str,
+        default=None,
+        choices=['Value'],
+        help='Error clipping method, can be Value')
+    parser.add_argument(
+        '--error_clip_min',
+        type=float,
+        default=1e-6,
+        help='Error clipping min value, 1e-6 for default')
+    parser.add_argument(
+        '--error_clip_max',
+        type=float,
+        default=2e-6,
+        help='Error clipping max value, 2e-6 for default')
     # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
@@ -103,6 +162,16 @@ def parse_args():
         default='local',
         choices=['local', 'pserver', 'nccl2'],
         help='Choose parameter update method, can be local, pserver, nccl2.')
+    parser.add_argument(
+        '--no_split_var',
+        action='store_true',
+        default=False,
+        help='Whether split variables into blocks when update_method is pserver')
+    parser.add_argument(
+        '--async_mode',
+        action='store_true',
+        default=False,
+        help='Whether start pserver in async mode to support ASGD')
     args = parser.parse_args()
     return args
 
