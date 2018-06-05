@@ -45,10 +45,11 @@ Currently supported `--model` argument include:
 ## Prepare the RecordIO file to Achieve Better Performance
 
 Run the following command will generate RecordIO files like "mnist.recordio" under the path
-and batch_size you choose:
+and batch_size you choose, you can use batch_size=1 so that later reader can change the batch_size
+at any time using `fluid.batch`.
 
 ```bash
-python -c 'from recordio_converter import *; prepare_mnist("data", 32)'
+python -c 'from recordio_converter import *; prepare_mnist("data", 1)'
 ```
 
 ## Run Distributed Benchmark on Kubernetes Cluster
