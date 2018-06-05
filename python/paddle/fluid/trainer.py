@@ -146,8 +146,9 @@ class Trainer(object):
                     "The checkpoint_config shoule be an instance of CheckpointConfig"
                 )
             else:
-                self.checkpoint.load_serial = io.get_latest_checkpoint_serial(
+                serial = io.get_latest_checkpoint_serial(
                     self.checkpoint.checkpoint_dir)
+                self.checkpoint.load_serial = serial if serial >= 0 else None
 
         self.scope = core.Scope()
 
@@ -194,10 +195,7 @@ class Trainer(object):
         if param_path and os.path.isdir(param_path):
             # load params from param_path into scope
             io.load_persist_vars_without_grad(
-                exe,
-                dirname=param_path,
-                program=self.startup_program,
-                nest=False)
+                exe, dirname=param_path, program=self.startup_program)
 
     def _transpile_nccl2_dist(self):
         # PADDLE_TRAINER_IPS
