@@ -231,8 +231,40 @@ static VarHandle *FuseVariable(SSAGraph *graph, size_t scope_idx, Scope *scope,
                                platform::Place place,
                                const std::string &whole_varaible_name,
                                const std::vector<FuseVarParams> &fused_vars,
-                               const BlockDesc &global_block) {
+                               const BlockDesc &global_block,
+                               std::type_index type) {
   // TODO(zcd): Complete this method
+  return nullptr;
+}
+
+static int UniqID() {
+  static int id = 0;
+  return id++;
+}
+
+static VarHandle *FindTheFirstVersionOfVariable(VarHandle *var) {
+  std::unordered_set<OpHandleBase *> visited;
+  VarHandle *result = var;
+
+  std::function<void(VarHandle *)> impl = [&](VarHandle *cur_var) {
+    if (cur_var->name_ == result->name_ &&
+        cur_var->scope_idx_ == result->scope_idx_ &&
+        cur_var->version_ < result->version_) {
+      result = cur_var;
+    }
+
+    if (cur_var->generated_op_ == nullptr ||
+        visited.count(cur_var->generated_op_)) {
+      return;
+    }
+    visited.emplace(cur_var->generated_op_);
+    for (auto *input : cur_var->generated_op_->Inputs()) {
+      if (auto *prev_var = dynamic_cast<VarHandle *>(input)) {
+        impl(prev_var);
+      }
+    }
+  };
+  return result;
 }
 
 void FuseAllReduceGraphBuilder::FuseAllReduceOp(
@@ -242,25 +274,22 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
   if (ops.empty()) {
     return;
   } else if (ops.size() == 1) {
-    graph->ops_.emplace_back(std::move(ops[0]));
+    auto it = ops.begin();
+    graph->ops_.emplace_back(
+        const_cast<std::unique_ptr<OpHandleBase> &>(*it).release());
     return;
   }
 
-  // Insert Fuse Op
+  // 1.Insert Fuse Op
   // For each place insert one fuse var op
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
-    for (auto &op : ops) {
-      VarHandle *var = nullptr;
-      for (VarHandleBase *var : op->Inputs()) {
-        if (auto *var_handle = dynamic_cast<VarHandle *>(var)) {
-          if (var_handle->place_ == p) {
-            break;
-          }
-        }
-      }
-    }
-  }
+  std::vector<VarHandle *> fused_vars =
+      GetFusedGradient(graph, global_block, group);
+
+  // 2.Insert All reduce to fused var.
+
+  // 3. Remove all reduce op
+
+  // 4. Correct handle deps
 
   //
   //
@@ -338,6 +367,43 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
   //
   //  CreateNCCLAllReduceOpHandleIO(fused_vars_output_names, &inputs, &outputs,
   //                                nccl_op_handle, graph);
+}
+std::vector<VarHandle *> FuseAllReduceGraphBuilder::GetFusedGradient(
+    SSAGraph *graph, const BlockDesc &global_block,
+    const NCCLAllReduceGroup &group) const {
+  std::vector<VarHandle *> fuse_params;
+
+  for (auto &op : group.ops_) {
+    for (VarHandleBase *var : op->Inputs()) {
+      if (auto *var_handle = dynamic_cast<VarHandle *>(var)) {
+        // NOTE: Here we assume all variables on each device are same version.
+        // It is true for all_reduce strategy.
+        fuse_params.emplace_back(var_handle);
+        break;
+      }
+    }
+  }
+
+  for (auto &var : fuse_params) {
+    if (var->version_ == 0) continue;
+    // Find the first version of the variable.
+    var = FindTheFirstVersionOfVariable(var);
+  }
+
+  std::vector<FuseVarParams> params;
+  for (auto &var : fuse_params) {
+    params.emplace_back(FuseVarParams{var->name_, var->version_});
+  }
+
+  std::vector<VarHandle *> fused_vars;
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    fused_vars.emplace_back(
+        FuseVariable(graph, i, local_scopes_[i], places_[i],
+                     string::Sprintf("all_grad_%d", UniqID()), params,
+                     global_block, group.type_));
+  }
+  return fused_vars;
 }
 
 void FuseAllReduceGraphBuilder::CreateNCCLAllReduceOpHandleIO(

@@ -76,6 +76,9 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
       std::vector<std::vector<VarHandle *>> *inputs,
       std::vector<std::vector<VarHandle *>> *outputs,
       NCCLAllReduceOpHandle *nccl_op_handle, SSAGraph *graph) const;
+  std::vector<VarHandle *> GetFusedGradient(
+      SSAGraph *graph, const BlockDesc &global_block,
+      const NCCLAllReduceGroup &ops) const;
 };
 
 }  // namespace details
