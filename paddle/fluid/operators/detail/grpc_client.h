@@ -168,23 +168,20 @@ class GRPCClient : public RPCClient {
 
   static GRPCClient* GetInstance();
 
-  bool AsyncSendVariable(const std::string& ep,
-                         const platform::DeviceContext& ctx,
-                         const framework::Scope& scope,
-                         const std::string& var_name,
-                         int64_t time_out = RPCClient::rpc_time_out) override;
+  bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
+                    const framework::Scope& scope, const std::string& var_name,
+                    int64_t time_out = RPCClient::rpc_time_out) override;
 
-  bool AsyncGetVariable(const std::string& ep,
+  bool AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
+                   const framework::Scope& scope, const std::string& var_name,
+                   int64_t time_out = RPCClient::rpc_time_out) override;
+
+  bool AsyncPrefetchVar(const std::string& ep,
                         const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
-                        const std::string& var_name,
+                        const std::string& in_var_name,
+                        const std::string& out_var_name,
                         int64_t time_out = RPCClient::rpc_time_out) override;
-
-  bool AsyncPrefetchVariable(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& in_var_name,
-      const std::string& out_var_name,
-      int64_t time_out = RPCClient::rpc_time_out) override;
 
   void AsyncSendBatchBarrier(
       const std::string& ep,

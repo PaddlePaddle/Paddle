@@ -26,24 +26,24 @@ namespace detail {
 
 class RPCClient {
  public:
-  virtual bool AsyncSendVariable(const std::string& ep,
-                                 const platform::DeviceContext& ctx,
-                                 const framework::Scope& scope,
-                                 const std::string& var_name,
-                                 int64_t time_out = rpc_time_out) = 0;
+  virtual bool AsyncSendVar(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            int64_t time_out = rpc_time_out) = 0;
 
-  virtual bool AsyncGetVariable(const std::string& ep,
+  virtual bool AsyncGetVar(const std::string& ep,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope& scope,
+                           const std::string& var_name,
+                           int64_t time_out = rpc_time_out) = 0;
+
+  virtual bool AsyncPrefetchVar(const std::string& ep,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope& scope,
-                                const std::string& var_name,
+                                const std::string& in_var_name,
+                                const std::string& out_var_name,
                                 int64_t time_out = rpc_time_out) = 0;
-
-  virtual bool AsyncPrefetchVariable(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
-                                     const framework::Scope& scope,
-                                     const std::string& in_var_name,
-                                     const std::string& out_var_name,
-                                     int64_t time_out = rpc_time_out) = 0;
 
   virtual void AsyncSendBatchBarrier(const std::string& ep,
                                      int64_t time_out = rpc_time_out) = 0;
@@ -53,7 +53,7 @@ class RPCClient {
 
   virtual bool Wait() = 0;
 
-  static const int64_t rpc_time_out = 600 * 1000;
+  static constexpr int64_t rpc_time_out = 600 * 1000;
 };
 }  // namespace detail
 }  // namespace operators

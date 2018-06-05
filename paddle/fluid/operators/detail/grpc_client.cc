@@ -40,11 +40,10 @@ void GRPCClient::Init() {
   }
 }
 
-bool GRPCClient::AsyncSendVariable(const std::string& ep,
-                                   const platform::DeviceContext& ctx,
-                                   const framework::Scope& scope,
-                                   const std::string& var_name,
-                                   int64_t time_out) {
+bool GRPCClient::AsyncSendVar(const std::string& ep,
+                              const platform::DeviceContext& ctx,
+                              const framework::Scope& scope,
+                              const std::string& var_name, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -94,11 +93,10 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-bool GRPCClient::AsyncGetVariable(const std::string& ep,
-                                  const platform::DeviceContext& ctx,
-                                  const framework::Scope& scope,
-                                  const std::string& var_name,
-                                  int64_t time_out) {
+bool GRPCClient::AsyncGetVar(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& var_name, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -136,12 +134,12 @@ bool GRPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool GRPCClient::AsyncPrefetchVariable(const std::string& ep,
-                                       const platform::DeviceContext& ctx,
-                                       const framework::Scope& scope,
-                                       const std::string& in_var_name,
-                                       const std::string& out_var_name,
-                                       int64_t time_out) {
+bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
+                                  const platform::DeviceContext& ctx,
+                                  const framework::Scope& scope,
+                                  const std::string& in_var_name,
+                                  const std::string& out_var_name,
+                                  int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
