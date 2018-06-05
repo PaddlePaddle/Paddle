@@ -217,21 +217,9 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
   }
 }
 
-void BlockDesc::ClearPBOps() {
-  auto ops = this->desc_->mutable_ops();
-  while (!ops->empty()) {
-    // we do not own the OpDesc, so release the ownership.
-    ops->ReleaseLast();
-  }
-}
+void BlockDesc::ClearPBOps() {}
 
-void BlockDesc::ClearPBVars() {
-  auto vars = this->desc_->mutable_vars();
-  while (!vars->empty()) {
-    // we do not own the VarDesc, so release the ownership.
-    vars->ReleaseLast();
-  }
-}
+void BlockDesc::ClearPBVars() {}
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
