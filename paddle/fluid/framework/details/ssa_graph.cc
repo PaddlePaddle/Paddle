@@ -30,6 +30,16 @@ VarHandle* SSAGraph::InsertVariable(size_t position, const std::string& name,
                  std::unique_ptr<VarHandle>(new_var));
   return new_var;
 }
+
+VarHandle* SSAGraph::AppendVariable(const std::string& name, size_t scope_index,
+                                    platform::Place place) {
+  auto& vars = vars_[scope_index][name];
+  size_t version = vars.size();
+  auto new_var = new VarHandle(version, scope_index, name, place);
+  vars.emplace_back(new_var);
+  return new_var;
+}
+
 std::unique_ptr<VarHandle> SSAGraph::ExtractVariable(size_t position,
                                                      const std::string& name,
                                                      size_t scope_index) {

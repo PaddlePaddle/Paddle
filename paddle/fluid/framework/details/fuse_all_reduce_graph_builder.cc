@@ -235,9 +235,9 @@ static VarHandle *FuseVariable(SSAGraph *graph, size_t scope_idx, Scope *scope,
                                std::type_index type) {
   if (fused_vars.empty()) return nullptr;
   std::unordered_map<std::string, int64_t> inputs_numel;
-  int64_t total_numel = 0;
   auto var_data_type =
       global_block.FindVar(fused_vars[0].var_name)->GetDataType();
+  PADDLE_ENFORCE_EQ(var_data_type, ToDataType(type));
   for (auto fused_var : fused_vars) {
     auto fused_var_name = fused_var.var_name;
     auto *var_desc = global_block.FindVar(fused_var_name);
@@ -246,35 +246,48 @@ static VarHandle *FuseVariable(SSAGraph *graph, size_t scope_idx, Scope *scope,
     PADDLE_ENFORCE_EQ(inputs_numel.count(fused_var_name), 0);
     inputs_numel[fused_var_name] =
         framework::product(framework::make_ddim(var_desc->GetShape()));
-    total_numel += inputs_numel[fused_var_name];
   }
   auto *fuse_vars_op_handle =
       new FuseVarsOpHandle(scope, place, inputs_numel, type);
-  //  graph->ops_.emplace_back(std::unique_ptr(fuse_vars_op_handle));
+  graph->ops_.emplace_back(fuse_vars_op_handle);
 
   // CreateFuseVarsOpHandleIO
   fuse_vars_op_handle->SetDeviceContext(
       place, platform::DeviceContextPool::Instance().Get(place));
 
-  // Add Output
-  auto &vars = graph->vars_[scope_idx][whole_varaible_name];
-  size_t version = vars.size();
-  auto out_var = new VarHandle(version, scope_idx, whole_varaible_name, place);
-  vars.emplace_back(out_var);
-  fuse_vars_op_handle->AddOutput(out_var);
+  auto out_var_handle =
+      graph->AppendVariable(whole_varaible_name, scope_idx, place);
+  fuse_vars_op_handle->AddOutput(out_var_handle);
 
   for (size_t j = 0; j < fused_vars.size(); ++j) {
-    auto out_var_h = graph->InsertVariable(
-        fused_vars[j].version, fused_vars[j].var_name, scope_idx, place);
-    fuse_vars_op_handle->AddOutput(out_var_h);
+    auto o_handle = graph->InsertVariable(
+        fused_vars.at(j).version, fused_vars.at(j).var_name, scope_idx, place);
+    fuse_vars_op_handle->AddOutput(o_handle);
   }
 
-  // TODO(zcd):
-  //   FuseVarOp generate dummy variables to all fused_vars[].generate_op
-  //   fused_var[].generate_op.input.generate_op generate dummy variables to
-  //   fused var op
+  // Add dependence
+  for (size_t i = 0; i < fused_vars.size(); ++i) {
+    size_t position = fused_vars.at(i).version;
+    auto &version_vars =
+        graph->vars_.at(scope_idx).at(fused_vars.at(i).var_name);
+    if (position > 0) {
+      for (auto op : version_vars.at(position - 1).get()->pending_ops_) {
+        auto *dep_var = new DummyVarHandle();
+        op->AddOutput(dep_var);
+        fuse_vars_op_handle->AddInput(dep_var);
+        graph->dep_vars_.emplace(dep_var);
+      }
+    }
+    if (position < version_vars.size() - 1) {
+      auto &op = version_vars.at(position + 1).get()->generated_op_;
+      auto *dep_var = new DummyVarHandle();
+      op->AddInput(dep_var);
+      fuse_vars_op_handle->AddOutput(dep_var);
+      graph->dep_vars_.emplace(dep_var);
+    }
+  }
 
-  return out_var;
+  return out_var_handle;
 }
 
 static int UniqID() {

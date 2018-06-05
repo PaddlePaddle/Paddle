@@ -62,6 +62,9 @@ struct SSAGraph {
   VarHandle* InsertVariable(size_t position, const std::string& name,
                             size_t scope_index, platform::Place place);
 
+  VarHandle* AppendVariable(const std::string& name, size_t scope_index,
+                            platform::Place place);
+
   /**
    * Extract the varaible from position/version. The versions which are larger
    * than position will be decreased by one. The returned VarHandle is that
