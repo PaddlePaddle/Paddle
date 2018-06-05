@@ -45,14 +45,15 @@ class SendVarsOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto rpc_client = detail::GRPCClient::GetInstance();
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::GRPCClient>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
         // TODO(Yancey1989): we need to use an IO threadpool which has
         // a larger number of threads than the computing threadpool.
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }

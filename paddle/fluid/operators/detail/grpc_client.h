@@ -166,8 +166,6 @@ class GRPCClient : public RPCClient {
  public:
   GRPCClient() {}
 
-  static GRPCClient* GetInstance();
-
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
                     const framework::Scope& scope, const std::string& var_name,
                     int64_t time_out = RPCClient::rpc_time_out) override;
@@ -196,16 +194,12 @@ class GRPCClient : public RPCClient {
  private:
   bool Proceed();
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
-  // Init is called by GetInstance.
-  static void Init();
 
  private:
   grpc::CompletionQueue cq_;
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   std::atomic<int64_t> req_count_{0};
   std::mutex mutex_;
-  static std::unique_ptr<GRPCClient> grpc_client_;
-  static std::once_flag init_flag_;
   DISABLE_COPY_AND_ASSIGN(GRPCClient);
 };
 

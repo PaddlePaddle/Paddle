@@ -25,21 +25,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-std::once_flag GRPCClient::init_flag_;
-
-std::unique_ptr<GRPCClient> GRPCClient::grpc_client_(nullptr);
-
-GRPCClient* GRPCClient::GetInstance() {
-  std::call_once(init_flag_, &GRPCClient::Init);
-  return grpc_client_.get();
-}
-
-void GRPCClient::Init() {
-  if (grpc_client_.get() == nullptr) {
-    grpc_client_.reset(new GRPCClient());
-  }
-}
-
 bool GRPCClient::AsyncSendVar(const std::string& ep,
                               const platform::DeviceContext& ctx,
                               const framework::Scope& scope,

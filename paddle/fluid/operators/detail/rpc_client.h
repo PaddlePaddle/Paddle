@@ -54,6 +54,24 @@ class RPCClient {
   virtual bool Wait() = 0;
 
   static constexpr int64_t rpc_time_out = 600 * 1000;
+
+  template <typename T>
+  static RPCClient* GetInstance() {
+    std::call_once(init_flag_, &RPCClient::Init<T>);
+    return rpc_client_.get();
+  }
+
+  // Init is called by GetInstance.
+  template <typename T>
+  static void Init() {
+    if (rpc_client_.get() == nullptr) {
+      rpc_client_.reset(new T());
+    }
+  }
+
+ private:
+  static std::once_flag init_flag_;
+  static std::unique_ptr<RPCClient> rpc_client_;
 };
 }  // namespace detail
 }  // namespace operators
