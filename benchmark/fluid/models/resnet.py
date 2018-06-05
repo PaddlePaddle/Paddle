@@ -142,11 +142,11 @@ def get_model(args):
         else:
             dshape = [224, 224, 3]
         model = resnet_imagenet
-        if not args.data_dir:
+        if not args.data_path:
             raise Exception(
-                "Must specify --data_dir when training with imagenet")
-        train_reader = imagenet_train(args.data_dir)
-        test_reader = imagenet_test(args.data_dir)
+                "Must specify --data_path when training with imagenet")
+        train_reader = imagenet_train(args.data_path)
+        test_reader = imagenet_test(args.data_path)
 
     if args.use_reader_op:
         filelist = [
