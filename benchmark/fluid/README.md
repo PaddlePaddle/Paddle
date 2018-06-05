@@ -24,10 +24,14 @@ Currently supported `--model` argument include:
 
 * Run the following command to start a benchmark job locally:
     ```bash
-      python fluid_benchmark.py --model mnist  --device GPU
+      python fluid_benchmark.py --model mnist --device GPU
     ```
     You can choose to use GPU/CPU training. With GPU training, you can specify
     `--gpus <gpu_num>` to run multi GPU training.
+    You can set gradient clipping. With gradient clipping, you can specify
+    `--gradient_clipping_method GlobalNorm` to clip the gradient with global norm.
+    You can set regularizer to optimizer. With regularization, you can specify
+    `--weight_decay_regularizer_method L1` to add regularizer to optimizer.
 * Run distributed training with parameter servers:
     * start parameter servers:
         ```bash
