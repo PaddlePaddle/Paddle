@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
@@ -75,19 +76,23 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::AsyncGRPCServer rpc_service(endpoint, true);
+    detail::RequestSendHandler rpc_h(true);
+    detail::AsyncGRPCServer rpc_service(endpoint, 1);
+    rpc_service.RegisterRPC(detail::kRequestSend, &rpc_h);
+    rpc_h.SetRPCServer(&rpc_service);
+
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
-    rpc_service.SetScope(scope);
-    rpc_service.SetDevCtx(&dev_ctx);
-    rpc_service.SetProgram(&empty_program);
-    rpc_service.SetExecutor(&executor);
+    rpc_h.SetScope(scope);
+    rpc_h.SetDevCtx(&dev_ctx);
+    rpc_h.SetProgram(&empty_program);
+    rpc_h.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
-    rpc_service.SetCond(0);
+        std::bind(&detail::AsyncGRPCServer::StartServer, &rpc_service));
+    rpc_service.SetCond(detail::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    auto recv = rpc_service.Get();
+    rpc_service.WaitBarrier(detail::kRequestSend);
     VLOG(3) << "got nccl id and stop server...";
     rpc_service.ShutDown();
     VLOG(3) << "rpc server stopped";
