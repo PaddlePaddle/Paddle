@@ -96,8 +96,7 @@ using mkldnn::memory;
 using mkldnn::primitive;
 using mkldnn::reorder;
 
-void* get_data_from_tensor(const Tensor& tensor,
-                           mkldnn::memory::data_type type) {
+void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
   switch (type) {
     case mkldnn::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
@@ -114,15 +113,15 @@ void* get_data_from_tensor(const Tensor& tensor,
   }
 }
 
-void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
-                           const OpKernelType& expected_kernel_type,
-                           const Tensor& in, Tensor* out) {
+void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
+                               const OpKernelType& expected_kernel_type,
+                               const Tensor& in, Tensor* out) {
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
 
   PADDLE_ENFORCE(
       in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
-      "TransDataLayoutMkldnn only supports transfrom from MKLDNN to "
+      "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
   PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
@@ -141,7 +140,7 @@ void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
   std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
   std::vector<int> out_tz = in_tz;
 
-  memory::data_type in_type = to_mkldnn_data_type(in.type());
+  memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
                  "Input tensor type is not supported: ", in.type().name());
   memory::data_type out_type = in_type;
@@ -149,9 +148,9 @@ void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
   memory::format in_format =
       in_tz.size() == 2 ? memory::format::nc : in.format();
   memory::format out_format =
-      out_tz.size() == 2 ? memory::format::nc : to_mkldnn_format(out_layout);
+      out_tz.size() == 2 ? memory::format::nc : ToMKLDNNFormat(out_layout);
 
-  void* in_data = get_data_from_tensor(in, in_type);
+  void* in_data = GetDataFromTensor(in, in_type);
 
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());

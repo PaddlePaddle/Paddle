@@ -49,12 +49,12 @@ void DataTransform(const OpKernelType& expected_kernel_type,
         // Just set layout/format. No real transform occur
         out.ShareDataWith(input_tensor);
         out.set_layout(DataLayout::kMKLDNN);
-        out.set_format(to_mkldnn_format(lin));
+        out.set_format(ToMKLDNNFormat(lin));
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        TransDataLayoutMkldnn(kernel_type_for_var, expected_kernel_type, in,
-                              &out);
+        TransDataLayoutFromMKLDNN(kernel_type_for_var, expected_kernel_type, in,
+                                  &out);
       }
     } else {
 // Case3 - transfrom between Non-MKLDNN OPKernels

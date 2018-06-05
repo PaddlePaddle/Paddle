@@ -27,7 +27,7 @@ namespace framework {
 using MKLDNNFormat = mkldnn::memory::format;
 using MKLDNNDataType = mkldnn::memory::data_type;
 
-inline MKLDNNFormat to_mkldnn_format(const DataLayout& layout) {
+inline MKLDNNFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::kNHWC:
       return MKLDNNFormat::nhwc;
@@ -39,7 +39,7 @@ inline MKLDNNFormat to_mkldnn_format(const DataLayout& layout) {
   }
 }
 
-inline DataLayout to_paddle_layout(const MKLDNNFormat& format) {
+inline DataLayout ToPaddleLayout(const MKLDNNFormat& format) {
   switch (format) {
     case MKLDNNFormat::nhwc:
       return DataLayout::kNHWC;
@@ -50,7 +50,7 @@ inline DataLayout to_paddle_layout(const MKLDNNFormat& format) {
   }
 }
 
-inline MKLDNNDataType to_mkldnn_data_type(const std::type_index type) {
+inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
   static const std::map<std::type_index, MKLDNNDataType> dict{
       {std::type_index(typeid(float)), MKLDNNDataType::f32},  // NOLINT
       {std::type_index(typeid(char)), MKLDNNDataType::s8},    // NOLINT
@@ -62,9 +62,9 @@ inline MKLDNNDataType to_mkldnn_data_type(const std::type_index type) {
   return MKLDNNDataType::data_undef;
 }
 
-void TransDataLayoutMkldnn(const OpKernelType& kernel_type_for_var,
-                           const OpKernelType& expected_kernel_type,
-                           const Tensor& in, Tensor* out);
+void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
+                               const OpKernelType& expected_kernel_type,
+                               const Tensor& in, Tensor* out);
 #endif
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
