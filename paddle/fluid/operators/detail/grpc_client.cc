@@ -40,6 +40,12 @@ void RPCClient::Init() {
   }
 }
 
+RPCClient::~RPCClient() {
+  for (auto& it : channels_) {
+    this->AsyncSendComplete(it.first)
+  }
+}
+
 bool RPCClient::AsyncSendVariable(const std::string& ep,
                                   const platform::DeviceContext& ctx,
                                   const framework::Scope& scope,
@@ -182,7 +188,7 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
 void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
-  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  EmptyProcessor* s = new EmptyProcessor(ch);
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -194,12 +200,25 @@ void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
 
 void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
-  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+  EmptyProcessor* s = new EmptyProcessor(ch);
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+}
+
+void RPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  EmptyProcessor* s = new EmptyProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(COMPLETE_MESSAGE);
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
@@ -265,6 +284,7 @@ bool RPCClient::Proceed() {
   delete c;
   return true;
 }
+
 std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   // TODO(Yancey1989): make grpc client completely thread-safe
   std::unique_lock<std::mutex> lock(mutex_);

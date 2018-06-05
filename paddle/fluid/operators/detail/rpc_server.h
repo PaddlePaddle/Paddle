@@ -60,6 +60,7 @@ class RPCServer {
   void SetCond(const std::string& rpc_name);
   void WaitCond(const std::string& rpc_name);
   void IncreaseBatchBarrier(const std::string rpc_name);
+  void DecreaseClientNum();
   void ResetBarrierCounter();
 
  protected:
@@ -69,6 +70,7 @@ class RPCServer {
   std::mutex mutex_;
   std::unordered_map<std::string, int> barrier_counter_;
   std::condition_variable barrier_cond_;
+  int client_num_;
 
   std::unordered_map<std::string, int> rpc_cond_map_;
   std::atomic<int> cur_cond_;
@@ -78,8 +80,6 @@ class RPCServer {
   std::string bind_address_;
   std::atomic<int> exit_flag_;
   int selected_port_;
-
-  const int client_num_;
 
   std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
   std::unordered_map<std::string, int> rpc_thread_num_;

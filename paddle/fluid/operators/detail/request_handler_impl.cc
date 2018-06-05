@@ -52,6 +52,9 @@ bool RequestSendHandler::Handle(const std::string& varname,
   if (varname == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv batch barrier message";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
+  } else if (varname == COMPLETE_MESSAGE) {
+    VLOG(3) << "sync: recv complete message";
+    rpc_server_->DecreaseClientNum();
   } else {
     VLOG(3) << "sync: received var_name: " << varname;
     if (sync_mode_) {
