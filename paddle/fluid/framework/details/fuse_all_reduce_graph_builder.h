@@ -58,9 +58,8 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
   std::vector<NCCLAllReduceGroup> GetNotDependedAllReduceOp(
       SSAGraph *graph, const BlockDesc &global_block) const;
 
-  void FuseAllReduceOp(
-      SSAGraph *graph, NCCLAllReduceGroup &&ops,
-      const std::unordered_map<std::string, VarDesc *> &) const;
+  void FuseAllReduceOp(SSAGraph *graph, NCCLAllReduceGroup &&ops,
+                       const BlockDesc &global_block) const;
 
   void CreateFuseVarsOpHandleIO(SSAGraph *graph, OpHandleBase *op_handle,
                                 const int dev_id,

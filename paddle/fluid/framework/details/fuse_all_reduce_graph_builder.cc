@@ -224,7 +224,7 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(
 
 void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     SSAGraph *graph, NCCLAllReduceGroup &&group,
-    const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
+    const BlockDesc &global_block) const {
   auto &ops = group.ops_;
   if (ops.size() <= 0) return;
   // Get input and output
@@ -247,7 +247,7 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
       int dev_id = boost::get<platform::CUDAPlace>(var_h->place_).device;
       (*vec)[dev_id].emplace_back(var_h);
     } else {
-      //      auto dummy_h = dynamic_cast<DummyVarHandle *>(var_handle_base);
+      // auto dummy_h = dynamic_cast<DummyVarHandle *>(var_handle_base);
       // pass
     }
   };
@@ -273,10 +273,10 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
 
     std::unordered_map<std::string, int64_t> inputs_dims;
     proto::VarType::Type var_type =
-        block_desc.FindVar(inputs[dev_id][0]->name_)->GetDataType();
+        global_block.FindVar(inputs[dev_id][0]->name_)->GetDataType();
     PADDLE_ENFORCE_EQ(ToDataType(group.type_), var_type);
     for (size_t j = 0; j < inputs[dev_id].size(); ++j) {
-      auto var_desc = block_desc.FindVar(inputs[dev_id][j]->name_);
+      auto var_desc = global_block.FindVar(inputs[dev_id][j]->name_);
       inputs_dims[inputs[dev_id][j]->name_] =
           framework::product(framework::make_ddim(var_desc->GetShape()));
       PADDLE_ENFORCE_EQ(var_desc->GetDataType(), var_type);
