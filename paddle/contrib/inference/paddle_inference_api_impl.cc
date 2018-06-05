@@ -54,7 +54,8 @@ std::string num2str(T a) {
 }
 }  // namespace
 
-bool NativePaddlePredictor::Init(std::shared_ptr<framework::Scope> scope) {
+bool NativePaddlePredictor::Init(
+    std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
 
   if (config_.use_gpu) {
@@ -62,9 +63,9 @@ bool NativePaddlePredictor::Init(std::shared_ptr<framework::Scope> scope) {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  if (scope) {
-    scope_ = scope;
-    sub_scope_ = &(scope->NewScope());
+  if (parent_scope) {
+    scope_ = parent_scope;
+    sub_scope_ = &(parent_scope->NewScope());
   } else {
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
@@ -275,7 +276,7 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
-  if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init()) {
+  if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
   return std::move(predictor);
