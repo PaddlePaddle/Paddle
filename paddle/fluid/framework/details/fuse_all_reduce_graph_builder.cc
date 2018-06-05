@@ -269,6 +269,11 @@ static VarHandle *FuseVariable(SSAGraph *graph, size_t scope_idx, Scope *scope,
     fuse_vars_op_handle->AddOutput(out_var_h);
   }
 
+  // TODO(zcd):
+  //   FuseVarOp generate dummy variables to all fused_vars[].generate_op
+  //   fused_var[].generate_op.input.generate_op generate dummy variables to
+  //   fused var op
+
   return out_var;
 }
 
