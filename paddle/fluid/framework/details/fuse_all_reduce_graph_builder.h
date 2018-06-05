@@ -68,7 +68,7 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
                                 const platform::Place &place,
                                 const std::vector<VarHandle *> &inputs) const;
 
-  void InsertFusedVarsOpHandleToGraph(
+  void InsertFusedVarsOpHandleIntoGraph(
       SSAGraph *graph, std::vector<std::vector<VarHandle *>> *inputs,
       const std::vector<OpHandleBase *> &fuse_vars_ops) const;
 

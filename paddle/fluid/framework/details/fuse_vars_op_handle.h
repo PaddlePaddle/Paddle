@@ -32,11 +32,11 @@ struct FuseVarsOpHandle : public OpHandleBase {
  public:
   FuseVarsOpHandle(Scope *local_scope, const platform::Place &place,
                    const std::unordered_map<std::string, int64_t> &inputs_dims,
-                   const proto::VarType::Type &var_type)
+                   const std::type_index &var_type)
       : local_scope_(local_scope),
         place_(place),
         inputs_numel_(inputs_dims),
-        var_type_(var_type) {}
+        type_(var_type) {}
 
   std::string Name() const override;
 
@@ -49,7 +49,7 @@ struct FuseVarsOpHandle : public OpHandleBase {
   Scope *local_scope_;
   const platform::Place place_;
   const std::unordered_map<std::string, int64_t> inputs_numel_;
-  const proto::VarType::Type var_type_;
+  const std::type_index type_;
 };
 }  // namespace details
 }  // namespace framework

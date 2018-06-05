@@ -35,16 +35,11 @@ std::unique_ptr<SSAGraph> FuseAllReduceGraphBuilder::Build(
   // TODO(yy): Complete this method.
   auto graph = builder_->Build(program);
 
-  std::unordered_map<std::string, VarDesc *> all_vars_desc;
-  for (auto *var : program.Block(0).AllVars()) {
-    all_vars_desc[var->Name()] = var;
-  }
-
   auto all_reduce_ops =
       GetNotDependedAllReduceOp(graph.get(), program.Block(0));
 
   for (auto &op_group : all_reduce_ops) {
-    FuseAllReduceOp(graph.get(), std::move(op_group), all_vars_desc);
+    FuseAllReduceOp(graph.get(), std::move(op_group), program.Block(0));
   }
   return graph;
 }
@@ -231,27 +226,36 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     SSAGraph *graph, NCCLAllReduceGroup &&group,
     const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
   auto &ops = group.ops_;
-  if (ops.size() <= 1) return;
+  if (ops.size() <= 0) return;
   // Get input and output
   std::vector<std::vector<VarHandle *>> inputs;
   std::vector<std::vector<VarHandle *>> outputs;
+
+  std::vector<std::vector<VarHandle *>> dep_inputs;
+  std::vector<std::vector<VarHandle *>> dep_outputs;
+
   inputs.resize(ops.begin()->get()->Inputs().size());
   outputs.resize(ops.begin()->get()->Inputs().size());
 
   // Collect AllReduce Ops input and output
-  auto collect_input_output = [](VarHandleBase *var_handle_base,
-                                 std::vector<std::vector<VarHandle *>> *vec) {
+  auto collect_input_output = [](
+      VarHandleBase *var_handle_base,
+      std::vector<std::vector<VarHandle *>> *vec,
+      std::vector<std::vector<VarHandle *>> *dep_vec) {
     auto var_h = dynamic_cast<VarHandle *>(var_handle_base);
     if (var_h) {
       int dev_id = boost::get<platform::CUDAPlace>(var_h->place_).device;
       (*vec)[dev_id].emplace_back(var_h);
+    } else {
+      //      auto dummy_h = dynamic_cast<DummyVarHandle *>(var_handle_base);
+      // pass
     }
   };
   for (auto op_iter = ops.begin(); op_iter != ops.end(); op_iter++) {
     auto op = op_iter->get();
     for (size_t i = 0; i < op->Inputs().size(); ++i) {
-      collect_input_output(op->Inputs()[i], &inputs);
-      collect_input_output(op->Outputs()[i], &outputs);
+      collect_input_output(op->Inputs()[i], &inputs, &dep_inputs);
+      collect_input_output(op->Outputs()[i], &outputs, &dep_outputs);
     }
   }
 
@@ -269,23 +273,24 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
 
     std::unordered_map<std::string, int64_t> inputs_dims;
     proto::VarType::Type var_type =
-        all_vars_desc.at(inputs[dev_id][0]->name_)->GetType();
-
+        block_desc.FindVar(inputs[dev_id][0]->name_)->GetDataType();
+    PADDLE_ENFORCE_EQ(ToDataType(group.type_), var_type);
     for (size_t j = 0; j < inputs[dev_id].size(); ++j) {
-      auto var_desc = all_vars_desc.at(inputs[dev_id][j]->name_);
+      auto var_desc = block_desc.FindVar(inputs[dev_id][j]->name_);
       inputs_dims[inputs[dev_id][j]->name_] =
           framework::product(framework::make_ddim(var_desc->GetShape()));
-      PADDLE_ENFORCE_EQ(var_desc->GetType(), var_type);
+      PADDLE_ENFORCE_EQ(var_desc->GetDataType(), var_type);
     }
 
-    auto *op_handle = new FuseVarsOpHandle(scope, place, inputs_dims, var_type);
+    auto *op_handle =
+        new FuseVarsOpHandle(scope, place, inputs_dims, group.type_);
     fuse_vars_ops.emplace_back(op_handle);
     CreateFuseVarsOpHandleIO(graph, op_handle, dev_id, fused_vars_output_name,
                              place, inputs[dev_id]);
   }
 
   // Insert fuse vars into graph
-  InsertFusedVarsOpHandleToGraph(graph, &inputs, fuse_vars_ops);
+  InsertFusedVarsOpHandleIntoGraph(graph, &inputs, fuse_vars_ops);
 
   // Create fused_nccl_all_reduce op handle
   auto *nccl_op_handle =
@@ -324,7 +329,7 @@ void FuseAllReduceGraphBuilder::CreateNCCLAllReduceOpHandleIO(
   }
 }
 
-void FuseAllReduceGraphBuilder::InsertFusedVarsOpHandleToGraph(
+void FuseAllReduceGraphBuilder::InsertFusedVarsOpHandleIntoGraph(
     SSAGraph *graph, std::vector<std::vector<VarHandle *>> *inputs,
     const std::vector<OpHandleBase *> &fuse_vars_ops) const {
   auto &ins = *inputs;
