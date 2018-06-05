@@ -18,7 +18,10 @@ SET(BRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/brpc)
 SET(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
 SET(BRPC_INCLUDE_DIR "${BRPC_INSTALL_DIR}/include" CACHE PATH "brpc include directory." FORCE)
 SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.a" CACHE FILEPATH "brpc library." FORCE)
+
 INCLUDE_DIRECTORIES(${BRPC_INCLUDE_DIR})
+
+set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf")
 
 set(BRPC_REPOSITORY "https://github.com/brpc/brpc")
 set(BRPC_TAG "6d153dd7ff00f960ae6895c9c5fff0ce9f07aff2")
@@ -38,13 +41,14 @@ ExternalProject_Add(
                     -DCMAKE_INSTALL_LIBDIR=${BRPC_INSTALL_DIR}/lib
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                    -DCMAKE_PREFIX_PATH=${prefix_path}
                     ${EXTERNAL_OPTIONAL_ARGS}
+    LIST_SEPARATOR |
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${BRPC_INSTALL_DIR}
                      -DCMAKE_INSTALL_LIBDIR:PATH=${BRPC_INSTALL_DIR}/lib
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
-
 ADD_DEPENDENCIES(extern_brpc protobuf leveldb gflags glog gtest snappy)
 
 ADD_LIBRARY(brpc STATIC IMPORTED GLOBAL)

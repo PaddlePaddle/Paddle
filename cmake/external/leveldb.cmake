@@ -20,34 +20,21 @@ SET(LEVELDB_INCLUDE_DIR "${LEVELDB_INSTALL_DIR}/include" CACHE PATH "leveldb inc
 SET(LEVELDB_LIBRARIES "${LEVELDB_INSTALL_DIR}/lib/libleveldb.a" CACHE FILEPATH "leveldb library." FORCE)
 INCLUDE_DIRECTORIES(${LEVELDB_INCLUDE_DIR})
 
-set(LEVELDB_REPOSITORY "https://github.com/google/leveldb")
-set(LEVELDB_TAG "v1.20")
-
 ExternalProject_Add(
     extern_leveldb
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  ${LEVELDB_REPOSITORY}
-    GIT_TAG         ${LEVELDB_TAG}
-    PREFIX          ${LEVELDB_SOURCES_DIR}
-    UPDATE_COMMAND  ""
-    CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_INSTALL_PREFIX=${LEVELDB_INSTALL_DIR}
-                    -DCMAKE_INSTALL_LIBDIR=${LEVELDB_INSTALL_DIR}/lib
-                    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                    -DLEVELDB_BUILD_TESTS=OFF
-                    -DLEVELDB_BUILD_BENCHMARKS=OFF
-                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                    ${EXTERNAL_OPTIONAL_ARGS}
-    CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${LEVELDB_INSTALL_DIR}
-                     -DCMAKE_INSTALL_LIBDIR:PATH=${LEVELDB_INSTALL_DIR}/lib
-                     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+    PREFIX ${LEVELDB_SOURCES_DIR}
+    URL "https://github.com/google/leveldb/archive/v1.18.tar.gz"
+    URL_MD5 "73770de34a2a5ab34498d2e05b2b7fa0"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND make -j ${NUM_OF_PROCESSOR} libleveldb.a
+    INSTALL_COMMAND mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ 
+        && cp ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
+        && cp -r ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/include ${LEVELDB_INSTALL_DIR}/
+    BUILD_IN_SOURCE 1
 )
 
-#ADD_DEPENDENCIES(extern_leveldb snappy)
+ADD_DEPENDENCIES(extern_leveldb snappy)
 
 ADD_LIBRARY(leveldb STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET leveldb PROPERTY IMPORTED_LOCATION ${LEVELDB_LIBRARIES})
