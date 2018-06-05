@@ -32,7 +32,7 @@ cc_library(multi_devices_graph_builder SRCS multi_devices_graph_builder.cc DEPS 
 
 if(WITH_GPU)
     cc_library(fuse_all_reduce_graph_builder SRCS fuse_all_reduce_graph_builder.cc
-            DEPS ssa_graph_builder nccl_all_reduce_op_handle)
+            DEPS ssa_graph_builder nccl_all_reduce_op_handle fuse_vars_op_handle)
     set(graph_builder_factory_deps fuse_all_reduce_graph_builder)
 else()
     set(graph_builder_factory_deps)

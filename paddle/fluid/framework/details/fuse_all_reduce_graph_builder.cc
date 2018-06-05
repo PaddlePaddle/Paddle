@@ -48,38 +48,73 @@ std::unique_ptr<SSAGraph> FuseAllReduceGraphBuilder::Build(
   return graph;
 }
 
+inline static void GetAllInputOp(OpHandleBase *op,
+                                 std::unordered_set<OpHandleBase *> *set) {
+  for (auto &var : op->Inputs()) {
+    auto *op = var->generated_op_;
+    if (op == nullptr) {
+      continue;
+    }
+
+    if (set->count(op)) {
+      continue;
+    }
+
+    set->emplace(op);
+    GetAllInputOp(op, set);
+  }
+}
+
 inline static bool IsParentOpInCurrentOp(
     OpHandleBase *op, const std::unordered_set<size_t> &cur_ops,
     const std::unordered_map<OpHandleBase *, size_t> &offset_map) {
-  if (cur_ops.count(offset_map.at(op))) {
-    return true;
-  }
+  std::unordered_set<OpHandleBase *> inputs;
+  inputs.emplace(op);
+  GetAllInputOp(op, &inputs);
 
-  for (auto *in : op->Inputs()) {
-    if (in->generated_op_ &&
-        IsParentOpInCurrentOp(in->generated_op_, cur_ops, offset_map)) {
+  for (auto *tmp : inputs) {
+    auto it = offset_map.find(tmp);
+    if (it == offset_map.end()) {
+      continue;
+    }
+    if (cur_ops.count(it->second)) {
       return true;
     }
   }
-
   return false;
+}
+
+inline static void GetAllOutputOp(OpHandleBase *op,
+                                  std::unordered_set<OpHandleBase *> *set) {
+  for (auto &var : op->Outputs()) {
+    for (auto *op : var->pending_ops_) {
+      if (op == nullptr) {
+        continue;
+      }
+      if (set->count(op)) {
+        continue;
+      }
+      set->emplace(op);
+      GetAllOutputOp(op, set);
+    }
+  }
 }
 
 inline static bool IsChildOpInCurrentOp(
     OpHandleBase *op, const std::unordered_set<size_t> &cur_ops,
     const std::unordered_map<OpHandleBase *, size_t> &offset_map) {
-  if (cur_ops.count(offset_map.at(op))) {
-    return true;
-  }
-
-  for (auto *out : op->Outputs()) {
-    for (auto *out_op : out->pending_ops_) {
-      if (IsChildOpInCurrentOp(out_op, cur_ops, offset_map)) {
-        return true;
-      }
+  std::unordered_set<OpHandleBase *> set;
+  set.emplace(op);
+  GetAllOutputOp(op, &set);
+  for (auto *tmp : set) {
+    auto it = offset_map.find(tmp);
+    if (it == offset_map.end()) {
+      continue;
+    }
+    if (cur_ops.count(it->second)) {
+      return true;
     }
   }
-
   return false;
 }
 
@@ -98,7 +133,6 @@ inline static void ResolveOpDeps(
       continue;
     }
     auto *op_handle = all_ops[pos].get();
-
     if (IsParentOpInCurrentOp(op_handle, cur_ops, offset_map)) {
       after_deps.emplace(pos);
     } else if (IsChildOpInCurrentOp(op_handle, cur_ops, offset_map)) {
@@ -132,6 +166,11 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
       ++i;
     }
   }
+  VLOG(10) << "Number of all_reduce op is " << all_reduce_ops.size();
+  if (all_reduce_ops.empty()) {
+    return std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>();
+  }
+
   std::unordered_map<OpHandleBase *, size_t> offsets;
   std::list<std::unordered_set<size_t>> res;
   res.emplace_back();
@@ -152,6 +191,7 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
     }
   }
 
+  VLOG(5) << "There are " << res_vec.size() << " group of reduce_all";
   if (VLOG_IS_ON(10)) {
     for (size_t i = 0; i < res_vec.size(); ++i) {
       std::ostringstream sout;
@@ -172,6 +212,8 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
   // Get input and output
   PADDLE_ENFORCE(!ops.empty(), "ops should not be empty.");
+
+  // Fuse Gradient to one
   std::vector<std::vector<VarHandle *>> inputs;
   std::vector<std::vector<VarHandle *>> outputs;
   inputs.resize(ops.begin()->get()->Inputs().size());
