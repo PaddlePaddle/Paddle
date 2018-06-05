@@ -56,7 +56,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_split_and_merge_lod_tensor_level_0(self):
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 3, 9, 10]])
+        tensor.set_lod([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
@@ -68,11 +68,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect_true_tensor = np.expand_dims(expect_true_tensor, axis=1)
         expect_true = core.LoDTensor()
         expect_true.set(expect_true_tensor, self.place())
-        expect_true.set_lod([[0, 6]])
+        expect_true.set_lod([[6]])
 
         expect_false_tensor = np.array([0, 1, 2, 9]).astype('int32')
         expect_false_tensor = np.expand_dims(expect_false_tensor, axis=1)
-        expect_false_lod = [[0, 3, 4]]
+        expect_false_lod = [[3, 1]]
 
         expect_false = core.LoDTensor()
         expect_false.set(expect_false_tensor, self.place())
@@ -151,7 +151,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
-        tensor.set_lod([[0, 3, 9, 10]])
+        tensor.set_lod([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
