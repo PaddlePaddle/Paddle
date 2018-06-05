@@ -27,7 +27,6 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
     auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
     auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
 
@@ -38,13 +37,10 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
 
     T offset = static_cast<T>(ctx.Attr<float>("offset"));
 
-    auto img_width = image->dims()[3];
-    auto img_height = image->dims()[2];
-
     auto feature_width = input->dims()[3];
     auto feature_height = input->dims()[2];
 
-    auto stride_width, stride_height;
+    T stride_width, stride_height;
     stride_width = stride[0];
     stride_height = stride[1];
 
@@ -61,7 +57,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
         T area, area_ratios;
         T base_w, base_h;
         T scale_w, scale_h;
-        T anchors_width, anchors_height;
+        T anchor_width, anchor_height;
         int idx = 0;
         for (size_t r = 0; r < aspect_ratios.size(); ++r) {
           auto ar = aspect_ratios[r];

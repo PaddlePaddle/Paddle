@@ -25,7 +25,7 @@ class TestAnchorGeneratorOp(OpTest):
         self.init_test_params()
         self.init_test_input()
         self.init_test_output()
-        self.inputs = {'Input': self.input, 'Image': self.image}
+        self.inputs = {'Input': self.input}
 
         self.attrs = {
             'anchor_sizes': self.anchor_sizes,
@@ -53,11 +53,7 @@ class TestAnchorGeneratorOp(OpTest):
 
         self.stride = [16, 16]
 
-        self.image_w = 16 * 4
-        self.image_h = 16 * 4
-
         self.input_channels = 2
-        self.image_channels = 3
         self.batch_size = 1
 
         self.anchor_sizes = [64, 128, 256, 512]
@@ -69,10 +65,6 @@ class TestAnchorGeneratorOp(OpTest):
         self.variances = [0.1, 0.1, 0.2, 0.2]
 
     def init_test_input(self):
-        self.image = np.random.random(
-            (self.batch_size, self.image_channels, self.image_w,
-             self.image_h)).astype('float32')
-
         self.input = np.random.random(
             (self.batch_size, self.input_channels, self.layer_w,
              self.layer_h)).astype('float32')

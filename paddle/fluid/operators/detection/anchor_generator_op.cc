@@ -24,19 +24,9 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of AnchorGeneratorOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Image) of AnchorGeneratorOp should not be null.");
 
-    auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE(image_dims.size() == 4, "The layout of image is NCHW.");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
-
-    PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
-                      "The height of input must smaller than image.");
-
-    PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
-                      "The width of input must smaller than image.");
 
     auto anchor_sizes = ctx->Attrs().Get<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
@@ -70,9 +60,6 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default Tensor<float>), "
              "the input feature data of AnchorGeneratorOp. "
              "The layout is NCHW.");
-    AddInput("Image",
-             "(Tensor, default Tensor<float>), "
-             "the input image data of AnchorGeneratorOp. The layout is NCHW.");
     AddOutput("Anchors",
               "(Tensor, default Tensor<float>), the output anchors of "
               "AnchorGeneratorOp. The layout is [H, W, num_anchors, 4]. "

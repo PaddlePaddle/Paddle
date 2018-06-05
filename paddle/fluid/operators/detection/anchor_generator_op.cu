@@ -30,23 +30,23 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
        i += blockDim.x * gridDim.x) {
     int h_idx = i / (num_anchors * width);
     int w_idx = (i / num_anchors) % width;
-    T stride_width = stride[0]
-    T stride_height = stride[1]
+    T stride_width = stride[0];
+    T stride_height = stride[1];
     T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
     T y_ctr = (w_idx * stride_height) + offset * (stride_height - 1);
     T area, area_ratios;
     T base_w, base_h;
     T scale_w, scale_h;
-    T anchors_width, anchors_height;
+    T anchor_width, anchor_height;
     int anch_idx = i % num_anchors;
     int ar_idx = anch_idx / as_num;
     int as_idx = anch_idx % as_num;
     T aspect_ratio = aspect_ratios[ar_idx];
     T anchor_size = anchor_sizes[as_idx];
     area = stride_width * stride_height;
-    area_ratios = area / ar;
+    area_ratios = area / aspect_ratio;
     base_w = round(sqrt(area_ratios));
-    base_h = round(base_w * ar);
+    base_h = round(base_w * aspect_ratio);
     scale_w = anchor_size / stride_width;
     scale_h = anchor_size / stride_height;
     anchor_width = scale_w * base_w;
@@ -77,7 +77,6 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
     auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
     auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
 
@@ -87,9 +86,6 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
     auto variances = ctx.Attr<std::vector<float>>("variances");
 
     T offset = static_cast<T>(ctx.Attr<float>("offset"));
-
-    auto im_width = image->dims()[3];
-    auto im_height = image->dims()[2];
 
     auto width = input->dims()[3];
     auto height = input->dims()[2];
@@ -118,7 +114,7 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
 
     GenAnchors<T><<<grid, block, 0, stream>>>(
         anchors->data<T>(), ar.data<T>(), aspect_ratios.size(),
-        as.data<T>(), anchor_sizes.szie(), sd.data<T>(), stride.size()
+        as.data<T>(), anchor_sizes.size(), sd.data<T>(), stride.size(),
         height, width, offset);
 
     framework::Tensor v;
