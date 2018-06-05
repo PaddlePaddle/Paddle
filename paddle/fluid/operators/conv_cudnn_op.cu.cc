@@ -20,6 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
+DEFINE_bool(cudnn_deterministic, true,
+            "Whether allow using an autotuning algorithm for convolution "
+            "operator. The autotuning algorithm may be non-deterministic. If "
+            "false, the algorithm is deterministic.");
+
 namespace paddle {
 namespace operators {
 

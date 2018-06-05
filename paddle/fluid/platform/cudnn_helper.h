@@ -22,10 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
-DEFINE_bool(cudnn_deterministic, true,
-            "Whether allow using an autotuning algorithm for convolution "
-            "operator. The autotuning algorithm may be non-deterministic. If "
-            "false, the algorithm is deterministic.");
+DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace platform {
