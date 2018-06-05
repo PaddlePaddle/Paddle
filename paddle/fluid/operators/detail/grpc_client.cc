@@ -226,7 +226,6 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
 void RPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
   sync_cond_.wait(lk, [this] { return req_count_ == 0; });
-  lk.unlock();
 }
 
 void RPCClient::Proceed() {
