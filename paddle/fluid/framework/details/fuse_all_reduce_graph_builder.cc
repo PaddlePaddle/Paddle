@@ -227,6 +227,13 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(
   return res_vec;
 }
 
+static VarHandle *FuseVariable(
+    SSAGraph *graph, size_t scope_idx, Scope *scope, platform::Place place,
+    const std::string &whole_varaible_name,
+    const std::vector<std::pair<std::string, size_t>> &fused_vars) {
+  // TODO(zcd): Complete this method
+}
+
 void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     SSAGraph *graph, NCCLAllReduceGroup &&group,
     const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
