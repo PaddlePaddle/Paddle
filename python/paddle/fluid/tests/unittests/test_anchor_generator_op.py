@@ -35,13 +35,13 @@ class TestAnchorGeneratorOp(OpTest):
             'variances': self.variances,
         }
 
-        self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
+        self.outputs = {'Anchors': self.out_anchors, 'Variances': self.out_var}
 
     def test_check_output(self):
         global global_var
         global_var = self.outputs
         self.check_output()
-        print(global_var['Boxes'][0][0])
+        print(global_var['Anchors'][0][0])
 
     def setUp(self):
         self.op_type = "anchor_generator"
@@ -52,7 +52,7 @@ class TestAnchorGeneratorOp(OpTest):
         self.layer_h = 4
 
         self.stride = [16, 16]
-        
+
         self.image_w = 16 * 4
         self.image_h = 16 * 4
 
@@ -79,7 +79,7 @@ class TestAnchorGeneratorOp(OpTest):
 
     def init_test_output(self):
         out_dim = (self.layer_h, self.layer_w, self.num_priors, 4)
-        out_boxes = np.zeros(out_dim).astype('float32')
+        out_anchors = np.zeros(out_dim).astype('float32')
 
         for h_idx in range(self.layer_h):
             for w_idx in range(self.layer_w):
@@ -98,16 +98,16 @@ class TestAnchorGeneratorOp(OpTest):
                         scale_h = anchor_size / self.stride[1]
                         w = scale_w * base_w
                         h = scale_h * base_h
-                        out_boxes[h_idx, w_idx, idx, :] = [(x_ctr - 0.5 * (w - 1)),
-                                                   (y_ctr - 0.5 * (h - 1)),
-                                                   (x_ctr + 0.5 * (w - 1)),
-                                                   (y_ctr + 0.5 * (h - 1))]
+                        out_anchors[h_idx, w_idx, idx, :] = [(x_ctr - 0.5 * (w - 1)),
+                                                             (y_ctr - 0.5 * (h - 1)),
+                                                             (x_ctr + 0.5 * (w - 1)),
+                                                             (y_ctr + 0.5 * (h - 1))]
                         idx += 1
 
         # set the variance.
         out_var = np.tile(self.variances, (self.layer_h, self.layer_w,
                                            self.num_priors, 1))
-        self.out_boxes = out_boxes.astype('float32')
+        self.out_anchors = out_anchors.astype('float32')
         self.out_var = out_var.astype('float32')
 
 

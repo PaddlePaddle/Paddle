@@ -23,12 +23,12 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class PriorBoxOpKernel : public framework::OpKernel<T> {
+class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<paddle::framework::Tensor>("Input");
     auto* image = ctx.Input<paddle::framework::Tensor>("Image");
-    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
+    auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
     auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
 
     auto anchor_sizes = ctx.Attr<std::vector<float>>("anchor_sizes");
@@ -45,20 +45,15 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto feature_height = input->dims()[2];
 
     auto stride_width, stride_height;
-    if (stride[0] == 0 || stride[1] == 0) {
-      stride_width = static_cast<T>(img_width) / feature_width;
-      stride_height = static_cast<T>(img_height) / feature_height;
-    } else {
-      stride_width = stride[0];
-      stride_height = stride[1];
-    }
+    stride_width = stride[0];
+    stride_height = stride[1];
 
     int num_anchors = aspect_ratios.size() * anchor_sizes.size();
 
-    boxes->mutable_data<T>(ctx.GetPlace());
+    anchors->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
+    auto e_anchors = framework::EigenTensor<T, 4>::From(*anchors);
     for (int h_idx = 0; h_idx < feature_height; ++h_idx) {
       for (int w_idx = 0; w_idx < feature_width; ++w_idx) {
         T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
@@ -66,7 +61,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         T area, area_ratios;
         T base_w, base_h;
         T scale_w, scale_h;
-        T box_width, box_height;
+        T anchors_width, anchors_height;
         int idx = 0;
         for (size_t r = 0; r < aspect_ratios.size(); ++r) {
           auto ar = aspect_ratios[r];
@@ -78,12 +73,12 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
             base_h = round(base_w * ar);
             scale_w = anchor_size / stride_width;
             scale_h = anchor_size / stride_height;
-            box_width = scale_w * base_w;
-            box_height = scale_h * base_h;
-            e_boxes(h_idx, w_idx, idx, 0) = (x_ctr - 0.5 * (box_width - 1));
-            e_boxes(h_idx, w_idx, idx, 1) = (y_ctr - 0.5 * (box_height - 1));
-            e_boxes(h_idx, w_idx, idx, 2) = (x_ctr + 0.5 * (box_width - 1));
-            e_boxes(h_idx, w_idx, idx, 3) = (y_ctr + 0.5 * (box_height - 1));
+            anchor_width = scale_w * base_w;
+            anchor_height = scale_h * base_h;
+            e_anchors(h_idx, w_idx, idx, 0) = (x_ctr - 0.5 * (anchor_width - 1));
+            e_anchors(h_idx, w_idx, idx, 1) = (y_ctr - 0.5 * (anchor_height - 1));
+            e_anchors(h_idx, w_idx, idx, 2) = (x_ctr + 0.5 * (anchor_width - 1));
+            e_anchors(h_idx, w_idx, idx, 3) = (y_ctr + 0.5 * (anchor_height - 1));
             idx++;
           }
         }
@@ -99,12 +94,12 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
       var_et(0, i) = variances[i];
     }
 
-    int box_num = feature_height * feature_width * num_anchors;
+    int anchor_num = feature_height * feature_width * num_anchors;
     auto var_dim = vars->dims();
-    vars->Resize({box_num, static_cast<int>(variances.size())});
+    vars->Resize({anchor_num, static_cast<int>(variances.size())});
 
     auto e_vars = framework::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
-    e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(box_num, 1));
+    e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(anchor_num, 1));
 
     vars->Resize(var_dim);
   }
