@@ -113,6 +113,7 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
 
   for (size_t i = 0; i < graph->ops_.size();) {
     if (dynamic_cast<NCCLAllReduceOpHandle *>(graph->ops_[i].get())) {
+      // The op.size() will shrink after extract op, so ++i is not needed.
       all_reduce_ops.emplace_back(graph->ExtractOp(i));
     } else {
       ++i;
@@ -143,7 +144,7 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
       std::ostringstream sout;
       sout << "Group " << i << "\n";
 
-      for (std::unique_ptr<OpHandleBase> &op : res_vec[i]) {
+      for (const std::unique_ptr<OpHandleBase> &op : res_vec[i]) {
         sout << "\t" << op->DebugString() << "\n";
       }
       VLOG(10) << sout.str();
