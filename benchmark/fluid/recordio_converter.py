@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import random
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -53,6 +54,13 @@ def prepare_flowers(outpath, batch_size):
                        [1])
 
 
+def default_mapper(sample):
+    img, label = sample
+    img = image.simple_transform(
+        img, 256, 224, True, mean=[103.94, 116.78, 123.68])
+    return img.flatten().astype('float32'), label
+
+
 def imagenet_train(data_dir):
     contents = os.listdir(data_dir)
     if set(contents) != set(
@@ -68,6 +76,8 @@ def imagenet_train(data_dir):
             img, lbl = l[:-1].split(" ")
             img2label[img] = int(lbl)
             imgfilelist.append(img)
+    # shuffle all, this is slow
+    random.shuffle(imgfilelist)
 
     def train_reader():
         for idx, imgfile in enumerate(imgfilelist):
@@ -76,13 +86,34 @@ def imagenet_train(data_dir):
             label = [img2label[imgfile], ]
             yield [data, label]
 
-    def default_mapper(sample):
-        img, label = sample
-        img = image.simple_transform(
-            img, 256, 224, True, mean=[103.94, 116.78, 123.68])
-        return img.flatten().astype('float32'), label
-
     return paddle.reader.map_readers(default_mapper, train_reader)
+
+
+def imagenet_test(data_dir):
+    contents = os.listdir(data_dir)
+    if set(contents) != set(
+        ["train", "train.txt", "val", "val_set", "val.txt", "unzip.sh"]):
+        raise Exception("Imagenet data contents error!")
+    img2label = dict()
+    imgfilelist = []
+    with open(os.path.join(data_dir, "val.txt")) as fn:
+        while 1:
+            l = fn.readline()
+            if not l:
+                break
+            img, lbl = l[:-1].split(" ")
+            img2label[img] = int(lbl)
+            imgfilelist.append(img)
+
+    def test_reader():
+        for idx, imgfile in enumerate(imgfilelist):
+            base_path = os.path.join(data_dir, "val", imgfile.split(".")[0])
+            image_path = ".".join([base_path, "jpeg"])
+            data = image.load_image(image_path)
+            label = [img2label[imgfile], ]
+            yield [data, label]
+
+    return paddle.reader.map_readers(default_mapper, test_reader)
 
 
 # FIXME(wuyi): delete this when https://github.com/PaddlePaddle/Paddle/pull/11066 is merged

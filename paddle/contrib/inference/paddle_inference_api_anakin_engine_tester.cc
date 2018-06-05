@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,27 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-
+#include "paddle/contrib/inference/paddle_inference_api.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
-namespace inference {
-namespace tensorrt {
 
-TEST(OpConverter, ConvertBlock) {
-  framework::ProgramDesc prog;
-  auto* block = prog.MutableBlock(0);
-  auto* conv2d_op = block->AppendOp();
-  conv2d_op->SetType("conv2d");
+TEST(inference, anakin) {
+  AnakinConfig config;
 
-  OpConverter converter;
-  framework::Scope scope;
-  converter.ConvertBlock(*block->Proto(), {}, scope,
-                         nullptr /*TensorRTEngine*/);
+  auto engine =
+      CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
 }
 
-}  // namespace tensorrt
-}  // namespace inference
 }  // namespace paddle

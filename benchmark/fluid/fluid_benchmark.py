@@ -40,10 +40,7 @@ def parse_args():
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
     parser.add_argument(
-        '--learning_rate',
-        type=float,
-        default=0.001,
-        help='The minibatch size.')
+        '--learning_rate', type=float, default=0.001, help='The learning rate.')
     parser.add_argument(
         '--skip_batch_num',
         type=int,
@@ -51,7 +48,10 @@ def parse_args():
         help='The first num of minibatch num to skip, for better performance test'
     )
     parser.add_argument(
-        '--iterations', type=int, default=80, help='The number of minibatches.')
+        '--iterations',
+        type=int,
+        default=80,
+        help='The number of minibatches, set to -1 to run all batches.')
     parser.add_argument(
         '--pass_num', type=int, default=100, help='The number of passes.')
     parser.add_argument(
@@ -71,11 +71,12 @@ def parse_args():
         type=int,
         default=1,
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
+    # this option is available only for vgg and resnet.
     parser.add_argument(
         '--data_set',
         type=str,
         default='flowers',
-        choices=['cifar10', 'flowers'],
+        choices=['cifar10', 'flowers', 'imagenet'],
         help='Optional dataset for benchmark.')
     parser.add_argument(
         '--infer_only', action='store_true', help='If set, run forward only.')
@@ -228,12 +229,18 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         train_losses = []
-        for batch_id, data in enumerate(train_reader()):
+        reader_generator = train_reader()
+        batch_id = 0
+        data = None
+        while True:
+            if not args.use_reader_op:
+                data = next(reader_generator, None)
+            if iters == args.iterations or data == None:
+                break
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
-            if iters == args.iterations:
-                break
+
             if args.use_reader_op:
                 loss = exe.run(train_prog, fetch_list=[avg_loss])
             else:
@@ -241,14 +248,13 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
                                feed=feeder.feed(data),
                                fetch_list=[avg_loss])
             iters += 1
-            num_samples += len(data)
+            batch_id += 1
+            # FIXME(wuyi): last batch size maybe different
+            num_samples += len(args.batch_size)
             train_losses.append(loss)
             print("Pass: %d, Iter: %d, Loss: %f\n" %
                   (pass_id, iters, np.mean(train_losses)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
-              (num_samples, train_elapsed, examples_per_sec))
+        print_train_time(start_time, time.time(), num_samples)
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
         # evaluation
         if not args.no_test and batch_acc != None:
@@ -309,7 +315,14 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         num_samples = 0
         iters = 0
         start_time = time.time()
-        for batch_id, data in enumerate(train_reader()):
+        reader_generator = train_reader()
+        batch_id = 0
+        data = None
+        while True:
+            if not args.use_reader_op:
+                data = next(reader_generator, None)
+            if iters == args.iterations or data == None:
+                break
             if args.profile and pass_id == 0 and batch_id == 5:
                 profiler.start_profiler("All")
             elif args.profile and pass_id == 0 and batch_id == 10:
@@ -318,8 +331,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
-            if iters == args.iterations:
-                break
             # NOTE: if use reader ops, the input data is not splited to multiple cards
             if args.use_reader_op and iters >= args.iterations / args.gpus:
                 break
@@ -334,12 +345,10 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if batch_id % 1 == 0:
                 print("Pass %d, batch %d, loss %s" %
                       (pass_id, batch_id, np.array(loss)))
-        train_elapsed = time.time() - start_time
+            batch_id += 1
         if args.use_reader_op:
             num_samples = num_samples * args.gpus
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
+        print_train_time(start_time, time.time(), num_samples)
         if not args.no_test and batch_acc != None:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
@@ -350,10 +359,17 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
 def print_arguments(args):
     vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
                                 vars(args)['device'] == 'GPU')
-    print('----------- resnet Configuration Arguments -----------')
+    print('----------- Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
         print('%s: %s' % (arg, value))
     print('------------------------------------------------')
+
+
+def print_train_time(start_time, end_time, num_samples):
+    train_elapsed = end_time - start_time
+    examples_per_sec = num_samples / train_elapsed
+    print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+          (num_samples, train_elapsed, examples_per_sec))
 
 
 def main():
