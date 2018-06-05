@@ -65,7 +65,10 @@ void Main(bool use_gpu) {
 }
 
 TEST(demo, word2vec_cpu) { Main(false /*use_gpu*/); }
+
+#ifdef PADDLE_WITH_CUDA
 TEST(demo, word2vec_gpu) { Main(true /*use_gpu*/); }
+#endif
 
 }  // namespace demo
 }  // namespace paddle
