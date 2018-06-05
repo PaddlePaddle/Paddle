@@ -71,8 +71,6 @@ class AsyncGRPCServer final : public RPCServer {
   std::unique_ptr<::grpc::Server> server_;
 
   // condition of the sub program
-  std::mutex barrier_mutex_;
-  mutable int barrier_cond_step_;
   std::condition_variable barrier_condition_;
 
   std::mutex mutex_ready_;

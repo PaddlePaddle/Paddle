@@ -54,7 +54,7 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    ASSERT_EQ(outputs.size(), 1);
+    ASSERT_EQ(outputs.size(), 1UL);
     LOG(INFO) << "output buffer size: " << outputs.front().data.length;
     const size_t num_elements = outputs.front().data.length / sizeof(float);
     // The outputs' buffers are in CPU memory.
