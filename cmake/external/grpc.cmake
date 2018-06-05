@@ -33,8 +33,6 @@ ELSE()
   SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
 ENDIF()
 
-SET(GRPC_DOWNLOAD_SRC_MD5 "c9c58ee7d0e8929a63155af6a2ecdbd0")
-
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them
 ExternalProject_Add(
     extern_grpc
@@ -47,7 +45,7 @@ ExternalProject_Add(
     #    checkout and clean other dirs under third_party
     # 4. remove .git, and package the directory.
     URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.8.x.tar.gz"
-    URL_MD5  ${GRPC_DOWNLOAD_SRC_MD5}
+    URL_MD5  "c9c58ee7d0e8929a63155af6a2ecdbd0"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
