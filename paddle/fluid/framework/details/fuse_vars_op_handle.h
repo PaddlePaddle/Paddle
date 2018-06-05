@@ -31,12 +31,18 @@ namespace details {
 struct FuseVarsOpHandle : public OpHandleBase {
  public:
   FuseVarsOpHandle(Scope *local_scope, const platform::Place &place,
-                   const std::unordered_map<std::string, int64_t> &inputs_dims,
+                   const std::unordered_map<std::string, int64_t> &inputs_numel,
                    const std::type_index &var_type)
       : local_scope_(local_scope),
         place_(place),
-        inputs_numel_(inputs_dims),
-        type_(var_type) {}
+        inputs_numel_(inputs_numel),
+        type_(var_type) {
+    total_numel_ = 0;
+    for (auto in_numel : inputs_numel) {
+      PADDLE_ENFORCE_GT(in_numel.second, 0);
+      total_numel_ += in_numel.second;
+    }
+  }
 
   std::string Name() const override;
 
@@ -50,6 +56,7 @@ struct FuseVarsOpHandle : public OpHandleBase {
   const platform::Place place_;
   const std::unordered_map<std::string, int64_t> inputs_numel_;
   const std::type_index type_;
+  int64_t total_numel_;
 };
 }  // namespace details
 }  // namespace framework
