@@ -22,6 +22,8 @@ iou_similarity_op.cu)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc)
 detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
+detection_library(anchor_generator_op SRCS anchor_generator_op.cc
+anchor_generator_op.cu)
 detection_library(target_assign_op SRCS target_assign_op.cc
 target_assign_op.cu)
 detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
