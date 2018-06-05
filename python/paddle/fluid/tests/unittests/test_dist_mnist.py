@@ -27,6 +27,7 @@ import signal
 
 SEED = 1
 DTYPE = "float32"
+paddle.dataset.mnist.fetch()
 
 
 # random seed must set before configuring the network.
@@ -147,7 +148,7 @@ class TestDistMnist(unittest.TestCase):
         os.kill(pid, signal.SIGTERM)
 
     def test_with_place(self):
-        p = fluid.CUDAPlace() if core.is_compiled_with_cuda(
+        p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
 
         pserver_pid = self.start_pserver(self._ps_endpoints)
