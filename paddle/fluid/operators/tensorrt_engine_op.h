@@ -110,7 +110,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
  private:
   mutable cudaStream_t stream_;
-  mutable inference::tensorrt::TensorRTEngine *engine_{nullptr};
+  mutable inference::tensorrt::TensorRTEngine* engine_{nullptr};
   mutable int max_batch_{0};
 };
 

@@ -82,7 +82,7 @@ void TensorRTEngine::FreezeNetwork() {
     CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
     PADDLE_ENFORCE_EQ(0, cudaMalloc(&buf.buffer, item.second));
     VLOG(4) << "buffer malloc " << item.first << " " << item.second << " "
-              << buf.buffer;
+            << buf.buffer;
     buf.size = buf.max_size = item.second;
     buf.device = DeviceType::GPU;
   }
