@@ -163,7 +163,7 @@ class TensorRTEngine : public EngineBase {
 /*
  * Helper to control the TensorRT engine's creation and deletion.
  */
-class _TRT_EngineManager {
+class TRT_EngineManager {
  public:
   TensorRTEngine* Create(int max_batch, int max_workspace,
                          cudaStream_t* stream) {
@@ -180,8 +180,6 @@ class _TRT_EngineManager {
  private:
   std::vector<std::unique_ptr<TensorRTEngine>> engines_;
 };
-
-static auto& TRT_EngineManager = Singleton<_TRT_EngineManager>::Global();
 
 }  // namespace tensorrt
 }  // namespace inference

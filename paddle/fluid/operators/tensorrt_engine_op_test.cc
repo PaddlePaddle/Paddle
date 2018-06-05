@@ -114,7 +114,7 @@ TEST(TensorRTEngineOp, manual) {
   *block_->add_ops() = *mul->Proto();
   *block_->add_ops() = *fc->Proto();
 
-  ASSERT_EQ(block_->ops_size(), 2UL);
+  ASSERT_EQ(block_->ops_size(), 2);
 
   LOG(INFO) << "create tensorrt desc";
   framework::OpDesc engine_op_desc(nullptr);

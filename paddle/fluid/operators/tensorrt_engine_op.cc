@@ -23,6 +23,9 @@
 namespace paddle {
 namespace operators {
 
+using inference::Singleton;
+using inference::tensorrt::TRT_EngineManager;
+
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
 
@@ -71,7 +74,7 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
   block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
   max_batch_ = context.Attr<int>("max_batch");
   auto max_workspace = context.Attr<int>("max_workspace");
-  engine_ = inference::tensorrt::TRT_EngineManager.Create(
+  engine_ = Singleton<TRT_EngineManager>::Global().Create(
       max_batch_, max_workspace, &stream_);
   engine_->InitNetwork();
 
