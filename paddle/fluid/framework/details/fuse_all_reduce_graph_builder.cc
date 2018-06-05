@@ -138,6 +138,18 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
     }
   }
 
+  if (VLOG_IS_ON(10)) {
+    for (size_t i = 0; i < res_vec.size(); ++i) {
+      std::ostringstream sout;
+      sout << "Group " << i << "\n";
+
+      for (std::unique_ptr<OpHandleBase> &op : res_vec[i]) {
+        sout << "\t" << op->DebugString() << "\n";
+      }
+      VLOG(10) << sout.str();
+    }
+  }
+
   return res_vec;
 }
 void FuseAllReduceGraphBuilder::FuseAllReduceOp(
