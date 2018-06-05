@@ -22,35 +22,33 @@ namespace paddle {
 namespace recordio {
 
 Scanner::Scanner(std::unique_ptr<std::istream> &&stream)
-    : stream_(std::move(stream)) {
+    : stream_(std::move(stream)), parser_(*stream_) {
   Reset();
 }
 
-Scanner::Scanner(const std::string &filename) {
-  stream_.reset(new std::ifstream(filename));
+Scanner::Scanner(const std::string &filename)
+    : stream_(new std::ifstream(filename)), parser_(*stream_) {
   Reset();
 }
 
 void Scanner::Reset() {
   stream_->clear();
   stream_->seekg(0, std::ios::beg);
-  ParseNextChunk();
+  parser_.Init();
 }
 
 std::string Scanner::Next() {
-  PADDLE_ENFORCE(!eof_, "StopIteration");
-  auto rec = cur_chunk_.Record(offset_++);
-  if (offset_ == cur_chunk_.NumRecords()) {
-    ParseNextChunk();
+  if (stream_->eof()) {
+    return "";
   }
-  return rec;
+
+  auto res = parser_.Next();
+  if (!parser_.HasNext() && HasNext()) {
+    parser_.Init();
+  }
+  return res;
 }
 
-void Scanner::ParseNextChunk() {
-  eof_ = !cur_chunk_.Parse(*stream_);
-  offset_ = 0;
-}
-
-bool Scanner::HasNext() const { return !eof_; }
+bool Scanner::HasNext() const { return !stream_->eof(); }
 }  // namespace recordio
 }  // namespace paddle

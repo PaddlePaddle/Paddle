@@ -27,6 +27,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
+from recordio_converter import imagenet_train, imagenet_test
 
 
 def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
@@ -123,13 +124,30 @@ def get_model(args):
         else:
             dshape = [32, 32, 3]
         model = resnet_cifar10
-    else:
+        train_reader = paddle.dataset.cifar.train10()
+        test_reader = paddle.dataset.cifar.test10()
+    elif args.data_set == "flowers":
         class_dim = 102
         if args.data_format == 'NCHW':
             dshape = [3, 224, 224]
         else:
             dshape = [224, 224, 3]
         model = resnet_imagenet
+        train_reader = paddle.dataset.flowers.train()
+        test_reader = paddle.dataset.flowers.test()
+    elif args.data_set == "imagenet":
+        class_dim = 1000
+        if args.data_format == 'NCHW':
+            dshape = [3, 224, 224]
+        else:
+            dshape = [224, 224, 3]
+        model = resnet_imagenet
+        if not args.data_dir:
+            raise Exception(
+                "Must specify --data_dir when training with imagenet")
+        train_reader = imagenet_train(args.data_dir)
+        test_reader = imagenet_test(args.data_dir)
+
     if args.use_reader_op:
         filelist = [
             os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
@@ -163,15 +181,10 @@ def get_model(args):
 
     optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
-    train_reader = paddle.batch(
+    batched_train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.cifar.train10()
-            if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
-            buf_size=5120),
+            train_reader, buf_size=5120),
         batch_size=args.batch_size)
-    test_reader = paddle.batch(
-        paddle.dataset.cifar.test10()
-        if args.data_set == 'cifar10' else paddle.dataset.flowers.test(),
-        batch_size=args.batch_size)
+    batched_test_reader = paddle.batch(train_reader, batch_size=args.batch_size)
 
-    return avg_cost, inference_program, optimizer, train_reader, test_reader, batch_acc
+    return avg_cost, inference_program, optimizer, batched_train_reader, batched_test_reader, batch_acc

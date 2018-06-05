@@ -47,7 +47,6 @@ NativeConfig GetConfig() {
   config.fraction_of_gpu_memory = 0.15;
   config.use_gpu = true;
   config.device = 0;
-  config.share_variables = true;
   return config;
 }
 
@@ -75,7 +74,7 @@ TEST(paddle_inference_api_impl, word2vec) {
   ASSERT_EQ(outputs.size(), 1UL);
   size_t len = outputs[0].data.length;
   float* data = static_cast<float*>(outputs[0].data.data);
-  for (int j = 0; j < len / sizeof(float); ++j) {
+  for (size_t j = 0; j < len / sizeof(float); ++j) {
     ASSERT_LT(data[j], 1.0);
     ASSERT_GT(data[j], -1.0);
   }
@@ -93,7 +92,7 @@ TEST(paddle_inference_api_impl, word2vec) {
   TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
   float* lod_data = output1.data<float>();
-  for (size_t i = 0; i < output1.numel(); ++i) {
+  for (int i = 0; i < output1.numel(); ++i) {
     EXPECT_LT(lod_data[i] - data[i], 1e-3);
     EXPECT_GT(lod_data[i] - data[i], -1e-3);
   }
