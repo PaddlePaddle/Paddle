@@ -35,7 +35,7 @@ class NativePaddlePredictor : public PaddlePredictor {
       : config_(config) {}
 
   // will only create sub scope if have global scope
-  bool Init(std::shared_ptr<framework::Scope> scope = nullptr);
+  bool Init(std::shared_ptr<framework::Scope> parent_scope);
 
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data) override;
