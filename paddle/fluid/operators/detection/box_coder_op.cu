@@ -48,15 +48,18 @@ __global__ void EncodeCenterSizeKernel(const T* prior_box_data,
                           target_box_data[row_idx * len + 1] +
                           (normalized == false);
 
-    output[idx * len] = (target_box_center_x - prior_box_center_x) /
-                        prior_box_width / prior_box_var_data[col_idx * len];
-    output[idx * len + 1] = (target_box_center_y - prior_box_center_y) /
-                            prior_box_height /
-                            prior_box_var_data[col_idx * len + 1];
-    output[idx * len + 2] = log(fabs(target_box_width / prior_box_width)) /
-                            prior_box_var_data[col_idx * len + 2];
-    output[idx * len + 3] = log(fabs(target_box_height / prior_box_height)) /
-                            prior_box_var_data[col_idx * len + 3];
+    output[idx * len] =
+        (target_box_center_x - prior_box_center_x) / prior_box_width;
+    output[idx * len + 1] =
+        (target_box_center_y - prior_box_center_y) / prior_box_height;
+    output[idx * len + 2] = log(fabs(target_box_width / prior_box_width));
+    output[idx * len + 3] = log(fabs(target_box_height / prior_box_height));
+    if (prior_box_var_data) {
+      output[idx * len] /= prior_box_var_data[col_idx * len];
+      output[idx * len + 1] /= prior_box_var_data[col_idx * len + 1];
+      output[idx * len + 2] /= prior_box_var_data[col_idx * len + 2];
+      output[idx * len + 3] /= prior_box_var_data[col_idx * len + 3];
+    }
   }
 }
 
@@ -79,20 +82,31 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
     T prior_box_center_y = (prior_box_data[col_idx * len + 3] +
                             prior_box_data[col_idx * len + 1]) /
                            2;
-
-    T target_box_width = exp(prior_box_var_data[col_idx * len + 2] *
+    T target_box_width, target_box_height;
+    T target_box_center_x, target_box_center_y;
+    if (prior_box_var_data) {
+      target_box_width = exp(prior_box_var_data[col_idx * len + 2] *
                              target_box_data[idx * len + 2]) *
                          prior_box_width;
-    T target_box_height = exp(prior_box_var_data[col_idx * len + 3] *
+      target_box_height = exp(prior_box_var_data[col_idx * len + 3] *
                               target_box_data[idx * len + 3]) *
                           prior_box_height;
-    T target_box_center_x = prior_box_var_data[col_idx * len] *
+      target_box_center_x = prior_box_var_data[col_idx * len] *
                                 target_box_data[idx * len] * prior_box_width +
                             prior_box_center_x;
-    T target_box_center_y = prior_box_var_data[col_idx * len + 1] *
+      target_box_center_y = prior_box_var_data[col_idx * len + 1] *
                                 target_box_data[idx * len + 1] *
                                 prior_box_height +
                             prior_box_center_y;
+    } else {
+      target_box_width = exp(target_box_data[idx * len + 2]) * prior_box_width;
+      target_box_height =
+          exp(target_box_data[idx * len + 3]) * prior_box_height;
+      target_box_center_x =
+          target_box_data[idx * len] * prior_box_width + prior_box_center_x;
+      target_box_center_y = target_box_data[idx * len + 1] * prior_box_height +
+                            prior_box_center_y;
+    }
 
     output[idx * len] = target_box_center_x - target_box_width / 2;
     output[idx * len + 1] = target_box_center_y - target_box_height / 2;
@@ -116,19 +130,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
 
     const T* prior_box_data = prior_box->data<T>();
     const T* target_box_data = target_box->data<T>();
-    const T* prior_box_var_data;
-    if (!prior_box_var) {
-      framework::Tensor default_box_var;
-      default_box_var.mutable_data<T>(
-          framework::make_ddim({prior_box->dims()[0], prior_box->dims()[1]}),
-          context.GetPlace());
-      math::SetConstant<DeviceContext, T>()(
-          context.template device_context<DeviceContext>(), &default_box_var,
-          static_cast<T>(1));
-      prior_box_var_data = default_box_var.data<T>();
-    } else {
-      prior_box_var_data = prior_box_var->data<T>();
-    }
+    const T* prior_box_var_data = nullptr;
+    if (prior_box_var) prior_box_var_data = prior_box_var->data<T>();
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
