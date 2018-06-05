@@ -5,7 +5,7 @@
 
 目前有很多内存泄露分析工具，比较经典的有[valgrind](http://valgrind.org/docs/manual/quick-start.html#quick-start.intro), [gperftools](https://gperftools.github.io/gperftools/)。
 
-因为Fluid是用Python驱动C++ core来运行，valgrind直接分析非常困难，需要自己编译debug版本的、带valgrind支持的专用版本，而且输出的信息中大部分是Python自己的符号和调用信息，分析起来很困难，所以不建议使用。
+因为Fluid是用Python驱动C++ core来运行，valgrind直接分析非常困难，需要自己编译debug版本的、带valgrind支持的专用Python版本，而且输出的信息中大部分是Python自己的符号和调用信息，分析起来很困难，另外使用valgrind会让程序运行速度变得非常慢，所以不建议使用。
 
 本教程主要介绍[gperftools](https://gperftools.github.io/gperftools/)的使用。
 
