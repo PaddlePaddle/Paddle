@@ -17,6 +17,7 @@
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -64,22 +65,21 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
 template <typename DeviceContext, typename T>
 void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
     const framework::ExecutionContext &context) const {
-  LOG(INFO) << "Prepare engine";
+  VLOG(4) << "Prepare engine";
   // Get the ProgramDesc and pass to convert.
   framework::proto::BlockDesc block_desc;
   block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
   max_batch_ = context.Attr<int>("max_batch");
   auto max_workspace = context.Attr<int>("max_workspace");
-  // stream_ = context.cuda_device_context().stream();
-  engine_.reset(new inference::tensorrt::TensorRTEngine(
-      max_batch_, max_workspace, &stream_));
+  engine_ = inference::tensorrt::TRT_EngineManager.Create(
+      max_batch_, max_workspace, &stream_);
   engine_->InitNetwork();
 
   framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
   // Add inputs
-  LOG(INFO) << "declare inputs";
+  VLOG(4) << "declare inputs";
   for (auto &input : context.Inputs("Xs")) {
-    LOG(INFO) << "declare input " << input;
+    VLOG(4) << "declare input " << input;
     auto *var = block.FindVar(input);
     PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
                       "TensorRT engine only takes LoDTensor as input");
@@ -92,12 +92,12 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
 
   // TODO(Superjomn) parameters should be passed after analysised from outside.
   inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
-      block_desc, {}, context.scope(), engine_.get());
+      block_desc, {}, context.scope(), engine_);
 
   // Add outputs
-  LOG(INFO) << "declare outputs";
+  VLOG(4) << "declare outputs";
   for (auto &output : context.Outputs("Ys")) {
-    LOG(INFO) << "declare output " << output;
+    VLOG(4) << "declare output " << output;
     engine_->DeclareOutput(output);
   }
 

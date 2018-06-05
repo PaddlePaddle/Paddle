@@ -22,7 +22,7 @@ class Conv2dOpConverter : public OpConverter {
  public:
   Conv2dOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope) override {
+                  const framework::Scope& scope, bool test_mode) override {
     LOG(INFO)
         << "convert a fluid conv2d op to tensorrt conv layer without bias";
   }
