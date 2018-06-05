@@ -134,7 +134,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     VLOG(3) << "Input: " << alg->data<int>()
             << " Output: " << algOut->mutable_data<int>(ctx.GetPlace());
     Tensor alg_tmp;
-    alg_tmp.mutable_data<int>(platform::CPUPlace(), alg->dims());
+    alg_tmp.mutable_data<int>(alg->dims(), platform::CPUPlace());
     framework::TensorCopy(*alg, platform::CPUPlace(), &alg_tmp);
     int pre_alg = (alg_tmp.data<int>())[0];
     // New allocated memory is initialized as 0
@@ -143,7 +143,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           handle, cudnn_input_desc, input_data, cudnn_filter_desc, filter_data,
           cudnn_conv_desc, cudnn_output_desc, output_data, 1, &algoCount,
           &perfRes, cudnn_workspace, workspace_size_in_bytes, false));
-      (alg_tmp.mutable_data<int>())[0] = (int)(perfRes.fwd_algo) + 1;
+      (alg_tmp.data<int>())[0] = (int)(perfRes.fwd_algo) + 1;
       VLOG(3) << "Find Kernel: store " << (alg_tmp.data<int>())
               << " kernel :" << perfRes.fwd_algo;
     } else {
