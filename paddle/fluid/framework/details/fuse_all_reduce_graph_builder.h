@@ -58,9 +58,8 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
   std::vector<NCCLAllReduceGroup> GetNotDependedAllReduceOp(
       SSAGraph *graph, const BlockDesc &global_block) const;
 
-  void FuseAllReduceOp(
-      SSAGraph *graph, NCCLAllReduceGroup &&ops,
-      const std::unordered_map<std::string, VarDesc *> &) const;
+  void FuseAllReduceOp(SSAGraph *graph, NCCLAllReduceGroup &&ops,
+                       const BlockDesc &global_block) const;
 
   void CreateFuseVarsOpHandleIO(SSAGraph *graph, OpHandleBase *op_handle,
                                 const int dev_id,
@@ -68,7 +67,7 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
                                 const platform::Place &place,
                                 const std::vector<VarHandle *> &inputs) const;
 
-  void InsertFusedVarsOpHandleToGraph(
+  void InsertFusedVarsOpHandleIntoGraph(
       SSAGraph *graph, std::vector<std::vector<VarHandle *>> *inputs,
       const std::vector<OpHandleBase *> &fuse_vars_ops) const;
 

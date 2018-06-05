@@ -37,17 +37,15 @@ void FuseVarsOpHandle::RunImpl() {
   auto scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
   auto out_var_handle = out_var_handles[0];
-  auto out_Var = scope->Var(out_var_handle->name_);
+  auto out_var = scope->Var(out_var_handle->name_);
 
-  auto out_tensor = out_Var->GetMutable<LoDTensor>();
-  out_tensor->Resize({total_numel})
-      .mutable_data(this->place_, framework::ToTypeIndex(var_type_));
+  auto out_tensor = out_var->GetMutable<LoDTensor>();
+  out_tensor->Resize({total_numel}).mutable_data(this->place_, type_);
 
   int64_t s = 0;
   for (size_t i = 0; i < in_var_handles.size(); ++i) {
     auto in_name = in_var_handles[i]->name_;
-    auto in_var = scope->Var(out_var_handle->name_);
-    auto in_t = in_var->GetMutable<LoDTensor>();
+    auto in_t = scope->Var(in_name)->GetMutable<LoDTensor>();
     auto numel = this->inputs_numel_.at(in_name);
     in_t->ShareDataWith(out_tensor->Slice(s, s + numel));
     s += numel;
