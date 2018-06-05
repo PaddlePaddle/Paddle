@@ -14,28 +14,20 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
-#include <iostream>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class ArgsortKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* indices = ctx.Output<Tensor>("Indices");
+    auto* input = ctx.Input<framework::Tensor>("X");
+    auto* output = ctx.Output<framework::Tensor>("Out");
+    auto* indices = ctx.Output<framework::Tensor>("Indices");
     int axis = static_cast<int>(ctx.Attr<int>("axis"));
 
     auto in_dims = input->dims();
