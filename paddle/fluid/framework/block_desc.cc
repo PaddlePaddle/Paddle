@@ -219,7 +219,7 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
 
 void BlockDesc::ClearPBOps() { this->desc_->mutable_ops()->Clear(); }
 
-void BlockDesc::ClearPBVars() { this->desc_->mutable_vars(); }
+void BlockDesc::ClearPBVars() { this->desc_->mutable_vars()->Clear(); }
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
