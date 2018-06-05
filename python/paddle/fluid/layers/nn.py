@@ -81,6 +81,8 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
+    'image_resize',
+    'image_resize_short',
     'resize_bilinear',
     'gather',
     'random_crop',
@@ -4036,7 +4038,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
         out_short_len(int): The length of output images' short edge.
-    
+
     Returns:
         out (Variable): The output is a 4-D tensor of the shape
                         (num_batches, channls, out_h, out_w).
@@ -4050,9 +4052,9 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     long_idx = 1 - short_idx
     out_shape = list(hw)
     out_shape[short_idx] = out_short_len
-    out_shape[long_idx] = round(
-        float(out_shape[long_idx]) *
-        (float(out_short_len) / float(hw[short_idx])))
+    out_shape[long_idx] = int(
+        float(out_shape[long_idx]) * (float(out_short_len) / float(hw[
+            short_idx])) + 0.5)
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
