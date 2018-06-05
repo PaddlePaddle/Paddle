@@ -210,10 +210,8 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
 void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     SSAGraph *graph, std::unordered_set<std::unique_ptr<OpHandleBase>> &&ops,
     const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
+  if (ops.size() <= 1) return;
   // Get input and output
-  PADDLE_ENFORCE(!ops.empty(), "ops should not be empty.");
-
-  // Fuse Gradient to one
   std::vector<std::vector<VarHandle *>> inputs;
   std::vector<std::vector<VarHandle *>> outputs;
   inputs.resize(ops.begin()->get()->Inputs().size());
@@ -223,13 +221,13 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
   auto collect_input_output = [](VarHandleBase *var_handle_base,
                                  std::vector<std::vector<VarHandle *>> *vec) {
     auto var_h = dynamic_cast<VarHandle *>(var_handle_base);
-    PADDLE_ENFORCE_NOT_NULL(var_h);
-    int dev_id = boost::get<platform::CUDAPlace>(var_h->place_).device;
-    (*vec)[dev_id].emplace_back(var_h);
+    if (var_h) {
+      int dev_id = boost::get<platform::CUDAPlace>(var_h->place_).device;
+      (*vec)[dev_id].emplace_back(var_h);
+    }
   };
   for (auto op_iter = ops.begin(); op_iter != ops.end(); op_iter++) {
     auto op = op_iter->get();
-    PADDLE_ENFORCE_EQ(op->Inputs().size(), op->Outputs().size());
     for (size_t i = 0; i < op->Inputs().size(); ++i) {
       collect_input_output(op->Inputs()[i], &inputs);
       collect_input_output(op->Outputs()[i], &outputs);
@@ -245,7 +243,7 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     auto &place = places_[dev_id];
 
     auto fused_vars_output_name =
-        string::Sprintf("FuseVars_%d_%d", dev_id, GetUniqNum());
+        string::Sprintf("FuseVars_GPU%d_%d", dev_id, GetUniqNum());
     fused_vars_output_names.emplace_back(fused_vars_output_name);
 
     std::unordered_map<std::string, int64_t> inputs_dims;
@@ -314,8 +312,9 @@ void FuseAllReduceGraphBuilder::InsertFusedVarsOpHandleToGraph(
     graph->ops_.emplace_back(fuse_vars_ops[dev_id]);
     // Add dependence
     for (auto in : ins[dev_id]) {
-      PADDLE_ENFORCE_NOT_NULL(in->generated_op_);
-      in->generated_op_->AddInput(fuse_vars_ops[dev_id]->Outputs()[0]);
+      if (in->generated_op_) {
+        in->generated_op_->AddInput(fuse_vars_ops[dev_id]->Outputs()[0]);
+      }
     }
   }
 }
