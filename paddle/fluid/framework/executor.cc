@@ -220,8 +220,10 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
       has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
 
   ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
+  std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
   if (!has_feed_ops || !has_fetch_ops) {
-    copy_program = std::unique_ptr<ProgramDesc>(new ProgramDesc(program)).get();
+    unique_ptr_of_copy_program.reset(new ProgramDesc(program));
+    copy_program = unique_ptr_of_copy_program.get();
   }
 
   auto* global_block = copy_program->MutableBlock(0);
