@@ -113,14 +113,11 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int> default:{0, 0, 0, 0}), the "
                               "paddings(up_pad, left_pad, down_pad, right_pad)")
         .SetDefault({0, 0, 0, 0});
-    AddAttr<int>("conv_count",
-                 "image conv times")
-        .SetDefault(1);
 // TODO(fuhailong): add conv_kernel and conv_count, use this to
 // calculate the real image size after cnn
-    AddAttr<std::vector<int>>("conv_kernel",
-                                "(vector<int> dedault:{1,1}),the conv_kernel"
-                                " (conv_kernel_height, conv_kernel_width)")
+    AddAttr<std::vector<int>>("out_stride",
+                                "(vector<int> dedault:{1,1}),the out_stride"
+                                " (out_stride_height, out_stride_width)")
         .SetDefault({1, 1});
     AddAttr<bool>("is_inference",
                   " nor 0  is inference, 0 is train")
