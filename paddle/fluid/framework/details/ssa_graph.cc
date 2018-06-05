@@ -13,3 +13,37 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/ssa_graph.h"
+
+namespace paddle {
+namespace framework {
+namespace details {
+
+VarHandle* SSAGraph::InsertVariable(size_t position, const std::string& name,
+                                    size_t scope_index, platform::Place place) {
+  auto& var_vec = vars_.at(scope_index).at(name);
+  PADDLE_ENFORCE_LT(position, var_vec.size());
+  for (auto i = position; i < var_vec.size(); ++i) {
+    ++var_vec[i]->version_;
+  }
+  auto* new_var = new VarHandle(position, scope_index, name, place);
+  var_vec.insert(var_vec.begin() + position,
+                 std::unique_ptr<VarHandle>(new_var));
+  return new_var;
+}
+std::unique_ptr<VarHandle> SSAGraph::ExtractVariable(size_t position,
+                                                     const std::string& name,
+                                                     size_t scope_index) {
+  auto& var_vec = vars_.at(scope_index).at(name);
+  PADDLE_ENFORCE_LT(position, var_vec.size());
+  for (auto i = position + 1; i < var_vec.size(); ++i) {
+    --var_vec[i]->version_;
+  }
+
+  std::unique_ptr<VarHandle> res;
+  std::swap(res, var_vec[position]);
+  var_vec.erase(var_vec.begin() + position);
+  return std::move(res);
+}
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle

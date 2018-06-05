@@ -53,6 +53,23 @@ struct SSAGraph {
     ops_.pop_back();
     return res;
   }
+
+  /**
+   * Insert a variable to position/version. The versions which are larger or
+   * equal than position will be increased by one. The new VarHandle's version
+   * will be the position.
+   */
+  VarHandle* InsertVariable(size_t position, const std::string& name,
+                            size_t scope_index, platform::Place place);
+
+  /**
+   * Extract the varaible from position/version. The versions which are larger
+   * than position will be decreased by one. The returned VarHandle is that
+   * variable handle.
+   */
+  std::unique_ptr<VarHandle> ExtractVariable(size_t position,
+                                             const std::string& name,
+                                             size_t scope_index);
 };
 
 }  // namespace details

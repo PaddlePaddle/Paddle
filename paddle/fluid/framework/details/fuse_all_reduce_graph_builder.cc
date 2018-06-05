@@ -231,7 +231,13 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
     SSAGraph *graph, NCCLAllReduceGroup &&group,
     const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
   auto &ops = group.ops_;
-  if (ops.size() <= 1) return;
+  if (ops.empty()) {
+    return;
+  } else if (ops.size() == 1) {
+    graph->ops_.emplace_back(std::move(ops[0]));
+    return;
+  }
+
   // Get input and output
   std::vector<std::vector<VarHandle *>> inputs;
   std::vector<std::vector<VarHandle *>> outputs;
