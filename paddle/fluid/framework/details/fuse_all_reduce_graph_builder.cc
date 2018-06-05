@@ -40,7 +40,8 @@ std::unique_ptr<SSAGraph> FuseAllReduceGraphBuilder::Build(
     all_vars_desc[var->Name()] = var;
   }
 
-  auto all_reduce_ops = GetNotDependedAllReduceOp(graph.get());
+  auto all_reduce_ops =
+      GetNotDependedAllReduceOp(graph.get(), program.Block(0));
 
   for (auto &op_group : all_reduce_ops) {
     FuseAllReduceOp(graph.get(), std::move(op_group), all_vars_desc);
@@ -65,7 +66,7 @@ inline static void GetAllInputOp(OpHandleBase *op,
   }
 }
 
-inline static bool IsParentOpInCurrentOp(
+inline static bool IsAnyOfParentInCurrentOp(
     OpHandleBase *op, const std::unordered_set<size_t> &cur_ops,
     const std::unordered_map<OpHandleBase *, size_t> &offset_map) {
   std::unordered_set<OpHandleBase *> inputs;
@@ -100,7 +101,7 @@ inline static void GetAllOutputOp(OpHandleBase *op,
   }
 }
 
-inline static bool IsChildOpInCurrentOp(
+inline static bool IsAnyOfChildInCurrentOp(
     OpHandleBase *op, const std::unordered_set<size_t> &cur_ops,
     const std::unordered_map<OpHandleBase *, size_t> &offset_map) {
   std::unordered_set<OpHandleBase *> set;
@@ -124,8 +125,8 @@ inline static void ResolveOpDeps(
     std::list<std::unordered_set<size_t>>::iterator cur_it,
     std::list<std::unordered_set<size_t>> *res) {
   std::unordered_set<size_t> before_deps;
-  std::unordered_set<size_t> after_deps;
   std::unordered_set<size_t> cur_ops;
+  std::unordered_set<size_t> after_deps;
 
   for (size_t pos : *cur_it) {
     if (cur_ops.empty()) {
@@ -133,9 +134,9 @@ inline static void ResolveOpDeps(
       continue;
     }
     auto *op_handle = all_ops[pos].get();
-    if (IsParentOpInCurrentOp(op_handle, cur_ops, offset_map)) {
+    if (IsAnyOfParentInCurrentOp(op_handle, cur_ops, offset_map)) {
       after_deps.emplace(pos);
-    } else if (IsChildOpInCurrentOp(op_handle, cur_ops, offset_map)) {
+    } else if (IsAnyOfChildInCurrentOp(op_handle, cur_ops, offset_map)) {
       before_deps.emplace(pos);
     } else {
       cur_ops.emplace(pos);
@@ -146,7 +147,7 @@ inline static void ResolveOpDeps(
     ResolveOpDeps(all_ops, offset_map, res->insert(cur_it, before_deps), res);
   }
 
-  cur_it->swap(cur_ops);
+  *cur_it = cur_ops;
 
   if (!after_deps.empty()) {
     ++cur_it;
@@ -154,40 +155,59 @@ inline static void ResolveOpDeps(
   }
 }
 
-std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>
-FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
-  std::vector<std::unique_ptr<OpHandleBase>> all_reduce_ops;
+std::vector<FuseAllReduceGraphBuilder::NCCLAllReduceGroup>
+FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(
+    SSAGraph *graph, const BlockDesc &global_block) const {
+  std::unordered_map<std::type_index,
+                     std::vector<std::unique_ptr<OpHandleBase>>>
+      all_reduce_ops;
 
   for (size_t i = 0; i < graph->ops_.size();) {
     if (dynamic_cast<NCCLAllReduceOpHandle *>(graph->ops_[i].get())) {
       // The op.size() will shrink after extract op, so ++i is not needed.
-      all_reduce_ops.emplace_back(graph->ExtractOp(i));
+      auto op = graph->ExtractOp(i);
+      std::type_index data_type = typeid(void);
+      for (auto &ipt : op->Inputs()) {
+        auto *input_var_handle = dynamic_cast<VarHandle *>(ipt);
+        if (input_var_handle) {
+          data_type = ToTypeIndex(
+              global_block.FindVar(input_var_handle->name_)->GetDataType());
+          break;
+        }
+      }
+      PADDLE_ENFORCE(data_type != typeid(void));
+      all_reduce_ops[data_type].emplace_back(std::move(op));
     } else {
       ++i;
     }
   }
-  VLOG(10) << "Number of all_reduce op is " << all_reduce_ops.size();
+
   if (all_reduce_ops.empty()) {
-    return std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>();
+    return std::vector<FuseAllReduceGraphBuilder::NCCLAllReduceGroup>();
   }
 
-  std::unordered_map<OpHandleBase *, size_t> offsets;
-  std::list<std::unordered_set<size_t>> res;
-  res.emplace_back();
-  for (size_t i = 0; i < all_reduce_ops.size(); ++i) {
-    offsets.emplace(all_reduce_ops[i].get(), i);
-    res.back().emplace(i);
-  }
+  std::vector<NCCLAllReduceGroup> res_vec;
 
-  ResolveOpDeps(all_reduce_ops, offsets, res.begin(), &res);
+  for (auto &all_reduce_op_with_type : all_reduce_ops) {
+    auto &all_reduce_op = all_reduce_op_with_type.second;
+    std::unordered_map<OpHandleBase *, size_t> offsets;
+    std::list<std::unordered_set<size_t>> res;
+    res.emplace_back();
+    for (size_t i = 0; i < all_reduce_op.size(); ++i) {
+      offsets.emplace(all_reduce_op[i].get(), i);
+      res.back().emplace(i);
+    }
 
-  std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>> res_vec;
-  for (auto &set : res) {
-    res_vec.emplace_back();
-    auto &pointer_set = res_vec.back();
+    ResolveOpDeps(all_reduce_op, offsets, res.begin(), &res);
 
-    for (auto pos : set) {
-      pointer_set.emplace(std::move(all_reduce_ops[pos]));
+    for (auto &set : res) {
+      NCCLAllReduceGroup group;
+      group.type_ = all_reduce_op_with_type.first;
+
+      for (auto pos : set) {
+        group.ops_.emplace(std::move(all_reduce_op[pos]));
+      }
+      res_vec.emplace_back(std::move(group));
     }
   }
 
@@ -195,9 +215,9 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
   if (VLOG_IS_ON(10)) {
     for (size_t i = 0; i < res_vec.size(); ++i) {
       std::ostringstream sout;
-      sout << "Group " << i << "\n";
+      sout << "Group " << i << " with type " << res_vec[i].type_.name() << "\n";
 
-      for (const std::unique_ptr<OpHandleBase> &op : res_vec[i]) {
+      for (const std::unique_ptr<OpHandleBase> &op : res_vec[i].ops_) {
         sout << "\t" << op->DebugString() << "\n";
       }
       VLOG(10) << sout.str();
@@ -208,8 +228,9 @@ FuseAllReduceGraphBuilder::GetNotDependedAllReduceOp(SSAGraph *graph) const {
 }
 
 void FuseAllReduceGraphBuilder::FuseAllReduceOp(
-    SSAGraph *graph, std::unordered_set<std::unique_ptr<OpHandleBase>> &&ops,
+    SSAGraph *graph, NCCLAllReduceGroup &&group,
     const std::unordered_map<std::string, VarDesc *> &all_vars_desc) const {
+  auto &ops = group.ops_;
   if (ops.size() <= 1) return;
   // Get input and output
   std::vector<std::vector<VarHandle *>> inputs;

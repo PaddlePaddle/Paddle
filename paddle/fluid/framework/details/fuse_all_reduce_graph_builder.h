@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <typeindex>
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/fuse_vars_op_handle.h"
@@ -46,15 +47,19 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
   platform::NCCLContextMap *ctxs_;
 
  private:
+  struct NCCLAllReduceGroup {
+    std::unordered_set<std::unique_ptr<OpHandleBase>> ops_;
+    std::type_index type_{typeid(void)};
+  };
   /**
    * Get All-Reduce operator into multiple sets.
    * The order of set is the order of execution.
    */
-  std::vector<std::unordered_set<std::unique_ptr<OpHandleBase>>>
-  GetNotDependedAllReduceOp(SSAGraph *graph) const;
+  std::vector<NCCLAllReduceGroup> GetNotDependedAllReduceOp(
+      SSAGraph *graph, const BlockDesc &global_block) const;
 
   void FuseAllReduceOp(
-      SSAGraph *graph, std::unordered_set<std::unique_ptr<OpHandleBase>> &&ops,
+      SSAGraph *graph, NCCLAllReduceGroup &&ops,
       const std::unordered_map<std::string, VarDesc *> &) const;
 
   void CreateFuseVarsOpHandleIO(SSAGraph *graph, OpHandleBase *op_handle,
