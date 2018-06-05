@@ -23,31 +23,23 @@ void FuseVarsOpHandle::RunImpl() {
 
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
-  PADDLE_ENFORCE_EQ(inputs_numel_.size(), in_var_handles.size(), "");
-  PADDLE_ENFORCE_EQ(out_var_handles.size(), 1);
+  PADDLE_ENFORCE_EQ(in_var_handles.size(), 0);
+  PADDLE_ENFORCE_EQ(out_var_handles.size() + 1, inputs_numel_.size(), "");
 
-  int64_t total_numel = 0;
-  for (size_t i = 0; i < in_var_handles.size(); ++i) {
-    auto in_name = in_var_handles[i]->name_;
-    PADDLE_ENFORCE(this->inputs_numel_.count(in_name));
-    auto numel = this->inputs_numel_.at(in_name);
-    PADDLE_ENFORCE_GT(numel, 0);
-    total_numel += numel;
-  }
   auto scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
   auto out_var_handle = out_var_handles[0];
   auto out_var = scope->Var(out_var_handle->name_);
 
   auto out_tensor = out_var->GetMutable<LoDTensor>();
-  out_tensor->Resize({total_numel}).mutable_data(this->place_, type_);
+  out_tensor->Resize({total_numel_}).mutable_data(this->place_, type_);
 
   int64_t s = 0;
-  for (size_t i = 0; i < in_var_handles.size(); ++i) {
-    auto in_name = in_var_handles[i]->name_;
-    auto in_t = scope->Var(in_name)->GetMutable<LoDTensor>();
-    auto numel = this->inputs_numel_.at(in_name);
-    in_t->ShareDataWith(out_tensor->Slice(s, s + numel));
+  for (size_t i = 0; i < out_var_handles.size(); ++i) {
+    auto out_name = out_var_handles[i]->name_;
+    auto out_t = scope->Var(out_name)->GetMutable<LoDTensor>();
+    auto numel = this->inputs_numel_.at(out_name);
+    out_t->ShareDataWith(out_tensor->Slice(s, s + numel));
     s += numel;
   }
   this->RunAndRecordEvent([this] {});

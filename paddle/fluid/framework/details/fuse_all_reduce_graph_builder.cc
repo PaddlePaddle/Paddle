@@ -233,8 +233,43 @@ static VarHandle *FuseVariable(SSAGraph *graph, size_t scope_idx, Scope *scope,
                                const std::vector<FuseVarParams> &fused_vars,
                                const BlockDesc &global_block,
                                std::type_index type) {
-  // TODO(zcd): Complete this method
-  return nullptr;
+  if (fused_vars.empty()) return nullptr;
+  std::unordered_map<std::string, int64_t> inputs_numel;
+  int64_t total_numel = 0;
+  auto var_data_type =
+      global_block.FindVar(fused_vars[0].var_name)->GetDataType();
+  for (auto fused_var : fused_vars) {
+    auto fused_var_name = fused_var.var_name;
+    auto *var_desc = global_block.FindVar(fused_var_name);
+    PADDLE_ENFORCE_NOT_NULL(var_desc);
+    PADDLE_ENFORCE_EQ(var_desc->GetDataType(), var_data_type);
+    PADDLE_ENFORCE_EQ(inputs_numel.count(fused_var_name), 0);
+    inputs_numel[fused_var_name] =
+        framework::product(framework::make_ddim(var_desc->GetShape()));
+    total_numel += inputs_numel[fused_var_name];
+  }
+  auto *fuse_vars_op_handle =
+      new FuseVarsOpHandle(scope, place, inputs_numel, type);
+  //  graph->ops_.emplace_back(std::unique_ptr(fuse_vars_op_handle));
+
+  // CreateFuseVarsOpHandleIO
+  fuse_vars_op_handle->SetDeviceContext(
+      place, platform::DeviceContextPool::Instance().Get(place));
+
+  // Add Output
+  auto &vars = graph->vars_[scope_idx][whole_varaible_name];
+  size_t version = vars.size();
+  auto out_var = new VarHandle(version, scope_idx, whole_varaible_name, place);
+  vars.emplace_back(out_var);
+  fuse_vars_op_handle->AddOutput(out_var);
+
+  for (size_t j = 0; j < fused_vars.size(); ++j) {
+    auto out_var_h = graph->InsertVariable(
+        fused_vars[j].version, fused_vars[j].var_name, scope_idx, place);
+    fuse_vars_op_handle->AddOutput(out_var_h);
+  }
+
+  return out_var;
 }
 
 static int UniqID() {
@@ -478,7 +513,6 @@ void FuseAllReduceGraphBuilder::CreateFuseVarsOpHandleIO(
   vars.emplace_back(out_var);
   op_handle->AddOutput(out_var);
 }
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
