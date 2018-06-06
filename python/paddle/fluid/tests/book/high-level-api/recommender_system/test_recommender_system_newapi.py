@@ -162,8 +162,13 @@ def optimizer_func():
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer_func=optimizer_func)
+    test_reader = paddle.batch(
+        paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
+
+    train_reader = paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.movielens.train(), buf_size=8192),
+        batch_size=BATCH_SIZE)
 
     feed_order = [
         'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id', 'category_id',
@@ -172,8 +177,6 @@ def train(use_cuda, train_program, params_dirname):
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
-            test_reader = paddle.batch(
-                paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
                 reader=test_reader, feed_order=feed_order)
 
@@ -182,19 +185,18 @@ def train(use_cuda, train_program, params_dirname):
 
             print("avg_cost: %s" % avg_cost)
 
-            if float(avg_cost) < 4:  # Smaller value to increase CI speed
+            if event.step == 5:  # Smaller value to increase CI speed
                 trainer.save_params(params_dirname)
                 trainer.stop()
             else:
-                print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                print('BatchID {0}, Test Loss {1:0.2}'.format(event.step + 1,
                                                               float(avg_cost)))
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
 
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.movielens.train(), buf_size=8192),
-        batch_size=BATCH_SIZE)
+
+    trainer = fluid.Trainer(
+        train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     trainer.train(
         num_epochs=1,
@@ -215,14 +217,16 @@ def infer(use_cuda, inference_program, params_dirname):
     # For example, data = [[10, 2, 3], [2, 3]] means that it contains
     # two sequences of indexes, of length 3 and 2, respectively.
     # Correspondingly, lod = [[3, 2]] contains one level of detail info,
-    # indicating that `data` consists of two sequences of length 3 and 2. 
+    # indicating that `data` consists of two sequences of length 3 and 2.
+    infer_movie_id = 783
+    infer_movie_name = paddle.dataset.movielens.movie_info()[infer_movie_id].title
     user_id = fluid.create_lod_tensor([[1]], [[1]], place)
     gender_id = fluid.create_lod_tensor([[1]], [[1]], place)
     age_id = fluid.create_lod_tensor([[0]], [[1]], place)
     job_id = fluid.create_lod_tensor([[10]], [[1]], place)
-    movie_id = fluid.create_lod_tensor([[783]], [[1]], place)
-    category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place)
-    movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]],
+    movie_id = fluid.create_lod_tensor([[infer_movie_id]], [[1]], place)   # Hunchback of Notre Dame
+    category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place) # Animation, Children's, Musical
+    movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]], # 'hunchback','of','notre','dame','the'
                                           place)
 
     results = inferencer.infer(
@@ -237,7 +241,9 @@ def infer(use_cuda, inference_program, params_dirname):
         },
         return_numpy=False)
 
-    print("infer results: ", np.array(results[0]))
+    predict_rating = np.array(results[0])
+    print("Predict Rating of user id 1 on movie \"" + infer_movie_name + "\" is " + str(predict_rating[0][0]))
+    print("Actual Rating of user id 1 on movie \"" + infer_movie_name + "\" is 4.")
 
 
 def main(use_cuda):
