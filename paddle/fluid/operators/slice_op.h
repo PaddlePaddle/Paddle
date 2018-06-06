@@ -20,16 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class SliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    int rank = ctx.Input<Tensor>("Input")->dims().size();
+    int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
     switch (rank) {
       case 1:
         SliceCompute<1>(ctx);
@@ -57,8 +52,8 @@ class SliceKernel : public framework::OpKernel<T> {
   void SliceCompute(const framework::ExecutionContext& context) const {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    auto in = context.Input<Tensor>("Input");
-    auto out = context.Output<Tensor>("Out");
+    auto in = context.Input<framework::Tensor>("Input");
+    auto out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
     auto out_dims = out->dims();
     auto in_dims = in->dims();
@@ -80,8 +75,12 @@ class SliceKernel : public framework::OpKernel<T> {
       start = std::max(start, 0);
       offsets[axes[i]] = start;
     }
-    auto in_t = EigenTensor<T, D>::From(*in);
-    auto out_t = EigenTensor<T, D>::From(*out);
+    auto in_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *in);
+    auto out_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *out);
     out_t.device(place) = in_t.slice(offsets, extents);
   }
 };
