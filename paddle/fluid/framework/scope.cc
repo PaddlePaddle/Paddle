@@ -51,6 +51,8 @@ Scope& Scope::NewScope() const {
 Variable* Scope::Var(const std::string& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
+  // acquire the lock when new var under this scope
+  std::unique_lock<std::mutex> lock(mutex_);
   v = new Variable();
   vars_[name] = v;
   VLOG(3) << "Create variable " << name;
@@ -83,6 +85,7 @@ const Scope* Scope::FindScope(const Variable* var) const {
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
 void Scope::DropKids() {
+  std::unique_lock<std::mutex> lock(mutex_);
   for (Scope* s : kids_) delete s;
   kids_.clear();
 }
@@ -110,6 +113,7 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
+  std::unique_lock<std::mutex> lock(mutex_);
   std::set<std::string> var_set(var_names.begin(), var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
@@ -140,6 +144,8 @@ std::string Scope::Rename(const std::string& origin_name) const {
 }
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
+  // acquire the lock when find locally
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = vars_.find(name);
   if (it != vars_.end()) return it->second;
   return nullptr;
