@@ -13,5 +13,12 @@
 # limitations under the License.
 #
 
-add_subdirectory(inference)
-add_subdirectory(tape)
+if(APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
+endif(APPLE)
+
+cc_library(tape SRCS tape.cc DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+
+cc_test(test_tape
+        SRCS test_tape.cc
+        DEPS tape)
