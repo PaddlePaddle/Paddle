@@ -51,6 +51,31 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
         tensor_out + index, -1.0 * learning_rate[0] * selected_rows[index]);
   }
 }
+
+template <typename T>
+__global__ void SparseConsistentSGDFunctorKernel(const T* selected_rows,
+                                                 const int64_t* rows,
+                                                 const T* learning_rate,
+                                                 T* tensor_out,
+                                                 int64_t row_numel, int K) {
+  T lr = learning_rate[0];
+  int tid = threadIdx.x;
+  int grid_size = blockDim.x * gridDim.x;
+  int cur_dim = blockIdx.x * blockDim.x + tid;
+  int dim = row_numel;
+  for (int d = 0; d < row_numel; d += 1) {
+    // for (int d = cur_dim; d < row_numel; d += grid_size) {
+    for (int i = K - 1; i >= 0; i--) {
+      selected_rows += i * dim;
+      tensor_out += rows[i] * row_numel;
+      T selval = selected_rows[d];
+      tensor_out[d] -= lr * selval;
+      printf("check rows[i] = %ld\n", rows[i]);
+      printf("selected_rows val = %f\n", selval);
+      printf("inside inner loop, d = %d, i = %d, and k = %d\n", d, i, K);
+    }
+  }
+}
 }  // namespace
 
 template <typename T>
@@ -97,13 +122,27 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       auto* in_data = in_value.data<T>();
       auto* out_data = param_out->data<T>();
 
-      const int block_size = 256;
-      dim3 threads(block_size, 1);
-      dim3 grid(1, in_rows.size());
-      SparseSGDFunctorKernel<
-          T, 256><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+      // const int block_size = 256;
+      // dim3 threads(block_size, 1);
+      // dim3 grid(1, in_rows.size());
+      // SparseSGDFunctorKernel<
+      //    T, 256><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+      //    in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
+      //    out_data, in_row_numel);
+
+      int num_rows = static_cast<int>(in_rows.size());
+      int block = 1024;
+      int grid = (in_row_numel + block - 1) / block;
+      std::cout << "grid = " << grid << std::endl;
+      std::cout << "num_rows = " << num_rows
+                << ", in_row_numel = " << in_row_numel << std::endl;
+      std::cout << "in_height = " << in_height << std::endl;
+
+      // T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+      SparseConsistentSGDFunctorKernel<
+          T><<<1, 1, 0, ctx.cuda_device_context().stream()>>>(
           in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
-          out_data, in_row_numel);
+          out_data, in_row_numel, num_rows);
 
     } else {
       PADDLE_THROW("Unsupported Variable Type of Grad");
