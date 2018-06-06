@@ -50,7 +50,7 @@ struct DataTypeNamer {
     return dic_.at(x);
   }
 
-  const std::string &repr(size_t &hash) const {
+  const std::string &repr(size_t &hash) const {  // NOLINT
     PADDLE_ENFORCE(dic_.count(hash), "unknown type for representation");
     return dic_.at(hash);
   }
@@ -62,7 +62,9 @@ struct DataTypeNamer {
     SET_TYPE(float);
   }
 
-  std::unordered_map<decltype(typeid(int).hash_code()), std::string> dic_;
+  std::unordered_map<decltype(typeid(int).hash_code()),  // NOLINT
+                     std::string>
+      dic_;
 };
 #undef SET_TYPE
 

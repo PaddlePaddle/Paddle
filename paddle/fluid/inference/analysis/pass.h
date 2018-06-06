@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <iosfwd>
+#include <string>
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"

@@ -1,9 +1,8 @@
-# Fluid Inference使用指南
+# 使用指南
 
 ## 目录：
 
 - Python Inference API
-- 编译Fluid Inference库
 - Inference C++ API
 - Inference实例
 - Inference计算优化
@@ -54,62 +53,6 @@
     ...
     return [program, feed_target_names, fetch_targets]
   ```
-
-
-## 编译Fluid Inference库
-
-  - **不需要额外的CMake选项**
-    - 1、 配置CMake命令，更多配置请参考[源码编译PaddlePaddle](http://www.paddlepaddle.org/docs/develop/documentation/zh/build_and_install/build_from_source_cn.html)
-      ```bash
-      $ git clone https://github.com/PaddlePaddle/Paddle.git
-      $ cd Paddle
-      $ mkdir build
-      $ cd build
-      $ cmake -DCMAKE_INSTALL_PREFIX=your/path/to/paddle_inference_lib \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DWITH_PYTHON=ON \
-          -DWITH_MKL=OFF \
-          -DWITH_GPU=OFF \
-          ..
-      ```
-
-    - 2、 编译PaddlePaddle
-      ```bash
-      $ make
-      ```
-
-    - 3、 部署。执行如下命令将PaddlePaddle Fluid Inference库部署到`your/path/to/paddle_inference_lib`目录。
-      ```bash
-      $ make inference_lib_dist
-      ```
-
-- 目录结构
-
-  ```bash
-  $ cd your/path/to/paddle_inference_lib
-  $ tree
-  .
-  |-- paddle
-  |   `-- fluid
-  |       |-- framework
-  |       |-- inference
-  |       |   |-- io.h
-  |       |   `-- libpaddle_fluid.so
-  |       |-- memory
-  |       |-- platform
-  |       `-- string
-  |-- third_party
-  |   |-- eigen3
-  |   `-- install
-  |       |-- gflags
-  |       |-- glog
-  |       `-- protobuf
-  `-- ...
-  ```
-
-  假设`PADDLE_ROOT=your/path/to/paddle_inference_lib`。
-
-
 
 ## 链接Fluid Inference库
 - 示例项目([链接](https://github.com/luotao1/fluid_inference_example.git))
