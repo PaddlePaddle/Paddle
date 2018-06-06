@@ -61,6 +61,7 @@ option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
+option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -128,6 +129,10 @@ if (NOT DEFINED WITH_MKLDNN)
         message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
         set(WITH_MKLDNN OFF)
     endif()
+endif()
+
+if (REPLACE_ENFORCE_GLOG)
+  add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
 ########################################################################################
 

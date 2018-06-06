@@ -200,6 +200,7 @@ inline void throw_on_error(T e) {
         __FILE__, __LINE__);                                           \
   } while (false)
 
+#ifndef REPLACE_ENFORCE_GLOG
 #define PADDLE_ENFORCE(...)                                             \
   do {                                                                  \
     try {                                                               \
@@ -209,6 +210,10 @@ inline void throw_on_error(T e) {
                                               __FILE__, __LINE__);      \
     }                                                                   \
   } while (false)
+#else
+#define PADDLE_ENFORCE(cond, ...) \
+  CHECK((cond)) << ::paddle::string::Sprintf(__VA_ARGS__);
+#endif
 
 /*
  * Some enforce helpers here, usage:
