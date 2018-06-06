@@ -20,7 +20,7 @@ limitations under the License. */
 #pragma once
 
 // NOTE This header file do not have namespace.
-#include <test/framework/net/paddle_api.h>
+//#include <test/framework/net/paddle_api.h>
 #include "paddle/contrib/inference/paddle_inference_api.h"
 
 #include "framework/core/net/net.h"
