@@ -1,9 +1,9 @@
 ## 堆内存分析和优化
 
-计算机程序都可能有内存泄露的风险。**内存泄露**一般是由于程序在堆(heap)上分配了内存而没有释放，随着程序的运行占用的内存越来越大，一方面会影响程序的稳定性，可能让运行速度越来越慢，或者造成oom，甚至会影响运行程序的机器的稳定性，造成宕机。
+计算机程序都可能有内存泄漏的风险。**内存泄漏**一般是由于程序在堆(heap)上分配了内存而没有释放，随着程序的运行占用的内存越来越大，一方面会影响程序的稳定性，可能让运行速度越来越慢，或者造成oom，甚至会影响运行程序的机器的稳定性，造成宕机。
 
 
-目前有很多内存泄露分析工具，比较经典的有[valgrind](http://valgrind.org/docs/manual/quick-start.html#quick-start.intro), [gperftools](https://gperftools.github.io/gperftools/)。
+目前有很多内存泄漏分析工具，比较经典的有[valgrind](http://valgrind.org/docs/manual/quick-start.html#quick-start.intro), [gperftools](https://gperftools.github.io/gperftools/)。
 
 因为Fluid是用Python驱动C++ core来运行，valgrind直接分析非常困难，需要自己编译debug版本的、带valgrind支持的专用Python版本，而且输出的信息中大部分是Python自己的符号和调用信息，分析起来很困难，另外使用valgrind会让程序运行速度变得非常慢，所以不建议使用。
 
@@ -72,7 +72,7 @@ env HEAPPROFILE="./perf_log/test.log" HEAP_PROFILE_ALLOCATION_INTERVAL=209715200
 	```
 	pprof --pdf python test.log.0012.heap
 	```
-	上述命令会生成一个profile00x.pdf的文件，可以直接打开，例如：[allocator](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_cpu_allocator.pdf)。从下图可以看出，在CPU版本fluid的运行过程中，分配存储最多的模块式CPUAllocator. 而别的模块相对而言分配内存较少，所以被忽略了，这对于分配内存泄露是很不方便的，因为泄露是一个缓慢的过程，在这种图中是无法看到的。
+	上述命令会生成一个profile00x.pdf的文件，可以直接打开，例如：[allocator](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_cpu_allocator.pdf)。从下图可以看出，在CPU版本fluid的运行过程中，分配存储最多的模块式CPUAllocator. 而别的模块相对而言分配内存较少，所以被忽略了，这对于分配内存泄漏是很不方便的，因为泄漏是一个缓慢的过程，在这种图中是无法看到的。
 	
 	![result](https://user-images.githubusercontent.com/3048612/40964027-a54033e4-68dc-11e8-836a-144910c4bb8c.png)
 	
@@ -82,7 +82,7 @@ env HEAPPROFILE="./perf_log/test.log" HEAP_PROFILE_ALLOCATION_INTERVAL=209715200
 	```
 	生成的结果为：[`memory_leak_protobuf`](https://github.com/jacquesqiao/Paddle/blob/tutorial-of-memory-profile/doc/fluid/howto/optimization/memory_leak_protobuf.pdf)
 	
-	从图中可以看出：ProgramDesc这个结构，在两个版本之间增长了200MB+，所以这里有很大的内存泄露的可能性，最终结果也确实证明是这里造成了泄露。
+	从图中可以看出：ProgramDesc这个结构，在两个版本之间增长了200MB+，所以这里有很大的内存泄漏的可能性，最终结果也确实证明是这里造成了泄漏。
 	
 	![result](https://user-images.githubusercontent.com/3048612/40964057-b434d5e4-68dc-11e8-894b-8ab62bcf26c2.png)
 	![result](https://user-images.githubusercontent.com/3048612/40964063-b7dbee44-68dc-11e8-9719-da279f86477f.png)
