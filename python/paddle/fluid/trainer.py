@@ -90,13 +90,13 @@ class Trainer(object):
 
     Args:
         train_func(callable): A function which will return loss. The loss must be a scalar.
-        optimizer(optimizer.Optimizer): The optimizer should be an instance of Optimizer
+        optimizer_func(callable): A function that returns an Optimizer object.
         place: The device place of this trainer.
     """
 
     def __init__(self,
                  train_func,
-                 optimizer,
+                 optimizer_func,
                  param_path=None,
                  place=None,
                  parallel=False):
@@ -105,9 +105,7 @@ class Trainer(object):
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
-        if not isinstance(optimizer, opt_module.Optimizer):
-            raise TypeError("The optimizer should be an instance of Optimizer")
-        self.optimizer = optimizer
+
         self.scope = core.Scope()
 
         self.startup_program = framework.Program()
@@ -118,8 +116,14 @@ class Trainer(object):
             self.train_func_outputs = program_func_outs if isinstance(
                 program_func_outs, list) else [program_func_outs]
             self.test_program = self.train_program.clone()
+
             # The fisrt element of program_func_outs is loss.
             loss = self.train_func_outputs[0]
+
+            optimizer = optimizer_func()
+            if not isinstance(optimizer, opt_module.Optimizer):
+                raise TypeError(
+                    "The optimizer should be an instance of Optimizer")
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = check_and_get_place(place)

@@ -39,6 +39,7 @@ Steps to transpile pserver:
 from __future__ import print_function
 
 import math
+import numpy as np
 
 from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -70,7 +71,7 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def split_variable(var_list, service_count, min_block_size=8192):
+def slice_variable(var_list, slice_count, min_block_size=8192):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
@@ -78,25 +79,25 @@ def split_variable(var_list, service_count, min_block_size=8192):
 
     We need to have a minimal block size so that the calculations in
     the parameter server side can gain better performance. By default
-    minimum block size 8K elements (maybe 16bit or 32bit or 64bit). 
+    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
 
     Args:
         var_list (list): List of variables.
-        service_count (int): Numel of pserver services. A pserver may have two
-            or more listening ports.
+        slice_count (int): Numel of count that variables will be sliced, which
+            could be the pserver services' count.
         min_block_size (int): Minimum splitted block size.
     Returns:
-        blocks (list[(varname, block_id, current_block_size)]): A list 
+        blocks (list[(varname, block_id, current_block_size)]): A list
             of VarBlocks. Each VarBlock specifies a shard of the var.
     """
     blocks = []
     for var in var_list:
-        split_count = service_count
+        split_count = slice_count
         var_numel = reduce(lambda x, y: x * y, var.shape)
         max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
         if max_pserver_count == 0:
             max_pserver_count = 1
-        if max_pserver_count < service_count:
+        if max_pserver_count < slice_count:
             split_count = max_pserver_count
         block_size = int(math.ceil(var_numel / float(split_count)))
 
@@ -177,7 +178,7 @@ class DistributeTranspiler:
                     for index in range(len(self.pserver_endpoints))
                 ]
 
-    def _init_splited_vars(self, split_method):
+    def _init_splited_vars(self, slice_var_up):
         # update these mappings for further transpile:
         # 1. param_var_mapping: param var name -> [splited params vars]
         # 2. grad_var_mapping: grad var name -> [splited grads vars]
@@ -186,19 +187,34 @@ class DistributeTranspiler:
 
         param_list = []
         grad_list = []
+        param_grad_set = set()
         for p, g in self.params_grads:
             # skip parameter marked not trainable
             if type(p) == Parameter and p.trainable == False:
                 continue
-            param_list.append(p)
-            grad_list.append(g)
+            if p.name not in param_grad_set:
+                param_list.append(p)
+                param_grad_set.add(p.name)
+            if g.name not in param_grad_set:
+                grad_list.append(g)
+                param_grad_set.add(g.name)
 
         self._update_dist_lookup_table_vars(param_list, grad_list,
                                             self.params_grads)
 
-        grad_blocks = split_variable(grad_list, len(self.pserver_endpoints))
-        param_blocks = split_variable(param_list, len(self.pserver_endpoints))
+        if slice_var_up:
+            # when we slice var up into blocks, we will slice the var according to
+            # pserver services' count. A pserver may have two or more listening ports.
+            grad_blocks = slice_variable(grad_list, len(self.pserver_endpoints))
+            param_blocks = slice_variable(param_list,
+                                          len(self.pserver_endpoints))
+        else:
+            # when we do NOT slice var up into blocks, we will always slice params
+            # grads into one block.
+            grad_blocks = slice_variable(grad_list, 1)
+            param_blocks = slice_variable(param_list, 1)
         assert (len(grad_blocks) == len(param_blocks))
+
         # origin_varname -> [splited_var]
         self.param_var_mapping = self._create_vars_from_blocklist(
             self.origin_program, param_blocks)
@@ -229,6 +245,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
+                  slice_var_up=True,
                   split_method=RoundRobin,
                   sync_mode=True):
         """
@@ -262,13 +279,27 @@ class DistributeTranspiler:
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
         # split and create vars, then put splited vars in dicts for later use.
-        self._init_splited_vars(split_method)
+        self._init_splited_vars(slice_var_up)
 
         # step 3.1: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
         send_vars = []
-        for orig_varname, splited_vars in self.grad_var_mapping.items():
+
+        # in general cases, the number of pservers is times of 2, and this
+        # will lead to uneven distribution among weights and bias:
+        #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
+        #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
+        # shuffle the map will avoid the uneven distribution above
+        grad_var_mapping_items = self.grad_var_mapping.items()
+        if not slice_var_up:
+            np.random.shuffle(grad_var_mapping_items)
+
+        for orig_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
+
+            if not slice_var_up:
+                assert (len(splited_vars) == 1)
+
             if len(splited_vars) == 1:
                 orig_varname = splited_vars[0].name
                 index = find_op_by_output_arg(program.global_block(),
@@ -316,6 +347,7 @@ class DistributeTranspiler:
         for i, ep in enumerate(eplist):
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+
         # step4: Concat the parameters splits together after recv.
         for varname, splited_var in self.param_var_mapping.iteritems():
             eps = []
@@ -788,8 +820,8 @@ class DistributeTranspiler:
             program (ProgramDesc): ProgramDesc which gradients blong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
-        Returns: 
-            var_mapping (dict(varname->[new_varname_variable])):A dict mapping 
+        Returns:
+            var_mapping (dict(varname->[new_varname_variable])):A dict mapping
                 from original var name to each var split.
         """
 
@@ -802,6 +834,9 @@ class DistributeTranspiler:
             if not block_map.has_key(varname):
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
+        # Do not remove this important debug message:
+        print("block map: %s" % block_map)
+
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
             if len(splited) == 1:

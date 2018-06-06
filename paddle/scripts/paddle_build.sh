@@ -145,19 +145,17 @@ function check_style() {
     trap 'abort' 0
     set -e
 
-    # install glide
-    curl https://glide.sh/get | bash
-    eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    if [ -x "$(command -v gimme)" ]; then
+    	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    fi
 
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
-    cd  $GOPATH/src/github.com/PaddlePaddle/Paddle/go; glide install; cd -
+    mkdir -p ./build/go
+    cp go/glide.* build/go
+    cd build/go; glide install; cd -
 
-    go get github.com/alecthomas/gometalinter
-    gometalinter --install
-
-    cd ${PADDLE_ROOT}
     export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
