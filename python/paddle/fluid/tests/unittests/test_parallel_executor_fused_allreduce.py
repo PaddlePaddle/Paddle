@@ -35,10 +35,13 @@ class TestFusedParallelExecutor(unittest.TestCase):
         exe.run(startup)
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.FusedAllReduce
+        exe_strategy = fluid.ExecutionStrategy()
+        exe_strategy.num_threads = 1
         pe = fluid.ParallelExecutor(
             use_cuda=True,
             loss_name=loss.name,
             build_strategy=build_strategy,
+            exec_strategy=exe_strategy,
             main_program=main)
         pe.run(fetch_list=[])
 

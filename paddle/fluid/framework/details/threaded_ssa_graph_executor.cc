@@ -199,8 +199,8 @@ void ThreadedSSAGraphExecutor::RunOp(
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
-    } catch (...) {
-      LOG(FATAL) << "Unknown exception catched";
+    } catch (std::exception ex) {
+      LOG(FATAL) << "Unknown exception catched " << ex.what();
     }
   };
   if (pool_) {
