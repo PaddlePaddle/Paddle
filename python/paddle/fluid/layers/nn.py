@@ -24,66 +24,20 @@ from tensor import concat
 import utils
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
+    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'resize_bilinear', 'gather',
+    'random_crop', 'image_center_crop'
 ]
 
 
@@ -4005,7 +3959,7 @@ def gather(input, index):
 
     .. math::
 
-	Out = X[Index]
+        Out = X[Index]
 
 
     .. code-block:: text
@@ -4013,8 +3967,8 @@ def gather(input, index):
 
                 Given:
 
-    		X = [[1, 2],
-         	     [3, 4],
+                X = [[1, 2],
+                     [3, 4],
                      [5, 6]]
 
                 Index = [1, 2]
@@ -4082,11 +4036,11 @@ def image_center_crop(input, shape):
             len(shape) == 2):
         raise ValueError(
             "The 'shape' must be a list or a tuple with two elements.")
-    if (input.shape != 4):
+    input_shape = input.shape
+    if (len(input_shape) != 4):
         raise ValueError(
             "The 'input' must be a tensor whose rank is 4. ([batchsize, channel_num, hight, width])"
         )
-    input_shape = input.shape
     offsets = [0, 0] + [
         x / 2
         for x in list(
