@@ -77,23 +77,37 @@ class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class ReverseGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
+    grad_op->SetType("reverse");
+    grad_op->SetInput("X", OutputGrad("Out"));
+    grad_op->SetOutput("Out", InputGrad("X"));
+    grad_op->SetAttr("axis", GetAttr("axis"));
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(reverse, ops::ReverseOp, ops::ReverseOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ReverseGradMaker);
 REGISTER_OPERATOR(reverse_grad, ops::ReverseOp);
 REGISTER_OP_CPU_KERNEL(
     reverse, ops::ReverseKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ReverseKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::ReverseKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, double>)
 REGISTER_OP_CPU_KERNEL(
     reverse_grad, ops::ReverseKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ReverseKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::ReverseKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, float>,

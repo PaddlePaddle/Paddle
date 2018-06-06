@@ -60,6 +60,7 @@ __all__ = [
     'elementwise_pow',
     'clip',
     'clip_by_norm',
+    'reverse',
     'logical_and',
     'logical_or',
     'logical_xor',

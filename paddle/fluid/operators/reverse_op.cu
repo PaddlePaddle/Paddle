@@ -17,14 +17,14 @@
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     reverse, ops::ReverseKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ReverseKernel<paddle::platform::CUDADeviceContext, int8_t>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, double>)
 REGISTER_OP_CUDA_KERNEL(
     reverse_grad, ops::ReverseKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ReverseKernel<paddle::platform::CUDADeviceContext, int8_t>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ReverseKernel<paddle::platform::CUDADeviceContext, float>,
