@@ -53,7 +53,7 @@ class RPCClient {
 
   virtual void Wait() = 0;
 
-  static constexpr int64_t rpc_time_out = 600 * 1000;
+  static constexpr int64_t rpc_time_out = 120 * 1000;
 
   template <typename T>
   static RPCClient* GetInstance() {
@@ -71,7 +71,7 @@ class RPCClient {
   }
 
  protected:
-  virtual void InitImpl() = 0;
+  virtual void InitImpl() {}
 
  private:
   static std::once_flag init_flag_;
