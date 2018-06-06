@@ -61,7 +61,6 @@ void StartServer() {
       std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
 
   g_rpc_service->SetCond(detail::kRequestSend);
-  std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_service->WaitBarrier(detail::kRequestSend);
 
   LOG(INFO) << "got nccl id and stop server...";
@@ -88,12 +87,12 @@ TEST(SendNcclId, GrpcServer) {
   int port = g_rpc_service->GetSelectedPort();
 
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient client;
-  LOG(INFO) << "connect to server" << ep;
-  client.AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
-  client.Wait();
-  client.AsyncSendBatchBarrier(ep);
-  client.Wait();
+  detail::RPCClient* client = detail::RPCClient::GetInstance();
+  LOG(INFO) << "connect to server " << ep;
+  client->AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
+  client->Wait();
+  client->AsyncSendBatchBarrier(ep);
+  client->Wait();
 
   server_thread.join();
   g_rpc_service.reset(nullptr);

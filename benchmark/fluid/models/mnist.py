@@ -76,16 +76,30 @@ def get_model(args):
     images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    # Train program
-    predict = cnn_model(images, args)
+    if args.device == 'CPU' and args.cpus > 1:
+        places = fluid.layers.get_places(args.cpus)
+        pd = fluid.layers.ParallelDo(places)
+        with pd.do():
+            predict = cnn_model(pd.read_input(images), args)
+            label = pd.read_input(label)
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+            batch_acc = fluid.layers.accuracy(input=predict, label=label)
 
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+            pd.write_output(avg_cost)
+            pd.write_output(batch_acc)
 
-    # Evaluator
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(
-        input=predict, label=label, total=batch_size_tensor)
+        avg_cost, batch_acc = pd()
+        avg_cost = fluid.layers.mean(avg_cost)
+        batch_acc = fluid.layers.mean(batch_acc)
+    else:
+        # Train program
+        predict = cnn_model(images, args)
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        avg_cost = fluid.layers.mean(x=cost)
+
+        # Evaluator
+        batch_acc = fluid.layers.accuracy(input=predict, label=label)
 
     # inference program
     inference_program = fluid.default_main_program().clone()

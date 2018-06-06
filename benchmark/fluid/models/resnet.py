@@ -140,18 +140,33 @@ def get_model(args):
 
     input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    predict = model(input, class_dim, args=args)
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
 
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(
-        input=predict, label=label, total=batch_size_tensor)
+    if args.device == 'CPU' and args.cpus > 1:
+        places = fluid.layers.get_places(args.cpus)
+        pd = fluid.layers.ParallelDo(places)
+        with pd.do():
+            predict = model(pd.read_input(input), class_dim, args=args)
+            label = pd.read_input(label)
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+            batch_acc = fluid.layers.accuracy(input=predict, label=label)
+
+            pd.write_output(avg_cost)
+            pd.write_output(batch_acc)
+
+        avg_cost, batch_acc = pd()
+        avg_cost = fluid.layers.mean(avg_cost)
+        batch_acc = fluid.layers.mean(batch_acc)
+    else:
+        predict = model(input, class_dim, args=args)
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        avg_cost = fluid.layers.mean(x=cost)
+        batch_acc = fluid.layers.accuracy(input=predict, label=label)
 
     inference_program = fluid.default_main_program().clone()
     with fluid.program_guard(inference_program):
         inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc, batch_size_tensor])
+            target_vars=[batch_acc])
 
     # set gradient clip
     set_gradient_clip(args.gradient_clip_method, args.gradient_clip_norm)
