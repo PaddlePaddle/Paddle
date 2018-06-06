@@ -31,7 +31,7 @@ namespace paddle {
  * if unbalanced distribution exhibts by default.
  */
 class SparseParameterDistribution {
-public:
+ public:
   /// serviceNum means the number of ParameterServers
   explicit SparseParameterDistribution(size_t serviceNum);
   ~SparseParameterDistribution() {}
@@ -39,7 +39,7 @@ public:
   void probeDistribution(int serverId, size_t data);
   void checkAndResetDistribution();
 
-private:
+ private:
   std::vector<size_t> data_;
   std::atomic<size_t> totBytes_;
 

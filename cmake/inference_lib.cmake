@@ -52,80 +52,91 @@ function(copy TARGET)
 endfunction()
 
 # third party
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/eigen3")
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
 copy(eigen3_lib
   SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
   DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported
+  DEPS eigen3
 )
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/gflags")
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/gflags")
 copy(gflags_lib
   SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
   DSTS ${dst_dir} ${dst_dir}/lib
+  DEPS gflags
 )
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/glog")
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/glog")
 copy(glog_lib
   SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
   DSTS ${dst_dir} ${dst_dir}/lib
+  DEPS glog
 )
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/boost/")
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/boost/")
 copy(boost_lib
   SRCS ${BOOST_INCLUDE_DIR}/boost
   DSTS ${dst_dir}
+  DEPS boost
 )
 
 if(NOT PROTOBUF_FOUND)
-    set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/protobuf")
     copy(protobuf_lib
       SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
       DSTS ${dst_dir} ${dst_dir}/lib
+      DEPS extern_protobuf
     )
 endif()
 
 if(NOT CBLAS_FOUND)
-    set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/openblas")
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
     copy(openblas_lib
       SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
       DSTS ${dst_dir} ${dst_dir}
+      DEPS extern_openblas
     )
 elseif (WITH_MKLML)
-    set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mklml")
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mklml")
     copy(mklml_lib
       SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
       DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+      DEPS mklml
     )
 endif()
 
 if(WITH_MKLDNN)
-  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mkldnn")
+  set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mkldnn")
   copy(mkldnn_lib
     SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
     DSTS ${dst_dir} ${dst_dir}/lib
+    DEPS mkldnn
   )
 endif()
 
 if(NOT MOBILE_INFERENCE AND NOT RPI)
-  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappy")
+  set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
   copy(snappy_lib
     SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir} ${dst_dir}/lib
+    DEPS snappy)
 
-  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappystream")
+  set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
   copy(snappystream_lib
     SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir} ${dst_dir}/lib
+    DEPS snappystream)
 
-  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/zlib")
+  set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
   copy(zlib_lib
     SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir} ${dst_dir}/lib
+    DEPS zlib)
 endif()
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/paddle/fluid")
+set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
 copy(framework_lib DEPS framework_py_proto 
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
@@ -165,15 +176,16 @@ copy(pybind_lib
 # CMakeCache Info
 copy(cmake_cache
   SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
-  DSTS ${CMAKE_INSTALL_PREFIX})
+  DSTS ${FLUID_INSTALL_DIR})
 
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 
 
 # paddle fluid version
 execute_process(
   COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
+  WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
   OUTPUT_VARIABLE PADDLE_GIT_COMMIT)
-set(version_file ${CMAKE_INSTALL_PREFIX}/version.txt)
+set(version_file ${FLUID_INSTALL_DIR}/version.txt)
 file(WRITE ${version_file}
   "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
   "WITH_MKL: ${WITH_MKL}\n"

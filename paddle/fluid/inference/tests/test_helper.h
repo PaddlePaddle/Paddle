@@ -133,11 +133,24 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
   return feed_target_shapes;
 }
 
+void EnableMKLDNN(
+    const std::unique_ptr<paddle::framework::ProgramDesc>& program) {
+  for (size_t bid = 0; bid < program->Size(); ++bid) {
+    auto* block = program->MutableBlock(bid);
+    for (auto* op : block->AllOps()) {
+      if (op->HasAttr("use_mkldnn")) {
+        op->SetAttr("use_mkldnn", true);
+      }
+    }
+  }
+}
+
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
-                   const int repeat = 1, const bool is_combined = false) {
+                   const int repeat = 1, const bool is_combined = false,
+                   const bool use_mkldnn = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -169,6 +182,9 @@ void TestInference(const std::string& dirname,
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
     inference_program = InitProgram(&executor, scope, dirname, is_combined);
+    if (use_mkldnn) {
+      EnableMKLDNN(inference_program);
+    }
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,

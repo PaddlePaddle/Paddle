@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -36,19 +37,23 @@ class RecvOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    int sync_mode = Attr<int>("sync_mode");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
+    // For profiling
+    platform::RecordEvent record_event(Type(), &ctx);
+
+    auto rpc_client = detail::RPCClient::GetInstance();
 
     for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i];
-      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+      rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
-    PADDLE_ENFORCE(client_.Wait());
+    if (sync_mode) {
+      rpc_client->Wait();
+    }
   }
-
- private:
-  mutable detail::RPCClient client_;
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -65,6 +70,10 @@ This operator can get variables from server side.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<int>("sync_mode",
+                 "(int, default 0)"
+                 "sync recv or async recv.")
+        .SetDefault(0);
   }
 };
 

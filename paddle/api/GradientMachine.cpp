@@ -94,7 +94,7 @@ void UpdateCallback::apply(Parameter* p) {
 }
 
 class UpdateCallbackWrapper {
-public:
+ public:
   explicit UpdateCallbackWrapper(const UpdateCallback& callback)
       : callback(const_cast<UpdateCallback&>(callback)) {}
 
@@ -105,7 +105,7 @@ public:
     delete p;
   }
 
-private:
+ private:
   UpdateCallback& callback;
 };
 

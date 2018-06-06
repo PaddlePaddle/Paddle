@@ -15,6 +15,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
 #include <vector>

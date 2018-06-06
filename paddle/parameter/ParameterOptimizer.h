@@ -30,12 +30,12 @@ namespace paddle {
  *    may be called many times, should be no state change between calls.
  */
 class ParameterOptimizer {
-public:
+ public:
   typedef std::function<void(
       const VectorPtr vecs[], const ParameterConfig& config, size_t sparseId)>
       TraverseCallback;
 
-public:
+ public:
   explicit ParameterOptimizer(const OptimizationConfig& optConfig)
       : applyDecay_(true),
         optConfig_(optConfig),
@@ -175,7 +175,7 @@ public:
   static ParameterOptimizer* create(const OptimizationConfig& optConfig,
                                     bool inPserver = false);
 
-protected:
+ protected:
   typedef std::vector<ParameterOptimizer::TraverseCallback> TraverseCallbackVec;
 
   static TraverseCallback composeCallbacks(

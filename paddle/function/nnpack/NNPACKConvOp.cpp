@@ -46,7 +46,7 @@ nnp_convolution_algorithm get_nnp_convolution_algorithm(
 
 template <DeviceType Device>
 class NNPACKConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
     algorithm_ = get_nnp_convolution_algorithm(config.get<std::string>("algo"));
@@ -231,7 +231,7 @@ public:
     }
   }
 
-private:
+ private:
   nnp_convolution_algorithm algorithm_;
   nnp_convolution_transform_strategy transform_strategy_;
   void* workspaceBuffer_;

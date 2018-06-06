@@ -24,11 +24,18 @@ class BilinearInterpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input_t = ctx.Input<Tensor>("X");      // float tensor
     auto* output_t = ctx.Output<Tensor>("Out");  // float tensor
+    auto out_dims = output_t->dims();
     auto* input = input_t->data<T>();
-    auto* output = output_t->mutable_data<T>(ctx.GetPlace());
-
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+    auto out_size_t = ctx.Input<Tensor>("OutSize");
+    if (out_size_t != nullptr) {
+      auto out_size_data = out_size_t->data<int>();
+      out_h = out_size_data[0];
+      out_w = out_size_data[1];
+    }
+    auto* output = output_t->mutable_data<T>(
+        {out_dims[0], out_dims[1], out_h, out_w}, ctx.GetPlace());
     int batch_size = input_t->dims()[0];
     int channels = input_t->dims()[1];
     int in_h = input_t->dims()[2];
@@ -83,9 +90,8 @@ class BilinearInterpGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* d_input_t = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* d_output_t = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_input = d_input_t->mutable_data<T>(ctx.GetPlace());
     auto* d_output = d_output_t->data<T>();
-
+    auto* d_input = d_input_t->mutable_data<T>(ctx.GetPlace());
     auto& device_ctx =
         ctx.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, T> zero;
@@ -93,6 +99,14 @@ class BilinearInterpGradKernel : public framework::OpKernel<T> {
 
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+
+    auto out_size_t = ctx.Input<Tensor>("OutSize");
+    if (out_size_t != nullptr) {
+      auto out_size_data = out_size_t->data<int>();
+      out_h = out_size_data[0];
+      out_w = out_size_data[1];
+    }
+
     int batch_size = d_input_t->dims()[0];
     int channels = d_input_t->dims()[1];
     int in_h = d_input_t->dims()[2];

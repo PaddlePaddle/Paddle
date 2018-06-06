@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
+DEFINE_bool(check_nan_inf, false,
+            "Checking whether operator produce NAN/INF or not. It will be "
+            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -476,6 +479,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
@@ -522,6 +526,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const OperatorBase& op_;
   const Scope& scope_;
 };
+
+static void CheckTensorNANOrInf(const std::string& name,
+                                const framework::Tensor& tensor) {
+  if (tensor.memory_size() == 0) {
+    return;
+  }
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
+      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+    return;
+  }
+  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
+                 "Tensor %s contains Inf", name);
+  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
+                 "Tensor %s contains NAN", name);
+}
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
@@ -606,6 +625,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
+  }
+
+  if (FLAGS_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      auto* var = new_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      }
+    }
   }
 }
 

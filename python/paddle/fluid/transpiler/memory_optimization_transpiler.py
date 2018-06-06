@@ -107,7 +107,7 @@ class ControlFlowGraph(object):
         # Repeatedly apply liveness updates until the algorithm stablize
         # on a complete set live input vars and live output vars.
         while True:
-            for i in range(self.op_size, 0, -1):
+            for i in reversed(range(self.op_size)):
                 live_in[i] = set(self._live_in[i])
                 live_out[i] = set(self._live_out[i])
                 for s in self._successors[i]:
