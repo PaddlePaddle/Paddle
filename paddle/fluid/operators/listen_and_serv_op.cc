@@ -222,8 +222,8 @@ static void FillRequestCtx(detail::RequestHandler *h, framework::Scope *scope,
   h->SetDevCtx(dev_ctx);
   h->SetExecutor(executor);
   h->SetProgram(program);
-  h->SetPrefetchPreparedCtx(std::move(
-      std::unique_ptr<framework::ExecutorPrepareContext>(prefetch_ctx)));
+  h->SetPrefetchPreparedCtx(
+      std::unique_ptr<framework::ExecutorPrepareContext>(prefetch_ctx));
   h->SetRPCServer(rpc_server);
 }
 

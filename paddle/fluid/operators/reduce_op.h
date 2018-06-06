@@ -135,15 +135,16 @@ class ReduceKernel : public framework::OpKernel<T> {
     } else {
       int ndim = context.Input<Tensor>("X")->dims().size();
       int rdim = context.Attr<std::vector<int>>("dim").size();
-      HANDLE_DIM(6, 5);
-      HANDLE_DIM(6, 4);
-      HANDLE_DIM(6, 3);
-      HANDLE_DIM(6, 2);
-      HANDLE_DIM(6, 1);
-      HANDLE_DIM(5, 4);
-      HANDLE_DIM(5, 3);
-      HANDLE_DIM(5, 2);
-      HANDLE_DIM(5, 1);
+      // comments for accelerating compiling temporarily.
+      //      HANDLE_DIM(6, 5);
+      //      HANDLE_DIM(6, 4);
+      //      HANDLE_DIM(6, 3);
+      //      HANDLE_DIM(6, 2);
+      //      HANDLE_DIM(6, 1);
+      //      HANDLE_DIM(5, 4);
+      //      HANDLE_DIM(5, 3);
+      //      HANDLE_DIM(5, 2);
+      //      HANDLE_DIM(5, 1);
       HANDLE_DIM(4, 3);
       HANDLE_DIM(4, 2);
       HANDLE_DIM(4, 1);

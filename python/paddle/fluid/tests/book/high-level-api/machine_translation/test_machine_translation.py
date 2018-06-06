@@ -158,6 +158,13 @@ def train_program(is_sparse):
     return avg_cost
 
 
+def optimizer_func():
+    return fluid.optimizer.Adagrad(
+        learning_rate=1e-4,
+        regularization=fluid.regularizer.L2DecayRegularizer(
+            regularization_coeff=0.1))
+
+
 def train(use_cuda, is_sparse, is_local=True):
     EPOCH_NUM = 1
 
@@ -182,11 +189,8 @@ def train(use_cuda, is_sparse, is_local=True):
 
     trainer = fluid.Trainer(
         train_func=partial(train_program, is_sparse),
-        optimizer=fluid.optimizer.Adagrad(
-            learning_rate=1e-4,
-            regularization=fluid.regularizer.L2DecayRegularizer(
-                regularization_coeff=0.1)),
-        place=place)
+        place=place,
+        optimizer_func=optimizer_func)
 
     trainer.train(
         reader=train_reader,
