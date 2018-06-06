@@ -155,12 +155,15 @@ def train_program():
     return [avg_cost, scale_infer]
 
 
+def optimizer_func():
+    return fluid.optimizer.SGD(learning_rate=0.2)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.SGD(learning_rate=0.2)
 
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer=optimizer)
+        train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     feed_order = [
         'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id', 'category_id',
