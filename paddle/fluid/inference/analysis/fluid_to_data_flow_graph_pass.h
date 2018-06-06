@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/pass.h"
