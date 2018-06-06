@@ -857,7 +857,6 @@ class ModelAverage(Optimizer, AccumulateOptimizer):
                  max_average_window=10000,
                  **kwargs):
         super(ModelAverage, self).__init__(0.0, **kwargs)
-        self.is_accumulate_optimizer = True
         self.optimizer = optimizer
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
