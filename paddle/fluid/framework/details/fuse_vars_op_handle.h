@@ -14,38 +14,50 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct NCCLAllReduceOpHandle : public OpHandleBase {
-  NCCLAllReduceOpHandle(const std::vector<Scope *> &local_scopes,
-                        const std::vector<platform::Place> &places,
-                        const platform::NCCLContextMap &ctxs);
+struct FuseVarsOpHandle : public OpHandleBase {
+ public:
+  FuseVarsOpHandle(Scope *local_scope, const platform::Place &place,
+                   const std::unordered_map<std::string, int64_t> &inputs_numel,
+                   const std::type_index &var_type)
+      : local_scope_(local_scope),
+        place_(place),
+        inputs_numel_(inputs_numel),
+        type_(var_type) {
+    total_numel_ = 0;
+    for (auto in_numel : inputs_numel) {
+      PADDLE_ENFORCE_GT(in_numel.second, 0);
+      total_numel_ += in_numel.second;
+    }
+  }
 
   std::string Name() const override;
 
-  // Delay and buffer nccl_all_reduce together can significantly increase
-  // performance. Disable this feature by returning false.
-  bool IsMultiDeviceTransfer() override { return true; };
+  bool IsMultiDeviceTransfer() override { return false; };
 
  protected:
   void RunImpl() override;
 
  private:
-  const std::vector<Scope *> local_scopes_;
-  const std::vector<platform::Place> places_;
-  const platform::NCCLContextMap &nccl_ctxs_;
+  Scope *local_scope_;
+  const platform::Place place_;
+  const std::unordered_map<std::string, int64_t> inputs_numel_;
+  const std::type_index type_;
+  int64_t total_numel_;
 };
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
