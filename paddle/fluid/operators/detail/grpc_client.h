@@ -210,6 +210,9 @@ class GRPCClient : public RPCClient {
   std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
   std::mutex mutex_;
+
+  // mutex for GetChannel thread safety
+  std::mutex chan_mutex_;
   DISABLE_COPY_AND_ASSIGN(GRPCClient);
 };
 

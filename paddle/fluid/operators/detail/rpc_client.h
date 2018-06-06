@@ -66,8 +66,12 @@ class RPCClient {
   static void Init() {
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());
+      rpc_client_->Init();
     }
   }
+
+ protected:
+  virtual void Init() = 0;
 
  private:
   static std::once_flag init_flag_;

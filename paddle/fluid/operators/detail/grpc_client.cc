@@ -25,6 +25,26 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+void GRPCClient::Init() { rpc_client_->InitEventLoop(); }
+
+void GRPCClient::InitEventLoop() {
+  // start the client process thread
+  // TODO(wuyi): can make this in a threadpool
+  client_thread_.reset(new std::thread(std::bind(&RPCClient::Proceed, this)));
+}
+
+GRPCClient::~GRPCClient() {
+  Wait();
+  cq_.Shutdown();
+  {
+    std::lock_guard<std::mutex> guard(chan_mutex_);
+    for (auto& it : channels_) {
+      it.second.reset();
+    }
+  }
+  client_thread_->join();
+}
+
 bool GRPCClient::AsyncSendVar(const std::string& ep,
                               const platform::DeviceContext& ctx,
                               const framework::Scope& scope,
@@ -194,7 +214,7 @@ void GRPCClient::Wait() {
   sync_cond_.wait(lk, [this] { return req_count_ == 0; });
 }
 
-void RPCClient::Proceed() {
+void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
