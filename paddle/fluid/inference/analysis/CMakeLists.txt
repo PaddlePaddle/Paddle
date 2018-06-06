@@ -20,4 +20,4 @@ cc_test(test_dfg_graphviz_draw_pass
         SRCS dfg_graphviz_draw_pass_tester.cc
         DEPS analysis
         ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
-set_tests_properties(test_subgraph_splitter PROPERTIES DEPENDS test_word2vec)
+set_tests_properties(test_dfg_graphviz_draw_pass PROPERTIES DEPENDS test_word2vec)
