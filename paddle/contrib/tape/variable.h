@@ -56,8 +56,10 @@ class Variable {
     framework::proto::VarType::Type var_type = desc_.GetType();
     if (var_type == framework::proto::VarType::LOD_TENSOR) {
       get_global_scope().Var(desc_.Name())->GetMutable<framework::LoDTensor>();
-      //    } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
-      //      var->GetMutable<SelectedRows>();
+    } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
+      get_global_scope()
+          .Var(desc_.Name())
+          ->GetMutable<framework::SelectedRows>();
     } else {
       PADDLE_THROW("Variable type %d is not in [LOD_TENSOR, SELECTED_ROWS]",
                    var_type);
@@ -72,12 +74,16 @@ class Variable {
     return grad_;
   }
 
+  // TODO(tonyyang-svail): No need to expose name
   std::string Name() const { return desc_.Name(); }
 
   //  void init(const std::string& initializer,
   //            const framework::AttributeMap& attrs);
 
-  framework::VarDesc desc_;
+  // void value() {};
+
+  const framework::VarDesc& Desc() const { return desc_; }
+  framework::VarDesc* MutableDesc() { return &desc_; }
 
  private:
   int count() {
@@ -85,6 +91,7 @@ class Variable {
     return counter++;
   }
 
+  framework::VarDesc desc_;
   VariableHandle grad_;
   //  framework::Variable* var_;
 };

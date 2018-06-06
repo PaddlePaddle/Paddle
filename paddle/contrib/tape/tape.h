@@ -33,6 +33,8 @@
 namespace paddle {
 namespace tape {
 
+using VariableHandleMap = std::map<std::string, std::vector<VariableHandle>>;
+
 // borrowed from
 // https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
 inline bool ends_with(std::string const& value, std::string const& ending) {
@@ -40,14 +42,10 @@ inline bool ends_with(std::string const& value, std::string const& ending) {
   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-using ConstVariableHandleMap =
-    std::map<std::string, std::vector<VariableHandle>>;
-using VariableHandleMap = std::map<std::string, std::vector<VariableHandle>>;
-
 struct OpHandle {
   OpHandle(const std::string& type,
-           VariableHandleMap in_vars,
-           VariableHandleMap out_vars,
+           const VariableHandleMap& in_vars,
+           const VariableHandleMap& out_vars,
            const framework::AttributeMap& attrs)
       : type_(type), in_vars_(in_vars), out_vars_(out_vars), attrs_(attrs) {}
 
@@ -70,19 +68,19 @@ std::ostream& operator<<(std::ostream& os, const framework::VarDesc& var_desc) {
 }
 
 std::string to_string(const std::string& type,
-                      VariableHandleMap in_vars,
-                      VariableHandleMap out_vars,
+                      const VariableHandleMap& in_vars,
+                      const VariableHandleMap& out_vars,
                       const framework::AttributeMap& attrs) {
   std::stringstream ss;
   ss << type << " ";
   for (auto& param_name : in_vars) {
     for (auto& var : param_name.second) {
-      ss << param_name.first << ":(" << var->desc_ << ") ";
+      ss << param_name.first << ":(" << var->Desc() << ") ";
     }
   }
   for (auto& param_name : out_vars) {
     for (auto& var : param_name.second) {
-      ss << param_name.first << ":(" << var->desc_ << ") ";
+      ss << param_name.first << ":(" << var->Desc() << ") ";
     }
   }
   return ss.str();
@@ -91,8 +89,8 @@ std::string to_string(const std::string& type,
 class Tape {
  public:
   void forward() {
+    PADDLE_ENFORCE(!has_been_backwarded_);
     LOG(INFO) << "Starting forward -------------------------";
-    PADDLE_ENFORCE(has_been_backwarded_ == false);
     while (current_position_ < tape_.size()) {
       OpHandle& op = tape_[current_position_];
 
@@ -114,7 +112,7 @@ class Tape {
   }
 
   void backward(VariableHandle target) {
-    PADDLE_ENFORCE(has_been_backwarded_ == false);
+    PADDLE_ENFORCE(!has_been_backwarded_);
 
     forward();
 
@@ -123,10 +121,9 @@ class Tape {
     backward_tape_.reset(new Tape());
 
     framework::AttributeMap attrs;
-    LOG(INFO) << target->desc_.GetDataType();
+    LOG(INFO) << target->Desc().GetDataType();
     // FIXME(tonyyang-svail): the current infer_data_type logic is written in
-    // python
-    // Need a infer_data_type on the C++
+    // python, Need a infer_data_type on the C++
     attrs["dtype"] = framework::proto::VarType::Type::VarType_Type_FP32;
     attrs["shape"] = std::vector<int>{1};
     attrs["value"] = 1.0f;
@@ -197,19 +194,19 @@ class Tape {
     // InferShape and InferVarType --------------------------------
     framework::OpDesc op_desc = CreateOpDesc(type, in_vars, out_vars, attrs);
 
-    // Create a temporary block
+    // Create a temporary block for compile-time
     framework::ProgramDesc program_desc;
     framework::BlockDesc* block_desc = program_desc.MutableBlock(0);
     PADDLE_ENFORCE(block_desc);
 
     for (auto& param_name : in_vars) {
       for (auto& var : param_name.second) {
-        *block_desc->Var(var->Name())->Proto() = *var->desc_.Proto();
+        *block_desc->Var(var->Name())->Proto() = *var->MutableDesc()->Proto();
       }
     }
     for (auto& param_name : out_vars) {
       for (auto& var : param_name.second) {
-        *block_desc->Var(var->Name())->Proto() = *var->desc_.Proto();
+        *block_desc->Var(var->Name())->Proto() = *var->MutableDesc()->Proto();
       }
     }
 
@@ -218,7 +215,7 @@ class Tape {
     op_desc.InferVarType(block_desc);
     for (auto& param_name : out_vars) {
       for (auto& var : param_name.second) {
-        *var->desc_.Proto() = *block_desc->Var(var->Name())->Proto();
+        *var->MutableDesc()->Proto() = *block_desc->Var(var->Name())->Proto();
       }
     }
     LOG(INFO) << "+ " << to_string(type, in_vars, out_vars, attrs);
@@ -228,8 +225,8 @@ class Tape {
 
  private:
   framework::OpDesc CreateOpDesc(const std::string& type,
-                                 VariableHandleMap in_vars,
-                                 VariableHandleMap out_vars,
+                                 const VariableHandleMap& in_vars,
+                                 const VariableHandleMap& out_vars,
                                  const framework::AttributeMap& attrs) {
     framework::VariableNameMap inputs;
     for (auto& param_name : in_vars) {
