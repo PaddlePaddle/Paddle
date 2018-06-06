@@ -68,6 +68,14 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     }                                                             \
   } while (false)
 
+#if CUDNN_VERSION < 6000
+#pragma message "CUDNN version under 6.0 is supported at best effort."
+#pragma message "We strongly encourage you to move to 6.0 and above."
+#pragma message "This message is intended to annoy you enough to update."
+#pragma message \
+    "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
+#endif  // CUDNN_VERSION < 6000
+
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
