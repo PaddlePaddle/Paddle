@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict
+import collections
 
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
@@ -30,8 +31,8 @@ class VarHandle(object):
 
 class OpHandle(object):
     def __init__(self):
-        self._inputs
-        self._outputs
+        self._inputs = []
+        self._outputs = []
 
 
 class SSAGraph(object):
@@ -39,7 +40,6 @@ class SSAGraph(object):
         self._block = block
         self._vars = []
         self._ops = []
-        self._ssa_vars = defaultdict(list)
 
     def build_graph(self):
         """
