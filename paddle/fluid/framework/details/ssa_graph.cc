@@ -23,11 +23,17 @@ VarHandle* SSAGraph::InsertVariable(size_t position, const std::string& name,
   auto& var_vec = vars_.at(scope_index).at(name);
   PADDLE_ENFORCE_LT(position, var_vec.size());
   for (auto i = position; i < var_vec.size(); ++i) {
-    ++var_vec[i]->version_;
+    VLOG(10) << "Increase Pos " << i;
+    var_vec[i]->version_ += 1;
+    VLOG(10) << var_vec[i]->version_;
   }
   auto* new_var = new VarHandle(position, scope_index, name, place);
   var_vec.insert(var_vec.begin() + position,
                  std::unique_ptr<VarHandle>(new_var));
+
+  for (size_t i = 0; i < var_vec.size(); ++i) {
+    PADDLE_ENFORCE_EQ(var_vec[i]->version_, i);
+  }
   return new_var;
 }
 

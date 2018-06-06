@@ -213,7 +213,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
           var_name_on_devices[op_dev_id].emplace(var_name);
         }
       }
-      if (!is_forwarding && places_.size() > 1) {
+      if (!is_forwarding) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         if (static_cast<bool>(boost::get<int>(op->GetAttr(
@@ -342,7 +342,7 @@ void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad.get());
 
-    auto var = new VarHandle(vars.size() - 1, i, og, p);
+    auto var = new VarHandle(vars.size(), i, og, p);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
   }
@@ -432,8 +432,7 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
     op_handle->AddInput(prev_grad.get());
   }
   auto &vars = result->vars_[dst_dev_id][og];
-  auto var =
-      new VarHandle(vars.size() - 1, dst_dev_id, og, places_[dst_dev_id]);
+  auto var = new VarHandle(vars.size(), dst_dev_id, og, places_[dst_dev_id]);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
   return var;

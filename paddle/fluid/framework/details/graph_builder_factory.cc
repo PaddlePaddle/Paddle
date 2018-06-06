@@ -49,13 +49,16 @@ std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
   }
 
   if (!FLAGS_debug_ssa_graphviz_filename.empty()) {
-    std::ofstream fout(FLAGS_debug_ssa_graphviz_filename);
-    PADDLE_ENFORCE(fout.good());
+    std::unique_ptr<std::ostream> fout(
+        new std::ofstream(FLAGS_debug_ssa_graphviz_filename));
+    PADDLE_ENFORCE(fout->good());
 
+    VLOG(10) << "SSA graph is written to file "
+             << FLAGS_debug_ssa_graphviz_filename;
     std::unique_ptr<GraphvizSSAGraphPrinter> graphviz_printer(
         new GraphvizSSAGraphPrinter());
-    res.reset(new SSAGraghBuilderWithPrinter(fout, std::move(graphviz_printer),
-                                             std::move(res)));
+    res.reset(new SSAGraghBuilderWithPrinter(
+        std::move(fout), std::move(graphviz_printer), std::move(res)));
   }
   return res;
 }

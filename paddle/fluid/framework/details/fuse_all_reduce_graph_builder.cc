@@ -32,12 +32,11 @@ static int GetUniqNum() {
 
 std::unique_ptr<SSAGraph> FuseAllReduceGraphBuilder::Build(
     const ProgramDesc &program) const {
-  // TODO(yy): Complete this method.
   auto graph = builder_->Build(program);
 
   auto all_reduce_ops =
       GetNotDependedAllReduceOp(graph.get(), program.Block(0));
-
+  VLOG(10) << "All reduce op group number: " << all_reduce_ops.size();
   for (auto &op_group : all_reduce_ops) {
     FuseAllReduceOp(graph.get(), std::move(op_group), program.Block(0));
   }
@@ -233,20 +232,24 @@ static VarHandle *FuseVariable(SSAGraph *graph, size_t scope_idx, Scope *scope,
                                const std::vector<FuseVarParams> &fused_vars,
                                const BlockDesc &global_block,
                                std::type_index type) {
-  if (fused_vars.empty()) return nullptr;
+  if (VLOG_IS_ON(10)) {
+    VLOG(10) << "Fusing variable:";
+    for (auto &var_param : fused_vars) {
+      VLOG(10) << "\t" << var_param.var_name << ", " << var_param.version;
+    }
+  }
   std::unordered_map<std::string, int64_t> inputs_numel;
-  auto var_data_type =
-      global_block.FindVar(fused_vars[0].var_name)->GetDataType();
-  PADDLE_ENFORCE_EQ(var_data_type, ToDataType(type));
   for (auto fused_var : fused_vars) {
     auto fused_var_name = fused_var.var_name;
     auto *var_desc = global_block.FindVar(fused_var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc);
-    PADDLE_ENFORCE_EQ(var_desc->GetDataType(), var_data_type);
-    PADDLE_ENFORCE_EQ(inputs_numel.count(fused_var_name), 0);
-    inputs_numel[fused_var_name] =
+    int64_t numel =
         framework::product(framework::make_ddim(var_desc->GetShape()));
+    PADDLE_ENFORCE_GT(numel, 0);
+    inputs_numel[fused_var_name] = numel;
   }
+  PADDLE_ENFORCE_EQ(inputs_numel.size(), fused_vars.size());
+
   auto *fuse_vars_op_handle =
       new FuseVarsOpHandle(scope, place, inputs_numel, type);
   graph->ops_.emplace_back(fuse_vars_op_handle);
