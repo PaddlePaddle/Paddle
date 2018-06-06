@@ -365,7 +365,8 @@ class Trainer(object):
             event_handler(BeginEpochEvent(epoch_id))
             for step_id, data in enumerate(reader()):
                 if self.__stop:
-                    self._clean_checkpoint()
+                    if self.checkpoint_cfg:
+                        self._clean_checkpoint()
                     return
 
                 if self.checkpoint_cfg and self.checkpoint_cfg.load_serial \
