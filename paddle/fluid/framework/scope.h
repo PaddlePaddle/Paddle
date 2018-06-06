@@ -78,11 +78,15 @@ class Scope {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
-  Variable* FindVarLocally(const std::string& name) const;
-
  private:
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
+
+  // Called by FindVar recursively
+  Variable* FindVarInternal(const std::string& name) const;
+
+  // Called by FindVarInternal and Var
+  Variable* FindVarLocally(const std::string& name) const;
 
   mutable std::unordered_map<std::string, Variable*> vars_;
   mutable std::list<Scope*> kids_;
