@@ -102,7 +102,7 @@ ParallelExecutor::ParallelExecutor(
 
 #else
   builder_.reset(new details::MultiDevSSAGraphBuilder(
-      member_->places_, loss_var_name, params, member_->local_scope_,
+      member_->places_, loss_var_name, params, member_->local_scopes_,
       build_strategy));
 
 #endif
