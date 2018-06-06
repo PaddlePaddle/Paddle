@@ -30,7 +30,7 @@ bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
   }
   // optimization for graph
   graph_.Optimize();
-  graph->ResetBatchSize("input_0", config.max_batch_size);
+  graph_.ResetBatchSize("input_0", config.max_batch_size);
   // construct executer
   executor_.init(graph_);
   return true;
@@ -45,8 +45,6 @@ bool PaddleInferenceAnakinPredictor::Run(
                  << "'s type is not float";
       return false;
     }
-    executor_.SetInputFromCPU(
-        input.name, static_cast<float *>(input.data.data), input.data.length);
     auto d_tensor_in_p = executor_.get_in(input.name);
     float* d_data_p = d_tensor_in_p->mutable_data();
     if(cudaMemcpy(d_data_p, 

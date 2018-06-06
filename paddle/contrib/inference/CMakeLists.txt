@@ -30,9 +30,8 @@ else()
     set(ANAKIN_FOUND OFF)
 endif()
 
-function(fetch_include_recursively root_dir)
-    if (IS_DIRECTORY ${root_dir})
-        #message(STATUS "include dir: " ${Magenta}${root_dir}${ColourReset})
+function(fetch_include_recursively root_dir) 
+    if (IS_DIRECTORY ${root_dir}) 
         include_directories(${root_dir})
     endif()
 
@@ -46,19 +45,13 @@ endfunction()
 
 if (ANAKIN_FOUND)
     # Anakin's code style doesn't follow google c style.
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=comment
-                                            -Wno-error=reorder
-                                            -Wno-error=format
-                                            -Wno-error=switch
-                                            -Wno-error=return-type
-                                            -Wno-error=non-virtual-dtor
-                                            -Wno-error=cpp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-variable -Wno-error=format-extra-args -Wno-error=comment -Wno-error=format -Wno-error=switch -Wno-error=return-type -Wno-error=non-virtual-dtor -Wno-reorder -Wno-error=cpp")
 
     message(STATUS "Anakin for inference is enabled")
     message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
     fetch_include_recursively(${ANAKIN_INCLUDE})
 
-    link_directories(${ANAKIN_LIBRARY}/libanakin.so)
+    link_directories(${ANAKIN_LIBRARY})
 
     nv_library(inference_anakin_api SRCS paddle_inference_api_anakin_engine.cc)
     target_link_libraries(inference_anakin_api anakin)
@@ -86,7 +79,7 @@ function(inference_api_test TARGET_NAME)
 endfunction(inference_api_test)
 
 cc_library(paddle_inference_api
-    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc paddle_inference_api_anakin_engine.cc
+    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc 
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
 cc_test(test_paddle_inference_api
@@ -97,7 +90,7 @@ inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
 if (ANAKIN_FOUND)
-  nv_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
+    nv_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
     DEPS ${inference_deps} protobuf)
 endif()
 
