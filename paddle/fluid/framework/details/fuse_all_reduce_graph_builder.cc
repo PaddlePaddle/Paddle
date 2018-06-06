@@ -320,6 +320,7 @@ static VarHandle *FindTheFirstVersionOfVariable(VarHandle *var) {
       }
     }
   };
+  impl(result);
   return result;
 }
 
@@ -424,6 +425,7 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
           auto *dummy = new DummyVarHandle();
           in->generated_op_->AddOutput(dummy);
           nccl_op_handle->AddInput(dummy);
+          graph->dep_vars_.emplace(dummy);
         }
 
         // Remove out variable, which is not used.
