@@ -38,7 +38,10 @@ def parse_args():
         default='resnet',
         help='The model to run benchmark with.')
     parser.add_argument(
-        '--batch_size', type=int, default=32, help='The minibatch size.')
+        '--batch_size',
+        type=int,
+        default=32,
+        help='The batch size on each gpu.')
     parser.add_argument(
         '--learning_rate', type=float, default=0.001, help='The learning rate.')
     parser.add_argument(
@@ -229,27 +232,35 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         train_losses = []
-        reader_generator = train_reader()
+        if not args.use_reader_op:
+            reader_generator = train_reader()
         batch_id = 0
         data = None
         while True:
             if not args.use_reader_op:
                 data = next(reader_generator, None)
-            if iters == args.iterations or data == None:
+                if data == None:
+                    break
+            if iters == args.iterations:
                 break
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
 
             if args.use_reader_op:
-                loss = exe.run(train_prog, fetch_list=[avg_loss])
+                try:
+                    loss = exe.run(train_prog, fetch_list=[avg_loss])
+                except fluid.core.EnforceNotMet as ex:
+                    break
             else:
                 loss = exe.run(train_prog,
                                feed=feeder.feed(data),
                                fetch_list=[avg_loss])
             iters += 1
             batch_id += 1
-            # FIXME(wuyi): last batch size maybe different
+            # FIXME(wuyi): For use_reader_op, if the current
+            # pass is not the last, the last batch of this pass
+            # is also equal to args.batch_size.
             num_samples += len(args.batch_size)
             train_losses.append(loss)
             print("Pass: %d, Iter: %d, Loss: %f\n" %
@@ -315,13 +326,16 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         num_samples = 0
         iters = 0
         start_time = time.time()
-        reader_generator = train_reader()
+        if not args.use_reader_op:
+            reader_generator = train_reader()
         batch_id = 0
         data = None
         while True:
             if not args.use_reader_op:
                 data = next(reader_generator, None)
-            if iters == args.iterations or data == None:
+                if data == None:
+                    break
+            if iters == args.iterations:
                 break
             if args.profile and pass_id == 0 and batch_id == 5:
                 profiler.start_profiler("All")
@@ -335,7 +349,10 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if args.use_reader_op and iters >= args.iterations / args.gpus:
                 break
             if args.use_fake_data or args.use_reader_op:
-                loss, = exe.run([avg_loss.name])
+                try:
+                    loss, = exe.run([avg_loss.name])
+                except fluid.core.EnforceNotMet as ex:
+                    break
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
             if args.update_method == "pserver":
