@@ -338,8 +338,8 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
 
   // 1.Insert Fuse Op
   // For each place insert one fuse var op
-  std::vector<VarHandle *> fused_vars =
-      GetFusedGradient(graph, global_block, group);
+  std::vector<VarHandle *> fused_vars = GetFusedGradient(
+      graph, string::Sprintf("all_grad_%d", UniqID()), global_block, group);
 
   // 2.Insert All reduce to fused var.
   OpHandleBase *nccl_op_handle = nullptr;
@@ -407,6 +407,7 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
         // Link out's pending_ops to in and AllReduceOp
         auto pending_ops = out->pending_ops_;
 
+        // pending_ops are SGD like operators.
         for (OpHandleBase *op : pending_ops) {
           // Replace out to in
           op->ReplaceInput(out, in);
@@ -426,8 +427,8 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
   }
 }
 std::vector<VarHandle *> FuseAllReduceGraphBuilder::GetFusedGradient(
-    SSAGraph *graph, const BlockDesc &global_block,
-    const NCCLAllReduceGroup &group) const {
+    SSAGraph *graph, const std::string &fused_var_name,
+    const BlockDesc &global_block, const NCCLAllReduceGroup &group) const {
   std::vector<VarHandle *> fuse_params;
 
   for (auto &op : group.ops_) {
@@ -455,10 +456,9 @@ std::vector<VarHandle *> FuseAllReduceGraphBuilder::GetFusedGradient(
   std::vector<VarHandle *> fused_vars;
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    fused_vars.emplace_back(
-        FuseVariable(graph, i, local_scopes_[i], places_[i],
-                     string::Sprintf("all_grad_%d", UniqID()), params,
-                     global_block, group.type_));
+    fused_vars.emplace_back(FuseVariable(graph, i, local_scopes_[i], places_[i],
+                                         fused_var_name, params, global_block,
+                                         group.type_));
   }
   return fused_vars;
 }
