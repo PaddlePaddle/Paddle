@@ -85,6 +85,10 @@ def train_network():
     return [avg_cost, accuracy]
 
 
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     BATCH_SIZE = 128
     EPOCH_NUM = 1
@@ -111,9 +115,7 @@ def train(use_cuda, train_program, params_dirname):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
-        train_func=train_program,
-        optimizer=fluid.optimizer.Adam(learning_rate=0.001),
-        place=place)
+        train_func=train_program, optimizer_func=optimizer_func, place=place)
 
     trainer.train(
         reader=train_reader,

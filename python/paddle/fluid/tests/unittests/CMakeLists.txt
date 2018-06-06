@@ -48,5 +48,7 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach(TEST_OP)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
 py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
-# tests that need to be done in fixed timeout
-set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
+# FIXME(Yancey1989): this test would cost much more time on CUDAPlace
+# since load cudnn libraries, so we use a longer timeout to make this
+# unit test stability.
+set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 30)

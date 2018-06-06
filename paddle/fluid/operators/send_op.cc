@@ -60,14 +60,14 @@ class SendOp : public framework::OperatorBase {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
 
     if (sync_mode) {
       for (auto& ep : endpoints) {
         VLOG(3) << "batch barrier, ep: " << ep;
         rpc_client->AsyncSendBatchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
 
     if (outs.size() > 0) {
@@ -75,13 +75,13 @@ class SendOp : public framework::OperatorBase {
         VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
         rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
       // tell pservers that current trainer have called fetch
       for (auto& ep : endpoints) {
         VLOG(2) << "send fetch barrier, ep: " << ep;
         rpc_client->AsyncSendFetchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
   }
 };

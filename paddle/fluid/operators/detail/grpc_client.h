@@ -16,15 +16,18 @@ limitations under the License. */
 
 #include <time.h>
 
-#include <chrono>  // NOLINT
+#include <chrono>              // NOLINT
+#include <condition_variable>  // NOLINT
 #include <ctime>
 #include <functional>
 #include <iostream>
 #include <map>
 #include <mutex>  // NOLINT
 #include <string>
+#include <thread>  // NOLINT
 #include <vector>
 
+#include "grpc++/channel.h"
 #include "grpc++/generic/generic_stub.h"
 #include "grpc++/grpc++.h"
 #include "grpc++/support/byte_buffer.h"
@@ -190,14 +193,21 @@ class GRPCClient : public RPCClient {
       int64_t time_out = RPCClient::rpc_time_out) override;
 
   bool Wait() override;
+  // InitEventLoop should only be called by Init()
+  void InitEventLoop();
 
  private:
-  bool Proceed();
+  void Proceed();
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
   grpc::CompletionQueue cq_;
-  std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
+  std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
+  std::unique_ptr<std::thread> client_thread_;
+
+  // mutex for Wait client sync
+  std::mutex sync_mutex_;
+  std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
   std::mutex mutex_;
   DISABLE_COPY_AND_ASSIGN(GRPCClient);

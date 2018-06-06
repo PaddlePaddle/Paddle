@@ -52,7 +52,7 @@ class RecvOp : public framework::OperatorBase {
       rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
     }
     if (sync_mode) {
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
   }
 };

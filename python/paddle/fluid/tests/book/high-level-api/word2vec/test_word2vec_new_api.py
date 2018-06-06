@@ -80,6 +80,10 @@ def train_program(is_sparse):
     return avg_cost
 
 
+def optimizer_func():
+    return fluid.optimizer.SGD(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
@@ -104,9 +108,7 @@ def train(use_cuda, train_program, params_dirname):
                 sys.exit("got NaN loss, training failed.")
 
     trainer = fluid.Trainer(
-        train_func=train_program,
-        optimizer=fluid.optimizer.SGD(learning_rate=0.001),
-        place=place)
+        train_func=train_program, optimizer_func=optimizer_func, place=place)
 
     trainer.train(
         reader=train_reader,

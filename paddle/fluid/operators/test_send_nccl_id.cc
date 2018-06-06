@@ -61,7 +61,6 @@ void StartServer() {
       std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
 
   g_rpc_service->SetCond(detail::kRequestSend);
-  std::cout << "before WaitFanInOfSend" << std::endl;
   g_rpc_service->WaitBarrier(detail::kRequestSend);
 
   LOG(INFO) << "got nccl id and stop server...";

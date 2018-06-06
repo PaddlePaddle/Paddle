@@ -53,7 +53,7 @@ class PrefetchOp : public framework::OperatorBase {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
   }
 };
 

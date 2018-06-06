@@ -189,70 +189,37 @@ void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   req_count_++;
 }
 
-bool GRPCClient::Wait() {
-  VLOG(3) << "GRPCClient begin Wait()"
-          << " req_count_:" << req_count_;
-  if (req_count_ <= 0) {
-    return true;
-  }
-  const size_t kReqCnt = req_count_;
-  bool a[kReqCnt];
-  std::vector<std::future<void>> waits(req_count_);
-  std::mutex mu;
-
-  for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::AsyncIO([i, &a, &mu, this] {
-      bool ret = Proceed();
-      std::lock_guard<std::mutex> l(mu);
-      a[i] = ret;
-    });
-  }
-
-  for (int i = 0; i < req_count_; i++) {
-    waits[i].wait();
-  }
-
-  int last_req_count = req_count_;
-  req_count_ = 0;
-
-  for (int i = 0; i < last_req_count; i++) {
-    if (!a[i]) {
-      return false;
-    }
-  }
-
-  return true;
+void GRPCClient::Wait() {
+  std::unique_lock<std::mutex> lk(sync_mutex_);
+  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
 }
 
-bool GRPCClient::Proceed() {
-  void* tag = NULL;
+void RPCClient::Proceed() {
+  void* tag = nullptr;
   bool ok = false;
 
-  // request counts.
-  if (!cq_.Next(&tag, &ok)) {
-    LOG(ERROR) << "Get meets CompletionQueue error";
-    return false;
-  }
-
-  GPR_ASSERT(ok);
-  PADDLE_ENFORCE(tag);
-
-  // TODO(gongwb): add more retries.
-  BaseProcessor* c = static_cast<BaseProcessor*>(tag);
-  if (!c->status_.ok()) {
-    LOG(ERROR) << "proc param error:" << c->var_h_.String()
-               << " grpc error:" << c->status_.error_message();
+  while (cq_.Next(&tag, &ok)) {
+    BaseProcessor* c = static_cast<BaseProcessor*>(tag);
+    GPR_ASSERT(ok);
+    PADDLE_ENFORCE(c);
+    if (c->status_.ok()) {
+      c->Process();
+    } else {
+      LOG(ERROR) << "var: " << c->var_h_.String()
+                 << " grpc error:" << c->status_.error_message();
+    }
     delete c;
-    return false;
+    {
+      std::lock_guard<std::mutex> lk(sync_mutex_);
+      req_count_--;
+    }
+    sync_cond_.notify_all();
   }
-
-  c->Process();
-  delete c;
-  return true;
 }
+
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
   // TODO(Yancey1989): make grpc client completely thread-safe
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;
