@@ -74,6 +74,33 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #pragma message "This message is intended to annoy you enough to update."
 #pragma message \
     "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX;
+    case PoolingMode::kAverage:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#else
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX_DETERMINISTIC;
+    case PoolingMode::kAverage:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
 #endif  // CUDNN_VERSION < 6000
 
 enum class DataLayout {  // Not use
@@ -88,19 +115,6 @@ enum class PoolingMode {
   kAverage,
   kMaximumDeterministic,
 };
-
-inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
-  switch (mode) {
-    case PoolingMode::kMaximumDeterministic:
-      return CUDNN_POOLING_MAX_DETERMINISTIC;
-    case PoolingMode::kAverage:
-      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-    case PoolingMode::kMaximum:
-      return CUDNN_POOLING_MAX;
-    default:
-      PADDLE_THROW("Unexpected pooling mode.");
-  }
-}
 
 template <typename T>
 class CudnnDataType;
