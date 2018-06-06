@@ -4053,6 +4053,6 @@ def image_center_crop(input, shape):
         type="crop",
         inputs={"X": input},
         outputs={"Out": out},
-        attrs={"shape": input_shape[0:2] + shape,
+        attrs={"shape": list(input_shape[0:2]) + shape,
                "offsets": offsets})
     return out
