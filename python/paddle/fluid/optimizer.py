@@ -29,7 +29,7 @@ __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'Adadelta', 'ModelAverage', 'Optimizer'
+    'Adadelta', 'ModelAverage', 'Optimizer', 'AccumulateOptimizer'
 ]
 
 
@@ -815,7 +815,11 @@ Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
 
 
-class ModelAverage(Optimizer):
+class AccumulateOptimizer():
+    pass
+
+
+class ModelAverage(Optimizer, AccumulateOptimizer):
     """Accumulate the average of parameters whtin sliding window. The average
     result will be saved in temporary variables which can be applied to
     parameter variables of current model by calling 'apply()' method. And the
@@ -847,16 +851,19 @@ class ModelAverage(Optimizer):
     """
 
     def __init__(self,
+                 optimizer,
                  average_window_rate,
-                 params_grads=None,
                  min_average_window=10000,
                  max_average_window=10000,
                  **kwargs):
         super(ModelAverage, self).__init__(0.0, **kwargs)
+        self.is_accumulate_optimizer = True
+        self.optimizer = optimizer
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
 
+    def _create_averager(self, params_grads):
         self.params_grads = [] if params_grads is None else params_grads
         params = {}
         for param, grad in self.params_grads:
@@ -887,6 +894,19 @@ class ModelAverage(Optimizer):
         with program_guard(main_program=self.restore_program):
             for param_grad in self.params_grads:
                 self._add_average_restore_op(block, param_grad)
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        optimize_ops, params_grads = self.optimizer.minimize(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+        self._create_averager(params_grads)
+        return optimize_ops, params_grads
 
     def _add_average_apply_op(self, block, param_grad):
         param = block.clone_variable(param_grad[0])

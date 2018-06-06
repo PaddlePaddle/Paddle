@@ -107,7 +107,7 @@ class Trainer(object):
         # test_word2vec.py
         if not isinstance(optimizer, opt_module.Optimizer):
             raise TypeError("The optimizer should be an instance of Optimizer")
-
+        self.optimizer = optimizer
         self.scope = core.Scope()
 
         self.startup_program = framework.Program()
@@ -118,9 +118,6 @@ class Trainer(object):
             self.train_func_outputs = program_func_outs if isinstance(
                 program_func_outs, list) else [program_func_outs]
             self.test_program = self.train_program.clone()
-            if not isinstance(optimizer, opt_module.Optimizer):
-                raise TypeError(
-                    "The optimizer should be an instance of Optimizer")
             # The fisrt element of program_func_outs is loss.
             loss = self.train_func_outputs[0]
             optimize_ops, params_grads = optimizer.minimize(loss)
@@ -259,9 +256,13 @@ class Trainer(object):
 
     def save_params(self, param_path):
         # reference: save_persistables in io.py
+        exe = executor.Executor(self.place)
+        if isinstance(self.optimizer, opt_module.AccumulateOptimizer):
+            self.optimizer.apply(exe)
         with self._prog_and_scope_guard():
-            exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
+        if isinstance(self.optimizer, opt_module.AccumulateOptimizer):
+            self.optimizer.restore(exe)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
@@ -319,13 +320,16 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             accumulated = len(fetch_list) * [0]
             count = 0
+            if isinstance(self.optimizer, opt_module.AccumulateOptimizer):
+                self.optimizer.apply(exe)
             for data in reader():
                 outs = exe.run(program=self.test_program,
                                feed=feeder.feed(data),
                                fetch_list=fetch_list)
                 accumulated = [x[0] + x[1][0] for x in zip(accumulated, outs)]
                 count += 1
-
+            if isinstance(self.optimizer, opt_module.AccumulateOptimizer):
+                self.optimizer.restore(exe)
             return [x / count for x in accumulated]
 
     def _train_by_parallel_executor(self, num_epochs, event_handler, reader,
