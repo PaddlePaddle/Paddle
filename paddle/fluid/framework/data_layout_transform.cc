@@ -112,6 +112,7 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
       PADDLE_THROW("wrong mkldnn type provided");
   }
 }
+#endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
@@ -124,6 +125,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
+#ifdef PADDLE_WITH_MKLDNN
   PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
                      in.format() != memory::format::any,
                  "Input tensor should have specified memory format");
@@ -166,8 +168,8 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(memory::format::format_undef);
-}
 #endif
+}
 
 }  // namespace framework
 }  // namespace paddle

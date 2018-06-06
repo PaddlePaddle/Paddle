@@ -27,9 +27,7 @@ enum class DataLayout {
   kNHWC = 0,
   kNCHW = 1,
   kAnyLayout = 2,
-#ifdef PADDLE_WITH_MKLDNN
   kMKLDNN = 3,  // all layouts supported by MKLDNN internally
-#endif
 };
 
 inline DataLayout StringToDataLayout(const std::string& str) {
@@ -44,10 +42,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::kNCHW;
   } else if (s == "ANYLAYOUT") {
     return DataLayout::kAnyLayout;
-#ifdef PADDLE_WITH_MKLDNN
   } else if (s == "MKLDNNLAYOUT") {
     return DataLayout::kMKLDNN;
-#endif
   } else {
     PADDLE_THROW("Unknown storage order string: %s", s);
   }
@@ -61,10 +57,8 @@ inline std::string DataLayoutToString(const DataLayout& data_layout) {
       return "NCHW";
     case DataLayout::kAnyLayout:
       return "ANY_LAYOUT";
-#ifdef PADDLE_WITH_MKLDNN
     case DataLayout::kMKLDNN:
       return "MKLDNNLAYOUT";
-#endif
     default:
       PADDLE_THROW("unknown DataLayout %d", data_layout);
   }

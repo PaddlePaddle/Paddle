@@ -61,11 +61,11 @@ inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
   if (iter != dict.end()) return iter->second;
   return MKLDNNDataType::data_undef;
 }
+#endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in, Tensor* out);
-#endif
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
