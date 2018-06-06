@@ -36,3 +36,5 @@ TEST(OpConverter, ConvertBlock) {
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+USE_TRT_CONVERTER(conv2d)
