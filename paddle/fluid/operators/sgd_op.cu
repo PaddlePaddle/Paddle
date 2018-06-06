@@ -62,11 +62,18 @@ __global__ void SparseConsistentSGDFunctorKernel(const T* selected_rows,
   int tid = threadIdx.x;
   int grid_size = blockDim.x * gridDim.x;
   int cur_dim = blockIdx.x * blockDim.x + tid;
-  int dim = row_numel;
+
+  for (int d = 0; d < row_numel; d++) {
+    for (int i = 0; i < K; i++) {
+      printf("i = %d, d = %d, selected_row val = %f\n", i, d,
+             selected_rows[i * row_numel + d]);
+    }
+  }
+
   for (int d = 0; d < row_numel; d += 1) {
     // for (int d = cur_dim; d < row_numel; d += grid_size) {
     for (int i = K - 1; i >= 0; i--) {
-      selected_rows += i * dim;
+      selected_rows += i * row_numel;
       tensor_out += rows[i] * row_numel;
       T selval = selected_rows[d];
       tensor_out[d] -= lr * selval;
