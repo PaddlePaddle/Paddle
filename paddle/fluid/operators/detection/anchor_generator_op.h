@@ -53,7 +53,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
     for (int h_idx = 0; h_idx < feature_height; ++h_idx) {
       for (int w_idx = 0; w_idx < feature_width; ++w_idx) {
         T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
-        T y_ctr = (w_idx * stride_height) + offset * (stride_height - 1);
+        T y_ctr = (h_idx * stride_height) + offset * (stride_height - 1);
         T area, area_ratios;
         T base_w, base_h;
         T scale_w, scale_h;
@@ -71,10 +71,14 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
             scale_h = anchor_size / stride_height;
             anchor_width = scale_w * base_w;
             anchor_height = scale_h * base_h;
-            e_anchors(h_idx, w_idx, idx, 0) = (x_ctr - 0.5 * (anchor_width - 1));
-            e_anchors(h_idx, w_idx, idx, 1) = (y_ctr - 0.5 * (anchor_height - 1));
-            e_anchors(h_idx, w_idx, idx, 2) = (x_ctr + 0.5 * (anchor_width - 1));
-            e_anchors(h_idx, w_idx, idx, 3) = (y_ctr + 0.5 * (anchor_height - 1));
+            e_anchors(h_idx, w_idx, idx, 0) =
+                (x_ctr - 0.5 * (anchor_width - 1));
+            e_anchors(h_idx, w_idx, idx, 1) =
+                (y_ctr - 0.5 * (anchor_height - 1));
+            e_anchors(h_idx, w_idx, idx, 2) =
+                (x_ctr + 0.5 * (anchor_width - 1));
+            e_anchors(h_idx, w_idx, idx, 3) =
+                (y_ctr + 0.5 * (anchor_height - 1));
             idx++;
           }
         }

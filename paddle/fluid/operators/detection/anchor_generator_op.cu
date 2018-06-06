@@ -17,13 +17,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 template <typename T>
 __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
-                            const T* anchor_sizes, const int as_num,
-                            const T* stride, const int sd_num, 
-                            const int height, const int width,
-                            const T offset) {
+                           const T* anchor_sizes, const int as_num,
+                           const T* stride, const int sd_num, const int height,
+                           const int width, const T offset) {
   int num_anchors = as_num * ar_num;
   int box_num = height * width * num_anchors;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < box_num;
@@ -33,7 +31,7 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
     T stride_width = stride[0];
     T stride_height = stride[1];
     T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
-    T y_ctr = (w_idx * stride_height) + offset * (stride_height - 1);
+    T y_ctr = (h_idx * stride_height) + offset * (stride_height - 1);
     T area, area_ratios;
     T base_w, base_h;
     T scale_w, scale_h;
@@ -113,9 +111,9 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
     framework::TensorFromVector(stride, ctx.device_context(), &sd);
 
     GenAnchors<T><<<grid, block, 0, stream>>>(
-        anchors->data<T>(), ar.data<T>(), aspect_ratios.size(),
-        as.data<T>(), anchor_sizes.size(), sd.data<T>(), stride.size(),
-        height, width, offset);
+        anchors->data<T>(), ar.data<T>(), aspect_ratios.size(), as.data<T>(),
+        anchor_sizes.size(), sd.data<T>(), stride.size(), height, width,
+        offset);
 
     framework::Tensor v;
     framework::TensorFromVector(variances, ctx.device_context(), &v);
@@ -129,5 +127,6 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(anchor_generator, ops::AnchorGeneratorOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(anchor_generator,
+                        ops::AnchorGeneratorOpCUDAKernel<float>,
                         ops::AnchorGeneratorOpCUDAKernel<double>);

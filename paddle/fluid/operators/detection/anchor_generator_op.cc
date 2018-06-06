@@ -89,9 +89,9 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         "aspect_ratios",
         "(vector<float>) List of aspect ratios of generated anchors.");
 
-    AddAttr<std::vector<float>>(
-        "variances",
-        "(vector<float>) List of variances to be used in box regression deltas.")
+    AddAttr<std::vector<float>>("variances",
+                                "(vector<float>) List of variances to be used "
+                                "in box regression deltas.")
         .AddCustomChecker([](const std::vector<float>& variances) {
           PADDLE_ENFORCE_EQ(variances.size(), 4,
                             "Must and only provide 4 variance.");
@@ -101,14 +101,14 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
           }
         });
 
-    AddAttr<std::vector<float>>(
-        "stride",
-        "Anchors stride across width and height.")
-        .SetDefault(std::vector<float>(2, 16))
+    AddAttr<std::vector<float>>("stride",
+                                "Anchors stride across width and height.")
+        .SetDefault(std::vector<float>(2, 16.0))
         .AddCustomChecker([](const std::vector<float>& stride) {
-          PADDLE_ENFORCE_EQ(stride.size(), 2, 
-                            "Must and only provide 2 stride for width and height.");
-          for (size_t i = 0; i < stride.size(); ++i){
+          PADDLE_ENFORCE_EQ(
+              stride.size(), 2,
+              "Must and only provide 2 stride for width and height.");
+          for (size_t i = 0; i < stride.size(); ++i) {
             PADDLE_ENFORCE_GT(stride[i], 0.0,
                               "stride[%d] should be larger than 0.", i);
           }
@@ -134,7 +134,8 @@ https://arxiv.org/abs/1506.01497.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(anchor_generator, ops::AnchorGeneratorOp, ops::AnchorGeneratorOpMaker,
+REGISTER_OPERATOR(anchor_generator, ops::AnchorGeneratorOp,
+                  ops::AnchorGeneratorOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 
 REGISTER_OP_CPU_KERNEL(anchor_generator, ops::AnchorGeneratorOpKernel<float>,
