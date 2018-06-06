@@ -71,16 +71,17 @@ class TestListenAndServOp(OpTest):
 
     def _wait_ps_ready(self, pid):
         retry_times = self.ps_timeout
+        sleep_time = 0.5
         while True:
             assert retry_times >= 0, "wait ps ready failed"
-            time.sleep(0.5)
+            time.sleep(sleep_time)
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
                 # on the /tmp directory until it was ready to process all the RPC call.
                 os.stat("/tmp/paddle.%d.port" % pid)
                 return
             except os.error:
-                retry_times -= 1
+                retry_times -= sleep_time
 
     def test_rpc_interfaces(self):
         # TODO(Yancey1989): need to make sure the rpc interface correctly.
