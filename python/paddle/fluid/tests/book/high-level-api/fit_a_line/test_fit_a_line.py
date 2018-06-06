@@ -48,13 +48,15 @@ def train_program():
     return avg_loss
 
 
+def optimizer_func():
+    return fluid.optimizer.SGD(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        train_func=train_program,
-        place=place,
-        optimizer=fluid.optimizer.SGD(learning_rate=0.001))
+        train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
