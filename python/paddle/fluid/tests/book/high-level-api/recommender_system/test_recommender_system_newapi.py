@@ -194,7 +194,6 @@ def train(use_cuda, train_program, params_dirname):
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
 
-
     trainer = fluid.Trainer(
         train_func=train_program, place=place, optimizer_func=optimizer_func)
 
@@ -219,15 +218,19 @@ def infer(use_cuda, inference_program, params_dirname):
     # Correspondingly, lod = [[3, 2]] contains one level of detail info,
     # indicating that `data` consists of two sequences of length 3 and 2.
     infer_movie_id = 783
-    infer_movie_name = paddle.dataset.movielens.movie_info()[infer_movie_id].title
+    infer_movie_name = paddle.dataset.movielens.movie_info()[
+        infer_movie_id].title
     user_id = fluid.create_lod_tensor([[1]], [[1]], place)
     gender_id = fluid.create_lod_tensor([[1]], [[1]], place)
     age_id = fluid.create_lod_tensor([[0]], [[1]], place)
     job_id = fluid.create_lod_tensor([[10]], [[1]], place)
-    movie_id = fluid.create_lod_tensor([[infer_movie_id]], [[1]], place)   # Hunchback of Notre Dame
-    category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place) # Animation, Children's, Musical
-    movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]], # 'hunchback','of','notre','dame','the'
-                                          place)
+    movie_id = fluid.create_lod_tensor([[infer_movie_id]], [[1]],
+                                       place)  # Hunchback of Notre Dame
+    category_id = fluid.create_lod_tensor(
+        [[10, 8, 9]], [[3]], place)  # Animation, Children's, Musical
+    movie_title = fluid.create_lod_tensor(
+        [[1069, 4140, 2923, 710, 988]], [[5]],
+        place)  # 'hunchback','of','notre','dame','the'
 
     results = inferencer.infer(
         {
@@ -242,8 +245,10 @@ def infer(use_cuda, inference_program, params_dirname):
         return_numpy=False)
 
     predict_rating = np.array(results[0])
-    print("Predict Rating of user id 1 on movie \"" + infer_movie_name + "\" is " + str(predict_rating[0][0]))
-    print("Actual Rating of user id 1 on movie \"" + infer_movie_name + "\" is 4.")
+    print("Predict Rating of user id 1 on movie \"" + infer_movie_name +
+          "\" is " + str(predict_rating[0][0]))
+    print("Actual Rating of user id 1 on movie \"" + infer_movie_name +
+          "\" is 4.")
 
 
 def main(use_cuda):
