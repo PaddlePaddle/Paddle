@@ -22,7 +22,6 @@ limitations under the License. */
 #include <vector>
 
 #include "brpc/server.h"
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -41,7 +40,7 @@ namespace detail {
 class AsyncBRPCServer final : public RPCServer {
  public:
   explicit AsyncBRPCServer(const std::string& address, int client_num)
-      : RPCServer(address, client_num) {}
+      : RPCServer(address, client_num), ready_(0) {}
 
   virtual ~AsyncBRPCServer() {}
   void StartServer() override;
@@ -54,6 +53,10 @@ class AsyncBRPCServer final : public RPCServer {
 
   static constexpr int idle_timeout_s_ = -1;
   static constexpr int max_concurrency_ = 0;
+
+  std::mutex mutex_ready_;
+  std::condition_variable condition_ready_;
+  int ready_;
 };
 
 };  // namespace detail

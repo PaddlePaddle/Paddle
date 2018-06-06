@@ -244,8 +244,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
             << ", end_point:" << endpoint;
 
-  // request_handler_.reset(new detail::GRPCRequestSendHandler(sync_mode));
+#ifdef PADDLE_WITH_GRPC
   rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
+#else
+  rpc_service_.reset(new detail::AsyncBRPCServer(endpoint, fan_in));
+#endif
   request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
   request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(

@@ -163,3 +163,7 @@ if(WITH_GOLANG)
   endif()
 
 endif(WITH_GOLANG)
+
+if(WITH_GRPC)
+    add_definitions(-DPADDLE_WITH_GRPC)
+endif(WITH_GRPC)

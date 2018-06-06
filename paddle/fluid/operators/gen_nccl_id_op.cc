@@ -77,8 +77,14 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
     detail::RequestSendHandler rpc_h(true);
-    detail::AsyncGRPCServer rpc_service(endpoint, 1);
-    rpc_service.RegisterRPC(detail::kRequestSend, &rpc_h);
+    std::unique_ptr<detail::RPCServer> rpc_service(nullptr);
+#ifdef PADDLE_WITH_GRPC
+    rpc_service.reset(new detail::AsyncGRPCServer(endpoint, 1));
+#else
+    rpc_service.reset(new detail::AsyncBRPCServer(endpoint, 1));
+#endif
+
+    rpc_service->RegisterRPC(detail::kRequestSend, &rpc_h);
     rpc_h.SetRPCServer(&rpc_service);
 
     framework::ProgramDesc empty_program;
@@ -89,12 +95,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_h.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncGRPCServer::StartServer, &rpc_service));
-    rpc_service.SetCond(detail::kRequestSend);
+        std::bind(&detail::AsyncRPCServer::StartServer, &rpc_service));
+
+    rpc_service->SetCond(detail::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service.WaitBarrier(detail::kRequestSend);
+    rpc_service->WaitBarrier(detail::kRequestSend);
     VLOG(3) << "got nccl id and stop server...";
-    rpc_service.ShutDown();
+    rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
   }

@@ -37,7 +37,7 @@ namespace m = paddle::operators::math;
 namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
+std::unique_ptr<detail::AsyncRPCServer> g_rpc_service;
 std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 void StartServer() {
@@ -58,7 +58,7 @@ void StartServer() {
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
+      std::bind(&detail::RPCServer::StartServer, g_rpc_service.get()));
 
   g_rpc_service->SetCond(detail::kRequestSend);
   std::cout << "before WaitFanInOfSend" << std::endl;
@@ -69,9 +69,13 @@ void StartServer() {
   server_thread.join();
 }
 
-TEST(SendNcclId, GrpcServer) {
+TEST(SendNcclId, RPCServer) {
   g_req_handler.reset(new detail::RequestSendHandler(true));
+#ifdef PADDLE_WITH_GRPC
   g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
+#else
+  g_rpc_service.reset(new detail::AsyncBRPCServer("127.0.0.1:0", 1));
+#endif
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();

@@ -45,6 +45,7 @@ ExternalProject_Add(
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     -DCMAKE_PREFIX_PATH=${prefix_path}
+                    -DBRPC_WITH_GLOG=ON
                     ${EXTERNAL_OPTIONAL_ARGS}
     LIST_SEPARATOR |
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${BRPC_INSTALL_DIR}
