@@ -1,16 +1,16 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <sys/time.h>
 #include <algorithm>
@@ -54,18 +54,24 @@ std::string num2str(T a) {
 }
 }  // namespace
 
-bool NativePaddlePredictor::Init() {
+bool NativePaddlePredictor::Init(
+    std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
 
-  // TODO(panyx0718): Should CPU vs GPU device be decided by id?
-  if (config_.device >= 0) {
+  if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  paddle::framework::InitDevices(false);
+  if (parent_scope) {
+    scope_ = parent_scope;
+    sub_scope_ = &(parent_scope->NewScope());
+  } else {
+    paddle::framework::InitDevices(false);
+    scope_.reset(new paddle::framework::Scope());
+  }
+
   executor_.reset(new paddle::framework::Executor(place_));
-  scope_.reset(new paddle::framework::Scope());
 
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
@@ -84,17 +90,21 @@ bool NativePaddlePredictor::Init() {
     return false;
   }
   ctx_ = executor_->Prepare(*inference_program_, 0);
+  executor_->CreateVariables(
+      *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
-  // Create variables
-  // TODO(panyx0718): Why need to test share_variables here?
-  if (config_.share_variables) {
-    executor_->CreateVariables(*inference_program_, scope_.get(), 0);
-  }
   // Get the feed_target_names and fetch_target_names
   feed_target_names_ = inference_program_->GetFeedTargetNames();
   fetch_target_names_ = inference_program_->GetFetchTargetNames();
   return true;
 }
+
+NativePaddlePredictor::~NativePaddlePredictor() {
+  if (sub_scope_) {
+    PADDLE_ENFORCE_NOT_NULL(scope_, "Should have parent scope!");
+    scope_->DeleteScope(sub_scope_);
+  }
+};
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data) {
@@ -120,11 +130,12 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
-  executor_->RunPreparedContext(ctx_.get(),
-                                scope_.get(),
-                                &feed_targets,
-                                &fetch_targets,
-                                !config_.share_variables);
+  executor_->RunPreparedContext(
+      ctx_.get(),
+      sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
+      &feed_targets,
+      &fetch_targets,
+      false /* don't create variable eatch time */);
   if (!GetFetch(fetchs, output_data)) {
     LOG(ERROR) << "fail to get fetchs";
     return false;
@@ -137,7 +148,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
 
-  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init()) {
+  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
@@ -242,11 +253,16 @@ bool NativePaddlePredictor::GetFetch(
 
 template <>
 std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig, PaddlePredictor::EngineKind::kNative>(
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
+    PADDLE_ENFORCE_GT(
+        config.fraction_of_gpu_memory,
+        0.f,
+        "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+    PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
@@ -260,7 +276,7 @@ CreatePaddlePredictor<NativeConfig, PaddlePredictor::EngineKind::kNative>(
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
-  if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init()) {
+  if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
   return std::move(predictor);

@@ -24,8 +24,9 @@ namespace tensorrt {
 class MulOpConverter : public OpConverter {
  public:
   MulOpConverter() {}
-  void operator()(const framework::proto::OpDesc& op) override {
-    VLOG(4) << "convert a fluid mul op to tensorrt fc layer without bias";
+  void operator()(const framework::proto::OpDesc& op,
+                  const framework::Scope& scope) override {
+    VLOG(4) << "convert a fluid mul op to tensorrt mul layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
