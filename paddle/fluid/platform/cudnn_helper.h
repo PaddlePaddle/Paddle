@@ -68,6 +68,19 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     }                                                             \
   } while (false)
 
+enum class DataLayout {  // Not use
+  kNHWC,
+  kNCHW,
+  kNCDHW,
+  kNCHW_VECT_C,
+};
+
+enum class PoolingMode {
+  kMaximum,
+  kAverage,
+  kMaximumDeterministic,
+};
+
 #if CUDNN_VERSION < 6000
 #pragma message "CUDNN version under 6.0 is supported at best effort."
 #pragma message "We strongly encourage you to move to 6.0 and above."
@@ -102,19 +115,6 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
   }
 }
 #endif  // CUDNN_VERSION < 6000
-
-enum class DataLayout {  // Not use
-  kNHWC,
-  kNCHW,
-  kNCDHW,
-  kNCHW_VECT_C,
-};
-
-enum class PoolingMode {
-  kMaximum,
-  kAverage,
-  kMaximumDeterministic,
-};
 
 template <typename T>
 class CudnnDataType;
