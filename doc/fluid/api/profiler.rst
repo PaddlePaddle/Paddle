@@ -23,3 +23,15 @@ profiler
 ..  autofunction:: paddle.fluid.profiler.profiler
     :noindex:
 
+start_profiler
+--------------
+
+..  autofunction:: paddle.fluid.profiler.start_profiler
+    :noindex:
+
+stop_profiler
+-------------
+
+..  autofunction:: paddle.fluid.profiler.stop_profiler
+    :noindex:
+

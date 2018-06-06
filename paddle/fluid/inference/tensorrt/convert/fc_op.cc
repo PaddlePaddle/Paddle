@@ -59,7 +59,7 @@ class FcOpConverter : public OpConverter {
                   const framework::Scope& scope) override {
     VLOG(4) << "convert a fluid fc op to tensorrt fc layer without bias";
 
-    framework::OpDesc op_desc(op, nullptr, nullptr);
+    framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);

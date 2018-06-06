@@ -68,9 +68,7 @@ class RequestSend final : public RequestBase {
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
-
   virtual ~RequestSend() {}
-
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
@@ -82,7 +80,6 @@ class RequestSend final : public RequestBase {
     framework::Variable* outvar = nullptr;
 
     request_handler_->Handle(varname, scope, invar, &outvar);
-
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
@@ -125,7 +122,6 @@ class RequestGet final : public RequestBase {
       SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);
     }
-
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
@@ -170,10 +166,9 @@ class RequestPrefetch final : public RequestBase {
 
     SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
                           &reply_);
-
-    status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    status_ = FINISH;
   }
 
  protected:
