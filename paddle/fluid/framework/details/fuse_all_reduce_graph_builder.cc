@@ -320,6 +320,7 @@ static VarHandle *FindTheFirstVersionOfVariable(VarHandle *var) {
       }
     }
   };
+  impl(result);
   return result;
 }
 
