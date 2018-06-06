@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -97,15 +96,17 @@ ParallelExecutor::ParallelExecutor(
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(
+  builder_.reset(new details::MultiDevSSAGraphBuilder(
       member_->places_, loss_var_name, params, member_->local_scopes_,
-      member_->nccl_ctxs_.get(), build_strategy);
+      member_->nccl_ctxs_.get(), build_strategy));
+
 #else
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           build_strategy);
+  builder_.reset(new details::MultiDevSSAGraphBuilder(
+      member_->places_, loss_var_name, params, member_->local_scope_,
+      build_strategy));
+
 #endif
-  auto graph = builder.Build(main_program);
+  auto graph = builder_.get()->Build(main_program);
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
@@ -146,8 +147,16 @@ void ParallelExecutor::BCastParamsToGPUs(
           buffer = t->mutable_data(place, main_tensor.type());
         }
         auto &nccl_ctx = member_->nccl_ctxs_->at(place);
-        platform::dynload::ncclBcast(buffer, numel, data_type, 0,
-                                     nccl_ctx.comm_, nccl_ctx.stream());
+
+        if (builder_.get() != nullptr &&
+            builder_->GetRemoteVarDevice(var) != -1) {
+          int place_id = builder_->GetRemoteVarDevice(var);
+          platform::dynload::ncclBcast(buffer, numel, data_type, place_id,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
+        } else {
+          platform::dynload::ncclBcast(buffer, numel, data_type, 0,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
+        }
       }
     } else {
       platform::CPUPlace cpu;
