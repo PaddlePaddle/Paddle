@@ -28,8 +28,8 @@ class TestFusedParallelExecutor(unittest.TestCase):
 
             hidden = img
 
-            for i in xrange(4):
-                hidden = fluid.layers.fc(hidden, size=10, act='relu')
+            # for i in xrange(4):
+            #     hidden = fluid.layers.fc(hidden, size=10, act='relu')
             hidden = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
             lbl = fluid.layers.fill_constant(
@@ -56,8 +56,8 @@ class TestFusedParallelExecutor(unittest.TestCase):
         return numpy.array(pe.run(fetch_list=[loss.name])[0])
 
     def test_main(self):
-        loss1 = self.run_test(True)
         loss2 = self.run_test(False)
+        loss1 = self.run_test(True)
         self.assertAlmostEqual(loss1, loss2)
 
 

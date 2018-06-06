@@ -82,6 +82,8 @@ class OpHandleBase {
     return res.size();
   }
 
+  size_t NoDummyInputSize() const;
+
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
 
   std::vector<VarHandleBase *> &Outputs() { return outputs_; }

@@ -32,7 +32,7 @@ NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
 }
 
 void NCCLAllReduceOpHandle::RunImpl() {
-  if (inputs_.size() == 1) {
+  if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
   } else {
     // Wait input done
