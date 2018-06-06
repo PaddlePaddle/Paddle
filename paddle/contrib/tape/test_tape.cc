@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/contrib/tape/tape.h"
+#include "paddle/contrib/tape/function.h"
 
 TEST(Tape, TestMLP) {
   LOG(INFO) << "TestMLP";

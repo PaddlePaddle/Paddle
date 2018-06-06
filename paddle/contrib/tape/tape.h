@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
 #include <list>
 #include <map>
@@ -23,18 +24,14 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
 
+#include "paddle/contrib/tape/variable.h"
+
 namespace paddle {
 namespace tape {
-
-paddle::framework::Scope& get_global_scope() {
-  static paddle::framework::Scope S;
-  return S;
-}
 
 // borrowed from
 // https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
@@ -43,73 +40,9 @@ inline bool ends_with(std::string const& value, std::string const& ending) {
   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-class Variable;
-
-using VariableHandle = std::shared_ptr<Variable>;
 using ConstVariableHandleMap =
     std::map<std::string, std::vector<VariableHandle>>;
 using VariableHandleMap = std::map<std::string, std::vector<VariableHandle>>;
-
-/*
- * Currently it depends on framework::Scope and framework::Variable
- * Later on will only depend on framework::Variable
- */
-class Variable {
- public:
-  Variable(const std::string pre_fix)
-      : desc_(pre_fix + std::to_string(count())) {
-    get_global_scope().Var(desc_.Name());
-  }
-
-  Variable(const std::string pre_fix, bool is_grad)
-      : desc_(pre_fix +
-              (is_grad ? framework::kGradVarSuffix : std::to_string(count()))) {
-    get_global_scope().Var(desc_.Name());
-  }
-  //  Variable(const Variable& rhs) : desc_(rhs.desc_){}
-
-  ~Variable() { get_global_scope().EraseVars({desc_.Name()}); }
-
-  void InitializeVariable() {
-    LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();
-    framework::proto::VarType::Type var_type = desc_.GetType();
-    if (var_type == framework::proto::VarType::LOD_TENSOR) {
-      get_global_scope().Var(desc_.Name())->GetMutable<framework::LoDTensor>();
-      //    } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
-      //      var->GetMutable<SelectedRows>();
-    } else {
-      PADDLE_THROW(
-          "Variable type %d is not in "
-          "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-          "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
-          var_type);
-    }
-  }
-
-  VariableHandle Grad() {
-    if (grad_ == nullptr) {
-      grad_.reset(new Variable(desc_.Name(), true));
-    }
-
-    return grad_;
-  }
-
-  std::string Name() const { return desc_.Name(); }
-
-  //  void init(const std::string& initializer,
-  //            const framework::AttributeMap& attrs);
-
-  framework::VarDesc desc_;
-
- private:
-  int count() {
-    static int counter = 0;
-    return counter++;
-  }
-
-  VariableHandle grad_;
-  //  framework::Variable* var_;
-};
 
 struct OpHandle {
   OpHandle(const std::string& type,
@@ -324,73 +257,5 @@ Tape& get_global_tape() {
   static Tape T;
   return T;
 }
-
-class Function {};
-
-class Fill {
- public:
-  Fill(const std::string& initializer, const framework::AttributeMap& attrs)
-      : initializer_(initializer), attrs_(attrs) {}
-
-  void operator()(VariableHandle var) {
-    get_global_tape().AddOp(initializer_, {}, {{"Out", {var}}}, attrs_);
-  }
-
- private:
-  const std::string initializer_;
-  const framework::AttributeMap attrs_;
-};
-
-class Mean {
- public:
-  VariableHandle operator()(VariableHandle var) {
-    VariableHandle out(new Variable("mean"));
-    get_global_tape().AddOp("mean", {{"X", {var}}}, {{"Out", {out}}}, {});
-    return out;
-  }
-};
-
-class Linear {
- public:
-  Linear(int in_dim, int out_dim, const std::string& act)
-      : w_(new Variable("LinearWeight")),
-        b_(new Variable("LinearBias")),
-        act_(act) {
-    // TODO(tonyyang-svail): make weight initialization independent of the tape
-    std::string initializer = "fill_constant";
-    framework::AttributeMap attrs;
-    attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
-    attrs["shape"] = std::vector<int>{in_dim, out_dim};
-    attrs["value"] = 1.0f;
-    Fill w_filler(initializer, attrs);
-    w_filler(w_);
-
-    attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
-    attrs["shape"] = std::vector<int>{out_dim};
-    attrs["value"] = 1.0f;
-    Fill b_filler(initializer, attrs);
-    b_filler(b_);
-  }
-
-  VariableHandle operator()(VariableHandle& input) {
-    VariableHandle y(new Variable("linear"));
-    get_global_tape().AddOp("mul",
-                            {{"X", {input}}, {"Y", {w_}}},
-                            {{"Out", {y}}},
-                            {{"x_num_col_dims", 1}, {"y_num_col_dims", 1}});
-    return y;
-  }
-
- private:
-  VariableHandle w_;
-  VariableHandle b_;
-  std::string act_;
-};
-
-// void Variable::init(const std::string& initializer,
-//          const framework::AttributeMap& attrs) {
-//  Fill filler(initializer, attrs);
-//  filler(this);
-//}
 }
 }
