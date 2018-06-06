@@ -38,7 +38,7 @@ class OpConverter {
                           const framework::Scope& scope,
                           bool test_mode = false) {}
 
-  // Convert a single fluid operaotr and add the corresponding layer to TRT.
+  // Convert a single fluid operator and add the corresponding layer to TRT.
   // test_mode: whether the instance executes in an unit test.
   void ConvertOp(const framework::proto::OpDesc& op,
                  const std::unordered_set<std::string>& parameters,

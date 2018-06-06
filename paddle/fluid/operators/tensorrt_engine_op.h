@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
