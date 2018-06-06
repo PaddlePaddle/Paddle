@@ -51,6 +51,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
 
  private:
+  std::unique_ptr<SSAGraph> graph_;
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;

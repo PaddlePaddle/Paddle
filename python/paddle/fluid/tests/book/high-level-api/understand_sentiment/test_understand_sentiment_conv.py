@@ -64,15 +64,18 @@ def train_program(word_dict):
     return [avg_cost, accuracy]
 
 
+def optimizer_func():
+    return fluid.optimizer.Adagrad(learning_rate=0.002)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.Adagrad(learning_rate=0.002)
 
     word_dict = paddle.dataset.imdb.word_dict()
     trainer = fluid.Trainer(
         train_func=partial(train_program, word_dict),
         place=place,
-        optimizer=optimizer)
+        optimizer_func=optimizer_func)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
