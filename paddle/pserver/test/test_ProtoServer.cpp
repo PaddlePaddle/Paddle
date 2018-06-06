@@ -28,7 +28,7 @@ DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
 using namespace paddle;  // NOLINT
 
 class MyServer : public ProtoServer {
-public:
+ public:
   explicit MyServer(int port, int rdmaCpu = -1)
       : ProtoServer(FLAGS_server_addr, port, rdmaCpu),
         status_(PSERVER_STATUS_NOT_SET) {
@@ -62,7 +62,7 @@ public:
     callback(response);
   }
 
-protected:
+ protected:
   PServerStatus status_;
   std::string buffer_;
 };

@@ -23,12 +23,12 @@ limitations under the License. */
 namespace paddle {
 
 class Weight {
-private:
+ private:
   MatrixPtr weight_;
   MatrixPtr weightGrad_;
   ParameterPtr parameter_;
 
-public:
+ public:
   Weight(size_t height, size_t width, ParameterPtr parameter);
   Weight(size_t height, size_t width, ParameterPtr parameter, size_t offset);
 

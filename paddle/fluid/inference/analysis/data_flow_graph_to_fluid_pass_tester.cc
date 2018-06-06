@@ -44,6 +44,6 @@ TEST_F(DFG_Tester, Test) {
   LOG(INFO) << graph.nodes.size();
 }
 
-}  // analysis
-}  // inference
-}  // paddle
+};  // namespace analysis
+};  // namespace inference
+};  // namespace paddle

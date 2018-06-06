@@ -55,6 +55,13 @@ While
     :members:
     :noindex:
 
+Switch
+------
+
+..  autoclass:: paddle.fluid.layers.Switch
+    :members:
+    :noindex:
+
 lod_rank_table
 --------------
 
@@ -65,12 +72,6 @@ max_sequence_len
 ----------------
 
 ..  autofunction:: paddle.fluid.layers.max_sequence_len
-    :noindex:
-
-topk
-----
-
-..  autofunction:: paddle.fluid.layers.topk
     :noindex:
 
 lod_tensor_to_array
@@ -107,6 +108,12 @@ less_than
 ---------
 
 ..  autofunction:: paddle.fluid.layers.less_than
+    :noindex:
+
+equal
+-----
+
+..  autofunction:: paddle.fluid.layers.equal
     :noindex:
 
 array_read
@@ -174,6 +181,12 @@ Print
 ..  autofunction:: paddle.fluid.layers.Print
     :noindex:
 
+is_empty
+--------
+
+..  autofunction:: paddle.fluid.layers.is_empty
+    :noindex:
+
 device
 ======
 
@@ -210,6 +223,55 @@ Send
 ----
 
 ..  autofunction:: paddle.fluid.layers.Send
+    :noindex:
+
+open_recordio_file
+------------------
+
+..  autofunction:: paddle.fluid.layers.open_recordio_file
+    :noindex:
+
+open_files
+----------
+
+..  autofunction:: paddle.fluid.layers.open_files
+    :noindex:
+
+read_file
+---------
+
+..  autofunction:: paddle.fluid.layers.read_file
+    :noindex:
+
+shuffle
+-------
+
+..  autofunction:: paddle.fluid.layers.shuffle
+    :noindex:
+
+batch
+-----
+
+..  autofunction:: paddle.fluid.layers.batch
+    :noindex:
+
+double_buffer
+-------------
+
+..  autofunction:: paddle.fluid.layers.double_buffer
+    :noindex:
+
+random_data_generator
+---------------------
+
+..  autofunction:: paddle.fluid.layers.random_data_generator
+    :noindex:
+
+Preprocessor
+------------
+
+..  autoclass:: paddle.fluid.layers.Preprocessor
+    :members:
     :noindex:
 
 nn
@@ -281,12 +343,6 @@ square_error_cost
 ..  autofunction:: paddle.fluid.layers.square_error_cost
     :noindex:
 
-accuracy
---------
-
-..  autofunction:: paddle.fluid.layers.accuracy
-    :noindex:
-
 chunk_eval
 ----------
 
@@ -311,6 +367,18 @@ sequence_pool
 ..  autofunction:: paddle.fluid.layers.sequence_pool
     :noindex:
 
+sequence_softmax
+----------------
+
+..  autofunction:: paddle.fluid.layers.sequence_softmax
+    :noindex:
+
+softmax
+-------
+
+..  autofunction:: paddle.fluid.layers.softmax
+    :noindex:
+
 pool2d
 ------
 
@@ -321,12 +389,6 @@ batch_norm
 ----------
 
 ..  autofunction:: paddle.fluid.layers.batch_norm
-    :noindex:
-
-layer_norm
-----------
-
-..  autofunction:: paddle.fluid.layers.layer_norm
     :noindex:
 
 beam_search_decode
@@ -377,6 +439,12 @@ reduce_min
 ..  autofunction:: paddle.fluid.layers.reduce_min
     :noindex:
 
+reduce_prod
+-----------
+
+..  autofunction:: paddle.fluid.layers.reduce_prod
+    :noindex:
+
 sequence_first_step
 -------------------
 
@@ -423,6 +491,12 @@ matmul
 ------
 
 ..  autofunction:: paddle.fluid.layers.matmul
+    :noindex:
+
+topk
+----
+
+..  autofunction:: paddle.fluid.layers.topk
     :noindex:
 
 warpctc
@@ -473,6 +547,60 @@ multiplex
 ..  autofunction:: paddle.fluid.layers.multiplex
     :noindex:
 
+layer_norm
+----------
+
+..  autofunction:: paddle.fluid.layers.layer_norm
+    :noindex:
+
+softmax_with_cross_entropy
+--------------------------
+
+..  autofunction:: paddle.fluid.layers.softmax_with_cross_entropy
+    :noindex:
+
+smooth_l1
+---------
+
+..  autofunction:: paddle.fluid.layers.smooth_l1
+    :noindex:
+
+one_hot
+-------
+
+..  autofunction:: paddle.fluid.layers.one_hot
+    :noindex:
+
+autoincreased_step_counter
+--------------------------
+
+..  autofunction:: paddle.fluid.layers.autoincreased_step_counter
+    :noindex:
+
+reshape
+-------
+
+..  autofunction:: paddle.fluid.layers.reshape
+    :noindex:
+
+lod_reset
+---------
+
+..  autofunction:: paddle.fluid.layers.lod_reset
+    :noindex:
+
+lrn
+---
+
+..  autofunction:: paddle.fluid.layers.lrn
+    :noindex:
+
+pad
+---
+
+..  autofunction:: paddle.fluid.layers.pad
+    :noindex:
+
 label_smooth
 ------------
 
@@ -480,11 +608,34 @@ label_smooth
     :noindex:
 
 roi_pool
----------
+--------
 
 ..  autofunction:: paddle.fluid.layers.roi_pool
     :noindex:
 
+dice_loss
+---------
+
+..  autofunction:: paddle.fluid.layers.dice_loss
+    :noindex:
+
+resize_bilinear
+---------------
+
+..  autofunction:: paddle.fluid.layers.resize_bilinear
+    :noindex:
+
+gather
+------
+
+..  autofunction:: paddle.fluid.layers.gather
+    :noindex:
+
+random_crop
+-----------
+
+..  autofunction:: paddle.fluid.layers.random_crop
+    :noindex:
 
 ops
 ===
@@ -499,18 +650,6 @@ mul
 ---
 
 ..  autofunction:: paddle.fluid.layers.mul
-    :noindex:
-
-reshape
--------
-
-..  autofunction:: paddle.fluid.layers.reshape
-    :noindex:
-
-pad
----
-
-..  autofunction:: paddle.fluid.layers.pad
     :noindex:
 
 scale
@@ -579,10 +718,76 @@ clip_by_norm
 ..  autofunction:: paddle.fluid.layers.clip_by_norm
     :noindex:
 
-sequence_softmax
-----------------
+logical_and
+-----------
 
-..  autofunction:: paddle.fluid.layers.sequence_softmax
+..  autofunction:: paddle.fluid.layers.logical_and
+    :noindex:
+
+logical_or
+----------
+
+..  autofunction:: paddle.fluid.layers.logical_or
+    :noindex:
+
+logical_xor
+-----------
+
+..  autofunction:: paddle.fluid.layers.logical_xor
+    :noindex:
+
+logical_not
+-----------
+
+..  autofunction:: paddle.fluid.layers.logical_not
+    :noindex:
+
+uniform_random
+--------------
+
+..  autofunction:: paddle.fluid.layers.uniform_random
+    :noindex:
+
+uniform_random_batch_size_like
+------------------------------
+
+..  autofunction:: paddle.fluid.layers.uniform_random_batch_size_like
+    :noindex:
+
+gaussian_random
+---------------
+
+..  autofunction:: paddle.fluid.layers.gaussian_random
+    :noindex:
+
+gaussian_random_batch_size_like
+-------------------------------
+
+..  autofunction:: paddle.fluid.layers.gaussian_random_batch_size_like
+    :noindex:
+
+cumsum
+------
+
+..  autofunction:: paddle.fluid.layers.cumsum
+    :noindex:
+
+scatter
+-------
+
+..  autofunction:: paddle.fluid.layers.scatter
+    :noindex:
+
+sum
+---
+
+..  autofunction:: paddle.fluid.layers.sum
+    :noindex:
+
+shape
+-----
+
+..  autofunction:: paddle.fluid.layers.shape
     :noindex:
 
 sigmoid
@@ -649,6 +854,18 @@ floor
 -----
 
 ..  autofunction:: paddle.fluid.layers.floor
+    :noindex:
+
+cos
+---
+
+..  autofunction:: paddle.fluid.layers.cos
+    :noindex:
+
+sin
+---
+
+..  autofunction:: paddle.fluid.layers.sin
     :noindex:
 
 round
@@ -821,17 +1038,4 @@ zeros
 
 ..  autofunction:: paddle.fluid.layers.zeros
     :noindex:
-
-topk
-----
-
-..  autofunction:: paddle.fluid.layers.topk
-    :noindex:
-
-dice_loss
-----
-
-..  autofunction:: paddle.fluid.layers.dice_loss
-    :noindex:
-
 

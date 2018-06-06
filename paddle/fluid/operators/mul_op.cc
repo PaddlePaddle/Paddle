@@ -16,10 +16,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -76,22 +72,6 @@ class MulOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-
- private:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-    }
-#endif
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library);
-  }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -120,9 +100,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
     AddAttr<int>(
         "y_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two,
@@ -176,22 +153,6 @@ class MulGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(y_grad_name)) {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
-  }
-
- private:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-    }
-#endif
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library);
   }
 };
 

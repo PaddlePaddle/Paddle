@@ -127,7 +127,7 @@ class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1.0f);
     AddAttr<float>("max",
                    "(float, default 1.0) "
-                   "Maximun value of uniform random")
+                   "Maximum value of uniform random")
         .SetDefault(1.0f);
     AddAttr<int>("seed",
                  "(int, default 0) "

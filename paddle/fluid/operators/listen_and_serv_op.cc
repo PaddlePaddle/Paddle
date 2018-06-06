@@ -13,22 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdio.h>  // for removing the port file
+#include <csignal>
+#include <cstdlib>
 #include <fstream>
-#include <ostream>
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
-  service->RunSyncUpdate();
+void RunServer(std::shared_ptr<detail::RPCServer> service) {
+  service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
-
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -59,7 +61,7 @@ static void ParallelExecuteBlocks(
           int run_block = idx;  // thread local
           try {
             executor->RunPreparedContext(prepared[run_block].get(), scope);
-          } catch (std::exception &e) {
+          } catch (const std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
         }));
@@ -67,16 +69,16 @@ static void ParallelExecuteBlocks(
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
 
-std::atomic_int ListenAndServOp::selected_port_{0};
-
 ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
                                  const framework::VariableNameMap &outputs,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
+ListenAndServOp::~ListenAndServOp() { Stop(); }
+
 void ListenAndServOp::Stop() {
-  rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
+  rpc_service_->ShutDown();
   server_thread_->join();
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
   remove(file_path.c_str());
@@ -84,26 +86,13 @@ void ListenAndServOp::Stop() {
 
 void ListenAndServOp::SavePort() const {
   // NOTE: default write file to /tmp/paddle.selected_port
-  selected_port_ = rpc_service_->GetSelectedPort();
-  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-  std::ofstream port_file;
-  port_file.open(file_path);
-  port_file << selected_port_.load();
-  port_file.close();
-  VLOG(4) << "selected port written to " << file_path;
-}
-
-void ListenAndServOp::WaitServerReady() {
-  while (selected_port_.load() == 0) {
-  }
+  rpc_service_->SavePort();
 }
 
 void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
                                   framework::ProgramDesc *program,
                                   framework::Scope *recv_scope,
                                   framework::BlockDesc *prefetch_block) const {
-  auto fan_in = Attr<int>("Fanin");
-
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
@@ -118,49 +107,24 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
-  bool exit_flag = false;
+  rpc_service_->ResetBarrierCounter();
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
   std::vector<framework::Variable *> sparse_vars;
-  while (!exit_flag) {
+  while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    rpc_service_->SetCond(0);
-    size_t recv_var_cnt = 0;
-    int batch_barrier = 0;
-    while (batch_barrier != fan_in) {
-      const detail::ReceivedMessage v = rpc_service_->Get();
-      auto recv_var_name = v.first;
-      if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
-        LOG(INFO) << "received terminate message and exit";
-        exit_flag = true;
-        break;
-      } else if (recv_var_name == BATCH_BARRIER_MESSAGE) {
-        VLOG(3) << "recv batch barrier message";
-        batch_barrier++;
-        continue;
-      } else {
-        VLOG(3) << "received grad: " << recv_var_name;
-        recv_var_cnt++;
-        auto var = v.second->GetVar();
-        if (var == nullptr) {
-          LOG(ERROR) << "Can not find server side var: " << recv_var_name;
-          PADDLE_THROW("Can not find server side var");
-        }
-        if (var->IsType<framework::SelectedRows>()) {
-          sparse_vars.push_back(var);
-        }
-      }
-    }
-    if (exit_flag) {
-      rpc_service_->SetCond(1);
-      rpc_service_->ShutDown();
+    rpc_service_->SetCond(detail::kRequestSend);
+    rpc_service_->WaitBarrier(detail::kRequestSend);
+
+    if (rpc_service_->IsExit()) {
+      LOG(WARNING) << "get exit!rpc_processor break!";
+      rpc_service_->SetCond(detail::kRequestGet);
       break;
     }
 
     // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
     // and this will still work.
-
     // The optimize blocks which have the same parent ID would run parallel
     // TODO(Yancey1989): need to use ParallelExecutor for future
     int32_t last_parent_blkid = program->Block(1).Parent();
@@ -187,40 +151,14 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     // mini-batch.
     // TODO(Yancey1989): move the reset action into an operator, we couldn't
     // have any hide logic in the operator.
-    for (auto &var : sparse_vars) {
+    for (framework::Variable *var : sparse_vars) {
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     }
-    rpc_service_->SetCond(1);
-    // FIXME(typhoonzero): use another condition to sync wait clients get.
-    rpc_service_->WaitClientGet(fan_in);
-    sparse_vars.clear();
-  }  // while(true)
-}
 
-static void AsyncUpdateThread(
-    const std::string &var_name, const bool &exit_flag,
-    const std::shared_ptr<detail::ReceivedQueue> &queue,
-    framework::Executor *executor,
-    framework::ExecutorPrepareContext *prepared) {
-  VLOG(3) << "update thread for " << var_name << " started";
-  while (!exit_flag) {
-    const detail::ReceivedMessage v = queue->Pop();
-    auto recv_var_name = v.first;
-    auto var = v.second->GetVar();
-    if (var == nullptr) {
-      LOG(ERROR) << "Can not find server side var: " << recv_var_name;
-      PADDLE_THROW("Can not find server side var");
-    }
-    auto fs = framework::Async([var_name, &executor, &v, prepared] {
-      try {
-        executor->RunPreparedContext(prepared,
-                                     v.second->GetMutableLocalScope());
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-    });
-    fs.wait();
-  }
+    rpc_service_->SetCond(detail::kRequestGet);
+    rpc_service_->WaitBarrier(detail::kRequestGet);
+    rpc_service_->ResetBarrierCounter();
+  }  // while(true)
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
@@ -229,20 +167,18 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
-  std::unordered_map<std::string, std::shared_ptr<detail::ReceivedQueue>>
-      grad_to_queue;
 
   auto grad_to_block_id_str =
       Attr<std::vector<std::string>>("grad_to_block_id");
-  for (auto &grad_and_id : grad_to_block_id_str) {
+  for (const auto &grad_and_id : grad_to_block_id_str) {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
     VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
     PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
+
     int block_id = std::stoi(pieces[1]);
     grad_to_block_id[pieces[0]] = block_id;
-    grad_to_queue[pieces[0]] = std::make_shared<detail::ReceivedQueue>();
     id_to_grad[block_id] = pieces[0];
   }
   size_t num_blocks = program->Size();
@@ -261,38 +197,34 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
   }
 
-  bool exit_flag = false;
-
-  VLOG(3) << "start async optimize threads";
-  std::vector<std::future<void>> fs;
-  for (auto iter = grad_to_queue.begin(); iter != grad_to_queue.end(); iter++) {
-    std::string grad_name = iter->first;
-    VLOG(3) << "create async update thread for " << grad_name;
-    fs.push_back(framework::AsyncIO([grad_name, &exit_flag, &executor,
-                                     &grad_to_queue, &grad_to_prepared_ctx]() {
-      AsyncUpdateThread(grad_name, exit_flag, grad_to_queue[grad_name],
-                        executor, grad_to_prepared_ctx[grad_name].get());
-    }));
-  }
+  request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   VLOG(3) << "RunAsyncLoop into while";
-  while (!exit_flag) {
-    const detail::ReceivedMessage v = rpc_service_->Get();
-    auto recv_var_name = v.first;
-    if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
-      LOG(INFO) << "received terminate message and exit";
-      exit_flag = true;
+  while (true) {
+    if (rpc_service_->IsExit()) {
+      LOG(INFO) << "get exit!rpc_processor break!";
       break;
-    } else {
-      VLOG(3) << "received grad: " << recv_var_name;
-      grad_to_queue[recv_var_name]->Push(v);
     }
 
-    if (exit_flag) {
-      rpc_service_->ShutDown();
-      break;
-    }
+    sleep(1);
   }  // while(true)
+}
+
+static void FillRequestCtx(detail::RequestHandler *h, framework::Scope *scope,
+                           platform::DeviceContext *dev_ctx,
+                           framework::Executor *executor,
+                           framework::ProgramDesc *program,
+                           framework::ExecutorPrepareContext *prefetch_ctx,
+                           detail::RPCServer *rpc_server) {
+  h->SetScope(scope);
+  h->SetDevCtx(dev_ctx);
+  h->SetExecutor(executor);
+  h->SetProgram(program);
+  h->SetPrefetchPreparedCtx(
+      std::unique_ptr<framework::ExecutorPrepareContext>(prefetch_ctx));
+  h->SetRPCServer(rpc_server);
 }
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
@@ -304,36 +236,53 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   bool sync_mode = Attr<bool>("sync_mode");
+  auto fan_in = Attr<int>("Fanin");
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
 
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, sync_mode));
+  LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
+            << ", end_point:" << endpoint;
+
+  // request_handler_.reset(new detail::GRPCRequestSendHandler(sync_mode));
+  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
+  request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
+  request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
+  request_prefetch_handler_.reset(
+      new detail::RequestPrefetchHandler(sync_mode));
+
+  rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
+  rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
+  rpc_service_->RegisterRPC(detail::kRequestPrefetch,
+                            request_prefetch_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);
   auto *program = optimize_block->Program();
   framework::Executor executor(dev_place);
 
-  // prepare rpc_service
-  rpc_service_->SetScope(&recv_scope);
-  rpc_service_->SetDevCtx(&dev_ctx);
-  rpc_service_->SetProgram(program);
-  rpc_service_->SetExecutor(&executor);
-
   // prepare for prefetch
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
   auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
-  rpc_service_->SetPrefetchPreparedCtx(std::move(prefetch_prepared));
+
+  auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
+                     &dev_ctx, &executor, program, prefetch_prepared.release(),
+                     rpc_service_.get());
+
+  f(request_send_handler_.get());
+  f(request_get_handler_.get());
+  f(request_prefetch_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
 
+  // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
+  signal(SIGINT, SignalHandler::StopAndExit);
+  signal(SIGTERM, SignalHandler::StopAndExit);
+
   // Write to a file of server selected port for python use.
-  std::string file_path = string::Sprintf("/tmp/paddle.%d.selected_port",
-                                          static_cast<int>(::getpid()));
   SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
@@ -346,12 +295,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
-    AddComment(R"DOC(
-ListenAndServ operator
-
-This operator will start a RPC server which can receive variables
-from send_op and send back variables to recv_op.
-)DOC");
+    AddComment(R"DOC(" + "ListenAndServ operator" + "\n" + "This operator" +
+" will start a RPC server which can receive variables from send_op and send" +
+"back variables to recv_op.)DOC");
     AddAttr<std::string>("endpoint",
                          "(string, default 127.0.0.1:6164)"
                          "IP address to listen on.")
@@ -371,6 +317,11 @@ from send_op and send back variables to recv_op.
         .SetDefault(1);
   }
 };
+
+void SignalHandler::StopAndExit(int signal_num) {
+  VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
+  exit(0);
+}
 
 }  // namespace operators
 }  // namespace paddle

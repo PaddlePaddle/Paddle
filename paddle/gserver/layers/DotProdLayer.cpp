@@ -27,7 +27,7 @@ namespace paddle {
  */
 
 class DotProdLayer : public Layer {
-public:
+ public:
   explicit DotProdLayer(const LayerConfig& config) : Layer(config) {}
 
   ~DotProdLayer() {}

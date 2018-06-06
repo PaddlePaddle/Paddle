@@ -17,14 +17,14 @@ limitations under the License. */
 namespace paddle {
 
 class KmaxSeqScoreLayer : public Layer {
-private:
+ private:
   MatrixPtr scores_;
   size_t beamSize_;
   void kmaxScorePerSeq(const real* score,
                        real* sortedRes,
                        const ICpuGpuVectorPtr seqStartPos);
 
-public:
+ public:
   explicit KmaxSeqScoreLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
