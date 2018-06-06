@@ -48,6 +48,14 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
+  int GetRemoteVarDevice(const std::string &var_name) const {
+    auto got = remote_vars_devices_.find(var_name);
+    if (got != remote_vars_devices_.end()) {
+      return got->second;
+    }
+    return -1;
+  }
+
  private:
   void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
                          size_t place_id) const;
@@ -64,8 +72,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
-  void CreateRPCOp(SSAGraph *result, const OpDesc &op) const;
-  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateRPCOp(SSAGraph *result, const OpDesc &op, int place_id) const;
+  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op,
+                         int place_id) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
@@ -111,6 +120,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   BuildStrategy strategy_;
+  mutable std::unordered_map<std::string, int> remote_vars_devices_;
 };
 }  // namespace details
 }  // namespace framework
