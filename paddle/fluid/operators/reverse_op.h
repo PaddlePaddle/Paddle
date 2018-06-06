@@ -24,8 +24,8 @@ struct ReverseFunctor {
   void operator()(const DeviceContext& context, const framework::LoDTensor& in,
                   framework::LoDTensor* out, const std::vector<int>& axis) {
     Eigen::array<bool, Rank> reverse_axis;
-    for (auto& i : reverse_axis) {
-      i = false;
+    for (int i = 0; i < Rank; ++i) {
+      reverse_axis[i] = false;
     }
     for (int a : axis) {
       reverse_axis[a] = true;
