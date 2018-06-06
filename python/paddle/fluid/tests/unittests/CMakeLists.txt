@@ -51,5 +51,5 @@ py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
 # FIXME(Yancey1989): this test would cost much more time on CUDAPlace
 # since load cudnn libraries, so we use a longer timeout to make this
 # unit test stability.
-set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 30)
-set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 60)
+set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 180)
