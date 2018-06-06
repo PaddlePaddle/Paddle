@@ -42,6 +42,8 @@ class OpHandleBase {
 
   void AddInput(VarHandleBase *in);
 
+  void ReplaceInput(VarHandleBase *before, VarHandleBase *after);
+
   void AddOutput(VarHandleBase *out);
 
   // This method adds the wait events of all the input on all the device

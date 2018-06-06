@@ -339,87 +339,88 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
       GetFusedGradient(graph, global_block, group);
 
   // 2.Insert All reduce to fused var.
+  OpHandleBase *nccl_op_handle = nullptr;
+  {
+    // 1. Create Output.
+    auto name = fused_vars[0]->name_;
+    std::vector<VarHandle *> output_fused_var;
+    for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      auto &var_map = graph->vars_.at(i);
+      auto &var_list = var_map.at(name);
+      VarHandle *var_handle =
+          new VarHandle(var_list.size(), i, name, places_.at(i));
+      var_list.emplace_back(var_handle);
+      output_fused_var.emplace_back(var_handle);
+    }
 
-  // 3. Remove all reduce op
+    // 2. Create All Reduce Op
+    auto *op_handle = new NCCLAllReduceOpHandle(local_scopes_, places_, *ctxs_);
 
-  // 4. Correct handle deps
+    for (auto *ipt : fused_vars) {
+      op_handle->AddInput(ipt);
+    }
 
-  //
-  //
-  //
-  //  // Get input and output
-  //  std::vector<std::vector<VarHandle *>> inputs;
-  //  std::vector<std::vector<VarHandle *>> outputs;
-  //
-  //  std::vector<std::vector<VarHandle *>> dep_inputs;
-  //  std::vector<std::vector<VarHandle *>> dep_outputs;
-  //
-  //  inputs.resize(ops.begin()->get()->Inputs().size());
-  //  outputs.resize(ops.begin()->get()->Inputs().size());
-  //
-  //  // Collect AllReduce Ops input and output
-  //  auto collect_input_output = [](
-  //      VarHandleBase *var_handle_base,
-  //      std::vector<std::vector<VarHandle *>> *vec,
-  //      std::vector<std::vector<VarHandle *>> *dep_vec) {
-  //    auto var_h = dynamic_cast<VarHandle *>(var_handle_base);
-  //    if (var_h) {
-  //      int dev_id = boost::get<platform::CUDAPlace>(var_h->place_).device;
-  //      (*vec)[dev_id].emplace_back(var_h);
-  //    } else {
-  //      // auto dummy_h = dynamic_cast<DummyVarHandle *>(var_handle_base);
-  //      // pass
-  //    }
-  //  };
-  //  for (auto op_iter = ops.begin(); op_iter != ops.end(); op_iter++) {
-  //    auto op = op_iter->get();
-  //    for (size_t i = 0; i < op->Inputs().size(); ++i) {
-  //      collect_input_output(op->Inputs()[i], &inputs, &dep_inputs);
-  //      collect_input_output(op->Outputs()[i], &outputs, &dep_outputs);
-  //    }
-  //  }
-  //
-  //  // Create FuseVarsOpHandles
-  //  std::vector<std::string> fused_vars_output_names;
-  //  std::vector<OpHandleBase *> fuse_vars_ops;
-  //  for (size_t dev_id = 0; dev_id < inputs.size(); ++dev_id) {
-  //    PADDLE_ENFORCE_EQ(inputs[dev_id].size(), outputs[dev_id].size());
-  //    auto *scope = local_scopes_[dev_id];
-  //    auto &place = places_[dev_id];
-  //
-  //    auto fused_vars_output_name =
-  //        string::Sprintf("FuseVars_GPU%d_%d", dev_id, GetUniqNum());
-  //    fused_vars_output_names.emplace_back(fused_vars_output_name);
-  //
-  //    std::unordered_map<std::string, int64_t> inputs_dims;
-  //    proto::VarType::Type var_type =
-  //        global_block.FindVar(inputs[dev_id][0]->name_)->GetDataType();
-  //    PADDLE_ENFORCE_EQ(ToDataType(group.type_), var_type);
-  //    for (size_t j = 0; j < inputs[dev_id].size(); ++j) {
-  //      auto var_desc = global_block.FindVar(inputs[dev_id][j]->name_);
-  //      inputs_dims[inputs[dev_id][j]->name_] =
-  //          framework::product(framework::make_ddim(var_desc->GetShape()));
-  //      PADDLE_ENFORCE_EQ(var_desc->GetDataType(), var_type);
-  //    }
-  //
-  //    auto *op_handle =
-  //        new FuseVarsOpHandle(scope, place, inputs_dims, group.type_);
-  //    fuse_vars_ops.emplace_back(op_handle);
-  //    CreateFuseVarsOpHandleIO(graph, op_handle, dev_id,
-  //    fused_vars_output_name,
-  //                             place, inputs[dev_id]);
-  //  }
-  //
-  //  // Insert fuse vars into graph
-  //  InsertFusedVarsOpHandleIntoGraph(graph, &inputs, fuse_vars_ops);
-  //
-  //  // Create fused_nccl_all_reduce op handle
-  //  auto *nccl_op_handle =
-  //      new NCCLAllReduceOpHandle(local_scopes_, places_, *ctxs_);
-  //  graph->ops_.emplace_back(nccl_op_handle);
-  //
-  //  CreateNCCLAllReduceOpHandleIO(fused_vars_output_names, &inputs, &outputs,
-  //                                nccl_op_handle, graph);
+    for (auto *opt : output_fused_var) {
+      op_handle->AddOutput(opt);
+    }
+    graph->ops_.emplace_back(op_handle);
+    nccl_op_handle = op_handle;
+  }
+
+  // 3. Replace all reduce op
+  {
+    for (const std::unique_ptr<OpHandleBase> &nccl_op : group.ops_) {
+      auto *to_remove_op =
+          reinterpret_cast<NCCLAllReduceOpHandle *>(nccl_op.get());
+
+      auto &inputs = nccl_op->Inputs();
+      auto &outputs = nccl_op->Outputs();
+
+      for (size_t i = 0, j = 0; i < inputs.size() && j < outputs.size();
+           ++i, ++j) {
+        VarHandle *in = nullptr;
+        while ((in = dynamic_cast<VarHandle *>(inputs[i])) == nullptr) {
+          // in is a dummy variable. Move this dummy variable to
+          auto *dummy_in = inputs[i];
+          dummy_in->pending_ops_.erase(
+              dummy_in->pending_ops_.find(to_remove_op));
+          nccl_op_handle->AddInput(dummy_in);
+          inputs[i] == nullptr;  // drop inputs.
+          ++i;
+        }
+        VarHandle *out = nullptr;
+        while ((out = dynamic_cast<VarHandle *>(outputs[j])) == nullptr) {
+          // out is a dummy variable. Move this dummy variable to all_reduce
+          auto *dummy_out = outputs[j];
+          nccl_op_handle->AddOutput(dummy_out);
+          outputs[j] = nullptr;
+          ++j;
+        }
+
+        PADDLE_ENFORCE_EQ(in->scope_idx_, out->scope_idx_);
+
+        // Here, in & out are paired.
+
+        // Link out's pending_ops to in and AllReduceOp
+        auto pending_ops = out->pending_ops_;
+
+        for (OpHandleBase *op : pending_ops) {
+          // Replace out to in
+          op->ReplaceInput(out, in);
+
+          // Link nccl_op to pending_ops
+          auto *dummy = new DummyVarHandle();
+          nccl_op_handle->AddOutput(dummy);
+          op->AddInput(dummy);
+          graph->dep_vars_.emplace(dummy);
+        }
+        PADDLE_ENFORCE(out->pending_ops_.empty());
+
+        // Remove out variable, which is not used.
+        graph->ExtractVariable(out->version_, out->name_, out->scope_idx_);
+      }
+    }
+  }
 }
 std::vector<VarHandle *> FuseAllReduceGraphBuilder::GetFusedGradient(
     SSAGraph *graph, const BlockDesc &global_block,
@@ -457,79 +458,6 @@ std::vector<VarHandle *> FuseAllReduceGraphBuilder::GetFusedGradient(
                      global_block, group.type_));
   }
   return fused_vars;
-}
-
-void FuseAllReduceGraphBuilder::CreateNCCLAllReduceOpHandleIO(
-    const std::vector<std::string> &fused_var_names,
-    std::vector<std::vector<VarHandle *>> *inputs,
-    std::vector<std::vector<VarHandle *>> *outputs,
-    NCCLAllReduceOpHandle *nccl_op_handle, SSAGraph *graph) const {
-  // Add inputs
-  auto &ins = *inputs;
-  for (size_t dev_id = 0; dev_id < ins.size(); ++dev_id) {
-    auto &fused_vars = graph->vars_[dev_id][fused_var_names[dev_id]];
-    nccl_op_handle->AddInput(fused_vars.rbegin()->get());
-
-    // Add dependence
-    auto *dep_var = new DummyVarHandle();
-    nccl_op_handle->AddInput(dep_var);
-    for (size_t j = 0; j < ins[dev_id].size(); ++j) {
-      ins[dev_id][j]->generated_op_->AddOutput(dep_var);
-    }
-  }
-
-  // Add outputs
-  auto &outs = *outputs;
-  for (size_t dev_id = 0; dev_id < outs.size(); ++dev_id) {
-    for (size_t j = 0; j < outs[dev_id].size(); ++j) {
-      nccl_op_handle->AddOutput(outs[dev_id][j]);
-    }
-  }
-}
-
-void FuseAllReduceGraphBuilder::InsertFusedVarsOpHandleIntoGraph(
-    SSAGraph *graph, std::vector<std::vector<VarHandle *>> *inputs,
-    const std::vector<OpHandleBase *> &fuse_vars_ops) const {
-  auto &ins = *inputs;
-  for (size_t dev_id = 0; dev_id < ins.size(); ++dev_id) {
-    // Insert fuse_vars_op to graph
-    graph->ops_.emplace_back(fuse_vars_ops[dev_id]);
-    // Add dependence
-    for (auto in : ins[dev_id]) {
-      if (in->generated_op_) {
-        in->generated_op_->AddInput(fuse_vars_ops[dev_id]->Outputs()[0]);
-      }
-    }
-  }
-}
-
-void FuseAllReduceGraphBuilder::CreateFuseVarsOpHandleIO(
-    SSAGraph *graph, OpHandleBase *op_handle, const int dev_id,
-    const std::string fused_var_name, const platform::Place &place,
-    const std::vector<VarHandle *> &inputs) const {
-  op_handle->SetDeviceContext(
-      place, platform::DeviceContextPool::Instance().Get(place));
-
-  // Add input
-  for (size_t j = 0; j < inputs.size(); ++j) {
-    auto var_name = inputs[j]->name_;
-    auto &vars = graph->vars_[dev_id][var_name];
-    std::unique_ptr<VarHandle> in_var(
-        new VarHandle(0, dev_id, var_name, place));
-    vars.insert(vars.begin(), std::move(in_var));
-
-    for (size_t k = 1; k < vars.size(); ++k) {
-      vars[k]->version_++;
-    }
-    op_handle->AddInput(vars.begin()->get());
-  }
-
-  // Add output
-  auto &vars = graph->vars_[dev_id][fused_var_name];
-  size_t version = vars.size();
-  auto out_var = new VarHandle(version, dev_id, fused_var_name, place);
-  vars.emplace_back(out_var);
-  op_handle->AddOutput(out_var);
 }
 }  // namespace details
 }  // namespace framework

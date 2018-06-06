@@ -61,21 +61,6 @@ class FuseAllReduceGraphBuilder : public SSAGraphBuilder {
   void FuseAllReduceOp(SSAGraph *graph, NCCLAllReduceGroup &&ops,
                        const BlockDesc &global_block) const;
 
-  void CreateFuseVarsOpHandleIO(SSAGraph *graph, OpHandleBase *op_handle,
-                                const int dev_id,
-                                const std::string fused_var_name,
-                                const platform::Place &place,
-                                const std::vector<VarHandle *> &inputs) const;
-
-  void InsertFusedVarsOpHandleIntoGraph(
-      SSAGraph *graph, std::vector<std::vector<VarHandle *>> *inputs,
-      const std::vector<OpHandleBase *> &fuse_vars_ops) const;
-
-  void CreateNCCLAllReduceOpHandleIO(
-      const std::vector<std::string> &fused_var_names,
-      std::vector<std::vector<VarHandle *>> *inputs,
-      std::vector<std::vector<VarHandle *>> *outputs,
-      NCCLAllReduceOpHandle *nccl_op_handle, SSAGraph *graph) const;
   std::vector<VarHandle *> GetFusedGradient(
       SSAGraph *graph, const BlockDesc &global_block,
       const NCCLAllReduceGroup &ops) const;

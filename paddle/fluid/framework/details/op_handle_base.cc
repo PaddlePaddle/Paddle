@@ -145,6 +145,16 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
 #endif
 }
 
+void OpHandleBase::ReplaceInput(VarHandleBase *before, VarHandleBase *after) {
+  for (auto &in : inputs_) {
+    if (in == before) {
+      in = after;
+      before->pending_ops_.erase(before->pending_ops_.find(this));
+      after->pending_ops_.insert(this);
+    }
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
