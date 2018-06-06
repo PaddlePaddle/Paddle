@@ -47,6 +47,12 @@ void RPCClient::InitEventLoop() {
   client_thread_.reset(new std::thread(std::bind(&RPCClient::Proceed, this)));
 }
 
+void RPCClient::SendComplete() {
+  for (auto& it : channels_) {
+    this->AsyncSendComplete(it.first);
+  }
+}
+
 RPCClient::~RPCClient() {
   Wait();
   cq_.Shutdown();
@@ -57,12 +63,6 @@ RPCClient::~RPCClient() {
     }
   }
   client_thread_->join();
-}
-
-RPCClient::~RPCClient() {
-  for (auto& it : channels_) {
-    this->AsyncSendComplete(it.first)
-  }
 }
 
 bool RPCClient::AsyncSendVariable(const std::string& ep,
@@ -207,7 +207,7 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
 void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
-  EmptyProcessor* s = new EmptyProcessor(ch);
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -219,7 +219,7 @@ void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
 
 void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
-  EmptyProcessor* s = new EmptyProcessor(ch);
+  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -232,7 +232,7 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
 void RPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
-  EmptyProcessor* s = new EmptyProcessor(ch);
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;

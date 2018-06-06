@@ -44,6 +44,11 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  /*
+   * Sending signal to pserver to mark current trainer stop.
+   */
+  void Complete();
+
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
    *

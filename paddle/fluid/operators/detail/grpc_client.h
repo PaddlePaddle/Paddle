@@ -136,17 +136,31 @@ class GetProcessor : public BaseProcessor {
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
-class EmptyProcessor : public BaseProcessor {
+class BatchBarrierProcessor : public BaseProcessor {
  public:
-  explicit EmptyProcessor(std::shared_ptr<grpc::Channel> ch)
+  explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
       : BaseProcessor(ch) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
-  virtual ~EmptyProcessor() {}
+  virtual ~BatchBarrierProcessor() {}
 
   virtual void Process() {}
   sendrecv::VoidMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
+};
+
+class FetchBarrierProcessor : public BaseProcessor {
+ public:
+  explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
+
+  virtual ~FetchBarrierProcessor() {}
+
+  virtual void Process() {}
+  sendrecv::VariableMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
@@ -187,7 +201,8 @@ class RPCClient {
   // to train with other trainers.
   void AsyncSendComplete(const std::string& ep, int64_t time_out = 600 * 1000);
 
-  bool Wait();
+  void Wait();
+  void SendComplete();
   // InitEventLoop should only be called by Init()
   void InitEventLoop();
 
