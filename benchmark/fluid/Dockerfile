@@ -1,8 +1,8 @@
 FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
-RUN apt-get update && apt-get install -y python python-pip iputils-ping libgtk2.0-dev wget vim net-tools iftop
+RUN apt-get update && apt-get install -y python python-pip iputils-ping libgtk2.0-dev wget vim net-tools iftop python-opencv
 RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/libcudnn.so && ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/lib/libnccl.so
 RUN pip install -U pip
-RUN pip install -U kubernetes opencv-python paddlepaddle
+RUN pip install -U kubernetes paddlepaddle
 
 # IMPORTANT:
 # Add "ENV http_proxy=http://ip:port" if your download is slow, and don't forget to unset it at runtime.

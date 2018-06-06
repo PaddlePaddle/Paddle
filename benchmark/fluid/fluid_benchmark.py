@@ -76,6 +76,11 @@ def parse_args():
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
     # this option is available only for vgg and resnet.
     parser.add_argument(
+        '--cpus',
+        type=int,
+        default=1,
+        help='If cpus > 1, will use ParallelDo to run, else use Executor.')
+    parser.add_argument(
         '--data_set',
         type=str,
         default='flowers',
@@ -91,8 +96,8 @@ def parse_args():
         help='If set, use nvprof for CUDA.')
     parser.add_argument(
         '--no_test',
-        action='store_false',
-        help='If set, test the testset during training.')
+        action='store_true',
+        help='If set, do not test the testset during training.')
     parser.add_argument(
         '--memory_optimize',
         action='store_true',
@@ -266,9 +271,9 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
             print("Pass: %d, Iter: %d, Loss: %f\n" %
                   (pass_id, iters, np.mean(train_losses)))
         print_train_time(start_time, time.time(), num_samples)
-        print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
+        print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
-        if not args.no_test and batch_acc != None:
+        if not args.no_test and batch_acc:
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -366,7 +371,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         if args.use_reader_op:
             num_samples = num_samples * args.gpus
         print_train_time(start_time, time.time(), num_samples)
-        if not args.no_test and batch_acc != None:
+        if not args.no_test and batch_acc:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
