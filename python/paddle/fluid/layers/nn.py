@@ -1686,7 +1686,7 @@ def layer_norm(input,
     return helper.append_activation(layer_norm_out)
 
 
-def beam_search_decode(ids, scores, name=None):
+def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
     sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
@@ -1698,7 +1698,9 @@ def beam_search_decode(ids, scores, name=None):
         outputs={
             "SentenceIds": sentence_ids,
             "SentenceScores": sentence_scores
-        })
+        },
+        attrs={"beam_size": beam_size,
+               "end_id": end_id})
 
     return sentence_ids, sentence_scores
 
@@ -1926,7 +1928,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
-def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
+def beam_search(pre_ids, pre_scores, ids, scores, beam_size, end_id, level=0):
     '''
     This function implements the beam search algorithm.
     '''
@@ -1941,6 +1943,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         type='beam_search',
         inputs={
             'pre_ids': pre_ids,
+            'pre_scores': pre_scores,
             'ids': ids,
             'scores': scores,
         },
