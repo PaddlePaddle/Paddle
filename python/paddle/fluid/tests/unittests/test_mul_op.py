@@ -21,12 +21,10 @@ from op_test import OpTest
 class TestMulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.use_mkldnn = False
         self.inputs = {
             'X': np.random.random((2, 5)).astype("float32"),
             'Y': np.random.random((5, 3)).astype("float32")
         }
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
@@ -47,7 +45,6 @@ class TestMulOp(OpTest):
 class TestMulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.use_mkldnn = False
         self.inputs = {
             'X': np.random.random((3, 4, 4, 3)).astype("float32"),
             'Y': np.random.random((2, 6, 1, 2, 3)).astype("float32")
@@ -55,7 +52,6 @@ class TestMulOp2(OpTest):
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
-            'use_mkldnn': self.use_mkldnn
         }
         result = np.dot(self.inputs['X'].reshape(3 * 4, 4 * 3),
                         self.inputs['Y'].reshape(2 * 6, 1 * 2 * 3))
@@ -80,11 +76,9 @@ class TestMulOp2(OpTest):
 class TestFP16MulOp1(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.use_mkldnn = False
         x = np.random.random((3, 5)).astype("float16")
         y = np.random.random((5, 4)).astype("float16")
         self.inputs = {'X': x.view(np.float16), 'Y': y.view(np.float16)}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': np.dot(x, y)}
 
     def test_check_output(self):
@@ -97,14 +91,12 @@ class TestFP16MulOp1(OpTest):
 class TestFP16MulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.use_mkldnn = False
         x = np.random.random((3, 4, 4, 3)).astype("float16")
         y = np.random.random((2, 6, 1, 2, 3)).astype("float16")
         self.inputs = {'X': x.view(np.float16), 'Y': y.view(np.float16)}
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
-            'use_mkldnn': self.use_mkldnn
         }
         result = np.dot(x.reshape(3 * 4, 4 * 3), y.reshape(2 * 6, 1 * 2 * 3))
         result = result.reshape(3, 4, 1, 2, 3)

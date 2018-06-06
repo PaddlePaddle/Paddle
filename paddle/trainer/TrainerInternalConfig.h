@@ -37,7 +37,7 @@ namespace paddle {
  * through one mini-batch.
  */
 class TrainerStats {
-public:
+ public:
   /**
    * @brief reset all stats.
    *
@@ -147,7 +147,7 @@ public:
     return os.str();
   }
 
-private:
+ private:
   int64_t numProcessed_;
   real totalCost_;
   real currentCost_;

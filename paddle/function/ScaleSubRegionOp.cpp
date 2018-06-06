@@ -92,7 +92,7 @@ void ScaleSubRegionGrad<DEVICE_TYPE_CPU>(const real* inGrad,
  */
 template <DeviceType Device>
 class ScaleSubRegionFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override { conf_ = config; }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -109,7 +109,7 @@ public:
                            conf_);
   }
 
-private:
+ private:
   FuncConfig conf_;
 };
 
@@ -124,7 +124,7 @@ private:
 
 template <DeviceType Device>
 class ScaleSubRegionGradFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override { conf_ = config; }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -141,7 +141,7 @@ public:
                                conf_);
   }
 
-private:
+ private:
   FuncConfig conf_;
 };
 

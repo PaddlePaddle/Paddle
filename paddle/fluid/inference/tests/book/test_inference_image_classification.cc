@@ -21,6 +21,7 @@ DEFINE_string(fp16_dirname, "", "Directory of the float16 inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times");
 DEFINE_bool(skip_cpu, false, "Skip the cpu test");
+DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run inference");
 
 TEST(inference, image_classification) {
   if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
@@ -58,8 +59,10 @@ TEST(inference, image_classification) {
     // Run inference on CPU
     LOG(INFO) << "--- CPU Runs: ---";
     LOG(INFO) << "Batch size is " << FLAGS_batch_size;
+    LOG(INFO) << "FLAGS_use_mkldnn: " << FLAGS_use_mkldnn;
     TestInference<paddle::platform::CPUPlace, false, true>(
-        dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
+        dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined,
+        FLAGS_use_mkldnn);
     LOG(INFO) << output1.dims();
   }
 

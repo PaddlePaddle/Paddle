@@ -37,7 +37,7 @@ namespace paddle {
  * The config file api is pooling_layer.
  */
 class AverageLayer : public SequencePoolLayer {
-public:
+ public:
   enum AverageStrategy { kAverage = 0, kSum = 1, kAverageSquareRootN = 2 };
   explicit AverageLayer(const LayerConfig& config)
       : SequencePoolLayer(config) {}
@@ -48,7 +48,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   int mode_;
 };
 }  // namespace paddle

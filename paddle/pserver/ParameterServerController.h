@@ -28,7 +28,7 @@ namespace paddle {
  * by gflags or proto.
  */
 class ParameterServerController final {
-public:
+ public:
   DISABLE_COPY(ParameterServerController);
 
   /**
@@ -67,7 +67,7 @@ public:
    */
   void wait();
 
-private:
+ private:
   std::vector<std::unique_ptr<ParameterServer2>> parameterServers_;
 };
 

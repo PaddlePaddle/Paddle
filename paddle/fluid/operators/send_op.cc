@@ -49,12 +49,7 @@ class SendOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    auto rpc_client = detail::RPCClient::GetInstance();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
@@ -64,14 +59,14 @@ class SendOp : public framework::OperatorBase {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
 
     if (sync_mode) {
       for (auto& ep : endpoints) {
         VLOG(3) << "batch barrier, ep: " << ep;
         rpc_client->AsyncSendBatchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
 
     if (outs.size() > 0) {
@@ -79,13 +74,13 @@ class SendOp : public framework::OperatorBase {
         VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
         rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
       // tell pservers that current trainer have called fetch
       for (auto& ep : endpoints) {
         VLOG(2) << "send fetch barrier, ep: " << ep;
         rpc_client->AsyncSendFetchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
   }
 };
@@ -96,9 +91,6 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
     AddOutput("Out", "(Tensor) Output tensor to be received from server")
         .AsDuplicable();
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which is"
-              "initialized at most once.");
     AddComment(R"DOC(
 Send operator
 
@@ -119,17 +111,6 @@ This operator will send tensor to recv_op at the parameter server.
   }
 };
 
-class SendOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output("RPCClient").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
-  }
-};
-
 class SendOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
@@ -141,5 +122,4 @@ class SendOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send, ops::SendOp, paddle::framework::EmptyGradOpMaker,
-                  ops::SendOpMaker, ops::SendOpVarTypeInference,
-                  ops::SendOpShapeInference);
+                  ops::SendOpMaker, ops::SendOpShapeInference);

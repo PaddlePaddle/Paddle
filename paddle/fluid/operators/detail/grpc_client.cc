@@ -19,10 +19,45 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
+
+std::once_flag RPCClient::init_flag_;
+
+std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+
+RPCClient* RPCClient::GetInstance() {
+  std::call_once(init_flag_, &RPCClient::Init);
+  return rpc_client_.get();
+}
+
+void RPCClient::Init() {
+  if (rpc_client_.get() == nullptr) {
+    rpc_client_.reset(new RPCClient());
+  }
+  rpc_client_->InitEventLoop();
+}
+
+void RPCClient::InitEventLoop() {
+  // start the client process thread
+  // TODO(wuyi): can make this in a threadpool
+  client_thread_.reset(new std::thread(std::bind(&RPCClient::Proceed, this)));
+}
+
+RPCClient::~RPCClient() {
+  Wait();
+  cq_.Shutdown();
+  {
+    std::lock_guard<std::mutex> guard(chan_mutex_);
+    for (auto& it : channels_) {
+      it.second.reset();
+    }
+  }
+  client_thread_->join();
+}
 
 bool RPCClient::AsyncSendVariable(const std::string& ep,
                                   const platform::DeviceContext& ctx,
@@ -59,7 +94,6 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
-
   req_count_++;
 
   return true;
@@ -189,62 +223,37 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
-bool RPCClient::Wait() {
-  if (req_count_ <= 0) {
-    return true;
-  }
-  const size_t kReqCnt = req_count_;
-  bool a[kReqCnt];
-  std::vector<std::future<void>> waits(req_count_);
-
-  for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::AsyncIO([i, &a, this] { a[i] = Proceed(); });
-  }
-
-  for (int i = 0; i < req_count_; i++) {
-    waits[i].wait();
-  }
-
-  int last_req_count = req_count_;
-  req_count_ = 0;
-
-  for (int i = 0; i < last_req_count; i++) {
-    if (!a[i]) {
-      return false;
-    }
-  }
-
-  return true;
+void RPCClient::Wait() {
+  std::unique_lock<std::mutex> lk(sync_mutex_);
+  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
 }
 
-bool RPCClient::Proceed() {
-  void* tag = NULL;
+void RPCClient::Proceed() {
+  void* tag = nullptr;
   bool ok = false;
 
-  // request counts.
-  if (!cq_.Next(&tag, &ok)) {
-    LOG(ERROR) << "Get meets CompletionQueue error";
-    return false;
-  }
-
-  GPR_ASSERT(ok);
-  PADDLE_ENFORCE(tag);
-
-  // TODO(gongwb): add more retries.
-  BaseProcessor* c = static_cast<BaseProcessor*>(tag);
-  if (!c->status_.ok()) {
-    LOG(ERROR) << "proc param error:" << c->var_h_.String()
-               << " grpc error:" << c->status_.error_message();
+  while (cq_.Next(&tag, &ok)) {
+    BaseProcessor* c = static_cast<BaseProcessor*>(tag);
+    GPR_ASSERT(ok);
+    PADDLE_ENFORCE(c);
+    if (c->status_.ok()) {
+      c->Process();
+    } else {
+      LOG(ERROR) << "var: " << c->var_h_.String()
+                 << " grpc error:" << c->status_.error_message();
+    }
     delete c;
-    return false;
+    {
+      std::lock_guard<std::mutex> lk(sync_mutex_);
+      req_count_--;
+    }
+    sync_cond_.notify_all();
   }
-
-  c->Process();
-  delete c;
-  return true;
 }
 
 std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
+  // TODO(Yancey1989): make grpc client completely thread-safe
+  std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;
@@ -257,7 +266,6 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
 
   auto ch =
       grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
-
   channels_[ep] = ch;
   return ch;
 }
