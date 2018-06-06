@@ -63,23 +63,11 @@ __global__ void SparseConsistentSGDFunctorKernel(const T* selected_rows,
   int grid_size = blockDim.x * gridDim.x;
   int cur_dim = blockIdx.x * blockDim.x + tid;
 
-  for (int d = 0; d < row_numel; d++) {
+  for (int d = cur_dim; d < row_numel; d += grid_size) {
     for (int i = 0; i < K; i++) {
-      printf("i = %d, d = %d, selected_row val = %f\n", i, d,
-             selected_rows[i * row_numel + d]);
-    }
-  }
-
-  for (int d = 0; d < row_numel; d += 1) {
-    // for (int d = cur_dim; d < row_numel; d += grid_size) {
-    for (int i = K - 1; i >= 0; i--) {
-      const T* sel = selected_rows + i * row_numel;
+      const T* selrow = selected_rows + i * row_numel;
       T* tout = tensor_out + rows[i] * row_numel;
-      T selval = sel[d];
-      tout[d] -= lr * selval;
-      printf("check rows[i] = %ld\n", rows[i]);
-      printf("selected_rows val = %f\n", selval);
-      printf("inside inner loop, d = %d, i = %d, and k = %d\n", d, i, K);
+      tout[d] -= lr * selrow[d];
     }
   }
 }
@@ -140,14 +128,9 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       int num_rows = static_cast<int>(in_rows.size());
       int block = 1024;
       int grid = (in_row_numel + block - 1) / block;
-      std::cout << "grid = " << grid << std::endl;
-      std::cout << "num_rows = " << num_rows
-                << ", in_row_numel = " << in_row_numel << std::endl;
-      std::cout << "in_height = " << in_height << std::endl;
 
-      // T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
       SparseConsistentSGDFunctorKernel<
-          T><<<1, 1, 0, ctx.cuda_device_context().stream()>>>(
+          T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
           in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
           out_data, in_row_numel, num_rows);
 
