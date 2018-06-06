@@ -34,13 +34,7 @@ DEFINE_bool(
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() {
-  DropKids();
-  for (auto& kv : vars_) {
-    VLOG(3) << "Destroy variable " << kv.first;
-    delete kv.second;
-  }
-}
+Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
   std::unique_lock<std::mutex> lock(mutex_);
@@ -51,8 +45,9 @@ Scope& Scope::NewScope() const {
 Variable* Scope::Var(const std::string& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
+
   v = new Variable();
-  vars_[name] = v;
+  vars_[name].reset(v);
   VLOG(3) << "Create variable " << name;
   v->name_ = &(vars_.find(name)->first);
   return v;
@@ -76,7 +71,7 @@ Variable* Scope::FindVar(const std::string& name) const {
 
 const Scope* Scope::FindScope(const Variable* var) const {
   for (auto& kv : vars_) {
-    if (kv.second == var) {
+    if (kv.second.get() == var) {
       return this;
     }
   }
@@ -113,7 +108,6 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
   std::set<std::string> var_set(var_names.begin(), var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
-      delete it->second;
       it = vars_.erase(it);
     } else {
       ++it;
@@ -129,7 +123,7 @@ void Scope::Rename(const std::string& origin_name,
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE(new_it == vars_.end(),
                  "The variable with name %s is already in the scope", new_name);
-  vars_[new_name] = origin_it->second;
+  vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
 }
 
@@ -141,7 +135,7 @@ std::string Scope::Rename(const std::string& origin_name) const {
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
   auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second;
+  if (it != vars_.end()) return it->second.get();
   return nullptr;
 }
 
