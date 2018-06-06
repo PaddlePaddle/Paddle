@@ -14,18 +14,26 @@
 
 import paddle.fluid as fluid
 import unittest
+import numpy
 
 
 class TestFusedParallelExecutor(unittest.TestCase):
-    def test_fused_all_reduce(self):
+    def run_test(self, fuse_all_reduce):
         main = fluid.Program()
         startup = fluid.Program()
+        startup.random_seed = 1
         with fluid.program_guard(main, startup):
             img = fluid.layers.fill_constant(
                 shape=[64, 784], dtype='float32', value=0)
+
+            hidden = img
+
+            for i in xrange(4):
+                hidden = fluid.layers.fc(hidden, size=10, act='relu')
+            hidden = fluid.layers.fc(input=hidden, size=10, act='softmax')
+
             lbl = fluid.layers.fill_constant(
                 shape=[64, 1], dtype='int64', value=1)
-            hidden = fluid.layers.fc(input=img, size=10, act='softmax')
             loss = fluid.layers.cross_entropy(input=hidden, label=lbl)
             loss = fluid.layers.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
@@ -34,16 +42,23 @@ class TestFusedParallelExecutor(unittest.TestCase):
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(startup)
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.FusedAllReduce
-        exe_strategy = fluid.ExecutionStrategy()
-        exe_strategy.num_threads = 1
+        if fuse_all_reduce:
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.FusedAllReduce
+        else:
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
         pe = fluid.ParallelExecutor(
             use_cuda=True,
             loss_name=loss.name,
             build_strategy=build_strategy,
-            exec_strategy=exe_strategy,
             main_program=main)
-        pe.run(fetch_list=[])
+        for i in xrange(10):
+            pe.run(fetch_list=[])
+        return numpy.array(pe.run(fetch_list=[loss.name])[0])
+
+    def test_main(self):
+        loss1 = self.run_test(True)
+        loss2 = self.run_test(False)
+        self.assertAlmostEqual(loss1, loss2)
 
 
 if __name__ == '__main__':
