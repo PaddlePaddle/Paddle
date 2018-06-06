@@ -19,8 +19,8 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <memory>
+#include <thread>
 #include "paddle/contrib/inference/paddle_inference_api.h"
-
 namespace paddle {
 namespace demo {
 
@@ -64,7 +64,54 @@ void Main(bool use_gpu) {
   }
 }
 
+void MainThreads(int num_threads) {
+  // Multi-threads only support on CPU
+  // 0. Create PaddlePredictor with a config.
+  NativeConfig config;
+  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config.use_gpu = false;
+  auto main_predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < num_threads; ++tid) {
+    threads.emplace_back([&, tid]() {
+      // 1. clone a predictor which shares the same parameters
+      auto predictor = main_predictor->Clone();
+      constexpr int num_batches = 3;
+      for (int batch_id = 0; batch_id < num_batches; ++batch_id) {
+        // 2. Dummy Input Data
+        int64_t data[4] = {1, 2, 3, 4};
+        PaddleBuf buf{.data = data, .length = sizeof(data)};
+        PaddleTensor tensor{.name = "",
+                            .shape = std::vector<int>({4, 1}),
+                            .data = buf,
+                            .dtype = PaddleDType::INT64};
+        std::vector<PaddleTensor> inputs(4, tensor);
+        std::vector<PaddleTensor> outputs;
+        // 3. Run
+        CHECK(predictor->Run(inputs, &outputs));
+
+        // 4. Get output.
+        ASSERT_EQ(outputs.size(), 1UL);
+        LOG(INFO) << "TID: " << tid << ", "
+                  << "output buffer size: " << outputs.front().data.length;
+        const size_t num_elements = outputs.front().data.length / sizeof(float);
+        // The outputs' buffers are in CPU memory.
+        for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
+          LOG(INFO) << static_cast<float*>(outputs.front().data.data)[i];
+        }
+      }
+    });
+  }
+  for (int i = 0; i < num_threads; ++i) {
+    threads[i].join();
+  }
+}
+
 TEST(demo, word2vec_cpu) { Main(false /*use_gpu*/); }
+TEST(demo_multi_threads, word2vec_cpu_1) { MainThreads(1); }
+TEST(demo_multi_threads, word2vec_cpu_4) { MainThreads(4); }
 
 #ifdef PADDLE_WITH_CUDA
 TEST(demo, word2vec_gpu) { Main(true /*use_gpu*/); }
