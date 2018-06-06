@@ -118,7 +118,7 @@ def get_model(args):
     train_reader = batch(
         paddle.reader.shuffle(
             crop_sentence(imdb.train(word_dict), crop_size), buf_size=25000),
-        batch_size=args.batch_size)
+        batch_size=args.batch_size * args.gpus)
     test_reader = batch(
         paddle.reader.shuffle(
             crop_sentence(imdb.test(word_dict), crop_size), buf_size=25000),

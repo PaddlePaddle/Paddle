@@ -223,7 +223,7 @@ def get_model(args):
     train_batch_generator = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
-        batch_size=args.batch_size)
+        batch_size=args.batch_size * args.gpus)
 
     test_batch_generator = paddle.batch(
         paddle.reader.shuffle(

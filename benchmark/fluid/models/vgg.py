@@ -110,7 +110,7 @@ def get_model(args):
             paddle.dataset.cifar.train10()
             if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
             buf_size=5120),
-        batch_size=args.batch_size)
+        batch_size=args.batch_size * args.gpus)
     test_reader = paddle.batch(
         paddle.dataset.cifar.test10()
         if args.data_set == 'cifar10' else paddle.dataset.flowers.test(),
