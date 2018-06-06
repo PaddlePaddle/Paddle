@@ -198,7 +198,7 @@ Hence, we encapsulate this implementation detail in C++ and expose the original 
 Specifically, user can use the following code to set or get the LoD info of a LoDTensor in Python:
 ```Python
 # lod using length representation
-lod = [[3, 1, 2], [2, 2, 1, 3, 1, 2]]
+lod = [[1, 3, 2]]
 # Create a LoDTensor that has the above lod info.
 # This lod will be converted to an offset representation in the C++ implementation under the hood.
 tensor = fluid.LoDTensor(lod)
