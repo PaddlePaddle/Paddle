@@ -53,7 +53,7 @@ if (ANAKIN_FOUND)
 
     link_directories(${ANAKIN_LIBRARY})
 
-    nv_library(inference_anakin_api SRCS paddle_inference_api_anakin_engine.cc)
+    nv_library(inference_anakin_api SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
     target_link_libraries(inference_anakin_api anakin)
     list(APPEND inference_deps inference_anakin_api)
 endif()
@@ -90,8 +90,8 @@ inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
 if (ANAKIN_FOUND)
-    nv_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
-    DEPS ${inference_deps} protobuf)
+    cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
+    DEPS ${inference_deps})
 endif()
 
 if(WITH_TESTING)

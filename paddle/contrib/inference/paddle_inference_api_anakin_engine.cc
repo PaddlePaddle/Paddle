@@ -28,9 +28,11 @@ bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
   if(!status ) {
     return false;
   }
-  // optimization for graph
-  graph_.Optimize();
   graph_.ResetBatchSize("input_0", config.max_batch_size);
+  // optimization for graph
+  if(!(graph_.Optimize())) {
+    return false;
+  }
   // construct executer
   executor_.init(graph_);
   return true;
@@ -39,7 +41,7 @@ bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
 bool PaddleInferenceAnakinPredictor::Run(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data) {
-  for (const auto &input : inputs) {
+    for (const auto &input : inputs) {
     if (input.dtype != PaddleDType::FLOAT32) {
       LOG(ERROR) << "Only support float type inputs. " << input.name
                  << "'s type is not float";
@@ -88,9 +90,15 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
     const AnakinConfig &config) {
-  std::unique_ptr<PaddlePredictor> x(
-      new PaddleInferenceAnakinPredictor(config));
-  return x;
+  VLOG(3) << "Anakin Predictor create.";
+  //std::unique_ptr<PaddlePredictor> x(new PaddleInferenceAnakinPredictor(config));
+  return nullptr;
 };
+
+template<>
+void test<float>() {
+    //VLOG(3) << "Anakin Predictor create.";
+    printf("????????");
+}
 
 }  // namespace paddle

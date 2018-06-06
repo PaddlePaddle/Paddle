@@ -113,4 +113,7 @@ struct AnakinConfig : public PaddlePredictor::Config {
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
+template<typename t>
+void test();
+
 }  // namespace paddle
