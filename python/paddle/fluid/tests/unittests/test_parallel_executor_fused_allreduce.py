@@ -22,7 +22,7 @@ class TestFusedParallelExecutor(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             img = fluid.layers.fill_constant(
-                shape=[64, 784], dtype='float', value=0)
+                shape=[64, 784], dtype='float32', value=0)
             lbl = fluid.layers.fill_constant(
                 shape=[64, 1], dtype='int64', value=1)
             hidden = fluid.layers.fc(input=img, size=10, act='softmax')

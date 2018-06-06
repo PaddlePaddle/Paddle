@@ -24,6 +24,7 @@ void FuseVarsOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(in_var_handles.size(), 0);
+  PADDLE_ENFORCE_EQ(out_var_handles.size() + 1, inputs_numel_.size(), "");
 
   auto scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
@@ -34,7 +35,7 @@ void FuseVarsOpHandle::RunImpl() {
   out_tensor->Resize({total_numel_}).mutable_data(this->place_, type_);
 
   int64_t s = 0;
-  for (size_t i = 0; i < out_var_handles.size(); ++i) {
+  for (size_t i = 1; i < out_var_handles.size(); ++i) {
     auto out_name = out_var_handles[i]->name_;
     auto out_t = scope->Var(out_name)->GetMutable<LoDTensor>();
     auto numel = this->inputs_numel_.at(out_name);

@@ -41,6 +41,8 @@ void ScaleLossGradOpHandle::RunImpl() {
     *tmp = coeff_;
   } else {
 #ifdef PADDLE_WITH_CUDA
+    VLOG(10) << "Variable name " << var_name << " type "
+             << local_scope.FindVar(var_name)->Get<LoDTensor>().type().name();
     this->RunAndRecordEvent([&] {
       auto stream =
           static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])

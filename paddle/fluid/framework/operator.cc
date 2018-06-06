@@ -14,6 +14,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <cmake-build-relwithdebinfo/paddle/fluid/framework/framework.pb.h>
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_transform.h"
@@ -647,7 +648,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
           PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                         "DataType of Paddle Op %s must be the same.", Type());
+                         "DataType of Paddle Op %s must be the same. The types "
+                         "are %s and %d",
+                         Type(), t->type().name(), data_type);
           data_type = tmp;
         }
       }
