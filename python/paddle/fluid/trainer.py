@@ -121,6 +121,7 @@ class Trainer(object):
             loss = self.train_func_outputs[0]
 
             optimizer = optimizer_func()
+            self.optimizer = optimizer
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
                     "The optimizer should be an instance of Optimizer")
