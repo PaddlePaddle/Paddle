@@ -408,17 +408,23 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
         auto pending_ops = out->pending_ops_;
 
         // pending_ops are SGD like operators.
-        for (OpHandleBase *op : pending_ops) {
+        for (OpHandleBase *sgd_op : pending_ops) {
           // Replace out to in
-          op->ReplaceInput(out, in);
+          sgd_op->ReplaceInput(out, in);
 
           // Link nccl_op to pending_ops
           auto *dummy = new DummyVarHandle();
           nccl_op_handle->AddOutput(dummy);
-          op->AddInput(dummy);
+          sgd_op->AddInput(dummy);
           graph->dep_vars_.emplace(dummy);
         }
         PADDLE_ENFORCE(out->pending_ops_.empty());
+
+        if (in->generated_op_) {
+          auto *dummy = new DummyVarHandle();
+          in->generated_op_->AddOutput(dummy);
+          nccl_op_handle->AddInput(dummy);
+        }
 
         // Remove out variable, which is not used.
         graph->ExtractVariable(out->version_, out->name_, out->scope_idx_);
