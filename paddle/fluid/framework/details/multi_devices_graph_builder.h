@@ -106,7 +106,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                          size_t src_dev_id) const;
 
   bool IsSparseGradient(
-      const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+      const std::unordered_map<std::string, VarDesc *> &all_vars,
       const std::string &og) const;
 
  private:

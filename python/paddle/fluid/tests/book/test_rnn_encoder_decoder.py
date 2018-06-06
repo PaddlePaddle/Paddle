@@ -152,29 +152,6 @@ def seq_to_seq_net():
     return avg_cost, prediction
 
 
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = core.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
-
-
-def create_random_lodtensor(lod, place, low, high):
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 def train(use_cuda, save_dirname=None):
     [avg_cost, prediction] = seq_to_seq_net()
 
@@ -188,22 +165,20 @@ def train(use_cuda, save_dirname=None):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = Executor(place)
-
     exe.run(framework.default_startup_program())
+
+    feed_order = ['source_sequence', 'target_sequence', 'label_sequence']
+    feed_list = [
+        framework.default_main_program().global_block().var(var_name)
+        for var_name in feed_order
+    ]
+    feeder = fluid.DataFeeder(feed_list, place)
 
     batch_id = 0
     for pass_id in xrange(2):
         for data in train_data():
-            word_data = to_lodtensor(map(lambda x: x[0], data), place)
-            trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-            trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
-
             outs = exe.run(framework.default_main_program(),
-                           feed={
-                               'source_sequence': word_data,
-                               'target_sequence': trg_word,
-                               'label_sequence': trg_word_next
-                           },
+                           feed=feeder.feed(data),
                            fetch_list=[avg_cost])
 
             avg_cost_val = np.array(outs[0])
@@ -237,9 +212,23 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        lod = [0, 4, 10]
-        word_data = create_random_lodtensor(lod, place, low=0, high=1)
-        trg_word = create_random_lodtensor(lod, place, low=0, high=1)
+        # Setup input by creating LoDTensor to represent sequence of words.
+        # Here each word is the basic element of the LoDTensor and the shape of 
+        # each word (base_shape) should be [1] since it is simply an index to 
+        # look up for the corresponding word vector.
+        # Suppose the length_based level of detail (lod) info is set to [[4, 6]],
+        # which has only one lod level. Then the created LoDTensor will have only 
+        # one higher level structure (sequence of words, or sentence) than the basic 
+        # element (word). Hence the LoDTensor will hold data for two sentences of 
+        # length 4 and 6, respectively. 
+        # Note that lod info should be a list of lists.
+        lod = [[4, 6]]
+        base_shape = [1]
+        # The range of random integers is [low, high]
+        word_data = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=1)
+        trg_word = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
