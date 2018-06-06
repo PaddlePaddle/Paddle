@@ -29,9 +29,11 @@ Currently supported `--model` argument include:
     You can choose to use GPU/CPU training. With GPU training, you can specify
     `--gpus <gpu_num>` to run multi GPU training.
 * Run distributed training with parameter servers:
+    * see run_fluid_benchmark.sh as an example.
     * start parameter servers:
         ```bash
         PADDLE_TRAINING_ROLE=PSERVER PADDLE_PSERVER_PORT=7164 PADDLE_PSERVER_IPS=127.0.0.1 PADDLE_TRAINERS=1 PADDLE_CURRENT_IP=127.0.0.1 PADDLE_TRAINER_ID=0 python fluid_benchmark.py --model mnist  --device GPU --update_method pserver
+        sleep 15
         ```
     * start trainers:
         ```bash
