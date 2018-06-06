@@ -476,14 +476,14 @@ def save_checkpoint(executor,
     to keep numbers of checkpoint directory,  the numbers of checkpoint directory are max_num_checkpoints at most,
     The interval between two saved checkpoints must greater than save_interval_secs.
 
-    :param executor
-    :param checkpoint_dir
-    :param trainer_id
-    :param is_chief
-    :param main_program
-    :param max_num_checkpoints
+    :param executor executor for save the value
+    :param checkpoint_dir the checkpoint directory 
+    :param trainer_id currect trainer id
+    :param is_chief if the trainer id equals 0, the is_chief will be true
+    :param main_program   will save all variables in program 
+    :param max_num_checkpoints will keep numbers of checkpoint serials not bigger than max_num_checkpoints
     """
-    if checkpoint_dir.strip() is None:
+    if checkpoint_dir is None:
         raise ValueError("'checkpoint_dir' should not be None")
 
     if trainer_args:
@@ -500,7 +500,7 @@ def save_checkpoint(executor,
     if is_chief:
         save_persist_vars_without_grad(executor, cur_dir, main_program)
 
-    _lru_delete(checkpoint_dir, max_num_checkpoints)
+    _scroll_delete(checkpoint_dir, max_num_checkpoints)
 
 
 def load_checkpoint(executor, checkpoint_dir, serial, main_program):
@@ -508,13 +508,13 @@ def load_checkpoint(executor, checkpoint_dir, serial, main_program):
     Load checkpoint from a directory by executor,
     it will find  the most recent saved checkpoint file and load it auto.
 
-    :param executor
-    :param checkpoint_dir
-    :param serial
-    :param main_program
+    :param executor executor for load the value
+    :param checkpoint_dir  the checkpoint directory 
+    :param serial the serial folder in checkpoint directory will be load
+    :param main_program  will load all variables in program 
     """
 
-    if checkpoint_dir.strip() is None:
+    if checkpoint_dir is None:
         raise ValueError("'checkpoint_dir' should not be None")
 
     if serial is None or serial < 0:
@@ -536,9 +536,9 @@ def clean_checkpoint(checkpoint_dir, delete_dir=False):
     :param delete_dir
     """
 
-    if checkpoint_dir.strip() is None:
+    if checkpoint_dir is None:
         raise ValueError("'checkpoint_dir' should not be None")
-    _lru_delete(checkpoint_dir, max_num_checkpoints=0)
+    _scroll_delete(checkpoint_dir, max_num_checkpoints=0)
 
     if delete_dir and not os.listdir(checkpoint_dir):
         os.rmdir(checkpoint_dir)
@@ -681,7 +681,7 @@ def _get_trainer_dir(dirname, trainer_id):
     return trainer_dir
 
 
-def _lru_delete(dirname, max_num_checkpoints=3):
+def _scroll_delete(dirname, max_num_checkpoints=3):
     dirs = os.listdir(dirname)
     serial_map = {}
     for serial in dirs:
@@ -717,7 +717,7 @@ def get_latest_checkpoint_serial(checkpoint_dir):
 
     :param checkpoint_dir
     """
-    if not checkpoint_dir.strip():
+    if not checkpoint_dir:
         return -1
 
     def has_success(checkpoint_dir, cur_dir):
@@ -726,10 +726,8 @@ def get_latest_checkpoint_serial(checkpoint_dir):
         """
 
         serial = _get_dir_serial(cur_dir)
-        if serial == -1:
-            return -1
-
-        if not os.path.isdir(os.path.join(checkpoint_dir, cur_dir)):
+        if serial == -1 or not os.path.isdir(
+                os.path.join(checkpoint_dir, cur_dir)):
             return -1
 
         success_path = os.path.join(
