@@ -385,7 +385,7 @@ void FuseAllReduceGraphBuilder::FuseAllReduceOp(
           dummy_in->pending_ops_.erase(
               dummy_in->pending_ops_.find(to_remove_op));
           nccl_op_handle->AddInput(dummy_in);
-          inputs[i] == nullptr;  // drop inputs.
+          inputs[i] = nullptr;  // drop inputs.
           ++i;
         }
         VarHandle *out = nullptr;
