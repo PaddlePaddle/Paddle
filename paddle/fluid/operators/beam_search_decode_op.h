@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -72,6 +74,9 @@ using SentenceVector = std::vector<Sentence<T>>;
 
 template <typename T>
 struct BeamSearchDecoder {
+  BeamSearchDecoder(size_t beam_size, int end_id)
+      : beam_size_(beam_size), end_id_(end_id) {}
+
   /**
    * make a BeamNode and all it's related prefix BeanNode into a Sentence.
    */
@@ -103,7 +108,8 @@ struct BeamSearchDecoder {
    */
   void ConvertSentenceVectorToLodTensor(
       std::vector<SentenceVector<T>> sentence_vector_list, LoDTensor* id_tensor,
-      LoDTensor* score_tensor) const;
+      LoDTensor* score_tensor, bool reverse = false,
+      bool sort_by_score = true) const;
 
   /**
    * Pack all steps of id/score LodTensor into sentence LoDTensor
@@ -121,6 +127,13 @@ struct BeamSearchDecoder {
   void PackAllSteps(const LoDTensorArray& step_ids,
                     const LoDTensorArray& step_scores, LoDTensor* id_tensor,
                     LoDTensor* score_tensor) const;
+
+  void Backtrace(const LoDTensorArray& step_ids,
+                 const LoDTensorArray& step_scores, LoDTensor* id_tensor,
+                 LoDTensor* score_tensor) const;
+
+  size_t beam_size_;
+  int end_id_;
 };
 
 template <typename T>
@@ -200,7 +213,7 @@ std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
 template <typename T>
 void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
     std::vector<SentenceVector<T>> sentence_vector_list, LoDTensor* id_tensor,
-    LoDTensor* score_tensor) const {
+    LoDTensor* score_tensor, bool reverse, bool sort_by_score) const {
   size_t src_num = sentence_vector_list.size();
 
   PADDLE_ENFORCE_NE(src_num, 0, "src_num should not be 0");
@@ -211,11 +224,29 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   std::vector<T> score_data;
 
   for (size_t src_idx = 0; src_idx < src_num; ++src_idx) {
+    if (sort_by_score) {
+      sort(sentence_vector_list[src_idx].begin(),
+           sentence_vector_list[src_idx].end(),
+           [reverse](const Sentence<T>& a, const Sentence<T>& b) {
+             if (reverse)
+               return a.scores.front() > b.scores.front();
+             else
+               return a.scores.back() > b.scores.back();
+           });
+    }
     for (Sentence<T>& sentence : sentence_vector_list[src_idx]) {
-      id_data.insert(id_data.end(), sentence.word_ids.begin(),
-                     sentence.word_ids.end());
-      score_data.insert(score_data.end(), sentence.scores.begin(),
-                        sentence.scores.end());
+      if (reverse) {
+        id_data.insert(id_data.end(), sentence.word_ids.rbegin(),
+                       sentence.word_ids.rend());
+        score_data.insert(score_data.end(), sentence.scores.rbegin(),
+                          sentence.scores.rend());
+      } else {
+        id_data.insert(id_data.end(), sentence.word_ids.begin(),
+                       sentence.word_ids.end());
+        score_data.insert(score_data.end(), sentence.scores.begin(),
+                          sentence.scores.end());
+      }
+
       sentence_level_lod.push_back(sentence_level_lod.back() +
                                    sentence.word_ids.size());
     }
@@ -276,6 +307,79 @@ void BeamSearchDecoder<T>::PackAllSteps(const LoDTensorArray& step_ids,
 
   ConvertSentenceVectorToLodTensor(sentence_vector_list, id_tensor,
                                    score_tensor);
+}
+
+template <typename T>
+void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
+                                     const LoDTensorArray& step_scores,
+                                     LoDTensor* id_tensor,
+                                     LoDTensor* score_tensor) const {
+  PADDLE_ENFORCE(!step_ids.empty(), "step num should be larger than 0");
+  PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
+                    "step_ids and step_scores should be the same");
+  const size_t step_num = step_ids.size();
+  const size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
+  std::vector<SentenceVector<T>> sentence_vector_list(
+      src_num, SentenceVector<T>(beam_size_));
+  std::vector<std::vector<size_t>> prefix_idx_vector_list(
+      src_num, std::vector<size_t>());
+  for (int step_id = step_num - 1; step_id >= 0; --step_id) {
+    auto& cur_ids = step_ids.at(step_id);
+    auto& cur_scores = step_scores.at(step_id);
+    for (size_t src_idx = 0; src_idx < src_num; ++src_idx) {
+      // for each source sentence
+      auto& sentence_vector = sentence_vector_list.at(src_idx);
+      auto& prefix_idx_vector = prefix_idx_vector_list.at(src_idx);
+      size_t src_prefix_start = cur_ids.lod().at(kSourceLevel)[src_idx];
+      size_t src_prefix_end = cur_ids.lod().at(kSourceLevel)[src_idx + 1];
+      if (prefix_idx_vector.empty()) {  // be finished and pruned at this step
+                                        // or the last time step
+        for (size_t prefix_idx = src_prefix_start; prefix_idx < src_prefix_end;
+             ++prefix_idx) {
+          size_t candidate_start = cur_ids.lod().at(kSentenceLevel)[prefix_idx];
+          size_t candidate_end =
+              cur_ids.lod().at(kSentenceLevel)[prefix_idx + 1];
+          for (size_t candidate_idx = candidate_start;
+               candidate_idx < candidate_end; ++candidate_idx) {
+            prefix_idx_vector.push_back(prefix_idx);
+            size_t idx = prefix_idx_vector.size() - 1;
+            auto cur_id = cur_ids.data<int64_t>()[candidate_idx];
+            auto cur_score = cur_scores.data<T>()[candidate_idx];
+            sentence_vector.at(idx).word_ids.push_back(cur_id);
+            sentence_vector.at(idx).scores.push_back(cur_score);
+          }
+        }
+      } else {  // use prefix_idx_vector to backtrace
+        size_t src_candidate_start =
+            cur_ids.lod().at(kSentenceLevel)[src_prefix_start];
+        size_t prefix_idx = src_prefix_start;
+        size_t candidate_num =
+            cur_ids.lod().at(kSentenceLevel)[prefix_idx + 1] -
+            cur_ids.lod().at(kSentenceLevel)[prefix_idx];
+        for (size_t idx = 0; idx < prefix_idx_vector.size(); ++idx) {
+          auto candidate_idx = prefix_idx_vector.at(idx);
+          auto cur_id = cur_ids.data<int64_t>()[candidate_idx];
+          auto cur_score = cur_scores.data<T>()[candidate_idx];
+          if (cur_id != end_id_ || sentence_vector.at(idx).word_ids.empty()) {
+            // to skip redundant end tokens
+            sentence_vector.at(idx).word_ids.push_back(cur_id);
+            sentence_vector.at(idx).scores.push_back(cur_score);
+          }
+
+          while (src_candidate_start + candidate_num <=
+                 candidate_idx) {  // search the corresponding prefix
+            prefix_idx++;
+            candidate_num += cur_ids.lod().at(kSentenceLevel)[prefix_idx + 1] -
+                             cur_ids.lod().at(kSentenceLevel)[prefix_idx];
+          }
+          prefix_idx_vector.at(idx) = prefix_idx;
+        }
+      }
+    }
+  }
+
+  ConvertSentenceVectorToLodTensor(sentence_vector_list, id_tensor,
+                                   score_tensor, true, true);
 }
 
 }  // namespace operators

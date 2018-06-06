@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/beam_search_decode_op.h"
+#include <algorithm>
 #include <string>
+
+#include "paddle/fluid/operators/beam_search_decode_op.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -22,8 +24,11 @@ namespace operators {
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
                           const LoDTensorArray& step_scores,
-                          LoDTensor* id_tensor, LoDTensor* score_tensor)
-      : step_ids_origin_(step_ids),
+                          LoDTensor* id_tensor, LoDTensor* score_tensor,
+                          size_t beam_size, int end_id)
+      : beam_size_(beam_size),
+        end_id_(end_id),
+        step_ids_origin_(step_ids),
         step_scores_origin_(step_scores),
         id_tensor_(id_tensor),
         score_tensor_(score_tensor) {
@@ -67,6 +72,8 @@ struct BeamSearchDecodeFunctor {
   void operator()() const;
 
   bool tensor_on_gpu_;
+  size_t beam_size_;
+  int end_id_;
   const LoDTensorArray& step_ids_origin_;
   const LoDTensorArray& step_scores_origin_;
   LoDTensorArray step_ids_ = LoDTensorArray();
@@ -77,14 +84,18 @@ struct BeamSearchDecodeFunctor {
 
 template <typename T>
 void BeamSearchDecodeFunctor::operator()() const {
-  BeamSearchDecoder<T> beam_search_decoder;
+  BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
   // Check if the tensor is on GPU. If so, use the CPU copy instead
   if (tensor_on_gpu_) {
-    beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
-                                     score_tensor_);
+    // beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
+    //                                  score_tensor_);
+    beam_search_decoder.Backtrace(step_ids_, step_scores_, id_tensor_,
+                                  score_tensor_);
   } else {
-    beam_search_decoder.PackAllSteps(step_ids_origin_, step_scores_origin_,
-                                     id_tensor_, score_tensor_);
+    // beam_search_decoder.PackAllSteps(step_ids_origin_, step_scores_origin_,
+    //                                  id_tensor_, score_tensor_);
+    beam_search_decoder.Backtrace(step_ids_origin_, step_scores_origin_,
+                                  id_tensor_, score_tensor_);
   }
 }
 
@@ -122,13 +133,17 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
                         "Level of LodTensor should be 2");
     }
 
+    size_t beam_size = ctx.Attr<int>("beam_size");
+    int end_id = ctx.Attr<int>("end_id");
+
     // prepare output
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
     framework::VisitDataType(
         framework::ToDataType(scores->at(0).type()),
-        BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores));
+        BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores,
+                                beam_size, end_id));
   }
 };
 
@@ -147,6 +162,9 @@ class BeamSearchDecodeOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("SentenceScores",
               "(LodTensor)"
               "All possible result sentences of word scores");
+    AddAttr<int>("beam_size", "beam size for beam search");
+    AddAttr<int>("end_id",
+                 "the token id which indicates the end of a sequence");
     AddComment(R"DOC(
 Pack the result of Beam search op into SentenceIds and SentenceScores.
 )DOC");
@@ -172,10 +190,12 @@ class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
   void operator()(const framework::OpDesc& op_desc,
                   framework::BlockDesc* block) const override {
     for (auto& o : op_desc.Output("SentenceIds")) {
-      block->Var(o)->SetType(framework::proto::VarType::LOD_TENSOR);
+      auto& sentence_ids = block->FindRecursiveOrCreateVar(o);
+      sentence_ids.SetType(framework::proto::VarType::LOD_TENSOR);
     }
     for (auto& o : op_desc.Output("SentenceScores")) {
-      block->Var(o)->SetType(framework::proto::VarType::LOD_TENSOR);
+      auto& sentence_scores = block->FindRecursiveOrCreateVar(o);
+      sentence_scores.SetType(framework::proto::VarType::LOD_TENSOR);
     }
   }
 };
