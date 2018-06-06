@@ -63,6 +63,7 @@ class PaddlePredictor {
   struct Config;
   PaddlePredictor() = default;
   PaddlePredictor(const PaddlePredictor&) = delete;
+  PaddlePredictor& operator=(const PaddlePredictor&) = delete;
 
   // Predict an record.
   // The caller should be responsible for allocating and releasing the memory of
@@ -76,7 +77,7 @@ class PaddlePredictor {
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
   // Destroy the Predictor.
-  virtual ~PaddlePredictor() {}
+  virtual ~PaddlePredictor() = default;
 
   // The common configs for all the predictors.
   struct Config {
