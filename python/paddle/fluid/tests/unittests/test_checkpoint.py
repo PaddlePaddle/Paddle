@@ -15,11 +15,12 @@
 import paddle.fluid as fluid
 import unittest
 import os
+import tempfile
 
 
 class TestCheckpoint(unittest.TestCase):
     def setUp(self):
-        self.dirname = "/tmp/ckpt"
+        self.dirname = tempfile.mktemp()
         self.max_num_checkpoints = 3
         self.epoch_interval = 1
         self.step_interval = 1
