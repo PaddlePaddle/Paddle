@@ -191,7 +191,6 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   };
 
   bool is_forwarding = true;
-  std::unordered_map<std::string, int> rpc_var_device_mapping;
   int rpc_op_device_id = 0;
   auto schedule_rpc_op = [&]() -> void {
     rpc_op_device_id++;
