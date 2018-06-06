@@ -45,7 +45,7 @@ extern void *cupti_dso_handle;
       std::call_once(cupti_dso_flag, []() {                                \
         cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
       });                                                                  \
-      void *p_##__name = dlsym(cupti_dso_handle, #__name);                 \
+      static void *p_##__name = dlsym(cupti_dso_handle, #__name);          \
       return reinterpret_cast<cuptiFunc>(p_##__name)(args...);             \
     }                                                                      \
   };                                                                       \
