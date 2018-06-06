@@ -72,6 +72,8 @@ class OpHandleBase {
 
   const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
 
+  std::vector<VarHandleBase *> &Inputs() { return inputs_; }
+
   size_t NoDupInputSize() const {
     std::unordered_set<VarHandleBase *> res;
     for (auto *var : inputs_) {
@@ -81,6 +83,8 @@ class OpHandleBase {
   }
 
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  std::vector<VarHandleBase *> &Outputs() { return outputs_; }
 
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
