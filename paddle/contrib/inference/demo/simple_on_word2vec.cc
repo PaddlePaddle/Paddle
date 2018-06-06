@@ -61,6 +61,8 @@ void Main(bool use_gpu) {
     for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
       LOG(INFO) << static_cast<float*>(outputs.front().data.data)[i];
     }
+    // TODO(Superjomn): this is should be free automatically
+    free(outputs[0].data.data);
   }
 }
 
@@ -101,6 +103,7 @@ void MainThreads(int num_threads) {
         for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
           LOG(INFO) << static_cast<float*>(outputs.front().data.data)[i];
         }
+        free(outputs[0].data.data);
       }
     });
   }
