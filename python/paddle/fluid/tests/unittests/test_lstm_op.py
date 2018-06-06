@@ -269,7 +269,6 @@ class TestLstmOp(OpTest):
 #             max_relative_error=5e-4,
 #             no_grad_set=set('C0'))
 
-
 # class TestLstmOpRerverse(TestLstmOp):
 #     def set_argument(self):
 #         self.lod = [[2, 3, 2]]
@@ -283,7 +282,6 @@ class TestLstmOp(OpTest):
 #         self.is_reverse = True
 #         self.use_peepholes = True
 
-
 # class TestLstmOpNotUsePeepholes(TestLstmOp):
 #     def set_argument(self):
 #         self.lod = [[2, 3, 2]]
@@ -296,7 +294,6 @@ class TestLstmOp(OpTest):
 #         self.has_initial_state = False
 #         self.is_reverse = True
 #         self.use_peepholes = False
-
 
 if __name__ == '__main__':
     unittest.main()
