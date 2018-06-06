@@ -519,6 +519,14 @@ All parameter, weight, gradient are variables in Paddle.
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
+          })
+      .def_property(
+          "num_iteration_per_drop_scope",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_drop_scope_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
+            self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
           });
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
 
