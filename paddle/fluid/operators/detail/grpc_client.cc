@@ -25,12 +25,12 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-void GRPCClient::Init() { rpc_client_->InitEventLoop(); }
+void GRPCClient::InitImpl() { InitEventLoop(); }
 
 void GRPCClient::InitEventLoop() {
   // start the client process thread
   // TODO(wuyi): can make this in a threadpool
-  client_thread_.reset(new std::thread(std::bind(&RPCClient::Proceed, this)));
+  client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
 }
 
 GRPCClient::~GRPCClient() {

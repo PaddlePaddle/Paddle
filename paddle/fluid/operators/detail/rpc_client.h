@@ -51,7 +51,7 @@ class RPCClient {
   virtual void AsyncSendFetchBarrier(const std::string& ep,
                                      int64_t time_out = rpc_time_out) = 0;
 
-  virtual bool Wait() = 0;
+  virtual void Wait() = 0;
 
   static constexpr int64_t rpc_time_out = 600 * 1000;
 
@@ -66,12 +66,12 @@ class RPCClient {
   static void Init() {
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());
-      rpc_client_->Init();
+      rpc_client_->InitImpl();
     }
   }
 
  protected:
-  virtual void Init() = 0;
+  virtual void InitImpl() = 0;
 
  private:
   static std::once_flag init_flag_;

@@ -168,6 +168,7 @@ class FetchBarrierProcessor : public BaseProcessor {
 class GRPCClient : public RPCClient {
  public:
   GRPCClient() {}
+  virtual ~GRPCClient();
 
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
                     const framework::Scope& scope, const std::string& var_name,
@@ -192,12 +193,17 @@ class GRPCClient : public RPCClient {
       const std::string& ep,
       int64_t time_out = RPCClient::rpc_time_out) override;
 
-  bool Wait() override;
+  void Wait() override;
+
+ protected:
+  void InitImpl() override;
+
+ private:
   // InitEventLoop should only be called by Init()
   void InitEventLoop();
 
- private:
   void Proceed();
+
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
@@ -209,7 +215,6 @@ class GRPCClient : public RPCClient {
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
-  std::mutex mutex_;
 
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
