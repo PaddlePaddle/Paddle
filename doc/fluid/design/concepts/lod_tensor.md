@@ -189,3 +189,23 @@ and the <2,0>-slice of above slice is
 10  12
   ||
 ```
+
+## Length Representation vs Offset Representation
+
+The offset representation is an implementation-oriented decision and it makes understanding the idea behind LoDTensor difficult.
+Hence, we encapsulate this implementation detail in C++ and expose the original length representation in our Python API. 
+
+Specifically, user can use the following code to set or get the LoD info of a LoDTensor in Python:
+```Python
+# lod using length representation
+lod = [[3, 1, 2], [2, 2, 1, 3, 1, 2]]
+# Create a LoDTensor that has the above lod info.
+# This lod will be converted to an offset representation in the C++ implementation under the hood.
+tensor = fluid.LoDTensor(lod)
+
+# Set/Change the lod info of LoDTensor
+tensor.set_lod([[3, 1, 2]])
+# Get the lod info of a LoDTensor (the offset representation stored in C++ will be converted 
+# back to length representation), new_lod = [[3, 1, 2]]
+new_lod = tensor.lod()
+```
