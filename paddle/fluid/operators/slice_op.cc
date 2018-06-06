@@ -32,6 +32,8 @@ class SliceOp : public framework::OperatorWithKernel {
                    "Output (Out) of slice op should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
+    PADDLE_ENFORCE(in_dims->size() < 7,
+                   "The rank of input should be less than 7.");
     framework::DDim out_dims(in_dims);
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
@@ -85,10 +87,10 @@ Slice Operator.
 
 Produces a slice of the input tensor along multiple axes. Similar to numpy:
 https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-Slices uses axes, starts and ends attributes to specify the start and 
+Slice uses `axes`, `starts` and `ends` attributes to specify the start and 
 end dimension for each axis in the list of axes, it uses this information
 to slice the input data tensor. If a negative value is passed for any of 
-the start or end indices, it represent number of elements before the end 
+the start or end indices, it represents number of elements before the end 
 of that dimension. If the value passed to start or end is larger than
 the n (the number of elements in this dimension), it represents n. 
 For slicing to the end of a dimension with unknown size, it is recommended 
