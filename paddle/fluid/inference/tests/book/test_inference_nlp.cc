@@ -104,9 +104,9 @@ void ThreadRunInfer(
     const int tid, paddle::framework::Scope* scope,
     const std::vector<std::vector<const paddle::framework::LoDTensor*>>& jobs) {
   // maybe framework:ProgramDesc is not thread-safe
+  paddle::platform::CPUPlace place;
+  paddle::framework::Executor executor(place);
   auto& sub_scope = scope->NewScope();
-  auto place = paddle::platform::CPUPlace();
-  auto executor = paddle::framework::Executor(place);
   auto inference_program =
       paddle::inference::Load(&executor, scope, FLAGS_model_path);
 
@@ -183,8 +183,8 @@ TEST(inference, nlp) {
     stop_ms = GetCurrentMs();
   } else {
     // 1. Define place, executor, scope
-    auto place = paddle::platform::CPUPlace();
-    auto executor = paddle::framework::Executor(place);
+    paddle::platform::CPUPlace place;
+    paddle::framework::Executor executor(place);
 
     // 2. Initialize the inference_program and load parameters
     std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
