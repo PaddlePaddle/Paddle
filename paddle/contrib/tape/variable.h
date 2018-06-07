@@ -46,7 +46,10 @@ class Variable {
     get_global_scope().Var(desc_.Name());
   }
 
-  ~Variable() { get_global_scope().EraseVars({desc_.Name()}); }
+  ~Variable() {
+    LOG(INFO) << "Deleting " << Name();
+    get_global_scope().EraseVars({desc_.Name()});
+  }
 
   void InitializeVariable() {
     LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();

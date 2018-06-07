@@ -71,7 +71,7 @@ class Linear {
     init_tape.Forward();
   }
 
-  VariableHandle operator()(VariableHandle &input) {
+  VariableHandle operator()(VariableHandle input) {
     VariableHandle y(new Variable("linear"));
     get_global_tape().AddOp("mul",
                             {{"X", {input}}, {"Y", {w_}}},

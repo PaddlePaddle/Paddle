@@ -19,23 +19,25 @@ TEST(Tape, TestMLP) {
   LOG(INFO) << "TestMLP";
   paddle::tape::Linear linear1(3, 3, "relu");
   paddle::tape::Linear linear2(3, 3, "relu");
-
-  paddle::tape::VariableHandle input(new paddle::tape::Variable("input"));
-  std::string initializer = "fill_constant";
-  paddle::framework::AttributeMap attrs;
-  attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
-  attrs["shape"] = std::vector<int>{3, 3};
-  attrs["value"] = 1.0f;
-  paddle::tape::Fill filler(initializer, attrs);
-  filler(input);
-
-  auto hidden = linear1(input);
-  auto output = linear2(hidden);
-
   paddle::tape::Mean mean;
-  auto loss = mean(output);
 
-  paddle::tape::get_global_tape().Backward(loss);
+  for (int i = 0; i < 2; ++i) {
+    paddle::tape::reset_global_tape();
+
+    paddle::tape::VariableHandle input(new paddle::tape::Variable("input"));
+    std::string initializer = "fill_constant";
+    paddle::framework::AttributeMap attrs;
+    attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
+    attrs["shape"] = std::vector<int>{3, 3};
+    attrs["value"] = 1.0f;
+    paddle::tape::Fill filler(initializer, attrs);
+    filler(input);
+
+    //    auto hidden = linear1(input);
+    auto loss = mean(linear2(linear1(input)));
+
+    paddle::tape::get_global_tape().Backward(loss);
+  }
 }
 
 int main(int argc, char** argv) {

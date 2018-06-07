@@ -232,5 +232,7 @@ Tape &get_global_tape() {
   static Tape T;
   return T;
 }
+
+void reset_global_tape() { get_global_tape() = Tape(); }
 }
 }

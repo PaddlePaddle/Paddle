@@ -56,5 +56,7 @@ class Tape {
 };
 
 Tape &get_global_tape();
+
+void reset_global_tape();
 }
 }
