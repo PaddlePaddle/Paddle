@@ -35,14 +35,15 @@ class ReaderBase {
 
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(ReaderBase* reader) : ReaderBase(), reader_(reader) {
+  explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
+      : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
   void ReInit() override { reader_->ReInit(); }
 
  protected:
-  ReaderBase* reader_;
+  std::shared_ptr<ReaderBase> reader_;
 };
 
 class FileReader : public ReaderBase {
@@ -62,9 +63,9 @@ class FileReader : public ReaderBase {
 // making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
-  void Reset(ReaderBase* reader) { reader_ = reader; }
+  void Reset(ReaderBase* reader) { reader_.reset(reader); }
 
-  ReaderBase* Get() const { return reader_; }
+  std::shared_ptr<ReaderBase> Get() const { return reader_; }
 
   void ReadNext(std::vector<LoDTensor>* out) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
@@ -76,7 +77,7 @@ class ReaderHolder {
   }
 
  private:
-  ReaderBase* reader_;
+  std::shared_ptr<ReaderBase> reader_;
 };
 
 }  // namespace framework
