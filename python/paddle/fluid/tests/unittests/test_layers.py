@@ -388,5 +388,16 @@ class TestBook(unittest.TestCase):
         print(str(program))
 
 
+    def test_maxout(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[8, 6, 6], dtype="float32")
+            output = layers.maxout(x=data, groups=2)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+
+
+
 if __name__ == '__main__':
     unittest.main()
