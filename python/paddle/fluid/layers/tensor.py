@@ -339,7 +339,7 @@ def argmin(x, axis=0):
           out = fluid.layers.argmin(x=in, axis=-1)  
     """
     helper = LayerHelper("argmin", **locals())
-    out = helper.create_tmp_variable(VarType.INT64)
+    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
     helper.append_op(
         type='argmin',
         inputs={'X': x},
