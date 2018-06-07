@@ -13,129 +13,167 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/platform/operators.h"
-#include "paddle/platform/op_registry.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/ddim.h"
-#include <vector>
 #include <type_traits>
+#include <vector>
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/platform/ddim.h"
+#include "paddle/platform/enforce.h"
+#include "paddle/platform/op_registry.h"
+#include "paddle/platform/operators.h"
 
 namespace paddle {
 namespace operators {
 
-#define DECLARE_ARG_UTILS(op_type, eigen_op_type, name)													\
-class op_type##Utils {																													\
-public:																																					\
-	inline static constexpr const char* const Name() { return name; } 						\
-	inline static constexpr const char* const OpName() { return ##op_type##; }		\
-	template <typename Device, typename X, typename Out, typename Tout>						\
-	inline static void Run(const Device& d, const X& x, Out& out, int64_t axis) {	\
-		static_assert(std::is_integral<Tout>::value, "Tout must be integral type");	\
-		out.device(d) = x.##eigen_op_type##(axis).template cast<Tout>();						\
-	}																																							\
-}
+enum ArgMinMaxType { kArgMin, kArgMax };
 
-DECLARE_ARG_INFO(ArgMin, argmin, "min");
-DECLARE_ARG_INFO(ArgMax, argmax, "max");
+template <typename DeviceContext, typename T, typename Tout, int64_t Rank,
+          ArgMinMaxType argMinMaxType>
+struct ArgMinMaxFunctor {};
 
-template <typename DeviceContext, typename T, typename Tout, typename ArgMinMaxUtils>
-class BaseArgMinMaxKernel : public framework::OpKernel<T> {
-public:
-	void Compute(const framework::ExecutionContext& context) const override {		
-		auto& X = detail::Ref(context.Input<framework::Tensor>("X"),
-                          "Cannot get input tensor X, variable name = %s",			
-                          context.op().Input("X"));
-		auto& Out = detail::Ref(context.Output<framework::Tensor>("Out"),						
-                            "Cannot get output tensor Out, variable name = %s",
-                            context.op().Output("Out"));												
-		int64_t axis = context.Attr<int64_t>("axis");
-		PADDLE_ENFORE(axis >= 0 && axis < X.dims().size());
-		Out.mutable_data<T>(context.GetPlace());
-		auto x = framework::EigenVector<T>::Flatten(X);
-    auto out = framework::EigenVector<T>::Flatten(Out);
-		auto& place = *(context.template device_context<DeviceContext>().eigen_device());
-		ArgMinMaxUtils::template Run<decltype((place)), decltype(x), decltype(out), Tout>(place, x, out, axis);
-	}
-};
+#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_type)      \
+  template <typename DeviceContext, typename T, typename Tout, int64_t Rank, \
+            enum_argminmax_type>                                             \
+  struct ArgMinMaxFunctor {                                                  \
+    void operator()(const DeviceContext& ctx, const framework::Tensor& in,   \
+                    framework::Tensor& out, int64_t axis) {                  \
+      auto in_eigen = framework::EigenTensor<T, Rank>::From(in);             \
+      auto out_eigen = framework::EigenTensor<T, Rank>::From(out);           \
+      out_eigen.device(ctx.eigen_device()) =                                 \
+          in_eigen.#eigen_op_typei##(axis).template cast<Tout>();            \
+    }                                                                        \
+  }
 
-template <typename DeviceContext, typename T, typename Tout>
-using ArgMinKernel = BaseArgMinMaxKernel<DeviceContext, T, Tout, ArgMinUtils>;
+DECLARE_ARG_MIN_MAX_FUNCTOR(argmin, ArgMinMaxType::kArgMin);
+DECLARE_ARG_MIN_MAX_FUNCTOR(argmax, ArgMinMaxType::kArgMax);
 
-template <typename DeviceContext, typename T, typename Tout>
-using ArgMaxKernel = BaseArgMinMaxKernel<DeviceContext, T, Tout, ArgMaxUtils>;
+template <typename DeviceContext, typename T, typename Tout,
+          ArgMinMaxType EnumArgMinMaxType>
+class ArgMinMaxKernel : public framework::OpKernel<T> {
+ private:
+  constexpr const char* OP_NAME =
+      (EnumArgMinMaxType == kArgMin ? "argmin" : "argmax");
 
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& x = *(ctx.Input<framework::Tensor>("X"));
+    auto& out = *(ctx.Output<framework::Tensor>("Out"));
+    out.mutable_data(ctx.GetPlace());
+    auto axis = ctx.Attr<int64_t>("axis");
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-template <typename ArgMinMaxUtils>
-class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
-public:
-	virtual void Make() override {
-		AddInput("X", string::Sprintf("(Tensor), The input tensor of %s op.", ArgMinMaxUtils::OpName()));
-		AddOutput("Out", string::Sprintf("(Tensor), The output of %s op.", ArgMinMaxUtils::OpName()));
-		AddAttr<int64_t>("axis",
-										 "(int64_t, default 0). ",
-										 "The axis in which to compute the arg indices.")
-			.SetDefault(0)
-			.EqualGreaterThan(0);
-		AddComment(string::Sprintf(R"DOC(
-Computes the indices of the %s elements of the input tensor's element along the provided axis
-)DOC", ArgMinMaxUtils::Name()));
-	}
-};
+#define CALL_ARG_MINMAX_FUNCTOR(rank)                                        \
+  typename ArgMinMaxFunctor<DeviceContext, T, Tout, rank, enumArgMinMaxType> \
+      functor##rank;                                                         \
+  functor##rank##(dev_ctc, x, out, axis)
 
-using ArgMinOpMaker = BaseArgMinMaxOpMaker<ArgMinUtils>;
-using ArgMaxOpMaker = BaseArgMinMaxOpMaker<ArgMaxUtils>;
-
-template <typename ArgMinMaxUtils>
-class BaseArgMinMaxOp : public framework::OperatorWithKernel {
-public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  using Tensor = framework::Tensor;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   string::Sprintf("Input(X) of %s op should not be null.", ArgMinMaxUtils::OpName()));
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   string::Sprintf("Output(Out) of %s op should not be null.", ArgMinMaxUtils::OpName()));
-
-    auto x_dim = ctx->GetInputDim("X");
-    int64_t x_dim_size = x_dim.size();
-    std::vector<int64_t> out_dim_vec;
-    int64_t axis = ctx->Attrs()->Get<int64_t>("axis");
-    out_dim_vec.reserve(x_dim_size - 1);
-    for (int64_t i = 0;i < x_dim_size;i ++) {
-    	if (i == axis) continue;
-    	out_dim_vec.push_back(x_dim[i]);
+    switch (x.dims().size()) {
+      case 1:
+        CALL_ARG_MINMAX_FUNCTOR(1);
+        break;
+      case 2:
+        CALL_ARG_MINMAX_FUNCTOR(2);
+        break;
+      case 3:
+        CALL_ARG_MINMAX_FUNCTOR(3);
+        break;
+      case 4:
+        CALL_ARG_MINMAX_FUNCTOR(4);
+        break;
+      case 5:
+        CALL_ARG_MINMAX_FUNCTOR(5);
+        break;
+      case 6:
+        CALL_ARG_MINMAX_FUNCTOR(6);
+        break;
+      default:
+        PADDLE_THROW(
+            "%s operator doesn't supports tensors whose ranks are greater "
+            "than 6.",
+            OP_NAME);
+        break;
     }
-
-    ctx->SetOutputDim("Out", make_ddim(out_dim_vec));
   }
 };
 
-using ArgMinOp = BaseArgMinMaxOp<ArgMinUtils>;
-using ArgMaxOp = BaseArgMinMaxOp<ArgMaxUtils>;
-}
-}
+template <typename DeviceContext, typename T, typename Tout>
+using ArgMinKernel =
+    ArgMinMaxKernel<DeviceContext, T, Tout, ArgMinMaxType::kArgMin>;
 
-#define REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(op_type, op_name)						\
-	REGISTER_OP_WITHOUT_GRADIENT(op_type, paddle::operators::#op_name#Op, 		\
-		paddle::operators::#op_name#OpMaker)
+template <typename DeviceContext, typename T, typename Tout>
+using ArgMaxKernel =
+    ArgMinMaxKernel<DeviceContext, T, Tout, ArgMinMaxType::kArgMax>;
 
-#define REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(in_type, out_type) 									\
-	REGISTER_OP_##LIBRARY_TYPE##_KERNEL(op_type, 																		\
-		paddle::operators::##op_name##Kernel<paddle::##LIBRARY_TYPE##DeviceContext, 	\
-		in_type, out_type>)
+typedef class BaseArgMinMaxOp : public framework::OperatorWithKernel {
+ public:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    const auto& x_dims = ctx->GetInputDim("X");
+    int64_t axis = ctx->Attrs().Get<int64_t>("axis");
+    PADDLE_ENFORCE(axis >= -x_dims.size() && axis < x_dims.size(),
+                   "'axis' must be inside [-Rank(X), Rank(X))");
 
-#define REGISTER_ARG_MINMAX_KERNEL(op_type, op_name, LIBRARY_TYPE)	\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(platform::float16, int64_t);\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(float, int64_t);						\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(double, int64_t);						\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int64_t, int64_t);					\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int32_t, int64_t);					\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int16_t, int64_t);					\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int8_t, int64_t);						\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint64_t, int64_t);					\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint32_t, int64_t);					\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint16_t, int64_t);					\
-	REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint8_t, int64_t)
+    auto x_rank = x_dims.size();
+    if (axis < 0) axis += x_rank;
 
+    std::vector<int64_t> vec;
+    for (int64_t i = 0; i < axis; i++) vec.push_back(x_dims[i]);
+    for (int64_t i = axis + 1; i < x_rank; i++) vec.push_back(x_dims[i]);
+    ctx->SetOutputDim("Out", make_ddim(vec));
+  }
+} ArgMinOp, ArgMaxOp;
+
+class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
+ protected:
+  virtual const char* OpName() const = 0;
+  virtual const char* Name() const = 0;
+
+ public:
+  void Make() override {
+    AddInput("X", "Input tensor.");
+    AddOutput("Out", "Output tensor.");
+    AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.")
+        AddComment(::paddle::string::Sprintf(R"DOC(
+				%s Operator.
+
+				Computes the indices of the %s elements of the input tensor's element along the provided axis.
+)DOC",
+                                             OpName(), Name()));
+  }
+};
+
+class ArgMinOpMaker : public BaseArgMinMaxOpMaker {
+ protected:
+  const char* OpName() override { return "ArgMin"; }
+  const char* Name() override { return "min"; }
+};
+
+class ArgMaxOpMaker : public BaseArgMinMaxOpMaker {
+ protected:
+  const char* OpName() override { return "ArgMax"; }
+  const char* Name() override { return "max"; }
+};
+}  // namespace operators
+}  // namespace paddle
+
+#define REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(op_type, op_name)        \
+  REGISTER_OP_WITHOUT_GRADIENT(op_type, paddle::operators::#op_name##Op, \
+                               paddle::operators::#op_name##OpMaker)
+
+#define REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(in_type, out_type, library_type) \
+  REGISTER_OP_##library_type##_KERNEL(                                         \
+      op_type, paddle::operators::##op_name##Kernel<                           \
+                   paddle::##library_type##DeviceContext, in_type, out_type>)
+
+#define REGISTER_ARG_MINMAX_KERNEL(op_type, op_name, library_type)        \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(float, int64_t, library_type);    \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(double, int64_t, library_type);   \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int64_t, int64_t, library_type);  \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int32_t, int64_t, library_type);  \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int16_t, int64_t, library_type);  \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(int8_t, int64_t, library_type);   \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint64_t, int64_t, library_type); \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint32_t, int64_t, library_type); \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint16_t, int64_t, library_type); \
+  REGISTER_ARG_MINMAX_KERNEL_WITH_TYPES(uint8_t, int64_t, library_type)
