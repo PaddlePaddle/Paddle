@@ -24,10 +24,7 @@
 namespace paddle {
 namespace tape {
 
-paddle::framework::Scope& get_global_scope() {
-  static paddle::framework::Scope S;
-  return S;
-}
+paddle::framework::Scope& get_global_scope();
 
 class Variable;
 using VariableHandle = std::shared_ptr<Variable>;

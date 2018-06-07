@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
 
 #include "paddle/contrib/tape/tape.h"

@@ -17,8 +17,9 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
-cc_library(tape SRCS tape.cc DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+cc_library(tape_variable SRCS variable.cc DEPS ${FLUID_CORE_MODULES})
+cc_library(tape SRCS tape.cc DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} tape_variable)
 
 cc_test(test_tape
         SRCS test_tape.cc
-        DEPS tape)
+        DEPS tape tape_variable)

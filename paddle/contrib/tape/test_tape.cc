@@ -35,7 +35,7 @@ TEST(Tape, TestMLP) {
   paddle::tape::Mean mean;
   auto loss = mean(output);
 
-  paddle::tape::get_global_tape().backward(loss);
+  paddle::tape::get_global_tape().Backward(loss);
 }
 
 int main(int argc, char** argv) {
