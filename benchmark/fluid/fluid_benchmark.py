@@ -371,8 +371,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 print("Pass %d, batch %d, loss %s" %
                       (pass_id, batch_id, np.array(loss)))
             batch_id += 1
-        if args.use_reader_op:
-            num_samples = num_samples * args.gpus
+
         print_train_time(start_time, time.time(), num_samples)
         if not args.no_test and batch_acc:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
