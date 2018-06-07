@@ -370,7 +370,7 @@ def argmax(x, axis=0):
           out = fluid.layers.argmax(x=in, axis=-1)  
     """
     helper = LayerHelper("argmax", **locals())
-    out = helper.create_tmp_variable(VarType.INT64)
+    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
     helper.append_op(
         type='argmax',
         inputs={'X': x},

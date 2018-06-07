@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/arg_min_max.h"
+#include "paddle/fluid/operators/arg_min_max_op.h"
 
 REGISTER_ARG_MINMAX_KERNEL(argmin, ArgMin, CUDA);
 REGISTER_ARG_MINMAX_KERNEL(argmax, ArgMax, CUDA);
