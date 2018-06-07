@@ -56,9 +56,10 @@ NativeConfig GetConfig() {
   return config;
 }
 
-TEST(paddle_inference_api_impl, word2vec) {
+void MainWord2Vec(bool use_gpu) {
   NativeConfig config = GetConfig();
   auto predictor = CreatePaddlePredictor<NativeConfig>(config);
+  config.use_gpu = use_gpu;
 
   framework::LoDTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -106,11 +107,12 @@ TEST(paddle_inference_api_impl, word2vec) {
   free(outputs[0].data.data);
 }
 
-TEST(paddle_inference_api_impl, image_classification) {
+void MainImageClassification(bool use_gpu) {
   int batch_size = 2;
   bool use_mkldnn = false;
   bool repeat = false;
   NativeConfig config = GetConfig();
+  config.use_gpu = use_gpu;
   config.model_dir =
       FLAGS_dirname + "image_classification_resnet.inference.model";
 
@@ -155,9 +157,9 @@ TEST(paddle_inference_api_impl, image_classification) {
   free(data);
 }
 
-TEST(paddle_inference_api_native_multithreads, word2vec) {
+void MainThreadsWord2Vec(bool use_gpu) {
   NativeConfig config = GetConfig();
-  config.use_gpu = false;
+  config.use_gpu = use_gpu;
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   // prepare inputs data and reference results
@@ -216,11 +218,11 @@ TEST(paddle_inference_api_native_multithreads, word2vec) {
   }
 }
 
-TEST(paddle_inference_api_native_multithreads, image_classification) {
+void MainThreadsImageClassification(bool use_gpu) {
   constexpr int num_jobs = 4;  // each job run 1 batch
   constexpr int batch_size = 1;
   NativeConfig config = GetConfig();
-  config.use_gpu = false;
+  config.use_gpu = use_gpu;
   config.model_dir =
       FLAGS_dirname + "image_classification_resnet.inference.model";
 
@@ -268,5 +270,30 @@ TEST(paddle_inference_api_native_multithreads, image_classification) {
     threads[i].join();
   }
 }
+
+TEST(inference_api_native, word2vec_cpu) { MainWord2Vec(false /*use_gpu*/); }
+TEST(inference_api_native, word2vec_cpu_threads) {
+  MainThreadsWord2Vec(false /*use_gpu*/);
+}
+TEST(inference_api_native, image_classification_cpu) {
+  MainThreadsImageClassification(false /*use_gpu*/);
+}
+TEST(inference_api_native, image_classification_cpu_threads) {
+  MainThreadsImageClassification(false /*use_gpu*/);
+}
+
+#ifdef PADDLE_WITH_CUDA
+TEST(inference_api_native, word2vec_gpu) { MainWord2Vec(true /*use_gpu*/); }
+TEST(inference_api_native, word2vec_gpu_threads) {
+  MainThreadsWord2Vec(true /*use_gpu*/);
+}
+TEST(inference_api_native, image_classification_gpu) {
+  MainThreadsImageClassification(true /*use_gpu*/);
+}
+TEST(inference_api_native, image_classification_gpu_threads) {
+  MainThreadsImageClassification(true /*use_gpu*/);
+}
+
+#endif
 
 }  // namespace paddle

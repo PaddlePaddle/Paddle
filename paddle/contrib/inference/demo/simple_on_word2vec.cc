@@ -66,12 +66,12 @@ void Main(bool use_gpu) {
   }
 }
 
-void MainThreads(int num_threads) {
+void MainThreads(int num_threads, bool use_gpu) {
   // Multi-threads only support on CPU
   // 0. Create PaddlePredictor with a config.
   NativeConfig config;
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
-  config.use_gpu = false;
+  config.use_gpu = use_gpu;
   auto main_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
@@ -113,11 +113,13 @@ void MainThreads(int num_threads) {
 }
 
 TEST(demo, word2vec_cpu) { Main(false /*use_gpu*/); }
-TEST(demo_multi_threads, word2vec_cpu_1) { MainThreads(1); }
-TEST(demo_multi_threads, word2vec_cpu_4) { MainThreads(4); }
+TEST(demo_multi_threads, word2vec_cpu_1) { MainThreads(1, false /*use_gpu*/); }
+TEST(demo_multi_threads, word2vec_cpu_4) { MainThreads(4, false /*use_gpu*/); }
 
 #ifdef PADDLE_WITH_CUDA
 TEST(demo, word2vec_gpu) { Main(true /*use_gpu*/); }
+TEST(demo_multi_threads, word2vec_gpu_1) { MainThreads(1, true /*use_gpu*/); }
+TEST(demo_multi_threads, word2vec_gpu_4) { MainThreads(4, true /*use_gpu*/); }
 #endif
 
 }  // namespace demo
