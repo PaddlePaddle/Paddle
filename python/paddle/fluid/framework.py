@@ -361,6 +361,13 @@ class OpProtoHolder(object):
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
+    @staticmethod
+    def generated_op_attr_names():
+        return {
+            core.op_proto_and_checker_maker.kOpRoleAttrName(),
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+        }
+
 
 class Operator(object):
     """
