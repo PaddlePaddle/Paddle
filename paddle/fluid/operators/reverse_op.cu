@@ -12,29 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/operators/reverse_op.h"
 
-#include <string>
-
-namespace paddle {
-namespace framework {
-namespace details {
-
-struct BuildStrategy {
-  enum class ReduceStrategy { kAllReduce = 0, kReduce = 1 };
-
-  enum class GradientScaleStrategy {
-    kCoeffNumDevice = 0,
-    kOne = 1,
-    kCustomized = 2,
-  };
-
-  ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
-  GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-
-  std::string debug_graphviz_path_{""};
-};
-
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    reverse, ops::ReverseKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, uint8_t>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, double>)
