@@ -32,7 +32,7 @@ class SliceOp : public framework::OperatorWithKernel {
                    "Output (Out) of slice op should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE(in_dims->size() < 7,
+    PADDLE_ENFORCE(in_dims.size() < 7,
                    "The rank of input should be less than 7.");
     framework::DDim out_dims(in_dims);
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
