@@ -72,6 +72,8 @@ void MainThreads(int num_threads, bool use_gpu) {
   NativeConfig config;
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   config.use_gpu = use_gpu;
+  config.fraction_of_gpu_memory = 0.15;
+  config.device = 0;
   auto main_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
