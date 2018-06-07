@@ -111,7 +111,11 @@ template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     bool stat, const Args&... args) {
   if (UNLIKELY(!(stat))) {
+#ifndef REPLACE_ENFORCE_GLOG
     throw std::runtime_error(string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -121,8 +125,12 @@ template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     cudaError_t e, const Args&... args) {
   if (UNLIKELY(e)) {
+#ifndef REPLACE_ENFORCE_GLOG
     throw thrust::system_error(e, thrust::cuda_category(),
                                string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -130,8 +138,12 @@ template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     curandStatus_t stat, const Args&... args) {
   if (stat != CURAND_STATUS_SUCCESS) {
+#ifndef REPLACE_ENFORCE_GLOG
     throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
                                string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -141,8 +153,12 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   if (stat == CUDNN_STATUS_SUCCESS) {
     return;
   } else {
+#ifndef REPLACE_ENFORCE_GLOG
     throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) +
                              string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -171,7 +187,11 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
     err = "CUBLAS: license error, ";
   }
+#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(err + string::Sprintf(args...));
+#else
+  LOG(FATAL) << err << string::Sprintf(args...);
+#endif
 }
 
 template <typename... Args>
@@ -180,8 +200,13 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   if (stat == ncclSuccess) {
     return;
   } else {
+#ifndef REPLACE_ENFORCE_GLOG
     throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
                              string::Sprintf(args...));
+#else
+    LOG(FATAL) << platform::dynload::ncclGetErrorString(stat)
+               << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -211,8 +236,7 @@ inline void throw_on_error(T e) {
     }                                                                   \
   } while (false)
 #else
-#define PADDLE_ENFORCE(cond, ...) \
-  CHECK((cond)) << ::paddle::string::Sprintf(__VA_ARGS__);
+#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif
 
 /*
