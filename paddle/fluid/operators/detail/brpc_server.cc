@@ -41,11 +41,11 @@ class BRPCServiceImpl : public SendRecvService {
     }
   }
 
-  ~BRPCServiceImpl() {}
+  virtual ~BRPCServiceImpl() {}
 
   void SendVariable(google::protobuf::RpcController* cntl_butil,
                     const VariableMessage* request, VoidMessage* response,
-                    google::protobuf::Closure* done) {
+                    google::protobuf::Closure* done) override {
     brpc::ClosureGuard done_guard(done);
 
     paddle::framework::Scope* local_scope = request_send_h_->scope();
@@ -70,26 +70,12 @@ class BRPCServiceImpl : public SendRecvService {
 
   void GetVariable(google::protobuf::RpcController* cntl_butil,
                    const VariableMessage* request, VariableMessage* response,
-                   google::protobuf::Closure* done) {
-    /*
-    std::string varname = request->varname();
-    auto scope = request_get_h_->scope();
-    auto invar = scope->FindVar(varname);
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_get_h_->Handle(varname, scope, invar, &outvar);
-
-    if (outvar) {
-      SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
-                            &reply_);
-    }
-    */
-  }
+                   google::protobuf::Closure* done) override {}
 
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
-                        google::protobuf::Closure* done) {}
+                        google::protobuf::Closure* done) override {}
 
  private:
   paddle::operators::detail::RequestHandler* request_send_h_;

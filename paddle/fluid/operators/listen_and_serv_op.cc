@@ -19,7 +19,12 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#ifdef PADDLE_WITH_GRPC
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#else
+#include "paddle/fluid/operators/detail/brpc_server.h"
+#endif
+
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -89,6 +94,12 @@ void ListenAndServOp::SavePort() const {
   rpc_service_->SavePort();
 }
 
+static int64_t GetTimestamp() {
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
 void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
                                   framework::ProgramDesc *program,
                                   framework::Scope *recv_scope,
@@ -130,7 +141,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     int32_t last_parent_blkid = program->Block(1).Parent();
     std::vector<size_t> parallel_blkids;
     parallel_blkids.push_back(1);
-    double ts = detail::GetTimestamp();
+    double ts = GetTimestamp();
     for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
       if (blkid != static_cast<size_t>(prefetch_block->ID())) {
         if (program->Block(blkid).Parent() != last_parent_blkid) {
@@ -144,7 +155,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     }
     ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared, program,
                           recv_scope);
-    VLOG(2) << "run all blocks spent " << detail::GetTimestamp() - ts << "(ms)";
+    VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
     // Reset the received sparse variables, the sum operator would not
     // sum the input sparse variables which rows is empty at the next

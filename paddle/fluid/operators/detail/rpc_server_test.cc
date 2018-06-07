@@ -17,15 +17,21 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/rpc_client.h"
-
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
+
+#ifdef PADDLE_WITH_GRPC
+#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
+#else
+#include "paddle/fluid/operators/detail/brpc_client.h"
+#include "paddle/fluid/operators/detail/brpc_server.h"
+#endif
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -121,15 +127,17 @@ TEST(PREFETCH, CPU) {
   g_req_handler.reset(new detail::RequestPrefetchHandler(true));
 #ifdef PADDLE_WITH_GRPC
   g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
+  detail::RPCClient* client =
+      detail::RPCClient::GetInstance<detail::GRPCClient>();
 #else
   g_rpc_service.reset(new detail::AsyncBRPCServer("127.0.0.1:0", 1));
+  detail::RPCClient* client =
+      detail::RPCClient::GetInstance<detail::BRPCClient>();
 #endif
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
 
-  detail::RPCClient* client =
-      detail::RPCClient::GetInstance<detail::GRPCClient>();
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 

@@ -37,6 +37,10 @@ constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 
+#define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
+#define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
+#define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
+
 class RPCServer;
 
 class RequestHandler {

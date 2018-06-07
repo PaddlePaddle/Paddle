@@ -24,16 +24,12 @@ INCLUDE_DIRECTORIES(${BRPC_INCLUDE_DIR})
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf")
 
-set(BRPC_REPOSITORY "https://github.com/brpc/brpc")
-set(BRPC_TAG "6d153dd7ff00f960ae6895c9c5fff0ce9f07aff2")
-
 # If minimal .a is need, you can set  WITH_DEBUG_SYMBOLS=OFF
-
 ExternalProject_Add(
     extern_brpc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  ${BRPC_REPOSITORY}
-    GIT_TAG         ${BRPC_TAG}
+    GIT_REPOSITORY  "https://github.com/brpc/brpc"
+    GIT_TAG         "6d153dd7ff00f960ae6895c9c5fff0ce9f07aff2"
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -54,9 +50,9 @@ ExternalProject_Add(
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 ADD_DEPENDENCIES(extern_brpc protobuf leveldb gflags glog gtest snappy)
-
 ADD_LIBRARY(brpc STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET brpc PROPERTY IMPORTED_LOCATION ${BRPC_LIBRARIES})
 ADD_DEPENDENCIES(brpc extern_brpc)
+
 
 LIST(APPEND external_project_dependencies brpc)

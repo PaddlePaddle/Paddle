@@ -20,14 +20,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/string/printf.h"
+
+#ifdef PADDLE_WITH_GRPC
+#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/send_recv_util.h"
+#else
+#include "paddle/fluid/operators/detail/brpc_client.h"
+#endif
 
 USE_NO_KERNEL_OP(listen_and_serv);
 
@@ -91,8 +97,15 @@ TEST(SendNcclId, RPCServer) {
   int port = g_rpc_service->GetSelectedPort();
 
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient* client =
+
+#ifdef PADDLE_WITH_GRPC
+  detail::RPCClient* rpc_client =
       detail::RPCClient::GetInstance<detail::GRPCClient>();
+#else
+  detail::RPCClient* rpc_client =
+      detail::RPCClient::GetInstance<detail::BRPCClient>();
+#endif
+
   LOG(INFO) << "connect to server" << ep;
   client->AsyncSendVar(ep, dev_ctx, scope, NCCL_ID_VARNAME);
   client->Wait();

@@ -21,8 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
+
+#ifdef PADDLE_WITH_GRPC
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#else
+#include "paddle/fluid/operators/detail/brpc_client.h"
+#include "paddle/fluid/operators/detail/brpc_server.h"
+#endif
+
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
@@ -61,8 +68,14 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
-    detail::RPCClient* client =
+#ifdef PADDLE_WITH_GRPC
+    detail::RPCClient* rpc_client =
         detail::RPCClient::GetInstance<detail::GRPCClient>();
+#else
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::BRPCClient>();
+#endif
+
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
       client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
