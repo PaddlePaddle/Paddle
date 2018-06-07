@@ -54,20 +54,21 @@ class Linear {
       : w_(new Variable("LinearWeight")),
         b_(new Variable("LinearBias")),
         act_(act) {
-    // TODO(tonyyang-svail): make weight initialization independent of the tape
+    Tape init_tape;
+
     std::string initializer = "fill_constant";
     framework::AttributeMap attrs;
     attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
     attrs["shape"] = std::vector<int>{in_dim, out_dim};
     attrs["value"] = 1.0f;
-    Fill w_filler(initializer, attrs);
-    w_filler(w_);
+    init_tape.AddOp(initializer, {}, {{"Out", {w_}}}, attrs);
 
     attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
     attrs["shape"] = std::vector<int>{out_dim};
     attrs["value"] = 1.0f;
-    Fill b_filler(initializer, attrs);
-    b_filler(b_);
+    init_tape.AddOp(initializer, {}, {{"Out", {b_}}}, attrs);
+
+    init_tape.Forward();
   }
 
   VariableHandle operator()(VariableHandle &input) {
