@@ -40,10 +40,7 @@ def parse_args():
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
     parser.add_argument(
-        '--learning_rate',
-        type=float,
-        default=0.001,
-        help='The minibatch size.')
+        '--learning_rate', type=float, default=0.001, help='The learning rate.')
     # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
@@ -73,6 +70,11 @@ def parse_args():
         default=1,
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
     parser.add_argument(
+        '--cpus',
+        type=int,
+        default=1,
+        help='If cpus > 1, will use ParallelDo to run, else use Executor.')
+    parser.add_argument(
         '--data_set',
         type=str,
         default='flowers',
@@ -88,8 +90,8 @@ def parse_args():
         help='If set, use nvprof for CUDA.')
     parser.add_argument(
         '--no_test',
-        action='store_false',
-        help='If set, test the testset during training.')
+        action='store_true',
+        help='If set, do not test the testset during training.')
     parser.add_argument(
         '--memory_optimize',
         action='store_true',
@@ -98,6 +100,8 @@ def parse_args():
         '--use_fake_data',
         action='store_true',
         help='If set ommit the actual read data operators.')
+    parser.add_argument(
+        '--profile', action='store_true', help='If set, profile a few steps.')
     parser.add_argument(
         '--update_method',
         type=str,
@@ -108,8 +112,8 @@ def parse_args():
     return args
 
 
-def append_nccl2_prepare():
-    if os.getenv("PADDLE_TRAINER_ID", None) != None:
+def append_nccl2_prepare(trainer_id):
+    if trainer_id >= 0:
         # append gen_nccl_id at the end of startup program
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         port = os.getenv("PADDLE_PSERVER_PORT")
@@ -136,12 +140,12 @@ def append_nccl2_prepare():
             })
         return nccl_id_var, num_trainers, trainer_id
     else:
-        raise Exception(
-            "must set PADDLE_TRAINER_ID env variables for dist train.")
+        raise Exception("must set positive PADDLE_TRAINER_ID env variables for "
+                        "nccl-based dist train.")
 
 
-def dist_transpile():
-    if "PADDLE_TRAINING_ROLE" not in os.environ:
+def dist_transpile(trainer_id):
+    if trainer_id < 0:
         return None, None
 
     # the port of all pservers, needed by both trainer and pserver
@@ -158,9 +162,6 @@ def dist_transpile():
     trainers = int(os.getenv("PADDLE_TRAINERS"))
     # the IP of the local machine, needed by pserver only
     current_endpoint = os.getenv("PADDLE_CURRENT_IP", "") + ":" + port
-    # the unique trainer id, starting from 0, needed by trainer
-    # only
-    trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
     # the role, should be either PSERVER or TRAINER
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
@@ -232,13 +233,10 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
             train_losses.append(loss)
             print("Pass: %d, Iter: %d, Loss: %f\n" %
                   (pass_id, iters, np.mean(train_losses)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sec\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses)))
+        print_train_time(start_time, time.time(), num_samples)
+        print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
-        if not args.no_test and batch_acc != None:
+        if not args.no_test and batch_acc:
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -295,6 +293,11 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         iters = 0
         start_time = time.time()
         for batch_id, data in enumerate(train_reader()):
+            if args.profile and pass_id == 0 and batch_id == 5:
+                profiler.start_profiler("All")
+            elif args.profile and pass_id == 0 and batch_id == 10:
+                profiler.stop_profiler("total", "/tmp/profile_%d" % trainer_id)
+
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
@@ -311,11 +314,8 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if batch_id % 1 == 0:
                 print("Pass %d, batch %d, loss %s" %
                       (pass_id, batch_id, np.array(loss)))
-        train_elapsed = time.time() - start_time
-        examples_per_sec = num_samples / train_elapsed
-        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
-              (num_samples, train_elapsed, examples_per_sec))
-        if not args.no_test and batch_acc != None:
+        print_train_time(start_time, time.time(), num_samples)
+        if not args.no_test and batch_acc:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
@@ -325,16 +325,27 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
 def print_arguments(args):
     vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
                                 vars(args)['device'] == 'GPU')
-    print('----------- resnet Configuration Arguments -----------')
+    print('----------- Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
         print('%s: %s' % (arg, value))
     print('------------------------------------------------')
 
 
+def print_train_time(start_time, end_time, num_samples):
+    train_elapsed = end_time - start_time
+    examples_per_sec = num_samples / train_elapsed
+    print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+          (num_samples, train_elapsed, examples_per_sec))
+
+
 def main():
     args = parse_args()
     print_arguments(args)
-    nccl_id_var, num_trainers, trainer_id = None, 1, 0
+
+    # the unique trainer id, starting from 0, needed by trainer
+    # only
+    nccl_id_var, num_trainers, trainer_id = (
+        None, 1, int(os.getenv("PADDLE_TRAINER_ID", "0")))
 
     if args.use_cprof:
         pr = cProfile.Profile()
@@ -348,7 +359,7 @@ def main():
         fluid.memory_optimize(fluid.default_main_program())
 
     if args.update_method == "pserver":
-        train_prog, startup_prog = dist_transpile()
+        train_prog, startup_prog = dist_transpile(trainer_id)
         if not train_prog:
             raise Exception(
                 "Must configure correct environments to run dist train.")
@@ -364,7 +375,7 @@ def main():
     train_args.append(fluid.default_startup_program())
 
     if args.update_method == "nccl2":
-        nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare()
+        nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare(trainer_id)
     if args.gpus == 1:
         # NOTE: parallel executor use profiler interanlly
         if args.use_nvprof and args.device == 'GPU':

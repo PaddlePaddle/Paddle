@@ -46,7 +46,7 @@ int GetCpuCount() { return 1; }
 #endif
 
 class EigenDeviceWarpper {
-public:  // NOLINT
+ public:  // NOLINT
 #if EIGEN_USE_THREADS
   static Eigen::ThreadPoolDevice* device() {
     const int num_cpus = GetCpuCount();

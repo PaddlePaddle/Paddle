@@ -75,7 +75,7 @@ void NHWC2NCHW<DEVICE_TYPE_CPU>(real* outputs,
  */
 template <DeviceType Device>
 class NCHW2NHWCFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {}
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -108,7 +108,7 @@ public:
  */
 template <DeviceType Device>
 class NHWC2NCHWFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {}
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {

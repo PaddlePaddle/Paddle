@@ -81,7 +81,11 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
-    'upsampling_bilinear2d',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'random_crop',
 ]
 
 
@@ -154,7 +158,8 @@ def fc(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          data = fluid.layers.data(
+              name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
 
@@ -177,11 +182,8 @@ def fc(input,
             inputs={"X": input_var,
                     "Y": w},
             outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": num_flatten_dims,
-                "y_num_col_dims": 1,
-                "use_mkldnn": use_mkldnn
-            })
+            attrs={"x_num_col_dims": num_flatten_dims,
+                   "y_num_col_dims": 1})
         mul_results.append(tmp)
 
     if len(mul_results) == 1:
@@ -349,7 +351,8 @@ def dynamic_lstm(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              Choices = ["sigmoid", "tanh",
+                                  "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -516,10 +519,12 @@ def dynamic_lstmp(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              Choices = ["sigmoid", "tanh",
+                                  "relu", "identity"],
                               default "tanh".
         proj_activation(str): The activation for projection output.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              Choices = ["sigmoid", "tanh",
+                                  "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -855,7 +860,7 @@ def cos_sim(X, Y):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None):
+def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     """
     Computes dropout.
 
@@ -873,6 +878,8 @@ def dropout(x, dropout_prob, is_test=False, seed=None):
                   parameter is set to None, a random seed is used.
                   NOTE: If an integer seed is given, always the same output
                   units will be dropped. DO NOT use a fixed seed in training.
+       name(str|None): A name for this layer(optional). If set None, the layer
+                    will be named automatically.
 
     Returns:
         Variable: A tensor variable.
@@ -1117,7 +1124,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
     return softmax_out
 
 
-def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
@@ -1175,19 +1182,19 @@ def conv2d(input,
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
 
         - Output:
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
         .. math::
 
-        H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-        W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
        input(Variable): The input image with [N, C, H, W] format.
@@ -1855,6 +1862,7 @@ def conv2d_transpose(input,
             'strides': stride,
             'paddings': padding,
             'dilations': dilation,
+            'groups': groups,
             'use_cudnn': use_cudnn
         })
 
@@ -2171,7 +2179,8 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
-            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+            fluid.layers.reduce_mean(
+                x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
 
             # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
@@ -2390,7 +2399,8 @@ def split(input, num_or_sections, dim=-1, name=None):
             x0.shape  # [3, 3, 5]
             x1.shape  # [3, 3, 5]
             x2.shape  # [3, 3, 5]
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=[2, 3, 4], dim=1)
+            x0, x1, x2 = fluid.layers.split(
+                x, num_or_sections=[2, 3, 4], dim=1)
             x0.shape  # [3, 2, 5]
             x1.shape  # [3, 3, 5]
             x2.shape  # [3, 4, 5]
@@ -2609,7 +2619,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def topk(input, k):
+def topk(input, k, name=None):
     """
     This operator is used to find values and indices of the k largest entries
     for the last dimension.
@@ -2625,6 +2635,8 @@ def topk(input, k):
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
         k(int): An integer value to specify the top k largest elements.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         values(Variable): The k largest elements along each last dimensional
@@ -3307,7 +3319,8 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.softmax_with_cross_entropy(logits=fc, label=label)
+            out = fluid.layers.softmax_with_cross_entropy(
+                logits=fc, label=label)
     """
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_tmp_variable(dtype=logits.dtype)
@@ -3354,7 +3367,8 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
         .. code-block:: python
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[100], dtype='float32')
+            label = fluid.layers.data(
+                name='label', shape=[100], dtype='float32')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
@@ -3676,7 +3690,8 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          data = fluid.layers.data(
+              name="data", shape=[3, 112, 112], dtype="float32")
           lrn = fluid.layers.lrn(input=data)
     """
     helper = LayerHelper('lrn', **locals())
@@ -3884,7 +3899,6 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
 def dice_loss(input, label, epsilon=0.00001):
     """
-    **Dice loss Layer**
     Dice loss for comparing the similarity of two batch of data,
     usually is used for binary image segmentation i.e. labels are binary.
     The dice loss can be defined as below equation:
@@ -3924,40 +3938,49 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
+def image_resize(input,
+                 out_shape=None,
+                 scale=None,
+                 name=None,
+                 resample='BILINEAR'):
     """
-    The mathematical meaning of upsampling_bilinear2d is also called
-    Bilinear interpolation.
-    Bilinear interpolation is an extension of linear interpolation for
-    interpolating functions of two variables (e.g. H-direction and
-    W-direction in this layer) on a rectilinear 2D grid.
-    
-    For details, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bilinear_interpolation
-    
+    Resize a batch of images.
+
+    The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
+    and the resizing only applies on the last two dimensions(hight and width).
+
+    Supporting resample methods:
+        'BILINEAR' : Bilinear interpolation
+
     Args:
-        input (Variable): The input tensor of bilinear interpolation,
+        input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|None): Output shape of bilinear interpolation
+        out_shape(list|tuple|Variable|None): Output shape of image resize
                                     layer, the shape is (out_h, out_w).
                                     Default: None
-        scale(int|None): The multiplier for the input height or width.
+        scale(float|None): The multiplier for the input height or width.
                          At least one of out_shape or scale must be set.
                          And out_shape has a higher priority than scale.
                          Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        resample(str): The resample method. It can only be 'BILINEAR' currently.
+                       Default: 'BILINEAR'
 
     Returns:
         out (Variable): The output is a 4-D tensor of the shape
                         (num_batches, channls, out_h, out_w).
-   
+
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.bilinear_interp(input, out_shape=[12, 12])
+            out = fluid.layers.image_resize(input, out_shape=[12, 12])
     """
+    resample_methods = {'BILINEAR': 'bilinear_interp'}
+    if resample not in resample_methods:
+        raise ValueError(
+            "The 'resample' of image_resize can only be 'BILINEAR' currently.")
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None")
     helper = LayerHelper('bilinear_interp', **locals())
@@ -3966,22 +3989,156 @@ def upsampling_bilinear2d(input, out_shape=None, scale=None, name=None):
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
+    out_h = 0
+    out_w = 0
+    inputs = {"X": input}
     if out_shape is not None:
-        if not (_is_list_or_turple_(out_shape) and len(out_shape) == 2):
-            raise ValueError('out_shape should be a list or tuple ',
-                             'with length 2, (out_h, out_w).')
-        out_shape = list(map(int, out_shape))
-        out_h = out_shape[0]
-        out_w = out_shape[1]
+        if not (_is_list_or_turple_(out_shape) and
+                len(out_shape) == 2) and not isinstance(out_shape, Variable):
+            raise ValueError('out_shape should be a list or tuple or variable')
+        if _is_list_or_turple_(out_shape):
+            out_shape = list(map(int, out_shape))
+            out_h = out_shape[0]
+            out_w = out_shape[1]
+        else:
+            inputs['OutSize'] = out_shape
     else:
         out_h = int(input.shape[2] * scale)
         out_w = int(input.shape[3] * scale)
 
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type="bilinear_interp",
-        inputs={"X": input},
+        type=resample_methods[resample],
+        inputs=inputs,
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
+    return out
+
+
+def resize_bilinear(input, out_shape=None, scale=None, name=None):
+    """
+    This is an alias of layer 'image_resize' with bilinear interpolation.
+
+    The mathematical meaning of resize bilinear layer is
+    Bilinear interpolation.
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this layer) on a rectilinear 2D grid.
+
+    For details, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation
+    """
+
+    return image_resize(input, out_shape, scale, name, 'BILINEAR')
+
+
+def image_resize_short(input, out_short_len, resample='BILINEAR'):
+    """
+    Resize a batch of images. The short edge of input images will be 
+    resized to the given 'out_short_len'. The long edge of input images 
+    will be resized proportionately to make images' length-width ratio 
+    constant.
+
+    Args:
+        input (Variable): The input tensor of image resize layer,
+                          This is a 4-D tensor of the shape
+                          (num_batches, channels, in_h, in_w).
+        out_short_len(int): The length of output images' short edge.
+
+    Returns:
+        out (Variable): The output is a 4-D tensor of the shape
+                        (num_batches, channls, out_h, out_w).
+    """
+    in_shape = input.shape
+    if len(in_shape) != 4:
+        raise ValueError(
+            "The rank of input must be 4 (num_batches, channels, in_h, in_w).")
+    hw = in_shape[2:4]
+    short_idx = hw.index(min(hw))
+    long_idx = 1 - short_idx
+    out_shape = list(hw)
+    out_shape[short_idx] = out_short_len
+    out_shape[long_idx] = int(
+        float(out_shape[long_idx]) * (float(out_short_len) / float(hw[
+            short_idx])) + 0.5)
+    return image_resize(input=input, out_shape=out_shape, resample=resample)
+
+
+def gather(input, index):
+    """
+    Output is obtained by gathering entries of the outer-most dimension 
+    of X indexed by `index` and concatenate them together.
+
+    .. math::
+
+        Out = X[Index]
+
+
+    .. code-block:: text
+
+
+                Given:
+
+                X = [[1, 2],
+                     [3, 4],
+                     [5, 6]]
+
+                Index = [1, 2]
+
+                Then:
+
+                Out = [[3, 4],
+                       [5, 6]]
+
+    Args:
+        input (Variable): The source input with rank>=1. 
+        index (Variable): The index input with rank=1.
+
+    Returns:
+        output (Variable): The output is a tensor with the same rank as input.
+
+    Examples:
+        .. code-block:: python
+
+            output = fluid.layers.gather(x, index)
+    """
+    helper = LayerHelper('gather', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="gather",
+        inputs={"X": input,
+                "Index": index},
+        outputs={"Out": out})
+    return out
+
+
+def random_crop(input, shape, seed=1):
+    helper = LayerHelper("random_crop", **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    if isinstance(seed, int):
+        seed_value = seed
+        seed = helper.create_tmp_variable(dtype="int64")
+        helper.append_op(
+            type="fill_constant",
+            inputs={},
+            outputs={"Out": seed},
+            attrs={
+                "dtype": seed.dtype,
+                "shape": [1],
+                "value": float(seed_value),
+                "force_cpu": True
+            })
+    elif not isinstance(seed, Variable):
+        raise ValueError("'seed' must be a Variable or an int.")
+    seed_out = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="random_crop",
+        inputs={"X": input,
+                "Seed": seed},
+        outputs={"Out": out,
+                 "SeedOut": seed_out},
+        attrs={"shape": shape})
     return out

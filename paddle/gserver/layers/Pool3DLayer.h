@@ -26,7 +26,7 @@ namespace paddle {
  * Pools the input within regions
  */
 class Pool3DLayer : public Layer {
-public:
+ public:
   explicit Pool3DLayer(const LayerConfig& config) : Layer(config) {}
   ~Pool3DLayer() {}
 
@@ -36,7 +36,7 @@ public:
   void backward(const UpdateCallback& callback) override;
   size_t getSize();
 
-protected:
+ protected:
   int channels_;
   int sizeX_, sizeY_, sizeZ_;
   int strideW_, strideH_, strideD_;
