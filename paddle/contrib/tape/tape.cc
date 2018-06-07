@@ -22,7 +22,6 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dim.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -89,9 +88,51 @@ framework::OpDesc CreateOpDesc(const std::string &type,
   return framework::OpDesc(type, inputs, outputs, attrs);
 }
 
+void InferShapeAndVarType(const std::string &type,
+                          const VariableHandleMap &in_vars,
+                          VariableHandleMap *out_vars,
+                          const framework::AttributeMap &attrs) {
+  // InferShape and InferVarType --------------------------------
+  framework::OpDesc op_desc = CreateOpDesc(type, in_vars, *out_vars, attrs);
+
+  // Create a temporary block for compile-time
+  framework::ProgramDesc program_desc;
+  framework::BlockDesc *block_desc = program_desc.MutableBlock(0);
+  PADDLE_ENFORCE(block_desc);
+
+  for (auto &param_name : in_vars) {
+    for (auto &var : param_name.second) {
+      *block_desc->Var(var->Name())->Proto() = *var->MutableDesc()->Proto();
+    }
+  }
+  for (auto &param_name : *out_vars) {
+    for (auto &var : param_name.second) {
+      *block_desc->Var(var->Name())->Proto() = *var->MutableDesc()->Proto();
+    }
+  }
+
+  LOG(INFO) << "- " << to_string(type, in_vars, *out_vars, attrs);
+  op_desc.InferShape(*block_desc);
+  op_desc.InferVarType(block_desc);
+  for (auto &param_name : *out_vars) {
+    for (auto &var : param_name.second) {
+      *var->MutableDesc()->Proto() = *block_desc->Var(var->Name())->Proto();
+    }
+  }
+  LOG(INFO) << "+ " << to_string(type, in_vars, *out_vars, attrs);
+}
+
+void Tape::AddOp(const std::string &type,
+                 const VariableHandleMap &in_vars,
+                 VariableHandleMap out_vars,
+                 const framework::AttributeMap &attrs) {
+  InferShapeAndVarType(type, in_vars, &out_vars, attrs);
+  tape_.emplace_back(type, in_vars, out_vars, attrs);
+}
+
 void Tape::Forward() {
-  PADDLE_ENFORCE(!has_been_backwarded_);
   LOG(INFO) << "Starting forward -------------------------";
+  PADDLE_ENFORCE(!has_been_backwarded_);
   while (current_position_ < tape_.size()) {
     OpHandle &op = tape_[current_position_];
 
@@ -185,42 +226,6 @@ void Tape::Backward(VariableHandle target) {
 
   backward_tape_->Forward();
   has_been_backwarded_ = true;
-}
-
-void Tape::AddOp(const std::string &type,
-                 VariableHandleMap in_vars,
-                 VariableHandleMap out_vars,
-                 const framework::AttributeMap &attrs) {
-  // InferShape and InferVarType --------------------------------
-  framework::OpDesc op_desc = CreateOpDesc(type, in_vars, out_vars, attrs);
-
-  // Create a temporary block for compile-time
-  framework::ProgramDesc program_desc;
-  framework::BlockDesc *block_desc = program_desc.MutableBlock(0);
-  PADDLE_ENFORCE(block_desc);
-
-  for (auto &param_name : in_vars) {
-    for (auto &var : param_name.second) {
-      *block_desc->Var(var->Name())->Proto() = *var->MutableDesc()->Proto();
-    }
-  }
-  for (auto &param_name : out_vars) {
-    for (auto &var : param_name.second) {
-      *block_desc->Var(var->Name())->Proto() = *var->MutableDesc()->Proto();
-    }
-  }
-
-  LOG(INFO) << "- " << to_string(type, in_vars, out_vars, attrs);
-  op_desc.InferShape(*block_desc);
-  op_desc.InferVarType(block_desc);
-  for (auto &param_name : out_vars) {
-    for (auto &var : param_name.second) {
-      *var->MutableDesc()->Proto() = *block_desc->Var(var->Name())->Proto();
-    }
-  }
-  LOG(INFO) << "+ " << to_string(type, in_vars, out_vars, attrs);
-
-  tape_.emplace_back(type, in_vars, out_vars, attrs);
 }
 
 Tape &get_global_tape() {

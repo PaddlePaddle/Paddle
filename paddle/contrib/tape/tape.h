@@ -41,10 +41,9 @@ struct OpHandle {
 class Tape {
  public:
   void AddOp(const std::string &type,
-             VariableHandleMap in_vars,
+             const VariableHandleMap &in_vars,
              VariableHandleMap out_vars,
              const framework::AttributeMap &attrs);
-
   void Forward();
   void Backward(VariableHandle target);
 
