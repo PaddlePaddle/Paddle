@@ -363,6 +363,40 @@ def zeros(shape, dtype, force_cpu=False):
     return fill_constant(value=0.0, **locals())
 
 
+def reverse(x, axis):
+    """
+    **reverse**
+
+    This function reverse the input 'x' along given axises.
+
+    Args:
+        x(Vairbale): the input to be reversed.
+        axis(int|tuple|list): Axis that along which order of elements 
+                    is reversed. If it is a tuple or a list, reversing 
+                    will be apply on each axis in the tuple or list.  
+
+    Returns:
+        Variable: The reversed tensor.
+
+    Examples:
+        .. code-block:: python
+
+          out = fluid.layers.reverse(x=in, axis=0)
+          # or:
+          out = fluid.layers.reverse(x=in, axis=[0,1])
+    """
+    if isinstance(axis, int):
+        axis = [axis]
+    helper = LayerHelper("reverse", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='reverse',
+        inputs={'Input': x},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
+
+
 def save(x, file_path, overwrite=True):
     """
     Saves a variable as a file.
