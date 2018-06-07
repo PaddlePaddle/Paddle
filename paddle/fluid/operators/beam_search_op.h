@@ -155,17 +155,11 @@ class BeamSearch {
  protected:
   /*
    * Prune the source sentences all branchs finished, and it is optional.
-   * Pruning must one step later than finishing, since the end tokens
-   * must be writed out. Also the finished branchs with top 1 score can
-   * be pruned.
+   * Pruning must one step later than finishing (thus pre_ids is needed here),
+   * since the end tokens must be writed out.
    */
   void PruneEndBeams(const framework::LoDTensor& pre_ids,
                      std::vector<std::vector<Item>>* items);
-  /*
-   * Delete all the records that follows the end token.
-   */
-  int PruneEndidCandidates(const framework::LoDTensor& pre_ids,
-                           std::vector<std::vector<Item>>* items);
 
   /*
    * Transform the items into a map whose key is offset, value is the items.

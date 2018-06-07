@@ -87,13 +87,9 @@ void BeamSearchDecodeFunctor::operator()() const {
   BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
   // Check if the tensor is on GPU. If so, use the CPU copy instead
   if (tensor_on_gpu_) {
-    // beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
-    //                                  score_tensor_);
     beam_search_decoder.Backtrace(step_ids_, step_scores_, id_tensor_,
                                   score_tensor_);
   } else {
-    // beam_search_decoder.PackAllSteps(step_ids_origin_, step_scores_origin_,
-    //                                  id_tensor_, score_tensor_);
     beam_search_decoder.Backtrace(step_ids_origin_, step_scores_origin_,
                                   id_tensor_, score_tensor_);
   }

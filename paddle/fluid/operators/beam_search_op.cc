@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -110,23 +109,6 @@ void BeamSearch::PruneEndBeams(const framework::LoDTensor &pre_ids,
   }
 }
 
-int BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
-                                     std::vector<std::vector<Item>> *items) {
-  auto *pre_ids_data = pre_ids.data<int64_t>();
-
-  int res = 0;
-  for (size_t offset = 0; offset < items->size(); offset++) {
-    auto prefix_id = pre_ids_data[offset];
-    if (prefix_id == end_id_) {
-      items->at(offset).clear();
-    } else {
-      res++;
-    }
-  }
-
-  return res;
-}
-
 std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
     const std::vector<std::vector<Item>> &items, size_t element_num) {
   std::vector<std::vector<Item>> result;
@@ -201,8 +183,7 @@ bool BeamSearch::NextItemSet(const framework::LoDTensor &pre_ids,
     auto pre_score = pre_scores_data[offset];
     if (pre_id == end_id_) {
       // Allocate all probability mass to eos_id for finished branchs and the
-      // other
-      // candidate ids can be ignored.
+      // other candidate ids can be ignored.
       items->emplace_back(offset, end_id_, pre_score);
     } else {
       for (size_t d = 0; d < instance_dim; d++) {
