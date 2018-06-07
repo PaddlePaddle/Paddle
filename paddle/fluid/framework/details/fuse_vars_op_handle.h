@@ -18,38 +18,31 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
-
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct BroadcastOpHandle : public OpHandleBase {
+struct FuseVarsOpHandle : public OpHandleBase {
  public:
-#ifdef PADDLE_WITH_CUDA
-  BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *nccl_ctxs)
-      : local_scopes_(local_scopes), places_(places), nccl_ctxs_(nccl_ctxs) {
-    if (nccl_ctxs_) {
-      for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
-      }
+  FuseVarsOpHandle(Scope *local_scope, const platform::Place &place,
+                   const std::unordered_map<std::string, int64_t> &inputs_numel,
+                   const std::type_index &var_type)
+      : local_scope_(local_scope),
+        place_(place),
+        inputs_numel_(inputs_numel),
+        type_(var_type) {
+    total_numel_ = 0;
+    for (auto in_numel : inputs_numel) {
+      PADDLE_ENFORCE_GT(in_numel.second, 0);
+      total_numel_ += in_numel.second;
     }
   }
-#else
-  BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places)
-      : local_scopes_(local_scopes), places_(places) {}
-#endif
 
   std::string Name() const override;
 
@@ -59,14 +52,11 @@ struct BroadcastOpHandle : public OpHandleBase {
   void RunImpl() override;
 
  private:
-  std::vector<Scope *> local_scopes_;
-  std::vector<platform::Place> places_;
-#ifdef PADDLE_WITH_CUDA
-  const platform::NCCLContextMap *nccl_ctxs_;
-#endif
-
-  void InitOutputValue(const VarHandle &in_var_handle,
-                       const std::vector<VarHandle *> &out_var_handles) const;
+  Scope *local_scope_;
+  const platform::Place place_;
+  const std::unordered_map<std::string, int64_t> inputs_numel_;
+  const std::type_index type_;
+  int64_t total_numel_;
 };
 }  // namespace details
 }  // namespace framework

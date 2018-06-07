@@ -30,10 +30,6 @@
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #endif
 
-DEFINE_string(ssa_graph_path, "/tmp/ssa_graph.dot",
-              "the ssa graph path only print with GLOG_v=10,"
-              "default /tmp/graph.dot");
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -276,11 +272,6 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
-
-  if (VLOG_IS_ON(10)) {
-    std::ofstream fout(FLAGS_ssa_graph_path);
-    PrintGraphviz(*graph, fout);
-  }
 
   return std::unique_ptr<SSAGraph>(graph);
 }
