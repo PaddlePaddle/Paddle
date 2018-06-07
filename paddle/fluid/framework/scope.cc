@@ -43,6 +43,8 @@ Scope& Scope::NewScope() const {
 }
 
 Variable* Scope::Var(const std::string& name) {
+  // acquire the lock when new var under this scope
+  std::unique_lock<std::mutex> lock(mutex_);
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
 
@@ -62,11 +64,17 @@ Variable* Scope::Var(std::string* name) {
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
+  // acquire the lock when find var
+  std::unique_lock<std::mutex> lock(mutex_);
+  return FindVarInternal(name);
+}
+
+Variable* Scope::FindVarInternal(const std::string& name) const {
   auto var = FindVarLocally(name);
   if (var != nullptr) {
     return var;
   }
-  return (parent_ == nullptr) ? nullptr : parent_->FindVar(name);
+  return (parent_ == nullptr) ? nullptr : parent_->FindVarInternal(name);
 }
 
 const Scope* Scope::FindScope(const Variable* var) const {
@@ -78,6 +86,7 @@ const Scope* Scope::FindScope(const Variable* var) const {
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
 void Scope::DropKids() {
+  std::unique_lock<std::mutex> lock(mutex_);
   for (Scope* s : kids_) delete s;
   kids_.clear();
 }
@@ -105,6 +114,7 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
+  std::unique_lock<std::mutex> lock(mutex_);
   std::set<std::string> var_set(var_names.begin(), var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
