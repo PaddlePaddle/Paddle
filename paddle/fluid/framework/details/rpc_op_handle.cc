@@ -20,7 +20,7 @@ namespace details {
 
 RPCOpHandle::RPCOpHandle(const framework::OpDesc &op_desc,
                          const Scope *local_scope, const std::string &name,
-                         platform::Place place)
+                         const platform::Place &place)
     : op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
       name_(name),

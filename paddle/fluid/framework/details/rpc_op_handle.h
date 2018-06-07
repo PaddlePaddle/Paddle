@@ -29,7 +29,7 @@ namespace details {
 
 struct RPCOpHandle : public OpHandleBase {
   RPCOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
-              const std::string& name, platform::Place place);
+              const std::string& name, const platform::Place& place);
 
   std::string Name() const override;
 
