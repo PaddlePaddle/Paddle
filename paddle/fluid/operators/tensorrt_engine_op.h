@@ -32,9 +32,12 @@ class TensorRTEngineOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto input0 = ctx.Inputs("Xs").front();
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("pre_ids")->type()),
+        framework::ToDataType(ctx.scope()
+                                  .FindVar(input0)
+                                  ->GetMutable<framework::LoDTensor>()
+                                  ->type()),
         platform::CPUPlace());
     return kt;
   }
@@ -50,17 +53,16 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     auto input_names = context.op().Inputs("Xs");
     PADDLE_ENFORCE(!input_names.empty(), "should pass more than one inputs");
     // Try to determine a batch_size
-    auto* tensor0 = context.Input<framework::LoDTensor>(input_names.front());
-    PADDLE_ENFORCE_NOT_NULL(tensor0);
-    int batch_size = tensor0->dims()[0];
+    auto& tensor0 = inference::analysis::GetFromScope<framework::LoDTensor>(
+        context.scope(), input_names.front());
+    int batch_size = tensor0.dims()[0];
     PADDLE_ENFORCE_LE(batch_size, max_batch_);
 
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
       // convert input and copy to TRT engine's buffer
-      auto* v = context.scope().FindVar(x);
-      PADDLE_ENFORCE_NOT_NULL(v, "no variable called %s", x);
-      auto& t = v->Get<framework::LoDTensor>();
+      auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(
+          context.scope(), x);
       if (platform::is_cpu_place(t.place())) {
         engine_->SetInputFromCPU(x, static_cast<const void*>(t.data<void>()),
                                  t.memory_size());
@@ -86,13 +88,18 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       fluid_t->Resize(framework::make_ddim(ddim));
       auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
       if (platform::is_cpu_place(fluid_t->place())) {
+        // TODO(Superjomn) change this float to dtype size.
         engine_->GetOutputInCPU(
-            y, fluid_t->mutable_data<float>(platform::CPUPlace()), size);
+            y, fluid_t->mutable_data<float>(platform::CPUPlace()),
+            size * sizeof(float));
       } else {
         engine_->GetOutputInGPU(
-            y, fluid_t->mutable_data<float>(platform::CUDAPlace()), size);
+            y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
+            size * sizeof(float));
       }
     }
+
+    cudaStreamSynchronize(stream_);
   }
 
  protected:
@@ -100,7 +107,8 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
   void Prepare(const framework::ExecutionContext& context) const;
 
  private:
-  mutable std::unique_ptr<inference::tensorrt::TensorRTEngine> engine_;
+  mutable cudaStream_t stream_;
+  mutable inference::tensorrt::TensorRTEngine* engine_{nullptr};
   mutable int max_batch_{0};
 };
 
