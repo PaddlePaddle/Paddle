@@ -15,6 +15,8 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <thread>
+
 #include "gflags/gflags.h"
 #include "paddle/contrib/inference/paddle_inference_api_impl.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
@@ -45,7 +47,11 @@ NativeConfig GetConfig() {
   config.model_dir = FLAGS_dirname + "word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
+#ifdef PADDLE_WITH_CUDA
   config.use_gpu = true;
+#else
+  config.use_gpu = false;
+#endif
   config.device = 0;
   return config;
 }
@@ -147,6 +153,69 @@ TEST(paddle_inference_api_impl, image_classification) {
     EXPECT_NEAR(lod_data[j], data[j], 1e-3);
   }
   free(data);
+}
+
+TEST(paddle_inference_api_native_multithreads, word2vec) {
+  NativeConfig config = GetConfig();
+  config.use_gpu = false;
+  auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
+
+  // prepare inputs data
+  constexpr int num_jobs = 3;
+  std::vector<std::vector<framework::LoDTensor>> jobs(num_jobs);
+  std::vector<std::vector<PaddleTensor>> paddle_tensor_feeds(num_jobs);
+  std::vector<framework::LoDTensor> refs(num_jobs);
+  for (size_t i = 0; i < jobs.size(); ++i) {
+    // each job has 4 words
+    jobs[i].resize(4);
+    for (size_t j = 0; j < 4; ++j) {
+      framework::LoD lod{{0, 1}};
+      int64_t dict_size = 2073;  // The size of dictionary
+      SetupLoDTensor(&jobs[i][j], lod, static_cast<int64_t>(0), dict_size - 1);
+      paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i][j]));
+    }
+
+    // get reference result of each job
+    std::vector<paddle::framework::LoDTensor*> ref_feeds;
+    std::vector<paddle::framework::LoDTensor*> ref_fetches(1, &refs[i]);
+    for (auto& word : jobs[i]) {
+      ref_feeds.push_back(&word);
+    }
+    TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
+  }
+
+  // create threads and each thread run 1 job
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < num_jobs; ++tid) {
+    threads.emplace_back([&, tid]() {
+      auto predictor = main_predictor->Clone();
+      auto& local_inputs = paddle_tensor_feeds[tid];
+      std::vector<PaddleTensor> local_outputs;
+      ASSERT_TRUE(predictor->Run(local_inputs, &local_outputs));
+
+      // check outputs range
+      ASSERT_EQ(local_outputs.size(), 1UL);
+      const size_t len = local_outputs[0].data.length;
+      float* data = static_cast<float*>(local_outputs[0].data.data);
+      for (size_t j = 0; j < len / sizeof(float); ++j) {
+        ASSERT_LT(data[j], 1.0);
+        ASSERT_GT(data[j], -1.0);
+      }
+
+      // check outputs correctness
+      float* ref_data = refs[tid].data<float>();
+      EXPECT_EQ(refs[tid].numel(), len / sizeof(float));
+      for (int i = 0; i < refs[tid].numel(); ++i) {
+        EXPECT_LT(ref_data[i] - data[i], 1e-3);
+        EXPECT_GT(ref_data[i] - data[i], -1e-3);
+      }
+
+      free(local_outputs[0].data.data);
+    });
+  }
+  for (int i = 0; i < num_jobs; ++i) {
+    threads[i].join();
+  }
 }
 
 }  // namespace paddle
