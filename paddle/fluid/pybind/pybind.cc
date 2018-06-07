@@ -413,10 +413,12 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
+#ifdef PADDLE_WITH_DISTRIBUTE
+      .def("complete", &Executor::Complete)
+#endif
       .def("run",
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
-               Executor::Run)
-      .def("complete", &Executor::Complete);
+               Executor::Run);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -554,6 +556,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
             self.gradient_scale_ = strategy;
+          })
+      .def_property(
+          "debug_graphviz_path",
+          [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
+          [](BuildStrategy &self, const std::string &path) {
+            self.debug_graphviz_path_ = path;
           });
 
   pe.def(py::init<const std::vector<platform::Place> &,

@@ -12,29 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <string>
+#include "paddle/fluid/operators/detail/rpc_client.h"
 
 namespace paddle {
-namespace framework {
-namespace details {
+namespace operators {
+namespace detail {
 
-struct BuildStrategy {
-  enum class ReduceStrategy { kAllReduce = 0, kReduce = 1 };
+std::once_flag RPCClient::init_flag_;
+std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
 
-  enum class GradientScaleStrategy {
-    kCoeffNumDevice = 0,
-    kOne = 1,
-    kCustomized = 2,
-  };
-
-  ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
-  GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-
-  std::string debug_graphviz_path_{""};
-};
-
-}  // namespace details
-}  // namespace framework
+}  // namespace detail
+}  // namespace operators
 }  // namespace paddle
