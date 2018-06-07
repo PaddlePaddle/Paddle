@@ -225,7 +225,7 @@ def _callback_lookup_(op):
     :param op:
     :return: callback function
     """
-    if op.type == 'parallel_do' and op.attr('use_nccl'):
+    if op.type == 'parallel_do' and op.attr('use_nccl') and False:
         all_vars = op.block.vars
         param_names = set(op.input('parameters'))
         param_names = filter(lambda name: all_vars[name].stop_gradient is False,

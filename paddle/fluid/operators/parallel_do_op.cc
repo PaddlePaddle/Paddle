@@ -258,7 +258,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
     // NCCL allreduce op will be added by backward,
     // so no need to explicitly accumulate grad
-    if (!(Attr<bool>(kUseNCCL))) {
+    if (!(Attr<bool>(kUseNCCL)) || true) {
       AccumulateGrad(scope, place, sub_scopes, places);
     } else {
       for (auto &place : places) {
