@@ -81,6 +81,8 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'dice_loss',
+    'image_resize',
+    'image_resize_short',
     'resize_bilinear',
     'gather',
     'random_crop',
@@ -1180,19 +1182,19 @@ def conv2d(input,
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
 
         - Output:
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
         .. math::
 
-        H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-        W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
        input(Variable): The input image with [N, C, H, W] format.
@@ -3929,22 +3931,25 @@ def dice_loss(input, label, epsilon=0.00001):
     return reduce_mean(dice_score)
 
 
-def resize_bilinear(input, out_shape=None, scale=None, name=None):
+def image_resize(input,
+                 out_shape=None,
+                 scale=None,
+                 name=None,
+                 resample='BILINEAR'):
     """
-    The mathematical meaning of resize bilinear layer is
-    Bilinear interpolation.
-    Bilinear interpolation is an extension of linear interpolation for
-    interpolating functions of two variables (e.g. H-direction and
-    W-direction in this layer) on a rectilinear 2D grid.
+    Resize a batch of images.
 
-    For details, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bilinear_interpolation
+    The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
+    and the resizing only applies on the last two dimensions(hight and width).
+
+    Supporting resample methods:
+        'BILINEAR' : Bilinear interpolation
 
     Args:
-        input (Variable): The input tensor of resize bilinear layer,
+        input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
-        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+        out_shape(list|tuple|Variable|None): Output shape of image resize
                                     layer, the shape is (out_h, out_w).
                                     Default: None
         scale(float|None): The multiplier for the input height or width.
@@ -3953,6 +3958,8 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
                          Default: None
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        resample(str): The resample method. It can only be 'BILINEAR' currently.
+                       Default: 'BILINEAR'
 
     Returns:
         out (Variable): The output is a 4-D tensor of the shape
@@ -3961,8 +3968,12 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
+            out = fluid.layers.image_resize(input, out_shape=[12, 12])
     """
+    resample_methods = {'BILINEAR': 'bilinear_interp'}
+    if resample not in resample_methods:
+        raise ValueError(
+            "The 'resample' of image_resize can only be 'BILINEAR' currently.")
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None")
     helper = LayerHelper('bilinear_interp', **locals())
@@ -3990,12 +4001,61 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
 
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type="bilinear_interp",
+        type=resample_methods[resample],
         inputs=inputs,
         outputs={"Out": out},
         attrs={"out_h": out_h,
                "out_w": out_w})
     return out
+
+
+def resize_bilinear(input, out_shape=None, scale=None, name=None):
+    """
+    This is an alias of layer 'image_resize' with bilinear interpolation.
+
+    The mathematical meaning of resize bilinear layer is
+    Bilinear interpolation.
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this layer) on a rectilinear 2D grid.
+
+    For details, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation
+    """
+
+    return image_resize(input, out_shape, scale, name, 'BILINEAR')
+
+
+def image_resize_short(input, out_short_len, resample='BILINEAR'):
+    """
+    Resize a batch of images. The short edge of input images will be 
+    resized to the given 'out_short_len'. The long edge of input images 
+    will be resized proportionately to make images' length-width ratio 
+    constant.
+
+    Args:
+        input (Variable): The input tensor of image resize layer,
+                          This is a 4-D tensor of the shape
+                          (num_batches, channels, in_h, in_w).
+        out_short_len(int): The length of output images' short edge.
+
+    Returns:
+        out (Variable): The output is a 4-D tensor of the shape
+                        (num_batches, channls, out_h, out_w).
+    """
+    in_shape = input.shape
+    if len(in_shape) != 4:
+        raise ValueError(
+            "The rank of input must be 4 (num_batches, channels, in_h, in_w).")
+    hw = in_shape[2:4]
+    short_idx = hw.index(min(hw))
+    long_idx = 1 - short_idx
+    out_shape = list(hw)
+    out_shape[short_idx] = out_short_len
+    out_shape[long_idx] = int(
+        float(out_shape[long_idx]) * (float(out_short_len) / float(hw[
+            short_idx])) + 0.5)
+    return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
 def gather(input, index):
@@ -4005,7 +4065,7 @@ def gather(input, index):
 
     .. math::
 
-	Out = X[Index]
+        Out = X[Index]
 
 
     .. code-block:: text
@@ -4013,8 +4073,8 @@ def gather(input, index):
 
                 Given:
 
-    		X = [[1, 2],
-         	     [3, 4],
+                X = [[1, 2],
+                     [3, 4],
                      [5, 6]]
 
                 Index = [1, 2]

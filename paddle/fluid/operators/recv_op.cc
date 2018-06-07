@@ -44,14 +44,15 @@ class RecvOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::GRPCClient>();
 
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
     }
     if (sync_mode) {
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
   }
 };

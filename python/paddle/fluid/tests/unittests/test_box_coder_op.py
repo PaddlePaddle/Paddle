@@ -120,6 +120,32 @@ class TestBoxCoderOp(OpTest):
         self.outputs = {'OutputBox': output_box}
 
 
+class TestBoxCoderOpWithoutBoxVar(OpTest):
+    def test_check_output(self):
+        self.check_output()
+
+    def setUp(self):
+        self.op_type = "box_coder"
+        lod = [[0, 1, 2, 3, 4, 5]]
+        prior_box = np.random.random((10, 4)).astype('float32')
+        prior_box_var = np.ones((10, 4)).astype('float32')
+        target_box = np.random.random((5, 10, 4)).astype('float32')
+        code_type = "DecodeCenterSize"
+        box_normalized = False
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized)
+
+        self.inputs = {
+            'PriorBox': prior_box,
+            'TargetBox': target_box,
+        }
+        self.attrs = {
+            'code_type': 'decode_center_size',
+            'box_normalized': False
+        }
+        self.outputs = {'OutputBox': output_box}
+
+
 class TestBoxCoderOpWithLoD(OpTest):
     def test_check_output(self):
         self.check_output()

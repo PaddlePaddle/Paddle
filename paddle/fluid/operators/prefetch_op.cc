@@ -41,19 +41,19 @@ class PrefetchOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::GRPCClient>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
                 << outs[i] << " back";
-        rpc_client->AsyncPrefetchVariable(epmap[i], ctx, scope, ins[i],
-                                          outs[i]);
+        rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope, ins[i], outs[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
   }
 };
 

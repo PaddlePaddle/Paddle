@@ -59,8 +59,8 @@ struct BroadcastOpHandle : public OpHandleBase {
   void RunImpl() override;
 
  private:
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
+  std::vector<Scope *> local_scopes_;
+  std::vector<platform::Place> places_;
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
