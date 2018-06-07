@@ -1182,19 +1182,19 @@ def conv2d(input,
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
 
         - Output:
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
         .. math::
 
-        H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-        W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
        input(Variable): The input image with [N, C, H, W] format.

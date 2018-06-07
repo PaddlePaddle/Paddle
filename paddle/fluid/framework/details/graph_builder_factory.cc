@@ -20,11 +20,6 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/details/fuse_all_reduce_graph_builder.h"
 #endif
-
-DEFINE_string(debug_ssa_graphviz_filename, "",
-              "If this field is set, the graphviz format of ssa graph will be "
-              "written to this file");
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -48,13 +43,10 @@ std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
 #endif
   }
 
-  if (!FLAGS_debug_ssa_graphviz_filename.empty()) {
+  if (!strategy_.debug_graphviz_path_.empty()) {
     std::unique_ptr<std::ostream> fout(
-        new std::ofstream(FLAGS_debug_ssa_graphviz_filename));
+        new std::ofstream(strategy_.debug_graphviz_path_));
     PADDLE_ENFORCE(fout->good());
-
-    VLOG(10) << "SSA graph is written to file "
-             << FLAGS_debug_ssa_graphviz_filename;
     std::unique_ptr<GraphvizSSAGraphPrinter> graphviz_printer(
         new GraphvizSSAGraphPrinter());
     res.reset(new SSAGraghBuilderWithPrinter(

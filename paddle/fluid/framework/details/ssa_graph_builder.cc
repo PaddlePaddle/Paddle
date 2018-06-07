@@ -73,21 +73,6 @@ void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
   op_handle->AddOutput(var);
 }
 
-template <typename Callback>
-void IterAllVar(const SSAGraph &graph, Callback callback) {
-  for (auto &each : graph.vars_) {
-    for (auto &pair1 : each) {
-      for (auto &pair2 : pair1.second) {
-        callback(*pair2);
-      }
-    }
-  }
-
-  for (auto &var : graph.dep_vars_) {
-    callback(*var);
-  }
-}
-
 void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
   for (auto &op : graph->ops_) {
     if (!op->Outputs().empty()) {

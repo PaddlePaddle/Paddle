@@ -39,13 +39,7 @@ static ThreadPool& gPool() {
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() {
-  DropKids();
-  for (auto& kv : vars_) {
-    VLOG(3) << "Destroy variable " << kv.first;
-    delete kv.second;
-  }
-}
+Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
   std::unique_lock<std::mutex> lock(mutex_);
@@ -54,10 +48,13 @@ Scope& Scope::NewScope() const {
 }
 
 Variable* Scope::Var(const std::string& name) {
+  // acquire the lock when new var under this scope
+  std::unique_lock<std::mutex> lock(mutex_);
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
+
   v = new Variable();
-  vars_[name] = v;
+  vars_[name].reset(v);
   VLOG(3) << "Create variable " << name;
   v->name_ = &(vars_.find(name)->first);
   return v;
@@ -72,22 +69,29 @@ Variable* Scope::Var(std::string* name) {
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
+  // acquire the lock when find var
+  std::unique_lock<std::mutex> lock(mutex_);
+  return FindVarInternal(name);
+}
+
+Variable* Scope::FindVarInternal(const std::string& name) const {
   auto var = FindVarLocally(name);
   if (var != nullptr) {
     return var;
   }
-  return (parent_ == nullptr) ? nullptr : parent_->FindVar(name);
+  return (parent_ == nullptr) ? nullptr : parent_->FindVarInternal(name);
 }
 
 const Scope* Scope::FindScope(const Variable* var) const {
   for (auto& kv : vars_) {
-    if (kv.second == var) {
+    if (kv.second.get() == var) {
       return this;
     }
   }
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
 void Scope::DropKids() {
+  std::unique_lock<std::mutex> lock(mutex_);
   for (Scope* s : kids_) delete s;
   kids_.clear();
 }
@@ -115,10 +119,10 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
+  std::unique_lock<std::mutex> lock(mutex_);
   std::set<std::string> var_set(var_names.begin(), var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
-      delete it->second;
       it = vars_.erase(it);
     } else {
       ++it;
@@ -134,7 +138,7 @@ void Scope::Rename(const std::string& origin_name,
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE(new_it == vars_.end(),
                  "The variable with name %s is already in the scope", new_name);
-  vars_[new_name] = origin_it->second;
+  vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
 }
 
@@ -146,7 +150,7 @@ std::string Scope::Rename(const std::string& origin_name) const {
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
   auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second;
+  if (it != vars_.end()) return it->second.get();
   return nullptr;
 }
 

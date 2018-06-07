@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
@@ -63,7 +64,8 @@ class TRTConvertValidation {
 
   TRTConvertValidation(int batch_size,
                        const std::unordered_set<std::string>& parameters,
-                       framework::Scope& scope, int workspace_size = 1 << 10)
+                       framework::Scope& scope,  // NOLINT
+                       int workspace_size = 1 << 10)
       : parameters_(parameters), scope_(scope) {
     // create engine.
     engine_.reset(new TensorRTEngine(10, 1 << 10, &stream_));
@@ -104,8 +106,8 @@ class TRTConvertValidation {
   void SetOp(const framework::proto::OpDesc& desc) {
     op_ = framework::OpRegistry::CreateOp(desc);
 
-    OpConverter op_converter;
-    op_converter.ConvertOp(desc, parameters_, scope_, engine_.get());
+    Singleton<OpConverter>::Global().ConvertOp(
+        desc, parameters_, scope_, engine_.get(), true /*test_mode*/);
 
     engine_->FreezeNetwork();
 

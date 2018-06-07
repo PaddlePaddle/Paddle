@@ -38,7 +38,7 @@ void Reorder2(nvinfer1::DimsHW shape, const T* idata, nvinfer1::DimsHW istrides,
 }
 
 // Reorder the data layout from CK to KC.
-void ReorderCKtoKC(TensorRTEngine::Weight& iweights,
+void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
                    TensorRTEngine::Weight* oweights) {
   int c = iweights.dims[0];
   int k = iweights.dims[1];
@@ -56,7 +56,7 @@ void ReorderCKtoKC(TensorRTEngine::Weight& iweights,
 class FcOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope) override {
+                  const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert a fluid fc op to tensorrt fc layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -106,14 +106,16 @@ class FcOpConverter : public OpConverter {
                                        n_output, weight.get(), bias.get());
 
     auto output_name = op_desc.Output("Out").front();
-    engine_->DeclareOutput(layer, 0, output_name);
+    engine_->SetITensor(output_name, layer->getOutput(0));
+    if (test_mode) {
+      engine_->DeclareOutput(output_name);
+    }
   }
 };
-
-REGISTER_TRT_OP_CONVERTER(fc, FcOpConverter);
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
+REGISTER_TRT_OP_CONVERTER(fc, FcOpConverter);
 USE_OP(mul);
