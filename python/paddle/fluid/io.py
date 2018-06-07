@@ -466,7 +466,6 @@ CHECKPOINT_SEPARATOR = "_"
 def save_checkpoint(executor,
                     checkpoint_dir,
                     trainer_id,
-                    is_chief=False,
                     trainer_args=None,
                     main_program=None,
                     max_num_checkpoints=3):
@@ -478,8 +477,7 @@ def save_checkpoint(executor,
 
     :param executor executor for save the value
     :param checkpoint_dir the checkpoint directory 
-    :param trainer_id currect trainer id
-    :param is_chief if the trainer id equals 0, the is_chief will be true
+    :param trainer_id currect trainer id, if id is equal to 0, the trainer is chief
     :param main_program   will save all variables in program 
     :param max_num_checkpoints will keep numbers of checkpoint serials not bigger than max_num_checkpoints
     """
@@ -497,7 +495,7 @@ def save_checkpoint(executor,
 
     save_trainer_args(cur_dir, trainer_id, trainer_args)
 
-    if is_chief:
+    if trainer_id == 0:
         save_persist_vars_without_grad(executor, cur_dir, main_program)
 
     _scroll_delete(checkpoint_dir, max_num_checkpoints)
