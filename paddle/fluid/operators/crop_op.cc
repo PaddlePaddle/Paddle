@@ -48,6 +48,13 @@ class CropOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Out", y_dim);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
+  }
 };
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -162,6 +169,15 @@ class CropOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
+                ->type()),
+        ctx.device_context());
   }
 };
 
