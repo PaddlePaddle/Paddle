@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/graph_builder_factory.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -101,23 +102,23 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
+  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+  details::SSAGraphBuilderFactory builder_factory(
+      member_->places_, loss_var_name, params, member_->local_scopes_,
+      build_strategy);
+
 #ifdef PADDLE_WITH_CUDA
-  builder_.reset(new details::MultiDevSSAGraphBuilder(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      member_->nccl_ctxs_.get(), build_strategy));
-
-#else
-  builder_.reset(new details::MultiDevSSAGraphBuilder(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      build_strategy));
-
+  builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #endif
-  auto graph = builder_->Build(main_program);
+  builder_.reset(builder_factory.Create().get());
+  if (builder_.get() == nullptr) {
+    VLOG(3) << "builder is null.";
+  }
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places, std::move(graph)));
+      exec_strategy, member_->local_scopes_, places,
+      builder_->Build(main_program)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
@@ -155,8 +156,8 @@ void ParallelExecutor::BCastParamsToGPUs(
         auto &nccl_ctx = member_->nccl_ctxs_->at(place);
 
         if (builder_.get() != nullptr &&
-            builder_->GetRemoteVarDevice(var) != -1) {
-          int place_id = builder_->GetRemoteVarDevice(var);
+            builder_->GetRemoteVarDeviceId(var) != -1) {
+          int place_id = builder_->GetRemoteVarDeviceId(var);
           platform::dynload::ncclBcast(buffer, numel, data_type, place_id,
                                        nccl_ctx.comm_, nccl_ctx.stream());
         } else {

@@ -48,7 +48,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
-  int GetRemoteVarDevice(const std::string &var_name) const {
+  int GetRemoteVarDeviceId(const std::string &var_name) const override {
     auto got = remote_vars_devices_.find(var_name);
     if (got != remote_vars_devices_.end()) {
       return got->second;
