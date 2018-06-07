@@ -213,7 +213,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
           var_name_on_devices[op_dev_id].emplace(var_name);
         }
       }
-      if (!is_forwarding) {
+      if (!is_forwarding && places_.size() > 1) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         if (static_cast<bool>(boost::get<int>(op->GetAttr(

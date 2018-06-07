@@ -116,7 +116,7 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'debug_ssa_graphviz_filename'
+        'eager_delete_scope'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += [
