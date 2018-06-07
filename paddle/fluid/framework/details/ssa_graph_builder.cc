@@ -135,9 +135,11 @@ bool SSAGraphBuilder::IsValidGraph(const SSAGraph *graph) const {
 
   while (!pending_vars.empty()) {
     run_all_ops(ready_ops);
+
     if (ready_vars.empty()) {
       return false;
     }
+
     for (auto ready_var : ready_vars) {
       pending_vars.erase(ready_var);
       for (auto *op : ready_var->pending_ops_) {
