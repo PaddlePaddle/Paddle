@@ -38,10 +38,12 @@ def parse_args():
         default='resnet',
         help='The model to run benchmark with.')
     parser.add_argument(
-        '--batch_size', type=int, default=32, help='The minibatch size.')
+        '--batch_size',
+        type=int,
+        default=32,
+        help='The batch size on each gpu.')
     parser.add_argument(
         '--learning_rate', type=float, default=0.001, help='The learning rate.')
-    # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
         type=int,
@@ -49,7 +51,10 @@ def parse_args():
         help='The first num of minibatch num to skip, for better performance test'
     )
     parser.add_argument(
-        '--iterations', type=int, default=80, help='The number of minibatches.')
+        '--iterations',
+        type=int,
+        default=80,
+        help='The number of minibatches, set to -1 to run all batches.')
     parser.add_argument(
         '--pass_num', type=int, default=100, help='The number of passes.')
     parser.add_argument(
@@ -69,6 +74,7 @@ def parse_args():
         type=int,
         default=1,
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
+    # this option is available only for vgg and resnet.
     parser.add_argument(
         '--cpus',
         type=int,
@@ -78,7 +84,7 @@ def parse_args():
         '--data_set',
         type=str,
         default='flowers',
-        choices=['cifar10', 'flowers'],
+        choices=['cifar10', 'flowers', 'imagenet'],
         help='Optional dataset for benchmark.')
     parser.add_argument(
         '--infer_only', action='store_true', help='If set, run forward only.')
@@ -108,6 +114,16 @@ def parse_args():
         default='local',
         choices=['local', 'pserver', 'nccl2'],
         help='Choose parameter update method, can be local, pserver, nccl2.')
+    parser.add_argument(
+        '--use_reader_op',
+        action='store_true',
+        help='Whether to use reader op, and must specify the data path if set this to true.'
+    )
+    parser.add_argument(
+        '--data_path',
+        type=str,
+        default="",
+        help='Directory that contains all the training recordio files.')
     args = parser.parse_args()
     return args
 
@@ -210,26 +226,50 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     exe = fluid.Executor(place)
     exe.run(startup_prog)
-    feed_var_list = [
-        var for var in train_prog.global_block().vars.itervalues()
-        if var.is_data
-    ]
-    feeder = fluid.DataFeeder(feed_var_list, place)
+
+    if not args.use_reader_op:
+        feed_var_list = [
+            var for var in train_prog.global_block().vars.itervalues()
+            if var.is_data
+        ]
+        feeder = fluid.DataFeeder(feed_var_list, place)
 
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         train_losses = []
-        for batch_id, data in enumerate(train_reader()):
+        if not args.use_reader_op:
+            reader_generator = train_reader()
+        batch_id = 0
+        data = None
+        while True:
+            if not args.use_reader_op:
+                data = next(reader_generator, None)
+                if data == None:
+                    break
+            if iters == args.iterations:
+                break
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
-            if iters == args.iterations:
-                break
-            loss = exe.run(train_prog,
-                           feed=feeder.feed(data),
-                           fetch_list=[avg_loss])
+
+            if args.use_reader_op:
+                try:
+                    loss = exe.run(train_prog, fetch_list=[avg_loss])
+                except fluid.core.EnforceNotMet as ex:
+                    break
+            else:
+                loss = exe.run(train_prog,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_loss])
             iters += 1
-            num_samples += len(data)
+            batch_id += 1
+            # FIXME(wuyi): For use_reader_op, if the current
+            # pass is not the last, the last batch of this pass
+            # is also equal to args.batch_size.
+            if args.use_reader_op:
+                num_samples += args.batch_size * args.gpus
+            else:
+                num_samples += len(data)
             train_losses.append(loss)
             print("Pass: %d, Iter: %d, Loss: %f\n" %
                   (pass_id, iters, np.mean(train_losses)))
@@ -250,10 +290,14 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
 def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                    batch_acc, args, train_prog, startup_prog, nccl_id_var,
                    num_trainers, trainer_id):
-    feed_var_list = [
-        var for var in train_prog.global_block().vars.itervalues()
-        if var.is_data
-    ]
+    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
+    if not args.use_reader_op:
+        feed_var_list = [
+            var for var in train_prog.global_block().vars.itervalues()
+            if var.is_data
+        ]
+        feeder = fluid.DataFeeder(feed_var_list, place)
+
     # generate fake:
     if args.use_fake_data:
         for var in feed_var_list:
@@ -270,7 +314,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                        "value": 1.0,
                        "dtype": var.dtype})
 
-    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     if nccl_id_var and trainer_id == 0:
         #FIXME(wuyi): wait other trainer to start listening
         time.sleep(30)
@@ -287,12 +330,21 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
 
-    feeder = fluid.DataFeeder(feed_var_list, place)
     for pass_id in range(args.pass_num):
         num_samples = 0
         iters = 0
         start_time = time.time()
-        for batch_id, data in enumerate(train_reader()):
+        if not args.use_reader_op:
+            reader_generator = train_reader()
+        batch_id = 0
+        data = None
+        while True:
+            if not args.use_reader_op:
+                data = next(reader_generator, None)
+                if data == None:
+                    break
+            if iters == args.iterations:
+                break
             if args.profile and pass_id == 0 and batch_id == 5:
                 profiler.start_profiler("All")
             elif args.profile and pass_id == 0 and batch_id == 10:
@@ -301,19 +353,26 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
-            if iters == args.iterations:
-                break
-            if args.use_fake_data:
-                loss, = exe.run([avg_loss.name])
+            if args.use_fake_data or args.use_reader_op:
+                try:
+                    loss, = exe.run([avg_loss.name])
+                except fluid.core.EnforceNotMet as ex:
+                    break
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
             if args.update_method == "pserver":
                 exe.bcast_params()
-            num_samples += len(data)
+            if args.use_reader_op:
+                num_samples += args.batch_size * args.gpus
+            else:
+                num_samples += len(data)
             iters += 1
             if batch_id % 1 == 0:
                 print("Pass %d, batch %d, loss %s" %
                       (pass_id, batch_id, np.array(loss)))
+            batch_id += 1
+        if args.use_reader_op:
+            num_samples = num_samples * args.gpus
         print_train_time(start_time, time.time(), num_samples)
         if not args.no_test and batch_acc:
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,

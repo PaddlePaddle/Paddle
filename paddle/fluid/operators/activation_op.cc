@@ -58,14 +58,16 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
+
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
   }
 #endif
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
       ctx.GetPlace(), layout, library);

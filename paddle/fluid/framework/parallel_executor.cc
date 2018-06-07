@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include "paddle/fluid/framework/details/graph_builder_factory.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -102,22 +102,19 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
-#ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(
+  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+
+  details::SSAGraphBuilderFactory builder_factory(
       member_->places_, loss_var_name, params, member_->local_scopes_,
-      member_->nccl_ctxs_.get(), build_strategy);
-#else
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           build_strategy);
+      build_strategy);
+#ifdef PADDLE_WITH_CUDA
+  builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #endif
 
-  auto graph = builder.Build(main_program);
-
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places, std::move(graph)));
+      exec_strategy, member_->local_scopes_, places,
+      builder_factory.Create()->Build(main_program)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
