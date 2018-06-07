@@ -24,8 +24,16 @@ PaddleInferenceAnakinPredictor::PaddleInferenceAnakinPredictor(
 }
 
 bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
-  // TODO(Superjomn) Tell anakin to support return code.
-  engine_.Build(config.model_file, config.max_batch_size);
+  if (!(graph_.load(config.model_file))) {
+    return false;
+  }
+  graph_.ResetBatchSize("input_0", config.max_batch_size);
+  // optimization for graph
+  if (!(graph_.Optimize())) {
+    return false;
+  }
+  // construct executer
+  executor_.init(graph_);
   return true;
 }
 
@@ -38,24 +46,30 @@ bool PaddleInferenceAnakinPredictor::Run(
                  << "'s type is not float";
       return false;
     }
-    engine_.SetInputFromCPU(
-        input.name, static_cast<float *>(input.data.data), input.data.length);
+    auto d_tensor_in_p = executor_.get_in(input.name);
+    float *d_data_p = d_tensor_in_p->mutable_data();
+    if (cudaMemcpy(d_data_p,
+                   static_cast<float *>(input.data.data),
+                   d_tensor_in_p->valid_size() * sizeof(float),
+                   cudaMemcpyHostToDevice) != 0) {
+      LOG(ERROR) << "copy data from CPU to GPU error";
+      return false;
+    }
   }
 
-  // TODO(Superjomn) Tell anakin to support return code.
-  engine_.Execute();
+  executor_.prediction();
 
   if (output_data->empty()) {
     LOG(ERROR) << "At least one output should be set with tensors' names.";
     return false;
   }
   for (auto &output : *output_data) {
-    auto *tensor = engine_.GetOutputInGPU(output.name);
+    auto *tensor = executor_.get_out(output.name);
     output.shape = tensor->shape();
     // Copy data from GPU -> CPU
     if (cudaMemcpy(output.data.data,
-                   tensor->data(),
-                   tensor->size(),
+                   tensor->mutable_data(),
+                   tensor->valid_size() * sizeof(float),
                    cudaMemcpyDeviceToHost) != 0) {
       LOG(ERROR) << "copy data from GPU to CPU error";
       return false;
@@ -64,9 +78,26 @@ bool PaddleInferenceAnakinPredictor::Run(
   return true;
 }
 
-// TODO(Superjomn) To implement latter.
+anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+    &PaddleInferenceAnakinPredictor::get_executer() {
+  return executor_;
+}
+
+// the cloned new Predictor of anakin share the same net weights from original
+// Predictor
 std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
-  return nullptr;
+  VLOG(3) << "Anakin Predictor::clone";
+  std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor());
+  // construct executer from other graph
+  auto anakin_predictor_p =
+      dynamic_cast<PaddleInferenceAnakinPredictor *>(cls.get());
+  if (!anakin_predictor_p) {
+    LOG(ERROR) << "fail to call Init";
+    return nullptr;
+  }
+  anakin_predictor_p->get_executer().init(graph_);
+
+  return std::move(cls);
 }
 
 // A factory to help create difference predictor.
@@ -74,6 +105,7 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
     const AnakinConfig &config) {
+  VLOG(3) << "Anakin Predictor create.";
   std::unique_ptr<PaddlePredictor> x(
       new PaddleInferenceAnakinPredictor(config));
   return x;
