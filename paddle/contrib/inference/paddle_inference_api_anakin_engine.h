@@ -41,12 +41,13 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
+  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
+  get_executer();
+
   ~PaddleInferenceAnakinPredictor() override{};
 
  private:
   bool Init(const AnakinConfig& config);
-
-  bool Init();
 
   anakin::graph::Graph<anakin::NV,
                        anakin::saber::AK_FLOAT,

@@ -78,13 +78,24 @@ bool PaddleInferenceAnakinPredictor::Run(
   return true;
 }
 
+anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+    &PaddleInferenceAnakinPredictor::get_executer() {
+  return executor_;
+}
+
 // the cloned new Predictor of anakin share the same net weights from original
 // Predictor
 std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor());
   // construct executer from other graph
-  cls->executor_.init(graph_);
+  auto anakin_predictor_p =
+      dynamic_cast<PaddleInferenceAnakinPredictor *>(cls.get());
+  if (!anakin_predictor_p) {
+    LOG(ERROR) << "fail to call Init";
+    return nullptr;
+  }
+  anakin_predictor_p->get_executer().init(graph_);
 
   return std::move(cls);
 }
