@@ -76,8 +76,8 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
    docker build -t paddle:dev .
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "WITH_DOC=ON" paddle:dev /bin/bash
 
-   # 进入Docker容器后使用build.sh脚本构建PaddlePaddle文档
-   bash -x /paddle/paddle/scripts/docker/build.sh
+   # 进入Docker容器后使用paddle_build.sh脚本构建PaddlePaddle文档
+   bash -x /paddle/paddle/scripts/paddle_build.sh build
 
 注：上述命令把当前目录（源码根目录）映射为 container 里的 :code:`/paddle` 目录。
 

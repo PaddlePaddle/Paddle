@@ -68,7 +68,7 @@ Please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develo
 Manually Building the Documentation
 -------------------------------------
 
-Build PaddlePaddle's documentation with Docker，you need to install Docker first. Please refer to `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. This method is quite similar to ` Build From Sources <http://paddlepaddle.org/docs/develop/documentation/en/build_and_install/build_from_source_en.html>`_ , by constructing, from source code, a docker image that can be used to build PaddlePaddle documentation. Enter the Docker container and use the script ``build.sh`` in the source directory to build the PaddlePaddle documentation. The specific steps are as follows:
+Build PaddlePaddle's documentation with Docker，you need to install Docker first. Please refer to `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. This method is quite similar to ` Build From Sources <http://paddlepaddle.org/docs/develop/documentation/en/build_and_install/build_from_source_en.html>`_ , by constructing, from source code, a docker image that can be used to build PaddlePaddle documentation. Enter the Docker container and use the script ``paddle_build.sh`` in the source directory to build the PaddlePaddle documentation. The specific steps are as follows:
 
 .. code-block:: bash
 
@@ -79,8 +79,8 @@ Build PaddlePaddle's documentation with Docker，you need to install Docker firs
    docker build -t paddle:dev .
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "WITH_DOC=ON" paddle:dev /bin/bash
 
-   # Use build.sh to build PaddlePaddle documentation
-   bash -x /paddle/paddle/scripts/docker/build.sh
+   # Use paddle_build.sh to build PaddlePaddle documentation
+   bash -x /paddle/paddle/scripts/paddle_build.sh build
 
 Note: The above commands maps the current directory (source root directory) to the :code:`/paddle` directory in the container.
 
