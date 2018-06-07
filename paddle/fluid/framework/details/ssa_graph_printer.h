@@ -20,7 +20,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
-class SSAGraph;
+struct SSAGraph;
 class SSAGraphPrinter {
  public:
   virtual ~SSAGraphPrinter() {}
