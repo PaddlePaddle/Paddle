@@ -54,7 +54,7 @@ if (ANAKIN_FOUND)
     link_directories(${ANAKIN_LIBRARY})
 
     nv_library(inference_anakin_api SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
-    target_link_libraries(inference_anakin_api anakin)
+    target_link_libraries(inference_anakin_api anakin anakin_saber_common)
     list(APPEND inference_deps inference_anakin_api)
 endif()
 

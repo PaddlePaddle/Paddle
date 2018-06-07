@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
-#include "paddle/fluid/inference/tests/test_helper.h"
+//#include "paddle/fluid/inference/tests/test_helper.h"
 
-DEFINE_string(dirname, "", "Directory of the inference model (path/to/models/).");
+//DEFINE_string(dirname, "", "Directory of the inference model (path/to/models/).");
 
 namespace paddle {
 
@@ -32,11 +32,8 @@ AnakinConfig GetConfig() {
 }
 
 TEST(inference, anakin) {
-  printf("ccw!!!!!!\n");
   AnakinConfig config = GetConfig();
-  //test<float>();
-  //auto predictor = new PaddleInferenceAnakinPredictor(config);
-  //auto predictor = CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
+  auto predictor = CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
 
   float data[1*3*224*224] = {1.0f};
 
@@ -50,25 +47,22 @@ TEST(inference, anakin) {
   std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
 
 
-  /*float data_out[100];
+  float data_out[1000];
 
   PaddleBuf buf_out{.data = data_out, .length = sizeof(data)};
   PaddleTensor tensor_out{.name = "prob_out",
-                          .shape = std::vector<int>({100,1}),
+                          .shape = std::vector<int>({1000,1}),
                           .data = buf_out,
                           .dtype = PaddleDType::FLOAT32};
 
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
-  ASSERT_EQ(outputs.size(), 1UL);
 
-  size_t len = outputs[0].data.length;
   float* data_o = static_cast<float*>(outputs[0].data.data);
-  for (size_t j = 0; j < len / sizeof(float); ++j) {
+  for (size_t j = 0; j < 1000; ++j) {
     LOG(INFO) << "output[" << j << "]: " << data_o[j];
   }
-  free(data_o);*/
 }
 
 }  // namespace paddle

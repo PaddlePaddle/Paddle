@@ -91,14 +91,8 @@ std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
     const AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
-  //std::unique_ptr<PaddlePredictor> x(new PaddleInferenceAnakinPredictor(config));
-  return nullptr;
+  std::unique_ptr<PaddlePredictor> x(new PaddleInferenceAnakinPredictor(config));
+  return x;
 };
-
-template<>
-void test<float>() {
-    //VLOG(3) << "Anakin Predictor create.";
-    printf("????????");
-}
 
 }  // namespace paddle
