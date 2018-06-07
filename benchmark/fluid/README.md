@@ -44,6 +44,16 @@ Currently supported `--model` argument include:
     PADDLE_PSERVER_PORT=7164 PADDLE_TRAINER_IPS=192.168.0.2,192.168.0.3  PADDLE_CURRENT_IP=127.0.0.1 PADDLE_TRAINER_ID=0 python fluid_benchmark.py --model mnist --device GPU --update_method nccl2
     ```
 
+## Prepare the RecordIO file to Achieve Better Performance
+
+Run the following command will generate RecordIO files like "mnist.recordio" under the path
+and batch_size you choose, you can use batch_size=1 so that later reader can change the batch_size
+at any time using `fluid.batch`.
+
+```bash
+python -c 'from recordio_converter import *; prepare_mnist("data", 1)'
+```
+
 ## Run Distributed Benchmark on Kubernetes Cluster
 
 You may need to build a Docker image before submitting a cluster job onto Kubernetes, or you will
