@@ -17,15 +17,12 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
-//#include "paddle/fluid/inference/tests/test_helper.h"
-
-//DEFINE_string(dirname, "", "Directory of the inference model (path/to/models/).");
 
 namespace paddle {
 
 AnakinConfig GetConfig() {
   AnakinConfig config;
-  config.model_file = /*FLAGS_dirname +*/ "./mobilenet_v2.anakin.bin";
+  config.model_file = "./mobilenet_v2.anakin.bin";
   config.device = 0;
   config.max_batch_size = 1;
   return config;
@@ -33,9 +30,10 @@ AnakinConfig GetConfig() {
 
 TEST(inference, anakin) {
   AnakinConfig config = GetConfig();
-  auto predictor = CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
+  auto predictor =
+      CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
 
-  float data[1*3*224*224] = {1.0f};
+  float data[1 * 3 * 224 * 224] = {1.0f};
 
   PaddleBuf buf{.data = data, .length = sizeof(data)};
   PaddleTensor tensor{.name = "input_0",
@@ -46,12 +44,11 @@ TEST(inference, anakin) {
   // For simplicity, we set all the slots with the same data.
   std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
 
-
   float data_out[1000];
 
   PaddleBuf buf_out{.data = data_out, .length = sizeof(data)};
   PaddleTensor tensor_out{.name = "prob_out",
-                          .shape = std::vector<int>({1000,1}),
+                          .shape = std::vector<int>({1000, 1}),
                           .data = buf_out,
                           .dtype = PaddleDType::FLOAT32};
 

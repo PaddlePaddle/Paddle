@@ -24,13 +24,12 @@ PaddleInferenceAnakinPredictor::PaddleInferenceAnakinPredictor(
 }
 
 bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
-  auto status = graph_.load(config.model_file);
-  if(!status ) {
+  if (!(graph_.load(config.model_file))) {
     return false;
   }
   graph_.ResetBatchSize("input_0", config.max_batch_size);
   // optimization for graph
-  if(!(graph_.Optimize())) {
+  if (!(graph_.Optimize())) {
     return false;
   }
   // construct executer
@@ -41,19 +40,20 @@ bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
 bool PaddleInferenceAnakinPredictor::Run(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data) {
-    for (const auto &input : inputs) {
+  for (const auto &input : inputs) {
     if (input.dtype != PaddleDType::FLOAT32) {
       LOG(ERROR) << "Only support float type inputs. " << input.name
                  << "'s type is not float";
       return false;
     }
     auto d_tensor_in_p = executor_.get_in(input.name);
-    float* d_data_p = d_tensor_in_p->mutable_data();
-    if(cudaMemcpy(d_data_p, 
-                  static_cast<float *>(input.data.data), 
-                  d_tensor_in_p->valid_size()*sizeof(float), 
-                  cudaMemcpyHostToDevice) != 0) {
-        LOG(ERROR) << "copy data from CPU to GPU error";
+    float *d_data_p = d_tensor_in_p->mutable_data();
+    if (cudaMemcpy(d_data_p,
+                   static_cast<float *>(input.data.data),
+                   d_tensor_in_p->valid_size() * sizeof(float),
+                   cudaMemcpyHostToDevice) != 0) {
+      LOG(ERROR) << "copy data from CPU to GPU error";
+      return false;
     }
   }
 
@@ -69,7 +69,7 @@ bool PaddleInferenceAnakinPredictor::Run(
     // Copy data from GPU -> CPU
     if (cudaMemcpy(output.data.data,
                    tensor->mutable_data(),
-                   tensor->valid_size()*sizeof(float),
+                   tensor->valid_size() * sizeof(float),
                    cudaMemcpyDeviceToHost) != 0) {
       LOG(ERROR) << "copy data from GPU to CPU error";
       return false;
@@ -78,9 +78,13 @@ bool PaddleInferenceAnakinPredictor::Run(
   return true;
 }
 
+// the cloned new Predictor of anakin share the same net weights from original
+// Predictor
 std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor(config_));
+  std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor());
+  // construct executer from other graph
+  cls->executor_.init(graph_);
 
   return std::move(cls);
 }
@@ -91,7 +95,8 @@ std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
     const AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
-  std::unique_ptr<PaddlePredictor> x(new PaddleInferenceAnakinPredictor(config));
+  std::unique_ptr<PaddlePredictor> x(
+      new PaddleInferenceAnakinPredictor(config));
   return x;
 };
 

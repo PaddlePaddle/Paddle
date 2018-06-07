@@ -30,6 +30,8 @@ namespace paddle {
 
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
+  PaddleInferenceAnakinPredictor() {}
+
   PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
   // NOTE Unlike the native engine, the buffers of anakin engine's output_data
@@ -44,8 +46,14 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::graph::Graph<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32> graph_;
-  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32> executor_;
+  bool Init();
+
+  anakin::graph::Graph<anakin::NV,
+                       anakin::saber::AK_FLOAT,
+                       anakin::Precision::FP32>
+      graph_;
+  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+      executor_;
   AnakinConfig config_;
 };
 
