@@ -24,7 +24,7 @@ import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder
+from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 
 
@@ -249,8 +249,9 @@ class OpTest(unittest.TestCase):
         if len(fetch_list) == 0:
             for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                 fetch_list.append(str(out_name))
-        # fetch_list = self._fetch_data(fetch_list)
-        fetch_list = map(block.var, fetch_list)
+        # fetch_list = map(block.var, fetch_list)
+        if not isinstance(fetch_list[0], Variable):
+            fetch_list = map(block.var, fetch_list)
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
