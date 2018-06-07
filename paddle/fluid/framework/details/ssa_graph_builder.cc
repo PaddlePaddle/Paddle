@@ -85,7 +85,7 @@ void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
 }
 
 std::unique_ptr<SSAGraph> SSAGraphBuilder::BuildAndCheck(
-    const ProgramDesc &program) final {
+    const ProgramDesc &program) {
   std::unique_ptr<SSAGraph> graph = Build(program);
   PADDLE_ENFORCE(IsValidGraph(graph.get()));
   return std::move(graph);
@@ -138,7 +138,7 @@ bool SSAGraphBuilder::IsValidGraph(const SSAGraph *graph) const {
     if (ready_vars.empty()) {
       return false;
     }
-    for (auto ready_var : ready_vars.) {
+    for (auto ready_var : ready_vars) {
       pending_vars.erase(ready_var);
       for (auto *op : ready_var->pending_ops_) {
         auto &deps = --pending_ops[op];

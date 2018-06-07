@@ -31,7 +31,7 @@ class SSAGraphBuilder {
   virtual ~SSAGraphBuilder() {}
   virtual std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const = 0;
 
-  std::unique_ptr<SSAGraph> BuildAndCheck(const ProgramDesc &program) final;
+  std::unique_ptr<SSAGraph> BuildAndCheck(const ProgramDesc &program);
 
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
