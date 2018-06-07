@@ -21,7 +21,7 @@ endif()
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(brpc_server.cc brpc_client.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 brpc_library(sendrecvop_brpc SRCS brpc_client.cc brpc_server.cc rpc_server.cc  rpc_client.cc request_handler_impl.cc
-  PROTO send_recv.proto 
+  PROTO brpc_send_recv.proto 
   DEPS lod_tensor selected_rows memory)
 
 find_library(OPENSSL_CRYPTO_LIBRARY_STATIC NAMES libcrypto.so)
@@ -35,4 +35,4 @@ SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY_STATIC}
 
 cc_test(brpc_server_test SRCS rpc_server_test.cc DEPS sendrecvop_brpc 
        brpc protobuf leveldb gflags glog
-       protobuf executor proto_desc lookup_table_op snappystream snappy ssl crypto)
+       protobuf executor proto_desc lookup_table_op snappystream snappy ssl crypto SERIAL)
