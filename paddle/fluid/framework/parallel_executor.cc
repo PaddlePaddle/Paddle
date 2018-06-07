@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/details/graph_builder_factory.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -114,7 +114,7 @@ ParallelExecutor::ParallelExecutor(
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places,
-      builder_factory.Create()->Build(main_program)));
+      builder_factory.Create()->BuildAndCheck(main_program)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),

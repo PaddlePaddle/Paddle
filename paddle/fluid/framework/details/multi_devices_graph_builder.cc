@@ -272,6 +272,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
+
   return std::unique_ptr<SSAGraph>(graph);
 }
 

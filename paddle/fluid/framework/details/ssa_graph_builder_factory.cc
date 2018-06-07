@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/graph_builder_factory.h"
+#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include <fstream>
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/ssa_graph_printer.h"
