@@ -160,7 +160,7 @@ TEST(paddle_inference_api_native_multithreads, word2vec) {
   config.use_gpu = false;
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
-  // prepare inputs data
+  // prepare inputs data and reference results
   constexpr int num_jobs = 3;
   std::vector<std::vector<framework::LoDTensor>> jobs(num_jobs);
   std::vector<std::vector<PaddleTensor>> paddle_tensor_feeds(num_jobs);
@@ -204,13 +204,64 @@ TEST(paddle_inference_api_native_multithreads, word2vec) {
 
       // check outputs correctness
       float* ref_data = refs[tid].data<float>();
+      EXPECT_EQ(refs[tid].numel(), static_cast<int64_t>(len / sizeof(float)));
+      for (int i = 0; i < refs[tid].numel(); ++i) {
+        EXPECT_NEAR(ref_data[i], data[i], 1e-3);
+      }
+      free(data);
+    });
+  }
+  for (int i = 0; i < num_jobs; ++i) {
+    threads[i].join();
+  }
+}
+
+TEST(paddle_inference_api_native_multithreads, image_classification) {
+  constexpr int num_jobs = 4;  // each job run 1 batch
+  constexpr int batch_size = 1;
+  NativeConfig config = GetConfig();
+  config.use_gpu = false;
+  config.model_dir =
+      FLAGS_dirname + "image_classification_resnet.inference.model";
+
+  auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  std::vector<framework::LoDTensor> jobs(num_jobs);
+  std::vector<std::vector<PaddleTensor>> paddle_tensor_feeds(num_jobs);
+  std::vector<framework::LoDTensor> refs(num_jobs);
+  for (size_t i = 0; i < jobs.size(); ++i) {
+    // prepare inputs
+    std::vector<std::vector<int64_t>> feed_target_shapes =
+        GetFeedTargetShapes(config.model_dir, /*is_combined*/ false);
+    feed_target_shapes[0][0] = batch_size;
+    framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
+    SetupTensor<float>(&jobs[i], input_dims, 0.f, 1.f);
+    paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i]));
+
+    // get reference result of each job
+    std::vector<framework::LoDTensor*> ref_feeds(1, &jobs[i]);
+    std::vector<framework::LoDTensor*> ref_fetches(1, &refs[i]);
+    TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
+  }
+
+  // create threads and each thread run 1 job
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < num_jobs; ++tid) {
+    threads.emplace_back([&, tid]() {
+      auto predictor = main_predictor->Clone();
+      auto& local_inputs = paddle_tensor_feeds[tid];
+      std::vector<PaddleTensor> local_outputs;
+      ASSERT_TRUE(predictor->Run(local_inputs, &local_outputs));
+
+      // check outputs correctness
+      ASSERT_EQ(local_outputs.size(), 1UL);
+      const size_t len = local_outputs[0].data.length;
+      float* data = static_cast<float*>(local_outputs[0].data.data);
+      float* ref_data = refs[tid].data<float>();
       EXPECT_EQ(refs[tid].numel(), len / sizeof(float));
       for (int i = 0; i < refs[tid].numel(); ++i) {
-        EXPECT_LT(ref_data[i] - data[i], 1e-3);
-        EXPECT_GT(ref_data[i] - data[i], -1e-3);
+        EXPECT_NEAR(ref_data[i], data[i], 1e-3);
       }
-
-      free(local_outputs[0].data.data);
+      free(data);
     });
   }
   for (int i = 0; i < num_jobs; ++i) {
