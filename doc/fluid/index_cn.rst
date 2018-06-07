@@ -10,3 +10,4 @@
   howto/index_cn.rst
   dev/index_cn.rst
   faq/index_cn.rst
+  api/index.rst
