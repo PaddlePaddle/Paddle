@@ -293,6 +293,38 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
   }
 }
 
+bool ExecutionContext::HasInput(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
+  }
+  auto& ins = Inputs(name);
+  size_t length = ins.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input %s should not have more than one inputs", name);
+  auto arg = ins[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
+}
+
+bool ExecutionContext::HasOutput(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto& outs = Outputs(name);
+  size_t length = outs.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output %s should not have more than one inputs", name);
+  auto arg = outs[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
+}
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
