@@ -19,7 +19,8 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-DEFINE_int32(brpc_channel_num, 24, "Number of threads to send requests");
+DEFINE_int32(brpc_channel_num, 24,
+             "Number of channels to send requests connected to one server");
 DEFINE_string(connection_type, "pooled",
               "Connection type. Available values: single, pooled, short");
 DEFINE_int32(timeout_ms, -1, "RPC timeout in milliseconds");
@@ -39,9 +40,6 @@ void HandleSendResponse(brpc::Controller* cntl,
   }
   LOG(INFO) << "Received response from " << cntl->remote_side()
             << " latency=" << cntl->latency_us() << "us";
-
-  // framework::Variable* outvar = nullptr;
-  // DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
 }
 
 bool BRPCClient::AsyncSendVar(const std::string& ep,
@@ -171,7 +169,6 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   }
 
   {
-    // TODO(Yancey1989): make grpc client completely thread-safe
     std::lock_guard<std::mutex> guard(chan_mutex_);
     channels_[ep] = q;
   }
