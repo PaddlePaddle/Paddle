@@ -24,10 +24,13 @@ using mkldnn::pooling_backward;
 
 // Generate keys for storing/retriving primitives for this operator
 // TODO(jczaja): Make hashing function more optimial
-static std::string gethash(memory::dims& input_dims, std::string& pooling_type,
-                           std::vector<int>& ksize, std::vector<int>& strides,
-                           std::vector<int>& paddings, std::string suffix) {
-  auto dims2str = [](memory::dims& operand_dims) {
+static std::string gethash(const memory::dims& input_dims,
+                           const std::string& pooling_type,
+                           const std::vector<int>& ksize,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::string& suffix) {
+  auto dims2str = [](const memory::dims& operand_dims) {
     std::string dstr = "";
     for (size_t i = 0; i < operand_dims.size(); ++i) {
       dstr += std::to_string(operand_dims[i]) + "-";

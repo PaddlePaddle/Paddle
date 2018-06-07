@@ -34,6 +34,28 @@ namespace framework {
 class LoDTensor;
 
 class Tensor {
+#ifdef PADDLE_WITH_MKLDNN
+
+ public:
+  inline mkldnn::memory::format format() const { return format_; }
+
+  inline void set_format(const mkldnn::memory::format format) {
+    format_ = format;
+  }
+
+ protected:
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+
+  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+#endif
+
  public:
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -195,8 +217,10 @@ class Tensor {
    *       N,C,H,W for respectively the batch size, the number of
    *       feature maps, the height.
    */
-
-  DataLayout layout_ = DataLayout::kNHWC;
+  // Fix me: here just change the default layout to kNCHW
+  // it doesn't fix the real issue, i.e. feeder should set up tensor layout
+  // according to actual input data
+  DataLayout layout_ = DataLayout::kNCHW;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
