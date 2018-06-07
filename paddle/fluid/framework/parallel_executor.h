@@ -70,7 +70,7 @@ class ParallelExecutor {
 
  private:
   ParallelExecutorPrivate *member_;
-  std::unique_ptr<details::MultiDevSSAGraphBuilder> builder_;
+  std::unique_ptr<details::SSAGraphBuilder> builder_;
 };
 
 }  // namespace framework
