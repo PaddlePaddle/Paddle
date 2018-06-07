@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -34,12 +35,15 @@ class OpConverter {
 
   // Converter logic for an op.
   virtual void operator()(const framework::proto::OpDesc& op,
-                          const framework::Scope& scope) {}
+                          const framework::Scope& scope,
+                          bool test_mode = false) {}
 
-  // Convert a single fluid operaotr and add the corresponding layer to TRT.
+  // Convert a single fluid operator and add the corresponding layer to TRT.
+  // test_mode: whether the instance executes in an unit test.
   void ConvertOp(const framework::proto::OpDesc& op,
                  const std::unordered_set<std::string>& parameters,
-                 const framework::Scope& scope, TensorRTEngine* engine) {
+                 const framework::Scope& scope, TensorRTEngine* engine,
+                 bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
@@ -57,7 +61,7 @@ class OpConverter {
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
     it->SetEngine(engine);
-    (*it)(op, scope);
+    (*it)(op, scope, test_mode);
   }
 
   // convert fluid block to tensorrt network
@@ -77,6 +81,9 @@ class OpConverter {
   // TensorRT engine
   TensorRTEngine* engine_{nullptr};
 
+ protected:
+  bool test_mode_;
+
  private:
   // registered op converter map, whose key is the fluid op type, and value is
   // the pointer position of corresponding OpConverter class.
@@ -85,13 +92,24 @@ class OpConverter {
   framework::Scope* scope_{nullptr};
 };
 
-#define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)       \
-  struct trt_##op_type__##_converter {                          \
-    trt_##op_type__##_converter() {                             \
-      Registry<OpConverter>::Register<Converter__>(#op_type__); \
-    }                                                           \
-  };                                                            \
-  trt_##op_type__##_converter trt_##op_type__##_converter__;
+#define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)                      \
+  struct trt_##op_type__##_converter : public ::paddle::framework::Registrar { \
+    trt_##op_type__##_converter() {                                            \
+      ::paddle::inference::                                                    \
+          Registry<paddle::inference::tensorrt::OpConverter>::Register<        \
+              ::paddle::inference::tensorrt::Converter__>(#op_type__);         \
+    }                                                                          \
+  };                                                                           \
+  trt_##op_type__##_converter trt_##op_type__##_converter__;                   \
+  int TouchConverterRegister_##op_type__() {                                   \
+    trt_##op_type__##_converter__.Touch();                                     \
+    return 0;                                                                  \
+  }
+
+#define USE_TRT_CONVERTER(op_type__)                                    \
+  extern int TouchConverterRegister_##op_type__();                      \
+  static int use_op_converter_trt_##op_type__ __attribute__((unused)) = \
+      TouchConverterRegister_##op_type__();
 
 }  // namespace tensorrt
 }  // namespace inference
