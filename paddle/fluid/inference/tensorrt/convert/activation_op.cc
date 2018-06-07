@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -36,8 +37,8 @@ class ReluOpConverter : public OpConverter {
   }
 };
 
-REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
