@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -24,7 +25,7 @@ class ReluOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
-    framework::OpDesc op_desc(op, nullptr, nullptr);
+    framework::OpDesc op_desc(op, nullptr);
     LOG(INFO) << "convert a fluid relu op to tensorrt activation layer whose "
                  "type is Relu";
     const nvinfer1::ITensor* input_tensor =
@@ -36,8 +37,8 @@ class ReluOpConverter : public OpConverter {
   }
 };
 
-REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);

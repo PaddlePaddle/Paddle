@@ -27,7 +27,7 @@ namespace paddle {
  * This is the base class of all Allocator class.
  */
 class Allocator {
-public:
+ public:
   virtual ~Allocator() {}
   virtual void* alloc(size_t size) = 0;
   virtual void free(void* ptr) = 0;
@@ -38,7 +38,7 @@ public:
  * @brief CPU allocator implementation.
  */
 class CpuAllocator : public Allocator {
-public:
+ public:
   ~CpuAllocator() {}
 
   /**
@@ -76,7 +76,7 @@ public:
  * @brief GPU allocator implementation.
  */
 class GpuAllocator : public Allocator {
-public:
+ public:
   ~GpuAllocator() {}
 
   /**
@@ -107,7 +107,7 @@ public:
  * @brief CPU pinned memory allocator implementation.
  */
 class CudaHostAllocator : public Allocator {
-public:
+ public:
   ~CudaHostAllocator() {}
 
   /**

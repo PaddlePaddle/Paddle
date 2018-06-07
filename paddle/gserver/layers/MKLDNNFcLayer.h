@@ -28,7 +28,7 @@ typedef mkldnn::inner_product_backward_data fc_bwdData;
  * The config file api is mkldnn_fc
  */
 class MKLDNNFcLayer : public MKLDNNLayer {
-protected:
+ protected:
   // input layer size, can not be change after init
   size_t iLayerSize_;  // == ic * ih * iw
 
@@ -42,7 +42,7 @@ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit MKLDNNFcLayer(const LayerConfig& config)
       : MKLDNNLayer(config), hasInitedWgt_(false) {}
 
@@ -68,7 +68,7 @@ public:
 
   void convertWeightsToPaddle() override;
 
-protected:
+ protected:
   void resetFwdBuffers(MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& bias,

@@ -41,7 +41,7 @@ namespace operators {
                                                                              \
    protected:                                                                \
     std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {    \
-      auto *op = new ::paddle::framework::OpDesc();                          \
+      auto* op = new ::paddle::framework::OpDesc();                          \
       op->SetType(#KERNEL_TYPE "_grad");                                     \
       op->SetInput("Out", Output("Out"));                                    \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
@@ -54,13 +54,35 @@ namespace operators {
     }                                                                        \
   }
 
+framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
+                                      const framework::OperatorWithKernel& oper,
+                                      const std::string& name) {
+  framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+  auto it = oper.Attrs().find("use_mkldnn");
+  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+  }
+#endif
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
+      ctx.GetPlace(), layout, library);
+}
+
 class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
   }
 };
 
@@ -68,8 +90,13 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "Out");
   }
 };
 

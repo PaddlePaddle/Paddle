@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -72,6 +73,29 @@ void OpProtoAndCheckerMaker::CheckReuseVars() {
       checker(output.name(), output.reuse());
     }
   }
+}
+
+void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
+                                        OpAttrChecker* attr_checker) {
+  proto_ = proto;
+  op_checker_ = attr_checker;
+  Make();
+
+  AddAttr<int>(OpRoleAttrName(), "The role of this operator")
+      .InEnum(
+          {static_cast<int>(OpRole::kForward),
+           static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize), static_cast<int>(OpRole::kRPC),
+           static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
+           static_cast<int>(OpRole::kLoss) |
+               static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kNotSpecified)})
+      .SetDefault(static_cast<int>(OpRole::kNotSpecified));
+  AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
+                                    "Optimized for variable")
+      .SetDefault({});
+
+  Validate();
 }
 
 }  // namespace framework

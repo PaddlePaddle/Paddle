@@ -25,7 +25,7 @@ namespace paddle {
  * The config file api is data_layer.
  */
 class DataLayer : public Layer {
-public:
+ public:
   explicit DataLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual void setData(const Argument& data) { data_ = data; }
@@ -58,10 +58,10 @@ public:
     }
   }
 
-private:
+ private:
   void copyDataToOutput(Argument& output);
 
-protected:
+ protected:
   Argument data_;
 };
 
