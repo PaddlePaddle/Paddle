@@ -38,8 +38,13 @@ void NCCLAllReduceOpHandle::RunImpl() {
     // Wait input done
     WaitInputVarGenerated();
     auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
-    //    auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
-    PADDLE_ENFORCE_EQ(in_var_handles.size(), places_.size(), "");
+    auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
+    PADDLE_ENFORCE_EQ(
+        in_var_handles.size(), places_.size(),
+        "The NoDummyInputSize should be equal to the number of places.");
+    PADDLE_ENFORCE_EQ(
+        in_var_handles.size(), out_var_handles.size(),
+        "The NoDummyInputSize and NoDummyOutputSize should be equal.");
 
     std::vector<const LoDTensor *> lod_tensors;
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
@@ -48,6 +53,8 @@ void NCCLAllReduceOpHandle::RunImpl() {
       auto &lod_tensor =
           local_scope.FindVar(in_var_handles[i]->name_)->Get<LoDTensor>();
       lod_tensors.emplace_back(&lod_tensor);
+      PADDLE_ENFORCE_EQ(in_var_handles[i]->name_, out_var_handles[i]->name_,
+                        "The name of input and output should be equal.");
     }
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
