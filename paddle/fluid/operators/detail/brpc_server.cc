@@ -13,26 +13,88 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/detail/brpc_server.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
 
 namespace sendrecv {
 class BRPCServiceImpl : public SendRecvService {
  public:
-  BRPCServiceImpl() {}
+  BRPCServiceImpl(const std::unordered_map<
+                  std::string, paddle::operators::detail::RequestHandler*>&
+                      rpc_call_map) {
+    request_send_h_ = nullptr;
+    request_get_h_ = nullptr;
+    request_prefetch_h_ = nullptr;
+
+    auto it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
+    if (it != rpc_call_map.end()) {
+      request_send_h_ = it->second;
+    }
+
+    it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
+    if (it != rpc_call_map.end()) {
+      request_get_h_ = it->second;
+    }
+
+    it = rpc_call_map.find(paddle::operators::detail::kRequestPrefetch);
+    if (it != rpc_call_map.end()) {
+      request_prefetch_h_ = it->second;
+    }
+  }
+
   ~BRPCServiceImpl() {}
+
   void SendVariable(google::protobuf::RpcController* cntl_butil,
                     const VariableMessage* request, VoidMessage* response,
                     google::protobuf::Closure* done) {
-    // brpc::ClosureGuard done_guard(done);
-    // brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+    brpc::ClosureGuard done_guard(done);
+
+    paddle::framework::Scope* local_scope = request_send_h_->scope();
+    paddle::framework::Variable* outvar = nullptr;
+    paddle::framework::Variable* invar = nullptr;
+
+    std::string varname = request->varname();
+
+    if (!request_send_h_->sync_mode()) {
+      local_scope = &request_send_h_->scope()->NewScope();
+      invar = local_scope->Var(varname);
+    } else {
+      invar = local_scope->FindVar(varname);
+    }
+
+    request_send_h_->Handle(varname, local_scope, invar, &outvar);
+
+    if (!request_send_h_->sync_mode()) {
+      request_send_h_->scope()->DeleteScope(local_scope);
+    }
   }
 
   void GetVariable(google::protobuf::RpcController* cntl_butil,
                    const VariableMessage* request, VariableMessage* response,
-                   google::protobuf::Closure* done) {}
+                   google::protobuf::Closure* done) {
+    /*
+    std::string varname = request->varname();
+    auto scope = request_get_h_->scope();
+    auto invar = scope->FindVar(varname);
+    paddle::framework::Variable* outvar = nullptr;
+
+    request_get_h_->Handle(varname, scope, invar, &outvar);
+
+    if (outvar) {
+      SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
+                            &reply_);
+    }
+    */
+  }
+
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
                         google::protobuf::Closure* done) {}
+
+ private:
+  paddle::operators::detail::RequestHandler* request_send_h_;
+  paddle::operators::detail::RequestHandler* request_get_h_;
+  paddle::operators::detail::RequestHandler* request_prefetch_h_;
 };
 }  // namespace sendrecv
 
@@ -42,7 +104,7 @@ namespace detail {
 
 void AsyncBRPCServer::StartServer() {
   // Instance of your service.
-  sendrecv::BRPCServiceImpl service_impl;
+  sendrecv::BRPCServiceImpl service_impl(rpc_call_map_);
 
   // Add the service into server. Notice the second parameter, because the
   // service is put on stack, we don't want server to delete it, otherwise

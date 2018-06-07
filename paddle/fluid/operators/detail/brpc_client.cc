@@ -13,3 +13,172 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/detail/brpc_client.h"
+#include "paddle/fluid/framework/threadpool.h"
+
+namespace paddle {
+namespace operators {
+namespace detail {
+
+DEFINE_int32(brpc_channel_num, 24, "Number of threads to send requests");
+DEFINE_string(connection_type, "pooled",
+              "Connection type. Available values: single, pooled, short");
+DEFINE_int32(timeout_ms, -1, "RPC timeout in milliseconds");
+DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
+
+BRPCClient::~BRPCClient() { Wait(); }
+
+void HandleSendResponse(brpc::Controller* cntl,
+                        sendrecv::VoidMessage* response) {
+  // std::unique_ptr makes sure cntl/response will be deleted before returning.
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
+
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send EchoRequest, " << cntl->ErrorText();
+    return;
+  }
+  LOG(INFO) << "Received response from " << cntl->remote_side()
+            << " latency=" << cntl->latency_us() << "us";
+
+  // framework::Variable* outvar = nullptr;
+  // DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
+}
+
+bool BRPCClient::AsyncSendVar(const std::string& ep,
+                              const platform::DeviceContext& ctx,
+                              const framework::Scope& scope,
+                              const std::string& var_name, int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string var_name_val = var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch_ptr = GetChannel(ep_val);
+
+  framework::AsyncIO(
+      [var_name_val, p_ctx, ep_val, p_scope, time_out, ch_ptr, this] {
+        auto ch_ctx = ch_ptr->Pop();
+        brpc::Controller* cntl = new brpc::Controller();
+        sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
+
+        google::protobuf::Closure* done =
+            brpc::NewCallback(&HandleSendResponse, cntl, response);
+
+        sendrecv::VariableMessage request;
+        ch_ctx->stub->SendVariable(cntl, &request, response, done);
+      });
+  req_count_++;
+
+  return true;
+}
+
+void HandleGetResponse(brpc::Controller* cntl,
+                       sendrecv::VariableMessage* response) {
+  // std::unique_ptr makes sure cntl/response will be deleted before returning.
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<sendrecv::VariableMessage> response_guard(response);
+
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send EchoRequest, " << cntl->ErrorText();
+    return;
+  }
+  LOG(INFO) << "Received response from " << cntl->remote_side()
+            << " latency=" << cntl->latency_us() << "us";
+
+  // framework::Variable* outvar = nullptr;
+  // DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
+}
+
+bool BRPCClient::AsyncGetVar(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& var_name, int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string var_name_val = var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
+
+  framework::AsyncIO(
+      [var_name_val, ep_val, p_scope, p_ctx, time_out, ch, this] {});
+
+  req_count_++;
+
+  return true;
+}
+
+bool BRPCClient::AsyncPrefetchVar(const std::string& ep,
+                                  const platform::DeviceContext& ctx,
+                                  const framework::Scope& scope,
+                                  const std::string& in_var_name,
+                                  const std::string& out_var_name,
+                                  int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string in_var_name_val = in_var_name;
+  const std::string out_var_name_val = out_var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
+
+  framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
+                      time_out, ch, this] {});
+
+  req_count_++;
+  return true;
+}
+
+void BRPCClient::AsyncSendBatchBarrier(const std::string& ep,
+                                       int64_t time_out) {
+  req_count_++;
+}
+
+void BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
+                                       int64_t time_out) {
+  req_count_++;
+}
+
+void BRPCClient::Wait() {
+  std::unique_lock<std::mutex> lk(sync_mutex_);
+  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+}
+
+ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
+  {
+    std::lock_guard<std::mutex> guard(chan_mutex_);
+    auto it = channels_.find(ep);
+    if (it != channels_.end()) {
+      return it->second;
+    }
+  }
+
+  ChannelQueuePtr q(new framework::BlockingQueue<ChannelContextPtr>());
+
+  brpc::ChannelOptions options;
+  options.protocol = "baidu_std";
+  options.connection_type = FLAGS_connection_type;
+  options.connect_timeout_ms = 100;
+  options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
+  options.max_retry = FLAGS_max_retry;
+  for (int i = 0; i < FLAGS_brpc_channel_num; ++i) {
+    std::shared_ptr<ChannelContext> c(new ChannelContext());
+    if (c->channel.Init(ep.c_str(), &options) != 0) {
+      LOG(ERROR) << "Fail to initialize channel";
+      return nullptr;
+    }
+
+    c->stub = new sendrecv::SendRecvService_Stub(
+        static_cast<google::protobuf::RpcChannel*>(&c->channel));
+    q->Push(c);
+  }
+
+  {
+    // TODO(Yancey1989): make grpc client completely thread-safe
+    std::lock_guard<std::mutex> guard(chan_mutex_);
+    channels_[ep] = q;
+  }
+
+  return q;
+}
+
+}  // namespace detail
+}  // namespace operators
+}  // namespace paddle
