@@ -78,6 +78,7 @@ Variable* Scope::FindVarInternal(const std::string& name) const {
 }
 
 const Scope* Scope::FindScope(const Variable* var) const {
+  std::unique_lock<std::mutex> lock(mutex_);
   for (auto& kv : vars_) {
     if (kv.second.get() == var) {
       return this;
@@ -127,6 +128,7 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
+  std::unique_lock<std::mutex> lock(mutex_);
   auto origin_it = vars_.find(origin_name);
   PADDLE_ENFORCE(origin_it != vars_.end(),
                  "Cannot find original variable with name %s", origin_name);
