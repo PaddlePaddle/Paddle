@@ -12,24 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
+
+#include <gtest/gtest.h>
+#include <fstream>
+#include <string>
+#include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
 namespace inference {
-namespace tensorrt {
+namespace analysis {
 
-class Conv2dOpConverter : public OpConverter {
- public:
-  Conv2dOpConverter() {}
-  void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    LOG(INFO)
-        << "convert a fluid conv2d op to tensorrt conv layer without bias";
+TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
+  auto dfg = ProgramDescToDFG(desc);
+  DFG_GraphvizDrawPass pass("./", "test");
+  pass.Initialize();
+  pass.Run(&dfg);
+
+  // test content
+  std::ifstream file("./graph_test.dot");
+  ASSERT_TRUE(file.is_open());
+
+  std::string line;
+  int no{0};
+  while (std::getline(file, line)) {
+    no++;
   }
-};
+  ASSERT_EQ(no, 82);
+}
 
-}  // namespace tensorrt
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);

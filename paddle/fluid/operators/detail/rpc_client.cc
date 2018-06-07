@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/ssa_graph_executor.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 
 namespace paddle {
-namespace framework {
-namespace details {
-SSAGraphExecutor::~SSAGraphExecutor() {}
+namespace operators {
+namespace detail {
 
-}  // namespace details
-}  // namespace framework
+std::once_flag RPCClient::init_flag_;
+std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+
+}  // namespace detail
+}  // namespace operators
 }  // namespace paddle

@@ -233,6 +233,8 @@ op_library(softmax_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 if (WITH_GPU AND TENSORRT_FOUND)
     op_library(tensorrt_engine_op DEPS tensorrt_engine)
+    nv_test(test_tensorrt_engine_op SRCS tensorrt_engine_op_test.cc
+      DEPS tensorrt_engine_op tensorrt_engine tensorrt_converter)
 else()
     set(DEPS_OPS ${DEPS_OPS} tensorrt_engine_op)
 endif()

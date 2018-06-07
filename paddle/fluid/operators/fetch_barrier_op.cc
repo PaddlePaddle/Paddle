@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -43,15 +44,16 @@ class FetchBarrierOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::GRPCClient>();
 
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
 
     for (auto& ep : eps) {
       VLOG(3) << "fetch barrier, ep: " << ep;
       rpc_client->AsyncSendFetchBarrier(ep);
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
   }
 };
 

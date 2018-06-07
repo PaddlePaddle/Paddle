@@ -19,6 +19,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -113,10 +114,6 @@ void StartServer() {
   std::thread server_thread(
       std::bind(&detail::RPCServer::StartServer, g_rpc_service.get()));
 
-  // FIXME(gongwb): don't use hard time.
-  sleep(10);
-  LOG(INFO) << "got nccl id and stop server...";
-  g_rpc_service->ShutDown();
   server_thread.join();
 }
 
@@ -131,7 +128,8 @@ TEST(PREFETCH, CPU) {
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
 
-  detail::RPCClient client;
+  detail::RPCClient* client =
+      detail::RPCClient::GetInstance<detail::GRPCClient>();
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
@@ -145,8 +143,8 @@ TEST(PREFETCH, CPU) {
     std::string in_var_name("ids");
     std::string out_var_name("out");
 
-    client.AsyncPrefetchVariable(ep, ctx, scope, in_var_name, out_var_name);
-    client.Wait();
+    client->AsyncPrefetchVar(ep, ctx, scope, in_var_name, out_var_name);
+    client->Wait();
     auto var = scope.Var(out_var_name);
     auto value = var->GetMutable<framework::SelectedRows>()->value();
     auto ptr = value.mutable_data<float>(place);
@@ -156,6 +154,7 @@ TEST(PREFETCH, CPU) {
     }
   }
 
+  g_rpc_service->ShutDown();
   server_thread.join();
   LOG(INFO) << "begin reset";
   g_rpc_service.reset(nullptr);

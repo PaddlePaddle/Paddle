@@ -49,38 +49,39 @@ class SendOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::GRPCClient>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
 
     if (sync_mode) {
       for (auto& ep : endpoints) {
         VLOG(3) << "batch barrier, ep: " << ep;
         rpc_client->AsyncSendBatchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
 
     if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
         VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
-        rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+        rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
       // tell pservers that current trainer have called fetch
       for (auto& ep : endpoints) {
         VLOG(2) << "send fetch barrier, ep: " << ep;
         rpc_client->AsyncSendFetchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
   }
 };
