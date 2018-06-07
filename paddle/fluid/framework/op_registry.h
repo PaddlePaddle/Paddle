@@ -83,8 +83,14 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
   void operator()(const char* op_type, const char* library_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+    std::string library(library_type);
+    std::string data_layout = "ANYLAYOUT";
+    if (library == "MKLDNN") {
+      data_layout = "MKLDNNLAYOUT";
+    }
     OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
-                     DataLayout::kAnyLayout, StringToLibraryType(library_type));
+                     StringToDataLayout(data_layout),
+                     StringToLibraryType(library_type));
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
@@ -99,7 +105,8 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
   void operator()(const char* op_type, const char* library_type) const {}
 };
 
-// User can register many kernel in one place. The data type could be different.
+// User can register many kernel in one place. The data type could be
+// different.
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
