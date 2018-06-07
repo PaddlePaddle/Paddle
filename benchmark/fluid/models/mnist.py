@@ -75,7 +75,8 @@ def get_model(args):
             shapes=[[-1, 1, 28, 28], (-1, 1)],
             lod_levels=[0, 0],
             dtypes=["float32", "int64"],
-            thread_num=args.gpus)
+            thread_num=args.gpus,
+            pass_num=args.pass_num)
         data_file = fluid.layers.double_buffer(
             fluid.layers.batch(
                 data_file, batch_size=args.batch_size))
