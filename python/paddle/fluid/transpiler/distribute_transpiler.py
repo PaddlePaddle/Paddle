@@ -356,7 +356,7 @@ class DistributeTranspiler:
                 eps.append(eplist[index])
 
             program.global_block().append_op(
-                type="recv",
+                type="recv_vars",
                 inputs={},
                 outputs={"Out": splited_var},
                 attrs={

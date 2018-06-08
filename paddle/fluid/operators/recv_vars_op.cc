@@ -26,11 +26,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class RecvOp : public framework::OperatorBase {
+class RecvVarsOp : public framework::OperatorBase {
  public:
-  RecvOp(const std::string& type, const framework::VariableNameMap& inputs,
-         const framework::VariableNameMap& outputs,
-         const framework::AttributeMap& attrs)
+  RecvVarsOp(const std::string& type, const framework::VariableNameMap& inputs,
+             const framework::VariableNameMap& outputs,
+             const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
@@ -57,7 +57,7 @@ class RecvOp : public framework::OperatorBase {
   }
 };
 
-class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
+class RecvVarsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
@@ -83,4 +83,4 @@ This operator can get variables from server side.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv_vars, ops::RecvOp, ops::RecvOpMaker);
+REGISTER_OPERATOR(recv_vars, ops::RecvVarsOp, ops::RecvVarsOpMaker);
