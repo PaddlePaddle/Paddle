@@ -32,8 +32,8 @@ namespace framework {
 namespace details {
 
 struct ReduceOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
+  std::vector<Scope *> local_scopes_;
+  std::vector<platform::Place> places_;
 
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
@@ -59,8 +59,6 @@ struct ReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
-
-  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
 
   template <typename T>
   std::vector<const T *> GetInputValues(

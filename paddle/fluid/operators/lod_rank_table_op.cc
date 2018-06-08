@@ -38,8 +38,7 @@ class LoDRankTableOp : public framework::OperatorBase {
 
 class LoDRankTableOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDRankTableOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor) input lod tensor, must contain lod information.");
     AddOutput("Out", "(LoDRankTable) The rank table of specific level.");

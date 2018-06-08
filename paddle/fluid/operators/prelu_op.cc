@@ -38,8 +38,7 @@ class PReluOp : public framework::OperatorWithKernel {
 
 class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input tensor of prelu operator.");
     AddInput("Alpha", "The alpha weight of prelu operator.");
     AddOutput("Out", "The output tensor of prelu operator.");

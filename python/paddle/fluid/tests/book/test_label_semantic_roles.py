@@ -36,7 +36,7 @@ depth = 8
 mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
-PASS_NUM = 100
+PASS_NUM = 10
 BATCH_SIZE = 10
 
 embedding_name = 'emb'
@@ -116,29 +116,6 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     return feature_out
 
 
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = fluid.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
-
-
-def create_random_lodtensor(lod, place, low, high):
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 def train(use_cuda, save_dirname=None, is_local=True):
     # define network topology
     word = fluid.layers.data(
@@ -175,18 +152,12 @@ def train(use_cuda, save_dirname=None, is_local=True):
             decay_steps=100000,
             decay_rate=0.5,
             staircase=True))
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
-
-    chunk_evaluator = fluid.evaluator.ChunkEvaluator(
-        input=crf_decode,
-        label=target,
-        chunk_scheme="IOB",
-        num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -203,7 +174,6 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
-
         embedding_param = fluid.global_scope().find_var(
             embedding_name).get_tensor()
         embedding_param.set(
@@ -213,27 +183,19 @@ def train(use_cuda, save_dirname=None, is_local=True):
         start_time = time.time()
         batch_id = 0
         for pass_id in xrange(PASS_NUM):
-            chunk_evaluator.reset(exe)
             for data in train_data():
-                cost, precision, recall, f1_score = exe.run(
-                    main_program,
-                    feed=feeder.feed(data),
-                    fetch_list=[avg_cost] + chunk_evaluator.metrics)
-                pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
-                    exe)
+                cost = exe.run(main_program,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_cost])
+                cost = cost[0]
 
                 if batch_id % 10 == 0:
-                    print("avg_cost:" + str(cost) + " precision:" + str(
-                        precision) + " recall:" + str(recall) + " f1_score:" +
-                          str(f1_score) + " pass_precision:" + str(
-                              pass_precision) + " pass_recall:" + str(
-                                  pass_recall) + " pass_f1_score:" + str(
-                                      pass_f1_score))
+                    print("avg_cost:" + str(cost))
                     if batch_id != 0:
                         print("second per batch: " + str((time.time(
                         ) - start_time) / batch_id))
                     # Set the threshold low to speed up the CI test
-                    if float(pass_precision) > 0.01:
+                    if float(cost) < 60.0:
                         if save_dirname is not None:
                             # TODO(liuyiqun): Change the target to crf_decode
                             fluid.io.save_inference_model(save_dirname, [
@@ -286,23 +248,35 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        lod = [0, 4, 10]
-        word = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        pred = create_random_lodtensor(
-            lod, place, low=0, high=pred_dict_len - 1)
-        ctx_n2 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_n1 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_0 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_p1 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_p2 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        mark = create_random_lodtensor(
-            lod, place, low=0, high=mark_dict_len - 1)
+        # Setup inputs by creating LoDTensors to represent sequences of words.
+        # Here each word is the basic element of these LoDTensors and the shape of 
+        # each word (base_shape) should be [1] since it is simply an index to 
+        # look up for the corresponding word vector.
+        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
+        # which has only one lod level. Then the created LoDTensors will have only 
+        # one higher level structure (sequence of words, or sentence) than the basic 
+        # element (word). Hence the LoDTensor will hold data for three sentences of 
+        # length 3, 4 and 2, respectively. 
+        # Note that lod info should be a list of lists.
+        lod = [[3, 4, 2]]
+        base_shape = [1]
+        # The range of random integers is [low, high]
+        word = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        pred = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=pred_dict_len - 1)
+        ctx_n2 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_n1 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_0 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_p1 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_p2 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        mark = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=mark_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.

@@ -36,7 +36,7 @@ namespace paddle {
  * The config file api is linear_comb_layer.
  */
 class ConvexCombinationLayer : public Layer {
-protected:
+ protected:
   /// A matrix pointer pointing to second input.
   MatrixPtr tmpMtx0;
   /// A matrix pointer pointing to first input.
@@ -44,7 +44,7 @@ protected:
   /// A matrix pointer pointing to output.
   MatrixPtr tmpRow1;
 
-public:
+ public:
   explicit ConvexCombinationLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ConvexCombinationLayer() {}

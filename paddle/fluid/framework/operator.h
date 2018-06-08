@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
@@ -191,6 +190,10 @@ class ExecutionContext {
   inline const T& Attr(const std::string& name) const {
     return op_.Attr<T>(name);
   }
+
+  bool HasInput(const std::string& name) const;
+
+  bool HasOutput(const std::string& name) const;
 
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();

@@ -62,8 +62,7 @@ class MomentumOp : public framework::OperatorWithKernel {
 
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MomentumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter that has to be updated");

@@ -46,8 +46,7 @@ class OpWithoutKernelTest : public OperatorBase {
 
 class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpWithoutKernelCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
     AddAttr<float>("scale", "scale of cosine op");
@@ -98,8 +97,7 @@ namespace framework {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("x", "input of test op");
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -137,9 +135,7 @@ class CPUKernelTest : public OpKernel<float> {
 class OpKernelTestMultiInputsProtoAndCheckerMaker
     : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
-                                              OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
     AddOutput("ys", "outputs of test op").AsDuplicable();

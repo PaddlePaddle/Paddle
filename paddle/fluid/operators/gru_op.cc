@@ -71,8 +71,7 @@ class GRUOp : public framework::OperatorWithKernel {
 
 class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GRUOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(LoDTensor) The first input is a LodTensor, which supports "
              "variable-time length input sequence. The underlying tensor in "

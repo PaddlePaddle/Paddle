@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 
 class LinearChainCTC {
-public:
+ public:
   LinearChainCTC(int numClasses, bool normByTimes);
 
   // Calculate the negative log probability as loss
@@ -35,7 +35,7 @@ public:
                 int* labelSeq,
                 int labelSeqLen);
 
-protected:
+ protected:
   int numClasses_, blank_, totalSegments_, totalTime_;
   bool normByTimes_;
   bool isInvalid_;

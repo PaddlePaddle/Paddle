@@ -47,8 +47,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
 
 class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDResetOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, LoDTensor) Input variable of LoDResetOp which "
              "could be a Tensor or LoDTensor, where the data of output "

@@ -24,9 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -76,21 +73,6 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
         "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
         var_type);
   }
-}
-
-static void CheckTensorNANOrInf(const std::string& name,
-                                const framework::Tensor& tensor) {
-  if (tensor.memory_size() == 0) {
-    return;
-  }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
-    return;
-  }
-  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
-  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
@@ -228,7 +210,8 @@ static bool has_fetch_operators(
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>* feed_targets,
                    std::map<std::string, LoDTensor*>* fetch_targets,
-                   bool create_vars, const std::string& feed_holder_name,
+                   bool create_local_scope, bool create_vars,
+                   const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
@@ -237,8 +220,10 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
       has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
 
   ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
+  std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
   if (!has_feed_ops || !has_fetch_ops) {
-    copy_program = std::unique_ptr<ProgramDesc>(new ProgramDesc(program)).get();
+    unique_ptr_of_copy_program.reset(new ProgramDesc(program));
+    copy_program = unique_ptr_of_copy_program.get();
   }
 
   auto* global_block = copy_program->MutableBlock(0);
@@ -290,8 +275,9 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 
   auto ctx = Prepare(*copy_program, 0);
-  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets, create_vars,
-                     feed_holder_name, fetch_holder_name);
+  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
+                     create_local_scope, create_vars, feed_holder_name,
+                     fetch_holder_name);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
@@ -338,15 +324,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
     }
-    if (FLAGS_check_nan_inf) {
-      for (auto& vname : op->OutputVars(true)) {
-        auto* var = local_scope->FindVar(vname);
-        if (var == nullptr) continue;
-        if (var->IsType<framework::LoDTensor>()) {
-          CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
-        }
-      }
-    }
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
   if (create_vars && create_local_scope) {
@@ -366,8 +343,9 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
     std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_vars,
-    const std::string& feed_holder_name, const std::string& fetch_holder_name) {
+    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
+    bool create_vars, const std::string& feed_holder_name,
+    const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE(
@@ -387,7 +365,7 @@ void Executor::RunPreparedContext(
     }
   }
 
-  RunPreparedContext(ctx, scope, create_vars, create_vars);
+  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block.AllOps()) {

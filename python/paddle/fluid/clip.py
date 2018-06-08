@@ -214,21 +214,24 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 def append_gradient_clip_ops(param_grad):
     context = dict()
-    create_op_callbacks = []
     for p, g in param_grad:
-        clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
-        if clip_attr is None:
-            clip_attr = NullGradientClipAttr()
-        if not isinstance(clip_attr, BaseGradientClipAttr):
-            raise TypeError(
-                "clip attribute should be an instance of BaseGradientClipAttr")
+        with p.block.program.optimized_guard(p):
+            clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
+            if clip_attr is None:
+                clip_attr = NullGradientClipAttr()
+            if not isinstance(clip_attr, BaseGradientClipAttr):
+                raise TypeError(
+                    "clip attribute should be an instance of BaseGradientClipAttr"
+                )
 
-        clip_attr.process_context(context=context, param=p, grad=g)
-        create_op_callbacks.append(
-            functools.partial(
-                clip_attr.create_operators, param=p, grad=g))
+            clip_attr.process_context(context=context, param=p, grad=g)
 
-    return [each_callback() for each_callback in create_op_callbacks]
+    res = []
+    for p, g in param_grad:
+        with p.block.program.optimized_guard(p):
+            res.append(clip_attr.create_operators(param=p, grad=g))
+
+    return res
 
 
 ClipByValue = GradientClipByValue

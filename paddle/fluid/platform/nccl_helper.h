@@ -14,11 +14,15 @@
 
 #pragma once
 
+#include <stdio.h>
+#include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
 #include <vector>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
+
+#define NCCL_ID_VARNAME "NCCLID"
 
 namespace paddle {
 namespace platform {
@@ -50,7 +54,7 @@ class NCCLGroupGuard {
   }
 
   inline ~NCCLGroupGuard() {
-    PADDLE_ENFORCE(dynload::ncclGroupEnd());
+    CHECK_EQ(dynload::ncclGroupEnd(), ncclSuccess);
     NCCLMutex().unlock();
   }
 };
@@ -73,7 +77,9 @@ struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  explicit NCCLContextMap(const std::vector<platform::Place> &places) {
+  explicit NCCLContextMap(const std::vector<platform::Place> &places,
+                          ncclUniqueId *nccl_id = nullptr,
+                          size_t num_trainers = 1, size_t trainer_id = 0) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
     for (auto &p : places) {
@@ -85,17 +91,33 @@ struct NCCLContextMap {
         order_.size(), contexts_.size(),
         "NCCL Context Map does not support contain two or more same device");
 
-    if (places.size() > 1) {
-      std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
+    if (places.size() <= 1) {
+      return;
+    }
+    std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
+    // if pass nccl_id here, can assume we are doing multi node training
+    if (nccl_id == nullptr) {
+      std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
+      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+          comms.get(), static_cast<int>(order_.size()), order_.data()));
+    } else {
+      PADDLE_ENFORCE_GT(num_trainers, 1);
+      // TODO(wuyi): need to ensure each node have same number of GPUs
       {
-        std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-        PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
-            comms.get(), static_cast<int>(order_.size()), order_.data()));
+        int nranks = num_trainers * order_.size();
+        NCCLGroupGuard gurad;
+        for (auto &gpu_id : order_) {
+          int rank = trainer_id * order_.size() + gpu_id;
+          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks;
+          PADDLE_ENFORCE(cudaSetDevice(gpu_id));
+          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+              comms.get() + gpu_id, nranks, *nccl_id, rank));
+        }
       }
-      int i = 0;
-      for (auto &dev_id : order_) {
-        contexts_.at(dev_id).comm_ = comms[i++];
-      }
+    }
+    int i = 0;
+    for (auto &dev_id : order_) {
+      contexts_.at(dev_id).comm_ = comms[i++];
     }
   }
 
