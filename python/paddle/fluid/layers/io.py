@@ -108,10 +108,35 @@ class BlockGuardServ(BlockGuard):
 
 class ListenAndServ(object):
     """
-    ListenAndServ class.
+    ListenAndServ layer.
 
-    ListenAndServ class is used to wrap listen_and_serv op to create a server
-    which can receive variables from clients and run a block.
+    ListenAndServ is used to create a rpc server bind and listen
+    on specific TCP port, this server will run the sub-block when
+    received variables from clients.
+
+    Args:
+        endpoint(string): IP:port string which the server will listen on.
+        inputs(list): a list of variables that the server will get from clients.
+        fan_in(int): how many client are expected to report to this server, default: 1.
+        optimizer_mode(bool): whether to run the server as a parameter server, default: True.
+    
+    Examples:
+        .. code-block:: python
+
+            with fluid.program_guard(main):
+                serv = layers.ListenAndServ(
+                    "127.0.0.1:6170", ["X"], optimizer_mode=False)
+                with serv.do():
+                    x = layers.data(
+                        shape=[32, 32],
+                        dtype='float32',
+                        name="X",
+                        append_batch_size=False)
+                    fluid.initializer.Constant(value=1.0)(x, main.global_block())
+                    layers.scale(x=x, scale=10.0, out=out_var)
+
+            self.server_exe = fluid.Executor(place)
+            self.server_exe.run(main)
     """
 
     def __init__(self, endpoint, inputs, fan_in=1, optimizer_mode=True):

@@ -42,6 +42,7 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
     AddComment(R"DOC(
 Scale operator
+Multiply the input tensor with a float scalar to scale the input tensor.
 
 $$Out = scale*X$$
 )DOC");

@@ -869,10 +869,17 @@ def crf_decoding(input, param_attr, label=None):
     return viterbi_path
 
 
+@templatedoc()
 def cos_sim(X, Y):
     """
-    This function performs the cosine similarity between two tensors
-    X and Y and returns that as the output.
+    ${comment}
+
+    Args:
+        X(${X_type}): ${X_comment}
+        Y(${Y_type}): ${Y_comment}
+    
+    Returns:
+        A Variable contains the output of this layer.
     """
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_tmp_variable(dtype=X.dtype)
@@ -1059,14 +1066,25 @@ def square_error_cost(input, label):
     return square_out
 
 
+@templatedoc()
 def chunk_eval(input,
                label,
                chunk_scheme,
                num_chunk_types,
                excluded_chunk_types=None):
     """
-    This function computes and outputs the precision, recall and
-    F1-score of chunk detection.
+    ${comment}
+
+    Args:
+        input(Variable): ${Inference_comment}
+        label(Variable): ${Label_comment}
+        chunk_scheme(${chunk_scheme_type}): ${chunk_scheme_comment}
+        num_chunk_types(${num_chunk_types_type}): ${num_chunk_types_comment}
+        excluded_chunk_types(${excluded_chunk_types_type}): ${excluded_chunk_types_comment}
+
+    Returns(typle): a tuple of variables:
+        (precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks)
+
     """
     helper = LayerHelper("chunk_eval", **locals())
 
@@ -1737,6 +1755,7 @@ def beam_search_decode(ids, scores, name=None):
     return sentence_ids, sentence_scores
 
 
+@templatedoc()
 def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
@@ -1760,7 +1779,7 @@ def conv2d_transpose(input,
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
-    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    `here <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
 
     For each input :math:`X`, the equation is:
 
@@ -1774,7 +1793,7 @@ def conv2d_transpose(input,
     * :math:`W`: Filter value, a tensor with MCHW format.
     * :math:`\\ast` : Convolution transpose operation.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+      different.
 
     Example:
 
@@ -2781,6 +2800,7 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 def ctc_greedy_decoder(input, blank, name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
+
     1. Get the indexes of max value for each row in input. a.k.a.
        numpy.argmax(input, axis=0).
     2. For each sequence in result of step1, merge repeated tokens between two
@@ -3451,8 +3471,9 @@ def one_hot(input, depth):
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """
-    NOTE: The counter will be automatically increased by 1 every mini-batch
-    Return the run counter of the main program, which is started with 1.
+    Create an auto-increase variable
+    which will be automatically increased by 1 every mini-batch
+    Return the run counter of the main program, default is started from 1.
 
     Args:
         counter_name(str): The counter name, default is '@STEP_COUNTER@'.
@@ -3866,34 +3887,20 @@ def label_smooth(label,
     return smooth_label
 
 
+@templatedoc()
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform
-        is to perform max pooling on inputs of nonuniform sizes to obtain
-        fixed-size feature maps (e.g. 7*7).
-    The operator has three steps:
-        1. Dividing each region proposal into equal-sized sections with
-           the pooled_width and pooled_height
-        2. Finding the largest value in each section
-        3. Copying these max values to the output buffer
+    ${comment}
 
     Args:
-        input (Variable): The input for ROI pooling.
-        rois (Variable): ROIs (Regions of Interest) to pool over. It should
-                         be a 2-D one level LoTensor of shape [num_rois, 4].
-                         The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the
-                         bottom right coordinates. The num_rois is the
-                         total number of ROIs in this batch data.
-        pooled_height (integer): The pooled output height. Default: 1
-        pooled_width (integer): The pooled output width. Default: 1
-        spatial_scale (float): Multiplicative spatial scale factor. To
-                               translate ROI coords from their input scale
-                               to the scale used when pooling. Default: 1.0
+        input (Variable): ${X_comment}
+        rois (Variable): ${ROIs_comment}
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape
-                             (num_rois, channels, pooled_h, pooled_w).
+        pool_out (Variable): ${Out_comment}.
 
     Examples:
         .. code-block:: python
