@@ -224,7 +224,7 @@ def autodoc(comment=""):
     return __impl__
 
 
-def templatedoc():
+def templatedoc(op_type=None):
     """
     Decorator of layer function. It will use the docstring from the layer
     function as the template. The template arguments are:
@@ -242,15 +242,20 @@ def templatedoc():
         return msg.rstrip('.')
 
     def __impl__(func):
-        op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+        if op_type is None:
+            op_type_name = func.__name__
+        else:
+            op_type_name = op_type
+        op_proto = OpProtoHolder.instance().get_op_proto(op_type_name)
         tmpl = string.Template(func.__doc__)
 
         comment_lines = op_proto.comment.split("\n")
         comment = ""
         for line in comment_lines:
-            line = line.lstrip()
-            comment += line
-            comment += "\n"
+            line = line.strip()
+            if len(line) != 0:
+                comment += line
+                comment += " "
 
         args = {"comment": trim_ending_dot(comment)}
         for each_input in op_proto.inputs:
