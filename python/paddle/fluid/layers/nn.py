@@ -850,7 +850,9 @@ def crf_decoding(input, param_attr, label=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
+
         param_attr(ParamAttr): The parameter attribute for training.
+
         label(${label_type}): ${label_comment}
 
     Returns:
@@ -875,8 +877,8 @@ def cos_sim(X, Y):
     ${comment}
 
     Args:
-        X(${X_type}): ${X_comment}
-        Y(${Y_type}): ${Y_comment}
+        X(${x_type}): ${x_comment}
+        Y(${y_type}): ${x_comment}
     
     Returns:
         A Variable contains the output of this layer.
@@ -1076,13 +1078,18 @@ def chunk_eval(input,
     ${comment}
 
     Args:
-        input(Variable): ${Inference_comment}
-        label(Variable): ${Label_comment}
+        input(Variable): ${inference_comment}
+
+        label(Variable): ${label_comment}
+
         chunk_scheme(${chunk_scheme_type}): ${chunk_scheme_comment}
+
         num_chunk_types(${num_chunk_types_type}): ${num_chunk_types_comment}
+
         excluded_chunk_types(${excluded_chunk_types_type}): ${excluded_chunk_types_comment}
 
-    Returns(typle): a tuple of variables:
+    Returns:
+        chunk_eval(tuple): a tuple of variables:
         (precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks)
 
     """
@@ -1755,7 +1762,6 @@ def beam_search_decode(ids, scores, name=None):
     return sentence_ids, sentence_scores
 
 
-@templatedoc()
 def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
@@ -3893,14 +3899,18 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     ${comment}
 
     Args:
-        input (Variable): ${X_comment}
-        rois (Variable): ${ROIs_comment}
+        input (Variable): ${x_comment}
+
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+
         pooled_height (integer): ${pooled_height_comment} Default: 1
+
         pooled_width (integer): ${pooled_width_comment} Default: 1
+
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
     Returns:
-        pool_out (Variable): ${Out_comment}.
+        roi_pool (Variable): ${out_comment}.
 
     Examples:
         .. code-block:: python

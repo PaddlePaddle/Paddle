@@ -790,6 +790,12 @@ shape
 ..  autofunction:: paddle.fluid.layers.shape
     :noindex:
 
+iou_similarity
+-----
+
+..  autofunction:: paddle.fluid.layers.iou_similarity
+    :noindex:
+
 sigmoid
 -------
 
