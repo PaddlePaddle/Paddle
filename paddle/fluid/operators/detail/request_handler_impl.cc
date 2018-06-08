@@ -64,11 +64,19 @@ bool RequestSendHandler::Handle(const std::string& varname,
       return false;
     }
     if (invar->IsType<framework::SelectedRows>()) {
-      rpc_server_->RecordSparseVar(invar);
+      std::unique_lock<std::mutex> lock(mutex_sparse_vars_);
+      sparse_vars_.push_back(invar);
     }
   }
-
   return true;
+}
+
+void RequestSendHandler::ResetSparseVarRecorder() {
+  std::unique_lock<std::mutex> lock(mutex_sparse_vars_);
+  for (auto* var : sparse_vars_) {
+    var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
+  }
+  sparse_vars_.clear();
 }
 
 bool RequestGetHandler::Handle(const std::string& varname,
