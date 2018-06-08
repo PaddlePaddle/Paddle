@@ -690,6 +690,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &var->Get<LoDTensor>();
         } else if (var->IsType<SelectedRows>()) {
           t = &(var->Get<SelectedRows>().value());
+        } else if (var->IsType<LoDTensorArray>()) {
+          const LoDTensorArray& arr = var->Get<LoDTensorArray>();
+          PADDLE_ENFORCE(arr.size() > 0);
+          t = &(arr[0]);
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
