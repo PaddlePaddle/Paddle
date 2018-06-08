@@ -1,5 +1,7 @@
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
-cc_library(analysis SRCS dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc fluid_to_data_flow_graph_pass.cc
+cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
+  fluid_to_data_flow_graph_pass.cc
+  tensorrt_subgraph_pass.cc
   DEPS paddle_fluid)
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
@@ -21,3 +23,9 @@ cc_test(test_dfg_graphviz_draw_pass
         DEPS analysis
         ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
 set_tests_properties(test_dfg_graphviz_draw_pass PROPERTIES DEPENDS test_word2vec)
+
+cc_test(test_tensorrt_subgraph_pass
+        SRCS tensorrt_subgraph_pass_tester.cc
+        DEPS analysis paddle_fluid tensor
+        ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
+set_tests_properties(test_tensorrt_subgraph_pass PROPERTIES DEPENDS test_word2vec)

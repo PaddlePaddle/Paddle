@@ -50,7 +50,9 @@ class Pass {
 
   // Get a Pass appropriate to print the Node this pass operates on.
   virtual Pass *CreatePrinterPass(std::ostream &os,
-                                  const std::string &banner) const = 0;
+                                  const std::string &banner) const {
+    return nullptr;
+  }
 
   // Run on a single Node.
   virtual void Run(Node *x) { LOG(FATAL) << "not valid"; }
