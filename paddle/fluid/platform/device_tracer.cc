@@ -130,6 +130,8 @@ void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
   uint8_t *buf = reinterpret_cast<uint8_t *>(malloc(kBufSize + kAlignSize));
   *size = kBufSize;
   *buffer = ALIGN_BUFFER(buf, kAlignSize);
+  free(buf);
+  buf = NULL;
   *maxNumRecords = 0;
 }
 
