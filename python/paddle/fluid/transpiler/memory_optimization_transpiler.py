@@ -71,6 +71,8 @@ class ControlFlowGraph(object):
         self._live_in = defaultdict(set)
         self._live_out = defaultdict(set)
         self._skip_opt = skip_opt
+        self._fwd_live_in = defaultdict(set)
+        self._fwd_live_out = defaultdict(set)
 
 
     def _add_connections(self, connections):
@@ -121,6 +123,23 @@ class ControlFlowGraph(object):
                 return False
         return True
 
+    def _no_output_vars(self, ops):
+        inputs = set()
+        outputs = set()
+        for op in ops:
+            for input_arg in op.input_arg_names:
+                inputs.add(input_arg)
+            for output_arg in op.output_arg_names:
+                outputs.add(output_arg)
+        return inputs - outputs
+
+    def _forward_analysis(self):
+        fwd_live_in = self._no_output_vars(self._ops_def)
+        print(fwd_live_in)
+        for i in range(self.op_size):
+            self._fwd_live_out[i] = fwd_live_in | self._defs[i]
+            fwd_live_in = self._fwd_live_out[i]
+
     def _dataflow_analyze(self):
         self._build_graph()
         live_in = defaultdict(set)
@@ -168,7 +187,7 @@ class ControlFlowGraph(object):
             return False
         if not self._find_var(block_desc, x, is_forward).shape():
             return False
-        return True
+        return True 
 
     # TODO(panyx0718): This needs to be less hacky. It seems memory optimization
     # doesn't consider vars copied between cpu and gpu.
@@ -221,14 +240,18 @@ class ControlFlowGraph(object):
 
         self._dataflow_analyze()
         self._update_skip_opt_set()
+        self._forward_analysis()
         for i in reversed(range(self.op_size)):
             print(self._ops_def[i].type)
             print(self._live_in[i])
-            print(self._live_out[i])
+            if i>=1:
+                print(self._fwd_live_out[i])
+                print(self._live_in[i] - self._fwd_live_out[i-1])
+            # print(self._live_out[i])
             print ""
+        
         # print(self._live_in[0])
         # print(self._live_out[0])
-        exit(0)
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]

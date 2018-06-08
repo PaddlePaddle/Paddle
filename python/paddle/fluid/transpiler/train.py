@@ -240,7 +240,8 @@ def train_parallel_do(args):
     ops = fluid.default_startup_program().block(0).ops + fluid.default_main_program().block(0).ops
     ssa = SSAGraph()
     print(len(ops))
-    ssa._run_graph(ops)
+    fluid.memory_optimize(fluid.default_main_program(), print_log=True)
+    # ssa._run_graph(ops)
     exit(0)
 
     train_reader = paddle.batch(
