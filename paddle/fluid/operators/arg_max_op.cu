@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/arg_max_op.h"
 
-// REGISTER_ARG_MINMAX_KERNEL(arg_max, ArgMax, CUDA);
-
 REGISTER_OP_CUDA_KERNEL(
     arg_max,
     paddle::operators::ArgMaxKernel<paddle::platform::CUDADeviceContext, float,

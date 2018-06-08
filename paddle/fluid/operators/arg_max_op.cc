@@ -13,11 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/arg_max_op.h"
-/*
-REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(arg_max, ArgMax);
-
-REGISTER_ARG_MINMAX_KERNEL(arg_max, ArgMax, CPU);
-*/
 
 REGISTER_OPERATOR(arg_max, paddle::operators::ArgMaxOp,
                   paddle::operators::ArgMaxOpMaker,
