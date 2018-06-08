@@ -117,7 +117,7 @@ class Trainer(object):
                 program_func_outs, list) else [program_func_outs]
             self.test_program = self.train_program.clone(for_test=True)
 
-            # The fisrt element of program_func_outs is loss.
+            # The first element of program_func_outs is loss.
             loss = self.train_func_outputs[0]
 
             optimizer = optimizer_func()
