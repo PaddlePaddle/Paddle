@@ -114,7 +114,7 @@ ParallelExecutor::ParallelExecutor(
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places,
-      builder_factory.Create()->BuildAndCheck(main_program)));
+      builder_factory.Create()->Build(main_program)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),

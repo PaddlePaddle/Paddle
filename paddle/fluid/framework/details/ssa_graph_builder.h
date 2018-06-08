@@ -31,8 +31,6 @@ class SSAGraphBuilder {
   virtual ~SSAGraphBuilder() {}
   virtual std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const = 0;
 
-  std::unique_ptr<SSAGraph> BuildAndCheck(const ProgramDesc &program);
-
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
  protected:
@@ -50,7 +48,6 @@ class SSAGraphBuilder {
                                                const platform::Place &place,
                                                size_t place_offset);
 
-  bool IsValidGraph(const SSAGraph *graph) const;
   // Add an output variable (each_var_name, place, place_offset) to op_handle,
   // which belongs to graph
   static void CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
