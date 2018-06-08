@@ -24,9 +24,9 @@ Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
 2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
 3. modify trainer program add split_op to each grad variable.
-4. append send_op to send splited variables to server and fetch
-    params(splited blocks or origin param) from server.
-5. append concat_op to merge splited blocks to update local weights.
+4. append send_vars_op to send splited variables to server and 
+5. add recv_vars_op to fetch params(splited blocks or origin param) from server.
+6. append concat_op to merge splited blocks to update local weights.
 
 Steps to transpile pserver:
 1. create new program for parameter server.

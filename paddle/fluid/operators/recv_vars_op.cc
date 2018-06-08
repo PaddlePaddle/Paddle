@@ -83,4 +83,4 @@ This operator can get variables from server side.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv, ops::RecvOp, ops::RecvOpMaker);
+REGISTER_OPERATOR(recv_vars, ops::RecvOp, ops::RecvOpMaker);
