@@ -73,6 +73,7 @@ __all__ = [
     'sum',
     'polygon_box_transform',
     'shape',
+    'iou_similarity',
 ] + __activations__
 
 for _OP in set(__all__):
