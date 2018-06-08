@@ -111,11 +111,7 @@ ParallelExecutor::ParallelExecutor(
 #ifdef PADDLE_WITH_CUDA
   builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #endif
-  builder_.reset(builder_factory.Create().get());
-  if (builder_.get() == nullptr) {
-    VLOG(3) << "builder is null.";
-  }
-
+  builder_ = std::move(builder_factory.Create());
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places,
       builder_->Build(main_program)));

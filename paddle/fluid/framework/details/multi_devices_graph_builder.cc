@@ -230,7 +230,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       if (op->Type() == "concat") {
         auto got = remote_vars_devices_.find(op->InputArgumentNames()[0]);
         PADDLE_ENFORCE(got != remote_vars_devices_.end(),
-                       "can not find right place to concat received var.");
+                       "can not find right place to concatenate received var.");
         CreateDistTrainOp(&result, *op, got->second);
       } else {
         CreateDistTrainOp(&result, *op, 0);
@@ -503,10 +503,9 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
 }
 
 void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result, const OpDesc &op,
-                                          int place_id) const {
-  auto &p = places_[place_id];
-  auto *s = local_scopes_[place_id];
-  result->ops_.emplace_back(new RPCOpHandle(op, s, p, op.Type()));
+                                          int device_id) const {
+  result->ops_.emplace_back(new RPCOpHandle(op, local_scopes_[device_id],
+                                            op.Type(), places_[device_id]));
 
   if (op.Type() == "send_barrier") {
     ConnectOp(result, result->ops_.back().get(), "send_vars");
@@ -524,7 +523,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result, const OpDesc &op,
 
   // TODO(Yancey1989): schedule rpc op on different place may
   // increate throughput
-  CreateOpHandleIOs(result, op, place_id);
+  CreateOpHandleIOs(result, op, device_id);
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
