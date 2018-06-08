@@ -296,7 +296,7 @@ def fill_constant_batch_size_like(input,
         output_dim_idx(${output_dim_idx_type}): ${output_dim_idx_comment}.
 
     Returns:
-        ${out_comment}
+        ${out_comment}.
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
