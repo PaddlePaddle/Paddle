@@ -66,9 +66,9 @@ class TestCheckpoint(unittest.TestCase):
 
             exe = fluid.Executor(self.place)
             for i in xrange(10):
-                fluid.io.save_checkpoint(
-                    exe, config.checkpoint_dir, self.trainer_id, self.chief,
-                    trainer_args, program, config.max_num_checkpoints)
+                fluid.io.save_checkpoint(exe, config.checkpoint_dir,
+                                         self.trainer_id, trainer_args, program,
+                                         config.max_num_checkpoints)
 
 
 if __name__ == '__main__':
