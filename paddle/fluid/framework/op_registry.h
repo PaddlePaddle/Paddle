@@ -83,8 +83,14 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
   void operator()(const char* op_type, const char* library_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+    std::string library(library_type);
+    std::string data_layout = "ANYLAYOUT";
+    if (library == "MKLDNN") {
+      data_layout = "MKLDNNLAYOUT";
+    }
     OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
-                     DataLayout::kAnyLayout, StringToLibraryType(library_type));
+                     StringToDataLayout(data_layout),
+                     StringToLibraryType(library_type));
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
@@ -99,7 +105,8 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
   void operator()(const char* op_type, const char* library_type) const {}
 };
 
-// User can register many kernel in one place. The data type could be different.
+// User can register many kernel in one place. The data type could be
+// different.
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
@@ -149,15 +156,15 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, LIBRARY_TYPE, place_class, ...)        \
+#define REGISTER_OP_KERNEL(op_type, library_type, place_class, ...)        \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##__,                      \
+      __reg_op_kernel_##op_type##_##library_type##__,                      \
       "REGISTER_OP_KERNEL must be called in global namespace");            \
   static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
-      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__(#op_type,       \
-                                                           #LIBRARY_TYPE); \
-  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE() {                \
-    __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__.Touch();          \
+      __op_kernel_registrar_##op_type##_##library_type##__(#op_type,       \
+                                                           #library_type); \
+  int TouchOpKernelRegistrar_##op_type##_##library_type() {                \
+    __op_kernel_registrar_##op_type##_##library_type##__.Touch();          \
     return 0;                                                              \
   }
 
