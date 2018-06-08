@@ -28,12 +28,12 @@ namespace paddle {
  */
 
 class OuterProdLayer : public Layer {
-protected:
+ protected:
   MatrixPtr tmpMtx0;
   MatrixPtr tmpRow0;
   MatrixPtr tmpRow1;
 
-public:
+ public:
   explicit OuterProdLayer(const LayerConfig& config) : Layer(config) {}
 
   ~OuterProdLayer() {}

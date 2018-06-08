@@ -85,8 +85,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 
 class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UniformRandomOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "(Tensor) The output tensor of uniform random op");
     AddComment(R"DOC(
 Uniform random operator.

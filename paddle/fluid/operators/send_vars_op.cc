@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/send_recv_util.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -41,19 +42,18 @@ class SendVarsOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    // For profiling
+    platform::RecordEvent record_event(Type(), &ctx);
+
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<detail::GRPCClient>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
         // TODO(Yancey1989): we need to use an IO threadpool which has
         // a larger number of threads than the computing threadpool.
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
@@ -66,13 +66,9 @@ class SendVarsOp : public framework::OperatorBase {
 
 class SendVarsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendVarsOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
         .AsDuplicable();
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which will be"
-              "initialized at most once.");
     AddComment(R"DOC(
 Send operator
 
@@ -90,17 +86,6 @@ This operator will send variables to listen_and_serve op at the parameter server
   }
 };
 
-class SendVarsOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output("RPCClient").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
-  }
-};
-
 class SendVarsOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
@@ -113,5 +98,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_vars, ops::SendVarsOp,
                   paddle::framework::EmptyGradOpMaker, ops::SendVarsOpMaker,
-                  ops::SendVarsOpVarTypeInference,
                   ops::SendVarsOpShapeInference);

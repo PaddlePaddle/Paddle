@@ -38,11 +38,23 @@ class OpHandleBase {
 
   void Run(bool use_event);
 
-  virtual void Wait(platform::DeviceContext *waited_dev);
+  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
   void AddInput(VarHandleBase *in);
 
   void AddOutput(VarHandleBase *out);
+
+  // This method adds the wait events of all the input on all the device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated();
+
+  // This method adds the wait events of all the input on the specified device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated(const platform::Place &place);
+
+  virtual bool NeedWait(VarHandleBase *in_var);
 
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
@@ -58,7 +70,17 @@ class OpHandleBase {
 
   const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
 
+  size_t NoDupInputSize() const {
+    std::unordered_set<VarHandleBase *> res;
+    for (auto *var : inputs_) {
+      res.emplace(var);
+    }
+    return res.size();
+  }
+
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  size_t NoDummyInputSize() const;
 
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);

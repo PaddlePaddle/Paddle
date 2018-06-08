@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace paddle {
 namespace platform {
 
@@ -76,7 +78,43 @@ enum class DataLayout {  // Not use
 enum class PoolingMode {
   kMaximum,
   kAverage,
+  kMaximumDeterministic,
 };
+
+#if CUDNN_VERSION < 6000
+#pragma message "CUDNN version under 6.0 is supported at best effort."
+#pragma message "We strongly encourage you to move to 6.0 and above."
+#pragma message "This message is intended to annoy you enough to update."
+#pragma message \
+    "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX;
+    case PoolingMode::kAverage:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#else
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX_DETERMINISTIC;
+    case PoolingMode::kAverage:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#endif  // CUDNN_VERSION < 6000
 
 template <typename T>
 class CudnnDataType;
@@ -293,9 +331,7 @@ class ScopedPoolingDescriptor {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
     PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
-        desc_, (mode == PoolingMode::kMaximum
-                    ? CUDNN_POOLING_MAX
-                    : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING),
+        desc_, (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
         kernel.size(), kernel.data(), pads.data(), strides.data()));
     return desc_;

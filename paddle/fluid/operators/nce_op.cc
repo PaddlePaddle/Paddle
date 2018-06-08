@@ -75,8 +75,7 @@ class NCEOp : public framework::OperatorWithKernel {
 
 class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCEOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input", "(Tensor) A tensor of shape [batch_size, dim].");
     AddInput(
         "Label",

@@ -52,9 +52,8 @@ class CreateBatchReaderOp : public framework::OperatorBase {
 };
 
 class CreateBatchReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateBatchReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("batch_size",
                  "How many instances the batch reader yields each time.")
         .GreaterThan(0);

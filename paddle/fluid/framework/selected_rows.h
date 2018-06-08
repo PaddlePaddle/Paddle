@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
 
@@ -46,11 +48,13 @@ class SelectedRows {
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
     value_.reset(new Tensor());
+    auto_grown_mutex_.reset(new std::mutex);
   }
 
   SelectedRows() {
     height_ = 0;
     value_.reset(new Tensor());
+    auto_grown_mutex_.reset(new std::mutex);
   }
 
   platform::Place place() const { return value_->place(); }
@@ -82,7 +86,7 @@ class SelectedRows {
    * @return a list of pair which contains the non-exists key and the index in
    * the value
    */
-  std::vector<std::pair<int64_t, int64_t>> Get(std::vector<int64_t> keys,
+  std::vector<std::pair<int64_t, int64_t>> Get(const std::vector<int64_t>& keys,
                                                framework::Tensor* value) const;
 
   /*
@@ -125,6 +129,7 @@ class SelectedRows {
   Vector<int64_t> rows_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
+  std::unique_ptr<std::mutex> auto_grown_mutex_{nullptr};
 };
 
 /*

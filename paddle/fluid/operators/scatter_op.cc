@@ -78,8 +78,7 @@ class ScatterGradOp : public framework::OperatorWithKernel {
 
 class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ScatterOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The source input of scatter op");
     AddInput("Ids", "The index input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of updates op");

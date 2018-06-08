@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -36,13 +37,13 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
                           platform::NCCLContextMap *nccl_ctxs,
-                          bool use_default_grad_scale);
+                          const BuildStrategy &strategy);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          bool use_default_grad_scale);
+                          const BuildStrategy &strategy);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -60,16 +61,27 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
-  bool use_default_grad_scale_;
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
-  void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateRPCOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
    */
-  bool IsDistTrainOp(const OpDesc &op, OpDesc *send_op) const;
+  bool IsDistTrainOp(const OpDesc &op,
+                     const std::vector<std::string> &send_vars,
+                     const std::vector<std::string> &recv_vars) const;
+
+  std::vector<std::string> FindDistTrainSendVars(
+      const ProgramDesc &program) const;
+
+  std::vector<std::string> FindDistTrainRecvVars(
+      const ProgramDesc &program) const;
+
+  void ConnectOp(SSAGraph *result, OpHandleBase *op,
+                 const std::string &prev_op_name) const;
 
   void CreateComputationalOps(SSAGraph *result, const OpDesc &op,
                               size_t num_places) const;
@@ -84,20 +96,21 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
+  int GetOpDeviceID(
+      const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
+      const OpDesc &op) const;
+
   void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
 
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
-  /**
-   * Get send op in the global block of program.
-   * nullptr if not found.
-   */
-  OpDesc *GetSendOpDesc(const ProgramDesc &program) const;
-
   bool IsSparseGradient(
-      const std::unordered_map<std::string, proto::VarType::Type> &var_types,
+      const std::unordered_map<std::string, VarDesc *> &all_vars,
       const std::string &og) const;
+
+ private:
+  BuildStrategy strategy_;
 };
 }  // namespace details
 }  // namespace framework
