@@ -22,7 +22,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
+    PADDLE_ENFORCE(ctx->HasInput("Out"),
                    "Input (Out) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Indices"),
                    "Input (Indices) of accuracy op should not be null.");
@@ -35,7 +35,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Total"),
                    "Output (Total) of AccuracyOp should not be null.");
 
-    auto inference_dim = ctx->GetInputDim("Input");
+    auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");
     // Assume indices has same shape as inference, because
     // it's the output of topk.
@@ -49,14 +49,14 @@ class AccuracyOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Accuracy", {1});
     ctx->SetOutputDim("Correct", {1});
     ctx->SetOutputDim("Total", {1});
-    ctx->ShareLoD("Input", /*->*/ "Accuracy");
+    ctx->ShareLoD("Out", /*->*/ "Accuracy");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
+        framework::ToDataType(ctx.Input<Tensor>("Out")->type()),
         ctx.GetPlace());
   }
 };
@@ -65,7 +65,7 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     // TODO(typhoonzero): support both inference value and indices.
-    AddInput("Input", "The network output of topk (inferences)");
+    AddInput("Out", "The network output of topk (inferences)");
     AddInput("Indices", "The the network output of topk (indices)");
     AddInput("Label", "Label of the training data");
     // TODO(typhoonzero): AddInput("Weight", ...
