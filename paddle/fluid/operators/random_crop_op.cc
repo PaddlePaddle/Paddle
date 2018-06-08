@@ -36,11 +36,11 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Seed", "The random seed.");
     AddOutput("Out", "The cropped instance batch.");
     AddOutput("SeedOut", "The random seed after random cropping.")
-        .AsDispensable();
+        .AsIntermediate();
     AddAttr<std::vector<int>>("shape", "The shape of a cropped instance.");
     AddComment(R"DOC(
-      This operator takes a batch of instance, and do random cropping on each instance. 
-      It means that cropping positions differs on each instance, which is determined 
+      This operator takes a batch of instance, and do random cropping on each instance.
+      It means that cropping positions differs on each instance, which is determined
       by an uniform random generator. All cropped instances have the same shape, which 
       is determined by the operator's attribute 'shape'.
     )DOC");
