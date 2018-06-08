@@ -1,5 +1,5 @@
 ======================
-Fluid
+Fluid API Reference
 ======================
 
 ..  toctree::

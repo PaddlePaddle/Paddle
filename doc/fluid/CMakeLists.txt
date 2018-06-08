@@ -15,8 +15,8 @@ set(SPHINX_CACHE_DIR_EN "${CMAKE_CURRENT_BINARY_DIR}/en/_doctrees")
 # HTML output director
 set(SPHINX_HTML_DIR_EN "${CMAKE_CURRENT_BINARY_DIR}/en/html")
 
-set(IMPORT_PADDLE_STRING "")
-set(IMPORT_PADDLEV2_STRING "")
+set(IMPORT_PADDLE_STRING "import paddle")
+set(IMPORT_PADDLEV2_STRING "import paddle.v2")
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/../templates/conf.py.en.in"
@@ -51,4 +51,5 @@ sphinx_add_target(paddle_fluid_docs_cn
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_CN})
 
-add_subdirectory(api)
+add_dependencies(paddle_fluid_docs_cn  gen_proto_py framework_py_proto copy_paddle_pybind paddle_python)
+add_dependencies(paddle_fluid_docs  gen_proto_py framework_py_proto copy_paddle_pybind paddle_python)
