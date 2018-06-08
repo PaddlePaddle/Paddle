@@ -24,12 +24,12 @@ namespace operators {
       : public ::paddle::framework::OpProtoAndCheckerMaker {            \
    public:                                                              \
     void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME "operator");                   \
-      AddOutput("Out", "Output of" #OP_NAME "operator").Reuse("X");     \
+      AddInput("X", "Input of " #OP_NAME " operator");                  \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
       AddAttr<bool>("use_mkldnn",                                       \
                     "(bool, default false) Only used in mkldnn kernel") \
           .SetDefault(false);                                           \
-      AddComment(#OP_COMMENT);                                          \
+      AddComment(OP_COMMENT);                                           \
     }                                                                   \
   }
 
