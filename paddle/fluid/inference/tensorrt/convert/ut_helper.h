@@ -151,7 +151,8 @@ class TRTConvertValidation {
       // Compare two output
       ASSERT_FALSE(fluid_out.empty());
       for (size_t i = 0; i < fluid_out.size(); i++) {
-        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 1e-6);
+        // Loose the threshold for CI in different machine model.
+        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 2e-5);
       }
     }
   }
