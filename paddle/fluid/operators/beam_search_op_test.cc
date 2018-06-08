@@ -67,7 +67,7 @@ TEST(beam_search_op, run) {
   LoDTensor pre_scores;
   pre_scores.Resize(framework::make_ddim(vector<int64_t>(4, 1)));
   for (int i = 0; i < 4; i++) {
-    pre_scores.mutable_data<float>(place)[i] = 0.1;
+    pre_scores.mutable_data<float>(place)[i] = 0.1 * (i + 1);
   }
 
   BeamSearch beamsearch(ids, scores, (size_t)0, (size_t)2, 0);
