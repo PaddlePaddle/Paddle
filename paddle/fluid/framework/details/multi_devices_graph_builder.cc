@@ -105,7 +105,7 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainRecvVars(
   for (auto *op : program.Block(0).AllOps()) {
     // TODO(Yancey1989): use a graceful method to find recv op,
     // instead of the hard code string
-    if (op->Type() == "recv") {
+    if (op->Type() == "recv_vars") {
       auto op_vars = op->OutputArgumentNames();
       recv_vars.reserve(recv_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -469,16 +469,16 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
 
   if (op.Type() == "send_barrier") {
     ConnectOp(result, result->ops_.back().get(), "send_vars");
-  } else if (op.Type() == "recv") {
+  } else if (op.Type() == "recv_vars") {
     ConnectOp(result, result->ops_.back().get(), "send_barrier");
   } else if (op.Type() == "fetch_barrier") {
-    ConnectOp(result, result->ops_.back().get(), "recv");
+    ConnectOp(result, result->ops_.back().get(), "recv_vars");
   } else if (op.Type() == "send_vars") {
     // do nothing
   } else {
     PADDLE_THROW(
         "rpc op should be in ["
-        "send_vars, send_barrier. recv, fetch_barrier]");
+        "send_vars, send_barrier. recv_vars, fetch_barrier]");
   }
 
   // TODO(Yancey1989): schedule rpc op on different place may
