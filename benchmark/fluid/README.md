@@ -28,10 +28,8 @@ Currently supported `--model` argument include:
     ```
     You can choose to use GPU/CPU training. With GPU training, you can specify
     `--gpus <gpu_num>` to run multi GPU training.
-    You can set gradient clipping. With gradient clipping, you can specify
-    `--gradient_clipping_method GlobalNorm` to clip the gradient with global norm.
-    You can set regularizer to optimizer. With regularization, you can specify
-    `--weight_decay_regularizer_method L1` to add regularizer to optimizer.
+    You can set async mode parameter server. With async mode, you can specify
+    `--async_mode` to train model asynchronous.
 * Run distributed training with parameter servers:
     * see [run_fluid_benchmark.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/benchmark/fluid/run_fluid_benchmark.sh) as an example.
     * start parameter servers:
