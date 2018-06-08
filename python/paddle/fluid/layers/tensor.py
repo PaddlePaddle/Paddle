@@ -338,10 +338,10 @@ def argmin(x, axis=0):
           out = fluid.layers.argmin(x=in, axis=0)
           out = fluid.layers.argmin(x=in, axis=-1)  
     """
-    helper = LayerHelper("argmin", **locals())
+    helper = LayerHelper("arg_min", **locals())
     out = helper.create_tmp_variable(VarDesc.VarType.INT64)
     helper.append_op(
-        type='argmin',
+        type='arg_min',
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
@@ -369,10 +369,10 @@ def argmax(x, axis=0):
           out = fluid.layers.argmax(x=in, axis=0)
           out = fluid.layers.argmax(x=in, axis=-1)  
     """
-    helper = LayerHelper("argmax", **locals())
+    helper = LayerHelper("arg_max", **locals())
     out = helper.create_tmp_variable(VarDesc.VarType.INT64)
     helper.append_op(
-        type='argmax',
+        type='arg_max',
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})

@@ -13,7 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/arg_min_op.h"
+/*
+REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(arg_min, ArgMin);
 
-REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(argmin, ArgMin);
+REGISTER_ARG_MINMAX_KERNEL(arg_min, ArgMin, CPU);
+*/
 
-REGISTER_ARG_MINMAX_KERNEL(argmin, ArgMin, CPU);
+REGISTER_OPERATOR(arg_min, paddle::operators::ArgMinOp,
+                  paddle::operators::ArgMinOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    arg_min, paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
+                                             float, int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, double,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, int64_t,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, int32_t,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, int16_t,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, size_t,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, uint8_t,
+                                    int64_t>);

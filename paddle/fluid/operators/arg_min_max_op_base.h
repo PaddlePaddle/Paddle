@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -31,17 +32,17 @@ template <typename DeviceContext, typename T, typename Tout, int64_t Rank,
           ArgMinMaxType argMinMaxValue>
 struct ArgMinMaxFunctor {};
 
-#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_value)     \
-  template <typename DeviceContext, typename T, typename Tout, int64_t Rank> \
-  struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                      \
-                          enum_argminmax_value> {                            \
-    void operator()(const DeviceContext& ctx, const framework::Tensor& in,   \
-                    framework::Tensor& out, int64_t axis) {                  \
-      auto in_eigen = framework::EigenTensor<T, Rank>::From(in);             \
-      auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(out);    \
-      out_eigen.device(*(ctx.eigen_device())) =                              \
-          in_eigen.eigen_op_type(axis).template cast<Tout>();                \
-    }                                                                        \
+#define DECLARE_ARG_MIN_MAX_FUNCTOR(eigen_op_type, enum_argminmax_value)      \
+  template <typename DeviceContext, typename T, typename Tout, int64_t Rank>  \
+  struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                       \
+                          enum_argminmax_value> {                             \
+    void operator()(const DeviceContext& ctx, const framework::LoDTensor& in, \
+                    framework::LoDTensor& out, int64_t axis) {                \
+      auto in_eigen = framework::EigenTensor<T, Rank>::From(in);              \
+      auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(out);     \
+      out_eigen.device(*(ctx.eigen_device())) =                               \
+          in_eigen.eigen_op_type(axis).template cast<Tout>();                 \
+    }                                                                         \
   }
 
 DECLARE_ARG_MIN_MAX_FUNCTOR(argmin, ArgMinMaxType::kArgMin);
@@ -52,8 +53,8 @@ template <typename DeviceContext, typename T, typename Tout,
 class ArgMinMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& x = *(ctx.Input<framework::Tensor>("X"));
-    auto& out = *(ctx.Output<framework::Tensor>("Out"));
+    auto& x = *(ctx.Input<framework::LoDTensor>("X"));
+    auto& out = *(ctx.Output<framework::LoDTensor>("Out"));
     out.mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -154,31 +155,3 @@ class ArgMaxOpMaker : public BaseArgMinMaxOpMaker {
 };
 }  // namespace operators
 }  // namespace paddle
-
-#define REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(op_type, op_name)       \
-  REGISTER_OP_WITHOUT_GRADIENT(op_type, paddle::operators::op_name##Op, \
-                               paddle::operators::op_name##OpMaker)
-
-#define REGISTER_ARG_MINMAX_KERNEL(op_type, op_name, library_type)           \
-  REGISTER_OP_##library_type##_KERNEL(                                       \
-      op_type,                                                               \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, float, int64_t>,    \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, double, int64_t>,   \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, int64_t, int64_t>,  \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, int32_t, int64_t>,  \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, int16_t, int64_t>,  \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, int8_t, int64_t>,   \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, uint64_t, int64_t>, \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, uint32_t, int64_t>, \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, uint16_t, int64_t>, \
-      paddle::operators::op_name##Kernel<                                    \
-          paddle::platform::library_type##DeviceContext, uint8_t, int64_t>)

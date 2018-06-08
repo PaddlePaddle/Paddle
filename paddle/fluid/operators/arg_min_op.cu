@@ -14,4 +14,21 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/arg_min_op.h"
 
-REGISTER_ARG_MINMAX_KERNEL(argmin, ArgMin, CUDA);
+// REGISTER_ARG_MINMAX_KERNEL(arg_min, ArgMin, CUDA);
+
+REGISTER_OP_CUDA_KERNEL(
+    arg_min,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext, float,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext, double,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
+                                    int64_t, int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
+                                    int32_t, int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
+                                    int16_t, int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext, size_t,
+                                    int64_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
+                                    uint8_t, int64_t>);
