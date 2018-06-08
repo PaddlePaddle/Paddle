@@ -13,9 +13,16 @@
 # limitations under the License.
 
 from collections import defaultdict
-from .. import core
-from ..framework import Program, default_main_program, Parameter, Variable
-from ..backward import _rename_arg_
+import paddle.fluid.core as core
+import collections
+from paddle.fluid.backward import append_backward
+from paddle.fluid.op import Operator
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, OpProtoHolder
+
+# from .. import core
+from paddle.fluid.framework import Program, default_main_program, Parameter, Variable
+from paddle.fluid.backward import _rename_arg_
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -25,7 +32,7 @@ dtype_to_size = {
     core.VarDesc.VarType.INT32: 4,
     core.VarDesc.VarType.INT64: 8,
     core.VarDesc.VarType.BOOL: 1,
-    core.VarDesc.VarType.UINT8: 1,
+    # core.VarDesc.VarType.UINT8: 1,
 }
 
 SUB_BLOCK_OPS = [
@@ -38,9 +45,22 @@ SUB_BLOCK_PAIR = [("while", "while_grad"), ("parallel_do", "parallel_do_grad"),
 
 PRINT_LOG = False
 
+def topology_sort(op_queue):
+    ops = op_queue
+    ret_ops = []
+    inputs = defaultdict(set)
+    outputs = defaultdict(set)
+    input_names = dict()
+    output_names = dict()
+    for op in ops:
+        inputs[op].update(op.input_arg_names())
+        outputs[op].update(op.output_arg_names())
+    graph = dict()
+
 
 class ControlFlowGraph(object):
-    def __init__(self, program, ops, forward_num, skip_opt):
+    def __init__(self, program, ops, forward_num, skip_opt, ops_def=None):
+        self._ops_def = ops_def
         self._program = program
         self._ops = ops
         self._forward_num = forward_num
@@ -51,6 +71,7 @@ class ControlFlowGraph(object):
         self._live_in = defaultdict(set)
         self._live_out = defaultdict(set)
         self._skip_opt = skip_opt
+
 
     def _add_connections(self, connections):
         """Populates _successors and _presuccessors for two neighbor nodes."""
@@ -200,6 +221,14 @@ class ControlFlowGraph(object):
 
         self._dataflow_analyze()
         self._update_skip_opt_set()
+        for i in reversed(range(self.op_size)):
+            print(self._ops_def[i].type)
+            print(self._live_in[i])
+            print(self._live_out[i])
+            print ""
+        # print(self._live_in[0])
+        # print(self._live_out[0])
+        exit(0)
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
@@ -350,9 +379,10 @@ def _get_cfgs(input_program):
 
     # Only process one level of nested subblock.
     ops_list.extend(_process_sub_block_pair(pdesc, SUB_BLOCK_PAIR))
+    ops_def = input_program.block(0).ops
 
     cfgs = [
-        ControlFlowGraph(input_program, ops, forward_num, skip_opt)
+        ControlFlowGraph(input_program, ops, forward_num, skip_opt, ops_def)
         for ops, forward_num, skip_opt in ops_list
     ]
     return cfgs
