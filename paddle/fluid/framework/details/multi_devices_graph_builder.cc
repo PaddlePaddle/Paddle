@@ -464,9 +464,8 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
                                           const OpDesc &op) const {
-  auto &p = places_[0];
-  auto *s = local_scopes_[0];
-  result->ops_.emplace_back(new RPCOpHandle(op, s, p, op.Type()));
+  result->ops_.emplace_back(
+      new RPCOpHandle(op, local_scopes_[0], op.Type(), places_[0]));
 
   if (op.Type() == "send_barrier") {
     ConnectOp(result, result->ops_.back().get(), "send_vars");

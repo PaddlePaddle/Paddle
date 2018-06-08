@@ -77,6 +77,19 @@ void RPCServer::ResetBarrierCounter() {
     t.second = 0;
   }
 }
+void RPCServer::RecordSparseVar(framework::Variable* sparse_var) {
+  std::unique_lock<std::mutex> lock(mutex_sparse_var_recorder_);
+  sparse_vars_.push_back(sparse_var);
+}
+
+void RPCServer::ResetSparseVarsRecorder() {
+  VLOG(3) << "RPCServer reset sparse vars recorder.";
+  std::unique_lock<std::mutex> lock(mutex_sparse_var_recorder_);
+  for (auto* var : sparse_vars_) {
+    var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
+  }
+  sparse_vars_.clear();
+}
 
 void RPCServer::RegisterRPC(const std::string& rpc_name,
                             RequestHandler* handler, int thread_num) {
