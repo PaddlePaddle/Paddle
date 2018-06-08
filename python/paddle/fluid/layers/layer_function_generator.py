@@ -224,6 +224,9 @@ def autodoc(comment=""):
     return __impl__
 
 
+_inline_math_single_dollar = re.compile(r"\$([^\$]+)\$")
+
+
 def templatedoc(op_type=None):
     """
     Decorator of layer function. It will use the docstring from the layer
@@ -241,6 +244,9 @@ def templatedoc(op_type=None):
     def trim_ending_dot(msg):
         return msg.rstrip('.')
 
+    def escape_inline_math(msg):
+        return _inline_math_single_dollar.sub(repl=r':math:`\1`', string=msg)
+
     def __impl__(func):
         if op_type is None:
             op_type_name = func.__name__
@@ -254,8 +260,10 @@ def templatedoc(op_type=None):
         for line in comment_lines:
             line = line.strip()
             if len(line) != 0:
-                comment += line
+                comment += escape_inline_math(line)
                 comment += " "
+            elif len(comment) != 0:
+                comment += "\n    \n    "
 
         args = {"comment": trim_ending_dot(comment)}
         for each_input in op_proto.inputs:
