@@ -13,11 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/arg_min_op.h"
-/*
-REGISTER_ARG_MINMAX_OP_WITHOUT_GRADIENT(arg_min, ArgMin);
-
-REGISTER_ARG_MINMAX_KERNEL(arg_min, ArgMin, CPU);
-*/
 
 REGISTER_OPERATOR(arg_min, paddle::operators::ArgMinOp,
                   paddle::operators::ArgMinOpMaker,
