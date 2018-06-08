@@ -736,7 +736,7 @@ def max_sequence_len(rank_table):
         rank_table(${rank_table_type}): ${rank_table_comment}.
 
     Returns:
-        (${out_type}): ${out_comment}.
+        ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
