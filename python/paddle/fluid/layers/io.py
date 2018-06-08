@@ -135,8 +135,8 @@ class ListenAndServ(object):
                     fluid.initializer.Constant(value=1.0)(x, main.global_block())
                     layers.scale(x=x, scale=10.0, out=out_var)
 
-            self.server_exe = fluid.Executor(place)
-            self.server_exe.run(main)
+            exe = fluid.Executor(place)
+            exe.run(main)
     """
 
     def __init__(self, endpoint, inputs, fan_in=1, optimizer_mode=True):

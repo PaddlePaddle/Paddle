@@ -146,6 +146,7 @@ is to perform max pooling on inputs of nonuniform sizes to obtain
 fixed-size feature maps (e.g. 7*7).
 
 The operator has three steps:
+
 1. Dividing each region proposal into equal-sized sections with
    the pooled_width and pooled_height
 2. Finding the largest value in each section
