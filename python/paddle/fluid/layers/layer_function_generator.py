@@ -238,6 +238,9 @@ def templatedoc():
         Decorated function.
     """
 
+    def trim_ending_dot(msg):
+        return msg.rstrip('.')
+
     def __impl__(func):
         op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
         tmpl = string.Template(func.__doc__)
@@ -249,19 +252,22 @@ def templatedoc():
             comment += line
             comment += "\n"
 
-        args = {"comment": comment}
+        args = {"comment": trim_ending_dot(comment)}
         for each_input in op_proto.inputs:
             input_name = _convert_(each_input.name)
-            args["{0}_comment".format(input_name)] = each_input.comment
+            args["{0}_comment".format(input_name)] = trim_ending_dot(
+                each_input.comment)
             args["{0}_type".format(input_name)] = "Variable"
         for each_attr in op_proto.attrs:
             input_name = _convert_(each_attr.name)
-            args["{0}_comment".format(input_name)] = each_attr.comment
+            args["{0}_comment".format(input_name)] = trim_ending_dot(
+                each_attr.comment)
             args["{0}_type".format(input_name)] = _type_to_str_(each_attr.type)
 
         for each_opt in op_proto.outputs:
             output_name = _convert_(each_opt.name)
-            args["{0}_comment".format(output_name)] = each_opt.comment
+            args["{0}_comment".format(output_name)] = trim_ending_dot(
+                each_opt.comment)
             args["{0}_type".format(output_name)] = "Variable"
         func.__doc__ = tmpl.substitute(args)
         return func
