@@ -263,7 +263,6 @@ def templatedoc():
             output_name = _convert_(each_opt.name)
             args["{0}_comment".format(output_name)] = each_opt.comment
             args["{0}_type".format(output_name)] = "Variable"
-
         func.__doc__ = tmpl.substitute(args)
         return func
 
