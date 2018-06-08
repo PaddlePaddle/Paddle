@@ -172,7 +172,7 @@ def parse_args():
     parser.add_argument(
         '--use_reader_op',
         action='store_true',
-        help='Whether to use reader op, and must specify the data path if set this to true'
+        help='Whether to use reader op, and must specify the data path if set this to true.'
     )
     parser.add_argument(
         '--data_path',
