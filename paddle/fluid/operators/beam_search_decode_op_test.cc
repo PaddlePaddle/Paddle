@@ -76,7 +76,7 @@ void GenerateExample(const std::vector<size_t>& level_0,
 TEST(BeamSearchDecodeOp, Backtrace) {
   CPUPlace place;
 
-  // we will constuct a sample data with 4 steps and 2 source sentences
+  // Construct sample data with 5 steps and 2 source sentences
   // beam_size = 2, start_id = 0, end_id = 1
   LoDTensorArray ids;
   LoDTensorArray scores;
