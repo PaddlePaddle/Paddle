@@ -43,7 +43,7 @@ namespace m = paddle::operators::math;
 namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::AsyncRPCServer> g_rpc_service;
+std::unique_ptr<detail::RPCServer> g_rpc_service;
 std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 void StartServer() {
@@ -99,10 +99,10 @@ TEST(SendNcclId, RPCServer) {
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
 
 #ifdef PADDLE_WITH_GRPC
-  detail::RPCClient* rpc_client =
+  detail::RPCClient* client =
       detail::RPCClient::GetInstance<detail::GRPCClient>();
 #else
-  detail::RPCClient* rpc_client =
+  detail::RPCClient* client =
       detail::RPCClient::GetInstance<detail::BRPCClient>();
 #endif
 

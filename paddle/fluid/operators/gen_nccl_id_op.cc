@@ -69,10 +69,10 @@ class GenNCCLIdOp : public framework::OperatorBase {
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
 #ifdef PADDLE_WITH_GRPC
-    detail::RPCClient* rpc_client =
+    detail::RPCClient* client =
         detail::RPCClient::GetInstance<detail::GRPCClient>();
 #else
-    detail::RPCClient* rpc_client =
+    detail::RPCClient* client =
         detail::RPCClient::GetInstance<detail::BRPCClient>();
 #endif
 
@@ -99,7 +99,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 #endif
 
     rpc_service->RegisterRPC(detail::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(&rpc_service);
+    rpc_h.SetRPCServer(rpc_service.get());
 
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
@@ -109,7 +109,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_h.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncRPCServer::StartServer, &rpc_service));
+        std::bind(&detail::RPCServer::StartServer, rpc_service.get()));
 
     rpc_service->SetCond(detail::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
