@@ -92,7 +92,6 @@ void InferShapeAndVarType(const std::string &type,
                           const VariableHandleMap &in_vars,
                           VariableHandleMap *out_vars,
                           const framework::AttributeMap &attrs) {
-  // InferShape and InferVarType --------------------------------
   framework::OpDesc op_desc = CreateOpDesc(type, in_vars, *out_vars, attrs);
 
   // Create a temporary block for compile-time
@@ -186,7 +185,7 @@ void Tape::Backward(VariableHandle target) {
 
   framework::AttributeMap attrs;
 
-  // FIXME(tonyyang-svail): Need to infer_data_type on the C++
+  // FIXME(tonyyang-svail): Need to infer_data_type
   attrs["dtype"] = framework::proto::VarType::Type::VarType_Type_FP32;
   attrs["shape"] = std::vector<int>{1};
   attrs["value"] = 1.0f;

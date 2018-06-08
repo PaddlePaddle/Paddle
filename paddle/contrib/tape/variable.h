@@ -26,8 +26,9 @@ class Variable;
 using VariableHandle = std::shared_ptr<Variable>;
 
 /*
- * Currently it depends on framework::Scope and framework::Variable
- * Later on will only depend on framework::Variable
+ * Combination of
+ *     framework::VarDesc desc_;
+ *     framework::Variable var_;
  */
 class Variable {
  public:
@@ -40,18 +41,8 @@ class Variable {
 
   ~Variable() { LOG(INFO) << "Deleting " << Name(); }
 
-  void InitializeVariable() {
-    LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();
-    framework::proto::VarType::Type var_type = desc_.GetType();
-    if (var_type == framework::proto::VarType::LOD_TENSOR) {
-      var_.GetMutable<framework::LoDTensor>();
-    } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
-      var_.GetMutable<framework::SelectedRows>();
-    } else {
-      PADDLE_THROW("Variable type %d is not in [LOD_TENSOR, SELECTED_ROWS]",
-                   var_type);
-    }
-  }
+  // Instantiate LoDTensor/SelectedRow
+  void InitializeVariable();
 
   VariableHandle Grad() {
     if (grad_ == nullptr) {
@@ -61,6 +52,7 @@ class Variable {
     return grad_;
   }
 
+  // Stochastic Gradient Descent with Momentum
   //  VariableHandle Momentum ();
 
   //  void init(const std::string& initializer,
