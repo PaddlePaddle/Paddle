@@ -63,6 +63,9 @@ bool RequestSendHandler::Handle(const std::string& varname,
       PADDLE_THROW("sync: Can not find server side var");
       return false;
     }
+    if (invar->IsType<framework::SelectedRows>()) {
+      rpc_server_->RecordSparseVar(invar);
+    }
   }
 
   return true;

@@ -146,6 +146,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     rpc_service_->SetCond(detail::kRequestGet);
     rpc_service_->WaitBarrier(detail::kRequestGet);
     rpc_service_->ResetBarrierCounter();
+    rpc_service_->ResetSparseVarsRecorder();
   }  // while(true)
 }
 
