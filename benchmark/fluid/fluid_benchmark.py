@@ -59,7 +59,7 @@ def append_nccl2_prepare(trainer_id):
                         "nccl-based dist train.")
 
 
-def dist_transpile(trainer_id):
+def dist_transpile(trainer_id, args):
     if trainer_id < 0:
         return None, None
 
@@ -81,7 +81,12 @@ def dist_transpile(trainer_id):
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
     t = distribute_transpiler.DistributeTranspiler()
-    t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+    t.transpile(
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=trainers,
+        sync_mode=not args.async_mode,
+        slice_var_up=not args.no_split_var)
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
         pserver_startup_program = t.get_startup_program(current_endpoint,
@@ -316,7 +321,7 @@ def main():
         fluid.memory_optimize(fluid.default_main_program())
 
     if args.update_method == "pserver":
-        train_prog, startup_prog = dist_transpile(trainer_id)
+        train_prog, startup_prog = dist_transpile(trainer_id, args)
         if not train_prog:
             raise Exception(
                 "Must configure correct environments to run dist train.")
