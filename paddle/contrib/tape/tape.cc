@@ -130,6 +130,29 @@ void Tape::AddOp(const std::string &type,
   tape_.emplace_back(type, in_vars, out_vars, attrs);
 }
 
+class ScopeWrapper : public framework::Scope {
+ public:
+  ScopeWrapper(const VariableHandleMap &in_vars,
+               const VariableHandleMap &out_vars) {
+    for (auto &v : in_vars) {
+      for (auto &vv : v.second) {
+        vars_[vv->Name()].reset(vv->Var());
+      }
+    }
+    for (auto &v : out_vars) {
+      for (auto &vv : v.second) {
+        vars_[vv->Name()].reset(vv->Var());
+      }
+    }
+  }
+
+  ~ScopeWrapper() {
+    for (auto &pair : vars_) {
+      pair.second.release();
+    }
+  }
+};
+
 void Tape::Forward() {
   LOG(INFO) << "Starting forward -------------------------";
   PADDLE_ENFORCE(!has_been_backwarded_);
@@ -145,8 +168,8 @@ void Tape::Forward() {
 
     framework::OpDesc op_desc =
         CreateOpDesc(op.type_, op.in_vars_, op.out_vars_, op.attrs_);
-    framework::OpRegistry::CreateOp(op_desc)->Run(get_global_scope(),
-                                                  platform::CPUPlace());
+    ScopeWrapper scope(op.in_vars_, op.out_vars_);
+    framework::OpRegistry::CreateOp(op_desc)->Run(scope, platform::CPUPlace());
     current_position_++;
   }
 

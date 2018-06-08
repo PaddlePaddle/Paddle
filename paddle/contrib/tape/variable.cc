@@ -15,11 +15,5 @@
 #include "paddle/contrib/tape/variable.h"
 
 namespace paddle {
-namespace tape {
-
-paddle::framework::Scope &get_global_scope() {
-  static paddle::framework::Scope S;
-  return S;
-}
-}
+namespace tape {}
 }

@@ -15,16 +15,12 @@
 
 #include <memory>
 
+#include "paddle/fluid/framework/operator.h"  // framework::kGradVarSuffix
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/place.h"
-
-#include "paddle/fluid/framework/operator.h"  // could be moved to .cc
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace tape {
-
-paddle::framework::Scope& get_global_scope();
 
 class Variable;
 using VariableHandle = std::shared_ptr<Variable>;
@@ -36,30 +32,21 @@ using VariableHandle = std::shared_ptr<Variable>;
 class Variable {
  public:
   Variable(const std::string pre_fix)
-      : desc_(pre_fix + std::to_string(count())) {
-    get_global_scope().Var(desc_.Name());
-  }
+      : desc_(pre_fix + std::to_string(count())) {}
 
   Variable(const std::string pre_fix, bool is_grad)
-      : desc_(pre_fix +
-              (is_grad ? framework::kGradVarSuffix : std::to_string(count()))) {
-    get_global_scope().Var(desc_.Name());
-  }
+      : desc_(pre_fix + (is_grad ? framework::kGradVarSuffix
+                                 : std::to_string(count()))) {}
 
-  ~Variable() {
-    LOG(INFO) << "Deleting " << Name();
-    get_global_scope().EraseVars({desc_.Name()});
-  }
+  ~Variable() { LOG(INFO) << "Deleting " << Name(); }
 
   void InitializeVariable() {
     LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();
     framework::proto::VarType::Type var_type = desc_.GetType();
     if (var_type == framework::proto::VarType::LOD_TENSOR) {
-      get_global_scope().Var(desc_.Name())->GetMutable<framework::LoDTensor>();
+      var_.GetMutable<framework::LoDTensor>();
     } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
-      get_global_scope()
-          .Var(desc_.Name())
-          ->GetMutable<framework::SelectedRows>();
+      var_.GetMutable<framework::SelectedRows>();
     } else {
       PADDLE_THROW("Variable type %d is not in [LOD_TENSOR, SELECTED_ROWS]",
                    var_type);
@@ -74,8 +61,7 @@ class Variable {
     return grad_;
   }
 
-  // TODO(tonyyang-svail): No need to expose name
-  std::string Name() const { return desc_.Name(); }
+  //  VariableHandle Momentum ();
 
   //  void init(const std::string& initializer,
   //            const framework::AttributeMap& attrs);
@@ -85,6 +71,11 @@ class Variable {
   const framework::VarDesc& Desc() const { return desc_; }
   framework::VarDesc* MutableDesc() { return &desc_; }
 
+  // TODO(tonyyang-svail): No need to expose name
+  std::string Name() const { return desc_.Name(); }
+
+  framework::Variable* Var() { return &var_; }
+
  private:
   int count() {
     static int counter = 0;
@@ -92,8 +83,9 @@ class Variable {
   }
 
   framework::VarDesc desc_;
+  framework::Variable var_;
+
   VariableHandle grad_;
-  //  framework::Variable* var_;
 };
 }
 }

@@ -33,7 +33,6 @@ TEST(Tape, TestMLP) {
     paddle::tape::Fill filler(initializer, attrs);
     filler(input);
 
-    //    auto hidden = linear1(input);
     auto loss = mean(linear2(linear1(input)));
 
     paddle::tape::get_global_tape().Backward(loss);
