@@ -20,6 +20,7 @@ import numpy as np
 import argparse
 import time
 import cProfile
+import os
 
 import paddle
 import paddle.fluid as fluid
@@ -72,9 +73,24 @@ def cnn_model(data, args):
 
 
 def get_model(args):
-    # Input data
-    images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    if args.use_reader_op:
+        filelist = [
+            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
+        ]
+        data_file = fluid.layers.open_files(
+            filenames=filelist,
+            shapes=[[-1, 1, 28, 28], (-1, 1)],
+            lod_levels=[0, 0],
+            dtypes=["float32", "int64"],
+            thread_num=args.gpus,
+            pass_num=args.pass_num)
+        data_file = fluid.layers.double_buffer(
+            fluid.layers.batch(
+                data_file, batch_size=args.batch_size))
+        images, label = fluid.layers.read_file(data_file)
+    else:
+        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
     if args.device == 'CPU' and args.cpus > 1:
         places = fluid.layers.get_places(args.cpus)
@@ -122,7 +138,7 @@ def get_model(args):
 
     # Reader
     train_reader = paddle.batch(
-        paddle.dataset.mnist.train(), batch_size=args.batch_size)
+        paddle.dataset.mnist.train(), batch_size=args.batch_size * args.gpus)
     test_reader = paddle.batch(
         paddle.dataset.mnist.test(), batch_size=args.batch_size)
     return avg_cost, inference_program, opt, train_reader, test_reader, batch_acc

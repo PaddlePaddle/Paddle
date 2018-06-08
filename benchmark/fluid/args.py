@@ -119,6 +119,7 @@ def parse_args():
         type=int,
         default=1,
         help='If gpus > 1, will use ParallelExecutor to run, else use Executor.')
+    # this option is available only for vgg and resnet.
     parser.add_argument(
         '--cpus',
         type=int,
@@ -168,5 +169,15 @@ def parse_args():
         action='store_true',
         default=False,
         help='Whether start pserver in async mode to support ASGD')
+    parser.add_argument(
+        '--use_reader_op',
+        action='store_true',
+        help='Whether to use reader op, and must specify the data path if set this to true.'
+    )
+    parser.add_argument(
+        '--data_path',
+        type=str,
+        default="",
+        help='Directory that contains all the training recordio files.')
     args = parser.parse_args()
     return args
