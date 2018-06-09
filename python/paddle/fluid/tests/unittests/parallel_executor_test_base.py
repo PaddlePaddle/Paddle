@@ -23,6 +23,7 @@ __all__ = ['TestParallelExecutorBase']
 class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(self,
                                   method,
+                                  use_cuda=True,
                                   memory_opt=True,
                                   iter=50,
                                   batch_size=None,
@@ -53,7 +54,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
-            place = fluid.CUDAPlace(0)
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
             exec_strategy = fluid.ExecutionStrategy()
@@ -64,7 +65,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
-                    True,
+                    use_cuda,
                     loss_name=loss.name,
                     exec_strategy=exec_strategy,
                     build_strategy=build_strategy)

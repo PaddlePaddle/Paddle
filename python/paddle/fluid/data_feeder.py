@@ -150,7 +150,7 @@ class DataFeeder(object):
         elif isinstance(self.place, core.CUDAPlace):
             return core.get_cuda_device_count()
         else:
-            return multiprocessing.cpu_count()
+            return min(4, multiprocessing.cpu_count())
 
     def decorate_reader(self,
                         reader,
