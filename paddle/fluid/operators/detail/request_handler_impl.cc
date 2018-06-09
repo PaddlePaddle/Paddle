@@ -63,10 +63,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
       PADDLE_THROW("sync: Can not find server side var");
       return false;
     }
-
     if (invar->IsType<framework::SelectedRows>()) {
-      std::unique_lock<std::mutex> lock(sparse_var_mutex_);
-      sparse_vars_.push_back(invar);
+      rpc_server_->RecordSparseVar(invar);
     }
   }
 

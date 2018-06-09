@@ -30,10 +30,6 @@
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #endif
 
-DEFINE_string(ssa_graph_path, "/tmp/ssa_graph.dot",
-              "the ssa graph path only print with GLOG_v=10,"
-              "default /tmp/graph.dot");
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -277,11 +273,6 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    */
   AddOutputToLeafOps(&result);
 
-  if (VLOG_IS_ON(10)) {
-    std::ofstream fout(FLAGS_ssa_graph_path);
-    PrintGraphviz(*graph, fout);
-  }
-
   return std::unique_ptr<SSAGraph>(graph);
 }
 
@@ -473,9 +464,8 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
                                           const OpDesc &op) const {
-  auto &p = places_[0];
-  auto *s = local_scopes_[0];
-  result->ops_.emplace_back(new RPCOpHandle(op, s, p, op.Type()));
+  result->ops_.emplace_back(
+      new RPCOpHandle(op, local_scopes_[0], op.Type(), places_[0]));
 
   if (op.Type() == "send_barrier") {
     ConnectOp(result, result->ops_.back().get(), "send_vars");
