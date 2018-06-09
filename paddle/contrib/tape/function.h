@@ -80,10 +80,43 @@ class Linear {
     return y;
   }
 
+  std::vector<VariableHandle> Params() { return {w_}; }
+
  private:
   VariableHandle w_;
   VariableHandle b_;
   std::string act_;
+};
+
+class SGD {
+ public:
+  SGD(float learning_rate) : learning_rate_(new Variable("sgd")) {
+    Tape init_tape;
+
+    std::string initializer = "fill_constant";
+    framework::AttributeMap attrs;
+    attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
+    attrs["shape"] = std::vector<int>{1};
+    attrs["value"] = learning_rate;
+    init_tape.AddOp(initializer, {}, {{"Out", {learning_rate_}}}, attrs);
+
+    init_tape.Forward();
+  }
+
+  void operator()(VariableHandle input) {
+    Tape temp_tape;
+    temp_tape.AddOp("sgd",
+                    {{"Param", {input}},
+                     {"LearningRate", {learning_rate_}},
+                     {"Grad", {input->Grad()}}},
+                    {{"ParamOut", {input}}},
+                    {});
+    temp_tape.Forward();
+    input->ResetGrad();
+  }
+
+ private:
+  VariableHandle learning_rate_;
 };
 }
 }

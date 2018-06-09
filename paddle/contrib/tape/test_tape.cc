@@ -21,6 +21,8 @@ TEST(Tape, TestMLP) {
   paddle::tape::Linear linear2(3, 3, "relu");
   paddle::tape::Mean mean;
 
+  paddle::tape::SGD sgd(0.001);
+
   for (int i = 0; i < 2; ++i) {
     paddle::tape::reset_global_tape();
 
@@ -36,6 +38,13 @@ TEST(Tape, TestMLP) {
     auto loss = mean(linear2(linear1(input)));
 
     paddle::tape::get_global_tape().Backward(loss);
+
+    for (auto w : linear1.Params()) {
+      sgd(w);
+    }
+    for (auto w : linear2.Params()) {
+      sgd(w);
+    }
   }
 }
 

@@ -52,6 +52,8 @@ class Variable {
     return grad_;
   }
 
+  void ResetGrad() { grad_ = nullptr; }
+
   // Stochastic Gradient Descent with Momentum
   //  VariableHandle Momentum ();
 

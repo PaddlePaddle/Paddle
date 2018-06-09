@@ -135,12 +135,16 @@ class ScopeWrapper : public framework::Scope {
                const VariableHandleMap &out_vars) {
     for (auto &v : in_vars) {
       for (auto &vv : v.second) {
-        vars_[vv->Name()].reset(vv->Var());
+        if (!vars_.count(vv->Name())) {
+          vars_[vv->Name()].reset(vv->Var());
+        }
       }
     }
     for (auto &v : out_vars) {
       for (auto &vv : v.second) {
-        vars_[vv->Name()].reset(vv->Var());
+        if (!vars_.count(vv->Name())) {
+          vars_[vv->Name()].reset(vv->Var());
+        }
       }
     }
   }
