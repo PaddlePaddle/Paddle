@@ -21,15 +21,25 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+#ifdef PADDLE_WITH_CUDA
 NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
     const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    const platform::NCCLContextMap &ctxs)
+    const platform::NCCLContextMap *ctxs)
     : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
-  for (auto &p : places_) {
-    this->dev_ctxes_[p] = nccl_ctxs_.DevCtx(p);
+  if (ctxs) {
+    for (auto &p : places_) {
+      this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
+    }
   }
 }
+#else
+NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
+    const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places)
+    : local_scopes_(local_scopes), places_(places) {}
+#endif
 
 void NCCLAllReduceOpHandle::RunImpl() {
   if (NoDummyInputSize() == 1) {
@@ -58,6 +68,8 @@ void NCCLAllReduceOpHandle::RunImpl() {
     }
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
+#ifdef PADDLE_WITH_CUDA
+      PADDLE_ENFORCE(nccl_ctxs_);
       int dtype = -1;
       size_t numel = 0;
       std::vector<std::function<void()>> all_reduce_calls;
@@ -75,7 +87,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
         }
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_.at(dev_id);
+        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
         auto stream = nccl_ctx.stream();
         auto comm = nccl_ctx.comm_;
         all_reduce_calls.emplace_back([=] {
@@ -90,6 +102,9 @@ void NCCLAllReduceOpHandle::RunImpl() {
           call();
         }
       });
+#else
+      PADDLE_THROW("Not compiled with CUDA");
+#endif
     } else {  // Special handle CPU only Operator's gradient. Like CRF
       auto &trg = *this->local_scopes_[0]
                        ->FindVar(kLocalExecScopeName)

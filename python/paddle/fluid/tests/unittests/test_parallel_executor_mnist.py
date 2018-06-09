@@ -117,9 +117,11 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc(self):
         self.check_simple_fc_convergence(False, use_cuda=True)
+        self.check_simple_fc_convergence(False, use_cuda=False)
 
     def test_simple_fc_with_new_strategy(self):
         self.check_simple_fc_convergence(True, use_cuda=True)
+        self.check_simple_fc_convergence(True, use_cuda=False)
 
     def check_simple_fc_parallel_accuracy(self,
                                           balance_parameter_opt_between_cards,
