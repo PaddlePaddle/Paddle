@@ -119,7 +119,7 @@ def reader_creator(data_file,
                 yield sample, int(label) - 1
 
     if use_xmap:
-        return xmap_readers(mapper, reader, cpu_count(), buffered_size)
+        return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
     else:
         return map_readers(mapper, reader)
 

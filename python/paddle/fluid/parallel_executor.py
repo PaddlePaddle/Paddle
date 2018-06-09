@@ -101,7 +101,7 @@ class ParallelExecutor(object):
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         else:
-            for i in xrange(multiprocessing.cpu_count()):
+            for i in xrange(min(4, multiprocessing.cpu_count())):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
@@ -110,10 +110,7 @@ class ParallelExecutor(object):
 
         if exec_strategy is None:
             exec_strategy = ExecutionStrategy()
-            if use_cuda:
-                exec_strategy.use_event = True
-            else:
-                exec_strategy.use_event = False
+        exec_strategy.use_event = use_cuda
 
         if exec_strategy.num_threads == 0:
             if use_cuda:
