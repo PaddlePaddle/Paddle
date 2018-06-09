@@ -387,7 +387,6 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
-
     def test_maxout(self):
         program = Program()
         with program_guard(program):
@@ -395,8 +394,6 @@ class TestBook(unittest.TestCase):
             output = layers.maxout(x=data, groups=2)
             self.assertIsNotNone(output)
         print(str(program))
-
-
 
 
 if __name__ == '__main__':
