@@ -82,7 +82,6 @@ class PaddlePredictor {
   // The common configs for all the predictors.
   struct Config {
     std::string model_dir;      // path to the model directory.
-    bool enable_engine{false};  // Enable to execute (part of) the model on
   };
 };
 
