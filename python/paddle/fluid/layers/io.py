@@ -434,7 +434,7 @@ def open_files(filenames,
                shapes,
                lod_levels,
                dtypes,
-               thread_num,
+               thread_num=1,
                buffer_size=None,
                pass_num=1,
                for_parallel=True):
