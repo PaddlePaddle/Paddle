@@ -111,6 +111,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   BuildStrategy strategy_;
+
+  void SetCommunicationContext(OpHandleBase *op_handle,
+                               const platform::Place &p) const;
 };
 }  // namespace details
 }  // namespace framework
