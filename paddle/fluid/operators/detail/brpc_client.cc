@@ -21,18 +21,16 @@ namespace detail {
 
 DEFINE_int32(brpc_channel_num, 24,
              "Number of channels to send requests connected to one server");
-DEFINE_string(connection_type, "pooled",
-              "Connection type. Available values: single, pooled, short");
 DEFINE_int32(timeout_ms, -1, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 BRPCClient::~BRPCClient() { Wait(); }
 
-void HandleSendResponse(brpc::Controller* cntl,
-                        sendrecv::VoidMessage* response) {
+void HandleSendResponse(std::unique_ptr<brpc::Controller> cntl,
+                        std::unique_ptr<sendrecv::VoidMessage> response) {
   // std::unique_ptr makes sure cntl/response will be deleted before returning.
-  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
-  std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
+  // std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  // std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
 
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send EchoRequest, " << cntl->ErrorText();
@@ -58,8 +56,9 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
         brpc::Controller* cntl = new brpc::Controller();
         sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
 
-        google::protobuf::Closure* done =
-            brpc::NewCallback(&HandleSendResponse, cntl, response);
+        google::protobuf::Closure* done = brpc::NewCallback(
+            &HandleSendResponse, std::unique_ptr<brpc::Controller>(cntl),
+            std::unique_ptr<sendrecv::VoidMessage>(response));
 
         sendrecv::VariableMessage request;
         ch_ctx->stub->SendVariable(cntl, &request, response, done);
@@ -152,7 +151,7 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
 
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
-  options.connection_type = FLAGS_connection_type;
+  options.connection_type = "pooled";
   options.connect_timeout_ms = 100;
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
