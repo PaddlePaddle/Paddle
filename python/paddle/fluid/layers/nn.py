@@ -19,9 +19,10 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
+import random
 
 __all__ = [
     'fc',
@@ -802,7 +803,22 @@ def gru_unit(input,
     return updated_hidden, reset_hidden_pre, gate
 
 
+@templatedoc()
 def linear_chain_crf(input, label, param_attr=None):
+    """
+    Linear Chain CRF.
+
+    ${comment}
+
+    Args:
+        input(${emission_type}): ${emission_comment}
+        label(${label_type}): ${label_comment}
+        param_attr(ParamAttr): The attribute of the learnable parameter.
+
+    Returns:
+        ${log_likelihood_comment}
+
+    """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
@@ -828,7 +844,19 @@ def linear_chain_crf(input, label, param_attr=None):
     return log_likelihood
 
 
+@templatedoc()
 def crf_decoding(input, param_attr, label=None):
+    """
+    ${comment}
+
+    Args:
+        input(${emission_type}): ${emission_comment}
+        param_attr(ParamAttr): The parameter attribute for training.
+        label(${label_type}): ${label_comment}
+
+    Returns:
+        ${viterbi_path_comment}
+    """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -1183,19 +1211,19 @@ def conv2d(input,
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
 
         - Output:
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
         .. math::
 
-        H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-        W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
        input(Variable): The input image with [N, C, H, W] format.
@@ -4108,10 +4136,31 @@ def gather(input, index):
     return out
 
 
-def random_crop(input, shape, seed=1):
+@templatedoc()
+def random_crop(x, shape, seed=None):
+    """
+    ${comment}
+
+    Examples:
+        >>> img = fluid.layers.data("img", [3, 256, 256])
+        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
+
+    Args:
+        x(${x_type}): ${x_comment}
+        shape(${shape_type}): ${shape_comment}
+        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
+            get from `random.randint(-65536, 65535)`.
+
+    Returns:
+        ${out_comment}
+
+    """
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()
     out = helper.create_tmp_variable(dtype)
+    if seed is None:
+        seed = random.randint(-65536, 65535)
+
     if isinstance(seed, int):
         seed_value = seed
         seed = helper.create_tmp_variable(dtype="int64")

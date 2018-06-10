@@ -24,12 +24,12 @@ namespace operators {
       : public ::paddle::framework::OpProtoAndCheckerMaker {            \
    public:                                                              \
     void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME "operator");                   \
-      AddOutput("Out", "Output of" #OP_NAME "operator");                \
+      AddInput("X", "Input of " #OP_NAME " operator");                  \
+      AddOutput("Out", "Output of " #OP_NAME " operator");              \
       AddAttr<bool>("use_mkldnn",                                       \
                     "(bool, default false) Only used in mkldnn kernel") \
           .SetDefault(false);                                           \
-      AddComment(#OP_COMMENT);                                          \
+      AddComment(OP_COMMENT);                                           \
     }                                                                   \
   }
 
@@ -58,14 +58,16 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
+
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
   }
 #endif
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
       ctx.GetPlace(), layout, library);
