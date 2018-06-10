@@ -13,8 +13,8 @@
 // limitations under the License.
 #include <algorithm>
 
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
@@ -23,25 +23,23 @@ namespace framework {
 namespace details {
 
 #ifdef PADDLE_WITH_CUDA
-NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
-    const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    const platform::NCCLContextMap *ctxs)
+AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places,
+                                     const platform::NCCLContextMap *ctxs)
     : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
-  if (ctxs) {
+  if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
     }
   }
 }
 #else
-NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
-    const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places)
+AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places)
     : local_scopes_(local_scopes), places_(places) {}
 #endif
 
-void NCCLAllReduceOpHandle::RunImpl() {
+void AllReduceOpHandle::RunImpl() {
   if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
   } else {
@@ -133,7 +131,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
   }
 }
 
-std::string NCCLAllReduceOpHandle::Name() const { return "nccl_all_reduce"; }
+std::string AllReduceOpHandle::Name() const { return "nccl_all_reduce"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
