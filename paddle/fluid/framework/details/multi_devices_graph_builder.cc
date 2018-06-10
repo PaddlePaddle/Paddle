@@ -478,7 +478,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
   } else {
     PADDLE_THROW(
         "rpc op should be in ["
-        "send_vars, send_barrier. recv_vars, fetch_barrier]");
+        "send_vars, send_barrier. recv, fetch_barrier]");
   }
 
   // TODO(Yancey1989): schedule rpc op on different place may

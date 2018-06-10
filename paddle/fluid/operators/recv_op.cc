@@ -26,11 +26,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class RecvVarsOp : public framework::OperatorBase {
+class RecvOp : public framework::OperatorBase {
  public:
-  RecvVarsOp(const std::string& type, const framework::VariableNameMap& inputs,
-             const framework::VariableNameMap& outputs,
-             const framework::AttributeMap& attrs)
+  RecvOp(const std::string& type, const framework::VariableNameMap& inputs,
+         const framework::VariableNameMap& outputs,
+         const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
@@ -57,7 +57,7 @@ class RecvVarsOp : public framework::OperatorBase {
   }
 };
 
-class RecvVarsOpMaker : public framework::OpProtoAndCheckerMaker {
+class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
@@ -78,7 +78,7 @@ This operator can get variables from server side.
   }
 };
 
-class RecvVarsOpShapeInference : public framework::InferShapeBase {
+class RecvOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
@@ -88,6 +88,5 @@ class RecvVarsOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv_vars, ops::RecvVarsOp,
-                  paddle::framework::EmptyGradOpMaker, ops::RecvVarsOpMaker,
-                  ops::RecvVarsOpShapeInference);
+REGISTER_OPERATOR(recv, ops::RecvOp, paddle::framework::EmptyGradOpMaker,
+                  ops::RecvOpMaker, ops::RecvOpShapeInference);
