@@ -75,9 +75,8 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library{framework::LibraryType::kPlain};
-
-  std::string data_format = ctx.Attr<std::string>("data_format");
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
