@@ -19,11 +19,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#ifdef PADDLE_WITH_GRPC
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#else
-#include "paddle/fluid/operators/detail/brpc_server.h"
-#endif
+#include "paddle/fluid/operators/detail/macros.h"
 
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
@@ -255,11 +251,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
             << ", end_point:" << endpoint;
 
-#ifdef PADDLE_WITH_GRPC
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
-#else
-  rpc_service_.reset(new detail::AsyncBRPCServer(endpoint, fan_in));
-#endif
+  rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
+
   request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
   request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(

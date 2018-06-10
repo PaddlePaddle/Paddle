@@ -18,14 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
-
-#ifdef PADDLE_WITH_GRPC
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#else
-#include "paddle/fluid/operators/detail/brpc_client.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -50,13 +45,8 @@ class SendVarsOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-#ifdef PADDLE_WITH_GRPC
     detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<detail::GRPCClient>();
-#else
-    detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<detail::BRPCClient>();
-#endif
+        detail::RPCClient::GetInstance<RPCCLIENT_T>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
