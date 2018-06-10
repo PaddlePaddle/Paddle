@@ -28,14 +28,14 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct NCCLAllReduceOpHandle : public OpHandleBase {
+struct AllReduceOpHandle : public OpHandleBase {
 #ifdef PADDLE_WITH_CUDA
-  NCCLAllReduceOpHandle(const std::vector<Scope *> &local_scopes,
-                        const std::vector<platform::Place> &places,
-                        const platform::NCCLContextMap *ctxs);
+  AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                    const std::vector<platform::Place> &places,
+                    const platform::NCCLContextMap *ctxs);
 #else
-  NCCLAllReduceOpHandle(const std::vector<Scope *> &local_scopes,
-                        const std::vector<platform::Place> &places);
+  AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                    const std::vector<platform::Place> &places);
 #endif
   std::string Name() const override;
 
