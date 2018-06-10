@@ -61,6 +61,7 @@ option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
+option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -183,7 +184,12 @@ set(EXTERNAL_LIBS
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+    include(external/anakin)
 endif(WITH_GPU)
+
+if (NOT WITH_GPU)
+  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
+endif()
 
 if(WITH_AMD_GPU)
     find_package(HIP)
