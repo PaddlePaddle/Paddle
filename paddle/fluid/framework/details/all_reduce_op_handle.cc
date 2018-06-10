@@ -131,7 +131,7 @@ void AllReduceOpHandle::RunImpl() {
   }
 }
 
-std::string AllReduceOpHandle::Name() const { return "nccl_all_reduce"; }
+std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

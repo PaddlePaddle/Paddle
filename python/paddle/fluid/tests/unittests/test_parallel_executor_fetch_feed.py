@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import unittest
 import numpy as np
 import paddle
+import os
 
 
 def Lenet(data, class_dim):
@@ -89,6 +90,7 @@ class TestFetchOp(unittest.TestCase):
             train_inputs.append(tst_reader_iter.next())
 
         self.parallel_exe(train_inputs, seed=1, use_cuda=True)
+        os.environ['CPU_NUM'] = str(4)
         self.parallel_exe(train_inputs, seed=1, use_cuda=False)
 
 
@@ -133,6 +135,7 @@ class TestFeedParallel(unittest.TestCase):
 
     def test_feed_op(self):
         self.parallel_exe(use_cuda=True, seed=1)
+        os.environ['CPU_NUM'] = str(4)
         self.parallel_exe(use_cuda=False, seed=1)
 
 

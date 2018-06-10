@@ -15,6 +15,7 @@
 from __future__ import print_function
 import core
 import numpy
+import os
 import six.moves as six
 import multiprocessing
 
@@ -150,7 +151,9 @@ class DataFeeder(object):
         elif isinstance(self.place, core.CUDAPlace):
             return core.get_cuda_device_count()
         else:
-            return min(4, multiprocessing.cpu_count())
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            return cpu_num
 
     def decorate_reader(self,
                         reader,

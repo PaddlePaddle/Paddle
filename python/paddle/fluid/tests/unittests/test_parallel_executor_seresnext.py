@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
+import os
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
@@ -145,10 +146,12 @@ class TestResnet(TestParallelExecutorBase):
         )
 
     def test_resnet(self):
+        # os.environ['CPU_NUM'] = str(4)
         self.check_resnet_convergence(False, use_cuda=True)
         # self.check_resnet_convergence(False,use_cuda=False)
 
     def test_resnet_with_new_strategy(self):
+        os.environ['CPU_NUM'] = str(4)
         self.check_resnet_convergence(True, use_cuda=True)
         self.check_resnet_convergence(True, use_cuda=False)
 

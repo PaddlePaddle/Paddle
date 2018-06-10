@@ -19,6 +19,7 @@ from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import paddle
 import paddle.dataset.wmt16 as wmt16
+import os
 
 WMT16_RECORDIO_FILE = "./wmt16_test_pe.recordio"
 
@@ -149,6 +150,7 @@ def transformer(use_feed):
 class TestTransformer(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
+        os.environ['CPU_NUM'] = str(4)
         reader = paddle.batch(
             wmt16.train(ModelHyperParams.src_vocab_size,
                         ModelHyperParams.trg_vocab_size),
