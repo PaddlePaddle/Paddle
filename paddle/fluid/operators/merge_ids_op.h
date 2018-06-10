@@ -30,6 +30,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     if (!platform::is_cpu_place(place)) {
       PADDLE_THROW("MergeIds do not support GPU kernel");
     }
+    VLOG(3) << "run in MergeIdsOpKernel";
 
     const auto *ids_var = ctx.InputVar("Ids");
     PADDLE_ENFORCE(ids_var->IsType<framework::LoDTensor>(),
@@ -37,7 +38,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
 
     const auto &ids_tensor = ids_var->Get<framework::LoDTensor>();
     const auto &ids_dims = ids_tensor.dims();
-    const T *ids = ids_tensor.data<T>();
+    const int64_t *ids = ids_tensor.data<int64_t>();
 
     auto x_tensors = ctx.MultiInput<framework::LoDTensor>("X");
 
@@ -49,9 +50,11 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
       if (embedding_size == 0) {
         embedding_size = input->dims()[1];
       }
-      PADDLE_ENFORCE_EQ(embedding_size, input->dims()[1],
-                        "embedding size of all input should be the same");
-      batch_size += input->dims()[0];
+      if (framework::product(input->dims()) != 0) {
+        PADDLE_ENFORCE_EQ(embedding_size, input->dims()[1],
+                          "embedding size of all input should be the same");
+        batch_size += input->dims()[0];
+      }
     }
     PADDLE_ENFORCE_EQ(
         batch_size, ids_dims[0],
@@ -61,19 +64,25 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
 
     if (shard_num == 1) {
       VLOG(3) << "only one shard, we can copy the data directly";
-      TensorCopy(ids_tensor, place, out);
+      TensorCopy(*x_tensors[0], place, out);
     } else {
       std::vector<int> in_indexs(shard_num, 0);
-      auto *out_data = out->mutable_data<T>(ids_dims, place);
+      auto *out_data = out->mutable_data<T>(
+          framework::make_ddim({batch_size, embedding_size}), place);
       // copy data from ins[shard_num] to out.
       for (int i = 0; i < ids_dims[0]; ++i) {
-        T id = ids[i];
+        int64_t id = ids[i];
         size_t shard_id = static_cast<size_t>(id) % shard_num;
         int index = in_indexs[shard_id];
         memcpy(out_data + embedding_size * i,
                x_tensors[shard_id]->data<T>() + index * embedding_size,
                sizeof(T) * embedding_size);
         in_indexs[shard_id] += 1;
+      }
+
+      for (int i = 0; i < shard_num; ++i) {
+        PADDLE_ENFORCE_EQ(in_indexs[i], x_tensors[i]->dims()[0],
+                          "after merge, all data in x_tensor should be used");
       }
     }
   }

@@ -73,6 +73,15 @@ class MergeIdsOp : public framework::OperatorWithKernel {
     }
     ctx->ShareLoD("Ids", "Out");
   }
+
+ private:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.MultiInput<framework::Tensor>("X").front()->type()),
+        ctx.GetPlace());
+  }
 };
 
 class MergeIdsOpInferVarType : public framework::VarTypeInference {
@@ -93,5 +102,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(merge_ids, ops::MergeIdsOp, ops::MergeIdsOpMaker,
                   ops::MergeIdsOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
-    merge_ids, ops::MergeIdsOpKernel<paddle::platform::CPUPlace, int64_t>,
-    ops::MergeIdsOpKernel<paddle::platform::CPUPlace, float>);
+    merge_ids, ops::MergeIdsOpKernel<paddle::platform::CPUPlace, float>);
