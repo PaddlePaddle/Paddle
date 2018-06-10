@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 import paddle.dataset.mnist as mnist
 import unittest
+import os
 
 MNIST_RECORDIO_FILE = "./mnist_test_pe.recordio"
 
@@ -85,6 +86,7 @@ def fc_with_batchnorm(use_feed):
 class TestMNIST(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
+        os.environ['CPU_NUM'] = str(4)
         # Convert mnist to recordio file
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             reader = paddle.batch(mnist.train(), batch_size=4)
