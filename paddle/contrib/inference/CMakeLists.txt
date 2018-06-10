@@ -59,7 +59,8 @@ inference_api_test(test_paddle_inference_api_impl
 
 if (WITH_ANAKIN)
     cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
-    DEPS ${inference_deps})
+                                  ARGS --model="${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin"
+                                  DEPS ${inference_deps})
     target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
 endif()
 
