@@ -68,3 +68,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 ```
 
 By specify the engine kind and config, one can get an specific implementation.
+
+## Reference
+
+- [paddle_inference_api.h](./paddle_inference_api.h)
+- [demos](./demo)
