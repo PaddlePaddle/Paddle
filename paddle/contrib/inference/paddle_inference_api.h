@@ -113,5 +113,4 @@ struct AnakinConfig : public PaddlePredictor::Config {
 // Similarly, each engine kind should map to a unique predictor implementation.
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
-
 }  // namespace paddle
