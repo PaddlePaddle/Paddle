@@ -25,11 +25,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SendVarsOp : public framework::OperatorBase {
+class SendOp : public framework::OperatorBase {
  public:
-  SendVarsOp(const std::string& type, const framework::VariableNameMap& inputs,
-             const framework::VariableNameMap& outputs,
-             const framework::AttributeMap& attrs)
+  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
+         const framework::VariableNameMap& outputs,
+         const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
@@ -64,7 +64,7 @@ class SendVarsOp : public framework::OperatorBase {
   }
 };
 
-class SendVarsOpMaker : public framework::OpProtoAndCheckerMaker {
+class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
@@ -86,7 +86,7 @@ This operator will send variables to listen_and_serve op at the parameter server
   }
 };
 
-class SendVarsOpShapeInference : public framework::InferShapeBase {
+class SendOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
@@ -96,6 +96,5 @@ class SendVarsOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send_vars, ops::SendVarsOp,
-                  paddle::framework::EmptyGradOpMaker, ops::SendVarsOpMaker,
-                  ops::SendVarsOpShapeInference);
+REGISTER_OPERATOR(send_vars, ops::SendOp, paddle::framework::EmptyGradOpMaker,
+                  ops::SendOpMaker, ops::SendOpShapeInference);
