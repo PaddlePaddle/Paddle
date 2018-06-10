@@ -89,7 +89,7 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainSendVars(
   for (auto *op : program.Block(0).AllOps()) {
     // TODO(Yancey1989): use a graceful method to find send op,
     // instead of the the hard code string
-    if (op->Type() == "send_vars") {
+    if (op->Type() == "send") {
       auto op_vars = op->InputArgumentNames();
       send_vars.reserve(send_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -105,7 +105,7 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainRecvVars(
   for (auto *op : program.Block(0).AllOps()) {
     // TODO(Yancey1989): use a graceful method to find recv op,
     // instead of the hard code string
-    if (op->Type() == "recv_vars") {
+    if (op->Type() == "recv") {
       auto op_vars = op->OutputArgumentNames();
       recv_vars.reserve(recv_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -468,12 +468,12 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
       new RPCOpHandle(op, local_scopes_[0], op.Type(), places_[0]));
 
   if (op.Type() == "send_barrier") {
-    ConnectOp(result, result->ops_.back().get(), "send_vars");
-  } else if (op.Type() == "recv_vars") {
+    ConnectOp(result, result->ops_.back().get(), "send");
+  } else if (op.Type() == "recv") {
     ConnectOp(result, result->ops_.back().get(), "send_barrier");
   } else if (op.Type() == "fetch_barrier") {
-    ConnectOp(result, result->ops_.back().get(), "recv_vars");
-  } else if (op.Type() == "send_vars") {
+    ConnectOp(result, result->ops_.back().get(), "recv");
+  } else if (op.Type() == "send") {
     // do nothing
   } else {
     PADDLE_THROW(

@@ -55,10 +55,10 @@ class TestDistTranspiler(TranspilerTest):
 
         delete_ops(trainer.global_block(), optimize_ops)
         ops = [op.type for op in trainer.global_block().ops] + [
-            "split_byref", "send_vars", "send_barrier", "recv_vars",
-            "recv_vars", "fetch_barrier", "concat"
+            "split_byref", "send", "send_barrier", "recv", "recv",
+            "fetch_barrier", "concat"
         ]
-        ops.insert(ops.index("elementwise_add_grad") + 1, "send_vars")
+        ops.insert(ops.index("elementwise_add_grad") + 1, "send")
         return ops
 
 

@@ -236,7 +236,7 @@ def Recv(endpoints, get_vars):
 
     helper = LayerHelper("Recv", **locals())
     helper.append_op(
-        type="recv_vars",
+        type="recv",
         inputs={"X": get_vars},
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
