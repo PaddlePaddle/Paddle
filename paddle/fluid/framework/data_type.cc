@@ -28,6 +28,10 @@ struct DataTypeMap {
 };
 
 static DataTypeMap* InitDataTypeMap();
+// C++11 removes the need for manual locking.
+// Concurrent execution shall wait if a static local variable is already being
+// initialized.
+// https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 static DataTypeMap& gDataTypeMap() {
   static DataTypeMap* g_data_type_map_ = InitDataTypeMap();
   return *g_data_type_map_;
