@@ -96,5 +96,5 @@ class SendOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send_vars, ops::SendOp, paddle::framework::EmptyGradOpMaker,
+REGISTER_OPERATOR(send, ops::SendOp, paddle::framework::EmptyGradOpMaker,
                   ops::SendOpMaker, ops::SendOpShapeInference);
