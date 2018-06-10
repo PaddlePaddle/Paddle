@@ -43,8 +43,8 @@ class ParallelExecutorPrivate {
 #ifdef PADDLE_WITH_CUDA
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
-  bool own_local_scope;
-  bool use_cuda;
+  bool own_local_scope_;
+  bool use_cuda_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -61,25 +61,25 @@ ParallelExecutor::ParallelExecutor(
     size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
-  member_->use_cuda = exec_strategy.use_event_;
+  member_->use_cuda_ = exec_strategy.use_event_;
 
   // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
-    member_->own_local_scope = true;
+    member_->own_local_scope_ = true;
     member_->local_scopes_.emplace_back(member_->global_scope_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&scope->NewScope());
     }
   } else {
-    member_->own_local_scope = false;
+    member_->own_local_scope_ = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
     }
   }
 
-  if (member_->use_cuda) {
+  if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
 #ifdef PADDLE_WITH_CUDA
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
@@ -114,7 +114,7 @@ ParallelExecutor::ParallelExecutor(
   details::SSAGraphBuilderFactory builder_factory(
       member_->places_, loss_var_name, params, member_->local_scopes_,
       build_strategy);
-  if (member_->use_cuda) {
+  if (member_->use_cuda_) {
 #ifdef PADDLE_WITH_CUDA
     builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #else
@@ -223,7 +223,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 }
 
 ParallelExecutor::~ParallelExecutor() {
-  if (member_->own_local_scope) {
+  if (member_->own_local_scope_) {
     for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
       member_->global_scope_->DeleteScope(member_->local_scopes_[i]);
     }
