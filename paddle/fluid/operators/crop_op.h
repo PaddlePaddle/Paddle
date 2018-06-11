@@ -39,7 +39,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],
         "Offsets size should be equal to dimension size of input tensor.");
-    const int* offsets_data;
+    const int64_t* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
       offsets_data = offsets_tensor->data<int64_t>();
