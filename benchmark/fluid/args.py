@@ -34,63 +34,6 @@ def parse_args():
     #  args related to learning rate
     parser.add_argument(
         '--learning_rate', type=float, default=0.001, help='The learning rate.')
-    parser.add_argument(
-        '--learning_rate_decay_method',
-        type=str,
-        default=None,
-        choices=[],
-        help='Learning rate decay method, not allowed yet')
-    parser.add_argument(
-        '--learning_rate_decay_steps',
-        type=int,
-        default=100000,
-        help='Decay steps for learning rate decay method')
-    parser.add_argument(
-        '--learning_rate_decay_rate',
-        type=float,
-        default=0.5,
-        help='Decay rate for learning rate decay method')
-    #  args related to regularization
-    parser.add_argument(
-        '--weight_decay_regularizer_method',
-        type=str,
-        default=None,
-        choices=[],
-        help='Weight decay regularizer method, not allowed yet')
-    parser.add_argument(
-        '--weight_decay_regularizer_coeff',
-        type=float,
-        default=0.1,
-        help='Weight decay regularizer coeff, 0.1 for default')
-    #  args related to gradient clipping
-    parser.add_argument(
-        '--gradient_clip_method',
-        type=str,
-        default=None,
-        choices=[],
-        help='Gradient clipping method, not allowed yet')
-    parser.add_argument(
-        '--gradient_clip_norm',
-        type=float,
-        default=1.,
-        help='Gradient clipping norm, 1. for default')
-    #  args related to error clipping
-    parser.add_argument(
-        '--error_clip_method',
-        type=str,
-        default=None,
-        choices=[],
-        help='Error clipping method, not allowed yet')
-    parser.add_argument(
-        '--error_clip_min',
-        type=float,
-        default=1e-6,
-        help='Error clipping min value, 1e-6 for default')
-    parser.add_argument(
-        '--error_clip_max',
-        type=float,
-        default=2e-6,
-        help='Error clipping max value, 2e-6 for default')
     # TODO(wuyi): add "--use_fake_data" option back.
     parser.add_argument(
         '--skip_batch_num',
