@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -46,7 +46,7 @@ class SendOp : public framework::OperatorBase {
     platform::RecordEvent record_event(Type(), &ctx);
 
     detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<detail::GRPCClient>();
+        detail::RPCClient::GetInstance<RPCCLIENT_T>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
