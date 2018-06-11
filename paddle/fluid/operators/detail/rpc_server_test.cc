@@ -17,15 +17,14 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/rpc_client.h"
-
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -33,7 +32,7 @@ namespace detail = paddle::operators::detail;
 
 USE_OP(lookup_table);
 
-std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
+std::unique_ptr<detail::RPCServer> g_rpc_service;
 std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
@@ -112,20 +111,19 @@ void StartServer() {
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
+      std::bind(&detail::RPCServer::StartServer, g_rpc_service.get()));
 
   server_thread.join();
 }
 
 TEST(PREFETCH, CPU) {
   g_req_handler.reset(new detail::RequestPrefetchHandler(true));
-  g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
+  g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
+  detail::RPCClient* client = detail::RPCClient::GetInstance<RPCCLIENT_T>();
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
 
-  detail::RPCClient* client =
-      detail::RPCClient::GetInstance<detail::GRPCClient>();
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
