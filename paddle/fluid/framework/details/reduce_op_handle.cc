@@ -22,6 +22,7 @@ namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
+  if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
@@ -50,45 +51,51 @@ void ReduceOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
 
   // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated(in_var_handles);
-  auto pre_place = in_0_handle->place_;
-  std::vector<platform::Place> in_places;
-  auto pre_in_tensor = VariableVisitor::GetMutableTensor(pre_in_var);
-  for (auto *in_handle : in_var_handles) {
-    auto in_p = in_handle->place_;
-    PADDLE_ENFORCE_EQ(in_p.which(), pre_place.which(),
-                      "Places must be all on CPU or all on CUDA.");
-    in_places.emplace_back(in_p);
+  WaitInputVarGenerated();
 
+  // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
+  std::vector<platform::Place> in_places;  // used to get dev_ctx
+  for (auto *in_handle : in_var_handles) {
+    in_places.emplace_back(in_handle->place_);
     auto in_var =
         var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(in_var);
-
-    auto in_tensor = VariableVisitor::GetMutableTensor(in_var);
-    PADDLE_ENFORCE_EQ(in_tensor.type(), pre_in_tensor.type(),
-                      "The type of input is not consistent.");
+    VariableVisitor::EnforceShapeAndDTypeEQ(*pre_in_var, *in_var);
   }
 
   auto out_var =
       var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(out_var);
 
-  if (pre_in_var->IsType<framework::SelectedRows>()) {
-    std::vector<const SelectedRows *> in_selected_rows =
-        GetInputValues<SelectedRows>(in_var_handles, var_scopes);
+  // NOTE: The tensors' Place of input and output must be all on GPU or all on
+  // CPU.
+  auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
+  platform::Place t_out_p;
+  if (platform::is_gpu_place(in_p)) {
+    PADDLE_ENFORCE(platform::is_gpu_place(out_var_handle->place_),
+                   "Places of input and output must be all on GPU.");
+    t_out_p = out_var_handle->place_;
+  } else {
+    t_out_p = platform::CPUPlace();
+  }
 
-    GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_,
-                       out_var_handle->place_,
-                       out_var->GetMutable<framework::SelectedRows>());
+  if (pre_in_var->IsType<framework::SelectedRows>()) {
+    this->RunAndRecordEvent([&] {
+      std::vector<const SelectedRows *> in_selected_rows =
+          GetInputValues<SelectedRows>(in_var_handles, var_scopes);
+      GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,
+                         out_var->GetMutable<framework::SelectedRows>());
+    });
   } else {
     std::vector<const LoDTensor *> lod_tensors =
         GetInputValues<LoDTensor>(in_var_handles, var_scopes);
-
-    if (paddle::platform::is_cpu_place(pre_place)) {
-      ReduceLoDTensor func(lod_tensors,
-                           out_var->GetMutable<framework::LoDTensor>());
-      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
-    } else if (paddle::platform::is_gpu_place(pre_place)) {
+    if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
+      this->RunAndRecordEvent([&] {
+        ReduceLoDTensor func(lod_tensors,
+                             out_var->GetMutable<framework::LoDTensor>());
+        VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      });
+    } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
@@ -96,7 +103,7 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place_, pre_in.type());
 
       auto out_p = out_var_handle->place_;
-      int root = boost::get<platform::CUDAPlace>(out_p).device;
+      int root_id = boost::get<platform::CUDAPlace>(out_p).device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
@@ -104,23 +111,23 @@ void ReduceOpHandle::RunImpl() {
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        auto stream = nccl_ctx.stream();
-        auto comm = nccl_ctx.comm_;
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
-        if (root == dev_id) {
+        if (root_id == dev_id) {
           recvbuffer =
               out_var->GetMutable<framework::LoDTensor>()->mutable_data(
                   out_var_handle->place_);
         }
 
         int type = platform::ToNCCLDataType(lod_tensor.type());
-        all_reduce_calls.emplace_back([=] {
-          PADDLE_ENFORCE(platform::dynload::ncclReduce(
-              buffer, recvbuffer, static_cast<size_t>(lod_tensor.numel()),
-              static_cast<ncclDataType_t>(type), ncclSum, root, comm, stream));
-        });
+        size_t numel = static_cast<size_t>(lod_tensor.numel());
+        all_reduce_calls.emplace_back(
+            [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
+              PADDLE_ENFORCE(platform::dynload::ncclReduce(
+                  buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
+                  ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+            });
       }
 
       this->RunAndRecordEvent([&] {
@@ -130,7 +137,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW("CUDA is not enabled.");
 #endif
     } else {
       PADDLE_THROW("Place should be CPUPlace or CUDAPlace.");
@@ -150,17 +157,6 @@ std::vector<const T *> ReduceOpHandle::GetInputValues(
     in_selected_rows.emplace_back(&in_sr);
   }
   return in_selected_rows;
-}
-
-void ReduceOpHandle::WaitInputVarGenerated(
-    const std::vector<VarHandle *> &in_var_handles) {
-  for (auto *in : in_var_handles) {
-    if (in->generated_op_) {
-      for (auto pair : dev_ctxes_) {
-        in->generated_op_->Wait(pair.second);
-      }
-    }
-  }
 }
 
 std::string ReduceOpHandle::Name() const { return "reduce"; }

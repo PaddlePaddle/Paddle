@@ -228,11 +228,12 @@ TEST(LoD, CheckAbsLoD) {
   ASSERT_FALSE(CheckAbsLoD(abs_lod0));
 }
 
-TEST(LoDTensor, RecordIO) {
+template <typename T>
+static void TestRecordIO() {
   LoDTensor tensor;
-  int* tmp = tensor.mutable_data<int>(make_ddim({4, 5}), platform::CPUPlace());
+  T* tmp = tensor.mutable_data<T>(make_ddim({4, 5}), platform::CPUPlace());
   for (int i = 0; i < 20; ++i) {
-    tmp[i] = i;
+    tmp[i] = static_cast<T>(i);
   }
 
   std::stringstream* stream = new std::stringstream();
@@ -247,7 +248,7 @@ TEST(LoDTensor, RecordIO) {
 
   auto assert_tensor_ok = [](const LoDTensor& tensor) {
     for (int i = 0; i < 20; ++i) {
-      ASSERT_EQ(tensor.data<int>()[i], i);
+      ASSERT_EQ(tensor.data<T>()[i], static_cast<T>(i));
     }
   };
 
@@ -255,14 +256,22 @@ TEST(LoDTensor, RecordIO) {
     std::unique_ptr<std::istream> stream_ptr(stream);
     recordio::Scanner scanner(std::move(stream_ptr));
     auto tensors = ReadFromRecordIO(&scanner, ctx);
-    ASSERT_EQ(tensors.size(), 2);
+    ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
     tensors = ReadFromRecordIO(&scanner, ctx);
-    ASSERT_EQ(tensors.size(), 2);
+    ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
   }
+}
+
+TEST(LoDTensor, RecordIO) {
+  TestRecordIO<int>();
+  TestRecordIO<int16_t>();
+  TestRecordIO<uint8_t>();
+  TestRecordIO<float>();
+  TestRecordIO<double>();
 }
 
 }  // namespace framework

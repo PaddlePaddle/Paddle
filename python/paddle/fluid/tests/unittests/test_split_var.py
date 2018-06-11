@@ -14,22 +14,14 @@
 
 import math
 import unittest
-from paddle.fluid.distribute_transpiler import split_dense_variable
+from paddle.fluid.transpiler.distribute_transpiler import split_variable
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import random
 
 
 class TestSplitVar(unittest.TestCase):
-    def test_check_output(self):
-        # split below shapes to 10 servers
-        shapes = [[3, 5], [1024], [28, 784], [8, 1020], [800, 10]]
-        expected_sizes = [
-            [15], [1024],
-            [2352, 2352, 2352, 2352, 2352, 2352, 2352, 2352, 2352, 784],
-            [2040, 2040, 2040, 2040],
-            [1150, 1150, 1150, 1150, 1150, 1150, 1100]
-        ]
+    def check_split_output(self, shapes, expected_sizes, min_size):
         var_list = []
         program = fluid.Program()
         for shape in shapes:
@@ -39,7 +31,7 @@ class TestSplitVar(unittest.TestCase):
                 # dtype=core.VarDesc.VarType.LOD_TENSOR,
                 shape=shape)
             var_list.append(var)
-        blocks = split_dense_variable(var_list, 10)
+        blocks = split_variable(var_list, 10, min_size)
         all_sizes = []
         for s in expected_sizes:
             for s2 in s:
@@ -47,6 +39,25 @@ class TestSplitVar(unittest.TestCase):
         for i, block_str in enumerate(blocks):
             varname, block_id, size = block_str.split(":")
             self.assertEqual(int(size), all_sizes[i])
+
+    def test_1k(self):
+        shapes = [[3, 5], [1024], [28, 784], [8, 1020], [800, 10]]
+        expected_sizes = [
+            [15], [1024],
+            [2352, 2352, 2352, 2352, 2352, 2352, 2352, 2352, 2352, 784],
+            [2040, 2040, 2040, 2040],
+            [1150, 1150, 1150, 1150, 1150, 1150, 1100]
+        ]
+
+        self.check_split_output(shapes, expected_sizes, 1024)
+
+    def test_check_output_8k(self):
+        shapes = [[3, 5], [1024], [28, 784], [8, 1020], [800, 10],
+                  [6, 33, 33, 33]]
+        expected_sizes = [[15], [1024], [10976, 10976], [8160], [8000],
+                          [35937, 35937, 35937, 35937, 35937, 35937]]
+
+        self.check_split_output(shapes, expected_sizes, 8192)
 
 
 if __name__ == '__main__':

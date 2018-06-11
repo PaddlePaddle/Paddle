@@ -77,8 +77,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
@@ -164,7 +163,9 @@ REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
+    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     softmax_grad,
-    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

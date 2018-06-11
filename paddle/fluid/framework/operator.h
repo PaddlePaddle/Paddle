@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/utils/Error.h"
 
 namespace paddle {
 namespace framework {
@@ -105,6 +104,7 @@ class OperatorBase {
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
+  bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
   //! Get a input which has multiple variables.
@@ -112,6 +112,7 @@ class OperatorBase {
   //! Get all inputs variable names
   std::vector<std::string> InputVars() const;
 
+  bool HasOutputs(const std::string& name) const;
   //! Get a output with argument's name described in `op_proto`
   std::string Output(const std::string& name) const;
   //! Get an output which has multiple variables.
@@ -189,6 +190,10 @@ class ExecutionContext {
   inline const T& Attr(const std::string& name) const {
     return op_.Attr<T>(name);
   }
+
+  bool HasInput(const std::string& name) const { return op_.HasInputs(name); }
+
+  bool HasOutput(const std::string& name) const { return op_.HasOutputs(name); }
 
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();

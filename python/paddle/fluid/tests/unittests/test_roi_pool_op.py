@@ -25,7 +25,7 @@ class TestROIPoolOp(OpTest):
         self.make_rois()
         self.calc_roi_pool()
 
-        self.inputs = {'X': self.x, 'ROIs': self.rois}
+        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
@@ -36,7 +36,7 @@ class TestROIPoolOp(OpTest):
         self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
 
     def init_test_case(self):
-        self.batch_size = 5
+        self.batch_size = 3
         self.channels = 3
         self.height = 6
         self.width = 4
@@ -47,7 +47,6 @@ class TestROIPoolOp(OpTest):
         self.spatial_scale = 1.0 / 4.0
         self.pooled_height = 2
         self.pooled_width = 2
-        self.rois_num = 2
 
         self.x = np.random.random(self.x_dim).astype('float32')
 
@@ -106,20 +105,24 @@ class TestROIPoolOp(OpTest):
 
     def make_rois(self):
         rois = []
-        batch_ids = np.random.randint(0, self.batch_size, size=self.rois_num)
-        for i in range(self.rois_num):
-            x1 = np.random.random_integers(
-                0, self.width / self.spatial_scale - self.pooled_width)
-            y1 = np.random.random_integers(
-                0, self.height / self.spatial_scale - self.pooled_height)
+        self.rois_lod = [[]]
+        for bno in range(self.batch_size):
+            self.rois_lod[0].append(len(rois))
+            for i in range(bno + 1):
+                x1 = np.random.random_integers(
+                    0, self.width / self.spatial_scale - self.pooled_width)
+                y1 = np.random.random_integers(
+                    0, self.height / self.spatial_scale - self.pooled_height)
 
-            x2 = np.random.random_integers(x1 + self.pooled_width,
-                                           self.width / self.spatial_scale)
-            y2 = np.random.random_integers(y1 + self.pooled_height,
-                                           self.height / self.spatial_scale)
+                x2 = np.random.random_integers(x1 + self.pooled_width,
+                                               self.width / self.spatial_scale)
+                y2 = np.random.random_integers(y1 + self.pooled_height,
+                                               self.height / self.spatial_scale)
 
-            roi = [batch_ids[i], x1, y1, x2, y2]
-            rois.append(roi)
+                roi = [bno, x1, y1, x2, y2]
+                rois.append(roi)
+        self.rois_lod[0].append(len(rois))
+        self.rois_num = len(rois)
         self.rois = np.array(rois).astype("int64")
 
     def setUp(self):

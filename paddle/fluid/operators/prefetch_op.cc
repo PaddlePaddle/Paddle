@@ -41,12 +41,7 @@ class PrefetchOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    auto client_var_name = Output("RPCClient");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
-                            "Can not find variable '%s' in the scope.",
-                            client_var_name);
-    auto* client_var = scope.FindVar(client_var_name);
-    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+    auto rpc_client = detail::RPCClient::GetInstance();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
@@ -64,12 +59,8 @@ class PrefetchOp : public framework::OperatorBase {
 
 class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PrefetchOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(LoDTensor) Input Id variables to be sent").AsDuplicable();
-    AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which will be"
-              "initialized at most once.");
     AddOutput("Out",
               "(LoDTensor) result "
               "to be fetched from parameter server")
@@ -88,17 +79,6 @@ the parameter server and fetch result back.
   }
 };
 
-class PrefetchOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output("RPCClient").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
-  }
-};
-
 class PrefetchOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
@@ -111,5 +91,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(prefetch, ops::PrefetchOp,
                   paddle::framework::EmptyGradOpMaker, ops::PrefetchOpMaker,
-                  ops::PrefetchOpVarTypeInference,
                   ops::PrefetchOpShapeInference);

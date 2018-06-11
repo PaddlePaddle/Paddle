@@ -5,10 +5,10 @@ class BinaryDistribution(Distribution):
         return True
 
 MAJOR   = 0
-MINOR   = 11
+MINOR   = 13
 PATCH   = 0
 RC      = 0
-ISTAGED = False
+ISTAGED = True
 
 
 
@@ -68,7 +68,9 @@ packages=['paddle',
           'paddle.fluid',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
-          'paddle.fluid.layers']
+          'paddle.fluid.layers',
+          'paddle.fluid.transpiler',
+          'paddle.fluid.transpiler.details']
 
 if '${WITH_FLUID_ONLY}'== 'OFF':
     packages+=['paddle.proto',

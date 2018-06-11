@@ -112,7 +112,7 @@ def cast(x, dtype):
     return out
 
 
-def concat(input, axis=0):
+def concat(input, axis=0, name=None):
     """
     **Concat**
 
@@ -122,6 +122,8 @@ def concat(input, axis=0):
     Args:
         input(list): List of tensors to be concatenated
         axis(int): Integer axis along which the tensors will be concatenated
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: Output variable of the concatenation
@@ -193,10 +195,7 @@ def assign(input, output):
     helper = LayerHelper('assign', **locals())
     if isinstance(input, Variable):
         helper.append_op(
-            type='scale',
-            inputs={'X': [input]},
-            outputs={'Out': [output]},
-            attrs={'scale': 1.0})
+            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP32:

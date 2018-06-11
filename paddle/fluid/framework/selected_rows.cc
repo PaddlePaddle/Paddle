@@ -18,8 +18,8 @@ namespace paddle {
 namespace framework {
 
 struct ReAllocateVisitor {
-  ReAllocateVisitor(framework::Tensor* tensor, const framework::DDim& dims)
-      : tensor_(tensor), dims_(dims) {}
+  ReAllocateVisitor(const framework::DDim& dims, framework::Tensor* tensor)
+      : dims_(dims), tensor_(tensor) {}
 
   template <typename T>
   void operator()() const {
@@ -34,8 +34,8 @@ struct ReAllocateVisitor {
     tensor_->ShareDataWith(cpu_tensor);
   }
 
-  framework::Tensor* tensor_;
   framework::DDim dims_;
+  framework::Tensor* tensor_;
 };
 
 struct TensorCopyVisitor {
@@ -120,28 +120,33 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
-std::vector<int64_t> SelectedRows::Get(std::vector<int64_t> keys,
-                                       framework::Tensor* value) const {
+std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
+    const std::vector<int64_t>& keys, framework::Tensor* value) const {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
-  std::vector<int64_t> non_keys;
-  int64_t value_width = value_->numel() / value_->dims()[0];
-  PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
-                    "output tensor should have the same shape with table "
-                    "execpt the dims[0].");
+  std::vector<std::pair<int64_t, int64_t>> non_keys_pair;
+  if (keys.empty()) {
+    VLOG(3) << "keys is empty, please check data!";
+  } else {
+    int64_t value_width = value_->numel() / value_->dims()[0];
+    PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
+                      "output tensor should have the same shape with table "
+                      "except the dims[0].");
 
-  for (size_t i = 0; i < keys.size(); ++i) {
-    int64_t index = Index(keys[i]);
-    if (index == -1) {
-      non_keys.push_back(keys[i]);
-    } else {
-      framework::VisitDataType(
-          framework::ToDataType(value_->type()),
-          TensorCopyVisitor(value, i * value_width, *value_.get(),
-                            index * value_width, value_width));
+    for (size_t i = 0; i < keys.size(); ++i) {
+      int64_t index = Index(keys[i]);
+      if (index == -1) {
+        non_keys_pair.push_back(
+            std::make_pair(keys[i], static_cast<int64_t>(i)));
+      } else {
+        framework::VisitDataType(
+            framework::ToDataType(value_->type()),
+            TensorCopyVisitor(value, i * value_width, *value_.get(),
+                              index * value_width, value_width));
+      }
     }
   }
-  return non_keys;
+  return non_keys_pair;
 }
 
 bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
@@ -153,6 +158,7 @@ bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
   }
   PADDLE_ENFORCE_EQ(value.dims()[0], static_cast<size_t>(1),
                     "The first dim of value should be 1.");
+  std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
   auto index = Index(key);
   bool is_new_key = false;
   if (index == -1) {
@@ -164,7 +170,7 @@ bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
       auto dims = value_->dims();
       dims[0] = (dims[0] + 1) << 1;
       framework::VisitDataType(framework::ToDataType(value.type()),
-                               ReAllocateVisitor(value_.get(), dims));
+                               ReAllocateVisitor(dims, value_.get()));
     }
   }
 

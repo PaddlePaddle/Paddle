@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+
 #include <sys/time.h>
 #include <time.h>
 #include <algorithm>
 #include <iomanip>
+#include <limits>
 #include <map>
 #include <mutex>  // NOLINT
+#include <random>
 #include <string>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -32,6 +35,10 @@ namespace paddle {
 namespace platform {
 
 struct EventList;
+
+static int64_t profiler_lister_id = 0;
+static bool should_send_profile_state = false;
+std::mutex profiler_mu;
 
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
@@ -167,8 +174,9 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 }
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
-    : start_ns_(PosixInNsec()) {
+    : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
+  is_enabled_ = true;
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
@@ -177,7 +185,7 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 }
 
 RecordEvent::~RecordEvent() {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
@@ -187,14 +195,16 @@ RecordEvent::~RecordEvent() {
   PopEvent(name_, dev_ctx_);
 }
 
-RecordBlock::RecordBlock(int block_id) : start_ns_(PosixInNsec()) {
+RecordBlock::RecordBlock(int block_id)
+    : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
+  is_enabled_ = true;
   SetCurBlock(block_id);
   name_ = string::Sprintf("block_%d", block_id);
 }
 
 RecordBlock::~RecordBlock() {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
@@ -219,13 +229,14 @@ void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enbale profling, since the input state is ",
                  "ProfilerState::kDisabled");
-  PADDLE_ENFORCE(g_state == ProfilerState::kDisabled,
-                 "The profiling state should be disabled when calling ",
-                 "EnableProfiler.");
-  g_state = state;
-  if (g_state == ProfilerState::kAll) {
-    GetDeviceTracer()->Enable();
+
+  std::lock_guard<std::mutex> l(profiler_mu);
+  if (state == g_state) {
+    return;
   }
+  g_state = state;
+  should_send_profile_state = true;
+  GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
     // Generate some dummy events first to reduce the startup overhead.
@@ -287,7 +298,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   } else if (g_state == ProfilerState::kAll) {
     place = "All";
   } else {
-    PADDLE_THROW("Invalid profiler state");
+    PADDLE_THROW("Invalid profiler state", g_state);
   }
 
   std::cout << "Place: " << place << std::endl;
@@ -435,8 +446,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path) {
-  PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
-                 "Can't disable profiling, since it's not starting.");
+  std::lock_guard<std::mutex> l(profiler_mu);
+  if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_", nullptr);
 
@@ -444,12 +455,25 @@ void DisableProfiler(EventSortingKey sorted_key,
   ParseEvents(all_events, sorted_key);
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
-  if (g_state == ProfilerState::kAll && tracer && tracer->IsEnabled()) {
+  if (tracer->IsEnabled()) {
     tracer->Disable();
     tracer->GenProfile(profile_path);
   }
   g_state = ProfilerState::kDisabled;
+  should_send_profile_state = true;
 }
+
+bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
+bool ShouldSendProfileState() { return should_send_profile_state; }
+
+void SetProfileListener() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist6(
+      1, std::numeric_limits<int>::max());
+  profiler_lister_id = dist6(rng);
+}
+int64_t ListenerId() { return profiler_lister_id; }
 
 }  // namespace platform
 }  // namespace paddle

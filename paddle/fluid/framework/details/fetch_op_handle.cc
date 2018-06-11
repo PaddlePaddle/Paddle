@@ -31,7 +31,7 @@ FetchOpHandle::~FetchOpHandle() {
   }
 }
 
-void FetchOpHandle::Wait(platform::DeviceContext *waited_dev) {
+void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
 }
 
@@ -45,29 +45,25 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 }
 
 void FetchOpHandle::RunImpl() {
-  auto cpu_ctx =
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-  for (auto *input : inputs_) {
-    auto *var = static_cast<VarHandle *>(input);
-    var->generated_op_->Wait(cpu_ctx);
-  }
+  WaitInputVarGenerated(platform::CPUPlace());
+
   tensors_.resize(inputs_.size());
-  auto *var_handle = static_cast<VarHandle *>(inputs_[0]);
-  auto &var_name = var_handle->name_;
   platform::CPUPlace cpu;
   auto &scopes = *local_scopes_;
 
-  for (size_t i = 0; i < scopes.size(); ++i) {
-    auto &scope = scopes[i];
-    auto *var =
-        scope->FindVar(kLocalExecScopeName)->Get<Scope *>()->FindVar(var_name);
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
+    auto &scope = scopes.at(var_handle->scope_idx_);
+    auto *var = scope->FindVar(kLocalExecScopeName)
+                    ->Get<Scope *>()
+                    ->FindVar(var_handle->name_);
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
-                            var_name);
+                            var_handle->name_);
+
     auto &t = var->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i], true);
-      dev_ctxes_.at(t.place())->Wait();
+      TensorCopySync(t, cpu, &tensors_[i]);
 #endif
     } else {
       tensors_[i].ShareDataWith(t);
@@ -76,6 +72,15 @@ void FetchOpHandle::RunImpl() {
   }
 
   this->WaitAndMergeCPUTensors();
+}
+
+void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
+  auto cpu_ctx = platform::DeviceContextPool::Instance().Get(place);
+  for (auto *input : inputs_) {
+    if (input->generated_op_) {
+      input->generated_op_->RecordWaitEventOnCtx(cpu_ctx);
+    }
+  }
 }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }

@@ -134,6 +134,11 @@ OpDesc *BlockDesc::PrependOp() {
   return ops_.front().get();
 }
 
+void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
+  need_update_ = true;
+  ops_.emplace_front(std::move(op_desc));
+}
+
 OpDesc *BlockDesc::InsertOp(size_t index) {
   need_update_ = true;
   auto it = ops_.begin() + index;
@@ -143,7 +148,7 @@ OpDesc *BlockDesc::InsertOp(size_t index) {
 }
 
 void BlockDesc::RemoveOp(size_t s, size_t e) {
-  if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
+  if (ops_.begin() + s >= ops_.end() || ops_.begin() + e > ops_.end()) {
     return;
   }
   need_update_ = true;
@@ -164,17 +169,13 @@ void BlockDesc::Flush() {
   }
 
   if (need_update_) {
-    auto &op_field = *this->desc_->mutable_ops();
-    this->ClearPBOps();
-    op_field.Reserve(static_cast<int>(ops_.size()));
+    this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
-      op_field.AddAllocated(op_desc->Proto());
+      this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
     }
-    auto &var_field = *this->desc_->mutable_vars();
-    this->ClearPBVars();
-    var_field.Reserve(static_cast<int>(vars_.size()));
+    this->desc_->mutable_vars()->Clear();
     for (auto &var_desc : vars_) {
-      var_field.AddAllocated(var_desc.second->Proto());
+      this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
     }
     need_update_ = false;
   }
@@ -209,22 +210,6 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
   for (auto &it : other.vars_) {
     auto *var = new VarDesc(*it.second);
     vars_[it.first].reset(var);
-  }
-}
-
-void BlockDesc::ClearPBOps() {
-  auto ops = this->desc_->mutable_ops();
-  while (!ops->empty()) {
-    // we do not own the OpDesc, so release the ownership.
-    ops->ReleaseLast();
-  }
-}
-
-void BlockDesc::ClearPBVars() {
-  auto vars = this->desc_->mutable_vars();
-  while (!vars->empty()) {
-    // we do not own the VarDesc, so release the ownership.
-    vars->ReleaseLast();
   }
 }
 

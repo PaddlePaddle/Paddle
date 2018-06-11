@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import time
 import unittest
+from multiprocessing import Process
+
+import numpy
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import numpy
-from multiprocessing import Process
-from threading import Thread
-import os, sys
-import time
 
 
 class TestSendOp(unittest.TestCase):
+    @unittest.skip(
+        "This test is buggy. We cannot use time.sleep to sync processes, the connection may fail in unittest."
+    )
     def test_send(self):
         # Run init_serv in a thread
         place = fluid.CPUPlace()
@@ -34,7 +36,7 @@ class TestSendOp(unittest.TestCase):
         p.start()
 
         time.sleep(10)
-        with open("/tmp/paddle.selected_port", "r") as fn:
+        with open("/tmp/paddle.%d.port" % p.pid, "r") as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
 
@@ -52,15 +54,18 @@ class TestSendOp(unittest.TestCase):
             serv = layers.ListenAndServ(
                 "127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
+                out_var = main.global_block().create_var(
+                    name="scale_0.tmp_0",
+                    psersistable=True,
+                    dtype="float32",
+                    shape=[32, 32])
                 x = layers.data(
                     shape=[32, 32],
                     dtype='float32',
                     name="X",
                     append_batch_size=False)
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
-                o = layers.scale(x=x, scale=10.0)
-            main.global_block().create_var(
-                name=o.name, psersistable=False, dtype=o.dtype, shape=o.shape)
+                layers.scale(x=x, scale=10.0, out=out_var)
 
         self.server_exe = fluid.Executor(place)
         self.server_exe.run(main)

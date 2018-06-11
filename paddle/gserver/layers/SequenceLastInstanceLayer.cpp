@@ -38,12 +38,12 @@ namespace paddle {
  */
 
 class SequenceLastInstanceLayer : public SequencePoolLayer {
-protected:
+ protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
   std::vector<int> instanceIds_;
 
-public:
+ public:
   explicit SequenceLastInstanceLayer(const LayerConfig& config)
       : SequencePoolLayer(config) {}
 

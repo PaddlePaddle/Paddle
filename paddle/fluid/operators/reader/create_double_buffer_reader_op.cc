@@ -113,14 +113,13 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 };
 
 class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateDoubleBufferReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddComment(R"DOC(
       CreateDoubleBufferReader Operator
 
       A double buffer reader takes another reader as its 'underlying reader'.
-      It launches another thread to execute the 'underlying reader' asynchronously, 
+      It launches another thread to execute the 'underlying reader' asynchronously,
       which prevents reading process from blocking subsequent training.
     )DOC");
     std::unordered_set<std::string> enum_range;
@@ -168,11 +167,10 @@ void DoubleBufferReader::PrefetchThreadFunc() {
     }
     if (platform::is_gpu_place(place_)) {
       auto& gpu_batch = gpu_tensor_cache_[cached_tensor_id];
-      auto* gpu_ctx = ctxs_[cached_tensor_id].get();
       gpu_batch.resize(cpu_batch.size());
       for (size_t i = 0; i < cpu_batch.size(); ++i) {
-        framework::TensorCopy(cpu_batch[i], place_, *gpu_ctx, &gpu_batch[i],
-                              true);
+        // TODO(fengjiayi): Use asynchronous TensorCopy instead
+        framework::TensorCopySync(cpu_batch[i], place_, &gpu_batch[i]);
         gpu_batch[i].set_lod(cpu_batch[i].lod());
       }
     }

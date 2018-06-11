@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 
@@ -56,14 +58,14 @@ class TensorRTEngine : public EngineBase {
   virtual ~TensorRTEngine();
 
   // TODO(Superjomn) implement it later when graph segmentation is supported.
-  virtual void Build(const DescType& paddle_model) override;
+  void Build(const DescType& paddle_model) override;
 
-  virtual void Execute(int batch_size) override;
+  void Execute(int batch_size) override;
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork() {
-    infer_builder_.reset(createInferBuilder(logger_));
+    infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
   // After finishing adding ops, freeze this network and creates the executation
@@ -78,24 +80,34 @@ class TensorRTEngine : public EngineBase {
   // name.
   void DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                      const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name.
+  void DeclareOutput(const std::string& name);
 
   // GPU memory address for an ITensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
   // data directly to the buffer to save data copy overhead.
   // NOTE this should be used after calling `FreezeNetwork`.
-  void*& buffer(const std::string& name);
+  Buffer& buffer(const std::string& name) override;
+
+  cudaStream_t* stream() { return stream_; }
 
   // Fill an input from CPU memory with name and size.
-  void SetInputFromCPU(const std::string& name, void* data, size_t size);
+  void SetInputFromCPU(const std::string& name, const void* data, size_t size);
   // TODO(Superjomn) is this method necessary given that buffer(xxx) can be
   // accessed directly. Fill an input from GPU memory with name and size.
-  void SetInputFromGPU(const std::string& name, void* data, size_t size);
+  void SetInputFromGPU(const std::string& name, const void* data, size_t size);
   // Get an output called name, the output of tensorrt is in GPU, so this method
-  // will just return the output's GPU memory address.
+  // Return the output's GPU memory address without copy.
   void* GetOutputInGPU(const std::string& name);
+  // Copy data into dst inside the GPU device.
+  void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.
   void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
+  // Fill an ITensor into map itensor_map_.
+  void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
+  // Get an ITensor called name.
+  nvinfer1::ITensor* GetITensor(const std::string& name);
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
@@ -108,9 +120,11 @@ class TensorRTEngine : public EngineBase {
   cudaStream_t* stream_;
   nvinfer1::ILogger& logger_;
 
-  std::vector<void*> buffers_;
+  std::vector<Buffer> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
+  std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
+      itensor_map_;
 
   // TensorRT related internal members
   template <typename T>
