@@ -21,16 +21,16 @@ namespace detail {
 
 DEFINE_int32(brpc_channel_num, 24,
              "Number of channels to send requests connected to one server");
-DEFINE_int32(timeout_ms, -1, "RPC timeout in milliseconds");
+DEFINE_int32(timeout_ms, 30000, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 BRPCClient::~BRPCClient() { Wait(); }
 
-void HandleSendResponse(std::unique_ptr<brpc::Controller> cntl,
-                        std::unique_ptr<sendrecv::VoidMessage> response) {
+void HandleSendResponse(brpc::Controller* cntl,
+                        sendrecv::VoidMessage* response) {
   // std::unique_ptr makes sure cntl/response will be deleted before returning.
-  // std::unique_ptr<brpc::Controller> cntl_guard(cntl);
-  // std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
 
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send EchoRequest, " << cntl->ErrorText();
@@ -55,10 +55,10 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
         auto ch_ctx = ch_ptr->Pop();
         brpc::Controller* cntl = new brpc::Controller();
         sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
+        cntl->set_timeout_ms(time_out);
 
-        google::protobuf::Closure* done = brpc::NewCallback(
-            &HandleSendResponse, std::unique_ptr<brpc::Controller>(cntl),
-            std::unique_ptr<sendrecv::VoidMessage>(response));
+        google::protobuf::Closure* done =
+            brpc::NewCallback(&HandleSendResponse, cntl, response);
 
         sendrecv::VariableMessage request;
         ch_ctx->stub->SendVariable(cntl, &request, response, done);

@@ -77,8 +77,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
     detail::RequestSendHandler rpc_h(true);
-    std::unique_ptr<detail::RPCServer> rpc_service(nullptr);
-    rpc_service.reset(new RPCSERVER_T(endpoint, 1));
+    std::unique_ptr<detail::RPCServer> rpc_service(
+        new RPCSERVER_T(endpoint, 1));
 
     rpc_service->RegisterRPC(detail::kRequestSend, &rpc_h);
     rpc_h.SetRPCServer(rpc_service.get());

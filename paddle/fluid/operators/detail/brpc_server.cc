@@ -16,15 +16,17 @@
 #include "paddle/fluid/operators/detail/request_handler.h"
 
 namespace sendrecv {
+
+typedef std::unordered_map<std::string,
+                           paddle::operators::detail::RequestHandler*>
+    HandlerMap;
+
 class BRPCServiceImpl : public SendRecvService {
  public:
-  BRPCServiceImpl(const std::unordered_map<
-                  std::string, paddle::operators::detail::RequestHandler*>&
-                      rpc_call_map) {
-    request_send_h_ = nullptr;
-    request_get_h_ = nullptr;
-    request_prefetch_h_ = nullptr;
-
+  explicit BRPCServiceImpl(const HandlerMap& rpc_call_map)
+      : request_send_h_(nullptr),
+        request_get_h_(nullptr),
+        request_prefetch_h_(nullptr) {
     auto it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_send_h_ = it->second;
@@ -46,6 +48,8 @@ class BRPCServiceImpl : public SendRecvService {
   void SendVariable(google::protobuf::RpcController* cntl_butil,
                     const VariableMessage* request, VoidMessage* response,
                     google::protobuf::Closure* done) override {
+    PADDLE_ENFORCE(request_send_h_ != nullptr,
+                   "RequestSend handler should be registed first!");
     brpc::ClosureGuard done_guard(done);
 
     paddle::framework::Scope* local_scope = request_send_h_->scope();
@@ -70,12 +74,18 @@ class BRPCServiceImpl : public SendRecvService {
 
   void GetVariable(google::protobuf::RpcController* cntl_butil,
                    const VariableMessage* request, VariableMessage* response,
-                   google::protobuf::Closure* done) override {}
+                   google::protobuf::Closure* done) override {
+    PADDLE_ENFORCE(request_get_h_ != nullptr,
+                   "RequestGet handler should be registed first!");
+  }
 
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
-                        google::protobuf::Closure* done) override {}
+                        google::protobuf::Closure* done) override {
+    PADDLE_ENFORCE(request_prefetch_h_ != nullptr,
+                   "kRequestPrefetch handler should be registed first!");
+  }
 
  private:
   paddle::operators::detail::RequestHandler* request_send_h_;

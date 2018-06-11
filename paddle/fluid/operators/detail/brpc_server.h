@@ -14,24 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
-#include <set>
+#include <condition_variable>  // NOLINT
+#include <mutex>               // NOLINT
 #include <string>
-#include <thread>  // NOLINT
-#include <utility>
-#include <vector>
 
 #include "brpc/server.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
 #include "paddle/fluid/operators/detail/rpc_server.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
