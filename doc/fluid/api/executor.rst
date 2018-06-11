@@ -30,3 +30,9 @@ switch_scope
 ..  autofunction:: paddle.fluid.executor.switch_scope
     :noindex:
 
+fetch_var
+---------
+
+..  autofunction:: paddle.fluid.executor.fetch_var
+    :noindex:
+

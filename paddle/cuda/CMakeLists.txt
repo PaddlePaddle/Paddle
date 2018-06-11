@@ -87,8 +87,3 @@ else()
 endif()
 
 add_dependencies(paddle_cuda paddle_proto ${external_project_dependencies})
-
-add_style_check_target(paddle_cuda
-                       ${CUDA_SOURCES}
-                       ${CUDA_HEADERS}
-                       ${CUDA_CXX_SOURCES})

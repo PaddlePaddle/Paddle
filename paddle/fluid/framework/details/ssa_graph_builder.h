@@ -55,8 +55,6 @@ class SSAGraphBuilder {
                              const platform::Place &place, size_t place_offset);
 
   static void AddOutputToLeafOps(SSAGraph *graph);
-
-  static void PrintGraphviz(const SSAGraph &graph, std::ostream &sout);
 };
 }  // namespace details
 }  // namespace framework

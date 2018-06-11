@@ -7,6 +7,10 @@ set(OPITMIZER_SRCS
     sgd_optimizer.cc
   )
 
-cc_library(paddle_optimizer STATIC SRCS ${OPITMIZER_SRCS} DEPS paddle_proto glog)
-cc_test(serialization_test SRCS serialization_test.cc DEPS paddle_proto)
-cc_test(parameter_optimizer_test SRCS parameter_optimizer_test.cc DEPS paddle_optimizer)
+add_library(paddle_optimizer ${OPITMIZER_SRCS})
+target_link_libraries(paddle_optimizer paddle_proto glog)
+
+if (WITH_TESTING)
+    add_unittest(serialization_test serialization_test.cc)
+    add_unittest(parameter_optimizer_test parameter_optimizer_test.cc)
+endif()

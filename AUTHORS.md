@@ -4,6 +4,7 @@
 | backyes | Yan-Fei Wang |
 | baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
+| ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |

@@ -28,7 +28,7 @@ namespace paddle {
  *                  crop input as this shape conf
  */
 class CropLayer : public Layer {
-public:
+ public:
   explicit CropLayer(const LayerConfig& config) : Layer(config) {}
 
   ~CropLayer() {}
@@ -38,7 +38,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   void setOutDims();
   void setInDims();
 

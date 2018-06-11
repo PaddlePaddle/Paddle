@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class MaxOutLayer : public Layer {
-protected:
+ protected:
   size_t groups_;
   size_t imgSizeH_, imgSizeW_;
   /// outputChannels_ = channels_ / groups_
@@ -38,7 +38,7 @@ protected:
   size_t featLen_;
   IVectorPtr maxoutId_;
 
-public:
+ public:
   /// return imgSizeH_ * imgSizeW_ * outputChannels_;
   size_t getSize();
 

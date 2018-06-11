@@ -73,6 +73,7 @@
 当然，您也可以进入到Docker容器中，以交互式的方式执行或调试您的代码：
 
   .. code-block:: bash
+
      docker run -it -v $PWD:/work paddlepaddle/paddle /bin/bash
      cd /work
      python train.py
@@ -97,7 +98,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
 国内用户可以使用下面的镜像源来加速访问：
 
-  .. code-block: bash
+  .. code-block:: bash
 
     docker run -p 8888:8888 docker.paddlepaddlehub.com/book
 

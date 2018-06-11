@@ -59,7 +59,7 @@
     代码示例如下：
 
     ```python
-    from paddle.utils.merge_model import merge_v2_modelss
+    from paddle.utils.merge_model import merge_v2_model
     from mnist_v2 import network
 
     net = network(is_infer=True)

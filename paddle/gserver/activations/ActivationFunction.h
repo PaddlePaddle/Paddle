@@ -31,7 +31,7 @@ struct Argument;
  *
  */
 class ActivationFunction {
-public:
+ public:
   static ActivationFunction* create(const std::string& type);
   static std::vector<std::string> getAllRegisteredTypes();
 

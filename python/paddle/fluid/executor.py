@@ -170,6 +170,8 @@ def get_program_cache_key(feed, fetch_list):
             return var.desc.name()
         elif isinstance(var, str):
             return var
+        elif isinstance(var, basestring):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
 

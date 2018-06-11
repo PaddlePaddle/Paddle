@@ -33,7 +33,7 @@ namespace paddle {
  */
 
 class DetectionOutputLayer : public Layer {
-public:
+ public:
   explicit DetectionOutputLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -42,7 +42,7 @@ public:
 
   void backward(const UpdateCallback& callback = nullptr) {}
 
-protected:
+ protected:
   inline LayerPtr getPriorBoxLayer() { return inputLayers_[0]; }
 
   inline LayerPtr getLocInputLayer(size_t index) {
@@ -53,7 +53,7 @@ protected:
     return inputLayers_[1 + inputNum_ + index];
   }
 
-private:
+ private:
   size_t numClasses_;  // number of classes
   size_t inputNum_;    // number of input layers
   real nmsThreshold_;

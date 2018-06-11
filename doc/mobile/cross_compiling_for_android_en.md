@@ -36,7 +36,7 @@ $ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
 We can run the Docker image we just created to build the inference library of PaddlePaddle for Android using the command below:
 
 ```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android
+$ docker run -it --rm -v $PWD:/paddle -w /paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android ./paddle/scripts/paddle_build.sh build_android
 ```
 
 The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
@@ -70,7 +70,7 @@ The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
 
 The ARM-64 architecture (`arm64-v8a`) requires at least level 21 of Android API.
 
-The default entry-point of the Docker image, [`paddle/scripts/docker/build_android.sh`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
+The build command, [`paddle/scripts/paddle_build.sh build_android`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/paddle_build.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
 
 The above command generates and outputs the inference library in `$PWD/install_android` and puts third-party libraries in `$PWD/install_android/third_party`.
 

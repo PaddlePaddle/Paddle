@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import time
 import unittest
+from multiprocessing import Process
+
+import numpy
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import numpy
-from multiprocessing import Process
-from threading import Thread
-import os, sys
-import time
 
 
 class TestSendOp(unittest.TestCase):
+    @unittest.skip(
+        "This test is buggy. We cannot use time.sleep to sync processes, the connection may fail in unittest."
+    )
     def test_send(self):
         # Run init_serv in a thread
         place = fluid.CPUPlace()
@@ -34,7 +36,7 @@ class TestSendOp(unittest.TestCase):
         p.start()
 
         time.sleep(10)
-        with open("/tmp/paddle.%d.selected_port" % p.pid, "r") as fn:
+        with open("/tmp/paddle.%d.port" % p.pid, "r") as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
 

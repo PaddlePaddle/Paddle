@@ -245,7 +245,6 @@ class DeviceTracerImpl : public DeviceTracer {
   void Enable() {
     std::lock_guard<std::mutex> l(trace_mu_);
     if (enabled_) {
-      fprintf(stderr, "DeviceTracer already enabled\n");
       return;
     }
     EnableActivity();

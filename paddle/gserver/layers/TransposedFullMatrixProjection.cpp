@@ -24,14 +24,14 @@ namespace paddle {
  * The config file api is trans_full_matrix_projection.
  */
 class TransposedFullMatrixProjection : public Projection {
-public:
+ public:
   TransposedFullMatrixProjection(const ProjectionConfig& config,
                                  ParameterPtr parameter,
                                  bool useGPu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
 };
 

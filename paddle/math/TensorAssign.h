@@ -25,7 +25,7 @@ namespace paddle {
  */
 template <typename LhsType, typename RhsType, class T>
 class TensorAssignOp {
-public:
+ public:
   explicit TensorAssignOp(const LhsType& lhs, const RhsType& rhs)
       : lhs_(lhs), rhs_(rhs) {
 #ifndef __CUDA_ARCH__
@@ -49,7 +49,7 @@ public:
   }
   INLINE bool useGpu() const { return lhs_.useGpu(); }
 
-private:
+ private:
   TensorApply<LhsType, T> lhs_;
   TensorApply<const RhsType, T> rhs_;
 };

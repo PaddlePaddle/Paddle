@@ -30,7 +30,7 @@ namespace paddle {
  */
 
 class UpsampleLayer : public Layer {
-public:
+ public:
   explicit UpsampleLayer(const LayerConfig& config) : Layer(config) {}
   ~UpsampleLayer() {}
 
@@ -42,7 +42,7 @@ public:
 
   size_t getOutputSize();
 
-protected:
+ protected:
   size_t scale_, scaleY_;
   size_t upsampleSize_, upsampleSizeY_;
   size_t padOutX_, padOutY_;

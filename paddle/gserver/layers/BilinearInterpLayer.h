@@ -26,13 +26,13 @@ namespace paddle {
  * @note  The config file api is bilinear_interp_layer.
  */
 class BilinearInterpLayer : public Layer {
-protected:
+ protected:
   size_t outImgH_, outImgW_;
   size_t inImgH_, inImgW_;
   real ratioH_, ratioW_;
   size_t numChannels_;
 
-public:
+ public:
   explicit BilinearInterpLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual ~BilinearInterpLayer() {}

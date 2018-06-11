@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 
 class MKLPackedWeight {
-protected:
+ protected:
   /// The pointer of weight
   real *weight_;
   /// The pointer of cblas packed gemm to weight
@@ -30,7 +30,7 @@ protected:
   size_t width_;
   bool transW_;
 
-public:
+ public:
   explicit MKLPackedWeight(MatrixPtr weight, bool transW = false) {
     packedWeight_ = nullptr;
     weight_ = weight->getData();
@@ -59,7 +59,7 @@ public:
                         dst->getWidth());
   }
 
-protected:
+ protected:
   void pack_(real *src) {
     if (!packedWeight_) {
       packedWeight_ = cblas_sgemm_alloc(CblasBMatrix, 1, width_, height_);

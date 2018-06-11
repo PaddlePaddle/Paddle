@@ -104,6 +104,16 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
   }
 }
 
+size_t OpHandleBase::NoDummyInputSize() const {
+  size_t cnt = 0;
+  for (auto *in : inputs_) {
+    if (dynamic_cast<DummyVarHandle *>(in) == nullptr) {
+      ++cnt;
+    }
+  }
+  return cnt;
+}
+
 bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
   return in_var && in_var->generated_op_;
 }

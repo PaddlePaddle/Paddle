@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));
 #else
-  new_argv.push_back(strdup("--tryfromenv=use_pinned_memory"));
+  new_argv.push_back(strdup("--tryfromenv=use_pinned_memory,use_mkldnn"));
 #endif
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();

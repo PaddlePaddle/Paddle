@@ -37,11 +37,11 @@ namespace paddle {
  */
 
 class TensorLayer : public Layer {
-protected:
+ protected:
   WeightList weights_;
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit TensorLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

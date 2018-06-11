@@ -18,14 +18,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/transform.h"
+#include "paddle/fluid/operators/clip_op.h"
 
 namespace paddle {
 namespace operators {
 
+using platform::Transform;
+
 template <typename DeviceContext, typename T>
 class FakeQuantizeKernel : public framework::OpKernel<T> {
  public:
-  T find_abs_max(framework::Tensor* in, int n) const {
+  T FindAbsMax(framework::Tensor* in, int n) const {
     T* p = in->mutable_data<T>(platform::CPUPlace());
     T abs_max = (T)0.00000001;
     for (int i = 0; i < n; i++) {
@@ -34,10 +38,9 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
     }
     return T(abs_max);
   }
-
-  T find_range_abs_max(framework::Tensor* scale_list,
-                       framework::Tensor* out_scale, const T& cur_scale,
-                       int window_size, int current_iter) const {
+  T FindRangeAbsMax(framework::Tensor* scale_list, framework::Tensor* out_scale,
+                    const T& cur_scale, int window_size,
+                    int current_iter) const {
     T* sl = scale_list->mutable_data<T>(platform::CPUPlace());
     T remove_tmp = sl[current_iter];
     sl[current_iter] = cur_scale;
@@ -46,38 +49,18 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
       max_scale = cur_scale;
     } else if (fabs(remove_tmp - max_scale) < 1e-6) {
       int size = (current_iter > window_size) ? window_size : current_iter;
-      max_scale = T(find_abs_max(scale_list, size));
+      max_scale = T(FindAbsMax(scale_list, size));
     }
     return max_scale;
   }
 
-  T find_moving_average_abs_max(framework::Tensor* in_scale,
-                                framework::Tensor* out_scale,
-                                const T& cur_scale) const {
+  T FindMovingAverageAbsMmax(framework::Tensor* in_scale,
+                             framework::Tensor* out_scale,
+                             const T& cur_scale) const {
     T* ins = in_scale->mutable_data<T>(platform::CPUPlace());
     T* outs = out_scale->mutable_data<T>(platform::CPUPlace());
     outs[0] = 0.9 * cur_scale + 0.1 * ins[0];
     return T(outs[0]);
-  }
-
-  int apply_saturate(framework::Tensor* src, framework::Tensor* dst,
-                     const T& min, const T& max) const {
-    T* in = src->mutable_data<T>(platform::CPUPlace());
-    T* out = dst->mutable_data<T>(platform::CPUPlace());
-    int num_saturate = 0;
-    int n = src->numel();
-    for (int i = 0; i < n; ++i) {
-      if (in[i] > max) {
-        out[i] = max;
-        ++num_saturate;
-      } else if (in[i] < min) {
-        out[i] = min;
-        ++num_saturate;
-      } else {
-        out[i] = in[i];
-      }
-    }
-    return num_saturate;
   }
 
   virtual void Compute(const framework::ExecutionContext& context) const {
@@ -104,12 +87,15 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
     int window_size = context.Attr<int>("window_size");
     int bit_length = context.Attr<int>("bit_length");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
-    LOG(ERROR) << "bin_cnt:" << bin_cnt;
 
+    auto& dev =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto raw_in = framework::EigenVector<T>::Flatten(*in);
     if (quantize_type == std::string("abs_max")) {
       auto* saving_scale = context.Output<framework::Tensor>("OutMovingScale");
-      scale = T(find_abs_max(const_cast<framework::Tensor*>(in), in->numel()));
-      saving_scale->mutable_data<T>(platform::CPUPlace())[0] = scale;
+      auto scale_out = framework::EigenVector<T>::Flatten(*saving_scale);
+      scale_out.device(dev) = raw_in.abs().maximum();
+      scale = saving_scale->mutable_data<T>(platform::CPUPlace())[0];
 
       auto& device_ctx = context.template device_context<DeviceContext>();
       auto* scale_list = context.Output<framework::Tensor>("OutScales");
@@ -131,28 +117,34 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
         auto* scale_list = context.Output<framework::Tensor>("OutScales");
         auto* saving_scale =
             context.Output<framework::Tensor>("OutMovingScale");
-        scale = find_abs_max(const_cast<framework::Tensor*>(in), in->numel());
-        scale = find_range_abs_max(scale_list, saving_scale, scale, window_size,
-                                   current_iter[0]);
+        auto scale_out = framework::EigenVector<T>::Flatten(*saving_scale);
+        scale_out.device(dev) = raw_in.abs().maximum();
+        scale = saving_scale->mutable_data<T>(platform::CPUPlace())[0];
+        scale = FindRangeAbsMax(scale_list, saving_scale, scale, window_size,
+                                current_iter[0]);
+        saving_scale->mutable_data<T>(platform::CPUPlace())[0] = scale;
         (*current_iter) = (*last_iter) + 1;
       }
-    } else if (quantize_type == std::string("range_abs_max")) {
+    } else if (quantize_type == std::string("moving_average_abs_max")) {
       auto* moving_scale = context.Input<framework::Tensor>("InMovingScale");
       if (is_test) {
         scale = moving_scale->data<T>()[0];
       } else {
-        scale = find_abs_max(const_cast<framework::Tensor*>(in), in->numel());
         auto* saving_scale =
             context.Output<framework::Tensor>("OutMovingScale");
-        scale = find_moving_average_abs_max(
+        auto scale_out = framework::EigenVector<T>::Flatten(*saving_scale);
+        scale_out.device(dev) = raw_in.abs().maximum();
+        scale = saving_scale->mutable_data<T>(platform::CPUPlace())[0];
+        scale = FindMovingAverageAbsMmax(
             const_cast<framework::Tensor*>(moving_scale), saving_scale, scale);
+        saving_scale->mutable_data<T>(platform::CPUPlace())[0] = scale;
       }
     }
 
-    apply_saturate(const_cast<framework::Tensor*>(in), tensor, -scale, scale);
-
-    auto& dev =
-        *context.template device_context<DeviceContext>().eigen_device();
+    Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), in->data<T>(),
+          in->data<T>() + in->numel(), tensor->mutable_data<T>(in->place()),
+          ClipFunctor<T>(-scale, scale));
     auto eigen_out = framework::EigenVector<T>::Flatten(*tensor);
     auto eigen_in = framework::EigenVector<T>::Flatten(*tensor);
     eigen_out.device(dev) = (bin_cnt / scale * eigen_in).round();

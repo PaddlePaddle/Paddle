@@ -20,7 +20,7 @@ namespace paddle {
 
 template <class T>
 class DataProviderGroup : public DataProvider {
-protected:
+ protected:
   typedef T ProviderType;
   typedef std::shared_ptr<ProviderType> ProviderPtrType;
   ProviderPtrType provider_;
@@ -29,7 +29,7 @@ protected:
   std::mutex lock_;
   std::unique_ptr<MultiThreadWorker<ProviderType>> loader_;
 
-public:
+ public:
   DataProviderGroup(const DataConfig& config, bool useGpu);
   ~DataProviderGroup() {}
 
@@ -38,7 +38,7 @@ public:
   virtual int64_t getSize() { return -1; }
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch);
 
-private:
+ private:
   void startLoader();
   void stopLoader();
   void forceStopLoader();

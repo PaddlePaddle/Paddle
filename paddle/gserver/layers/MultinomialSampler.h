@@ -29,7 +29,7 @@ namespace paddle {
  * The computational complexity of generate one sample is O(1).
  */
 class MultinomialSampler {
-public:
+ public:
   MultinomialSampler(const real* prob, int size);
 
   //! protobuf always using double.
@@ -53,7 +53,7 @@ public:
     return gen1([&g, this]() { return rand_(g); });
   }
 
-protected:
+ protected:
   /**
    * @brief Generation
    * @param[in] rand rand is a real random number distribution

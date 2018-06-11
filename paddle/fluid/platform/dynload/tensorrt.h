@@ -40,7 +40,7 @@ extern void* tensorrt_dso_handle;
             paddle::platform::dynload::GetTensorRtDsoHandle();          \
         PADDLE_ENFORCE(tensorrt_dso_handle, "load tensorrt so failed"); \
       });                                                               \
-      void* p_##__name = dlsym(tensorrt_dso_handle, #__name);           \
+      static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);    \
       PADDLE_ENFORCE(p_##__name, "load %s failed", #__name);            \
       return reinterpret_cast<tensorrt_func>(p_##__name)(args...);      \
     }                                                                   \

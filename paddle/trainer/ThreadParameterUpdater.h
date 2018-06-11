@@ -39,7 +39,7 @@ namespace paddle {
    class.
  */
 class SgdThreadUpdater : public ParameterUpdater {
-public:
+ public:
   explicit SgdThreadUpdater(const OptimizationConfig& optConfig);
   virtual ~SgdThreadUpdater() {}
 
@@ -57,7 +57,7 @@ public:
   virtual void apply();
   virtual void restore();
 
-protected:
+ protected:
   // This is the function that will be eventualy called by the GradientMachine.
   // used only for GPU update.
   virtual void updateImpl(Parameter* para);

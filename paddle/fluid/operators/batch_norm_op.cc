@@ -111,14 +111,16 @@ class BatchNormOp : public framework::OperatorWithKernel {
                       "Variance input should be of float type");
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                    library_);
   }
@@ -367,17 +369,18 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     }
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library_);
+        layout_, library_);
   }
 };
 

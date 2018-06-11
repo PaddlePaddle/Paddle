@@ -25,7 +25,7 @@ namespace paddle {
  * The config file api is mkldnn_addto
  */
 class MKLDNNAddtoLayer : public MKLDNNLayer {
-protected:
+ protected:
   // layer size == ic * ih * iw == oc * oh *ow, and can not be changed
   size_t layerSize_;
 
@@ -38,7 +38,7 @@ protected:
   std::vector<std::shared_ptr<mkldnn::primitive>> fwdBias_;
   std::shared_ptr<mkldnn::primitive> bwdBias_;
 
-public:
+ public:
   explicit MKLDNNAddtoLayer(const LayerConfig& config) : MKLDNNLayer(config) {}
 
   ~MKLDNNAddtoLayer() {}
@@ -59,7 +59,7 @@ public:
 
   void updateWeights(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);

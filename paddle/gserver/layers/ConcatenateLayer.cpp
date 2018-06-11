@@ -23,7 +23,7 @@ namespace paddle {
  * each input as one row for the output of this layer and apply activation.
  */
 class ConcatenateLayer : public Layer {
-public:
+ public:
   explicit ConcatenateLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ConcatenateLayer() {}
@@ -97,7 +97,7 @@ void ConcatenateLayer::backward(const UpdateCallback& callback) {
  * processed by a Projection.
  */
 class ConcatenateLayer2 : public Layer {
-public:
+ public:
   explicit ConcatenateLayer2(const LayerConfig& config) : Layer(config) {}
 
   ~ConcatenateLayer2() {}
@@ -108,7 +108,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   std::vector<std::unique_ptr<Projection>> projections_;
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;

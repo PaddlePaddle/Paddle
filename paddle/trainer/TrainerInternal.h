@@ -34,7 +34,7 @@ namespace paddle {
  * the core training class for driving training logic
  */
 class TrainerInternal {
-public:
+ public:
   struct ParaStat {
     real maxAbsGrad;
     real avgAbsGrad;
@@ -126,7 +126,7 @@ public:
                                     UpdateCallback updateCallback,
                                     bool doPipelineUpdate);
 
-protected:
+ protected:
   std::shared_ptr<ParameterUpdater> parameterUpdater_;
   GradientMachinePtr gradientMachine_;
   std::shared_ptr<TrainerConfigHelper> config_;

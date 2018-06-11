@@ -36,7 +36,7 @@ namespace paddle {
  */
 
 class ParameterReluLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
 
   /**
@@ -51,7 +51,7 @@ protected:
    */
   size_t partialSum_;
 
-public:
+ public:
   explicit ParameterReluLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ParameterReluLayer() {}

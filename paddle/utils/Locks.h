@@ -42,7 +42,7 @@ namespace paddle {
  * Use unlock() to unlock the lock.
  */
 class RWLock {
-public:
+ public:
   RWLock() { pthread_rwlock_init(&rwlock_, NULL); }
   ~RWLock() { pthread_rwlock_destroy(&rwlock_); }
   RWLock(const RWLock&) = delete;
@@ -62,7 +62,7 @@ public:
   void lock_shared() { pthread_rwlock_rdlock(&rwlock_); }
   void unlock() { pthread_rwlock_unlock(&rwlock_); }
 
-protected:
+ protected:
   pthread_rwlock_t rwlock_;
 };
 
@@ -71,7 +71,7 @@ protected:
  * using RAII management mechanism.
  */
 class ReadLockGuard {
-public:
+ public:
   /**
    * @brief Construct Function. Lock on rwlock in read mode.
    */
@@ -86,7 +86,7 @@ public:
    */
   ~ReadLockGuard() { rwlock_->unlock(); }
 
-protected:
+ protected:
   RWLock* rwlock_;
 };
 
@@ -98,7 +98,7 @@ protected:
  */
 class SpinLockPrivate;
 class SpinLock {
-public:
+ public:
   DISABLE_COPY(SpinLock);
   SpinLock();
   ~SpinLock();
@@ -107,7 +107,7 @@ public:
   void lock();
   void unlock();
 
-private:
+ private:
   SpinLockPrivate* m;
 };
 
@@ -116,7 +116,7 @@ private:
  */
 class SemaphorePrivate;
 class Semaphore {
-public:
+ public:
   //! Disable copy & assign
   Semaphore(const Semaphore& other) = delete;
   Semaphore& operator=(const Semaphore&& other) = delete;
@@ -124,7 +124,7 @@ public:
   //! Enable move.
   Semaphore(Semaphore&& other) : m(std::move(other.m)) {}
 
-public:
+ public:
   /**
    * @brief Construct Function.
    * @param[in] initValue the initial value of the
@@ -156,7 +156,7 @@ public:
    */
   void post();
 
-private:
+ private:
   SemaphorePrivate* m;
 };
 
@@ -166,7 +166,7 @@ private:
  */
 class ThreadBarrierPrivate;
 class ThreadBarrier {
-public:
+ public:
   DISABLE_COPY(ThreadBarrier);
 
   /**
@@ -184,7 +184,7 @@ public:
    */
   void wait();
 
-private:
+ private:
   ThreadBarrierPrivate* m;
 };
 
@@ -192,7 +192,7 @@ private:
  * A wrapper for condition variable with mutex.
  */
 class LockedCondition : public std::condition_variable {
-public:
+ public:
   /**
    * @brief execute op and notify one thread which was blocked.
    * @param[in] op a thread can do something in op before notify.
@@ -235,7 +235,7 @@ public:
    */
   std::mutex* mutex() { return &mutex_; }
 
-protected:
+ protected:
   std::mutex mutex_;
 };
 

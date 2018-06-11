@@ -42,9 +42,9 @@ class TestCropOp(OpTest):
     def setUp(self):
         self.op_type = "crop"
         self.crop_by_input = False
+        self.offset_by_input = False
         self.attrs = {}
         self.initTestCase()
-        self.attrs['offsets'] = self.offsets
         if self.crop_by_input:
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float32"),
@@ -55,6 +55,10 @@ class TestCropOp(OpTest):
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float32"),
             }
+        if self.offset_by_input:
+            self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
+        else:
+            self.attrs['offsets'] = self.offsets
         self.outputs = {
             'Out': crop(self.inputs['X'], self.offsets, self.crop_shape)
         }
@@ -99,6 +103,23 @@ class TestCase4(TestCropOp):
         self.crop_shape = [4, 4]
         self.offsets = [0, 0]
         self.crop_by_input = True
+
+
+class TestCase5(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (3, 4, 5)
+        self.crop_shape = [2, 2, 3]
+        self.offsets = [1, 0, 2]
+        self.offset_by_input = True
+
+
+class TestCase6(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (10, 9, 14)
+        self.crop_shape = [3, 3, 5]
+        self.offsets = [3, 5, 4]
+        self.crop_by_input = True
+        self.offset_by_input = True
 
 
 if __name__ == '__main__':

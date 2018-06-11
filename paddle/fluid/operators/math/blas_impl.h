@@ -34,6 +34,18 @@ struct CBlas<float> {
     cblas_saxpy(args...);
   }
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    vsAdd(args...);
+  }
+#endif
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    cblas_scopy(args...);
+  }
+
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
@@ -57,6 +69,18 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     cblas_daxpy(args...);
+  }
+
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    vdAdd(args...);
+  }
+#endif
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    cblas_dcopy(args...);
   }
 
   template <typename... ARGS>
@@ -137,6 +161,24 @@ template <typename T>
 void Blas<platform::CPUDeviceContext>::AXPY(int n, T alpha, const T *x,
                                             T *y) const {
   CBlas<T>::AXPY(n, alpha, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  CBlas<T>::VCOPY(n, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VADD(n, x, y, z);
+#else
+  this->template VCOPY<T>(n, y, z);
+  this->template AXPY<T>(n, 1., x, z);
+#endif
 }
 
 template <>

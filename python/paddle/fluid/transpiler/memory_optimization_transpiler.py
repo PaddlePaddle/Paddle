@@ -24,7 +24,8 @@ dtype_to_size = {
     core.VarDesc.VarType.INT16: 2,
     core.VarDesc.VarType.INT32: 4,
     core.VarDesc.VarType.INT64: 8,
-    core.VarDesc.VarType.BOOL: 1
+    core.VarDesc.VarType.BOOL: 1,
+    core.VarDesc.VarType.UINT8: 1,
 }
 
 SUB_BLOCK_OPS = [
@@ -106,7 +107,7 @@ class ControlFlowGraph(object):
         # Repeatedly apply liveness updates until the algorithm stablize
         # on a complete set live input vars and live output vars.
         while True:
-            for i in range(self.op_size, 0, -1):
+            for i in reversed(range(self.op_size)):
                 live_in[i] = set(self._live_in[i])
                 live_out[i] = set(self._live_out[i])
                 for s in self._successors[i]:

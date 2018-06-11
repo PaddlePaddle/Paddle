@@ -22,21 +22,21 @@ class BoxCoderOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
                    "Input(PriorBox) of BoxCoderOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("PriorBoxVar"),
-                   "Input(PriorBoxVar) of BoxCoderOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("TargetBox"),
                    "Input(TargetBox) of BoxCoderOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutputBox"),
                    "Output(OutputBox) of BoxCoderOp should not be null.");
 
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
-    auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
     PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
                       "The rank of Input of PriorBoxVar must be 2");
     PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
-    PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+    if (ctx->HasInput("PriorBoxVar")) {
+      auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
+      PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+    }
 
     auto code_type = GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
     if (code_type == BoxCodeType::kEncodeCenterSize) {
@@ -71,9 +71,11 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "of the coordinate system. [xmax, ymax] is the right bottom "
         "coordinate of the anchor box.");
     AddInput("PriorBoxVar",
-             "(Tensor, default Tensor<float>) "
+             "(Tensor, default Tensor<float>, optional) "
              "PriorBoxVar is a 2-D Tensor with shape [M, 4] holds M group "
-             "of variance.");
+             "of variance. PriorBoxVar will set all elements to 1 by "
+             "default.")
+        .AsDispensable();
     AddInput(
         "TargetBox",
         "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
@@ -91,6 +93,10 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                          "the code type used with the target box")
         .SetDefault("encode_center_size")
         .InEnum({"encode_center_size", "decode_center_size"});
+    AddAttr<bool>("box_normalized",
+                  "(bool, default true) "
+                  "whether treat the priorbox as a noramlized box")
+        .SetDefault(true);
     AddOutput("OutputBox",
               "(LoDTensor or Tensor) "
               "When code_type is 'encode_center_size', the output tensor of "
@@ -127,5 +133,6 @@ width and height.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(box_coder, ops::BoxCoderKernel<float>,
-                       ops::BoxCoderKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    box_coder, ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, double>);

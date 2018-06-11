@@ -125,7 +125,7 @@ enum { INDENT_WIDTH = 2 };
 struct null {};
 
 class value {
-public:
+ public:
   typedef std::vector<value> array;
   typedef std::map<std::string, value> object;
   union _storage {
@@ -139,11 +139,11 @@ public:
     object* object_;
   };
 
-protected:
+ protected:
   int type_;
   _storage u_;
 
-public:
+ public:
   value();
   value(int type, bool);
   explicit value(bool b);
@@ -179,7 +179,7 @@ public:
   void serialize(Iter os, bool prettify = false) const;
   std::string serialize(bool prettify = false) const;
 
-private:
+ private:
   template <typename T>
   value(const T*);  // intentionally defined to block implicit conversion of
                     // pointer to bool
@@ -588,13 +588,13 @@ inline std::string value::_serialize(int indent) const {
 
 template <typename Iter>
 class input {
-protected:
+ protected:
   Iter cur_, end_;
   int last_ch_;
   bool ungot_;
   int line_;
 
-public:
+ public:
   input(const Iter& first, const Iter& last)
       : cur_(first), end_(last), last_ch_(-1), ungot_(false), line_(1) {}
   int getc() {
@@ -873,7 +873,7 @@ inline bool _parse(Context& ctx, input<Iter>& in) {
 }
 
 class deny_parse_context {
-public:
+ public:
   bool set_null() { return false; }
   bool set_bool(bool) { return false; }
 #ifdef PICOJSON_USE_INT64
@@ -898,10 +898,10 @@ public:
 };
 
 class default_parse_context {
-protected:
+ protected:
   value* out_;
 
-public:
+ public:
   default_parse_context(value* out) : out_(out) {}
   bool set_null() {
     *out_ = value();
@@ -949,18 +949,18 @@ public:
     return _parse(ctx, in);
   }
 
-private:
+ private:
   default_parse_context(const default_parse_context&);
   default_parse_context& operator=(const default_parse_context&);
 };
 
 class null_parse_context {
-public:
+ public:
   struct dummy_str {
     void push_back(int) {}
   };
 
-public:
+ public:
   null_parse_context() {}
   bool set_null() { return true; }
   bool set_bool(bool) { return true; }
@@ -985,7 +985,7 @@ public:
     return _parse(*this, in);
   }
 
-private:
+ private:
   null_parse_context(const null_parse_context&);
   null_parse_context& operator=(const null_parse_context&);
 };

@@ -27,7 +27,7 @@ namespace paddle {
  * between RecurrentLayerGroupBegin and RecurrentLayerGroupEnd.
  */
 class RecurrentLayerGroup : public Layer {
-public:
+ public:
   explicit RecurrentLayerGroup(const LayerConfig& config) : Layer(config) {}
 
   void initSubNetwork(NeuralNetwork* rootNetwork,
@@ -58,7 +58,7 @@ public:
     callback(*network_);
   }
 
-private:
+ private:
   std::unique_ptr<RecurrentGradientMachine> network_;
 };
 

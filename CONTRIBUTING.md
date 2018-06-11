@@ -58,6 +58,8 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
     create mode 100644 233
    ```
 
+	NOTE: The `yapf` installed by `pip install pre-commit` and `conda install -c conda-forge pre-commit` is slightly different. Paddle developers use `pip install pre-commit`.
+
 1. Build and test
 
    Users can build PaddlePaddle natively on Linux and Mac OS X.  But to unify the building environment and to make it easy for debugging, the recommended way is [using Docker](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/build_en.md).

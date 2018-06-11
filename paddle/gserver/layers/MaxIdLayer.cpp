@@ -23,11 +23,11 @@ namespace paddle {
  * The config file api is maxid_layer.
  */
 class MaxIdLayer : public Layer {
-private:
+ private:
   /// a predetermined number of best states at each level
   size_t beamSize_;
 
-public:
+ public:
   explicit MaxIdLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

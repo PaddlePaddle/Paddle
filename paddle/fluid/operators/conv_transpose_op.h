@@ -70,7 +70,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-    // groups will alway be disabled in conv2dtranspose.
+    int groups = context.Attr<int>("groups");
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
@@ -81,10 +81,10 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
     // use col_shape in the im2col and col2im (or vol2col and col2vol)
     // calculation
-    // col_shape_vec: {c, k_h, k_w, h, w} or {c, k_d, k_h, k_w, d, h, w}
+    // col_shape_vec: {c/g, k_h, k_w, h, w} or {c/g, k_d, k_h, k_w, d, h, w}
     size_t data_dim = filter_shape_vec.size() - 2;
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-    col_shape_vec[0] = output->dims()[1];
+    col_shape_vec[0] = output->dims()[1] / groups;
     for (size_t j = 0; j < data_dim; ++j) {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
       col_shape_vec[j + 1 + data_dim] = input_shape_vec[j + 2];
@@ -92,7 +92,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     DDim col_shape(framework::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
-    // size: (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
+    // size: (c/g * k_h * k_w, h * w) or (c/g * k_d * k_h * k_w, d * h * w)
     DDim col_matrix_shape = framework::flatten_to_2d(col_shape, data_dim + 1);
 
     Tensor col;
@@ -111,7 +111,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // input matrix size: (m, h * w) or (m, d * h * w)
     DDim input_matrix_shape = {input->dims()[1], col_matrix_shape[1]};
 
-    // filter size: (m, c * k_h * k_w) or (m, c * k_d * k_h * k_w)
+    // filter size: (m, c/g * k_h * k_w) or (m, c/g * k_d * k_h * k_w)
     DDim filter_matrix_shape = {input->dims()[1], col_matrix_shape[0]};
     filter.Resize(filter_matrix_shape);
 
@@ -121,6 +121,8 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, output, static_cast<T>(0));
 
+    int in_step = static_cast<int>(input->dims()[1]) / groups;
+    int out_step = static_cast<int>(output->dims()[1]) / groups;
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
     math::Col2VolFunctor<DeviceContext, T> col2vol;
 
@@ -133,22 +135,29 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
       // output size: (c, o_h, o_w) or (c, o_d, o_h, o_w)
       Tensor output_batch = output->Slice(i, i + 1).Resize(output_shape);
 
-      // col_matrix = filter * input_batch
-      // of shape (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
-      blas.MatMul(filter, true, input_batch, false, static_cast<T>(1.0),
-                  &col_matrix, static_cast<T>(0.0));
+      for (int g = 0; g < groups; g++) {
+        Tensor in_slice = input_batch.Slice(g * in_step, (g + 1) * in_step);
+        Tensor filter_slice = filter.Slice(g * in_step, (g + 1) * in_step);
+        Tensor out_slice = output_batch.Slice(g * out_step, (g + 1) * out_step);
 
-      if (data_dim == 2U) {
-        // col2im: col_matrix -> dy
-        // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
-        col2im(dev_ctx, col, dilations, strides,
-               std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                paddings[1]},
-               &output_batch);
-      } else if (data_dim == 3U) {
-        // col2vol: col_matrix -> dy
-        // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
-        col2vol(dev_ctx, col, dilations, strides, paddings, &output_batch);
+        // col_matrix = filter_slice * input_slice
+        // of shape (c/g * k_h * k_w, h * w)
+        // or (c/g * k_d * k_h * k_w, d * h * w)
+        blas.MatMul(filter_slice, true, in_slice, false, static_cast<T>(1.0),
+                    &col_matrix, static_cast<T>(0.0));
+
+        if (data_dim == 2U) {
+          // col2im: col_matrix -> dy
+          // from (c/g * k_h * k_w, h * w) to (c/g, o_h, o_w)
+          col2im(dev_ctx, col, dilations, strides,
+                 std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                  paddings[1]},
+                 &out_slice);
+        } else if (data_dim == 3U) {
+          // col2vol: col_matrix -> dy
+          // from (c/g * k_d * k_h * k_w, d * h * w) to (c/g, o_d, o_h, o_w)
+          col2vol(dev_ctx, col, dilations, strides, paddings, &out_slice);
+        }
       }
     }
   }
@@ -174,6 +183,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    int groups = context.Attr<int>("groups");
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
@@ -205,9 +215,11 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // input matrix size: (m, h * w) or (m, d * h * w)
     DDim input_matrix_shape = {input->dims()[1], col_matrix_shape[1]};
 
-    // filter size: (m, c * k_h * k_w) or (m, c * k_d * k_h * k_w)
-    DDim filter_matrix_shape = {input->dims()[1], col_matrix_shape[0]};
+    // filter size: (m, c/g * k_h * k_w) or (m, c/g * k_d * k_h * k_w)
+    DDim filter_matrix_shape = {input->dims()[1], col_matrix_shape[0] / groups};
     filter.Resize(filter_matrix_shape);
+    int in_step = static_cast<int>(input->dims()[1]) / groups;
+    int col_step = static_cast<int>(col_matrix_shape[0]) / groups;
 
     // convolution transpose grad on input:
     // im2col + gemm (similar to conv-forward)
@@ -233,7 +245,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
       if (input_grad) {
         input_grad->mutable_data<T>(context.GetPlace());
       }
-      if (filter_grad) {  // filter size (m, c, k_h, k_w)
+      if (filter_grad) {  // filter size (m, c/g, k_h, k_w)
         filter_grad->mutable_data<T>(context.GetPlace());
         set_zero(dev_ctx, filter_grad, static_cast<T>(0));
         filter_grad_ = *filter_grad;
@@ -268,8 +280,17 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, c * k_d * k_h * k_w) * (c * k_d * k_h * k_w, d * h * w) -> (m,
           // d, h, w)
-          blas.MatMul(filter, false, col_matrix, false, static_cast<T>(1.0),
-                      &input_grad_batch, static_cast<T>(0.0));
+          for (int g = 0; g < groups; g++) {
+            Tensor input_grad_slice =
+                input_grad_batch.Slice(g * in_step, (g + 1) * in_step);
+            Tensor filter_slice = filter.Slice(g * in_step, (g + 1) * in_step);
+            Tensor col_matrix_slice =
+                col_matrix.Slice(g * col_step, (g + 1) * col_step);
+
+            blas.MatMul(filter_slice, false, col_matrix_slice, false,
+                        static_cast<T>(1.0), &input_grad_slice,
+                        static_cast<T>(0.0));
+          }
         }
         if (filter_grad) {
           // input batch
@@ -279,8 +300,17 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, d * h * w) * (d * h * w, c * k_d * k_h * k_w) -> (m, c * k_d *
           // k_h * k_w)
-          blas.MatMul(in_batch, false, col_matrix, true, static_cast<T>(1.0),
-                      &filter_grad_, static_cast<T>(1.0));
+          for (int g = 0; g < groups; g++) {
+            Tensor in_batch_slice =
+                in_batch.Slice(g * in_step, (g + 1) * in_step);
+            Tensor filter_grad_slice =
+                filter_grad_.Slice(g * in_step, (g + 1) * in_step);
+            Tensor col_matrix_slice =
+                col_matrix.Slice(g * col_step, (g + 1) * col_step);
+            blas.MatMul(in_batch_slice, false, col_matrix_slice, true,
+                        static_cast<T>(1.0), &filter_grad_slice,
+                        static_cast<T>(1.0));
+          }
         }
       }
     }

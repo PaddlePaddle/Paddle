@@ -33,7 +33,7 @@ namespace paddle {
  * The config file api is cos_sim.
  */
 class CosSimLayer : public Layer {
-public:
+ public:
   explicit CosSimLayer(const LayerConfig& config) : Layer(config) {}
 
   ~CosSimLayer() {}

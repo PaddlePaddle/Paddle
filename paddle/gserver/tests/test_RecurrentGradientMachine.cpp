@@ -26,7 +26,7 @@ DECLARE_int32(seed);
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 class TrainerForTest : public paddle::Trainer {
-public:
+ public:
   void startTrain() {
     GradientMachine& gm = *this->trainerInternal_.getGradientMachine();
     gm.start();

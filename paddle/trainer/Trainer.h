@@ -41,7 +41,7 @@ namespace paddle {
  * train/test a NeuralNetwork.
  */
 class Trainer {
-public:
+ public:
   /**
    * Ctor.
    * @return
@@ -138,7 +138,7 @@ public:
    */
   ParameterUtil* getParameterUtilPtr();
 
-protected:
+ protected:
   /**
    * Train one pass of data.
    *
@@ -159,10 +159,10 @@ protected:
 
   void createTester();
 
-private:
+ private:
   std::unique_ptr<TesterConfig> createTesterConfig();
 
-protected:
+ protected:
   std::shared_ptr<TrainerConfigHelper> config_;
   std::shared_ptr<TrainerStats> stats_;
 

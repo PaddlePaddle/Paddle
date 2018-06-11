@@ -21,7 +21,7 @@ namespace paddle {
 
 template <DeviceType Device>
 class NeonDepthwiseConvTransposeFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }

@@ -29,10 +29,10 @@ namespace paddle {
  */
 
 class SequenceConcatLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit SequenceConcatLayer(const LayerConfig& config) : Layer(config) {}
 
   ~SequenceConcatLayer() {}

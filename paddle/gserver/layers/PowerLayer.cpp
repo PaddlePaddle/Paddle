@@ -32,10 +32,10 @@ namespace paddle {
  */
 
 class PowerLayer : public Layer {
-protected:
+ protected:
   MatrixPtr tmpMtx;
 
-public:
+ public:
   explicit PowerLayer(const LayerConfig& config) : Layer(config) {}
 
   ~PowerLayer() {}

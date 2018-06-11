@@ -40,7 +40,7 @@ namespace paddle {
  */
 
 class RecurrentLayer : public Layer {
-public:
+ public:
   explicit RecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -56,7 +56,7 @@ public:
 
   LayerStatePtr getState() override;
 
-protected:
+ protected:
   /**
    * @brief If user do not set --rnn_use_batch=true, it will
    * compute rnn forward one sequence by one sequence in default.
@@ -110,7 +110,7 @@ protected:
                              size_t numSequences,
                              const int* starts);
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> bias_;
 

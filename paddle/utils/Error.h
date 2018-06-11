@@ -95,7 +95,7 @@ namespace paddle {
  * log(FATAL) and CHECK in Paddle, 'check' method will be removed.
  */
 class Error {
-public:
+ public:
   /**
    * Construct a no-error value.
    */
@@ -138,7 +138,7 @@ public:
    */
   bool isOK() const { return msg_ == nullptr; }
 
-private:
+ private:
   std::shared_ptr<std::string> msg_;
 };
 

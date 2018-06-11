@@ -54,7 +54,7 @@ class NCELayer : public Layer {
 
   IVectorPtr labelIds_;
 
-public:
+ public:
   explicit NCELayer(const LayerConfig& config)
       : Layer(config),
         numClasses_(config.num_classes()),

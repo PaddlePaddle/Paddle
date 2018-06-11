@@ -30,7 +30,7 @@ bool hl_lstm_sequence_parallel(int frameSize) {
 }
 
 class frameValue {
-public:
+ public:
   real *value_;
   __device__ frameValue(real *value) : value_(value) {}
   template <int reversed, int frameSize>

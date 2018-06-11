@@ -20,7 +20,7 @@ namespace paddle {
 namespace optimizer {
 
 class AdagradOptimizer : public ParameterOptimizer {
-public:
+ public:
   AdagradOptimizer(Tensor *parameter,
                    LrPolicy *lr,
                    double epsilon,
@@ -36,7 +36,7 @@ public:
   std::string SerializeState();
   void DeserializeState(const std::string &state);
 
-private:
+ private:
   Tensor *accum_gradient_;
   double epsilon_;
   double decay_;

@@ -39,7 +39,7 @@ namespace paddle {
  *
  */
 class SequenceToBatch {
-public:
+ public:
   explicit SequenceToBatch(bool useGpu) : useGpu_(useGpu) {}
 
   /* resize and calculate the batchIndex_ */
@@ -82,7 +82,7 @@ public:
     numBatch_ = seq2batch.numBatch_;
   }
 
-protected:
+ protected:
   void sequence2BatchCopy(Matrix &batch,
                           Matrix &sequence,
                           IVector &seq2BatchIdx,

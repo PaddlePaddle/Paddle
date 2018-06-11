@@ -29,7 +29,7 @@ class Parameter;
  * parameter optimization.
  */
 class IParameterUpdaterHook {
-public:
+ public:
   virtual ~IParameterUpdaterHook();
 
   /**
@@ -53,7 +53,7 @@ public:
    */
   virtual void init(Parameter* para) = 0;
 
-protected:
+ protected:
   /**
    * Ctor.
    */

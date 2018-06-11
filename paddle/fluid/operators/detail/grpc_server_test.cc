@@ -19,10 +19,13 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/rpc_client.h"
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -30,7 +33,8 @@ namespace detail = paddle::operators::detail;
 
 USE_OP(lookup_table);
 
-std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
+std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
+std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -88,8 +92,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   }
 }
 
-void StartServer(const std::string& endpoint) {
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, true));
+void StartServer() {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -99,42 +102,57 @@ void StartServer(const std::string& endpoint) {
   auto prepared = exe.Prepare(program, block->ID());
   InitTensorsOnServer(&scope, &place, 10);
 
-  rpc_service_->SetProgram(&program);
-  rpc_service_->SetPrefetchPreparedCtx(std::move(prepared));
-  rpc_service_->SetDevCtx(&ctx);
-  rpc_service_->SetScope(&scope);
-  rpc_service_->SetExecutor(&exe);
+  g_req_handler->SetProgram(&program);
+  g_req_handler->SetPrefetchPreparedCtx(std::move(prepared));
+  g_req_handler->SetDevCtx(&ctx);
+  g_req_handler->SetScope(&scope);
+  g_req_handler->SetExecutor(&exe);
 
-  rpc_service_->RunSyncUpdate();
+  g_rpc_service->RegisterRPC(detail::kRequestPrefetch, g_req_handler.get());
+  g_req_handler->SetRPCServer(g_rpc_service.get());
+
+  std::thread server_thread(
+      std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
+
+  server_thread.join();
 }
 
 TEST(PREFETCH, CPU) {
-  // start up a server instance backend
-  std::thread server_thread(StartServer, "127.0.0.1:8889");
-  sleep(2);
+  g_req_handler.reset(new detail::RequestPrefetchHandler(true));
+  g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
+
+  std::thread server_thread(StartServer);
+  g_rpc_service->WaitServerReady();
+
+  detail::RPCClient* client =
+      detail::RPCClient::GetInstance<detail::GRPCClient>();
+  int port = g_rpc_service->GetSelectedPort();
+  std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
+
   framework::Scope scope;
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
-  // create var on local scope
-  int64_t rows_numel = 5;
-  InitTensorsOnClient(&scope, &place, rows_numel);
-  std::string in_var_name("ids");
-  std::string out_var_name("out");
+  {
+    // create var on local scope
+    int64_t rows_numel = 5;
+    InitTensorsOnClient(&scope, &place, rows_numel);
+    std::string in_var_name("ids");
+    std::string out_var_name("out");
 
-  detail::RPCClient client;
-  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
-                               out_var_name);
-  client.Wait();
+    client->AsyncPrefetchVar(ep, ctx, scope, in_var_name, out_var_name);
+    client->Wait();
+    auto var = scope.Var(out_var_name);
+    auto value = var->GetMutable<framework::SelectedRows>()->value();
+    auto ptr = value.mutable_data<float>(place);
 
-  auto var = scope.Var(out_var_name);
-  auto value = var->GetMutable<framework::SelectedRows>()->value();
-  auto ptr = value.mutable_data<float>(place);
-
-  rpc_service_->ShutDown();
-  server_thread.join();
-  rpc_service_.reset(nullptr);
-
-  for (int64_t i = 0; i < rows_numel; ++i) {
-    EXPECT_EQ(ptr[0 + i * value.dims()[1]], static_cast<float>(i * 2));
+    for (int64_t i = 0; i < rows_numel; ++i) {
+      EXPECT_EQ(ptr[0 + i * value.dims()[1]], static_cast<float>(i * 2));
+    }
   }
+
+  g_rpc_service->ShutDown();
+  server_thread.join();
+  LOG(INFO) << "begin reset";
+  g_rpc_service.reset(nullptr);
+  g_req_handler.reset(nullptr);
 }

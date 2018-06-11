@@ -27,7 +27,7 @@ namespace paddle {
  * The config file api is dotmul_operator.
  */
 class DotMulOperator : public Operator {
-public:
+ public:
   DotMulOperator(const OperatorConfig& config, bool useGpu);
   virtual void forward();
   virtual void backward();

@@ -30,9 +30,6 @@ class Memory(object):
         assert val.dtype == self.ex.dtype
         self.cur = val
 
-    def ex(self):
-        return self.ex
-
     def next(self):
         self.ex = self.cur
         self.cur = None

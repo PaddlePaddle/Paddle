@@ -49,7 +49,7 @@ namespace paddle {
  */
 template <typename T>
 class CustomStackTrace {
-public:
+ public:
   /**
    * @brief Pop out an item from the top of the stack if item == top.
    *        Else, just set status to popping.
@@ -136,7 +136,7 @@ public:
     p.push(item);
   }
 
-private:
+ private:
   /**
    * Get thread local attribute, and save them into a map (threadId => TYPE*)
    *
@@ -174,7 +174,7 @@ private:
     return this->getThreadLocal(this->isPushing_, this->pushingBuffers_);
   }
 
-private:
+ private:
   mutable std::mutex mtx_;
 
   std::unordered_map<std::thread::id, std::stack<T>*> stackBuffers_;

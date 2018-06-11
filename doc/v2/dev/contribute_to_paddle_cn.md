@@ -51,6 +51,8 @@ Paddle 开发人员使用 [pre-commit](http://pre-commit.com/) 工具来管理 G
 
 Paddle 使用 `clang-format` 来调整 C/C++ 源代码格式，请确保 `clang-format` 版本在 3.8 以上。
 
+注：通过`pip install pre-commit`和`conda install -c conda-forge pre-commit`安装的`yapf`稍有不同的，Paddle 开发人员使用的是`pip install pre-commit`。
+
 ## 开始开发
 
 在本例中，我删除了 README.md 中的一行，并创建了一个新文件。

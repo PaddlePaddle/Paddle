@@ -28,11 +28,11 @@ namespace paddle {
  */
 
 class FullyConnectedLayer : public Layer {
-protected:
+ protected:
   WeightList weights_;
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit FullyConnectedLayer(const LayerConfig& config) : Layer(config) {}
   ~FullyConnectedLayer() {}
 

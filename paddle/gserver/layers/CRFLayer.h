@@ -27,14 +27,14 @@ namespace paddle {
  * See class LinearChainCRF for the detail of the CRF formulation.
  */
 class CRFLayer : public Layer {
-public:
+ public:
   explicit CRFLayer(const LayerConfig& config) : Layer(config) {}
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-protected:
+ protected:
   size_t numClasses_;
   ParameterPtr parameter_;
   std::vector<LinearChainCRF> crfs_;

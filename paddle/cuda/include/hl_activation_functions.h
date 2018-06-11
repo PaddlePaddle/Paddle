@@ -31,7 +31,7 @@ namespace hppl {
  */
 template <class T>
 class Active {
-public:
+ public:
   typedef T (*forward)(T);
   typedef T (*backward)(T, T);
 };

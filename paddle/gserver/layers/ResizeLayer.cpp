@@ -24,7 +24,7 @@ namespace paddle {
  * resize matrix: (height * width / size) * size
  */
 class ResizeLayer : public Layer {
-public:
+ public:
   explicit ResizeLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

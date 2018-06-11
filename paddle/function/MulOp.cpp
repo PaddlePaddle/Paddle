@@ -240,7 +240,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
  */
 template <DeviceType Device>
 class MulFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     aTrans_ = config.get<bool>("aTrans");
     bTrans_ = config.get<bool>("bTrans");
@@ -335,7 +335,7 @@ public:
     }
   }
 
-private:
+ private:
   bool aTrans_;
   bool bTrans_;
 };

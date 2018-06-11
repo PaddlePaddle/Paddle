@@ -31,12 +31,14 @@ class FakeQuantizeOp : public framework::OperatorWithKernel {
                    "Input(X) of FakeQuantizeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FakeQuantizeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutMovingScale"), "");
+    PADDLE_ENFORCE(ctx->HasOutput("OutMovingScale"),
+                   "OutMovingScale(Out) of FakeQuantizeOp should not be null");
     // if (ctx->HasInput("InMovingScale")) {
     ctx->SetOutputDim("OutMovingScale", ctx->GetInputDim("InMovingScale"));
     //}
     // if (ctx->HasInput("InScales")) {
-    PADDLE_ENFORCE(ctx->HasOutput("OutScales"), "");
+    PADDLE_ENFORCE(ctx->HasOutput("OutScales"),
+                   "OutScales(Out) of FakeQuantizeOp should not be null");
     ctx->SetOutputDim("OutScales", ctx->GetInputDim("InScales"));
     // PADDLE_ENFORCE_EQ(ctx->Inputs("InScales")[0],
     // ctx->Outputs("OutScales")[0],
@@ -51,16 +53,22 @@ class FakeQuantizeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
-    AddInput("InScales", "(Tensor) scale buffer").AsDispensable();
-    AddInput("InMovingScale", "last scale").AsDispensable();
-    AddInput("InCurrentIter", "last Iter").AsDispensable();
+    AddInput("InScales", "(Tensor) scale buffer, used in static quantization")
+        .AsDispensable();
+    AddInput("InMovingScale", "last scale, used in static quantization")
+        .AsDispensable();
+    AddInput("InCurrentIter", "last Iter, used in static quantization")
+        .AsDispensable();
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
-    AddOutput("OutScales", "(Tensor) scale buffer").AsDispensable();
+    AddOutput("OutScales", "(Tensor) scale buffer, used in static quantization")
+        .AsDispensable();
     AddOutput("OutMovingScale", " current scale");
     AddOutput("OutCurrentIter", "current Iter").AsDispensable();
     AddComment(R"DOC(
 FakeQuantize operator
-
+quantize_type = abs_max, $$scale = max(abs(x))$$ 
+quantize_type = range_abs_max, $$scale = max(max(abs(x)), history_abs_max)$$ 
+quantize_type = moving_average_abs_max, $$scale = 0.1*scale+0.9*new_abs_max)$$ 
 $$Out = scale*X$$
 )DOC");
     AddAttr<std::string>("quantize_type",

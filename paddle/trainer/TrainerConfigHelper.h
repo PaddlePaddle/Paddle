@@ -37,7 +37,7 @@ class DataConfig;
  * Define a macro to unify 'final' keyword
  */
 class TrainerConfigHelper /*final*/ {
-public:
+ public:
   DISABLE_COPY(TrainerConfigHelper);
 
   /**
@@ -193,7 +193,7 @@ public:
    */
   static std::shared_ptr<TrainerConfigHelper> createFromFlagConfig();
 
-private:
+ private:
   static std::string getConfigNameFromPassId(int passId,
                                              const std::string& modelPath);
 

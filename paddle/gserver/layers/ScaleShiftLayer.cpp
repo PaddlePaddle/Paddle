@@ -30,11 +30,11 @@ namespace paddle {
  */
 
 class ScaleShiftLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> scale_;
   std::unique_ptr<Weight> offset_;
 
-public:
+ public:
   explicit ScaleShiftLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

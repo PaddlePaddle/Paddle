@@ -24,7 +24,7 @@ namespace paddle {
  */
 template <DeviceType Device>
 class GemmConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }
@@ -136,7 +136,7 @@ public:
  */
 template <DeviceType Device>
 class GemmConvMobileFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }
@@ -297,7 +297,7 @@ public:
  */
 template <DeviceType Device>
 class GemmConvGradInputFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }
@@ -404,7 +404,7 @@ public:
  */
 template <DeviceType Device>
 class GemmConvGradFilterFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }

@@ -33,7 +33,7 @@ namespace paddle {
 class Stat;
 
 class StatInfo {
-public:
+ public:
   explicit StatInfo(Stat* stat = nullptr) : stat_(stat) {
     total_ = 0;
     max_ = 0;
@@ -61,7 +61,7 @@ class Stat;
 typedef std::shared_ptr<Stat> StatPtr;
 
 class StatSet {
-public:
+ public:
   explicit StatSet(const std::string& name) : name_(name) {}
   ~StatSet() {}
 
@@ -102,7 +102,7 @@ public:
   // pserver code logic, -_- ).
   void reset(bool clearRawData = true);
 
-private:
+ private:
   std::unordered_map<std::string, StatPtr> statSet_;
   const std::string name_;
   RWLock lock_;
@@ -112,7 +112,7 @@ extern StatSet globalStat;
 
 /*@brief : a simple stat*/
 class Stat {
-public:
+ public:
   explicit Stat(const std::string& statName)
       : destructStat_(nullptr), name_(statName), openThreadInfo_(false) {}
   ~Stat() {}
@@ -137,7 +137,7 @@ public:
 
   friend class StatInfo;
 
-private:
+ private:
   void mergeThreadStat(StatInfo& allThreadStat);
 
   std::mutex lock_;
@@ -164,7 +164,7 @@ inline uint64_t nowInMicroSec() {
  * A simple help class to measure time interval
  */
 class Timer {
-public:
+ public:
   explicit Timer(bool autoStart = true) : total_(0), startStamp_(0) {
     if (autoStart) {
       start();
@@ -181,13 +181,13 @@ public:
 
   void reset() { total_ = 0; }
 
-protected:
+ protected:
   uint64_t total_;
   uint64_t startStamp_;
 };
 
 class TimerOnce {
-public:
+ public:
   TimerOnce(Stat* stat,
             const char* info = "",
             uint64_t threshold = -1,
@@ -208,7 +208,7 @@ public:
     stat_->addSample(span);
   }
 
-private:
+ private:
   Stat* stat_;
   const char* info_;
   Timer timer_;
@@ -280,11 +280,11 @@ inline StatSet& registerTimerArg2(uint64_t threshold = -1,
 #endif  // DISABLE_TIMER
 
 class GpuProfiler final {
-public:
+ public:
   GpuProfiler(std::string statName, std::string info);
   ~GpuProfiler();
 
-private:
+ private:
   std::lock_guard<std::recursive_mutex> guard_;
 };
 

@@ -33,11 +33,16 @@ Xavier
     :members:
     :noindex:
 
-MSRA
-------
+force_init_on_cpu
+-----------------
 
-..  autoclass:: paddle.fluid.initializer.MSRA
-    :members:
+..  autofunction:: paddle.fluid.initializer.force_init_on_cpu
+    :noindex:
+
+init_on_cpu
+-----------
+
+..  autofunction:: paddle.fluid.initializer.init_on_cpu
     :noindex:
 
 ConstantInitializer
@@ -68,9 +73,3 @@ XavierInitializer
     :members:
     :noindex:
 
-
-MSRAInitializer
------------------
-..  autoclass:: paddle.fluid.initializer.MSRAInitializer
-    :members:
-    :noindex:

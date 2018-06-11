@@ -83,6 +83,9 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
@@ -92,11 +95,10 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
       layout_, library_);
@@ -112,6 +114,9 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
@@ -121,6 +126,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
@@ -129,8 +135,6 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");
   }
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                  library_);
 }

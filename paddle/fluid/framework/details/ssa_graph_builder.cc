@@ -73,64 +73,6 @@ void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
   op_handle->AddOutput(var);
 }
 
-template <typename Callback>
-void IterAllVar(const SSAGraph &graph, Callback callback) {
-  for (auto &each : graph.vars_) {
-    for (auto &pair1 : each) {
-      for (auto &pair2 : pair1.second) {
-        callback(*pair2);
-      }
-    }
-  }
-
-  for (auto &var : graph.dep_vars_) {
-    callback(*var);
-  }
-}
-
-void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
-  size_t var_id = 0;
-  std::unordered_map<const VarHandleBase *, size_t> vars;
-
-  sout << "digraph G {\n";
-
-  IterAllVar(graph, [&](const VarHandleBase &var) {
-    auto *var_ptr = &var;
-    auto *var_handle_ptr = dynamic_cast<const VarHandle *>(var_ptr);
-    auto *dummy_ptr = dynamic_cast<const DummyVarHandle *>(var_ptr);
-
-    size_t cur_var_id = var_id++;
-    vars[var_ptr] = cur_var_id;
-
-    if (var_handle_ptr) {
-      sout << "var_" << cur_var_id << " [label=\"" << var_handle_ptr->name_
-           << "\\n"
-           << var_handle_ptr->place_ << "\\n"
-           << var_handle_ptr->version_ << "\"]" << std::endl;
-    } else if (dummy_ptr) {
-      sout << "var_" << cur_var_id << " [label=\"dummy\"]" << std::endl;
-    }
-  });
-
-  size_t op_id = 0;
-  for (auto &op : graph.ops_) {
-    std::string op_name = "op_" + std::to_string(op_id++);
-    sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
-         << std::endl;
-    for (auto in : op->Inputs()) {
-      std::string var_name = "var_" + std::to_string(vars[in]);
-      sout << var_name << " -> " << op_name << std::endl;
-    }
-
-    for (auto out : op->Outputs()) {
-      std::string var_name = "var_" + std::to_string(vars[out]);
-      sout << op_name << " -> " << var_name << std::endl;
-    }
-  }
-
-  sout << "}\n";
-}
-
 void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
   for (auto &op : graph->ops_) {
     if (!op->Outputs().empty()) {

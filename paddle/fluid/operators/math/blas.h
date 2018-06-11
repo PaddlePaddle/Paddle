@@ -126,6 +126,12 @@ class Blas {
   void AXPY(int n, T alpha, const T* x, T* y) const;
 
   template <typename T>
+  void VADD(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VCOPY(int n, const T* x, T* y) const;
+
+  template <typename T>
   void GEMV(bool trans_a, int M, int N, T alpha, const T* A, const T* B, T beta,
             T* C) const;
 
@@ -161,6 +167,16 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void AXPY(ARGS... args) const {
     Base()->template AXPY<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VADD(ARGS... args) const {
+    Base()->template VADD<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VCOPY(ARGS... args) const {
+    Base()->template VCOPY<T>(args...);
   }
 
   template <typename... ARGS>

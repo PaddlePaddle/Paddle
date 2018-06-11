@@ -125,14 +125,6 @@ def stacked_lstm_net(data,
     return avg_cost, accuracy, prediction
 
 
-def create_random_lodtensor(lod, place, low, high):
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 def train(word_dict,
           net_method,
           use_cuda,
@@ -242,9 +234,21 @@ def infer(word_dict, use_cuda, save_dirname=None):
 
         word_dict_len = len(word_dict)
 
-        lod = [0, 4, 10]
-        tensor_words = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
+        # Setup input by creating LoDTensor to represent sequence of words.
+        # Here each word is the basic element of the LoDTensor and the shape of 
+        # each word (base_shape) should be [1] since it is simply an index to 
+        # look up for the corresponding word vector.
+        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
+        # which has only one lod level. Then the created LoDTensor will have only 
+        # one higher level structure (sequence of words, or sentence) than the basic 
+        # element (word). Hence the LoDTensor will hold data for three sentences of 
+        # length 3, 4 and 2, respectively. 
+        # Note that lod info should be a list of lists.
+        lod = [[3, 4, 2]]
+        base_shape = [1]
+        # The range of random integers is [low, high]
+        tensor_words = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
