@@ -61,7 +61,7 @@ ParallelExecutor::ParallelExecutor(
     size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
-  member_->use_cuda_ = exec_strategy.use_event_;
+  member_->use_cuda_ = exec_strategy.use_cuda_;
 
   // Step 1. Bcast the params to devs.
   // Create local scopes

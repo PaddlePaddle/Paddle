@@ -113,7 +113,7 @@ class ParallelExecutor(object):
 
         if exec_strategy is None:
             exec_strategy = ExecutionStrategy()
-        exec_strategy.use_event = use_cuda
+        exec_strategy.use_cuda = use_cuda
 
         if exec_strategy.num_threads == 0:
             if use_cuda:
