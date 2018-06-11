@@ -12,24 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/arg_min_op.h"
+#include "paddle/fluid/operators/arg_min_max_op_base.h"
 
-REGISTER_OPERATOR(arg_min, paddle::operators::ArgMinOp,
+REGISTER_OPERATOR(arg_min, paddle::operators::ArgMinMaxOp,
                   paddle::operators::ArgMinOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
-    arg_min, paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
-                                             float, int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, double,
+    arg_min,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, float>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, double>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
                                     int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, int64_t,
-                                    int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, int32_t,
-                                    int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, int16_t,
-                                    int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, size_t,
-                                    int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, uint8_t,
-                                    int64_t>);
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
+                                    int32_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
+                                    int16_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, size_t>,
+    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
+                                    uint8_t>);

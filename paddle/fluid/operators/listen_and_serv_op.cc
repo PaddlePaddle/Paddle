@@ -146,7 +146,9 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     rpc_service_->SetCond(detail::kRequestGet);
     rpc_service_->WaitBarrier(detail::kRequestGet);
     rpc_service_->ResetBarrierCounter();
-    rpc_service_->ResetSparseVarsRecorder();
+    // reset received sparse vars to avoid reuse it in the next mini-batch
+    dynamic_cast<detail::RequestSendHandler *>(request_send_handler_.get())
+        ->ResetSparseVarRecorder();
   }  // while(true)
 }
 
