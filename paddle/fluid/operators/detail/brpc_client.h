@@ -40,15 +40,8 @@ namespace operators {
 namespace detail {
 
 struct ChannelContext {
-  ChannelContext() : stub(nullptr) {}
-  ~ChannelContext() {
-    if (stub) {
-      delete stub;
-      stub = nullptr;
-    }
-  }
   brpc::Channel channel;
-  sendrecv::SendRecvService_Stub* stub;
+  std::shared_ptr<sendrecv::SendRecvService_Stub> stub;
 };
 
 typedef std::shared_ptr<ChannelContext> ChannelContextPtr;

@@ -162,8 +162,8 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
       return nullptr;
     }
 
-    c->stub = new sendrecv::SendRecvService_Stub(
-        static_cast<google::protobuf::RpcChannel*>(&c->channel));
+    c->stub.reset(new sendrecv::SendRecvService_Stub(
+        static_cast<google::protobuf::RpcChannel*>(&c->channel)));
     q->Push(c);
   }
 
