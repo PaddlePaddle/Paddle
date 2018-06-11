@@ -8,6 +8,7 @@ cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place 
 cc_library(ssa_graph SRCS ssa_graph.cc DEPS var_handle op_handle_base)
 cc_library(ssa_graph_builder SRCS ssa_graph_builder.cc DEPS ssa_graph)
 cc_library(ssa_graph_printer SRCS ssa_graph_printer.cc DEPS ssa_graph_builder)
+cc_library(ssa_graph_checker SRCS ssa_graph_checker.cc DEPS ssa_graph_builder)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
@@ -38,9 +39,7 @@ else()
     set(graph_builder_factory_deps)
 endif()
 
-cc_library(graph_builder_factory SRCS graph_builder_factory.cc DEPS
-        multi_devices_graph_builder ssa_graph_printer
-        ${graph_builder_factory_deps})
+cc_library(ssa_graph_builder_factory SRCS ssa_graph_builder_factory.cc DEPS multi_devices_graph_builder ssa_graph_printer ssa_graph_checker ${graph_builder_factory_deps})
 
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ssa_graph framework_proto)
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope

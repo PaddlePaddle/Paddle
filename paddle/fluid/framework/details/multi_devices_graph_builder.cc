@@ -89,7 +89,7 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainSendVars(
   for (auto *op : program.Block(0).AllOps()) {
     // TODO(Yancey1989): use a graceful method to find send op,
     // instead of the the hard code string
-    if (op->Type() == "send_vars") {
+    if (op->Type() == "send") {
       auto op_vars = op->InputArgumentNames();
       send_vars.reserve(send_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -460,23 +460,22 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
                                           const OpDesc &op) const {
-  auto &p = places_[0];
-  auto *s = local_scopes_[0];
-  auto *op_handle = new RPCOpHandle(op, s, p, op.Type());
+  auto *op_handle =
+      new RPCOpHandle(op, local_scopes_[0], op.Type(), places_[0]);
   result->ops_.emplace_back(op_handle);
 
   if (op.Type() == "send_barrier") {
-    ConnectOp(result, op_handle, "send_vars");
+    ConnectOp(result, op_handle, "send");
   } else if (op.Type() == "recv") {
     ConnectOp(result, op_handle, "send_barrier");
   } else if (op.Type() == "fetch_barrier") {
     ConnectOp(result, op_handle, "recv");
-  } else if (op.Type() == "send_vars") {
+  } else if (op.Type() == "send") {
     // do nothing
   } else {
     PADDLE_THROW(
         "rpc op should be in ["
-        "send_vars, send_barrier. recv, fetch_barrier]");
+        "send, send_barrier. recv, fetch_barrier]");
   }
 
   // TODO(Yancey1989): schedule rpc op on different place may
