@@ -365,6 +365,4 @@ def image_center_crop(input, shape):
     shape_infer_var = layers.fill_constant_batch_size_like(
         input=input, shape=out_shape, dtype=input.dtype, value=0)
     offsets_var = (input_shape_var - out_shape_var) / 2
-    import pdb
-    pdb.set_trace()
     return layers.crop(x=input, y=shape_infer_var, offsets_var=offsets_var)
