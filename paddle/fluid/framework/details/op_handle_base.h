@@ -88,8 +88,6 @@ class OpHandleBase {
 
   std::vector<VarHandleBase *> &Outputs() { return outputs_; }
 
-  size_t NoDummyInputSize() const;
-
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
 

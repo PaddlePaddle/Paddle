@@ -164,15 +164,6 @@ void OpHandleBase::ReplaceInput(VarHandleBase *before, VarHandleBase *after) {
     }
   }
 }
-size_t OpHandleBase::NoDummyInputSize() const {
-  size_t cnt = 0;
-  for (auto *in : inputs_) {
-    if (dynamic_cast<DummyVarHandle *>(in) == nullptr) {
-      ++cnt;
-    }
-  }
-  return cnt;
-}
 
 }  // namespace details
 }  // namespace framework
