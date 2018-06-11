@@ -70,7 +70,7 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Offsets",
              "The input used to describe offsets in runtime, which is a "
              "1-D vector whose size equals to the rank of input 'X'. The "
-             "elements data type must be int.")
+             "elements data type must be int64_t.")
         .AsDispensable();
     AddOutput("Out",
               "The output of crop op, "

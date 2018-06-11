@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import layers
+import numpy as np
 
 __all__ = [
     "simple_img_conv_pool",
@@ -312,7 +313,8 @@ def scaled_dot_product_attention(queries,
                     [bs, max_sequence_length, num_heads * hidden_dim].
         """
 
-        if len(x.shape) == 3: return x
+        if len(x.shape) == 3:
+            return x
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
@@ -343,3 +345,30 @@ def scaled_dot_product_attention(queries,
             weights, dropout_prob=dropout_rate, is_test=False)
     ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)
+
+
+def image_center_crop(input, shape):
+    if not ((isinstance(shape, list) or isinstance(shape, tuple)) and
+            len(shape) == 2):
+        raise ValueError(
+            "The 'shape' must be a list or a tuple with two elements.")
+    if (len(input.shape) != 4):
+        raise ValueError(
+            "The 'input' must be a tensor whose rank is 4. ([batchsize, channel_num, hight, width])"
+        )
+
+    input_shape_var = layers.shape(input)
+    batch_size_var, _ = layers.split(
+        input_shape_var, num_or_sections=[1, 3], dim=0)
+    shape = (input.shape)[1] + list(shape)
+    shape_var = layers.assign(input=np.array(shape).astype('int32'))
+    shape_var = layers.cast(shape_var, 'int64')
+    out_shape_var = layers.concat([batch_size_var, shape_var], axis=0)
+    shape_infer_var = layers.fill_constant_batch_size_like(
+        input=out_shape_var,
+        shape=out_shape_var.shape,
+        dtype=input.dtype,
+        value=0)
+    offsets_var = (input_shape_var - out_shape_var) / 2
+
+    return layers.crop(x=input, y=shape_infer_var, offsetsvar=offsets_var)

@@ -42,11 +42,11 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
-      offsets_data = offsets_tensor->data<int>();
+      offsets_data = offsets_tensor->data<int64_t>();
     } else {
       framework::TensorCopySync(*offsets_tensor, platform::CPUPlace(),
                                 &cpu_tmp_tensor);
-      offsets_data = cpu_tmp_tensor.data<int>();
+      offsets_data = cpu_tmp_tensor.data<int64_t>();
     }
     res = std::vector<int>(offsets_data, offsets_data + rank);
   } else {

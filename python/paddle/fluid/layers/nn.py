@@ -87,7 +87,6 @@ __all__ = [
     'resize_bilinear',
     'gather',
     'random_crop',
-    'image_center_crop',
 ]
 
 
@@ -4184,31 +4183,4 @@ def random_crop(x, shape, seed=None):
         outputs={"Out": out,
                  "SeedOut": seed_out},
         attrs={"shape": shape})
-    return out
-
-
-def image_center_crop(input, shape):
-    if not ((isinstance(shape, list) or isinstance(shape, tuple)) and
-            len(shape) == 2):
-        raise ValueError(
-            "The 'shape' must be a list or a tuple with two elements.")
-    input_shape = input.shape
-    if (len(input_shape) != 4):
-        raise ValueError(
-            "The 'input' must be a tensor whose rank is 4. ([batchsize, channel_num, hight, width])"
-        )
-    offsets = [0, 0] + [
-        x / 2
-        for x in list(
-            map(lambda x: x[0] - x[1], zip(input_shape[2:4], shape)))
-    ]
-
-    helper = LayerHelper('image_center_crop', **locals())
-    out = helper.create_tmp_variable(input.dtype)
-    helper.append_op(
-        type="crop",
-        inputs={"X": input},
-        outputs={"Out": out},
-        attrs={"shape": list(input_shape[0:2]) + shape,
-               "offsets": offsets})
     return out
