@@ -224,7 +224,10 @@ def autodoc(comment=""):
     return __impl__
 
 
-def templatedoc():
+_inline_math_single_dollar = re.compile(r"\$([^\$]+)\$")
+
+
+def templatedoc(op_type=None):
     """
     Decorator of layer function. It will use the docstring from the layer
     function as the template. The template arguments are:
@@ -238,32 +241,47 @@ def templatedoc():
         Decorated function.
     """
 
+    def trim_ending_dot(msg):
+        return msg.rstrip('.')
+
+    def escape_inline_math(msg):
+        return _inline_math_single_dollar.sub(repl=r':math:`\1`', string=msg)
+
     def __impl__(func):
-        op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+        if op_type is None:
+            op_type_name = func.__name__
+        else:
+            op_type_name = op_type
+        op_proto = OpProtoHolder.instance().get_op_proto(op_type_name)
         tmpl = string.Template(func.__doc__)
 
         comment_lines = op_proto.comment.split("\n")
         comment = ""
         for line in comment_lines:
-            line = line.lstrip()
-            comment += line
-            comment += "\n"
+            line = line.strip()
+            if len(line) != 0:
+                comment += escape_inline_math(line)
+                comment += " "
+            elif len(comment) != 0:
+                comment += "\n    \n    "
 
-        args = {"comment": comment}
+        args = {"comment": trim_ending_dot(comment)}
         for each_input in op_proto.inputs:
             input_name = _convert_(each_input.name)
-            args["{0}_comment".format(input_name)] = each_input.comment
+            args["{0}_comment".format(input_name)] = trim_ending_dot(
+                each_input.comment)
             args["{0}_type".format(input_name)] = "Variable"
         for each_attr in op_proto.attrs:
             input_name = _convert_(each_attr.name)
-            args["{0}_comment".format(input_name)] = each_attr.comment
+            args["{0}_comment".format(input_name)] = trim_ending_dot(
+                each_attr.comment)
             args["{0}_type".format(input_name)] = _type_to_str_(each_attr.type)
 
         for each_opt in op_proto.outputs:
             output_name = _convert_(each_opt.name)
-            args["{0}_comment".format(output_name)] = each_opt.comment
+            args["{0}_comment".format(output_name)] = trim_ending_dot(
+                each_opt.comment)
             args["{0}_type".format(output_name)] = "Variable"
-
         func.__doc__ = tmpl.substitute(args)
         return func
 
