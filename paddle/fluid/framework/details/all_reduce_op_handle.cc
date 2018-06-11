@@ -107,7 +107,7 @@ void AllReduceOpHandle::RunImpl() {
       auto &trg = *this->local_scopes_[0]
                        ->FindVar(kLocalExecScopeName)
                        ->Get<Scope *>()
-                       ->Var()
+                       ->FindVar(in_var_handles[0]->name_)
                        ->GetMutable<framework::LoDTensor>();
 
       // Reduce All Tensor to trg in CPU
