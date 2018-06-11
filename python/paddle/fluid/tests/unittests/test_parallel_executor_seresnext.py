@@ -135,6 +135,8 @@ class TestResnet(TestParallelExecutorBase):
                                  balance_parameter_opt_between_cards,
                                  use_cuda=True,
                                  iter=20):
+        os.environ['CPU_NUM'] = str(4)
+
         import functools
         batch_size = 2
         self.check_network_convergence(
@@ -147,12 +149,10 @@ class TestResnet(TestParallelExecutorBase):
         )
 
     def test_resnet(self):
-        os.environ['CPU_NUM'] = str(4)
         self.check_resnet_convergence(False, use_cuda=True)
         self.check_resnet_convergence(False, use_cuda=False, iter=5)
 
     def test_resnet_with_new_strategy(self):
-        os.environ['CPU_NUM'] = str(4)
         self.check_resnet_convergence(True, use_cuda=True)
         self.check_resnet_convergence(True, use_cuda=False, iter=5)
 
