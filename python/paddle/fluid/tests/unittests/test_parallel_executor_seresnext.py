@@ -133,27 +133,28 @@ def SE_ResNeXt50Small(batch_size=2, use_feed=False):
 class TestResnet(TestParallelExecutorBase):
     def check_resnet_convergence(self,
                                  balance_parameter_opt_between_cards,
-                                 use_cuda=True):
+                                 use_cuda=True,
+                                 iter=20):
         import functools
         batch_size = 2
         self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt50Small, batch_size=batch_size),
-            iter=20,
+            iter=iter,
             batch_size=batch_size,
             use_cuda=use_cuda,
             balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
         )
 
     def test_resnet(self):
-        # os.environ['CPU_NUM'] = str(4)
+        os.environ['CPU_NUM'] = str(4)
         self.check_resnet_convergence(False, use_cuda=True)
-        # self.check_resnet_convergence(False,use_cuda=False)
+        self.check_resnet_convergence(False, use_cuda=False, iter=5)
 
     def test_resnet_with_new_strategy(self):
         os.environ['CPU_NUM'] = str(4)
         self.check_resnet_convergence(True, use_cuda=True)
-        self.check_resnet_convergence(True, use_cuda=False)
+        self.check_resnet_convergence(True, use_cuda=False, iter=5)
 
 
 if __name__ == '__main__':

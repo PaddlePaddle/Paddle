@@ -104,8 +104,9 @@ class TestMNIST(TestParallelExecutorBase):
     def check_simple_fc_convergence(self,
                                     balance_parameter_opt_between_cards,
                                     use_cuda=True):
-        self.check_network_convergence(simple_fc_net)
-        self.check_network_convergence(simple_fc_net, allow_op_delay=True)
+        self.check_network_convergence(simple_fc_net, use_cuda=use_cuda)
+        self.check_network_convergence(
+            simple_fc_net, use_cuda=use_cuda, allow_op_delay=True)
 
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
@@ -142,6 +143,7 @@ class TestMNIST(TestParallelExecutorBase):
             seed=1000,
             feed_dict={"image": img,
                        "label": label},
+            use_cuda=use_cuda,
             use_parallel_executor=True,
             balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
         )
@@ -161,7 +163,7 @@ class TestMNIST(TestParallelExecutorBase):
 
     def check_batchnorm_fc_convergence(
             self, balance_parameter_opt_between_cards, use_cuda):
-        self.check_network_convergence(fc_with_batchnorm)
+        self.check_network_convergence(fc_with_batchnorm, use_cuda=use_cuda)
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import multiprocessing
+import os
 import unittest
 import paddle.fluid as fluid
 import time
@@ -73,7 +75,9 @@ class TestParallelExecutorBase(unittest.TestCase):
                 exe = fluid.Executor(place=place)
 
             if batch_size is not None:
-                batch_size *= fluid.core.get_cuda_device_count()
+                batch_size *= fluid.core.get_cuda_device_count(
+                ) if use_cuda else int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             begin = time.time()
             first_loss, = run_executor(
                 exe=exe, feed=feed_dict, fetch_list=[loss.name])
