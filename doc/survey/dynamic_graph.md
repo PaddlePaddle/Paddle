@@ -171,7 +171,7 @@ Pytorch chooses immediate evaluation. It avoids ever materializing a "forward gr
 
 ## What can fluid learn from them?
 
-TBD
+It turns out we 
 
 # Appendix
 

@@ -30,11 +30,11 @@ struct OpHandle {
            const VariableHandleMap &in_vars,
            const VariableHandleMap &out_vars,
            const framework::AttributeMap &attrs)
-      : type_(type), in_vars_(in_vars), out_vars_(out_vars), attrs_(attrs) {}
+      : type_(type), inputs_(in_vars), outputs_(out_vars), attrs_(attrs) {}
 
   std::string type_;
-  VariableHandleMap in_vars_;
-  VariableHandleMap out_vars_;
+  VariableHandleMap inputs_;
+  VariableHandleMap outputs_;
   framework::AttributeMap attrs_;
 };
 

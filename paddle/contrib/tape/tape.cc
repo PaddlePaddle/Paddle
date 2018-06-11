@@ -163,15 +163,15 @@ void Tape::Forward() {
     OpHandle &op = tape_[current_position_];
 
     // Create Output Tensor, this is only necessary for OpWithKernel
-    for (auto &param2var : op.out_vars_) {
+    for (auto &param2var : op.outputs_) {
       for (auto &var : param2var.second) {
         var->InitializeVariable();
       }
     }
 
     framework::OpDesc op_desc =
-        CreateOpDesc(op.type_, op.in_vars_, op.out_vars_, op.attrs_);
-    ScopeWrapper scope(op.in_vars_, op.out_vars_);
+        CreateOpDesc(op.type_, op.inputs_, op.outputs_, op.attrs_);
+    ScopeWrapper scope(op.inputs_, op.outputs_);
     framework::OpRegistry::CreateOp(op_desc)->Run(scope, platform::CPUPlace());
     current_position_++;
   }
@@ -198,7 +198,7 @@ void Tape::Backward(VariableHandle target) {
 
   for (auto it = tape_.rbegin(); it != tape_.rend(); ++it) {
     framework::OpDesc op_desc =
-        CreateOpDesc(it->type_, it->in_vars_, it->out_vars_, it->attrs_);
+        CreateOpDesc(it->type_, it->inputs_, it->outputs_, it->attrs_);
     std::unordered_map<std::string, std::string> grad_to_var;
     std::vector<std::unique_ptr<framework::OpDesc>> grad_op_descs =
         framework::OpInfoMap::Instance()
@@ -207,12 +207,12 @@ void Tape::Backward(VariableHandle target) {
 
     for (auto &op_desc : grad_op_descs) {
       std::unordered_map<std::string, VariableHandle> name2var;
-      for (auto &param2vars : it->in_vars_) {
+      for (auto &param2vars : it->inputs_) {
         for (auto &a : param2vars.second) {
           name2var[a->Name()] = a;
         }
       }
-      for (auto &param2vars : it->out_vars_) {
+      for (auto &param2vars : it->outputs_) {
         for (auto &a : param2vars.second) {
           name2var[a->Name()] = a;
         }

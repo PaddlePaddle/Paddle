@@ -15,29 +15,32 @@
 #include "gtest/gtest.h"
 #include "paddle/contrib/tape/function.h"
 
+using namespace paddle::tape;
+
 TEST(Tape, TestMLP) {
   LOG(INFO) << "TestMLP";
-  paddle::tape::Linear linear1(3, 3, "relu");
-  paddle::tape::Linear linear2(3, 3, "relu");
-  paddle::tape::Mean mean;
+  Linear linear1(3, 3, "relu");
+  Linear linear2(3, 3, "relu");
+  Mean mean;
 
-  paddle::tape::SGD sgd(0.001);
+  SGD sgd(0.001);
+
+  std::string initializer = "fill_constant";
+  paddle::framework::AttributeMap attrs;
+  attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
+  attrs["shape"] = std::vector<int>{3, 3};
+  attrs["value"] = 1.0f;
+  Fill filler(initializer, attrs);
 
   for (int i = 0; i < 2; ++i) {
-    paddle::tape::reset_global_tape();
+    reset_global_tape();
 
-    paddle::tape::VariableHandle input(new paddle::tape::Variable("input"));
-    std::string initializer = "fill_constant";
-    paddle::framework::AttributeMap attrs;
-    attrs["dtype"] = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
-    attrs["shape"] = std::vector<int>{3, 3};
-    attrs["value"] = 1.0f;
-    paddle::tape::Fill filler(initializer, attrs);
+    VariableHandle input(new paddle::tape::Variable("input"));
     filler(input);
 
     auto loss = mean(linear2(linear1(input)));
 
-    paddle::tape::get_global_tape().Backward(loss);
+    get_global_tape().Backward(loss);
 
     for (auto w : linear1.Params()) {
       sgd(w);
