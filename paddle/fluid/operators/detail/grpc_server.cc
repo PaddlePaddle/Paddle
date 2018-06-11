@@ -158,13 +158,14 @@ class RequestPrefetch final : public RequestBase {
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
     VLOG(3) << "in_var_name: " << in_var_name
+            << "out_var_name: " << out_var_name
             << " RequestPrefetch: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
-    framework::Variable* outvar = nullptr;
+    framework::Variable* outvar = scope->FindVar(out_var_name);
 
-    request_handler_->Handle(in_var_name, scope, invar, &outvar);
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, out_var_name);
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
@@ -284,7 +285,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else {
-    PADDLE_ENFORCE(false, "not surpported rpc");
+    PADDLE_ENFORCE(false, "not supported rpc");
   }
 
   reqs[req_id] = b;

@@ -33,7 +33,8 @@ namespace detail {
 bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
                                 framework::Variable* invar,
-                                framework::Variable** outvar) {
+                                framework::Variable** outvar,
+                                const std::string& out_var_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
   // Async
@@ -82,7 +83,8 @@ void RequestSendHandler::ResetSparseVarRecorder() {
 bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Scope* scope,
                                framework::Variable* invar,
-                               framework::Variable** outvar) {
+                               framework::Variable** outvar,
+                               const std::string& out_var_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
 
   if (varname != FETCH_BARRIER_MESSAGE) {
@@ -105,11 +107,11 @@ bool RequestGetHandler::Handle(const std::string& varname,
 bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     framework::Scope* scope,
                                     framework::Variable* invar,
-                                    framework::Variable** outvar) {
+                                    framework::Variable** outvar,
+                                    const std::string& out_var_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
-  auto var_desc = program_->Block(0).FindVar(varname);
-  *outvar = scope->FindVar(varname);
+  auto var_desc = program_->Block(0).FindVar(out_var_name);
   InitializeVariable(*outvar, var_desc->GetType());
   executor_->RunPreparedContext(
       (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);

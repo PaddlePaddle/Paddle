@@ -96,8 +96,8 @@ class RequestHandler {
   //           *request_handler_->dev_ctx(), &reply_);
   //    }
   virtual bool Handle(const std::string& varname, framework::Scope* scope,
-                      framework::Variable* var,
-                      framework::Variable** outvar) = 0;
+                      framework::Variable* var, framework::Variable** outvar,
+                      const std::string& out_var_name = "") = 0;
 
  protected:
   const bool sync_mode_;
