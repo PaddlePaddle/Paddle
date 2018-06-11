@@ -37,7 +37,7 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_send");
+    int sync_send = Attr<int>("sync_mode");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -74,7 +74,7 @@ Send operator
 
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    AddAttr<int>("sync_send",
+    AddAttr<int>("sync_mode",
                  "(int, default 0)"
                  "sync send or async send.")
         .SetDefault(0);

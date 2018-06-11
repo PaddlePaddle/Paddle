@@ -698,7 +698,7 @@ class DistributeTranspiler:
                     inputs={'X': self.trainer_side_table_grad_list},
                     outputs={},
                     attrs={
-                        "sync_send": True,
+                        "sync_mode": True,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
