@@ -1409,7 +1409,7 @@ def sequence_pool(input, pool_type):
 
 def sequence_first_step(input):
     """
-    This funciton get the first step of sequence.
+    This function get the first step of sequence.
 
     .. code-block:: text
 
@@ -1442,7 +1442,7 @@ def sequence_first_step(input):
 
 def sequence_last_step(input):
     """
-    This funciton get the last step of sequence.
+    This function get the last step of sequence.
 
     .. code-block:: text
 
