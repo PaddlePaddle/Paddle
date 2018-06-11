@@ -265,11 +265,13 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
+template class ConcatFunctor<platform::CUDADeviceContext, uint8_t>;
 template class ConcatFunctor<platform::CUDADeviceContext, int>;
 template class ConcatFunctor<platform::CUDADeviceContext, int64_t>;
 template class ConcatFunctor<platform::CUDADeviceContext, float>;
 template class ConcatFunctor<platform::CUDADeviceContext, double>;
 
+template class ConcatGradFunctor<platform::CUDADeviceContext, uint8_t>;
 template class ConcatGradFunctor<platform::CUDADeviceContext, int>;
 template class ConcatGradFunctor<platform::CUDADeviceContext, int64_t>;
 template class ConcatGradFunctor<platform::CUDADeviceContext, float>;

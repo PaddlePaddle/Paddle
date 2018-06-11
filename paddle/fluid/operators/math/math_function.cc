@@ -27,6 +27,7 @@ using float16 = paddle::platform::float16;
 template struct SetConstant<platform::CPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::CPUDeviceContext, float>;
 template struct SetConstant<platform::CPUDeviceContext, double>;
+template struct SetConstant<platform::CPUDeviceContext, uint8_t>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;

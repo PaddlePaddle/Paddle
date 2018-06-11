@@ -358,15 +358,13 @@ def image_center_crop(input, shape):
     input_shape_var = layers.shape(input)
     batch_size_var, _ = layers.split(
         input_shape_var, num_or_sections=[1, 3], dim=0)
-    shape = list((input.shape)[1:2]) + list(shape)
-    shape_var = layers.assign(input=np.array(shape).astype('int32'))
+    out_shape = list((input.shape)[0:2]) + list(shape)
+    shape_var = layers.assign(input=np.array(out_shape[1:]).astype('int32'))
     shape_var = layers.cast(shape_var, 'int64')
     out_shape_var = layers.concat([batch_size_var, shape_var], axis=0)
     shape_infer_var = layers.fill_constant_batch_size_like(
-        input=out_shape_var,
-        shape=out_shape_var.shape,
-        dtype=input.dtype,
-        value=0)
+        input=input, shape=out_shape, dtype=input.dtype, value=0)
     offsets_var = (input_shape_var - out_shape_var) / 2
-
+    import pdb
+    pdb.set_trace()
     return layers.crop(x=input, y=shape_infer_var, offsets_var=offsets_var)

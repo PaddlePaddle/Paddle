@@ -107,7 +107,15 @@ REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                       false> /* set false to disable empty grad */);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>);
+    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>);

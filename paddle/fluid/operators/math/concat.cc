@@ -105,11 +105,13 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
+template class ConcatFunctor<platform::CPUDeviceContext, uint8_t>;
 template class ConcatFunctor<platform::CPUDeviceContext, int>;
 template class ConcatFunctor<platform::CPUDeviceContext, int64_t>;
 template class ConcatFunctor<platform::CPUDeviceContext, float>;
 template class ConcatFunctor<platform::CPUDeviceContext, double>;
 
+template class ConcatGradFunctor<platform::CPUDeviceContext, uint8_t>;
 template class ConcatGradFunctor<platform::CPUDeviceContext, int>;
 template class ConcatGradFunctor<platform::CPUDeviceContext, int64_t>;
 template class ConcatGradFunctor<platform::CPUDeviceContext, float>;

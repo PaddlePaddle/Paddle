@@ -50,5 +50,6 @@ Get the shape of input tensor.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(shape, ops::ShapeOp, ops::ShapeOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<int>, ops::ShapeKernel<int64_t>,
-                       ops::ShapeKernel<float>, ops::ShapeKernel<double>);
+REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<uint8_t>, ops::ShapeKernel<int>,
+                       ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
+                       ops::ShapeKernel<double>);

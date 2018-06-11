@@ -61,6 +61,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
                                            double>,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
+                                           uint8_t>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
                                            int>,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
                                            int64_t>);

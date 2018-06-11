@@ -188,6 +188,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(crop, ops::CropKernel<float>);
+REGISTER_OP_CPU_KERNEL(crop, ops::CropKernel<uint8_t>, ops::CropKernel<int>,
+                       ops::CropKernel<int64_t>, ops::CropKernel<float>,
+                       ops::CropKernel<double>);
 REGISTER_OP_CPU_KERNEL(
-    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>);
+    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::CropGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CropGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CropGradKernel<paddle::platform::CPUDeviceContext, double>);

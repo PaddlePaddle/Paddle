@@ -16,6 +16,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/crop_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(crop, ops::CropKernel<float>);
+REGISTER_OP_CUDA_KERNEL(crop, ops::CropKernel<uint8_t>, ops::CropKernel<int>,
+                        ops::CropKernel<int64_t>, ops::CropKernel<float>,
+                        ops::CropKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
-    crop_grad, ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>);
+    crop_grad,
+    ops::CropGradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
+    ops::CropGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::CropGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CropGradKernel<paddle::platform::CUDADeviceContext, double>);
