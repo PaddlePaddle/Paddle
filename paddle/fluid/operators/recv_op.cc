@@ -77,9 +77,15 @@ This operator can get variables from server side.
   }
 };
 
+class RecvOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {}
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv, ops::RecvOp, ops::RecvOpMaker);
+REGISTER_OPERATOR(recv, ops::RecvOp, paddle::framework::EmptyGradOpMaker,
+                  ops::RecvOpMaker, ops::RecvOpShapeInference);

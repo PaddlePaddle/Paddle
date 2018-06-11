@@ -83,7 +83,6 @@ class RequestHandler {
   }
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
-  std::vector<framework::Variable*>& sparse_vars() { return sparse_vars_; }
 
   // This function processes user's rpc request.
   // The implemention is in request_handler_impl.
@@ -116,13 +115,7 @@ class RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
-
-  // Record received sparse variables, so that
-  // we could reset those after execute optimize program
-  std::vector<framework::Variable*> sparse_vars_;
   RPCServer* rpc_server_;
-
-  std::mutex sparse_var_mutex_;
 };
 
 }  // namespace detail

@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/graph_builder_factory.h"
+#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include <fstream>
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include "paddle/fluid/framework/details/ssa_graph_checker.h"
 #include "paddle/fluid/framework/details/ssa_graph_printer.h"
 
 namespace paddle {
@@ -40,6 +41,8 @@ std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
     res.reset(new SSAGraghBuilderWithPrinter(
         std::move(fout), std::move(graphviz_printer), std::move(res)));
   }
+  res.reset(new SSAGraghBuilderWithChecker(std::move(res)));
+
   return res;
 }
 }  // namespace details

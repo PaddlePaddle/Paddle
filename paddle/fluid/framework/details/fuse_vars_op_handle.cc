@@ -42,7 +42,7 @@ void FuseVarsOpHandle::RunImpl() {
     out_t->ShareDataWith(out_tensor->Slice(s, s + numel));
     s += numel;
   }
-  this->RunAndRecordEvent([this] {});
+  this->RunAndRecordEvent([] {});
 }
 
 std::string FuseVarsOpHandle::Name() const { return "fuse vars"; }

@@ -115,9 +115,6 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->ResetBarrierCounter();
-  // Record received sparse variables, so that
-  // we could reset those after execute optimize program
-  std::vector<framework::Variable *> sparse_vars;
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
@@ -153,18 +150,12 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
                           recv_scope);
     VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
-    // Reset the received sparse variables, the sum operator would not
-    // sum the input sparse variables which rows is empty at the next
-    // mini-batch.
-    // TODO(Yancey1989): move the reset action into an operator, we couldn't
-    // have any hide logic in the operator.
-    for (framework::Variable *var : sparse_vars) {
-      var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
-    }
-
     rpc_service_->SetCond(detail::kRequestGet);
     rpc_service_->WaitBarrier(detail::kRequestGet);
     rpc_service_->ResetBarrierCounter();
+    // reset received sparse vars to avoid reuse it in the next mini-batch
+    dynamic_cast<detail::RequestSendHandler *>(request_send_handler_.get())
+        ->ResetSparseVarRecorder();
   }  // while(true)
 }
 
