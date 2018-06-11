@@ -93,15 +93,16 @@ void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list) const {
-  // FIXME(qiao) run should not run the block to do prefetch, currently prefetch
-  // block
-  // can only be at the last blocks of the program
+  // FIXME(qiao) ParallelExecuteBlocks should only execute optimize blocks.
+  // the prefetch blocks should not be executed. Currently we put prefetch
+  // blocks
+  // at the end of programs. This may be misused.
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
   std::vector<int> block_list;
-  for (size_t blkid = 1; blkid < prefetch_block_id_list[0]; ++blkid) {
+  for (int blkid = 1; blkid < prefetch_block_id_list[0]; ++blkid) {
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
@@ -131,7 +132,7 @@ void ListenAndServOp::RunSyncLoop(
     std::vector<size_t> parallel_blkids;
     parallel_blkids.push_back(1);
     double ts = detail::GetTimestamp();
-    for (size_t blkid = 2; blkid < prefetch_block_id_list[0]; ++blkid) {
+    for (int blkid = 2; blkid < prefetch_block_id_list[0]; ++blkid) {
       if (program->Block(blkid).Parent() != last_parent_blkid) {
         ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
                               program, recv_scope);
@@ -255,7 +256,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   // prepare for prefetch
   std::vector<int> prefetch_block_id_list;
-  std::unordered_map<int32_t, std::string> block_id_to_prefetch_var_name;
+  std::unordered_map<int, std::string> block_id_to_prefetch_var_name;
 
   auto prefetch_var_name_to_block_id_str =
       Attr<std::vector<std::string>>(kPrefetchVarNameToBlockId);
@@ -277,7 +278,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       prefetch_var_name_to_prepared_ctx;
-  for (int i = 0; i < prefetch_block_id_list.size(); ++i) {
+  for (size_t i = 0; i < prefetch_block_id_list.size(); ++i) {
     auto block_id = prefetch_block_id_list[i];
     auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
