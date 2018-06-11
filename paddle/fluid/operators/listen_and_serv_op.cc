@@ -247,7 +247,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestPrefetch,
-                            request_prefetch_handler_.get(), 1);
+                            request_prefetch_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *program = optimize_block->Program();

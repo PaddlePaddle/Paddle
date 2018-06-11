@@ -168,9 +168,9 @@ class RequestPrefetch final : public RequestBase {
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
+    status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-    status_ = FINISH;
   }
 
  protected:
