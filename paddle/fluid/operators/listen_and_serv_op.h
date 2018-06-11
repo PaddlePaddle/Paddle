@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
-constexpr char kPrefetchBlock[] = "PrefetchBlock";
+constexpr char kPrefetchBlock[] = "prefetch_var_name_to_block_id";
 
 void RunServer(std::shared_ptr<detail::RPCServer> service);
 
