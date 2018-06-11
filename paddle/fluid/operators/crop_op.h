@@ -27,6 +27,37 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::Tensor;
 
+static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
+  std::vector<int> res;
+  int rank = ctx.Input<Tensor>("X")->dims().size();
+  if (ctx.HasInput("Offsets")) {
+    PADDLE_ENFORCE(ctx.Attr<std::vector<int>>("offsets").empty(),
+                   "Input 'Offsets' and attribute 'offsets' should not be used "
+                   "at the same time.");
+    const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
+    PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1);
+    PADDLE_ENFORCE_EQ(
+        rank, offsets_tensor->dims()[0],
+        "Offsets size should be equal to dimension size of input tensor.");
+    const int* offsets_data;
+    framework::Tensor cpu_tmp_tensor;
+    if (platform::is_cpu_place(offsets_tensor->place())) {
+      offsets_data = offsets_tensor->data<int>();
+    } else {
+      framework::TensorCopySync(*offsets_tensor, platform::CPUPlace(),
+                                &cpu_tmp_tensor);
+      offsets_data = cpu_tmp_tensor.data<int>();
+    }
+    res = std::vector<int>(offsets_data, offsets_data + rank);
+  } else {
+    res = ctx.Attr<std::vector<int>>("offsets");
+    PADDLE_ENFORCE_EQ(
+        rank, res.size(),
+        "Offsets size should be equal to dimension size of input tensor.");
+  }
+  return res;
+}
+
 template <typename T>
 class CropKernel : public framework::OpKernel<T> {
  public:
@@ -37,10 +68,7 @@ class CropKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
     auto x_stride = framework::stride(x->dims());
     auto out_stride = framework::stride(out->dims());
-    auto offsets = context.Attr<std::vector<int>>("offsets");
-    PADDLE_ENFORCE_EQ(
-        x->dims().size(), static_cast<int64_t>(offsets.size()),
-        "Offsets size should be equal to dimension size of input tensor.");
+    auto offsets = GetOffsets(context);
     int64_t offset = 0;
     for (size_t i = 0; i < offsets.size(); ++i) {
       offset += (x_stride[i] * offsets[i]);
@@ -56,7 +84,7 @@ void CropGradFunction(const framework::ExecutionContext& context) {
   if (d_x != nullptr) {
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     d_x->mutable_data<T>(context.GetPlace());
-    auto offsets = context.Attr<std::vector<int>>("offsets");
+    auto offsets = GetOffsets(context);
     Eigen::array<std::pair<int, int>, D> paddings;
     for (size_t i = 0; i < D; ++i) {
       paddings[i].first = offsets[i];
