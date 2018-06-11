@@ -18,6 +18,7 @@ from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
+from layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
@@ -266,6 +267,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     return out
 
 
+@templatedoc()
 def fill_constant_batch_size_like(input,
                                   shape,
                                   dtype,
@@ -273,30 +275,28 @@ def fill_constant_batch_size_like(input,
                                   input_dim_idx=0,
                                   output_dim_idx=0):
     """
-    **fill_constant_batch_size_like**
-
-    This function creates a tensor of specified *shape*, *dtype* and batch size,
-    and initializes this with a constant supplied in *value*. The batch size is
-    obtained from the `input` tensor.
+    ${comment}
 
     It also sets *stop_gradient* to True.
 
+    >>> data = fluid.layers.fill_constant_batch_size_like(
+    >>>             input=like, shape=[1], value=0, dtype='int64')
+
     Args:
-        input(Variable): Tensor whose dimensions will be used to get batch size
-        shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
-        value(float): Constant value to initialize the output tensor
-        input_dim_idx(int): Index of input's batch size dimension
-        output_dim_idx(int): Index of output's batch size dimension
+        input(${input_type}): ${input_comment}.
+
+        shape(${shape_type}): ${shape_comment}.
+
+        dtype(${dtype_type}): ${dtype_comment}.
+
+        value(${value_type}): ${value_comment}.
+
+        input_dim_idx(${input_dim_idx_type}): ${input_dim_idx_comment}.
+
+        output_dim_idx(${output_dim_idx_type}): ${output_dim_idx_comment}.
 
     Returns:
-        Variable: The tensor variable storing the output
-
-    Examples:
-        .. code-block:: python
-
-          data = fluid.layers.fill_constant_batch_size_like(
-              input=like, shape=[1], value=0, dtype='int64')
+        ${out_comment}.
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
@@ -435,22 +435,6 @@ def save_combine(x, file_path, overwrite=True):
         outputs={},
         args={"file_path": file_path,
               "overwrite": overwrite})
-
-
-def load(out, file_path):
-    """
-    Loads a variable from a given file.
-
-    Args:
-        out(variable): The variable to be read from the disk file.
-        file_path(str): The path of the disk file.
-    """
-    helper = LayerHelper("load", **locals())
-    helper.append_op(
-        type="load",
-        inputs={},
-        output={"Out": out},
-        args={"file_path": file_path})
 
 
 def load_combine(out, file_path):
