@@ -22,7 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include "paddle/fluid/framework/details/graph_builder_factory.h"
+#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -42,8 +43,6 @@ class ParallelExecutorPrivate {
 #ifdef PADDLE_WITH_CUDA
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
-
-  std::vector<std::tuple<std::string, proto::VarType::Type, bool>> var_types_;
   bool own_local_scope;
 };
 
@@ -52,13 +51,13 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
 }
 
 ParallelExecutor::ParallelExecutor(
-    size_t num_threads, bool use_event,
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes, bool allow_op_delay,
-    bool use_default_grad_scale)
+    Scope *scope, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
+    size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -80,36 +79,46 @@ ParallelExecutor::ParallelExecutor(
 
 // Bcast Parameters to all GPUs
 #ifdef PADDLE_WITH_CUDA
-  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
+  auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
+  ncclUniqueId *nccl_id = nullptr;
+  if (nccl_id_var != nullptr) {
+    nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+  }
+  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
+      member_->places_, nccl_id, num_trainers, trainer_id));
 #endif
   if (platform::is_gpu_place(places[0]) && member_->local_scopes_.size() != 1 &&
       local_scopes.empty()) {  // Is CUDA
     BCastParamsToGPUs(bcast_vars);
   }
-// Startup Program has been run. All local scopes has correct parameters.
+  // Startup Program has been run. All local scopes has correct parameters.
 
-// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
-#ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(
+  // Step 2. Create vars in each scope;
+  std::vector<details::VariableInfo> var_infos;
+  for (auto *var : main_program.Block(0).AllVars()) {
+    var_infos.emplace_back();
+    var_infos.back().name_ = var->Name();
+    var_infos.back().type_ = var->GetType();
+    var_infos.back().persistable_ = var->Persistable();
+  }
+
+  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+
+  details::SSAGraphBuilderFactory builder_factory(
       member_->places_, loss_var_name, params, member_->local_scopes_,
-      use_default_grad_scale, member_->nccl_ctxs_.get());
-#else
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           use_default_grad_scale);
+      build_strategy);
+#ifdef PADDLE_WITH_CUDA
+  builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #endif
-  auto graph = builder.Build(main_program);
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      num_threads, use_event, member_->local_scopes_, places, std::move(graph),
-      allow_op_delay));
+      exec_strategy, member_->local_scopes_, places,
+      builder_factory.Create()->Build(main_program)));
 
-  // Step 3. Create vars in each scope;
-  for (auto *var : main_program.Block(0).AllVars()) {
-    member_->var_types_.emplace_back(var->Name(), var->GetType(),
-                                     var->Persistable());
-  }
+  member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+      exec_strategy, member_->local_scopes_, std::move(var_infos),
+      member_->places_, std::move(member_->executor_)));
 }
 
 void ParallelExecutor::BCastParamsToGPUs(
@@ -164,42 +173,9 @@ void ParallelExecutor::BCastParamsToGPUs(
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
-  // Create local scopes.
-  for (auto it = member_->local_scopes_.rbegin();
-       it != member_->local_scopes_.rend(); ++it) {
-    auto &scope = *it;
-    Scope &local_scope = scope->NewScope();
-    *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
-        &local_scope;
-
-    for (auto &name_type_pair : member_->var_types_) {
-      if (scope->FindVar(std::get<0>(name_type_pair)) != nullptr) {
-        continue;
-      }
-
-      if (std::get<2>(name_type_pair)) {  // Persistable
-        InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
-                           std::get<1>(name_type_pair));
-      } else {
-        InitializeVariable(local_scope.Var(std::get<0>(name_type_pair)),
-                           std::get<1>(name_type_pair));
-      }
-    }
-  }
-
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
-
-  // Wait All computational streams
-  for (auto p : member_->places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
-  }
-  for (auto &scope : member_->local_scopes_) {
-    auto &local_scope =
-        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-    scope->DeleteScope(local_scope);
-  }
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(

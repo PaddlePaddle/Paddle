@@ -66,8 +66,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
 
 class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChunkEvalOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Inference",
              "(Tensor, default: Tensor<int64_t>). "
              "Predictions from the network.");

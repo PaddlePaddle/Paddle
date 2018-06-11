@@ -106,6 +106,8 @@ class SaveOp : public framework::OperatorBase {
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
       framework::LoDTensor out;
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
+      // copy LoD info to the new tensor
+      out.set_lod(tensor.lod());
       framework::SerializeToStream(fout, out, dev_ctx);
     } else {
       framework::SerializeToStream(fout, tensor, dev_ctx);
@@ -115,8 +117,7 @@ class SaveOp : public framework::OperatorBase {
 
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SaveOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor ) Input tensor to be saved");
     AddComment(R"DOC(
 Save operator

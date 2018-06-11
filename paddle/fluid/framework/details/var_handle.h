@@ -62,7 +62,7 @@ struct VarHandle : public VarHandleBase {
   std::string name_;
   platform::Place place_;
 
-  bool operator==(const VarHandle& o) const {
+  bool IsTheSameVar(const VarHandle& o) const {
     return o.generated_op_ == generated_op_ && o.name_ == name_ &&
            o.scope_idx_ == scope_idx_;
   }

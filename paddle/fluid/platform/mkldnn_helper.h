@@ -16,6 +16,7 @@ limitations under the License. */
 #include <mkldnn.h>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {
@@ -36,6 +37,11 @@ typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
 template <typename Type>
 void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
+}
+
+template <typename Type>
+void* to_void_reinterpret_cast(const Type* t) {
+  return reinterpret_cast<void*>(const_cast<Type*>(t));
 }
 
 template <class Type>
@@ -69,6 +75,28 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
 inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
   bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
   return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
+}
+
+template <typename Type>
+mkldnn::memory::data_type MKLDNNGetDataType() {
+  return mkldnn::memory::data_undef;
+}
+
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
+  return mkldnn::memory::f32;
+}
+
+inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {
+  auto reorder_prim = mkldnn::reorder(src, dst);
+  std::vector<mkldnn::primitive> pipeline;
+  pipeline.push_back(reorder_prim);
+  mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+}
+
+inline mkldnn::memory::format GetMKLDNNFormat(const mkldnn::memory memory) {
+  return static_cast<mkldnn::memory::format>(
+      memory.get_primitive_desc().desc().data.format);
 }
 
 }  // namespace platform

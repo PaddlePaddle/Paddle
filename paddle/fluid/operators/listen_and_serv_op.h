@@ -15,14 +15,16 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
-#include <ostream>
+#include <atomic>
+#include <set>
 #include <string>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/detail/rpc_server.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +32,7 @@ namespace operators {
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
 constexpr char kPrefetchBlock[] = "PrefetchBlock";
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
+void RunServer(std::shared_ptr<detail::RPCServer> service);
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
@@ -39,7 +41,7 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap& outputs,
                   const framework::AttributeMap& attrs);
 
-  int GetSelectedPort() const;
+  virtual ~ListenAndServOp();
 
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
@@ -47,9 +49,11 @@ class ListenAndServOp : public framework::OperatorBase {
                    framework::BlockDesc* prefetch_block) const;
 
   void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program,
-                    framework::Scope* recv_scope,
-                    framework::BlockDesc* prefetch_block) const;
+                    framework::ProgramDesc* program) const;
+
+  void SavePort() const;
+
+  int GetSelectedPort() { return rpc_service_->GetSelectedPort(); }
 
   void Stop() override;
 
@@ -57,8 +61,20 @@ class ListenAndServOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override;
 
  protected:
-  mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
+  mutable std::shared_ptr<detail::RPCServer> rpc_service_;
+  mutable std::shared_ptr<detail::RequestHandler> request_send_handler_;
+  mutable std::shared_ptr<detail::RequestHandler> request_get_handler_;
+  mutable std::shared_ptr<detail::RequestHandler> request_prefetch_handler_;
+
   mutable std::shared_ptr<std::thread> server_thread_;
+};
+
+class SignalHandler {
+ public:
+  static void StopAndExit(int signal_num);
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(SignalHandler);
 };
 
 }  // namespace operators

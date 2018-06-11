@@ -33,12 +33,12 @@ namespace paddle {
  */
 
 class InterpolationLayer : public Layer {
-protected:
+ protected:
   /// weightLast = 1 - weight
   MatrixPtr weightLast_;
   MatrixPtr tmpMatrix;
 
-public:
+ public:
   explicit InterpolationLayer(const LayerConfig& config) : Layer(config) {}
 
   ~InterpolationLayer() {}

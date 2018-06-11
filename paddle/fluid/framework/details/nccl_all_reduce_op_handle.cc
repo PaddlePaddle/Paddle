@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include <algorithm>
+
+#include "paddle/fluid/framework/details/container_cast.h"
+#include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
+#include "paddle/fluid/framework/details/variable_visitor.h"
 
 namespace paddle {
 namespace framework {
@@ -30,30 +32,34 @@ NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
 }
 
 void NCCLAllReduceOpHandle::RunImpl() {
-  if (inputs_.size() == 1) {
+  if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
   } else {
     // Wait input done
-    for (auto *in : inputs_) {
-      auto &p = static_cast<VarHandle *>(in)->place_;
-      in->generated_op_->Wait(dev_ctxes_[p]);
-    }
-
-    auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
-    int dtype = -1;
-    size_t numel = 0;
+    WaitInputVarGenerated();
+    auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+    auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
+    PADDLE_ENFORCE_EQ(
+        in_var_handles.size(), places_.size(),
+        "The NoDummyInputSize should be equal to the number of places.");
+    PADDLE_ENFORCE_EQ(
+        in_var_handles.size(), out_var_handles.size(),
+        "The NoDummyInputSize and NoDummyOutputSize should be equal.");
 
     std::vector<const LoDTensor *> lod_tensors;
-
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       auto *s = local_scopes_[i];
       auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
-
-      auto &lod_tensor = local_scope.FindVar(var_name)->Get<LoDTensor>();
+      auto &lod_tensor =
+          local_scope.FindVar(in_var_handles[i]->name_)->Get<LoDTensor>();
       lod_tensors.emplace_back(&lod_tensor);
+      PADDLE_ENFORCE_EQ(in_var_handles[i]->name_, out_var_handles[i]->name_,
+                        "The name of input and output should be equal.");
     }
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
+      int dtype = -1;
+      size_t numel = 0;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &p = places_[i];
@@ -99,7 +105,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
         auto &scope =
             *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
         auto &p = places_[i];
-        auto *var = scope.FindVar(var_name);
+        auto *var = scope.FindVar(in_var_handles[i]->name_);
         auto *dev_ctx = dev_ctxes_[p];
 
         RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {

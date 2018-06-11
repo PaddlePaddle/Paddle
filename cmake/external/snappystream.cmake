@@ -46,8 +46,6 @@ ExternalProject_Add(
                         -DCMAKE_INSTALL_PREFIX:PATH=${SNAPPYSTREAM_INSTALL_DIR}
                         -DCMAKE_INSTALL_LIBDIR:PATH=${SNAPPYSTREAM_INSTALL_DIR}/lib
                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-        BUILD_COMMAND   make -j8
-        INSTALL_COMMAND make install
         DEPENDS snappy
 )
 

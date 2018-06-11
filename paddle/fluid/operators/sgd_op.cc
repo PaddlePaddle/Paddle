@@ -48,10 +48,27 @@ class SGDOp : public framework::OperatorWithKernel {
   }
 };
 
+class SGDOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto input_var = op_desc.Input("Param")[0];
+    for (auto& out_var : op_desc.Output("ParamOut")) {
+      if (block->FindRecursiveOrCreateVar(input_var).GetType() ==
+          framework::proto::VarType::SELECTED_ROWS) {
+        block->FindRecursiveOrCreateVar(out_var).SetType(
+            framework::proto::VarType::SELECTED_ROWS);
+      } else {
+        block->FindRecursiveOrCreateVar(out_var).SetType(
+            framework::proto::VarType::LOD_TENSOR);
+      }
+    }
+  }
+};
+
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
@@ -74,5 +91,6 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
+REGISTER_OPERATOR(sgd, ops::SGDOp, ops::SGDOpMaker,
+                  paddle::framework::EmptyGradOpMaker, ops::SGDOpInferVarType);
 REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<float>, ops::SGDOpKernel<double>);

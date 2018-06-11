@@ -70,8 +70,7 @@ class SplitOp : public framework::OperatorWithKernel {
 
 class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
         .AsDuplicable();

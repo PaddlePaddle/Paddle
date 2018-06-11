@@ -34,18 +34,34 @@ class BilinearInterpOp : public framework::OperatorWithKernel {
     int out_w = ctx->Attrs().Get<int>("out_w");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
 
+    if (ctx->HasInput("OutSize")) {
+      auto out_size_dim = ctx->GetInputDim("OutSize");
+      PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
+                        "OutSize's dimension size must be 1");
+      PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
+    }
     std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
     ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
   }
 };
 
 class BilinearInterpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BilinearInterpOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input tensor of bilinear interpolation, "
              "This is a 4-D tensor with shape of (N x C x h x w)");
+    AddInput("OutSize",
+             "(Tensor) This is a 1-D tensor with two number. "
+             "The first number is height and the second number is width.")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor) The dimension of output is (N x C x out_h x out_w]");
 
@@ -78,6 +94,12 @@ class BilinearInterpOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
   }
 };
 

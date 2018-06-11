@@ -33,10 +33,10 @@ namespace paddle {
  * The config file api is addto_layer.
  */
 class AddtoLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit AddtoLayer(const LayerConfig& config) : Layer(config) {}
 
   ~AddtoLayer() {}

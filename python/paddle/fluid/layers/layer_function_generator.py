@@ -15,16 +15,13 @@ import re
 import cStringIO
 import functools
 import warnings
+import string
 
 from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable
 from ..layer_helper import LayerHelper
 
-__all__ = [
-    'deprecated',
-    'generate_layer_fn',
-    'autodoc',
-]
+__all__ = ['deprecated', 'generate_layer_fn', 'autodoc', 'templatedoc']
 
 
 def _convert_(name):
@@ -43,6 +40,10 @@ def _convert_(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
+def _type_to_str_(tp):
+    return framework_pb2.AttrType.Name(tp)
+
+
 def _generate_doc_string_(op_proto):
     """
     Generate docstring by OpProto
@@ -53,9 +54,6 @@ def _generate_doc_string_(op_proto):
     Returns:
         str: the document string
     """
-
-    def _type_to_str_(tp):
-        return framework_pb2.AttrType.Name(tp)
 
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
@@ -75,7 +73,11 @@ def _generate_doc_string_(op_proto):
         buf.write(str(each_input.dispensable))
         buf.write('\n')
 
+    skip_attrs = OpProtoHolder.generated_op_attr_names()
+
     for each_attr in op_proto.attrs:
+        if each_attr.name in skip_attrs:
+            continue
         buf.write('    ')
         buf.write(each_attr.name)
         buf.write(' (')
@@ -113,7 +115,7 @@ def generate_layer_fn(op_type):
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError("Only one non intermediate output operator can be",
-                         "automatically generated.")
+                         "automatically generated. {0}".format(op_type))
 
     if not_intermediate_outputs[0].duplicable:
         raise ValueError(
@@ -217,6 +219,52 @@ def autodoc(comment=""):
     def __impl__(func):
         func.__doc__ = _generate_doc_string_(OpProtoHolder.instance(
         ).get_op_proto(func.__name__)) + comment
+        return func
+
+    return __impl__
+
+
+def templatedoc():
+    """
+    Decorator of layer function. It will use the docstring from the layer
+    function as the template. The template arguments are:
+
+    * ${comment}: The operator comment written in CPP.
+    * ${{name}_comment}: The comment of ${name} written with AddAttr, AddOutput,
+        and AddInput. The ${name} is Python snake style. i.e., xxx_xxx.
+    * ${{name}_type}: The type of ${name}.
+
+    Returns:
+        Decorated function.
+    """
+
+    def __impl__(func):
+        op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+        tmpl = string.Template(func.__doc__)
+
+        comment_lines = op_proto.comment.split("\n")
+        comment = ""
+        for line in comment_lines:
+            line = line.lstrip()
+            comment += line
+            comment += "\n"
+
+        args = {"comment": comment}
+        for each_input in op_proto.inputs:
+            input_name = _convert_(each_input.name)
+            args["{0}_comment".format(input_name)] = each_input.comment
+            args["{0}_type".format(input_name)] = "Variable"
+        for each_attr in op_proto.attrs:
+            input_name = _convert_(each_attr.name)
+            args["{0}_comment".format(input_name)] = each_attr.comment
+            args["{0}_type".format(input_name)] = _type_to_str_(each_attr.type)
+
+        for each_opt in op_proto.outputs:
+            output_name = _convert_(each_opt.name)
+            args["{0}_comment".format(output_name)] = each_opt.comment
+            args["{0}_type".format(output_name)] = "Variable"
+
+        func.__doc__ = tmpl.substitute(args)
         return func
 
     return __impl__
