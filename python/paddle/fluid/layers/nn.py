@@ -1624,6 +1624,7 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
+@templatedoc()
 def layer_norm(input,
                scale=True,
                shift=True,
@@ -1634,26 +1635,22 @@ def layer_norm(input,
                act=None,
                name=None):
     """
-    **Layer Normalization**
-
-    Assume feature vectors exist on dimensions
-    :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
-    along these dimensions for each feature vector :math:`a` with size
-    :math:`H`, then normalize each feature vector using the corresponding
-    statistics. After that, apply learnable gain and bias on the normalized
-    tensor to scale and shift if :attr:`scale` and :attr:`shift` are set.
-
-    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+    ${comment}
 
     The formula is as follows:
 
-    .. math::
+    ..  math::
 
         \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
 
         \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
 
         h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+    >>> import paddle.fluid as fluid
+    >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+    >>>                          dtype='float32')
+    >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
 
     Args:
         input(Variable): The input tensor variable.
@@ -1672,14 +1669,7 @@ def layer_norm(input,
         act(str): Activation to be applied to the output of layer normalizaiton.
 
     Returns:
-        Variable: A tensor variable with the same shape as the input.
-
-    Examples:
-        .. code-block:: python
-
-            data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-            x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        ${y_comment}
     """
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
@@ -3184,29 +3174,19 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
     return out
 
 
+@templatedoc()
 def row_conv(input, future_context_size, param_attr=None, act=None):
-    """Row Conv Operator. This layer will apply lookahead convolution to
-    **input**. The input variable should be a 2D LoDTensor with shape [T, D].
-    Parameters with shape [future_context_size + 1, D] will be created. The math
-    equation of row convolution is as follows:
+    """
+    ${comment}
 
-    .. math::
-        Out_{i} = \sum_{j = i} ^ {i + \\tau} X_{j} \odot W_{i - j}
+    >>> import paddle.fluid as fluid
+    >>> x = fluid.layers.data(name='x', shape=[16],
+    >>>                        dtype='float32', lod_level=1)
+    >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
 
-    In the above equation:
-
-    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
-    * :math:`\\tau`: Future context size.
-    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
-    * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
-
-    More details about row_conv please refer to the paper \
-    (http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf) and
-    the design document \
-    (https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645).
 
     Args:
-        input (Variable): Input variable, a 2D LoDTensor with shape [T, D].
+        input (${x_type}): ${x_comment}.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
@@ -3214,14 +3194,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         act (str): Non-linear activation to be applied to output variable.
 
     Returns:
-        Variable: The output tensor with same shape as input tensor.
-
-    Examples:
-        .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[16],
-                            dtype='float32', lod_level=1)
-            out = fluid.layers.row_conv(input=x, future_context_size=2)
+        ${out_comment}.
     """
     helper = LayerHelper('row_conv', **locals())
     dtype = helper.input_dtype()

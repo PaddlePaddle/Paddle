@@ -373,21 +373,54 @@ def ssd_loss(location,
     confidence loss (or classification loss) by performing the following steps:
 
     1. Find matched boundding box by bipartite matching algorithm.
+
       1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
+
       1.2 Compute matched boundding box by bipartite matching algorithm.
+
     2. Compute confidence for mining hard examples
+
       2.1. Get the target label based on matched indices.
+
       2.2. Compute confidence loss.
+
     3. Apply hard example mining to get the negative example indices and update
        the matched indices.
+
     4. Assign classification and regression targets
+
       4.1. Encoded bbox according to the prior boxes.
+
       4.2. Assign regression targets.
+
       4.3. Assign classification targets.
+
     5. Compute the overall objective loss.
+
       5.1 Compute confidence loss.
+
       5.1 Compute localization loss.
+
       5.3 Compute the overall weighted loss.
+
+    >>> import paddle.fluid.layers as layers
+    >>> pb = layers.data(
+    >>>            name='prior_box',
+    >>>            shape=[10, 4],
+    >>>            append_batch_size=False,
+    >>>            dtype='float32')
+    >>> pbv = layers.data(
+    >>>            name='prior_box_var',
+    >>>            shape=[10, 4],
+    >>>            append_batch_size=False,
+    >>>            dtype='float32')
+    >>> loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
+    >>> scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
+    >>> gt_box = layers.data(
+    >>>         name='gt_box', shape=[4], lod_level=1, dtype='float32')
+    >>> gt_label = layers.data(
+    >>>         name='gt_label', shape=[1], lod_level=1, dtype='float32')
+    >>>     loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
 
     Args:
         location (Variable): The location predictions are a 3D Tensor with
@@ -426,34 +459,12 @@ def ssd_loss(location,
             mining_type is 'hard_example'.
 
     Returns:
-        Variable: The weighted sum of the localization loss and confidence loss,
-            with shape [N * Np, 1], N and Np are the same as they are
-            in `location`.
+        The weighted sum of the localization loss and confidence loss, with \
+        shape [N * Np, 1], N and Np are the same as they are in `location`.
 
     Raises:
-        ValueError: If mining_type is 'hard_example', now only support
-            mining type of `max_negative`.
-
-    Examples:
-        .. code-block:: python
-
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
-            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32')
-            gt_label = layers.data(
-                name='gt_label', shape=[1], lod_level=1, dtype='float32')
-            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+        ValueError: If mining_type is 'hard_example', now only support mining \
+        type of `max_negative`.
     """
 
     helper = LayerHelper('ssd_loss', **locals())
