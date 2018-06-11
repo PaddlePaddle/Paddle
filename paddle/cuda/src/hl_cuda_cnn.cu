@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1027,4 +1027,80 @@ void hl_maxout_backward(real* inGrad,
   maxoutBpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
       num_kernels, inGrad, outGrad, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_backward failed");
+}
+
+__global__ void upsampleForwardCompute(real* input_data,
+                                       real* mask_data,
+                                       size_t nthreads,
+                                       size_t in_h,
+                                       size_t in_w,
+                                       size_t out_h,
+                                       size_t out_w,
+                                       real* output_data) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < nthreads) {
+    int offset = index / (in_w * in_h) * out_h * out_w;
+    int upsample_idx = static_cast<int>(mask_data[index]);
+    output_data[offset + upsample_idx] = input_data[index];
+  }
+}
+
+__global__ void upsampleBackwardCompute(real* out_grad,
+                                        real* mask_data,
+                                        size_t nthreads,
+                                        size_t in_h,
+                                        size_t in_w,
+                                        size_t out_h,
+                                        size_t out_w,
+                                        real* input_grad) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < nthreads) {
+    int offset = index / (in_w * in_h) * out_h * out_w;
+    int upsample_idx = static_cast<int>(mask_data[index]);
+    input_grad[index] = out_grad[offset + upsample_idx];
+  }
+}
+
+void hl_upsample_forward(real* inputData,
+                         real* maskData,
+                         size_t batchSize,
+                         size_t imgSizeH,
+                         size_t imgSizeW,
+                         size_t channels,
+                         size_t outputH,
+                         size_t outputW,
+                         real* outputData) {
+  int num_kernels = batchSize * imgSizeH * imgSizeW * channels;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  upsampleForwardCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inputData,
+                                                              maskData,
+                                                              num_kernels,
+                                                              imgSizeH,
+                                                              imgSizeW,
+                                                              outputH,
+                                                              outputW,
+                                                              outputData);
+  CHECK_SYNC("hl_upsample_forward failed");
+}
+
+void hl_upsample_backward(real* outputGradData,
+                          real* maskData,
+                          size_t batchSize,
+                          size_t imgSizeH,
+                          size_t imgSizeW,
+                          size_t channels,
+                          size_t outputH,
+                          size_t outputW,
+                          real* inputGradData) {
+  int num_kernels = batchSize * imgSizeH * imgSizeW * channels;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  upsampleBackwardCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(outputGradData,
+                                                               maskData,
+                                                               num_kernels,
+                                                               imgSizeH,
+                                                               imgSizeW,
+                                                               outputH,
+                                                               outputW,
+                                                               inputGradData);
+  CHECK_SYNC("hl_upsample_backward failed");
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -390,9 +390,7 @@ private:
 
       if (this->loadThread_) {  // wait poolActualSize < poolSize;
         std::unique_lock<std::mutex> l(mtx_);
-        pushCV_.wait(l, [this, additionalBatchSize] {
-          return this->poolActualSize_ < poolSize_;
-        });
+        pushCV_.wait(l, [this] { return this->poolActualSize_ < poolSize_; });
       }
 
       {

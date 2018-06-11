@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -59,17 +59,10 @@ void* lapack_dso_handle = nullptr;
   } __name;  // struct DynLoad__##__name
 #endif
 
-#ifdef PADDLE_USE_ATLAS
-  #define  PADDLE_SGETRF  clapack_sgetrf
-  #define  PADDLE_DGETRF  clapack_dgetrf
-  #define  PADDLE_SGETRI  clapack_sgetri
-  #define  PADDLE_DGETRI  clapack_dgetri
-#else
-  #define  PADDLE_SGETRF  LAPACKE_sgetrf
-  #define  PADDLE_DGETRF  LAPACKE_dgetrf
-  #define  PADDLE_SGETRI  LAPACKE_sgetri
-  #define  PADDLE_DGETRI  LAPACKE_dgetri
-#endif
+#define  PADDLE_SGETRF  LAPACKE_sgetrf
+#define  PADDLE_DGETRF  LAPACKE_dgetrf
+#define  PADDLE_SGETRI  LAPACKE_sgetri
+#define  PADDLE_DGETRI  LAPACKE_dgetri
 
 #define LAPACK_ROUTINE_EACH(__macro)       \
   __macro(PADDLE_SGETRF)                   \
@@ -206,7 +199,7 @@ double dotProduct<double>(const int n, const double* x, const double* y) {
 }
 #endif
 
-#if defined(PADDLE_USE_MKLML)
+#if defined(PADDLE_WITH_MKLML)
 
 template <>
 void vExp<float>(const int n, const float* a, float* r) {

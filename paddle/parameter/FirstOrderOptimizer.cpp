@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -145,9 +145,9 @@ AdagradParameterOptimizer::needSpecialTraversal(
   if (numUpdates_ % kMaxNumAccumulates == 0) {
     // Move the sum to a different buffer to avoid loss of precision
     // due to too many sums.
-    return [this](const VectorPtr vecs[],
-                  const ParameterConfig& config,
-                  size_t sparseId) {
+    return [](const VectorPtr vecs[],
+              const ParameterConfig& config,
+              size_t sparseId) {
       vecs[PARAMETER_GRADIENT_SQURESUM]->add(
           *vecs[PARAMETER_GRADIENT_SQURESUM1]);
       vecs[PARAMETER_GRADIENT_SQURESUM1]->zeroMem();

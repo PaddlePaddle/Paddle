@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,23 +30,21 @@ IF(NOT ${CBLAS_FOUND})
         CACHE FILEPATH "openblas library." FORCE)
 
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
+    SET(OPENBLAS_COMMIT "v0.2.20")
 
     IF(CMAKE_CROSSCOMPILING)
         SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
         GET_FILENAME_COMPONENT(CROSS_SUFFIX ${CMAKE_C_COMPILER} DIRECTORY)
         SET(CROSS_SUFFIX ${CROSS_SUFFIX}/)
         IF(ANDROID)
-            # arm_soft_fp_abi branch of OpenBLAS to support softfp
-            #   https://github.com/xianyi/OpenBLAS/tree/arm_soft_fp_abi
-            SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
             IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
+                # use softfp
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
             ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
             ENDIF()
         ELSEIF(IOS)
             IF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
-                SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
                 SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
                 SET(OPENBLAS_CC "${OPENBLAS_CC} -arch arm64")
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0 CROSS_SUFFIX=${CROSS_SUFFIX})
@@ -56,14 +54,12 @@ IF(NOT ${CBLAS_FOUND})
             ENDIF()
         ELSEIF(RPI)
             # use hardfp
-            SET(OPENBLAS_COMMIT "v0.2.20")
             SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 USE_THREAD=0)
         ENDIF()
     ELSE()
         IF(APPLE)
             SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
         ENDIF()
-        SET(OPENBLAS_COMMIT "v0.2.20")
         SET(OPTIONAL_ARGS "")
         IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
             SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
@@ -81,7 +77,8 @@ IF(NOT ${CBLAS_FOUND})
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
-        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
+        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
+                            && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
@@ -113,7 +110,7 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 # FIXME(gangliao): generate cblas target to track all high performance
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
-FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+FILE(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
 ADD_LIBRARY(cblas STATIC ${dummyfile})
 TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
 

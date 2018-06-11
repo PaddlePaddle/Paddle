@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vgg16job-trainer
+spec:
+  parallelism: 20
+  completions: 20
+  template:
+    metadata:
+      labels:
+        paddle-job: vgg16job
+    spec:
+      imagePullSecrets:
+      - name: job-registry-secret
+      hostNetwork: true
+      containers:
+      - name: trainer
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        imagePullPolicy: Always
+        command: ["paddle_k8s", "start_fluid"]
+        env:
+        - name: PADDLE_JOB_NAME
+          value: vgg16job
+        - name: TRAINING_ROLE
+          value: "TRAINER"
+        - name: TRAINERS
+          value: "20"
+        - name: PSERVERS
+          value: "10"
+        - name: TOPOLOGY
+          value: ""
+        - name: ENTRY
+          value: "MKL_NUM_THREADS=1 python /workspace/vgg16_fluid.py --local 0 --batch_size 128"
+        - name: TRAINER_PACKAGE
+          value: "/workspace"
+        - name: PADDLE_INIT_PORT
+          value: "30236"
+        - name: PADDLE_INIT_NICS
+          value: "xgbe0"
+        - name: PADDLE_INIT_TRAINER_COUNT
+          value: "1"
+        - name: PADDLE_INIT_PORTS_NUM
+          value: "1"
+        - name: PADDLE_INIT_PORTS_NUM_FOR_SPARSE
+          value: "1"
+        - name: PADDLE_INIT_NUM_GRADIENT_SERVERS
+          value: "20"
+        - name: PADDLE_INIT_NUM_PASSES
+          value: "1"
+        - name: PADDLE_INIT_USE_GPU
+          value: "0"
+        - name: LD_LIBRARY_PATH
+          value: "/usr/local/lib:/usr/local/nvidia/lib64"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: "status.podIP"
+        resources:
+          requests:
+            memory: 40Gi
+            cpu: 2
+          limits:
+            memory: 40Gi
+            cpu: 2
+      restartPolicy: Never

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,10 +25,11 @@ ELSE(WIN32)
   SET(ZLIB_LIBRARIES "${ZLIB_INSTALL_DIR}/lib/libz.a" CACHE FILEPATH "zlib library." FORCE)
 ENDIF(WIN32)
 
-INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR}) # For zlib code to include its own headers.
+INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include zlib.h.
 
 ExternalProject_Add(
-    zlib
+    extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/madler/zlib.git"
     GIT_TAG         "v1.2.8"
@@ -49,9 +50,11 @@ ExternalProject_Add(
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
+ADD_LIBRARY(zlib STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET zlib PROPERTY IMPORTED_LOCATION ${ZLIB_LIBRARIES})
+ADD_DEPENDENCIES(zlib extern_zlib)
+
 LIST(APPEND external_project_dependencies zlib)
-ADD_LIBRARY(zlib_target STATIC IMPORTED GLOBAL)
-SET_PROPERTY(TARGET zlib_target PROPERTY IMPORTED_LOCATION ${ZLIB_LIBRARIES})
 
 IF(WITH_C_API)
   INSTALL(DIRECTORY ${ZLIB_INCLUDE_DIR} DESTINATION third_party/zlib)

@@ -1,5 +1,5 @@
-MOBILE
-======
+移动端
+=====
 
 ..  toctree::
   :maxdepth: 1

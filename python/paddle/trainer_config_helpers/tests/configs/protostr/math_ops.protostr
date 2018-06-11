@@ -230,7 +230,7 @@ layers {
     input_layer_name: "__mixed_1__"
   }
   slope: 1.0
-  intercept: 2
+  intercept: -2
 }
 layers {
   name: "__slope_intercept_layer_4__"
@@ -411,4 +411,3 @@ sub_models {
   output_layer_names: "__mixed_3__"
   is_recurrent_layer_group: false
 }
-

@@ -1,5 +1,8 @@
 # Contribute Code
 
+You are welcome to contribute to project PaddlePaddle. To contribute to PaddlePaddle, you have to agree with the 
+[PaddlePaddle Contributor License Agreement](https://gist.github.com/wangkuiyi/0c22c7b1bd3bb7eb27d76f85c3a3e329).
+
 We sincerely appreciate your contribution.  This document explains our workflow and work style.
 
 ## Workflow

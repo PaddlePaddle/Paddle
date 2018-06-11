@@ -23,11 +23,14 @@ import paddle.v2.dataset
 import cPickle
 import glob
 import cPickle as pickle
-import random
 
 __all__ = [
-    'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
-    'convert'
+    'DATA_HOME',
+    'download',
+    'md5file',
+    'split',
+    'cluster_files_reader',
+    'convert',
 ]
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
@@ -59,19 +62,24 @@ def md5file(fname):
     return hash_md5.hexdigest()
 
 
-def download(url, module_name, md5sum):
+def download(url, module_name, md5sum, save_name=None):
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    filename = os.path.join(dirname, url.split('/')[-1])
+    filename = os.path.join(dirname,
+                            url.split('/')[-1]
+                            if save_name is None else save_name)
+
     retry = 0
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
+        if os.path.exists(filename):
+            print "file md5", md5file(filename), md5sum
         if retry < retry_limit:
             retry += 1
         else:
-            raise RuntimeError("Cannot download {0} within retry limit {2}".
+            raise RuntimeError("Cannot download {0} within retry limit {1}".
                                format(url, retry_limit))
         print "Cache file %s not found, downloading %s" % (filename, url)
         r = requests.get(url, stream=True)
@@ -197,16 +205,17 @@ def convert(output_path, reader, line_count, name_prefix):
     Convert data from reader to recordio format files.
 
     :param output_path: directory in which output files will be saved.
-    :param reader: a data reader, from which the convert program will read data instances.
+    :param reader: a data reader, from which the convert program will read
+                   data instances.
     :param name_prefix: the name prefix of generated files.
-    :param max_lines_to_shuffle: the max lines numbers to shuffle before writing.
+    :param max_lines_to_shuffle: the max lines numbers to shuffle before
+                                 writing.
     """
 
     assert line_count >= 1
     indx_f = 0
 
     def write_data(indx_f, lines):
-        random.shuffle(lines)
         filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
         writer = recordio.writer(filename)
         for l in lines:

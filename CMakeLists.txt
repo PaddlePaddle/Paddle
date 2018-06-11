@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
-SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
-SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 include(system)
 
-project(paddle CXX C Go)
-message(STATUS "CXX compiler: " ${CMAKE_CXX_COMPILER} ", version: " ${CMAKE_CXX_COMPILER_VERSION})
-message(STATUS "C compiler: " ${CMAKE_C_COMPILER} ", version: " ${CMAKE_C_COMPILER_VERSION})
+project(paddle CXX C)
+message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
+        "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
+        "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
@@ -31,18 +31,16 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-if(NOT ANDROID AND NOT IOS)
-    find_package(Boost QUIET)
-endif()
 
 include(simd)
 
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
+option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
-option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
+option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
 option(WITH_STYLE_CHECK "Compile PaddlePaddle with style check"         ON)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
@@ -55,12 +53,14 @@ option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
+option(WITH_FLUID_ONLY  "Compile PaddlePaddle fluid only"               OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
+option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -107,6 +107,10 @@ if (WITH_C_API AND WITH_PYTHON)
     "different Python interpreter from compiling.")
 endif()
 
+if (WITH_C_API)
+  set(WITH_FLUID_ONLY OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
+endif()
+
 if(MOBILE_INFERENCE)
     set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
 else()
@@ -134,14 +138,18 @@ include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
+include(external/boost)     # download boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
-include(external/nccl)
 include(external/cares)
 include(external/grpc)
+include(external/snappy)    # download snappy
+include(external/snappystream)
+include(external/threadpool)
 
 include(cudnn)              # set cudnn libraries, must before configure
+include(cupti)
 include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
@@ -152,26 +160,32 @@ include(rdma)               # set rdma libraries
 include(flags)              # set paddle compile flags
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
+include(inference_lib)      # add paddle fluid inference libraries
 
 
 include_directories("${PADDLE_SOURCE_DIR}")
 include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
-include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
-    ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
+    gflags
+    glog
     ${CBLAS_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${ZLIB_LIBRARIES}
+    protobuf
+    zlib
     ${PYTHON_LIBRARIES}
 )
 
 if(WITH_GPU)
-  include(cuda)
+    include(cuda)
+    include(tensorrt)
 endif(WITH_GPU)
+
+if(WITH_AMD_GPU)
+    find_package(HIP)
+    include(hip)
+endif(WITH_AMD_GPU)
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
@@ -197,13 +211,18 @@ endif()
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
 if(WITH_GOLANG)
+    enable_language(Go)
     add_subdirectory(go)
 endif(WITH_GOLANG)
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
+
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+
 add_subdirectory(paddle)
 if(WITH_PYTHON)
-  add_subdirectory(python)
+    add_subdirectory(python)
 endif()
 
 if(WITH_DOC)
