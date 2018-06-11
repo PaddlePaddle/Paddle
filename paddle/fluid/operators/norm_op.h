@@ -63,14 +63,10 @@ class NormKernel : public framework::OpKernel<T> {
     auto norm = norm_e.reshape(norm_shape);
 
     Eigen::DSizes<int, 1> rdim(1);
-    auto x_pow = x * x;
-    auto& device_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T>()(device_ctx, out_norm, eps);
-
     // y = x / sqrt((sum(x * x) + epsilon))
     // norm = sqrt(sum(x * x) + epsilon)
-    norm.device(*place) = norm + x_pow.eval().sum(rdim) + eps;
-    norm.device(*place) = norm.sqrt();
+    auto sum = x.pow(2).sum(rdim) + eps;
+    norm.device(*place) = sum.sqrt();
     // y = x / norm
     Eigen::DSizes<int, 3> rshape(pre, 1, post);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
