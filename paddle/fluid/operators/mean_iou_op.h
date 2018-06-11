@@ -74,21 +74,21 @@ class MeanIoUKernel : public framework::OpKernel<T> {
 
     // collect pre wrong, correct and mean_iou
     auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
-    for (int i = 0; i < in_mean_ious.size(); ++i) {
+    for (size_t i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
     auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
-    for (int i = 0; i < in_wrongs.size(); ++i) {
+    for (size_t i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
     auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
-    for (int i = 0; i < in_corrects.size(); ++i) {
+    for (size_t i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }
 
     // compute
-    for (int i = 0; i < predictions->numel(); ++i) {
+    for (int64_t i = 0; i < predictions->numel(); ++i) {
       if (predictions_data[i] == labels_data[i]) {
         out_correct_data[predictions_data[i]] += 1;
       } else {

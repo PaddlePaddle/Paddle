@@ -52,8 +52,7 @@ class MeanIoUOp : public framework::OperatorWithKernel {
 
 class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MeanIoUOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Predictions",
              "(Tensor), A Tensor of prediction results for semantic labels"
              " with type int32 or int64. The rank should be greater than 1.");
