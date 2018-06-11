@@ -95,14 +95,14 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
     // get input and output tensor
-    auto* predictions = ctx.Input<Tensor>("predictions");
-    auto* labels = ctx.Input<Tensor>("labels");
-    auto* out_mean_iou = ctx.Output<Tensor>("out_mean_iou");
-    auto* out_wrong = ctx.Output<Tensor>("out_wrong");
-    auto* out_correct = ctx.Output<Tensor>("out_correct");
-    int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
+    auto* predictions = ctx.Input<Tensor>("Predictions");
+    auto* labels = ctx.Input<Tensor>("Labels");
+    auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
+    auto* out_wrong = ctx.Output<Tensor>("OutWrong");
+    auto* out_correct = ctx.Output<Tensor>("OutCorrect");
+    int num_classes = static_cast<int>(ctx.Attr<int>("NumClasses"));
 
-    // get data ptr
+    // Get data ptr
     const T* predictions_data = predictions->data<T>();
     const T* labels_data = labels->data<T>();
     int* out_wrong_data = out_wrong->mutable_data<int>(ctx.GetPlace());
@@ -110,29 +110,29 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     float* out_mean_iou_data =
         out_mean_iou->mutable_data<float>(ctx.GetPlace());
 
-    // get eigen tensor
+    // Get Eigen tensor
     auto out_mean_iou_t = EigenTensor<float, 1>::From(*out_mean_iou);
     auto out_wrong_t = EigenTensor<int, 1>::From(*out_wrong);
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
-    // Tmp tensor
+    // Temporary tensor
     Tensor ious;
     float* ious_data = ious.mutable_data<float>(
         {static_cast<int64_t>(num_classes)}, ctx.GetPlace());
     auto ious_t = EigenTensor<float, 1>::From(ious);
 
-    // init out_wrong, out_correct and out_mean_iou
+    // Init out_wrong, out_correct and out_mean_iou
     out_wrong_t.device(place) = out_wrong_t.constant(0);
     out_correct_t.device(place) = out_correct_t.constant(0);
     out_mean_iou_t.device(place) = out_mean_iou_t.constant(0.0f);
 
     // collect pre wrong, correct and mean_iou
-    auto in_mean_ious = ctx.MultiInput<Tensor>("in_mean_iou");
+    auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
     for (int i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
-    auto in_wrongs = ctx.MultiInput<Tensor>("in_wrongs");
+    auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
     for (int i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
@@ -160,4 +160,5 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(mean_iou, ops::MeanIoUCUDAOpKernel<int>,
-                        ops::MeanIoUKernel<int64_t>);
+                        ops::MeanIoUCUDAOpKernel<int64_t>,
+                        ops::MeanIoUCUDAOpKernel<int32_t>);

@@ -31,12 +31,12 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     // get input and output tensor
-    auto* predictions = ctx.Input<Tensor>("predictions");
-    auto* labels = ctx.Input<Tensor>("labels");
-    auto* out_mean_iou = ctx.Output<Tensor>("out_mean_iou");
-    auto* out_wrong = ctx.Output<Tensor>("out_wrong");
-    auto* out_correct = ctx.Output<Tensor>("out_correct");
-    int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
+    auto* predictions = ctx.Input<Tensor>("Predictions");
+    auto* labels = ctx.Input<Tensor>("Labels");
+    auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
+    auto* out_wrong = ctx.Output<Tensor>("OutWrong");
+    auto* out_correct = ctx.Output<Tensor>("OutCorrect");
+    int num_classes = static_cast<int>(ctx.Attr<int>("NumClasses"));
 
     // get data ptr
     const T* predictions_data = predictions->data<T>();
@@ -73,16 +73,16 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     out_mean_iou_t = out_mean_iou_t.constant(0);
 
     // collect pre wrong, correct and mean_iou
-    auto in_mean_ious = ctx.MultiInput<Tensor>("in_mean_iou");
+    auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
     for (int i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
-    auto in_wrongs = ctx.MultiInput<Tensor>("in_wrongs");
+    auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
     for (int i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
-    auto in_corrects = ctx.MultiInput<Tensor>("in_corrects");
+    auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
     for (int i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }

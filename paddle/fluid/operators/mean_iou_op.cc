@@ -22,30 +22,30 @@ class MeanIoUOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("predictions"),
-                   "Input (predictions) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("labels"),
+    PADDLE_ENFORCE(ctx->HasInput("Predictions"),
+                   "Input (Predictions) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Labels"),
                    "Input (labels) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("out_mean_iou"),
-                   "Output (out_mean_iou) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("out_wrong"),
-                   "Output (out_wrong) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("out_correct"),
-                   "Output (out_wrong) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutMeanIou"),
+                   "Output (OutMeanIou) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutWrong"),
+                   "Output (OutWrong) of MeanIoU op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutCorrect"),
+                   "Output (OutWrong) of MeanIoU op should not be null.");
 
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
 
-    ctx->SetOutputDim("out_mean_iou", {1});
-    ctx->SetOutputDim("out_wrong", {num_classes});
-    ctx->SetOutputDim("out_correct", {num_classes});
+    ctx->SetOutputDim("OutMeanIou", {1});
+    ctx->SetOutputDim("OutWrong", {num_classes});
+    ctx->SetOutputDim("OutCorrect", {num_classes});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("predictions")->type()),
+        framework::ToDataType(ctx.Input<Tensor>("Predictions")->type()),
         ctx.GetPlace());
   }
 };
@@ -54,40 +54,47 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MeanIoUOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("predictions",
-             "A Tensor of prediction results for semantic labels"
-             " with type int32 or int64.");
-    AddInput("labels",
-             "A Tensor of ground truth labels with type int32 or int64."
-             "Its shape should be the same as Input(predictions).");
-    AddInput("in_wrongs",
-             "A list of Tensor with shape "
+    AddInput("Predictions",
+             "(Tensor), A Tensor of prediction results for semantic labels"
+             " with type int32 or int64. The rank should be greater than 1.");
+    AddInput(
+        "Labels",
+        "(Tensor), A Tensor of ground truth labels with type int32 or int64."
+        "Its shape should be the same as Input(Predictions).");
+    AddInput("InWrongs",
+             "(vector<Tensor>), A list of Tensor with shape "
              "[num_classes]. They are used to collect wrong number among "
              "batches. Empty list is also valid here.")
         .AsDuplicable()
         .AsDispensable();
     AddInput(
-        "in_corrects",
-        "A list of Tensor with shape "
+        "InCorrects",
+        "(vector<Tensor>), A list of Tensor with shape "
         "[num_classes]. They are used to collect correct number among batches. "
         "Empty list is also valid here.")
         .AsDuplicable()
         .AsDispensable();
-    AddInput("in_mean_iou",
-             "A list of Tensor that Output(mean_iou) should "
+    AddInput("InMeanIou",
+             "(vector<Tensor>), A list of Tensor that Output(mean_iou) should "
              "be added to. Empty list is also valid here.")
         .AsDuplicable()
         .AsDispensable();
-    AddOutput("out_mean_iou",
-              "A Tensor representing the"
-              " mean intersection-over-union.");
-    AddOutput("out_wrong", "A Tensor with shape [num_classes]. ");
-    AddOutput("out_correct", "A Tensor with shape [num_classes]. ");
-    AddAttr<int>("num_classes", "The possible number of labels.");
+    AddOutput("OutMeanIou",
+              "(vector<Tensor>), A Tensor representing the"
+              " mean intersection-over-union with shape [1].");
+    AddOutput("OutWrong", "(Tensor), A Tensor with shape [num_classes]. ");
+    AddOutput("OutCorrect", "(Tensor), A Tensor with shape [num_classes]. ");
+    AddAttr<int>("num_classes", "(int), The possible number of labels.");
 
     AddComment(R"DOC(
 mean-IOU Operator.
-Mean Intersection-Over-Union is a common evaluation metric for semantic image segmentation, which first computes the IOU for each semantic class and then computes the average over classes. IOU is defined as follows: IOU = true_positive / (true_positive + false_positive + false_negative). The predictions are accumulated in a confusion matrix and mean-IOU is then calculated from it.
+Mean Intersection-Over-Union is a common evaluation metric for
+semantic image segmentation, which first computes the IOU for each
+semantic class and then computes the average over classes. 
+IOU is defined as follows: 
+    IOU = true_positive / (true_positive + false_positive + false_negative).
+It is based on pixel level area while "IOU Similarity Operator" 
+is based on area of rectangle.
 
 )DOC");
   }
@@ -100,4 +107,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(mean_iou, ops::MeanIoUOp, ops::MeanIoUOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(mean_iou, ops::MeanIoUKernel<int>,
+                       ops::MeanIoUKernel<int32_t>,
                        ops::MeanIoUKernel<int64_t>);
