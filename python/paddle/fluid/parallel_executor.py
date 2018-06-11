@@ -119,11 +119,10 @@ class ParallelExecutor(object):
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                exec_strategy.num_threads = len(self._places) * 2
+                exec_strategy.num_threads = len(self._places) * 4
             else:
-                cpu_num = int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = min(len(self._places) * 2, cpu_num)
+                # Currently num_threads must be 1.
+                exec_strategy.num_threads = 1
 
         if build_strategy is None:
             build_strategy = BuildStrategy()

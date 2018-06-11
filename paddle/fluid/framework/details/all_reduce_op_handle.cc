@@ -67,7 +67,7 @@ void AllReduceOpHandle::RunImpl() {
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE(nccl_ctxs_);
+      PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
       int dtype = -1;
       size_t numel = 0;
       std::vector<std::function<void()>> all_reduce_calls;
