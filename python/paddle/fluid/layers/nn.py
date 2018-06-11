@@ -1135,7 +1135,7 @@ def sequence_conv(input,
     in the input parameters to the function.
 
     Args:
-        input (Variable): ${input_comment}
+        input (Variable): ${x_comment}
         num_filters (int): number of filters.
         filter_size (int): the filter size (H and W).
         filter_stride (int): stride of the filter.
