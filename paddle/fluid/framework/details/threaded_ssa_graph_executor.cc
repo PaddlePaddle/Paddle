@@ -193,7 +193,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       if (VLOG_IS_ON(10)) {
         VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       }
-      op->Run(strategy_.use_event_);
+      op->Run(strategy_.use_cuda_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());

@@ -41,11 +41,22 @@ class RequestBase {
   virtual ~RequestBase() {}
   virtual void Process() = 0;
 
-  CallStatus Status() { return status_; }
-  void SetStatus(CallStatus status) { status_ = status; }
+  CallStatus Status() const {
+    std::lock_guard<std::mutex> l(status_mu_);
+    return status_;
+  }
+
+  template <typename T>
+  void Finish(const T& reply, ServerAsyncResponseWriter<T>* responder) {
+    std::lock_guard<std::mutex> l(status_mu_);
+    status_ = FINISH;
+    responder->Finish(reply, ::grpc::Status::OK,
+                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+  }
   virtual std::string GetReqName() = 0;
 
  protected:
+  mutable std::mutex status_mu_;
   ::grpc::ServerContext ctx_;
   GrpcService::AsyncService* service_;
   ::grpc::ServerCompletionQueue* cq_;
@@ -80,9 +91,7 @@ class RequestSend final : public RequestBase {
     framework::Variable* outvar = nullptr;
 
     request_handler_->Handle(varname, scope, invar, &outvar);
-    status_ = FINISH;
-    responder_.Finish(reply_, ::grpc::Status::OK,
-                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    Finish(reply_, &responder_);
   }
 
  protected:
@@ -122,9 +131,7 @@ class RequestGet final : public RequestBase {
       SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);
     }
-    status_ = FINISH;
-    responder_.Finish(reply_, ::grpc::Status::OK,
-                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    Finish(reply_, &responder_);
   }
 
  protected:
@@ -157,8 +164,8 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
-    VLOG(3) << "in_var_name: " << in_var_name
-            << " RequestPrefetch: " << out_var_name;
+    VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
@@ -168,9 +175,7 @@ class RequestPrefetch final : public RequestBase {
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
-    status_ = FINISH;
-    responder_.Finish(reply_, ::grpc::Status::OK,
-                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    Finish(reply_, &responder_);
   }
 
  protected:
