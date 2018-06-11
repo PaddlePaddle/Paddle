@@ -240,7 +240,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
                     CreateReduceOp(&result, g_name, 0);
                     CreateBroadcastOp(&result, g_name, 0);
                   } else {
-                    InsertNCCLAllReduceOp(&result, g_name);
+                    InsertAllReduceOp(&result, g_name);
                   }
                   break;
               }
@@ -327,8 +327,8 @@ void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
   CreateOpHandleIOs(result, op, dev_id);
 }
 
-void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
-    SSAGraph *result, const std::string &og) const {
+void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
+                                                const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA
   result->ops_.emplace_back(
       new AllReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
