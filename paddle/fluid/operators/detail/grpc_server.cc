@@ -155,16 +155,18 @@ class RequestPrefetch final : public RequestBase {
 
   void Process() override {
     // prefetch process...
-    std::string varname = request_->OutVarname();
-    VLOG(3) << "RequestPrefetch " << varname;
+    std::string in_var_name = request_->Varname();
+    std::string out_var_name = request_->OutVarname();
+    VLOG(3) << "in_var_name: " << in_var_name
+            << " RequestPrefetch: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
-    auto invar = scope->FindVar(varname);
+    auto invar = scope->FindVar(in_var_name);
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(in_var_name, scope, invar, &outvar);
 
-    SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
+    SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));

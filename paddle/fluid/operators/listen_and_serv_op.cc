@@ -89,16 +89,19 @@ void ListenAndServOp::SavePort() const {
   rpc_service_->SavePort();
 }
 
-void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
-                                  framework::ProgramDesc *program,
-                                  framework::Scope *recv_scope,
-                                  framework::BlockDesc *prefetch_block) const {
+void ListenAndServOp::RunSyncLoop(
+    framework::Executor *executor, framework::ProgramDesc *program,
+    framework::Scope *recv_scope,
+    const std::vector<int> &prefetch_block_id_list) const {
+  // FIXME(qiao) run should not run the block to do prefetch, currently prefetch
+  // block
+  // can only be at the last blocks of the program
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
   std::vector<int> block_list;
-  for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
+  for (size_t blkid = 1; blkid < prefetch_block_id_list[0]; ++blkid) {
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
@@ -128,16 +131,14 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     std::vector<size_t> parallel_blkids;
     parallel_blkids.push_back(1);
     double ts = detail::GetTimestamp();
-    for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
-      if (blkid != static_cast<size_t>(prefetch_block->ID())) {
-        if (program->Block(blkid).Parent() != last_parent_blkid) {
-          ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
-                                program, recv_scope);
-          parallel_blkids.clear();
-          last_parent_blkid = program->Block(blkid).Parent();
-        }
-        parallel_blkids.push_back(blkid);
+    for (size_t blkid = 2; blkid < prefetch_block_id_list[0]; ++blkid) {
+      if (program->Block(blkid).Parent() != last_parent_blkid) {
+        ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
+                              program, recv_scope);
+        parallel_blkids.clear();
+        last_parent_blkid = program->Block(blkid).Parent();
       }
+      parallel_blkids.push_back(blkid);
     }
     ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared, program,
                           recv_scope);
@@ -203,18 +204,19 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   }  // while(true)
 }
 
-static void FillRequestCtx(detail::RequestHandler *h, framework::Scope *scope,
-                           platform::DeviceContext *dev_ctx,
-                           framework::Executor *executor,
-                           framework::ProgramDesc *program,
-                           framework::ExecutorPrepareContext *prefetch_ctx,
-                           detail::RPCServer *rpc_server) {
+static void FillRequestCtx(
+    detail::RequestHandler *h, framework::Scope *scope,
+    platform::DeviceContext *dev_ctx, framework::Executor *executor,
+    framework::ProgramDesc *program,
+    std::unordered_map<std::string,
+                       std::shared_ptr<framework::ExecutorPrepareContext>>
+        *prefetch_ctx,
+    detail::RPCServer *rpc_server) {
   h->SetScope(scope);
   h->SetDevCtx(dev_ctx);
   h->SetExecutor(executor);
   h->SetProgram(program);
-  h->SetPrefetchPreparedCtx(
-      std::unique_ptr<framework::ExecutorPrepareContext>(prefetch_ctx));
+  h->SetPrefetchPreparedCtx(prefetch_ctx);
   h->SetRPCServer(rpc_server);
 }
 
@@ -248,18 +250,41 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_prefetch_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto grad_to_block_id_str = Attr<std::vector<std::string>>(kPrefetchBlock);
-  framework::BlockDesc *prefetch_block = nullptr;
   auto *program = optimize_block->Program();
   framework::Executor executor(dev_place);
 
   // prepare for prefetch
-  VLOG(3) << "prefetch block id is " << prefetch_block->ID();
-  auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
+  std::vector<int> prefetch_block_id_list;
+  std::unordered_map<int32_t, std::string> block_id_to_prefetch_var_name;
+
+  auto prefetch_var_name_to_block_id_str =
+      Attr<std::vector<std::string>>(kPrefetchVarNameToBlockId);
+  for (const auto &prefetch_var_name_and_id :
+       prefetch_var_name_to_block_id_str) {
+    std::vector<std::string> pieces;
+    split(prefetch_var_name_and_id, ':', &pieces);
+    VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
+    PADDLE_ENFORCE_EQ(pieces.size(), 2);
+
+    int block_id = std::stoi(pieces[1]);
+    prefetch_block_id_list.push_back(block_id);
+    block_id_to_prefetch_var_name[block_id] = pieces[0];
+  }
+
+  auto prefetch_prepared = executor.Prepare(*program, prefetch_block_id_list);
+
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>
+      prefetch_var_name_to_prepared_ctx;
+  for (int i = 0; i < prefetch_block_id_list.size(); ++i) {
+    auto block_id = prefetch_block_id_list[i];
+    auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
+    prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
+  }
 
   auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
-                     &dev_ctx, &executor, program, prefetch_prepared.release(),
-                     rpc_service_.get());
+                     &dev_ctx, &executor, program,
+                     &prefetch_var_name_to_prepared_ctx, rpc_service_.get());
 
   f(request_send_handler_.get());
   f(request_get_handler_.get());
@@ -277,7 +302,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // Write to a file of server selected port for python use.
   SavePort();
   if (sync_mode) {
-    RunSyncLoop(&executor, program, &recv_scope, prefetch_block);
+    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list);
   } else {
     RunAsyncLoop(&executor, program);
   }
@@ -303,7 +328,7 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
-    AddAttr<std::vector<std::string>>(kPrefetchBlock,
+    AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch block to run on server side.");
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);

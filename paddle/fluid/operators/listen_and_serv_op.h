@@ -18,6 +18,7 @@ limitations under the License. */
 #include <atomic>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -30,7 +31,7 @@ namespace paddle {
 namespace operators {
 
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
-constexpr char kPrefetchBlock[] = "prefetch_var_name_to_block_id";
+constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 
 void RunServer(std::shared_ptr<detail::RPCServer> service);
 
@@ -46,7 +47,7 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
-                   framework::BlockDesc* prefetch_block) const;
+                   const std::vector<int>& prefetch_block_id_list) const;
 
   void RunAsyncLoop(framework::Executor* executor,
                     framework::ProgramDesc* program) const;

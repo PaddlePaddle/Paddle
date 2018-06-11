@@ -111,7 +111,8 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   auto var_desc = program_->Block(0).FindVar(varname);
   *outvar = scope->FindVar(varname);
   InitializeVariable(*outvar, var_desc->GetType());
-  executor_->RunPreparedContext(prefetch_ctx_.get(), scope);
+  executor_->RunPreparedContext(
+      (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
 
   return true;
 }
