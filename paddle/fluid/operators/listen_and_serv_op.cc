@@ -93,19 +93,18 @@ void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list) const {
-  // FIXME(qiao) ParallelExecuteBlocks should only execute optimize blocks.
-  // the prefetch blocks should not be executed. Currently we put prefetch
-  // blocks
-  // at the end of programs. This may be misused.
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  std::vector<int> block_list;
-  for (int blkid = 1; blkid < prefetch_block_id_list[0]; ++blkid) {
-    block_list.push_back(blkid);
+  std::vector<int> optimize_block_id_list;
+  for (int blkid = 1; blkid < num_blocks; ++blkid) {
+    if (std::find(prefetch_block_id_list.begin(), prefetch_block_id_list.end(),
+                  blkid) == prefetch_block_id_list.end()) {
+      optimize_block_id_list.push_back(blkid);
+    }
   }
-  auto optimize_prepared = executor->Prepare(*program, block_list);
+  auto optimize_prepared = executor->Prepare(*program, optimize_block_id_list);
   // Insert placeholder for block0 which holds current op itself.
   optimize_prepared.insert(
       optimize_prepared.begin(),
@@ -132,7 +131,10 @@ void ListenAndServOp::RunSyncLoop(
     std::vector<size_t> parallel_blkids;
     parallel_blkids.push_back(1);
     double ts = detail::GetTimestamp();
-    for (int blkid = 2; blkid < prefetch_block_id_list[0]; ++blkid) {
+    for (size_t i = 1; i < optimize_block_id_list.size(); ++i) {
+      // skip the first optimize block because it is already in the
+      // parallel_blkids.
+      int blkid = optimize_block_id_list[i];
       if (program->Block(blkid).Parent() != last_parent_blkid) {
         ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
                               program, recv_scope);
