@@ -248,7 +248,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_prefetch_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);
+  auto grad_to_block_id_str = Attr<std::vector<std::string>>(kPrefetchBlock);
+  framework::BlockDesc *prefetch_block = nullptr;
   auto *program = optimize_block->Program();
   framework::Executor executor(dev_place);
 
@@ -302,8 +303,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
-    AddAttr<framework::BlockDesc *>(kPrefetchBlock,
-                                    "prefetch block to run on server side.");
+    AddAttr<std::vector<std::string>>(kPrefetchBlock,
+                                      "prefetch block to run on server side.");
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
   }
