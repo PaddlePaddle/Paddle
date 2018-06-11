@@ -53,7 +53,7 @@ __all__ = [
     'clip_by_norm', 'logical_and', 'logical_or', 'logical_xor', 'logical_not',
     'uniform_random', 'uniform_random_batch_size_like', 'gaussian_random',
     'gaussian_random_batch_size_like', 'cumsum', 'scatter', 'sum',
-    'polygon_box_transform', 'crop', 'maxout'
+    'polygon_box_transform', 'maxout'
 ] + __activations__
 
 for _OP in set(__all__):

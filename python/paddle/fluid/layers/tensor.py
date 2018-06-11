@@ -22,19 +22,9 @@ from layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor',
-    'create_parameter',
-    'create_global_var',
-    'cast',
-    'concat',
-    'sums',
-    'assign',
-    'fill_constant_batch_size_like',
-    'fill_constant',
-    'argmin',
-    'argmax',
-    'ones',
-    'zeros',
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
+    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
+    'argmin', 'argmax', 'ones', 'zeros', 'crop', 'shape'
 ]
 
 
@@ -142,6 +132,52 @@ def concat(input, axis=0, name=None):
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    return out
+
+
+@templatedoc()
+def crop(x, y=None, shape=None, offsets_var=None, offsets=None, out=None):
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> cropped_var = fluid.layers.crop(x=var, shape=[3, 6, 7], offsets=[0, 0, 0])
+
+    Args:
+        x(${x_type}): ${x_comment}.
+
+        y(${y_type}): ${y_comment}.
+
+        shape(${shape_type}): ${shape_comment}.
+
+        offsets_var(${offsets_var_type}): ${offsets_var_comment}.
+
+        offsets(${offsets_type}): ${offsets_comment}.
+
+    Returns:
+        ${out_comment}.
+    """
+    if y is None and shape is None:
+        raise ValueError("'y' and 'shape' can not both be None.")
+    if offsets_var is None and offsets is None:
+        raise ValueError("'offsets_var' and 'offsets' can not both be None")
+
+    helper = LayerHelper('crop', **locals())
+    inputs = {"X": x}
+    if y:
+        inputs["Y"] = y
+    if offsets_var:
+        inputs["OffsetsVar"] = offsets_var
+    if out is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type="crop",
+        inputs=inputs,
+        outputs={"Out": out},
+        attrs={
+            "offsets": offsets if offsets else [],
+            "shape": shape if shape else []
+        })
     return out
 
 
@@ -332,13 +368,13 @@ def argmin(x, axis=0):
         x(Variable): The input to compute the indices of
                      the min elements.
         axis(int): Axis to compute indices along.
-    
+
     Returns:
         Variable: The tensor variable storing the output
-    
+
     Examples:
         .. code-block:: python
-          
+
           out = fluid.layers.argmin(x=in, axis=0)
           out = fluid.layers.argmin(x=in, axis=-1)  
     """
@@ -363,13 +399,13 @@ def argmax(x, axis=0):
         x(Variable): The input to compute the indices of
                      the max elements.
         axis(int): Axis to compute indices along.
-    
+
     Returns:
         Variable: The tensor variable storing the output
-    
+
     Examples:
         .. code-block:: python
-          
+
           out = fluid.layers.argmax(x=in, axis=0)
           out = fluid.layers.argmax(x=in, axis=-1)  
     """

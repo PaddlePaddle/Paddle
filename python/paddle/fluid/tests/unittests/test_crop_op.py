@@ -56,7 +56,7 @@ class TestCropOp(OpTest):
                 'X': np.random.random(self.x_shape).astype("float32"),
             }
         if self.offset_by_input:
-            self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
+            self.inputs['OffsetsVar'] = np.array(self.offsets).astype('int64')
         else:
             self.attrs['offsets'] = self.offsets
         self.outputs = {

@@ -369,4 +369,4 @@ def image_center_crop(input, shape):
         value=0)
     offsets_var = (input_shape_var - out_shape_var) / 2
 
-    return layers.crop(x=input, y=shape_infer_var, offsetsvar=offsets_var)
+    return layers.crop(x=input, y=shape_infer_var, offsets_var=offsets_var)
