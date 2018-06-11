@@ -24,10 +24,12 @@ Currently supported `--model` argument include:
 
 * Run the following command to start a benchmark job locally:
     ```bash
-      python fluid_benchmark.py --model mnist  --device GPU
+      python fluid_benchmark.py --model mnist --device GPU
     ```
     You can choose to use GPU/CPU training. With GPU training, you can specify
     `--gpus <gpu_num>` to run multi GPU training.
+    You can set async mode parameter server. With async mode, you can specify
+    `--async_mode` to train model asynchronous.
 * Run distributed training with parameter servers:
     * see [run_fluid_benchmark.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/benchmark/fluid/run_fluid_benchmark.sh) as an example.
     * start parameter servers:
