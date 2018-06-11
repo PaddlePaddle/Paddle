@@ -311,7 +311,7 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
     auto *out_var = new VarHandle(vars.size(), i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
-#ifndef ADDLE_WITH_CUDA
+#ifndef PADDLE_WITH_CUDA
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
 #endif

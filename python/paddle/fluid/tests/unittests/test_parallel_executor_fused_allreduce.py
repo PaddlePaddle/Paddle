@@ -27,7 +27,6 @@ class TestFusedParallelExecutor(unittest.TestCase):
                 shape=[64, 784], dtype='float32', value=0)
 
             hidden = img
-
             for i in xrange(4):
                 hidden = fluid.layers.fc(hidden, size=10, act='relu')
             hidden = fluid.layers.fc(input=hidden, size=10, act='softmax')

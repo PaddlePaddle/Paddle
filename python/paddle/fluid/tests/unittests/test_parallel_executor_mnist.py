@@ -99,9 +99,13 @@ class TestMNIST(TestParallelExecutorBase):
             fluid.recordio_writer.convert_reader_to_recordio_file(
                 MNIST_RECORDIO_FILE, reader, feeder)
 
-    def check_simple_fc_convergence(self, balance_parameter_opt_between_cards):
-        self.check_network_convergence(simple_fc_net)
-        self.check_network_convergence(simple_fc_net, allow_op_delay=True)
+    def check_simple_fc_convergence(self,
+                                    balance_parameter_opt_between_cards,
+                                    fuse_all_reduce=False):
+        self.check_network_convergence(
+            simple_fc_net, fuse_all_reduce=fuse_all_reduce)
+        self.check_network_convergence(
+            simple_fc_net, fuse_all_reduce=fuse_all_reduce, allow_op_delay=True)
 
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
@@ -109,17 +113,19 @@ class TestMNIST(TestParallelExecutorBase):
             simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-        )
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards,
+            fuse_all_reduce=fuse_all_reduce)
 
     def test_simple_fc(self):
-        self.check_simple_fc_convergence(False)
+        self.check_simple_fc_convergence(False, fuse_all_reduce=False)
+        self.check_simple_fc_convergence(False, fuse_all_reduce=True)
 
     def test_simple_fc_with_new_strategy(self):
         self.check_simple_fc_convergence(True)
 
     def check_simple_fc_parallel_accuracy(self,
-                                          balance_parameter_opt_between_cards):
+                                          balance_parameter_opt_between_cards,
+                                          fuse_all_reduce=False):
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -134,8 +140,8 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_parallel_executor=True,
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-        )
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards,
+            fuse_all_reduce=fuse_all_reduce)
 
         for p_f in parallel_first_loss:
             self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
@@ -143,13 +149,15 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy(False)
+        self.check_simple_fc_parallel_accuracy(False, fuse_all_reduce=False)
+        self.check_simple_fc_parallel_accuracy(False, fuse_all_reduce=True)
 
     def test_simple_fc_parallel_accuracy_with_new_strategy(self):
         self.check_simple_fc_parallel_accuracy(True)
 
     def check_batchnorm_fc_convergence(self,
-                                       balance_parameter_opt_between_cards):
+                                       balance_parameter_opt_between_cards,
+                                       fuse_all_reduce=False):
         self.check_network_convergence(fc_with_batchnorm)
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
@@ -157,11 +165,12 @@ class TestMNIST(TestParallelExecutorBase):
             fc_with_batchnorm,
             feed_dict={"image": img,
                        "label": label},
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-        )
+            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards,
+            fuse_all_reduce=fuse_all_reduce)
 
     def test_batchnorm_fc(self):
-        self.check_batchnorm_fc_convergence(False)
+        self.check_batchnorm_fc_convergence(False, fuse_all_reduce=False)
+        self.check_batchnorm_fc_convergence(False, fuse_all_reduce=True)
 
     def test_batchnorm_fc_with_new_strategy(self):
         self.check_batchnorm_fc_convergence(True)

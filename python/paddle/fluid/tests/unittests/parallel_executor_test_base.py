@@ -30,7 +30,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   feed_dict=None,
                                   seed=None,
                                   use_parallel_executor=True,
-                                  balance_parameter_opt_between_cards=False):
+                                  balance_parameter_opt_between_cards=False,
+                                  fuse_all_reduce=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -60,7 +61,15 @@ class TestParallelExecutorBase(unittest.TestCase):
             exec_strategy.allow_op_delay = allow_op_delay
 
             build_strategy = fluid.BuildStrategy()
-            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce if balance_parameter_opt_between_cards else fluid.BuildStrategy.ReduceStrategy.AllReduce
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+            if fuse_all_reduce and balance_parameter_opt_between_cards:
+                raise ValueError(
+                    'fuse_all_reduce and balance_parameter_opt_between_cards should not be true at the same time.'
+                )
+            if fuse_all_reduce:
+                build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.FusedAllReduce
+            if balance_parameter_opt_between_cards:
+                build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
