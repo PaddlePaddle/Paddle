@@ -51,6 +51,7 @@ __global__ void CountCUDAKernel(const int num_classes, const int count,
       atomicAdd(wrong_c + label, 1);
     }
   }
+
   __syncthreads();
 
   for (int i = threadIdx.x; i < num_classes; i += blockDim.x) {
@@ -60,8 +61,7 @@ __global__ void CountCUDAKernel(const int num_classes, const int count,
 }
 
 __global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
-                                     int* correct, float* ious,
-                                     int* valid_count) {
+                                     int* correct, float* ious, float* iou) {
   __shared__ int valid_count_c;
   if (threadIdx.x == 0) {
     valid_count_c = 0;
@@ -74,11 +74,17 @@ __global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
     if (denominator > 0) {
       atomicAdd(&valid_count_c, 1);
       ious[i] = static_cast<float>(correct_n) / denominator;
+    } else {
+      ious[i] = 0;
     }
   }
   __syncthreads();
   if (threadIdx.x == 0) {
-    atomicAdd(valid_count, valid_count_c);
+    float iou_sum = 0;
+    for (int i = 0; i < num_classes; ++i) {
+      iou_sum += ious[i];
+    }
+    iou[0] = iou_sum / valid_count_c;
   }
 }
 
@@ -110,9 +116,6 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Tmp tensor
-    Tensor valid_count;
-    int* valid_count_data = valid_count.mutable_data<int>({1}, ctx.GetPlace());
-    auto valid_count_t = EigenTensor<int, 1>::From(valid_count);
     Tensor ious;
     float* ious_data = ious.mutable_data<float>(
         {static_cast<int64_t>(num_classes)}, ctx.GetPlace());
@@ -121,7 +124,6 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     // init out_wrong, out_correct and out_mean_iou
     out_wrong_t.device(place) = out_wrong_t.constant(0);
     out_correct_t.device(place) = out_correct_t.constant(0);
-    valid_count_t.device(place) = valid_count_t.constant(0);
     out_mean_iou_t.device(place) = out_mean_iou_t.constant(0.0f);
 
     // collect pre wrong, correct and mean_iou
@@ -147,12 +149,9 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
         num_classes, predictions->numel(), predictions_data, labels_data,
         out_wrong_data, out_correct_data);
     ctx.device_context().Wait();
-    grid = (num_classes + block - 1) / block;
-    ComputeIoUCUDAKernel<<<grid, block, 0, stream>>>(
-        num_classes, out_wrong_data, out_correct_data, ious_data,
-        valid_count_data);
-    ctx.device_context().Wait();
-    out_mean_iou_t.device(place) += ious_t.sum() / valid_count_t.cast<float>();
+    ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes, out_wrong_data,
+                                                  out_correct_data, ious_data,
+                                                  out_mean_iou_data);
   }
 };
 
