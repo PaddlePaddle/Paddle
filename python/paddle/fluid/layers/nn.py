@@ -1079,17 +1079,13 @@ def chunk_eval(input,
 
     Args:
         input(Variable): ${inference_comment}
-
         label(Variable): ${label_comment}
-
         chunk_scheme(${chunk_scheme_type}): ${chunk_scheme_comment}
-
         num_chunk_types(${num_chunk_types_type}): ${num_chunk_types_comment}
-
         excluded_chunk_types(${excluded_chunk_types_type}): ${excluded_chunk_types_comment}
 
     Returns:
-        chunk_eval(tuple): a tuple of variables:
+        tuple: a tuple of variables:
         (precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks)
 
     """
@@ -3900,13 +3896,9 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
     Args:
         input (Variable): ${x_comment}
-
         rois (Variable): ROIs (Regions of Interest) to pool over.
-
         pooled_height (integer): ${pooled_height_comment} Default: 1
-
         pooled_width (integer): ${pooled_width_comment} Default: 1
-
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
     Returns:
