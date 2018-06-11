@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -63,7 +64,17 @@ ParallelExecutor::ParallelExecutor(
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
 
-  // Step 1. Bcast the params to devs.
+  // Step 1. check all memory usages of all places.
+  // This step will create BuddyAllocator for each place, which will
+  //    1. enforce that the place is avaliable and NOT used.
+  //    2. avoid ncclBcast hanging up for NOT enough memory to use.
+  for (size_t i = 0; i < member_->places_.size(); ++i) {
+    size_t usage = memory::memory_usage(member_->places_[i]);
+    VLOG(4) << "Memory usage of device: " << member_->places_[i] << " is "
+            << usage << " bytes";
+  }
+
+  // Step 2. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
@@ -99,7 +110,7 @@ ParallelExecutor::ParallelExecutor(
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
-  // Step 2. Create vars in each scope;
+  // Step 3. Create vars in each scope;
   std::vector<details::VariableInfo> var_infos;
   for (auto *var : main_program.Block(0).AllVars()) {
     var_infos.emplace_back();
@@ -108,7 +119,7 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+  // Step 4. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
 
   details::SSAGraphBuilderFactory builder_factory(
@@ -159,6 +170,7 @@ void ParallelExecutor::BCastParamsToGPUs(
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.type());
         }
+
         auto &nccl_ctx = member_->nccl_ctxs_->at(place);
         platform::dynload::ncclBcast(buffer, numel, data_type, 0,
                                      nccl_ctx.comm_, nccl_ctx.stream());
