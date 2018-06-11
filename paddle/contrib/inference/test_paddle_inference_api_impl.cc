@@ -109,7 +109,6 @@ void MainWord2Vec(bool use_gpu) {
 
 void MainImageClassification(bool use_gpu) {
   int batch_size = 2;
-  bool use_mkldnn = false;
   bool repeat = false;
   NativeConfig config = GetConfig();
   config.use_gpu = use_gpu;
@@ -134,12 +133,8 @@ void MainImageClassification(bool use_gpu) {
   std::vector<framework::LoDTensor*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace, false, true>(config.model_dir,
-                                                 cpu_feeds,
-                                                 cpu_fetchs1,
-                                                 repeat,
-                                                 is_combined,
-                                                 use_mkldnn);
+  TestInference<platform::CPUPlace, false, true>(
+      config.model_dir, cpu_feeds, cpu_fetchs1, repeat, is_combined);
 
   auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> paddle_tensor_feeds;

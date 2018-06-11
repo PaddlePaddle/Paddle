@@ -4149,33 +4149,24 @@ def image_resize(input,
     return out
 
 
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
-    This is an alias of layer 'image_resize' with bilinear interpolation.
-
-    The mathematical meaning of resize bilinear layer is
-    Bilinear interpolation.
-    Bilinear interpolation is an extension of linear interpolation for
-    interpolating functions of two variables (e.g. H-direction and
-    W-direction in this layer) on a rectilinear 2D grid.
-
-    For details, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bilinear_interpolation
+    ${comment}
 
     Args:
-        input (Variable): The input tensor of image resize layer,
-            same as image_resize.
-        out_shape(list|tuple|Variable|None): Output shape of image resize
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
-        scale(float|None): The multiplier for the input height or width.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-    
-    Returns:
-        Variable: The output is a 4-D tensor of the shape
-                  (num_batches, channls, out_h, out_w).
+        input(${x_type}): ${x_comment}.
 
+        out_shape(${out_size_type}): ${out_size_comment}.
+
+        scale(float|None): The multiplier for the input height or width. At
+             least one of out_shape or scale must be set. And out_shape has
+             a higher priority than scale. Default: None.
+
+        name(str|None): The output variable name.
+
+    Returns:
+        ${out_comment}.
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR')
