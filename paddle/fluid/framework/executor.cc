@@ -20,7 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
