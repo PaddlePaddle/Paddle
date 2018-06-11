@@ -3049,7 +3049,7 @@ def sequence_reshape(input, new_dim):
     return out
 
 
-# FIXME(wuyi): let docstring_checker.py under stand @autodoc.
+# FIXME(wuyi): let docstring_checker.py understand @autodoc.
 # For now, the comments in c++ use types like Tensor, but in python side
 # the type is often "Variable", and arguments may vary.
 @templatedoc
@@ -3064,10 +3064,10 @@ def nce(input,
     ${comment}
 
     Args:
-        input (Variable): ${input_comment}
-        label (Variable): ${label_comment}
+        input (Variable): input variable.
+        label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
-        sample_weight (int): ${sampleweight_comment}
+        sample_weight (int): ${sample_weight_comment}
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
@@ -3132,7 +3132,7 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Variable): (Tensor), A Tensor.
+        x (Variable): The input Tensor.
         perm (list): A permutation of the dimensions of `input`.
         name (str): The name of this layer. It is optional.
 
