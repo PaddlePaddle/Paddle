@@ -173,7 +173,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output):
+def assign(input, output=None):
     """
     **Assign**
 
@@ -194,10 +194,14 @@ def assign(input, output):
     """
     helper = LayerHelper('assign', **locals())
     if isinstance(input, Variable):
+        if output is None:
+            output = helper.create_tmp_variable(dtype=input.dtype)
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if output is None:
+            output = helper.create_tmp_variable(dtype)
         if dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
@@ -394,6 +398,30 @@ def reverse(x, axis):
         inputs={'Input': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    return out
+
+
+@templatedoc()
+def shape(input, out=None):
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> shape = fluid.layers.shape(var)
+
+    Args:
+        input(${input_type}): ${input_comment}
+
+        out(${out_type}): ${out_comment}.
+
+    Returns:
+        out, A 1-D variable who takes the shape of input
+    """
+    helper = LayerHelper('shape', **locals())
+    if out is None:
+        out = helper.create_tmp_variable(dtype='int64')
+    helper.append_op(
+        type='shape', inputs={'Input': input}, outputs={'Out': out})
     return out
 
 

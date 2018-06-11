@@ -15,10 +15,8 @@ import layers
 import numpy as np
 
 __all__ = [
-    "simple_img_conv_pool",
-    "sequence_conv_pool",
-    "glu",
-    "scaled_dot_product_attention",
+    "simple_img_conv_pool", "sequence_conv_pool", "glu",
+    "scaled_dot_product_attention", "image_center_crop"
 ]
 
 
@@ -360,7 +358,7 @@ def image_center_crop(input, shape):
     input_shape_var = layers.shape(input)
     batch_size_var, _ = layers.split(
         input_shape_var, num_or_sections=[1, 3], dim=0)
-    shape = (input.shape)[1] + list(shape)
+    shape = list((input.shape)[1:2]) + list(shape)
     shape_var = layers.assign(input=np.array(shape).astype('int32'))
     shape_var = layers.cast(shape_var, 'int64')
     out_shape_var = layers.concat([batch_size_var, shape_var], axis=0)

@@ -72,7 +72,6 @@ __all__ = [
     'scatter',
     'sum',
     'polygon_box_transform',
-    'shape',
     'crop',
 ] + __activations__
 
