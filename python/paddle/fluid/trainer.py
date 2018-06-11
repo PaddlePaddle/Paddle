@@ -27,11 +27,8 @@ import parallel_executor
 from transpiler import distribute_transpiler
 
 __all__ = [
-    'Trainer',
-    'BeginEpochEvent',
-    'EndEpochEvent',
-    'BeginStepEvent',
-    'EndStepEvent',
+    'Trainer', 'BeginEpochEvent', 'EndEpochEvent', 'BeginStepEvent',
+    'EndStepEvent', 'CheckpointConfig'
 ]
 
 
@@ -57,6 +54,35 @@ class EndStepEvent(object):
         self.epoch = epoch_id
         self.step = step_id
         self.metrics = metrics
+
+
+class CheckpointConfig(object):
+    def __init__(self,
+                 checkpoint_dir=None,
+                 max_num_checkpoints=3,
+                 epoch_interval=1,
+                 step_interval=10):
+        if checkpoint_dir is None:
+            self.checkpoint_dir = os.getcwd()
+        else:
+            self.checkpoint_dir = checkpoint_dir
+
+        self.max_num_checkpoints = max_num_checkpoints
+
+        if epoch_interval < 1:
+            self.epoch_interval = 1
+        else:
+            self.epoch_interval = epoch_interval
+
+        if step_interval < 1:
+            self.step_interval = 10
+        else:
+            self.step_interval = step_interval
+
+        self.epoch_id = 0
+        self.step_id = 0
+        self.load_serial = None
+        self.is_pserver = False
 
 
 def check_and_get_place(place):
@@ -99,12 +125,23 @@ class Trainer(object):
                  optimizer_func,
                  param_path=None,
                  place=None,
-                 parallel=False):
+                 parallel=False,
+                 checkpoint_config=None):
         self.__stop = False
         self.parallel = parallel
         # 1. we need to generate a framework.Program by calling
         # program_func. Reference: fluid.program_guard in
         # test_word2vec.py
+
+        # config for checkpoint
+        # only chief worker will save variables
+        self.trainer_id = 0
+        self.checkpoint_cfg = checkpoint_config
+        if self.checkpoint_cfg:
+            assert isinstance(self.checkpoint_cfg, CheckpointConfig)
+            serial = io.get_latest_checkpoint_serial(
+                self.checkpoint_cfg.checkpoint_dir)
+            self.checkpoint_cfg.load_serial = serial if serial >= 0 else None
 
         self.scope = core.Scope()
 
@@ -115,9 +152,9 @@ class Trainer(object):
             program_func_outs = train_func()
             self.train_func_outputs = program_func_outs if isinstance(
                 program_func_outs, list) else [program_func_outs]
-            self.test_program = self.train_program.clone()
+            self.test_program = self.train_program.clone(for_test=True)
 
-            # The fisrt element of program_func_outs is loss.
+            # The first element of program_func_outs is loss.
             loss = self.train_func_outputs[0]
 
             optimizer = optimizer_func()
@@ -137,9 +174,25 @@ class Trainer(object):
             exe = executor.Executor(place)
             exe.run(self.startup_program)
 
-        if param_path:
+        if self.checkpoint_cfg and self.checkpoint_cfg.load_serial:
+            with self._prog_and_scope_guard():
+                exe = executor.Executor(place)
+                io.load_checkpoint(exe, self.checkpoint_cfg.checkpoint_dir,
+                                   self.checkpoint_cfg.load_serial,
+                                   self.startup_program)
+
+            if not self.checkpoint_cfg.is_pserver:
+                epoch_id, step_id = io.load_trainer_args(
+                    self.checkpoint_cfg.checkpoint_dir,
+                    self.checkpoint_cfg.load_serial, self.trainer_id,
+                    self._get_checkpoint_load_args())
+                self.checkpoint_cfg.epoch_id = int(epoch_id)
+                self.checkpoint_cfg.step_id = int(step_id)
+
+        if param_path and os.path.isdir(param_path):
             # load params from param_path into scope
-            io.load_persistables(exe, dirname=param_path)
+            io.load_persist_vars_without_grad(
+                exe, dirname=param_path, program=self.startup_program)
 
     def _transpile_nccl2_dist(self):
         # PADDLE_TRAINER_IPS
@@ -194,14 +247,18 @@ class Trainer(object):
         current_endpoint = os.getenv("PADDLE_CURRENT_IP", "") + ":" + port
         # the unique trainer id, starting from 0, needed by trainer
         # only
-        trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+
         # the role, should be either PSERVER or TRAINER
         training_role = os.getenv("PADDLE_TRAINING_ROLE")
         with self._prog_and_scope_guard():
             t = distribute_transpiler.DistributeTranspiler()
             t.transpile(
-                trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                self.trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if training_role == "PSERVER":
+                if self.checkpoint_cfg:
+                    self.is_pserver = True
+
                 self.train_program = t.get_pserver_program(current_endpoint)
                 self.startup_program = t.get_startup_program(current_endpoint,
                                                              self.train_program)
@@ -294,11 +351,26 @@ class Trainer(object):
             self._train_by_any_executor(event_handler, exe, num_epochs, reader)
 
     def _train_by_any_executor(self, event_handler, exe, num_epochs, reader):
-        for epoch_id in range(num_epochs):
+        if self.checkpoint_cfg:
+            epochs = [
+                epoch_id for epoch_id in range(num_epochs)
+                if epoch_id >= self.checkpoint_cfg.epoch_id
+            ]
+        else:
+            epochs = [epoch_id for epoch_id in range(num_epochs)]
+
+        for epoch_id in epochs:
             event_handler(BeginEpochEvent(epoch_id))
             for step_id, data in enumerate(reader()):
                 if self.__stop:
+                    if self.checkpoint_cfg:
+                        self._clean_checkpoint()
                     return
+
+                if self.checkpoint_cfg and self.checkpoint_cfg.load_serial \
+                    and self.checkpoint_cfg.step_id >= step_id and self.checkpoint_cfg.epoch_id == epoch_id:
+                    continue
+
                 begin_event = BeginStepEvent(epoch_id, step_id)
                 event_handler(begin_event)
                 if begin_event.fetch_metrics:
@@ -309,8 +381,13 @@ class Trainer(object):
                                       ])
                 else:
                     metrics = exe.run(feed=data, fetch_list=[])
+
+                if self.checkpoint_cfg:
+                    self._save_checkpoint(epoch_id, step_id)
                 event_handler(EndStepEvent(epoch_id, step_id, metrics))
             event_handler(EndEpochEvent(epoch_id))
+        if self.checkpoint_cfg:
+            self._clean_checkpoint()
 
     def _test_by_executor(self, reader, feed_order, fetch_list):
         with executor.scope_guard(self.scope):
@@ -348,6 +425,38 @@ class Trainer(object):
                 use_cuda=isinstance(self.place, core.CUDAPlace),
                 loss_name=self.train_func_outputs[0].name)
         return self._get_parallel_executor()
+
+    def _clean_checkpoint(self):
+        assert self.checkpoint_cfg
+        io.clean_checkpoint(checkpoint_dir=self.checkpoint_cfg.checkpoint_dir)
+
+    def _get_checkpoint_load_args(self):
+        """
+        epoch_id and step_id are runtime arguments, they are not variables, will load them independently.
+        """
+        return ["epoch_id", "step_id"]
+
+    def _get_checkpoint_save_args(self, epoch_id, step_id):
+        """
+        epoch_id and step_id are runtime arguments, they are not variables, will save them independently.
+        """
+        trainer_args = {}
+        trainer_args["epoch_id"] = epoch_id
+        trainer_args["step_id"] = step_id
+        return trainer_args
+
+    def _save_checkpoint(self, epoch_id, step_id):
+        assert self.checkpoint_cfg
+
+        if epoch_id % self.checkpoint_cfg.epoch_interval == 0 and step_id % self.checkpoint_cfg.step_interval == 0:
+            exe = executor.Executor(self.place)
+            io.save_checkpoint(
+                executor=exe,
+                checkpoint_dir=self.checkpoint_cfg.checkpoint_dir,
+                trainer_id=self.trainer_id,
+                trainer_args=self._get_checkpoint_save_args(epoch_id, step_id),
+                main_program=self.train_program,
+                max_num_checkpoints=self.checkpoint_cfg.max_num_checkpoints)
 
 
 def build_feed_var_list(program, feed_order):
