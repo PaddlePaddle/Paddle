@@ -111,10 +111,17 @@ class NormGradKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 3> bcast(1, n, 1);
     Eigen::DSizes<int, 3> rshape(pre, 1, post);
 
-    // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / sum(x*x)]
+    // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
+    //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
+    //    = [dy - x * sum(x*dy) / (sum(x*x) + e)] / sqrt(sum(x*x))
+    // 1. sum = sum(x*dy)
     sum.device(*place) = (x * dy).sum(rdim);
+    // 2. dx = x * sum
     dx.device(*place) = sum.reshape(rshape).broadcast(bcast) * x;
+    // 3. dx / (sum(x*x) + e)
+    // where, norm.pow(2) = sum(x*x) + e, which is calculated in forward.
     dx.device(*place) = dx / norm.pow(2).broadcast(bcast);
+    // 4. [dy - dx] / sqrt(sum(x*x))
     dx.device(*place) = (dy - dx) / norm.broadcast(bcast);
   }
 };
