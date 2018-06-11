@@ -28,7 +28,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -37,6 +36,10 @@ namespace detail {
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
+
+#define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
+#define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
+#define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 
 class RPCServer;
 
