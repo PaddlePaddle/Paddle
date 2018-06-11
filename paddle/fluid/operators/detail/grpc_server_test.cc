@@ -99,11 +99,17 @@ void StartServer() {
   framework::Executor exe(place);
   platform::CPUDeviceContext ctx(place);
   auto* block = AppendPrefetchBlcok(&program);
-  auto prepared = exe.Prepare(program, block->ID());
+  std::string in_var_name("ids");
+  std::vector<int> prefetch_block_ids{block->ID()};
+  auto prepared = exe.Prepare(program, prefetch_block_ids);
   InitTensorsOnServer(&scope, &place, 10);
 
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>
+      prefetch_var_name_to_prepared;
+  prefetch_var_name_to_prepared[in_var_name] = prepared[0];
   g_req_handler->SetProgram(&program);
-  g_req_handler->SetPrefetchPreparedCtx(std::move(prepared));
+  g_req_handler->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
   g_req_handler->SetDevCtx(&ctx);
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);
