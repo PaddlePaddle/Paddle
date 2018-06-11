@@ -7,7 +7,7 @@ Parameter Settings
 1. How to Choose the Learning Rate of SGD Algorithm
 --------------------------
 
-An important issue when training with `sgd/async_sgd` is to choose the correct value for `learning_rate`. If it is too large, the training may not converge. If too small, the convergence may be slow, resulting in a long training time.
+An important issue when training with :code:`sgd/async_sgd` is to choose the correct value for :code:`learning_rate`. If it is too large, the training may not converge. If too small, the convergence may be slow, resulting in a long training time.
 
 Usually, we start with a relatively large learning rate. If the training does not converge, then we need to reduce the learning rate continuously by a factor of 10 until the training converges. We examine the convergence of the training by estimating the minimum cost at a constant output of the model.
 
@@ -16,7 +16,7 @@ If the cost of the training process is significantly higher than the cost of the
 2. How to Implement Learning Rate Annealing
 ------------------------------------------------
 
-We use the Adam algorithm as an example. Set the parameters of  `learning_rate_schedule` in the corresponding optimization algorithm as follows:
+We use the Adam algorithm as an example. Set the parameters of :code:`learning_rate_schedule` in the corresponding optimization algorithm as follows:
 
 .. code-block:: python
 
@@ -36,7 +36,7 @@ PaddlePaddle currently supports 8 learning rate schedules. The 8 learning rate s
 
   Lr = learning_rate * pow(1 + learning_rate_decay_a * num_samples_processed, -learning_rate_decay_b)
 
-  Variable `num_samples_processed` is the number of trained samples.
+  Variable :code:`num_samples_processed` is the number of trained samples.
 
 * "caffe_poly"
 
@@ -78,7 +78,7 @@ PaddlePaddle currently supports 8 learning rate schedules. The 8 learning rate s
           Learning_rate_schedule="pass_manual",
           Learning_rate_args="1:1.0,2:0.9,3:0.8",)
 
-  In this example, when the number of trained passes is less than or equal to 1, the learning rate is: code:`1e-3*1.0`; when the number of trained passes is greater than 1 or less than 2, the learning rate is:code:`1e- 3 * 0.9`; when the number of trained passes is greater than 2, the learning rate is: code:`1e-3*0.8`.
+  In this example, when the number of trained passes is less than or equal to 1, the learning rate is :code:`1e-3*1.0`; when the number of trained passes is greater than 1 or less than 2, the learning rate is :code:`1e- 3 * 0.9`; when the number of trained passes is greater than 2, the learning rate is :code:`1e-3*0.8`.
 
 How to Initialize Parameters
 -----------------
