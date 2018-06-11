@@ -36,7 +36,7 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(bool use_event);
+  void Run(bool use_cuda);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
