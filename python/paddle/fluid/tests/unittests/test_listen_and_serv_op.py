@@ -70,10 +70,10 @@ class TestListenAndServOp(OpTest):
         return p.pid
 
     def _wait_ps_ready(self, pid):
-        left_time = self.ps_timeout
+        start_left_time = self.ps_timeout
         sleep_time = 0.5
         while True:
-            assert left_time >= 0, "wait ps ready failed"
+            assert start_left_time >= 0, "wait ps ready failed"
             time.sleep(sleep_time)
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
@@ -81,7 +81,7 @@ class TestListenAndServOp(OpTest):
                 os.stat("/tmp/paddle.%d.port" % pid)
                 return
             except os.error:
-                left_time -= sleep_time
+                start_left_time -= sleep_time
 
     def test_rpc_interfaces(self):
         # TODO(Yancey1989): need to make sure the rpc interface correctly.
