@@ -158,7 +158,6 @@ class RequestPrefetch final : public RequestBase {
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
     VLOG(3) << "in_var_name: " << in_var_name
-            << "out_var_name: " << out_var_name
             << " RequestPrefetch: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();

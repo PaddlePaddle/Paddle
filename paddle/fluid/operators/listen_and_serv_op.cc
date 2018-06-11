@@ -247,7 +247,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestPrefetch,
-                            request_prefetch_handler_.get());
+                            request_prefetch_handler_.get(), 1);
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *program = optimize_block->Program();
@@ -263,7 +263,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
        prefetch_var_name_to_block_id_str) {
     std::vector<std::string> pieces;
     split(prefetch_var_name_and_id, ':', &pieces);
-    VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
+    VLOG(3) << "after split, prefetch_var = " << pieces[0]
+            << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
 
     int block_id = std::stoi(pieces[1]);
