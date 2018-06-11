@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 #include <type_traits>
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
@@ -37,9 +38,9 @@ struct ArgMinMaxFunctor {};
   struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                       \
                           enum_argminmax_value> {                             \
     void operator()(const DeviceContext& ctx, const framework::LoDTensor& in, \
-                    framework::LoDTensor& out, int64_t axis) {                \
+                    framework::LoDTensor* out, int64_t axis) {                \
       auto in_eigen = framework::EigenTensor<T, Rank>::From(in);              \
-      auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(out);     \
+      auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(*out);    \
       out_eigen.device(*(ctx.eigen_device())) =                               \
           in_eigen.eigen_op_type(axis).template cast<Tout>();                 \
     }                                                                         \
@@ -62,7 +63,7 @@ class ArgMinMaxKernel : public framework::OpKernel<T> {
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                \
   ArgMinMaxFunctor<DeviceContext, T, Tout, rank, EnumArgMinMaxValue> \
       functor##rank;                                                 \
-  functor##rank(dev_ctx, x, out, axis)
+  functor##rank(dev_ctx, x, &out, axis)
 
     switch (x.dims().size()) {
       case 1:
@@ -89,19 +90,20 @@ class ArgMinMaxKernel : public framework::OpKernel<T> {
             "than 6.",
             (EnumArgMinMaxValue == kArgMin ? "argmin" : "argmax"));
         break;
+#undef CALL_ARG_MINMAX_FUNCTOR
     }
   }
 };
 
-template <typename DeviceContext, typename T, typename Tout>
+template <typename DeviceContext, typename T>
 using ArgMinKernel =
-    ArgMinMaxKernel<DeviceContext, T, Tout, ArgMinMaxType::kArgMin>;
+    ArgMinMaxKernel<DeviceContext, T, int64_t, ArgMinMaxType::kArgMin>;
 
-template <typename DeviceContext, typename T, typename Tout>
+template <typename DeviceContext, typename T>
 using ArgMaxKernel =
-    ArgMinMaxKernel<DeviceContext, T, Tout, ArgMinMaxType::kArgMax>;
+    ArgMinMaxKernel<DeviceContext, T, int64_t, ArgMinMaxType::kArgMax>;
 
-typedef class BaseArgMinMaxOp : public framework::OperatorWithKernel {
+class ArgMinMaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -121,7 +123,7 @@ typedef class BaseArgMinMaxOp : public framework::OperatorWithKernel {
     for (int64_t i = axis + 1; i < x_rank; i++) vec.push_back(x_dims[i]);
     ctx->SetOutputDim("Out", framework::make_ddim(vec));
   }
-} ArgMinOp, ArgMaxOp;
+};
 
 class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
  protected:
@@ -133,12 +135,13 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input tensor.");
     AddOutput("Out", "Output tensor.");
     AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.");
-    AddComment(::paddle::string::Sprintf(R"DOC(
-				%s Operator.
+    AddComment(string::Sprintf(R"DOC(
+      %s Operator.
 
-				Computes the indices of the %s elements of the input tensor's element along the provided axis.
+      Computes the indices of the %s elements of the input tensor's element
+      along the provided axis.
 )DOC",
-                                         OpName(), Name()));
+                               OpName(), Name()));
   }
 };
 
