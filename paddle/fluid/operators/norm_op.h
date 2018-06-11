@@ -19,8 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline void GetDims(const framework::DDim& dim, int axis,
-                    int* pre, int* n, int* post) {
+inline void GetDims(const framework::DDim& dim, int axis, int* pre, int* n,
+                    int* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -49,7 +49,7 @@ class NormKernel : public framework::OpKernel<T> {
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
     GetDims(xdim, axis, &pre, &n, &post);
-    
+
     auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 3> shape(pre, n, post);
@@ -61,14 +61,13 @@ class NormKernel : public framework::OpKernel<T> {
     auto x = x_e.reshape(shape);
     auto y = y_e.reshape(shape);
     auto norm = norm_e.reshape(norm_shape);
-    
+
     Eigen::DSizes<int, 1> rdim(1);
     auto x_pow = x * x;
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T>()(device_ctx, out_norm, eps);
 
     // y = x / sqrt((sum(x * x) + epsilon))
-
     // norm = sqrt(sum(x * x) + epsilon)
     norm.device(*place) = norm + x_pow.eval().sum(rdim) + eps;
     norm.device(*place) = norm.sqrt();
@@ -93,9 +92,8 @@ class NormGradKernel : public framework::OpKernel<T> {
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
     GetDims(xdim, axis, &pre, &n, &post);
-  
-    auto* place =
-        ctx.template device_context<DeviceContext>().eigen_device();
+
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
     auto x_e = framework::EigenVector<T>::Flatten(*in_x);
     auto dy_e = framework::EigenVector<T>::Flatten(*in_dy);
@@ -112,7 +110,7 @@ class NormGradKernel : public framework::OpKernel<T> {
     framework::Tensor rsum;
     rsum.mutable_data<T>({pre, post}, ctx.GetPlace());
     auto sum = framework::EigenTensor<T, 2>::From(rsum);
- 
+
     Eigen::DSizes<int, 1> rdim(1);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
     Eigen::DSizes<int, 3> rshape(pre, 1, post);

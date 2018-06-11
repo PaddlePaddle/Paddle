@@ -387,7 +387,6 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
-
     def test_l2_normalize(self):
         program = Program()
         with program_guard(program):
@@ -395,8 +394,6 @@ class TestBook(unittest.TestCase):
             output = layers.l2_normalize(x, axis=1)
             self.assertIsNotNone(output)
         print(str(program))
-
-
 
 
 if __name__ == '__main__':

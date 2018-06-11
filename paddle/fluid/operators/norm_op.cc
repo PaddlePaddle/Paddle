@@ -19,12 +19,11 @@ namespace operators {
 class NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(Tensor) A tensor of rank >= axis.");
+    AddInput("X", "(Tensor) A tensor of rank >= axis.");
     AddAttr<int>("axis",
                  "The axis on which to apply normalization. If axis < 0, "
                  "the dimension to normalization is rank(X) + axis. -1 is "
-                  "the last dimension.");
+                 "the last dimension.");
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) The epsilon value is used "
                    "to avoid division by zero.")
@@ -33,8 +32,7 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) A tensor saved the `sqrt(sum(x) + epsion)` will "
               "be used in backward kernel.")
         .AsIntermediate();
-    AddOutput("Out",
-              "(Tensor) A tensor of the same shape as X.");
+    AddOutput("Out", "(Tensor) A tensor of the same shape as X.");
     AddComment(R"DOC(
 
 Given a tensor, apply 2-normalization along the provided axis.
