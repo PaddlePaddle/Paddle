@@ -62,8 +62,6 @@ class RPCServer {
   void IncreaseBatchBarrier(const std::string rpc_name);
   void DecreaseClientNum();
   void ResetBarrierCounter();
-  void RecordSparseVar(framework::Variable* sparse_var);
-  void ResetSparseVarsRecorder();
 
  protected:
   virtual void ShutDownImpl() = 0;
@@ -76,9 +74,6 @@ class RPCServer {
   std::unordered_map<std::string, int> rpc_cond_map_;
   std::atomic<int> cur_cond_;
   std::condition_variable rpc_cond_;
-
-  std::vector<framework::Variable*> sparse_vars_;
-  std::mutex mutex_sparse_var_recorder_;
 
  protected:
   std::string bind_address_;

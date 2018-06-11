@@ -88,6 +88,8 @@ class Executor {
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
 
+  void EnableMKLDNN(const ProgramDesc& program);
+
  private:
   const platform::Place place_;
 };
