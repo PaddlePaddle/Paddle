@@ -1,8 +1,9 @@
 # API Doc Standard
 
-- [API Doc Structure](#API Doc Structure)
-- [Format and Examples](#Format and Examples)
-- [Complete Example](#Complete Example)
+- [API Doc Standard](#api-doc-standard)
+    - [API Doc Structure](#api-doc-structure)
+    - [Format and Examples](#format-and-examples)
+    - [Complete Example](#complete-example)
 
 
 ## API Doc Structure
@@ -223,4 +224,4 @@ Format and examples of each part of API documantation are as follows: (take fc f
 
 ## Complete Example
 
-Complete Example of fc please see [here](src/fc.py)。
+Complete Example of fc please see [here](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/src/fc.py)。

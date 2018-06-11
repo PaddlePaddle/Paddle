@@ -30,15 +30,16 @@ using framework::Tensor;
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
   int rank = ctx.Input<Tensor>("X")->dims().size();
-  if (ctx.HasInput("Offsets")) {
-    PADDLE_ENFORCE(ctx.Attr<std::vector<int>>("offsets").empty(),
-                   "Input 'Offsets' and attribute 'offsets' should not be used "
-                   "at the same time.");
-    const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
+  if (ctx.HasInput("OffsetsVar")) {
+    PADDLE_ENFORCE(
+        ctx.Attr<std::vector<int>>("offsets").empty(),
+        "Input 'OffsetsVar' and attribute 'offsets' should not be used "
+        "at the same time.");
+    const auto* offsets_tensor = ctx.Input<Tensor>("OffsetsVar");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1);
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],
-        "Offsets size should be equal to dimension size of input tensor.");
+        "OffsetsVar size should be equal to dimension size of input tensor.");
     const int64_t* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {

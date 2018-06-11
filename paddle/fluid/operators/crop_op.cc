@@ -67,7 +67,7 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input used as reference for cropping, "
              "which is of the same dimensions as X.")
         .AsDispensable();
-    AddInput("Offsets",
+    AddInput("OffsetsVar",
              "The input used to describe offsets in runtime, which is a "
              "1-D vector whose size equals to the rank of input 'X'. The "
              "elements data type must be int64_t.")
@@ -91,7 +91,7 @@ Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are two ways to set the offsets:
-1. In runtime: Using the input 'Offsets', which is a Vairbale and can be 
+1. In runtime: Using the input 'OffsetsVar', which is a Vairbale and can be 
                output of other operators. This way is suitable for 
                dynamic offsets.
 2. In network configuration: Using the attribute 'offsets', which will be 

@@ -26,6 +26,7 @@ from trainer import BeginEpochEvent
 from trainer import EndEpochEvent
 from trainer import BeginStepEvent
 from trainer import EndStepEvent
+from trainer import CheckpointConfig
 
 import inferencer
 from inferencer import Inferencer
@@ -116,7 +117,7 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope'
+        'eager_delete_scope', 'use_mkldnn'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += [
