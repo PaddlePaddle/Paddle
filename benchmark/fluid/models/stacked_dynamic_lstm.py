@@ -44,6 +44,9 @@ def crop_sentence(reader, crop_size):
 
 
 def get_model(args):
+    if args.use_reader_op:
+        raise Exception(
+            "stacked_dynamic_lstm do not support reader op for now.")
     lstm_size = 512
     emb_dim = 512
     crop_size = 1500
@@ -101,9 +104,8 @@ def get_model(args):
     loss = fluid.layers.mean(x=loss)
 
     # add acc
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
     batch_acc = fluid.layers.accuracy(input=logit, label=fluid.layers.data(name='label', \
-                shape=[1], dtype='int64'), total=batch_size_tensor)
+                shape=[1], dtype='int64'))
 
     inference_program = fluid.default_main_program().clone()
     with fluid.program_guard(inference_program):
@@ -115,7 +117,7 @@ def get_model(args):
     train_reader = batch(
         paddle.reader.shuffle(
             crop_sentence(imdb.train(word_dict), crop_size), buf_size=25000),
-        batch_size=args.batch_size)
+        batch_size=args.batch_size * args.gpus)
     test_reader = batch(
         paddle.reader.shuffle(
             crop_sentence(imdb.test(word_dict), crop_size), buf_size=25000),
