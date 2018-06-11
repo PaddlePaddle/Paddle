@@ -49,7 +49,18 @@ def create_parameter(shape,
                      is_bias=False,
                      default_initializer=None):
     """
-    Create a parameter
+    Create a parameter. The parameter is a learnable variable, which can have
+    gradient, and can be optimized.
+
+    NOTE: this is a very low-level API. This API is useful when you create
+    operator by your self. instead of using layers.
+
+    >>> import paddle.fluid as fluid
+    >>> W = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+    >>> data = fluid.layers.data(name="img", shape=[64, 784],
+    >>>           append_batch_size=False)
+    >>> hidden = fluid.layers.matmul(x=data, y=W)
+
     Args:
         shape(list[int]): shape of the parameter
         dtype(string): element type of the parameter
@@ -61,7 +72,7 @@ def create_parameter(shape,
         default_initializer(Initializer): initializer for the parameter
 
     Returns:
-        Parameter: the created parameter
+        the created parameter
     """
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:

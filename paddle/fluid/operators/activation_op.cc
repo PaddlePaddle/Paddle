@@ -276,13 +276,12 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 HardShrink Activation Operator.
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > \lambda \\
-    x, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases}
+            x, \text{if } x > \lambda \\
+            x, \text{if } x < -\lambda \\
+            0,  \text{otherwise}
+          \end{cases}
 
 )DOC");
   }
