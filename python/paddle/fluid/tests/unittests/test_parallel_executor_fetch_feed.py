@@ -89,8 +89,8 @@ class TestFetchOp(unittest.TestCase):
         for i in range(iters):
             train_inputs.append(tst_reader_iter.next())
 
-        self.parallel_exe(train_inputs, seed=1, use_cuda=True)
         os.environ['CPU_NUM'] = str(4)
+        self.parallel_exe(train_inputs, seed=1, use_cuda=True)
         self.parallel_exe(train_inputs, seed=1, use_cuda=False)
 
 
@@ -134,8 +134,8 @@ class TestFeedParallel(unittest.TestCase):
                 break
 
     def test_feed_op(self):
-        self.parallel_exe(use_cuda=True, seed=1)
         os.environ['CPU_NUM'] = str(4)
+        self.parallel_exe(use_cuda=True, seed=1)
         self.parallel_exe(use_cuda=False, seed=1)
 
 

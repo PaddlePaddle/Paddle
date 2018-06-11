@@ -107,18 +107,18 @@ void AllReduceOpHandle::RunImpl() {
       auto &trg = *this->local_scopes_[0]
                        ->FindVar(kLocalExecScopeName)
                        ->Get<Scope *>()
-                       ->FindVar(in_var_handles[0]->name_)
+                       ->FindVar(out_var_handles[0]->name_)
                        ->GetMutable<framework::LoDTensor>();
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
       VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
-      for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      for (size_t i = 1; i < local_scopes_.size(); ++i) {
         auto &scope =
             *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
         auto &p = places_[i];
-        auto *var = scope.FindVar(in_var_handles[i]->name_);
+        auto *var = scope.FindVar(out_var_handles[i]->name_);
         auto *dev_ctx = dev_ctxes_[p];
 
         RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
