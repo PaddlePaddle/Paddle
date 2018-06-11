@@ -171,7 +171,7 @@ Pytorch chooses immediate evaluation. It avoids ever materializing a "forward gr
 
 ## What can fluid learn from them?
 
-It turns out we 
+Please refer to `paddle/contrib/tape/`.
 
 # Appendix
 

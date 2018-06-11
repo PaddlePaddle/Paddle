@@ -72,15 +72,23 @@ class Linear {
   }
 
   VariableHandle operator()(VariableHandle input) {
-    VariableHandle y(new Variable("linear"));
+    VariableHandle pre_bias(new Variable("linear"));
     get_global_tape().AddOp("mul",
                             {{"X", {input}}, {"Y", {w_}}},
-                            {{"Out", {y}}},
+                            {{"Out", {pre_bias}}},
                             {{"x_num_col_dims", 1}, {"y_num_col_dims", 1}});
-    return y;
+    VariableHandle pre_act(new Variable("linear"));
+    get_global_tape().AddOp("elementwise_add",
+                            {{"X", {pre_bias}}, {"Y", {b_}}},
+                            {{"Out", {pre_act}}},
+                            {{"axis", 1}});
+    VariableHandle post_act(new Variable("linear"));
+    get_global_tape().AddOp(
+        act_, {{"X", {pre_act}}}, {{"Out", {post_act}}}, {});
+    return post_act;
   }
 
-  std::vector<VariableHandle> Params() { return {w_}; }
+  std::vector<VariableHandle> Params() { return {w_, b_}; }
 
  private:
   VariableHandle w_;
