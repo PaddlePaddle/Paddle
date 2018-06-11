@@ -121,8 +121,9 @@ class ParallelExecutor(object):
                 # performance. Worth tunning for other models in the future.
                 exec_strategy.num_threads = len(self._places) * 4
             else:
-                # Currently num_threads must be 1.
-                exec_strategy.num_threads = 1
+                cpu_num = int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+                exec_strategy.num_threads = cpu_num
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
