@@ -56,7 +56,7 @@ namespace paddle {
  */
 template <class T>
 class Queue {
-public:
+ public:
   /**
    * @brief Construct Function. Default capacity of Queue is zero.
    */
@@ -147,7 +147,7 @@ public:
     });
   }
 
-private:
+ private:
   std::deque<T> elements_;
   int numElements_;
   std::mutex queueLock_;
@@ -185,7 +185,7 @@ private:
  */
 template <typename T>
 class BlockingQueue {
-public:
+ public:
   /**
    * @brief Construct Function.
    * @param[in] capacity the max numer of elements the queue can have.
@@ -244,7 +244,7 @@ public:
     return queue_.empty();
   }
 
-private:
+ private:
   std::mutex mutex_;
   std::condition_variable notEmpty_;
   std::condition_variable notFull_;

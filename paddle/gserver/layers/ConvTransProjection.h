@@ -23,7 +23,7 @@ namespace paddle {
  * @brief Convolution projection do the same calculation with CudnnConvLayer.
  */
 class ConvTransProjection : public ConvBaseProjection {
-public:
+ public:
   /**
    * Constructor.
    */

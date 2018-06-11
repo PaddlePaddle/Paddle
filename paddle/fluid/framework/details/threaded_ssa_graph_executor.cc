@@ -21,7 +21,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     std::unique_ptr<SSAGraph> &&graph)
-    : SSAGraphExecutor(std::move(graph)),
+    : graph_(std::move(graph)),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
       local_scopes_(local_scopes),
@@ -185,11 +185,14 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
     ready_vars->Push(var);
   }
 }
+
 void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+      if (VLOG_IS_ON(10)) {
+        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+      }
       op->Run(strategy_.use_event_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;

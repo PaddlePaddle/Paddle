@@ -225,7 +225,7 @@ TEST(Layer, RecurrentLayer) {
 #include "paddle/gserver/layers/RecurrentLayer.h"
 template <class T>
 class TestRecurrentLayer {
-public:
+ public:
   LayerConfig config_;
   bool useGpu_;
   bool useBatch_;

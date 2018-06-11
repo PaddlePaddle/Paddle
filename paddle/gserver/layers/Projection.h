@@ -37,7 +37,7 @@ namespace paddle {
  * to output Argument.
  */
 class Projection {
-public:
+ public:
   static Projection* create(const ProjectionConfig& config,
                             ParameterPtr parameter,
                             bool useGpu);
@@ -98,7 +98,7 @@ public:
    */
   size_t getOutputSize() const { return config_.output_size(); }
 
-protected:
+ protected:
   /**
    * Create layer function. Function is called in forward or backward.
    * \param function, Layer::forward_ or Layer::backward_
@@ -119,7 +119,7 @@ protected:
     func->init(config);
   }
 
-protected:
+ protected:
   /// Config of projection
   ProjectionConfig config_;
   /// Parameter of projection

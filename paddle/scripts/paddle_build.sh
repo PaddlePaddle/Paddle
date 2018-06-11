@@ -99,12 +99,13 @@ function cmake_gen() {
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -126,12 +127,12 @@ EOF
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
-        -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
 }
 
 function abort(){
@@ -144,19 +145,17 @@ function check_style() {
     trap 'abort' 0
     set -e
 
-    # install glide
-    curl https://glide.sh/get | bash
-    eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    if [ -x "$(command -v gimme)" ]; then
+    	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    fi
 
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
-    cd  $GOPATH/src/github.com/PaddlePaddle/Paddle/go; glide install; cd -
+    mkdir -p ./build/go
+    cp go/glide.* build/go
+    cd build/go; glide install; cd -
 
-    go get github.com/alecthomas/gometalinter
-    gometalinter --install
-
-    cd ${PADDLE_ROOT}
     export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
@@ -182,7 +181,7 @@ function build() {
     ============================================
 EOF
     make clean
-    make -j `nproc`
+    make install -j `nproc`
 }
 
 function build_android() {
@@ -231,7 +230,6 @@ EOF
             -DUSE_EIGEN_FOR_BLAS=ON \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     elif [ $ANDROID_ABI == "arm64-v8a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -245,7 +243,6 @@ EOF
             -DUSE_EIGEN_FOR_BLAS=OFF \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     elif [ $ANDROID_ABI == "armeabi" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -258,7 +255,6 @@ EOF
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DWITH_C_API=ON \
             -DWITH_SWIG_PY=OFF \
-            -DWITH_STYLE_CHECK=OFF \
             ..
     else
       echo "Invalid ANDROID_ABI: $ANDROID_ABI"
@@ -287,7 +283,6 @@ function build_ios() {
           -DUSE_EIGEN_FOR_BLAS=ON \
           -DWITH_TESTING=OFF \
           -DWITH_SWIG_PY=OFF \
-          -DWITH_STYLE_CHECK=OFF \
           -DCMAKE_BUILD_TYPE=Release
     
     make -j 2
@@ -375,8 +370,7 @@ EOF
         -DCMAKE_BUILD_TYPE=Release \
         -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_STYLE_CHECK=OFF
+        -DWITH_MKL=OFF
 
     make -j `nproc` paddle_docs paddle_apis
 
@@ -415,9 +409,11 @@ function gen_dockerfile() {
 
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
+    DOCKERFILE_CUBLAS_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
-        DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUDNN_DSO="RUN ln -sf /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
+        DOCKERFILE_CUBLAS_DSO="RUN ln -sf /usr/local/cuda/targets/x86_64-linux/lib/libcublas.so.${CUDA_MAJOR} /usr/lib/x86_64-linux-gnu/libcublas.so"
     fi
 
     cat <<EOF
@@ -451,13 +447,14 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && easy_install -U pip && \
+        apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
@@ -493,7 +490,9 @@ function gen_fluid_inference_lib() {
     ========================================
 EOF
         make -j `nproc` inference_lib_dist
-        tar -cf ${PADDLE_ROOT}/build/fluid.tgz ${PADDLE_ROOT}/build/fluid_install_dir
+        cd ${PADDLE_ROOT}/build
+        mv fluid_install_dir fluid
+        tar -cf fluid.tgz fluid
       fi
 }
 

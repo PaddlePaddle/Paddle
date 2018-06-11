@@ -72,6 +72,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
+    elif dtype == np.uint16:
+        return core.VarDesc.VarType.INT16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     else:
@@ -361,6 +363,13 @@ class OpProtoHolder(object):
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
+    @staticmethod
+    def generated_op_attr_names():
+        return {
+            core.op_proto_and_checker_maker.kOpRoleAttrName(),
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+        }
+
 
 class Operator(object):
     """
@@ -368,6 +377,13 @@ class Operator(object):
     Block. Users can use the build in instructions to describe their neural
     network.
     """
+    OP_WITHOUT_KERNEL_SET = {
+        'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
+        'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
+        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
+        'ncclInit', 'channel_create', 'channel_close', 'channel_send',
+        'channel_recv', 'select'
+    }
 
     def __init__(self,
                  block,
@@ -404,6 +420,23 @@ class Operator(object):
         self.block = block
         self.desc = desc
         self.attrs = attrs
+        if self.attrs is None:
+            self.attrs = dict()
+        del attrs
+
+        op_maker = core.op_proto_and_checker_maker
+
+        if op_maker.kOpRoleAttrName() not in self.attrs:
+            self.attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
+
+        role_var_name = op_maker.kOpRoleVarAttrName()
+        if len(self.block.program.
+               op_role_var) != 0 and role_var_name not in self.attrs:
+            self.attrs[role_var_name] = self.block.program.op_role_var
+
+        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
+            del self.attrs[role_var_name]
+
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -469,33 +502,30 @@ class Operator(object):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        if attrs is not None:
-            if not isinstance(attrs, dict):
+        if self.attrs is not None:
+            if not isinstance(self.attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (attr_name not in attrs) or (attrs[attr_name] is None):
+                if (attr_name not in self.attrs) or (
+                        self.attrs[attr_name] is None):
                     continue
-                if isinstance(attrs[attr_name], Block):
-                    self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
-                elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                        isinstance(attrs[attr_name], core.ProgramDesc):
+                if isinstance(self.attrs[attr_name], Block):
+                    self.desc.set_block_attr(attr_name,
+                                             self.attrs[attr_name].desc)
+                elif isinstance(self.attrs[attr_name], core.BlockDesc) or \
+                        isinstance(self.attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
-                        attr_name, attrs[attr_name].serialize_to_string())
+                        attr_name, self.attrs[attr_name].serialize_to_string())
                 else:
-                    self.desc.set_attr(attr_name, attrs[attr_name])
-
+                    self.desc.set_attr(attr_name, self.attrs[attr_name])
         self.desc.check_attrs()
-        no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
-            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select', 'gen_nccl_id'
-        }
-        if type not in no_kernel_op_set:
+        if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+
+    def has_kernel(self, op_type):
+        return op_type not in self.OP_WITHOUT_KERNEL_SET
 
     def to_string(self, throw_on_error):
         """
@@ -612,6 +642,10 @@ class Operator(object):
         """
         return self.desc.attr_type(name)
 
+    def set_attr(self, name, val):
+        self.attrs[name] = val
+        self.desc.set_attr(name, val)
+
     @property
     def attr_names(self):
         """
@@ -720,7 +754,9 @@ class Block(object):
 
     def var(self, name):
         if not isinstance(name, basestring):
-            raise TypeError()
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
@@ -775,7 +811,7 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
         """
         if not self.has_var(name):
-            raise ValueError("var %s is not in current" % name)
+            raise ValueError("var %s is not in current block" % name)
         v = self.var(name)
         if type(v) == Parameter:
             var_type = "Parameter"
@@ -821,6 +857,7 @@ class Block(object):
         self.vars[new_name] = var
         del self.vars[name]
         self.sync_with_cpp()
+        return var
 
     def remove_var(self, name):
         self.sync_with_cpp()
@@ -1002,6 +1039,33 @@ class Program(object):
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
         self._seed = 0
+        self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
+        self._op_role_var = []
+
+    @property
+    def op_role(self):
+        return self._current_role
+
+    @op_role.setter
+    def set_op_role(self, role):
+        self._current_role = role
+
+    @property
+    def op_role_var(self):
+        return self._op_role_var
+
+    @op_role_var.setter
+    def set_op_role_var(self, var_name):
+        self._op_role_var = [var_name]
+
+    @contextlib.contextmanager
+    def optimized_guard(self, var):
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Optimize
+        self._op_role_var = [var.name if isinstance(var, Variable) else var]
+        yield
+        self._op_role_var = []
+        self._current_role = OpRole.Forward
 
     def __str__(self):
         return self.to_string(True)
