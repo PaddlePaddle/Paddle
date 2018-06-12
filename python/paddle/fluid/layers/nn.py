@@ -261,7 +261,6 @@ def embedding(input,
     return tmp
 
 
-# TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
                  size,
                  param_attr=None,
@@ -396,12 +395,13 @@ def dynamic_lstm(input,
     batch_gate = helper.create_tmp_variable(dtype)
     batch_cell_pre_act = helper.create_tmp_variable(dtype)
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    batch_size = input.shape[0]
     if h_0:
-        assert h_0.shape == (-1, size), \
+        assert h_0.shape == (batch_size, size), \
             'The shape of h0 should be (-1, %d)' % size
         inputs['H0'] = h_0
     if c_0:
-        assert c_0.shape == (-1, size), \
+        assert c_0.shape == (batch_size, size), \
             'The shape of c0 should be (-1, %d)' % size
         inputs['C0'] = c_0
 
