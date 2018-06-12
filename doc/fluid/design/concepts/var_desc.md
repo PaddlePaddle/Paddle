@@ -35,7 +35,7 @@ The computation `Program` consists of nested `Blocks`. Each `Block` will consist
 
 ## Definition of VarType
 
-A VarDesc should have a name, type and whether or not it is persistable. The are different kinds of variable types supported in PaddlePaddle, apart from the POD_Types like: `LOD_TENSOR`, `SELECTED_ROWS`, `FEED_MINIBATCH`, `FETCH_LIST`, `STEP_SCOPES`, `LOD_RANK_TABLE`, `LOD_TENSOR_ARRAY`, `PLACE_LIST`, `READER` and `CHANNEL`. These are declared inside `VarType`. A `VarDesc` then looks as the following:
+A VarDesc should have a name, type and whether or not it is persistable. There are different kinds of variable types supported in PaddlePaddle, apart from the POD_Types like: `LOD_TENSOR`, `SELECTED_ROWS`, `FEED_MINIBATCH`, `FETCH_LIST`, `STEP_SCOPES`, `LOD_RANK_TABLE`, `LOD_TENSOR_ARRAY`, `PLACE_LIST`, `READER` and `CHANNEL`. These are declared inside `VarType`. A `VarDesc` then looks as the following:
 
 ```proto
 message VarDesc {

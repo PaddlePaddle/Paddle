@@ -92,12 +92,16 @@ void InitSelectedRowsInScope(const p::CPUPlace &place, f::Scope *scope) {
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
-           f::BlockDesc *block) {
+           f::BlockDesc *block, bool is_sparse) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
       auto var = block->Var(v);
       var->SetDataType(f::proto::VarType::FP32);
+      var->SetPersistable(true);
+      if (is_sparse) {
+        var->SetType(f::proto::VarType::SELECTED_ROWS);
+      }
     }
   }
 
@@ -116,6 +120,7 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   f::Scope scope;
   p::CPUPlace place;
+  VLOG(4) << "before init tensor";
   if (is_sparse) {
     InitSelectedRowsInScope(place, &scope);
   } else {
@@ -127,7 +132,8 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   auto *optimize_block = program.AppendBlock(root_block);
   auto *prefetch_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensors, must be of same shape.
-  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
+  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block,
+        is_sparse);
   f::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:0")});
   attrs.insert({"Fanin", 1});
@@ -137,6 +143,7 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   attrs.insert({"PrefetchBlock", prefetch_block});
   attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
   attrs.insert({"sync_mode", true});
+  VLOG(4) << "before init op";
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
   *initialized = true;
@@ -149,7 +156,10 @@ TEST(SendRecvOp, CPUDense) {
   std::thread server_thread(StartServerNet, false, &initialized);
   while (!initialized) {
   }
-  sleep(5);  // wait server to start
+
+  static_cast<paddle::operators::ListenAndServOp *>(listen_and_serv_op.get())
+      ->WaitServerReady();
+
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -166,9 +176,10 @@ TEST(SendRecvOp, CPUDense) {
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
-  auto send_op = f::OpRegistry::CreateOp(
-      "send", {{"X", {"x1"}}},
-      {{"Out", {"Out"}}, {"RPCClient", {"RPC_CLIENT_VAR"}}}, attrs);
+  const f::VariableNameMap &inputs = {{"X", {"x1"}}};
+  const f::VariableNameMap &outputs = {{"Out", {"Out"}}};
+
+  auto send_op = f::OpRegistry::CreateOp("send", inputs, outputs, attrs);
   send_op->Run(scope, place);
 
   auto in_var = scope.Var("x1");
@@ -185,6 +196,7 @@ TEST(SendRecvOp, CPUDense) {
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
+  paddle::operators::ListenAndServOp::ResetPort();
 }
 
 TEST(SendRecvOp, CPUSparse) {
@@ -193,7 +205,12 @@ TEST(SendRecvOp, CPUSparse) {
   std::thread server_thread(StartServerNet, true, &initialized);
   while (!initialized) {
   }
-  sleep(5);  // wait server to start
+  auto *listen_and_serv_op_ptr =
+      static_cast<paddle::operators::ListenAndServOp *>(
+          listen_and_serv_op.get());
+  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
+  listen_and_serv_op_ptr->WaitServerReady();
+
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -201,17 +218,12 @@ TEST(SendRecvOp, CPUSparse) {
   InitSelectedRowsInScope(place, &scope);
   scope.Var("RPC_CLIENT_VAR");
   f::AttributeMap attrs;
-  auto *listen_and_serv_op_ptr =
-      static_cast<paddle::operators::ListenAndServOp *>(
-          listen_and_serv_op.get());
-  ASSERT_TRUE(listen_and_serv_op_ptr != nullptr);
   selected_port = listen_and_serv_op_ptr->GetSelectedPort();
   std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
   attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
   attrs.insert({"epmap", std::vector<std::string>({endpoint})});
-  auto send_op = f::OpRegistry::CreateOp(
-      "send", {{"X", {"x1"}}},
-      {{"Out", {"Out"}}, {"RPCClient", {"RPC_CLIENT_VAR"}}}, attrs);
+  auto send_op = f::OpRegistry::CreateOp("send", {{"X", {"x1"}}},
+                                         {{"Out", {"Out"}}}, attrs);
   send_op->Run(scope, place);
 
   auto x0 = scope.Var("x0")->GetMutable<f::SelectedRows>();
@@ -236,4 +248,5 @@ TEST(SendRecvOp, CPUSparse) {
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset();
+  paddle::operators::ListenAndServOp::ResetPort();
 }

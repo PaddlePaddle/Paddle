@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
+DEFINE_bool(check_nan_inf, false,
+            "Checking whether operator produce NAN/INF or not. It will be "
+            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -93,6 +96,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   RunImpl(scope, place);
 }
 
+bool OperatorBase::HasInputs(const std::string& name) const {
+  if (inputs_.find(name) != inputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -107,6 +118,14 @@ const std::vector<std::string>& OperatorBase::Inputs(
   PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
                  type_, name);
   return it->second;
+}
+
+bool OperatorBase::HasOutputs(const std::string& name) const {
+  if (outputs_.find(name) != outputs_.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
@@ -220,13 +239,18 @@ void OperatorBase::CheckAllInputOutputSet() const {
   if (op_info == nullptr || op_info->proto_ == nullptr) return;
 
   for (auto& in : op_info->Proto().inputs()) {
-    PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
-                   "Type %s's input %s is not set", Type(), in.name());
+    if (!in.dispensable()) {
+      PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
+                     "Operator %s's input, %s, is not set", Type(), in.name());
+    }
   }
 
   for (auto& out : op_info->Proto().outputs()) {
-    PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
-                   "Type %s's output %s is not set", Type(), out.name());
+    if (!out.dispensable()) {
+      PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
+                     "Operator %s's output, %s, is not set", Type(),
+                     out.name());
+    }
   }
 }
 
@@ -267,6 +291,38 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
+}
+
+bool ExecutionContext::HasInput(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
+  }
+  auto& ins = Inputs(name);
+  size_t length = ins.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input %s should not have more than one inputs", name);
+  auto arg = ins[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
+}
+
+bool ExecutionContext::HasOutput(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto& outs = Outputs(name);
+  size_t length = outs.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output %s should not have more than one inputs", name);
+  auto arg = outs[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
 }
 
 template <>
@@ -332,6 +388,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto& ins = Inputs(name);
     size_t length = ins.size();
     if (length == 0) {
@@ -345,6 +404,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutput(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto& outs = Outputs(name);
     size_t length = outs.size();
     if (length == 0) {
@@ -358,6 +420,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasInputs(const std::string& name) const override {
+    if (!op_.HasInputs(name)) {
+      return false;
+    }
     auto inputs = op_.Inputs(name);
     if (inputs.empty()) {
       return false;
@@ -371,6 +436,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
+    if (!op_.HasOutputs(name)) {
+      return false;
+    }
     auto outputs = op_.Outputs(name);
     if (outputs.empty()) {
       return false;
@@ -408,10 +476,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
-    // TODO(dzhwinter) : reuse ShareLoD in most operators.
-    // Need to call ShareLayout explicitly in sequence related ops.
-    // Shall we have a better method to shared info between in/out Tensor?
-    out_tensor->set_layout(in_tensor.layout());
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
+#ifdef PADDLE_WITH_MKLDNN
+    // Fix me: ugly workaround below
+    // Correct solution:
+    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor should be set "manually" in Compute()
+    //    of each OPKernel. The reason layout should NOT be shared between
+    //    input and output "automatically" (now by InferShape()->ShareLoD())
+    //    is that layout transform may occur after InferShape().
+    // Workaround:
+    //    Skip set_layout() when input layout is kMKLDNN
+    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    in Compute()
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+      out_tensor->set_layout(in_tensor.layout());
   }
 
   void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
@@ -433,6 +516,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
@@ -479,6 +563,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const OperatorBase& op_;
   const Scope& scope_;
 };
+
+static void CheckTensorNANOrInf(const std::string& name,
+                                const framework::Tensor& tensor) {
+  if (tensor.memory_size() == 0) {
+    return;
+  }
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
+      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+    return;
+  }
+  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
+                 "Tensor %s contains Inf", name);
+  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
+                 "Tensor %s contains NAN", name);
+}
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
@@ -564,6 +663,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
   }
+
+  if (FLAGS_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      auto* var = new_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      }
+    }
+  }
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
@@ -584,8 +693,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
-          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                         "DataType of Paddle Op %s must be the same.", Type());
+          PADDLE_ENFORCE(
+              tmp == data_type || data_type == -1,
+              "DataType of Paddle Op %s must be the same. Get %d != %d", Type(),
+              data_type, tmp);
           data_type = tmp;
         }
       }
@@ -603,7 +714,8 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
 OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
     const OpKernelType& expected_kernel_type) const {
-  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
+                      tensor.layout());
 }
 
 }  // namespace framework

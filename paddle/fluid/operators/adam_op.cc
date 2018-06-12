@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 class AdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -69,12 +70,17 @@ class AdamOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Moment1Out", param_dims);
     ctx->SetOutputDim("Moment2Out", param_dims);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdamOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("LearningRate", "(Tensor) Learning rate");
@@ -83,9 +89,9 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter");
-    AddOutput("Moment1Out", "(Tensor) Output first moment");
-    AddOutput("Moment2Out", "(Tensor) Output second moment");
+    AddOutput("ParamOut", "(Tensor) Output parameter").Reuse("Param");
+    AddOutput("Moment1Out", "(Tensor) Output first moment").Reuse("Moment1");
+    AddOutput("Moment2Out", "(Tensor) Output second moment").Reuse("Moment2");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "

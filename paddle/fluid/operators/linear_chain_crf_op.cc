@@ -19,8 +19,7 @@ namespace operators {
 
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LinearChainCRFOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Emission",
              "(LoDTensor, default LoDTensor<float>) "
              "A 2-D LoDTensor with shape [N x D], where N is the size of the "
@@ -68,8 +67,6 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
         "The output is no longer a LoDTensor.");
     AddComment(R"DOC(
-LinearChainCRF Operator.
-
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
 variables. CRF learns the conditional probability $P(Y|X)$, where

@@ -41,11 +41,6 @@ class BlockDesc {
 
   BlockDesc(const BlockDesc &other, proto::BlockDesc *desc, ProgramDesc *prog);
 
-  ~BlockDesc() {
-    this->ClearPBVars();
-    this->ClearPBOps();
-  }
-
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
@@ -88,6 +83,8 @@ class BlockDesc {
 
   OpDesc *PrependOp();
 
+  void PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc);
+
   OpDesc *InsertOp(size_t index);
 
   /*
@@ -103,17 +100,13 @@ class BlockDesc {
 
   size_t OpSize() const { return ops_.size(); }
 
-  OpDesc *Op(int idx) { return ops_.at(idx).get(); }
+  OpDesc *Op(int idx) const { return ops_.at(idx).get(); }
 
   void Flush();
 
   proto::BlockDesc *Proto();
 
   ProgramDesc *Program() const { return this->prog_; }
-
- private:
-  void ClearPBOps();
-  void ClearPBVars();
 
  private:
   ProgramDesc *prog_;       // not_own
