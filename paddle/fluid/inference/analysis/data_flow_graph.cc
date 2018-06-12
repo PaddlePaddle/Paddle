@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
+#include "paddle/fluid/inference/analysis/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 
 namespace paddle {
@@ -57,19 +58,7 @@ std::string DataFlowGraph::DotString() const {
   // Add nodes
   for (size_t i = 0; i < nodes.size(); i++) {
     const Node &node = nodes.Get(i);
-    switch (node.type()) {
-      case Node::Type::kValue:
-        dot.AddNode(node.repr(), node.dot_attrs());
-        break;
-      case Node::Type::kFunction:
-        dot.AddNode(node.repr(), node.dot_attrs());
-        break;
-      case Node::Type::kFunctionBlock:
-        dot.AddNode(node.repr(), node.dot_attrs());
-        break;
-      default:
-        PADDLE_THROW("unsupported Node type %d", static_cast<int>(node.type()));
-    }
+    dot.AddNode(node.repr(), node.dot_attrs());
   }
 
   // Add edges

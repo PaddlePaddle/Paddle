@@ -105,9 +105,9 @@ class DFSPassManager : public PassManager {
  * A pass manager that traverse the graph in a customized order, it is a virtual
  * class and need to be override by sub-classes.
  */
-class DataFlowGraphPassManager : public PassManager {
+class DFG_PassManager : public PassManager {
  public:
-  DataFlowGraphPassManager();
+  DFG_PassManager();
   bool Initialize(const framework::proto::ProgramDesc &desc,
                   DataFlowGraph *data_flow_graph) override {
     graph_ = data_flow_graph;
@@ -130,6 +130,10 @@ class DataFlowGraphPassManager : public PassManager {
  private:
   DataFlowGraph *graph_;
 };
+
+
+// Run all the pass managers to analysis and optimize the graph.
+static void RunAnalysis() {}
 
 }  // namespace analysis
 }  // namespace inference

@@ -41,7 +41,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     const auto &var = main_block.vars(i);
     auto *v = graph->nodes.Create(Node::Type::kValue);
     v->SetName(var.name());
-    v->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&var)));
+    v->SetPbDesc(const_cast<void *>(static_cast<const void *>(&var)));
     var2id[var.name()] = v->id();
   }
   for (int i = 0; i < main_block.ops_size(); i++) {
@@ -51,7 +51,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     static_cast<Function *>(o)->SetFuncType(op.type());
     // Link to the original protobuf message's memory, make it easier to
     // generate from a data flow graph to fluid ProgramDesc.
-    o->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&op)));
+    o->SetPbDesc(const_cast<void *>(static_cast<const void *>(&op)));
     // set inputs and outputs
     // TODO(Superjomn) make sure the InputNames is the real variable name.
     for (int j = 0; j < op.inputs_size(); j++) {

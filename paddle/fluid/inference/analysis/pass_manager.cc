@@ -29,12 +29,12 @@ void PassManagerMain::RunAll(const framework::proto::ProgramDesc &desc) {
 // CustomIterPassManager
 //
 
-DataFlowGraphPassManager::DataFlowGraphPassManager() {
+DFG_PassManager::DFG_PassManager() {
   type_ = kCustomIter;
   Register("fluid_to_data_flow_graph", new FluidToDataFlowGraphPass);
 }
 
-void DataFlowGraphPassManager::RunAll() {
+void DFG_PassManager::RunAll() {
   for (auto &pass : data_) {
     pass->Run(graph_);
   }
