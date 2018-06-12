@@ -38,7 +38,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       butil::IOBuf* iobuf,
                       const std::string& out_varname = std::string());
 
-void DeserializeFromIOBuf(const butil::IOBuf& iobuf,
+void DeserializeFromIOBuf(const VarMsg& meta, const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
                           framework::Variable** var);

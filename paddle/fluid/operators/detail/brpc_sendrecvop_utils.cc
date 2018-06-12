@@ -32,8 +32,9 @@ namespace detail {
 class IOBufWriter {
   static void Append(butil::IOBuf* iobuf, int k, const char* v, int64_t vlen) {
     iobuf->Append(reinterpret_cast<char*>(&k), 4);
-    // FIXME(gongwb): use append_zero to avoid copy
-    iobuf->Append(reinterpret_cast<char*>(&vlen), 8) iobuf->Append(v, vlen);
+    iobuf->Append(reinterpret_cast<char*>(&vlen), 8);
+    // TODO(gongwb): use append_zero to avoid copy
+    iobuf->Append(v, vlen);
   }
 };
 
@@ -90,26 +91,13 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   }
 }
 
-class BRPCSourceWrapper : public Source {
- public:
-  explicit BRPCSourceWrapper(const butil::IOBuf& iobuf) : source_(iobuf) {}
-  ::google::protobuf::io::ZeroCopyInputStream* contents() override {
-    return &source_;
-  }
-
- private:
-  IOBufAsZeroCopyInputStream source_;
-};
-
 void DeserializeFromIOBuf(const sendrecv::VariableMessage& meta,
                           const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
                           framework::Variable** var) {
   operators::detail::VariableResponse resp(scope, &ctx);
-  BRPCSourceWrapper wrapper(iobuf);
-  PADDLE_ENFORCE(resp.Parse(&wrapper, meta) == 0,
-                 "parse iobuf to tensor error!");
+  PADDLE_ENFORCE(resp.Parse(iobuf, meta) == 0, "parse iobuf to tensor error!");
   *var = resp.GetVar();
 }
 

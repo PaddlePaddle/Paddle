@@ -14,3 +14,4 @@
 //
 
 #include "paddle/fluid/operators/detail/brpc_variable_response.h"
+int BRPCVariableResponse::Parse(Source* source) { return 0; }

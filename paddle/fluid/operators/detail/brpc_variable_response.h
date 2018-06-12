@@ -33,6 +33,17 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+class BRPCSourceWrapper : public Source {
+ public:
+  explicit BRPCSourceWrapper(const butil::IOBuf& iobuf) : source_(iobuf) {}
+  ::google::protobuf::io::ZeroCopyInputStream* contents() override {
+    return &source_;
+  }
+
+ private:
+  IOBufAsZeroCopyInputStream source_;
+};
+
 class BRPCVariableResponse : public VariableResponse {
  public:
   BRPCVariableResponse(const framework::Scope* scope,
@@ -44,6 +55,10 @@ class BRPCVariableResponse : public VariableResponse {
 
   // parse attchment from iobuf
   int Parse(Source* source) override;
+  int Parse(const butil::IOBuf& iobuf, const sendrecv::VariableMessage& meta) {
+    BRPCSourceWrapper wrapper(iobuf);
+    return Parse(&wrapper, meta);
+  }
 };
 
 };  // namespace detail

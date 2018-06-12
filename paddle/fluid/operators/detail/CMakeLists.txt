@@ -2,7 +2,6 @@ if(NOT WITH_DISTRIBUTE)
     return()
 endif()
 
-
 if(WITH_GRPC)
   grpc_library(sendrecvop_grpc SRCS grpc_bytebuffer_stream.cc sendrecvop_utils.cc grpc_client.cc
         request_handler_impl.cc rpc_client.cc rpc_server.cc grpc_server.cc grpc_variable_response.cc variable_response.cc
@@ -10,7 +9,7 @@ if(WITH_GRPC)
       DEPS lod_tensor selected_rows memory)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  cc_test(serde_test SRCS grpc_serde_test.cc 
+  cc_test(grpc_serde_test SRCS grpc_serde_test.cc 
      DEPS grpc++_unsecure grpc_unsecure gpr
           cares zlib protobuf sendrecvop_grpc SERIAL)
   cc_test(grpc_server_test SRCS rpc_server_test.cc 
@@ -39,3 +38,6 @@ SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY_STATIC}
 cc_test(brpc_server_test SRCS rpc_server_test.cc DEPS sendrecvop_brpc 
        brpc protobuf leveldb gflags glog
        protobuf executor proto_desc lookup_table_op snappystream snappy ssl crypto SERIAL)
+
+cc_test(brpc_serde_test SRCS brpc_serde_test.cc 
+     DEPS cares zlib protobuf sendrecvop_brpc SERIAL)
