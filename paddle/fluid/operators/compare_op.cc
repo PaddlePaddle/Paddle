@@ -23,25 +23,22 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X",
-             string::Sprintf("(LoDTensor) the left hand operand of %s operator",
-                             comment.type));
-    AddInput("Y", string::Sprintf(
-                      "(LoDTensor) the right hand operand of %s operator",
-                      comment.type));
+    AddInput("X", string::Sprintf("the left hand operand of %s operator",
+                                  comment.type));
+    AddInput("Y", string::Sprintf("the right hand operand of %s operator",
+                                  comment.type));
     AddAttr<bool>("force_cpu",
-                  "(bool, default false) Force fill output variable to cpu "
+                  "Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
-                  "device")
-        .SetDefault(false);
-    AddOutput("Out", string::Sprintf(
-                         "(LoDTensor) n-dim bool tensor. Each element is %s",
-                         comment.equation));
+                  "device [default true].")
+        .SetDefault(true);
+    AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
+                                     comment.equation));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
 It operates element-wise on X and Y, and returns the Out. Each of them is a
 N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
-calculated by %s
+calculated by $%s$
 )DOC",
                                comment.type, comment.equation));
     AddAttr<int>("axis",

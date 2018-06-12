@@ -3210,42 +3210,23 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     return helper.append_activation(out)
 
 
+@templatedoc()
 def multiplex(inputs, index):
     """
-    **Multiplex Layer**
+    ${comment}
 
-    Referring to the given index variable, this layer selects rows from the
-    input variables to construct a multiplex variable. Assuming that there are
-    :math:`m` input variables and :math:`I_i` represents the i-th input
-    variable and :math:`i` is in [0, :math:`m`). All input variables are
-    tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
-    Please note that rank of the input tensor should be at least 2. Each input
-    variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
-    where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
-    * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
-    variable. The given index variable should be a 2-D tensor with shape
-    [:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
-    Then the output variable will be a tensor with shape [:math:`d_0`,
-    :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
-    matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
-    row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
+    >>> import paddle.fluid as fluid
+    >>> x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+    >>> x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+    >>> index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+    >>> out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
     Args:
-       inputs (list): A list of variables to gather from. All variables have the
-                same shape and the rank is at least 2.
-       index (Variable): Tensor<int32>, index variable which is a 2-D tensor
-                with shape [M, 1] where M is the batch size.
+       inputs (list): ${x_comment}.
+       index (${ids_type}): ${ids_comment}.
 
     Returns:
-        Variable: Multiplex variable gathered from input variables.
-
-    Examples:
-        .. code-block:: python
-
-            x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-            index = fluid.layers.data(name='index', shape=[1], dtype='int32')
-            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+        ${out_comment}.
     """
     helper = LayerHelper('multiplex', **locals())
 
