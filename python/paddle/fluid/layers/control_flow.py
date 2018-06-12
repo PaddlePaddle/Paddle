@@ -1218,6 +1218,7 @@ class IfElse(object):
 
     Examples:
           .. code-block:: python
+
             limit = layers.fill_constant_batch_size_like(
                 input=label, dtype='int64', shape=[1], value=5.0)
             cond = layers.less_than(x=label, y=limit)
