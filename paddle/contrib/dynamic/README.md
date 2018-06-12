@@ -1,12 +1,10 @@
 # Dynamic Graph on Fluid
 
-I feel that we need to add a sentence here to better explain the motivation of this effort:
+PaddlePaddle Fluid is targeting the autodiff without tape, which, however, is very challenging and we are still way from there. DyNet and PyTorch provide a good design idea, the *tape*, that significantly eases the challenge.  Also, DyNet provides a C++ API that is as convenient as Python but with higher efficiency and could conveniently integrate with industrial/production systems. This package, `tape`, combines the good of 
 
-> PaddlePaddle Fluid is targeting the autodiff without tape, which, however, is very challenging and we are still way from there. DyNet and PyTorch provide a good design idea, the *tape*, that significantly eases the challenge.  Also, DyNet provides a C++ API that is as convenient as Python but with higher efficiency and could conveniently integrate with industrial/production systems. This package, `tape`, combines the good of 
->
-> 1. tape from PyTorch and DyNet
-> 2. C++ API and core from DyNet
-> 3. rich set of operators from PaddlePaddle
+1. tape from PyTorch and DyNet
+2. C++ API and core from DyNet
+3. rich set of operators from PaddlePaddle
 
 ## Overview
 
