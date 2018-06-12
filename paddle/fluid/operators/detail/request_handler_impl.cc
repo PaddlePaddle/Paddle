@@ -16,15 +16,12 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/detail/rpc_server.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace paddle {
 namespace operators {
@@ -63,14 +60,20 @@ bool RequestSendHandler::Handle(const std::string& varname,
       PADDLE_THROW("sync: Can not find server side var");
       return false;
     }
-
     if (invar->IsType<framework::SelectedRows>()) {
-      std::unique_lock<std::mutex> lock(sparse_var_mutex_);
+      std::unique_lock<std::mutex> lock(mutex_sparse_vars_);
       sparse_vars_.push_back(invar);
     }
   }
-
   return true;
+}
+
+void RequestSendHandler::ResetSparseVarRecorder() {
+  std::unique_lock<std::mutex> lock(mutex_sparse_vars_);
+  for (auto* var : sparse_vars_) {
+    var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
+  }
+  sparse_vars_.clear();
 }
 
 bool RequestGetHandler::Handle(const std::string& varname,

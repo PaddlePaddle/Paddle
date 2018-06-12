@@ -29,7 +29,6 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/request_handler.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +40,11 @@ class RequestSendHandler final : public RequestHandler {
   virtual ~RequestSendHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar) override;
+  void ResetSparseVarRecorder();
+
+ private:
+  std::mutex mutex_sparse_vars_;
+  std::vector<framework::Variable*> sparse_vars_;
 };
 
 class RequestGetHandler final : public RequestHandler {

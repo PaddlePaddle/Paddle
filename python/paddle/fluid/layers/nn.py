@@ -19,9 +19,10 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
+import random
 
 __all__ = [
     'fc',
@@ -801,7 +802,22 @@ def gru_unit(input,
     return updated_hidden, reset_hidden_pre, gate
 
 
+@templatedoc()
 def linear_chain_crf(input, label, param_attr=None):
+    """
+    Linear Chain CRF.
+
+    ${comment}
+
+    Args:
+        input(${emission_type}): ${emission_comment}
+        label(${label_type}): ${label_comment}
+        param_attr(ParamAttr): The attribute of the learnable parameter.
+
+    Returns:
+        ${log_likelihood_comment}
+
+    """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
@@ -827,7 +843,19 @@ def linear_chain_crf(input, label, param_attr=None):
     return log_likelihood
 
 
+@templatedoc()
 def crf_decoding(input, param_attr, label=None):
+    """
+    ${comment}
+
+    Args:
+        input(${emission_type}): ${emission_comment}
+        param_attr(ParamAttr): The parameter attribute for training.
+        label(${label_type}): ${label_comment}
+
+    Returns:
+        ${viterbi_path_comment}
+    """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -2439,19 +2467,21 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     The l2 normalize layer normalizes `x` along dimension `axis` using an L2
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
-    output = x / sqrt(max(sum(x**2), epsilon))
+    .. math::
+    y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
 
     For `x` with more dimensions, this layer independently normalizes each 1-D
     slice along dimension `axis`.
 
     Args:
        x(Variable|list): The input tensor to l2_normalize layer.
-       axis(int): Dimension along which to normalize the input.
-       epsilon(float): A lower bound value for `x`'s l2 norm. sqrt(epsilon) will
-                       be used as the divisor if the l2 norm of `x` is less than
-                       sqrt(epsilon).
+       axis(int): The axis on which to apply normalization. If `axis < 0`,
+           the dimension to normalization is rank(X) + axis. -1 is the
+           last dimension.
+       epsilon(float): The epsilon value is used to avoid division by zero,
+           the defalut value is 1e-10.
        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+           will be named automatically.
 
 
     Returns:
@@ -2470,46 +2500,17 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         axis = 0
     helper = LayerHelper("l2_normalize", **locals())
 
-    square = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(type="square", inputs={"X": x}, outputs={"Out": square})
-
-    reduced_sum = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type="reduce_sum",
-        inputs={"X": square},
-        outputs={"Out": reduced_sum},
-        attrs={
-            "dim": [1] if axis is None else [axis],
-            "keep_dim": True,
-            "reduce_all": False
-        })
-
-    # TODO(caoying) A lower bound value epsilon for the norm is needed to
-    # imporve the numeric stability of reciprocal. This requires a maximum_op.
-    rsquare = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type="reciprocal", inputs={"X": reduced_sum}, outputs={"Out": rsquare})
-
-    # TODO(caoying) the current elementwise_mul operator does not support a
-    # general broadcast rule which broadcasts input(Y) to have the same
-    # dimension with Input(X) starting from a specified dimension. So this
-    # exanpsion is requred. Once a general broadcast rule is spported, this
-    # expanding canbe removed.
-    rsquare_expanded = helper.create_tmp_variable(dtype=x.dtype)
-    expand_times = [1] * len(x.shape)
-    expand_times[axis] = int(x.shape[axis])
-    helper.append_op(
-        type="expand",
-        inputs={"X": rsquare},
-        outputs={"Out": rsquare_expanded},
-        attrs={"expand_times": expand_times})
-
     out = helper.create_tmp_variable(dtype=x.dtype)
+    norm = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="elementwise_mul",
-        inputs={"X": x,
-                "Y": rsquare_expanded},
-        outputs={"Out": out})
+        type="norm",
+        inputs={"X": x},
+        outputs={"Out": out,
+                 "Norm": norm},
+        attrs={
+            "axis": 1 if axis is None else axis,
+            "epsilon": epsilon,
+        })
     return out
 
 
@@ -4009,18 +4010,25 @@ def image_resize(input,
     return out
 
 
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
-    This is an alias of layer 'image_resize' with bilinear interpolation.
+    ${comment}
 
-    The mathematical meaning of resize bilinear layer is
-    Bilinear interpolation.
-    Bilinear interpolation is an extension of linear interpolation for
-    interpolating functions of two variables (e.g. H-direction and
-    W-direction in this layer) on a rectilinear 2D grid.
+    Args:
+        input(${x_type}): ${x_comment}.
 
-    For details, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bilinear_interpolation
+        out_shape(${out_size_type}): ${out_size_comment}.
+
+        scale(float|None): The multiplier for the input height or width. At
+             least one of out_shape or scale must be set. And out_shape has
+             a higher priority than scale. Default: None.
+
+        name(str|None): The output variable name.
+
+    Returns:
+
+        ${out_comment}.
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR')
@@ -4107,10 +4115,31 @@ def gather(input, index):
     return out
 
 
-def random_crop(input, shape, seed=1):
+@templatedoc()
+def random_crop(x, shape, seed=None):
+    """
+    ${comment}
+
+    Examples:
+        >>> img = fluid.layers.data("img", [3, 256, 256])
+        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
+
+    Args:
+        x(${x_type}): ${x_comment}
+        shape(${shape_type}): ${shape_comment}
+        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
+            get from `random.randint(-65536, 65535)`.
+
+    Returns:
+        ${out_comment}
+
+    """
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()
     out = helper.create_tmp_variable(dtype)
+    if seed is None:
+        seed = random.randint(-65536, 65535)
+
     if isinstance(seed, int):
         seed_value = seed
         seed = helper.create_tmp_variable(dtype="int64")

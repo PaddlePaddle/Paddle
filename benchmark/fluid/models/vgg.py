@@ -82,7 +82,8 @@ def get_model(args):
                 data_file, batch_size=args.batch_size))
         images, label = fluid.layers.read_file(data_file)
     else:
-        images = fluid.layers.data(name='data', shape=dshape, dtype='float32')
+        images = fluid.layers.data(
+            name='data', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
     # Train program
