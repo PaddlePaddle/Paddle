@@ -220,8 +220,8 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op->Run(scope, place);
 }
 
-TEST(fc, manulal) { Execute(80, 128, 23); }
-// TEST(fc, manulal2) { Execute(80, 128, 23); }
+// Test with a larger FC layer.
+TEST(TensorRTEngineOp, fc) { Execute(80, 128, 23); }
 
 }  // namespace operators
 }  // namespace paddle
