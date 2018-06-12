@@ -24,14 +24,18 @@ Currently supported `--model` argument include:
 
 * Run the following command to start a benchmark job locally:
     ```bash
-      python fluid_benchmark.py --model mnist  --device GPU
+      python fluid_benchmark.py --model mnist --device GPU
     ```
     You can choose to use GPU/CPU training. With GPU training, you can specify
     `--gpus <gpu_num>` to run multi GPU training.
+    You can set async mode parameter server. With async mode, you can specify
+    `--async_mode` to train model asynchronous.
 * Run distributed training with parameter servers:
+    * see [run_fluid_benchmark.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/benchmark/fluid/run_fluid_benchmark.sh) as an example.
     * start parameter servers:
         ```bash
         PADDLE_TRAINING_ROLE=PSERVER PADDLE_PSERVER_PORT=7164 PADDLE_PSERVER_IPS=127.0.0.1 PADDLE_TRAINERS=1 PADDLE_CURRENT_IP=127.0.0.1 PADDLE_TRAINER_ID=0 python fluid_benchmark.py --model mnist  --device GPU --update_method pserver
+        sleep 15
         ```
     * start trainers:
         ```bash
@@ -41,6 +45,16 @@ Currently supported `--model` argument include:
     ```bash
     PADDLE_PSERVER_PORT=7164 PADDLE_TRAINER_IPS=192.168.0.2,192.168.0.3  PADDLE_CURRENT_IP=127.0.0.1 PADDLE_TRAINER_ID=0 python fluid_benchmark.py --model mnist --device GPU --update_method nccl2
     ```
+
+## Prepare the RecordIO file to Achieve Better Performance
+
+Run the following command will generate RecordIO files like "mnist.recordio" under the path
+and batch_size you choose, you can use batch_size=1 so that later reader can change the batch_size
+at any time using `fluid.batch`.
+
+```bash
+python -c 'from recordio_converter import *; prepare_mnist("data", 1)'
+```
 
 ## Run Distributed Benchmark on Kubernetes Cluster
 

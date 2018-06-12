@@ -509,10 +509,10 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_threads_ = num_threads;
           })
       .def_property(
-          "use_event",
-          [](const ExecutionStrategy &self) { return self.use_event_; },
-          [](ExecutionStrategy &self, bool use_event) {
-            self.use_event_ = use_event;
+          "use_cuda",
+          [](const ExecutionStrategy &self) { return self.use_cuda_; },
+          [](ExecutionStrategy &self, bool use_cuda) {
+            self.use_cuda_ = use_cuda;
           })
       .def_property(
           "allow_op_delay",
@@ -553,6 +553,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
             self.gradient_scale_ = strategy;
+          })
+      .def_property(
+          "debug_graphviz_path",
+          [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
+          [](BuildStrategy &self, const std::string &path) {
+            self.debug_graphviz_path_ = path;
           });
 
   pe.def(py::init<const std::vector<platform::Place> &,

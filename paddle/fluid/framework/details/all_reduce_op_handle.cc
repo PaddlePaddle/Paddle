@@ -11,46 +11,65 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include <algorithm>
+
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
+#include "paddle/fluid/framework/details/variable_visitor.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
-    const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    const platform::NCCLContextMap &ctxs)
+
+#ifdef PADDLE_WITH_CUDA
+AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places,
+                                     const platform::NCCLContextMap *ctxs)
     : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
-  for (auto &p : places_) {
-    this->dev_ctxes_[p] = nccl_ctxs_.DevCtx(p);
+  if (nccl_ctxs_) {
+    for (auto &p : places_) {
+      this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
+    }
   }
 }
+#else
+AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places)
+    : local_scopes_(local_scopes), places_(places) {}
+#endif
 
-void NCCLAllReduceOpHandle::RunImpl() {
-  if (inputs_.size() == 1) {
+void AllReduceOpHandle::RunImpl() {
+  if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
   } else {
     // Wait input done
     WaitInputVarGenerated();
-
-    auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
-    int dtype = -1;
-    size_t numel = 0;
+    auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+    auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
+    PADDLE_ENFORCE_EQ(
+        in_var_handles.size(), places_.size(),
+        "The NoDummyInputSize should be equal to the number of places.");
+    PADDLE_ENFORCE_EQ(
+        in_var_handles.size(), out_var_handles.size(),
+        "The NoDummyInputSize and NoDummyOutputSize should be equal.");
 
     std::vector<const LoDTensor *> lod_tensors;
-
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       auto *s = local_scopes_[i];
       auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
-
-      auto &lod_tensor = local_scope.FindVar(var_name)->Get<LoDTensor>();
+      auto &lod_tensor =
+          local_scope.FindVar(in_var_handles[i]->name_)->Get<LoDTensor>();
       lod_tensors.emplace_back(&lod_tensor);
+      PADDLE_ENFORCE_EQ(in_var_handles[i]->name_, out_var_handles[i]->name_,
+                        "The name of input and output should be equal.");
     }
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
+#ifdef PADDLE_WITH_CUDA
+      PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
+      int dtype = -1;
+      size_t numel = 0;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &p = places_[i];
@@ -66,7 +85,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
         }
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_.at(dev_id);
+        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
         auto stream = nccl_ctx.stream();
         auto comm = nccl_ctx.comm_;
         all_reduce_calls.emplace_back([=] {
@@ -81,22 +100,25 @@ void NCCLAllReduceOpHandle::RunImpl() {
           call();
         }
       });
+#else
+      PADDLE_THROW("Not compiled with CUDA");
+#endif
     } else {  // Special handle CPU only Operator's gradient. Like CRF
       auto &trg = *this->local_scopes_[0]
                        ->FindVar(kLocalExecScopeName)
                        ->Get<Scope *>()
-                       ->Var()
+                       ->FindVar(out_var_handles[0]->name_)
                        ->GetMutable<framework::LoDTensor>();
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
       VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
-      for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      for (size_t i = 1; i < local_scopes_.size(); ++i) {
         auto &scope =
             *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
         auto &p = places_[i];
-        auto *var = scope.FindVar(var_name);
+        auto *var = scope.FindVar(out_var_handles[i]->name_);
         auto *dev_ctx = dev_ctxes_[p];
 
         RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
@@ -109,7 +131,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
   }
 }
 
-std::string NCCLAllReduceOpHandle::Name() const { return "nccl_all_reduce"; }
+std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

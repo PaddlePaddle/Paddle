@@ -100,7 +100,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
       const OpDesc &op) const;
 
-  void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
+  void InsertAllReduceOp(SSAGraph *result, const std::string &og) const;
 
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
@@ -111,6 +111,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   BuildStrategy strategy_;
+
+  void SetCommunicationContext(OpHandleBase *op_handle,
+                               const platform::Place &p) const;
 };
 }  // namespace details
 }  // namespace framework

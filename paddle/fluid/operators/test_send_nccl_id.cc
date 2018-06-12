@@ -20,14 +20,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/string/printf.h"
+
+#ifdef PADDLE_WITH_GRPC
+#include "paddle/fluid/operators/send_recv_util.h"
+#endif
 
 USE_NO_KERNEL_OP(listen_and_serv);
 
@@ -37,7 +40,7 @@ namespace m = paddle::operators::math;
 namespace detail = paddle::operators::detail;
 namespace string = paddle::string;
 
-std::unique_ptr<detail::AsyncGRPCServer> g_rpc_service;
+std::unique_ptr<detail::RPCServer> g_rpc_service;
 std::unique_ptr<detail::RequestHandler> g_req_handler;
 
 void StartServer() {
@@ -58,7 +61,7 @@ void StartServer() {
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
-      std::bind(&detail::AsyncGRPCServer::StartServer, g_rpc_service.get()));
+      std::bind(&detail::RPCServer::StartServer, g_rpc_service.get()));
 
   g_rpc_service->SetCond(detail::kRequestSend);
   g_rpc_service->WaitBarrier(detail::kRequestSend);
@@ -68,9 +71,9 @@ void StartServer() {
   server_thread.join();
 }
 
-TEST(SendNcclId, GrpcServer) {
+TEST(SendNcclId, RPCServer) {
   g_req_handler.reset(new detail::RequestSendHandler(true));
-  g_rpc_service.reset(new detail::AsyncGRPCServer("127.0.0.1:0", 1));
+  g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();
@@ -87,9 +90,11 @@ TEST(SendNcclId, GrpcServer) {
   int port = g_rpc_service->GetSelectedPort();
 
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
-  detail::RPCClient* client = detail::RPCClient::GetInstance();
-  LOG(INFO) << "connect to server " << ep;
-  client->AsyncSendVariable(ep, dev_ctx, scope, NCCL_ID_VARNAME);
+
+  detail::RPCClient* client = detail::RPCClient::GetInstance<RPCCLIENT_T>();
+
+  LOG(INFO) << "connect to server" << ep;
+  client->AsyncSendVar(ep, dev_ctx, scope, NCCL_ID_VARNAME);
   client->Wait();
   client->AsyncSendBatchBarrier(ep);
   client->Wait();

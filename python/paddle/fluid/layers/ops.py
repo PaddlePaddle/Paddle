@@ -71,8 +71,10 @@ __all__ = [
     'cumsum',
     'scatter',
     'sum',
+    'slice',
     'polygon_box_transform',
     'shape',
+    'maxout',
 ] + __activations__
 
 for _OP in set(__all__):

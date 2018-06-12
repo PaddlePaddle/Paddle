@@ -59,7 +59,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() final {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-    AddOutput("Out", "The output of elementwise op.");
+    AddOutput("Out", "The output of elementwise op.").Reuse("X");
     AddAttr<int>("axis",
                  "(int, default -1). The start dimension index "
                  "for broadcasting Y onto X.")
