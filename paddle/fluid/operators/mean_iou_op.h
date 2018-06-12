@@ -36,7 +36,7 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
     auto* out_wrong = ctx.Output<Tensor>("OutWrong");
     auto* out_correct = ctx.Output<Tensor>("OutCorrect");
-    int num_classes = static_cast<int>(ctx.Attr<int>("NumClasses"));
+    int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
 
     // get data ptr
     const T* predictions_data = predictions->data<T>();

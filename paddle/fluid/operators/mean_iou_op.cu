@@ -84,7 +84,7 @@ __global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
     for (int i = 0; i < num_classes; ++i) {
       iou_sum += ious[i];
     }
-    iou[0] = iou_sum / valid_count_c;
+    iou[0] += iou_sum / valid_count_c;
   }
 }
 
@@ -100,7 +100,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
     auto* out_wrong = ctx.Output<Tensor>("OutWrong");
     auto* out_correct = ctx.Output<Tensor>("OutCorrect");
-    int num_classes = static_cast<int>(ctx.Attr<int>("NumClasses"));
+    int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
 
     // Get data ptr
     const T* predictions_data = predictions->data<T>();
@@ -136,7 +136,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
-    auto in_corrects = ctx.MultiInput<Tensor>("in_corrects");
+    auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
     for (int i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }

@@ -74,20 +74,20 @@ class TestMeanIOUOp(OpTest):
                 0, 1, [1]).astype("float32")))
 
         self.inputs = {
-            'predictions': predictions,
-            'labels': labels,
-            'in_wrongs': in_wrongs,
-            'in_corrects': in_corrects,
-            'in_mean_iou': in_mean_ious
+            'Predictions': predictions,
+            'Labels': labels,
+            'InWrongs': in_wrongs,
+            'InCorrects': in_corrects,
+            'InMeanIou': in_mean_ious
         }
         self.attrs = {'num_classes': long(self.num_classes)}
         mean_iou, out_wrong, out_correct = compute_mean_iou(
             predictions, labels, self.num_classes, in_wrongs, in_corrects,
             in_mean_ious)
         self.outputs = {
-            'out_mean_iou': mean_iou,
-            'out_wrong': out_wrong,
-            'out_correct': out_correct
+            'OutMeanIou': mean_iou,
+            'OutWrong': out_wrong,
+            'OutCorrect': out_correct
         }
 
     def config(self):
