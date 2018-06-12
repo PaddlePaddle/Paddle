@@ -23,9 +23,27 @@ from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.transpiler import memory_optimize
 from paddle.fluid.framework import Program, default_main_program, Parameter, Variable
 from paddle.fluid.backward import _rename_arg_, append_backward
+"""
+MemoryTranspiler implement the memory reuse strategy.
+It mainly composed by two type optimize **op inplace computation** and **non-lived variable reuse**.
+
+It follow the steps:
+1. create memory plan for each Block.
+2. for each memory plan:
+  2.1 do topology sort, compute the dependency for each var, compute the variable liveness range.
+  2.2 create cache pool, put non-lived variable into it, for new created var, if hit cache, then reuse.
+  2.3 for each op, if it output marked with reuse and make sure the op is the last referenced op. do inplace.
+done.
+"""
 
 
 class Graph(object):
+    """
+    A basic graph, each op as graph nodes.
+    :param ops: a list of Operator instance in a Block.
+    :return:
+    """
+
     def __init__(self, ops):
         self._ops = ops
         self._ops_dep_var = defaultdict(
@@ -101,17 +119,21 @@ class ControlFlowGraph(object):
     """
     The CFG is contructed for compute the variable liveness range.
     live_in, live_out mark every variable's live timeline.
+    :param ops: a list of Operator instance in a Block,
+               the order of ops matters.
+    :return:
     """
 
     def __init__(self, ops):
         self._ops = ops
         self._analysis_finish = False
-        self._successors = defaultdict(list)
-        self._predecessors = defaultdict(list)
-        self._live_in = defaultdict(set)
+        self._successors = defaultdict(list)  # the succs before current op
+        self._predecessors = defaultdict(list)  # the preds before current op
+        self._live_in = defaultdict(
+            set)  # the live_in variables before current op
         self._live_out = defaultdict(set)
-        self._uses = defaultdict(set)
-        self._defs = defaultdict(set)
+        self._uses = defaultdict(set)  # variables used in op
+        self._defs = defaultdict(set)  # new generated variables
 
     def _update_use_def_chain(self):
         for i in range(len(self._ops)):
@@ -125,9 +147,12 @@ class ControlFlowGraph(object):
 
     def _build_graph(self):
         """
+        NOTE(dzh):
         By defination, the variable v is live on edge e if there is a node n
         in the CFG that uses it and a directed path from
         e to n passing through no def.
+        So, its concrete form should be the variable dependency graph. However, the liveness only
+        propagate from live-out to live-in, so just link the neighbor works.
         we use connect at every node simply instead of a var-by-var DFS.
         """
         connections = [(i, i + 1) for i in range(len(self._ops) - 1)]
@@ -136,7 +161,11 @@ class ControlFlowGraph(object):
 
     def compute_liveness_range(self):
         """
+        compute the liveness of for each op.
+        the worklist algorithm refer to
+        http://www.cs.cornell.edu/courses/cs4120/2013fa/lectures/lec26-fa13.pdf
         """
+
         self._build_graph()
         live_in = defaultdict(set)
         worklist = range(len(self._ops) - 1, -1, -1)
@@ -190,7 +219,15 @@ class ControlFlowGraph(object):
 
 class MemoryBlock(object):
     """
-    MemoryBlock is the memory beneath variable holder.
+    MemoryBlock is the memory beneath variable placeholder.
+    its attribute is used in cache matching.
+
+    :param name: variable name
+    :param dtype: variable data type
+    :param shape: variable data shape
+    :param desc: var_desc, for the target var candidate.
+    :param place: place, memory stays place. It will be used
+                 when "force_cpu" is True.
     """
 
     def __init__(self, name, dtype, shape, desc, place=None):
@@ -227,13 +264,21 @@ class MemoryBlock(object):
 
 
 class MemoryPlan(object):
+    """
+    MemoryPlan optimize the memory reuse for each block.
+    It takes a fresh Python Block and generate a optimized BlockDesc.
+
+    :param block: Python Block instance
+    :param logging: print log info
+    """
+
     def __init__(self, block, logging=False):
         self.logging = logging
-        self._block = block
-        self._memory_pool = []
-        self._ir = None
-        self._graph = None
-        self._ops = None
+        self._block = block  # The BlockDesc beneath it will be optimized.
+        self._memory_pool = []  # cache pool
+        self._ir = None  # ControlFlowGraph
+        self._graph = None  # Dependency graph
+        self._ops = None  # sorted ops
 
     def _liveness_plan(self):
         ops = self._block.ops
@@ -330,10 +375,14 @@ class MemoryPlan(object):
 
 
 class MemoryTranspiler(object):
-    OP_HAS_SUB_BLOCK = set([
-        "while", "while_grad", "parallel_do", "parallel_do_grad",
-        "conditional_block", "conditional_block_grad"
-    ])
+    """
+    MemoryTranspiler transpile the program memory.
+    It take a instance of Python Program, analysis the non-lived variable then do the re-use,
+    also the in-place op computations.
+
+    :param program: Python Program instance
+    :param logging: print log info
+    """
 
     def __init__(self, program, logging=False):
         if not isinstance(program, Program):
@@ -347,9 +396,7 @@ class MemoryTranspiler(object):
         block = self._program.block(0)
         sub_blocks = [block]
         for op in block.ops:
-            # if op.has_sub_block():
-            if op.has_kernel(op.type):
-                print "shit"
+            if op.has_sub_block():
                 block_id = op.attr("sub_block").id
                 sub_blocks.append(self._program.block(block_id))
         print(sub_blocks)
