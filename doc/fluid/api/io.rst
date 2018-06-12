@@ -59,3 +59,21 @@ get_inference_program
 ..  autofunction:: paddle.fluid.io.get_inference_program
     :noindex:
 
+save_checkpoint
+---------------
+
+..  autofunction:: paddle.fluid.io.save_checkpoint
+    :noindex:
+
+load_checkpoint
+---------------
+
+..  autofunction:: paddle.fluid.io.load_checkpoint
+    :noindex:
+
+clean_checkpoint
+----------------
+
+..  autofunction:: paddle.fluid.io.clean_checkpoint
+    :noindex:
+

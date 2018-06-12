@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/macros.h"
 
-#include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -44,18 +44,19 @@ class SendBarrierOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<RPCCLIENT_T>();
 
     VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
 
     // need to wait before sending send_barrier message
-    PADDLE_ENFORCE(rpc_client->Wait());
+    rpc_client->Wait();
     if (sync_mode) {
       for (auto& ep : eps) {
         VLOG(3) << "send barrier, ep: " << ep;
         rpc_client->AsyncSendBatchBarrier(ep);
       }
-      PADDLE_ENFORCE(rpc_client->Wait());
+      rpc_client->Wait();
     }
   }
 };
