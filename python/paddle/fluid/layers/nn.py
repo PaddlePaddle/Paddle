@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-All layers just related to the neural network. 
+All layers just related to the neural network.
 """
 
 from ..layer_helper import LayerHelper
@@ -108,14 +108,14 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    This function creates a fully connected layer in the network. It can take 
-    multiple tensors as its inputs. It creates a variable called weights for 
-    each input tensor, which represents a fully connected weight matrix from 
-    each input unit to each output unit. The fully connected layer multiplies 
-    each input tensor with its coresponding weight to produce an output Tensor. 
-    If multiple input tensors are given, the results of multiple multiplications 
-    will be sumed up. If bias_attr is not None, a bias variable will be created 
-    and added to the output. Finally, if activation is not None, it will be applied 
+    This function creates a fully connected layer in the network. It can take
+    multiple tensors as its inputs. It creates a variable called weights for
+    each input tensor, which represents a fully connected weight matrix from
+    each input unit to each output unit. The fully connected layer multiplies
+    each input tensor with its coresponding weight to produce an output Tensor.
+    If multiple input tensors are given, the results of multiple multiplications
+    will be sumed up. If bias_attr is not None, a bias variable will be created
+    and added to the output. Finally, if activation is not None, it will be applied
     to the output as well.
 
     This process can be formulated as follows:
@@ -197,7 +197,10 @@ def fc(input,
     else:
         pre_bias = helper.create_tmp_variable(dtype)
         helper.append_op(
-            type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
+            type="sum",
+            inputs={"X": mul_results},
+            outputs={"Out": pre_bias},
+            attrs={"use_mkldnn": use_mkldnn})
     # add bias
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
@@ -846,7 +849,7 @@ def crf_decoding(input, param_attr, label=None):
 
     Returns:
         Variable: ${viterbi_path_comment}
-    
+
     Examples:
         .. code-block:: python
 
@@ -1084,7 +1087,7 @@ def chunk_eval(input,
     Here is a NER example of labeling for these tagging schemes:
 
     .. code-block:: python
-    
+
        ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
               Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
        ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
@@ -1110,7 +1113,7 @@ def chunk_eval(input,
     is the num of chunk types, and `tag_type` get its value from the following table.
 
     .. code-block:: python
-    
+
        Scheme Begin Inside End   Single
         plain   0     -      -     -
         IOB     0     1      -     -
@@ -1146,7 +1149,7 @@ def chunk_eval(input,
         tuple: tuple containing: precision, recall, f1_score,
         num_infer_chunks, num_label_chunks,
         num_correct_chunks
-    
+
     Examples:
         .. code-block:: python
 
@@ -1246,7 +1249,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
     """
     This function computes the softmax activation among all time-steps for each
     sequence. The dimension of each time-step should be 1. Thus, the shape of
-    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N` 
+    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
     is the sum of the length of all sequences.
 
     For i-th sequence in a mini-batch:
@@ -1266,7 +1269,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
         param_attr (ParamAttr|None): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
         library is installed. Default: True
-    
+
     Returns:
         Variable: output of sequence_softmax
 
@@ -1827,11 +1830,11 @@ def pool2d(input,
     ${comment}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of 
-                          input tensor is NCHW, where N is batch size, C is 
-                          the number of channels, H is the height of the 
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
                           feature, and W is the width of the feature.
-        pool_size (int): The side length of pooling windows. All pooling 
+        pool_size (int): The side length of pooling windows. All pooling
                          windows are squares with pool_size on a side.
         pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
@@ -1840,7 +1843,7 @@ def pool2d(input,
         use_cudnn: ${use_cudnn_comment}
         ceil_mode: ${ceil_mode_comment}
         use_mkldnn: ${use_mkldnn_comment}
-        name (str|None): A name for this layer(optional). If set None, the 
+        name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
     Returns:
@@ -1858,10 +1861,10 @@ def pool2d(input,
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
           conv2d = fluid.layers.pool2d(
-                            input=data, 
-                            pool_size=2, 
-                            pool_type='max', 
-                            pool_stride=1, 
+                            input=data,
+                            pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
                             global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
@@ -2226,14 +2229,14 @@ def beam_search_decode(ids, scores, name=None):
     This layers is to pack the output of beam search layer into sentences and
     associated scores. It is usually called after the beam search layer.
     Typically, the output of beam search layer is a tensor of selected ids, with
-    a tensor of the score of each id. Beam search layer's output ids, however, 
-    are generated directly during the tree search, and they are stacked by each 
-    level of the search tree. Thus we need to reorganize them into sentences, 
+    a tensor of the score of each id. Beam search layer's output ids, however,
+    are generated directly during the tree search, and they are stacked by each
+    level of the search tree. Thus we need to reorganize them into sentences,
     based on the score of each id. This layer takes the output of beam search
     layer as input and repack them into sentences.
 
     Args:
-        ids (Variable): The selected ids, output of beam search layer. 
+        ids (Variable): The selected ids, output of beam search layer.
         scores (Variable): The associated scores of the ids, out put of beam
             search layer.
         name (str): The name of this layer. It is optional.
@@ -2241,7 +2244,7 @@ def beam_search_decode(ids, scores, name=None):
     Returns:
         tuple(Variable): a tuple of two output tensors: sentence_ids, sentence_scores.
         sentence_ids is a tensor with shape [size, length], where size is the
-        beam size of beam search, and length is the length of each sentence. 
+        beam size of beam search, and length is the length of each sentence.
         Note that the length of sentences may vary.
         sentence_scores is a tensor with the same shape as sentence_ids.
 
@@ -2901,7 +2904,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             `None`, compute the mean over all elements of :attr:`input`
             and return a variable with a single element, otherwise it
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim[i] < 0`, the dimension to reduce is 
+            :math:`dim[i] < 0`, the dimension to reduce is
             :math:`rank(input) + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
@@ -3372,16 +3375,16 @@ def topk(input, k, name=None):
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
-        k(int):  The number of top elements to look for along the last dimension 
+        k(int):  The number of top elements to look for along the last dimension
                  of input.
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically. 
+                       will be named automatically.
                        Default: None
 
     Returns:
-        Tuple[Variable]: A tuple with two elements. Each element is a Variable. 
-        The first one is k largest elements along each last 
-        dimensional slice. The second one is indices of values 
+        Tuple[Variable]: A tuple with two elements. Each element is a Variable.
+        The first one is k largest elements along each last
+        dimensional slice. The second one is indices of values
         within the last dimension of input.
 
     Raises:
@@ -3576,15 +3579,15 @@ def warpctc(input, label, blank=0, norm_by_times=False):
          It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
          sequences' length and num_classes is the true number of classes.
          (not including the blank label).
-       label (Variable): The ground truth of variable-length sequence, 
+       label (Variable): The ground truth of variable-length sequence,
          which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
          where Lg is th sum of all labels' length.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
-       norm_by_times(bool, default false): Whether to normalize the gradients 
-         by the number of time-step, which is also the sequence's length. 
-         There is no need to normalize the gradients if warpctc layer was 
+       norm_by_times(bool, default false): Whether to normalize the gradients
+         by the number of time-step, which is also the sequence's length.
+         There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
 
     Returns:
@@ -3690,8 +3693,8 @@ def nce(input,
         input (Variable): input variable.
         label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
-        sample_weight (Variable|None): A Variable of shape [batch_size, 1] 
-            storing a weight for each sample. The default weight for each 
+        sample_weight (Variable|None): A Variable of shape [batch_size, 1]
+            storing a weight for each sample. The default weight for each
             sample is 1.0.
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
@@ -4081,7 +4084,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
     It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
     For each instance, it computes the smooth L1 loss element by element first
-    and then sums all the losses. So the shape of ouput Variable is 
+    and then sums all the losses. So the shape of ouput Variable is
     [batch_size, 1].
 
     Args:
@@ -4090,14 +4093,14 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
         y (Variable): A tensor with rank at least 2. The target value of smooth
             L1 loss op with same shape as :attr:`x`.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
-            input is optional and should have same shape with :attr:`x`. If 
-            provided, the result of (:attr:`x` - :attr:`y`) will be multiplied 
+            input is optional and should have same shape with :attr:`x`. If
+            provided, the result of (:attr:`x` - :attr:`y`) will be multiplied
             by this tensor element by element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
-            input is optional and should have same shape with :attr:`x`. If 
-            provided, the out smooth L1 loss will be multiplied by this tensor 
+            input is optional and should have same shape with :attr:`x`. If
+            provided, the out smooth L1 loss will be multiplied by this tensor
             element by element.
-        sigma (float|None): Hyper parameter of smooth L1 loss layer. A float 
+        sigma (float|None): Hyper parameter of smooth L1 loss layer. A float
            scalar with default value 1.0.
 
     Returns:
@@ -4143,7 +4146,7 @@ def one_hot(input, depth):
 
     Examples:
         .. code-block:: python
-        
+
             label = layers.data(name="label", shape=[1], dtype="float32")
             one_hot_label = layers.one_hot(input=label, depth=10)
     """
@@ -4297,10 +4300,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 def lod_reset(x, y=None, target_lod=None):
     """
     Set LoD of :attr:`x` to a new one specified by :attr:`y` or
-    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be 
-    considered as target LoD first, otherwise :attr:`y.data` would be 
-    considered as target LoD. If :attr:`y` is not provided, target LoD should 
-    be specified by :attr:`target_lod`. If target LoD is specified by 
+    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be
+    considered as target LoD first, otherwise :attr:`y.data` would be
+    considered as target LoD. If :attr:`y` is not provided, target LoD should
+    be specified by :attr:`target_lod`. If target LoD is specified by
     :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
@@ -4354,7 +4357,7 @@ def lod_reset(x, y=None, target_lod=None):
 
     Args:
         x (Variable): Input variable which could be a Tensor or LodTensor.
-        y (Variable|None): If provided, output's LoD would be derived 
+        y (Variable|None): If provided, output's LoD would be derived
                            from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
@@ -4670,7 +4673,7 @@ def image_resize(input,
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
+    The input must be a tensor of the shape (num_batches, channels, in_h, in_w),
     and the resizing only applies on the last two dimensions(hight and width).
 
     Supporting resample methods:
@@ -4766,9 +4769,9 @@ def resize_bilinear(input, out_shape=None, scale=None, name=None):
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
     """
-    Resize a batch of images. The short edge of input images will be 
-    resized to the given 'out_short_len'. The long edge of input images 
-    will be resized proportionately to make images' length-width ratio 
+    Resize a batch of images. The short edge of input images will be
+    resized to the given 'out_short_len'. The long edge of input images
+    will be resized proportionately to make images' length-width ratio
     constant.
 
     Args:
@@ -4801,7 +4804,7 @@ def gather(input, index):
     """
     **Gather Layer**
 
-    Output is obtained by gathering entries of the outer-most dimension 
+    Output is obtained by gathering entries of the outer-most dimension
     of X indexed by `index` and concatenate them together.
 
     .. math::
@@ -4826,7 +4829,7 @@ def gather(input, index):
                        [5, 6]]
 
     Args:
-        input (Variable): The source input with rank>=1. 
+        input (Variable): The source input with rank>=1.
         index (Variable): The index input with rank=1.
 
     Returns:
@@ -4862,7 +4865,7 @@ def random_crop(x, shape, seed=None):
 
     Returns:
         ${out_comment}
-    
+
     Examples:
         >>> img = fluid.layers.data("img", [3, 256, 256])
         >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
@@ -4908,7 +4911,7 @@ def log(x):
         Out = \\ln(x)
 
     Args:
-        x (Variable): Input tensor. 
+        x (Variable): Input tensor.
 
     Returns:
         Variable: The natural log of the input tensor computed element-wise.
@@ -4937,7 +4940,7 @@ def relu(x):
         Out = \\max(0, x)
 
     Args:
-        x (Variable): The input tensor. 
+        x (Variable): The input tensor.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -4958,15 +4961,15 @@ def relu(x):
 def mean_iou(input, label, num_classes):
     """
     Mean Intersection-Over-Union is a common evaluation metric for
-    semantic image segmentation, which first computes the IOU for each 
-    semantic class and then computes the average over classes. 
-    IOU is defined as follows: 
-    
+    semantic image segmentation, which first computes the IOU for each
+    semantic class and then computes the average over classes.
+    IOU is defined as follows:
+
     .. math::
 
         IOU = \\frac{true\_positiv}{(true\_positive + false\_positive + false\_negative)}.
 
-    The predictions are accumulated in a confusion matrix and mean-IOU 
+    The predictions are accumulated in a confusion matrix and mean-IOU
     is then calculated from it.
 
 
@@ -4979,12 +4982,12 @@ def mean_iou(input, label, num_classes):
     Returns:
         mean_iou (Variable): A Tensor representing the mean intersection-over-union with shape [1].
         out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
-        out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class. 
+        out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class.
 
     Examples:
 
         .. code-block:: python
-            
+
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())

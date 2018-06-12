@@ -824,7 +824,8 @@ class DistributeTranspiler:
             table_opt_block.append_op(
                 type="sum",
                 inputs={"X": pserver_side_table_grad_list},
-                outputs={"Out": [grad_var]})
+                outputs={"Out": [grad_var]},
+                attrs={"use_mkldnn": False})
         else:
             # in async_mode, for table gradient, it also need to be splited to each parameter server
             origin_grad_name = grad_var.name
@@ -1056,7 +1057,8 @@ class DistributeTranspiler:
             optimize_block.append_op(
                 type="sum",
                 inputs={"X": vars2merge},
-                outputs={"Out": merged_var})
+                outputs={"Out": merged_var},
+                attrs={"use_mkldnn": False})
             # TODO(panyx0718): What if it's SELECTED_ROWS.
             if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
                 optimize_block.append_op(
