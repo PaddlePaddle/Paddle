@@ -85,7 +85,11 @@ def train_network():
     return [avg_cost, accuracy]
 
 
-def train(use_cuda, train_program, save_dirname):
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
+def train(use_cuda, train_program, params_dirname):
     BATCH_SIZE = 128
     EPOCH_NUM = 1
 
@@ -105,15 +109,13 @@ def train(use_cuda, train_program, save_dirname):
             print('Loss {0:2.2}, Acc {1:2.2}'.format(avg_cost, accuracy))
 
             if accuracy > 0.01:  # Low threshold for speeding up CI
-                if save_dirname is not None:
-                    trainer.save_params(save_dirname)
+                if params_dirname is not None:
+                    trainer.save_params(params_dirname)
                 return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
-        train_func=train_program,
-        optimizer=fluid.optimizer.Adam(learning_rate=0.001),
-        place=place)
+        train_func=train_program, optimizer_func=optimizer_func, place=place)
 
     trainer.train(
         reader=train_reader,
@@ -122,10 +124,10 @@ def train(use_cuda, train_program, save_dirname):
         feed_order=['pixel', 'label'])
 
 
-def infer(use_cuda, inference_program, save_dirname=None):
+def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=save_dirname, place=place)
+        infer_func=inference_program, param_path=params_dirname, place=place)
 
     # The input's dimension of conv should be 4-D or 5-D.
     # Use normilized image pixels as input data, which should be in the range
@@ -142,12 +144,14 @@ def main(use_cuda):
     save_path = "image_classification_resnet.inference.model"
 
     train(
-        use_cuda=use_cuda, train_program=train_network, save_dirname=save_path)
+        use_cuda=use_cuda,
+        train_program=train_network,
+        params_dirname=save_path)
 
     infer(
         use_cuda=use_cuda,
         inference_program=inference_network,
-        save_dirname=save_path)
+        params_dirname=save_path)
 
 
 if __name__ == '__main__':

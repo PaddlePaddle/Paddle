@@ -15,9 +15,9 @@
 from distribute_transpiler import DistributeTranspiler
 from inference_transpiler import InferenceTranspiler
 from memory_optimization_transpiler import memory_optimize, release_memory
-from distribute_transpiler_simple import SimpleDistributeTranspiler
+from ps_dispatcher import HashName, RoundRobin
 
 __all__ = [
-    "DistributeTranspiler", "InferenceTranspiler", "SimpleDistributeTranspiler",
-    "memory_optimize", "release_memory"
+    "DistributeTranspiler", "InferenceTranspiler", "memory_optimize",
+    "release_memory", "HashName", "RoundRobin"
 ]

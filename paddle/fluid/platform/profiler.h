@@ -116,6 +116,8 @@ void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
 
+const int kEnableProfiler = 1;
+const int kDisableProfiler = 2;
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.

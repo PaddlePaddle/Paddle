@@ -24,12 +24,12 @@ namespace operators {
       : public ::paddle::framework::OpProtoAndCheckerMaker {            \
    public:                                                              \
     void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME "operator");                   \
-      AddOutput("Out", "Output of" #OP_NAME "operator");                \
+      AddInput("X", "Input of " #OP_NAME " operator");                  \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
       AddAttr<bool>("use_mkldnn",                                       \
                     "(bool, default false) Only used in mkldnn kernel") \
           .SetDefault(false);                                           \
-      AddComment(#OP_COMMENT);                                          \
+      AddComment(OP_COMMENT);                                           \
     }                                                                   \
   }
 
@@ -41,7 +41,7 @@ namespace operators {
                                                                              \
    protected:                                                                \
     std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {    \
-      auto *op = new ::paddle::framework::OpDesc();                          \
+      auto* op = new ::paddle::framework::OpDesc();                          \
       op->SetType(#KERNEL_TYPE "_grad");                                     \
       op->SetInput("Out", Output("Out"));                                    \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
@@ -54,13 +54,37 @@ namespace operators {
     }                                                                        \
   }
 
+framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
+                                      const framework::OperatorWithKernel& oper,
+                                      const std::string& name) {
+  framework::LibraryType library{framework::LibraryType::kPlain};
+
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+  auto it = oper.Attrs().find("use_mkldnn");
+  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
+      ctx.GetPlace(), layout, library);
+}
+
 class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
   }
 };
 
@@ -68,8 +92,13 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "Out");
   }
 };
 

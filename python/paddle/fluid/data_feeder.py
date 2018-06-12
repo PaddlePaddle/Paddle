@@ -15,6 +15,7 @@
 from __future__ import print_function
 import core
 import numpy
+import os
 import six.moves as six
 import multiprocessing
 
@@ -36,9 +37,11 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'float64'
         elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
+        elif dtype == core.VarDesc.VarType.UINT8:
+            self.dtype = 'uint8'
         else:
             raise ValueError("dtype must be any of [int32, float32, int64, "
-                             "float64]")
+                             "float64, uint8]")
 
         self.data = []
         self.lod = []
@@ -148,7 +151,9 @@ class DataFeeder(object):
         elif isinstance(self.place, core.CUDAPlace):
             return core.get_cuda_device_count()
         else:
-            return multiprocessing.cpu_count()
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            return cpu_num
 
     def decorate_reader(self,
                         reader,

@@ -39,9 +39,9 @@ OpHandleBase::~OpHandleBase() {
 #endif
 }
 
-void OpHandleBase::Run(bool use_event) {
+void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_event) {
+  if (events_.empty() && use_cuda) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
@@ -50,7 +50,7 @@ void OpHandleBase::Run(bool use_event) {
     }
   }
 #else
-  PADDLE_ENFORCE(!use_event);
+  PADDLE_ENFORCE(!use_cuda);
 #endif
 
   RunImpl();
@@ -102,6 +102,16 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
       in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[place]);
     }
   }
+}
+
+size_t OpHandleBase::NoDummyInputSize() const {
+  size_t cnt = 0;
+  for (auto *in : inputs_) {
+    if (dynamic_cast<DummyVarHandle *>(in) == nullptr) {
+      ++cnt;
+    }
+  }
+  return cnt;
 }
 
 bool OpHandleBase::NeedWait(VarHandleBase *in_var) {

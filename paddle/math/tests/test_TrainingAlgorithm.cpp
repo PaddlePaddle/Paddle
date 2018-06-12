@@ -28,14 +28,14 @@ DEFINE_double(max_diff, 1e-13, "max diff allowed");
 #endif
 
 class SetMaxDiff {
-public:
+ public:
   explicit SetMaxDiff(double max_diff) {
     max_diff_ = FLAGS_max_diff;
     FLAGS_max_diff = max_diff;
   }
   ~SetMaxDiff() { FLAGS_max_diff = max_diff_; }
 
-private:
+ private:
   double max_diff_;
 };
 
