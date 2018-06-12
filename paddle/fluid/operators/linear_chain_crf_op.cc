@@ -67,8 +67,6 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
         "The output is no longer a LoDTensor.");
     AddComment(R"DOC(
-LinearChainCRF Operator.
-
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
 variables. CRF learns the conditional probability $P(Y|X)$, where

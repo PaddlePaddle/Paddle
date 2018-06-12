@@ -26,6 +26,8 @@ namespace detail {
 
 class RPCClient {
  public:
+  RPCClient() {}
+  virtual ~RPCClient() {}
   virtual bool AsyncSendVar(const std::string& ep,
                             const platform::DeviceContext& ctx,
                             const framework::Scope& scope,

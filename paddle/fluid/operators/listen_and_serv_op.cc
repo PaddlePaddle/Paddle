@@ -19,7 +19,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/macros.h"
+
 #include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -89,6 +90,12 @@ void ListenAndServOp::SavePort() const {
   rpc_service_->SavePort();
 }
 
+static int64_t GetTimestamp() {
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
 void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
                                   framework::ProgramDesc *program,
                                   framework::Scope *recv_scope,
@@ -108,9 +115,6 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->ResetBarrierCounter();
-  // Record received sparse variables, so that
-  // we could reset those after execute optimize program
-  std::vector<framework::Variable *> sparse_vars;
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
@@ -130,7 +134,7 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     int32_t last_parent_blkid = program->Block(1).Parent();
     std::vector<size_t> parallel_blkids;
     parallel_blkids.push_back(1);
-    double ts = detail::GetTimestamp();
+    double ts = GetTimestamp();
     for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
       if (blkid != static_cast<size_t>(prefetch_block->ID())) {
         if (program->Block(blkid).Parent() != last_parent_blkid) {
@@ -144,20 +148,14 @@ void ListenAndServOp::RunSyncLoop(framework::Executor *executor,
     }
     ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared, program,
                           recv_scope);
-    VLOG(2) << "run all blocks spent " << detail::GetTimestamp() - ts << "(ms)";
-
-    // Reset the received sparse variables, the sum operator would not
-    // sum the input sparse variables which rows is empty at the next
-    // mini-batch.
-    // TODO(Yancey1989): move the reset action into an operator, we couldn't
-    // have any hide logic in the operator.
-    for (framework::Variable *var : sparse_vars) {
-      var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
-    }
+    VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
     rpc_service_->SetCond(detail::kRequestGet);
     rpc_service_->WaitBarrier(detail::kRequestGet);
     rpc_service_->ResetBarrierCounter();
+    // reset received sparse vars to avoid reuse it in the next mini-batch
+    dynamic_cast<detail::RequestSendHandler *>(request_send_handler_.get())
+        ->ResetSparseVarRecorder();
   }  // while(true)
 }
 
@@ -244,8 +242,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
             << ", end_point:" << endpoint;
 
-  // request_handler_.reset(new detail::GRPCRequestSendHandler(sync_mode));
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint, fan_in));
+  rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
+
   request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
   request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(

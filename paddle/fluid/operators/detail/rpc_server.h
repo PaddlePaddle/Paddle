@@ -60,6 +60,7 @@ class RPCServer {
   void SetCond(const std::string& rpc_name);
   void WaitCond(const std::string& rpc_name);
   void IncreaseBatchBarrier(const std::string rpc_name);
+
   void ResetBarrierCounter();
 
  protected:
