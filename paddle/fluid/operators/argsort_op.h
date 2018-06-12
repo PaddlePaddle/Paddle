@@ -28,47 +28,50 @@ class ArgsortKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<framework::Tensor>("X");
     auto* output = ctx.Output<framework::Tensor>("Out");
     auto* indices = ctx.Output<framework::Tensor>("Indices");
-    int axis = static_cast<int>(ctx.Attr<int>("axis"));
+    int axis = ctx.Attr<int>("axis");
 
     auto in_dims = input->dims();
     axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
     const T* in_data = input->data<T>();
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
-    int64_t* idx_data = indices->mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    int64_t part_dims_prod = input->numel() / in_dims[axis];
-    for (int64_t i = 0; i < part_dims_prod; ++i) {
+    int64_t groups = input->numel() / in_dims[axis];
+    int64_t stride = (axis == in_dims.size() - 1)
+                         ? 1
+                         : framework::product(framework::slice_ddim(
+                               in_dims, axis + 1, in_dims.size()));
+
+    for (int64_t i = 0; i < groups; ++i) {
       int64_t idx = i;
-      std::vector<int64_t> idx_vec(in_dims.size(), 0);
+      std::vector<int64_t> shape_vec(in_dims.size(), 0);
       for (int64_t dim = in_dims.size() - 1; dim >= 0; --dim) {
         if (dim != axis) {
-          idx_vec[dim] = idx % in_dims[dim];
+          shape_vec[dim] = idx % in_dims[dim];
           idx /= in_dims[dim];
         }
       }
-      std::vector<std::pair<T, int64_t>> in_vec;
-      std::vector<int64_t> org_index_vec(in_dims[axis], 0);
-      for (int64_t j = 0; j < in_dims[axis]; ++j) {
-        idx_vec[axis] = j;
-        int64_t index = idx_vec[0];
-        for (int64_t dim = 0; dim < in_dims.size() - 1; ++dim) {
-          index = index * in_dims[dim + 1] + idx_vec[dim + 1];
-        }
-        in_vec.push_back(std::pair<T, int64_t>(in_data[index], j));
-        org_index_vec[j] = index;
+
+      int64_t start_index = shape_vec[0];
+      for (int64_t dim = 0; dim < in_dims.size() - 1; ++dim) {
+        start_index = start_index * in_dims[dim + 1] + shape_vec[dim + 1];
       }
 
-      std::sort(
-          in_vec.begin(), in_vec.end(),
-          [](const std::pair<T, int64_t>& v1, const std::pair<T, int64_t>& v2) {
-            return v1.first < v2.first;
-          });
+      std::vector<int64_t> org_index_vec(in_dims[axis], start_index);
+      for (int64_t j = 1; j < in_dims[axis]; ++j) {
+        org_index_vec[j] += j * stride;
+      }
+
+      std::sort(org_index_vec.begin(), org_index_vec.end(),
+                [in_data](const int64_t v1, const int64_t v2) {
+                  return in_data[v1] < in_data[v2];
+                });
 
       for (size_t j = 0; j < org_index_vec.size(); ++j) {
-        int64_t index = org_index_vec[j];
-        out_data[index] = in_vec[j].first;
-        idx_data[index] = in_vec[j].second;
+        int64_t index = start_index + j * stride;
+        out_data[index] = in_data[org_index_vec[j]];
+        ids_data[index] = (org_index_vec[j] - start_index) / stride;
       }
     }
   }
