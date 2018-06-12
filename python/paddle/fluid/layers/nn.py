@@ -698,7 +698,7 @@ def dynamic_gru(input,
         assert h_0.shape == (
             batch_size, size
         ), 'The shape of h0 should be(batch_size, %d)' % size
-        inputs['h0'] = h_0
+        inputs['H0'] = h_0
 
     hidden = helper.create_tmp_variable(dtype)
     batch_gate = helper.create_tmp_variable(dtype)
