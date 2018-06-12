@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
 import paddle.fluid.transpiler.distribute_transpiler as distribute_transpiler
+import paddle.fluid.transpiler.inference_transpiler as inference_transpiler
 
 from args import *
 
@@ -131,6 +132,11 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     exe = fluid.Executor(place)
     exe.run(startup_prog)
 
+    # Use inference_transpiler to speedup
+    inference_transpiler_program = infer_prog.clone()
+    t = fluid.InferenceTranspiler()
+    t.transpile(inference_transpiler_program, place)
+
     if not args.use_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
@@ -181,8 +187,8 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
         if not args.no_test and batch_acc and not args.use_reader_op:
-            pass_test_acc = test(exe, infer_prog, test_reader, feeder,
-                                 batch_acc)
+            pass_test_acc = test(exe, inference_transpiler_program, test_reader,
+                                 feeder, batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
         print("\n")
         # TODO(wuyi): add warmup passes to get better perf data.

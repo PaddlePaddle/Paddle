@@ -1993,7 +1993,8 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False):
+               do_model_average_for_mean_and_var=False,
+               fuse_with_relu=False):
     """
     **Batch Normalization Layer**
 
@@ -2121,7 +2122,8 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": use_mkldnn,
+            "fuse_with_relu": fuse_with_relu
         })
 
     return helper.append_activation(batch_norm_out)
