@@ -83,7 +83,7 @@ class TestReorderLoDTensor(unittest.TestCase):
             tensor = fluid.Tensor()
             tensor.set(self.data[desc[0]][0], place)
             if self.data[desc[0]][1]:
-                tensor.set_lod(self.data[desc[0]][1])
+                tensor.set_recursive_sequence_lengths(self.data[desc[0]][1])
             self.inputs[desc[0]] = tensor
 
     def reorder(self):
@@ -153,7 +153,8 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_output), expect_output, atol=0.001))
-            self.assertEqual(expect_output_lod, actual_output.lod())
+            self.assertEqual(expect_output_lod,
+                             actual_output.recursive_sequence_lengths())
         # check gradient
         expect_grad = numpy.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
@@ -161,7 +162,8 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_grad), expect_grad, atol=0.001))
-            self.assertEqual(expect_grad_lod, actual_grad.lod())
+            self.assertEqual(expect_grad_lod,
+                             actual_grad.recursive_sequence_lengths())
 
     def test_reorder_tensor(self):
         self.data_desc[0][-1] = 0  # input is tensor
@@ -173,7 +175,8 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_output), expect_output, atol=0.001))
-            self.assertEqual(expect_output_lod, actual_output.lod())
+            self.assertEqual(expect_output_lod,
+                             actual_output.recursive_sequence_lengths())
         # check gradient
         expect_grad = numpy.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
@@ -181,12 +184,14 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_grad), expect_grad, atol=0.001))
-            self.assertEqual(expect_grad_lod, actual_grad.lod())
+            self.assertEqual(expect_grad_lod,
+                             actual_grad.recursive_sequence_lengths())
 
         # compare outputs between LodTensors with explicit and implicit lod
         # use the same data but set the input lod explicitly
         input_lod = [[1] * len(self.data[self.data_desc[0][0]][0])]
-        self.inputs[self.data_desc[0][0]].set_lod(input_lod)
+        self.inputs[self.data_desc[0][0]].set_recursive_sequence_lengths(
+            input_lod)
         # preserve the output of LodTensor with implicit lod to compare
         expect_output = [
             numpy.array(actual_output) for actual_output in self.actual_outputs

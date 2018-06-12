@@ -30,7 +30,8 @@ class TestLoDRankTable(unittest.TestCase):
 
         tensor = core.LoDTensor()
         tensor.set(numpy.random.random(size=(17, 100)), cpu)
-        tensor.set_lod([[1, 2], [5, 1, 1], [3, 1, 5, 1, 3, 3, 1]])
+        tensor.set_recursive_sequence_lengths(
+            [[1, 2], [5, 1, 1], [3, 1, 5, 1, 3, 3, 1]])
         exe.run(scope=scope, feed={'x': tensor})
         var = scope.find_var(rank_table.name)
         table = var.get_lod_rank_table()

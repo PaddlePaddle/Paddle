@@ -145,7 +145,7 @@ class BaseRNN(object):
 
             t = fluid.Tensor()
             t.set(numpy.array(np_flatten), place)
-            t.set_lod([lod])
+            t.set_recursive_sequence_lengths([lod])
             feed_dict[iname] = t
 
         for pname in self.params:

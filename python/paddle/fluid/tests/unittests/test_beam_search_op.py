@@ -48,7 +48,7 @@ class BeamSearchOpTester(unittest.TestCase):
         op.run(self.scope, core.CPUPlace())
         selected_ids = self.scope.find_var("selected_ids").get_tensor()
         print 'selected_ids', np.array(selected_ids)
-        print 'lod', selected_ids.lod()
+        print 'lod', selected_ids.recursive_sequence_lengths()
 
     def _create_pre_ids(self):
         np_data = np.array([[1, 2, 3, 4]], dtype='int64')
@@ -59,7 +59,7 @@ class BeamSearchOpTester(unittest.TestCase):
         np_data = np.array(
             [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64')
         tensor = create_tensor(self.scope, "ids", np_data)
-        tensor.set_lod(self.lod)
+        tensor.set_recursive_sequence_lengths(self.lod)
 
     def _create_scores(self):
         np_data = np.array(
@@ -71,7 +71,7 @@ class BeamSearchOpTester(unittest.TestCase):
             ],
             dtype='float32')
         tensor = create_tensor(self.scope, "scores", np_data)
-        tensor.set_lod(self.lod)
+        tensor.set_recursive_sequence_lengths(self.lod)
 
 
 if __name__ == '__main__':

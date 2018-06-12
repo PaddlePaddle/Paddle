@@ -31,7 +31,7 @@ class TestFeedFetch(unittest.TestCase):
 
         output_tensor = core.get_fetch_variable(scope, "feed", 0)
 
-        output_lod = output_tensor.lod()
+        output_lod = output_tensor.recursive_sequence_lengths()
         self.assertEqual(2, output_lod[0][0])
         self.assertEqual(2, output_lod[0][1])
 

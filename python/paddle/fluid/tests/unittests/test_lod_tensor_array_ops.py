@@ -29,7 +29,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
-        tensor.set_lod([[3, 6, 1]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 1]])
         expect = map(lambda x: numpy.array(x).astype('int32'),
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
         self.main(
@@ -42,7 +42,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
-        tensor.set_lod([[3, 6, 0, 1]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 0, 1]])
         expect = map(lambda x: numpy.array(x).astype('int32'),
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
         self.main(
@@ -55,7 +55,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(20).reshape(20, 1).astype('int32'), self.place())
-        tensor.set_lod([[2, 3], [3, 6, 2, 6, 3]])
+        tensor.set_recursive_sequence_lengths([[2, 3], [3, 6, 2, 6, 3]])
 
         expect = [
             numpy.array(
@@ -77,7 +77,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set(
             numpy.arange(31).reshape(31, 1).astype('int32'), self.place())
 
-        tensor.set_lod([[3, 2, 4, 2], [3, 4, 4, 0, 1, 5, 2, 2, 2, 7, 1]])
+        tensor.set_recursive_sequence_lengths(
+            [[3, 2, 4, 2], [3, 4, 4, 0, 1, 5, 2, 2, 2, 7, 1]])
 
         expect = [
             numpy.array(
@@ -98,8 +99,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
-        tensor.set_lod([[2, 3, 1], [2, 3, 1, 4, 2, 1],
-                        [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
+        tensor.set_recursive_sequence_lengths(
+            [[2, 3, 1], [2, 3, 1, 4, 2, 1],
+             [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
 
         expect = [
             numpy.array(
@@ -119,8 +121,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
-        tensor.set_lod([[2, 3, 1], [2, 3, 1, 4, 2, 1],
-                        [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
+        tensor.set_recursive_sequence_lengths(
+            [[2, 3, 1], [2, 3, 1, 4, 2, 1],
+             [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
         self.main(
             tensor=tensor,
             expect_array=None,
@@ -161,12 +164,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             exp_tensor, exp_lod = exp
             exp_tensor = numpy.expand_dims(exp_tensor, axis=1)
             self.assertTrue(numpy.allclose(exp_tensor, numpy.array(array[i])))
-            self.assertEqual(exp_lod, array[i].lod())
+            self.assertEqual(exp_lod, array[i].recursive_sequence_lengths())
 
     def check_tensor_same(self, actual, expect):
         self.assertTrue(
             numpy.allclose(numpy.array(actual), numpy.array(expect)))
-        self.assertEqual(actual.lod(), expect.lod())
+        self.assertEqual(actual.recursive_sequence_lengths(),
+                         expect.recursive_sequence_lengths())
 
 
 class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
@@ -187,7 +191,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 
         tensor = core.LoDTensor()
         tensor.set(numpy.arange(10).reshape(10, 1).astype('float32'), place)
-        tensor.set_lod([[3, 6, 1]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         g_vars = program.global_block().var(x.name + "@GRAD")
 

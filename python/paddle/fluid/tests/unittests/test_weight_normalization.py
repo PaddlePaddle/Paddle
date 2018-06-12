@@ -90,7 +90,7 @@ class TestWeightNormalization(unittest.TestCase):
             tensor = fluid.Tensor()
             tensor.set(self.data[desc[0]][0], place)
             if self.data[desc[0]][1]:
-                tensor.set_lod(self.data[desc[0]][1])
+                tensor.set_recursive_sequence_lengths(self.data[desc[0]][1])
             self.inputs[desc[0]] = tensor
 
     def weight_normalize(self):

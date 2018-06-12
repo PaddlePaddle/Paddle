@@ -79,7 +79,7 @@ class TestOneHotOp_exception(OpTest):
         data = [np.random.randint(11, 20) for i in xrange(sum(x_lod[0]))]
         data = np.array(data).astype('int').reshape([sum(x_lod[0]), 1])
         self.x.set(data, self.place)
-        self.x.set_lod(x_lod)
+        self.x.set_recursive_sequence_lengths(x_lod)
 
     def test_check_output(self):
         program = Program()

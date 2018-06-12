@@ -69,12 +69,12 @@ class TestTensor(unittest.TestCase):
         array[0, 0, 0] = 3
         array[3, 3, 5] = 10
         lod_tensor.set(array, place)
-        lod_tensor.set_lod([[2, 2]])
+        lod_tensor.set_recursive_sequence_lengths([[2, 2]])
 
         lod_v = numpy.array(lod_tensor)
         self.assertTrue(numpy.alltrue(array == lod_v))
 
-        lod = lod_tensor.lod()
+        lod = lod_tensor.recursive_sequence_lengths()
         self.assertEqual(2, lod[0][0])
         self.assertEqual(2, lod[0][1])
 
@@ -96,11 +96,11 @@ class TestTensor(unittest.TestCase):
         lod_v = numpy.array(lod_tensor)
         self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
         self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
-        self.assertEqual(len(lod_tensor.lod()), 0)
+        self.assertEqual(len(lod_tensor.recursive_sequence_lengths()), 0)
 
         lod_py = [[2, 1], [1, 2, 2]]
-        lod_tensor.set_lod(lod_py)
-        lod = lod_tensor.lod()
+        lod_tensor.set_recursive_sequence_lengths(lod_py)
+        lod = lod_tensor.recursive_sequence_lengths()
         self.assertListEqual(lod_py, lod)
 
     def test_lod_tensor_init(self):
@@ -110,7 +110,7 @@ class TestTensor(unittest.TestCase):
         lod_tensor = core.LoDTensor()
 
         lod_tensor.set_dims([5, 2, 3, 4])
-        lod_tensor.set_lod(lod_py)
+        lod_tensor.set_recursive_sequence_lengths(lod_py)
         lod_tensor.alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
@@ -120,7 +120,7 @@ class TestTensor(unittest.TestCase):
         lod_v = numpy.array(lod_tensor)
         self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
         self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
-        self.assertListEqual(lod_py, lod_tensor.lod())
+        self.assertListEqual(lod_py, lod_tensor.recursive_sequence_lengths())
 
     def test_lod_tensor_gpu_init(self):
         if not core.is_compiled_with_cuda():
@@ -130,7 +130,7 @@ class TestTensor(unittest.TestCase):
         lod_tensor = core.LoDTensor()
 
         lod_tensor.set_dims([5, 2, 3, 4])
-        lod_tensor.set_lod(lod_py)
+        lod_tensor.set_recursive_sequence_lengths(lod_py)
         lod_tensor.alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
@@ -140,7 +140,7 @@ class TestTensor(unittest.TestCase):
         lod_v = numpy.array(lod_tensor)
         self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
         self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
-        self.assertListEqual(lod_py, lod_tensor.lod())
+        self.assertListEqual(lod_py, lod_tensor.recursive_sequence_lengths())
 
     def test_empty_tensor(self):
         place = core.CPUPlace()

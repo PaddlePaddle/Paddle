@@ -26,7 +26,7 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
 
     def append_lod_tensor(self, tensor_array, lod, data):
         lod_tensor = core.LoDTensor()
-        lod_tensor.set_lod(lod)
+        lod_tensor.set_recursive_sequence_lengths(lod)
         lod_tensor.set(data, self.place)
         tensor_array.append(lod_tensor)
 
@@ -74,8 +74,10 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
         beam_search_decode_op.run(self.scope, self.place)
 
         expected_lod = [[4, 4], [1, 2, 3, 3, 1, 3, 3, 3]]
-        self.assertEqual(sentence_ids.lod(), expected_lod)
-        self.assertEqual(sentence_scores.lod(), expected_lod)
+        self.assertEqual(sentence_ids.recursive_sequence_lengths(),
+                         expected_lod)
+        self.assertEqual(sentence_scores.recursive_sequence_lengths(),
+                         expected_lod)
 
         expected_data = np.array(
             [2, 1, 0, 3, 1, 0, 3, 2, 1, 5, 4, 3, 2, 4, 4, 3, 6, 5, 4], "int64")
