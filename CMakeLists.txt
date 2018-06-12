@@ -195,9 +195,7 @@ if(WITH_GPU)
     include(cuda)
     include(tensorrt)
     include(external/anakin)
-endif(WITH_GPU)
-
-if (NOT WITH_GPU)
+else()
   set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
 endif()
 
