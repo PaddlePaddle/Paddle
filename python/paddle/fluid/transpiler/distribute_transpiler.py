@@ -24,9 +24,9 @@ Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
 2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
 3. modify trainer program add split_op to each grad variable.
-4. append send_op to send splited variables to server and fetch
-    params(splited blocks or origin param) from server.
-5. append concat_op to merge splited blocks to update local weights.
+4. append send_op to send splited variables to server and 
+5. add recv_op to fetch params(splited blocks or origin param) from server.
+6. append concat_op to merge splited blocks to update local weights.
 
 Steps to transpile pserver:
 1. create new program for parameter server.
@@ -317,7 +317,7 @@ class DistributeTranspiler:
 
             program.global_block().insert_op(
                 index=index + 1,
-                type="send_vars",
+                type="send",
                 inputs={"X": splited_vars},
                 outputs={},
                 attrs={
@@ -678,7 +678,7 @@ class DistributeTranspiler:
                     break
 
     def _split_table_grad_and_add_send_vars(self, program, pserver_endpoints):
-        # 2. add split_ids_op and send_vars_op to send gradient to pservers
+        # 2. add split_ids_op and send_op to send gradient to pservers
         # there should only be one table_name
         all_ops = program.global_block().ops
         table_grad_name = grad_var_name(self.table_name)
@@ -695,11 +695,11 @@ class DistributeTranspiler:
                     outputs={"Out": self.trainer_side_table_grad_list})
                 program.global_block().insert_op(
                     index=op_index + 2,
-                    type="send_vars",
+                    type="send",
                     inputs={'X': self.trainer_side_table_grad_list},
                     outputs={},
                     attrs={
-                        "sync_send": True,
+                        "sync_mode": True,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
