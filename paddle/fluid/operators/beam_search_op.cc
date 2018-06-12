@@ -129,12 +129,9 @@ std::vector<std::vector<BeamSearch::Item>> BeamSearch::SelectTopBeamSizeItems(
   // for each source sentence, select the top beam_size items across all
   // candidate sets.
   while (NextItemSet(pre_ids, pre_scores, &items)) {
-    std::nth_element(std::begin(items), std::begin(items) + beam_size_,
-                     std::end(items), [](const Item &a, const Item &b) {
-                       // TODO(superjom) make score's comparation customizable.
-                       // partial sort in descending order
-                       return a.score > b.score;
-                     });
+    std::nth_element(
+        std::begin(items), std::begin(items) + beam_size_, std::end(items),
+        [](const Item &a, const Item &b) { return a.score > b.score; });
     // prune the top beam_size items.
     if (items.size() > beam_size_) {
       items.resize(beam_size_);
@@ -218,16 +215,27 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     // inputs and outputs stored in proto
-    AddInput("pre_ids", "ids in the previous step");
-    AddInput("pre_scores", "accumulated scores in the previous step");
-    AddInput("ids", "a LoDTensor of shape of [None,k]");
+    AddInput("pre_ids",
+             "(LoDTensor) The LoDTensor containing the selected ids at the "
+             "previous step. It should be a tensor with shape (batch_size, 1) "
+             "and lod `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at "
+             "thefirst step.");
+    AddInput("pre_scores",
+             "(LoDTensor) The LoDTensor containing the accumulated "
+             "scores corresponding to the selected ids at the previous step.");
+    AddInput("ids",
+             "(LoDTensor) The LoDTensor containing the candidates ids. Its "
+             "shape should be (batch_size * beam_size, K), where K supposed to "
+             "be beam_size.");
     AddInput("scores",
-             "a LoDTensor that has the same shape and LoD with `ids`");
+             "(LoDTensor) The LodTensor containing the accumulated scores "
+             "corresponding to Input(ids) and its shape is the same as the "
+             "shape of Input(ids).");
     AddOutput("selected_ids",
-              "a LoDTensor that stores the IDs selected by beam search");
-    AddOutput(
-        "selected_scores",
-        "a LoDTensor that has the same shape and LoD with `selected_ids`");
+              "A LodTensor that stores the IDs selected by beam search.");
+    AddOutput("selected_scores",
+              "A LoDTensor containing the accumulated scores corresponding to "
+              "Output(selected_ids).");
 
     // Attributes stored in AttributeMap
     AddAttr<int>("level", "the level of LoDTensor");
@@ -235,8 +243,21 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("end_id",
                  "the token id which indicates the end of a sequence");
 
-    AddComment(
-        "This is a beam search operator that help to generate sequences.");
+    AddComment(R"DOC(
+This operator does the search in beams for one time step. 
+Specifically, it selects the top-K candidate word ids of current step from
+Input(ids) according to their Input(scores) for all source sentences,
+where K is Attr(beam_size) and Input(ids), Input(scores) are predicted results
+from the computation cell. Additionally, Input(pre_ids) and Input(pre_scores)
+are the output of beam_search at previous step, they are needed for special use
+to handle ended candidate translations. The paths linking prefixes and selected
+candidates are organized and reserved in lod.
+
+Note that the Input(scores) passed in should be accumulated scores, and
+length penalty should be done with extra operators before calculating the
+accumulated scores if needed, also suggest finding top-K before it and
+using the top-K candidates following.
+)DOC");
   }
 };
 

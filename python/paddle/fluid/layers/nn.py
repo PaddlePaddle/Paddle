@@ -1687,6 +1687,40 @@ def layer_norm(input,
 
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
+    """
+    Beam Search Decode Layer. This layer constructs the full hypotheses for
+    each source sentence by walking back along the LoDTensorArray :attr:`ids`
+    whose lods can be used to restore the path in the beam search tree.
+
+    Please see the following demo for a fully beam search usage example:
+
+        fluid/tests/book/test_machine_translation.py
+
+    Args:
+        ids(Variable): The LodTensorArray variable containing the selected ids
+            of all steps.
+        scores(Variable): The LodTensorArray variable containing the selected
+            scores of all steps.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The LodTensor pair containing the generated id sequences \
+            and the corresponding scores. The shapes and lods of the two \
+            LodTensor are same. The lod level is 2 and the two levels \
+            separately indicate how many hypotheses each source sentence has \
+            and how many ids each hypothesis has.
+
+    Examples:
+        .. code-block:: python
+
+            # Suppose `ids` and `scores` are LodTensorArray variables reserving
+            # the selected ids and scores of all steps
+            finished_ids, finished_scores = layers.beam_search_decode(
+                ids, scores, beam_size=5, end_id=0)
+    """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
     sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
@@ -1928,10 +1962,83 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
-def beam_search(pre_ids, pre_scores, ids, scores, beam_size, end_id, level=0):
-    '''
-    This function implements the beam search algorithm.
-    '''
+def beam_search(pre_ids,
+                pre_scores,
+                ids,
+                scores,
+                beam_size,
+                end_id,
+                level=0,
+                name=None):
+    """
+    Beam Search Layer. This layer does the search in beams for one time step. 
+    Specifically, it selects the top-K candidate word ids of current step from
+    :attr:`ids` according to their :attr:`scores` for all source sentences,
+    where K is :attr:`beam_size` and :attr:`ids, scores` are predicted results
+    from the computation cell. Additionally, :attr:`pre_ids` and
+    :attr:`pre_scores` are the output of beam_search at previous step, they are
+    needed for special use to handle ended candidate translations.
+ 
+    Note that the :attr:`scores` passed in should be accumulated scores, and
+    length penalty should be done with extra operators before calculating the
+    accumulated scores if needed, also suggest finding top-K before it and
+    using the top-K candidates following.
+
+    Please see the following demo for a fully beam search usage example:
+
+        fluid/tests/book/test_machine_translation.py
+
+    Args:
+        pre_ids(Variable): The LodTensor variable which is the output of
+            beam_search at previous step. It should be a LodTensor with shape
+            :math:`(batch_size, 1)` and lod
+            :math:`[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
+            first step.
+        pre_scores(Variable): The LodTensor variable which is the output of
+            beam_search at previous step.
+        ids(Variable): The LodTensor variable containing the candidates ids.
+            Its shape should be :math:`(batch_size \\times beam_size, K)`,
+            where :math:`K` supposed to be :attr:`beam_size`.
+        scores(Variable): The LodTensor variable containing the accumulated
+            scores corresponding to :attr:`ids` and its shape is the same as
+            the shape of :attr:`ids`.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        level(int, default 0): It can be ignored and mustn't change currently.
+            It means the source level of lod, which is explained as following.
+            The lod level of :attr:`ids` should be 2. The first level is source
+            level which describes how many prefixes (branchs) for each source
+            sentece (beam), and the second level is sentence level which
+            describes how these candidates belong to the prefix. The paths
+            linking prefixes and selected candidates are organized and reserved
+            in lod.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The LodTensor pair containing the selected ids and the \
+            corresponding scores.
+
+    Examples:
+        .. code-block:: python
+
+            # Suppose `probs` contains predicted results from the computation
+            # cell and `pre_ids` and `pre_scores` is the output of beam_search
+            # at previous step.
+            topk_scores, topk_indices = layers.topk(probs, k=beam_size)
+            accu_scores = layers.elementwise_add(
+                x=layers.log(x=topk_scores)),
+                y=layers.reshape(
+                    pre_scores, shape=[-1]),
+                axis=0)
+            selected_ids, selected_scores = layers.beam_search(
+                pre_ids=pre_ids,
+                pre_scores=pre_scores,
+                ids=topk_indices,
+                scores=accu_scores,
+                beam_size=beam_size,
+                end_id=end_id)
+    """
     helper = LayerHelper('beam_search', **locals())
     score_type = scores.dtype
     id_type = ids.dtype

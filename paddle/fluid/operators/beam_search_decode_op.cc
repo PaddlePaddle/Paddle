@@ -148,21 +148,32 @@ class BeamSearchDecodeOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Ids",
              "(LodTensorArray)"
-             "score of the candidate words in each step");
+             "The LodTensorArray containing the selected ids of all steps");
     AddInput("Scores",
              "(LodTensorArray)"
-             "score of the candidate words in each step");
-    AddOutput("SentenceIds",
-              "(LodTensor)"
-              "All possible result sentences of word ids");
-    AddOutput("SentenceScores",
-              "(LodTensor)"
-              "All possible result sentences of word scores");
+             "The LodTensorArray containing the selected scores of all steps");
+    AddOutput(
+        "SentenceIds",
+        "(LodTensor)"
+        "An LodTensor containing all generated id sequences for all source "
+        "sentences");
+    AddOutput(
+        "SentenceScores",
+        "(LodTensor)"
+        "An LodTensor containing scores corresponding to Output(SentenceIds)");
     AddAttr<int>("beam_size", "beam size for beam search");
     AddAttr<int>("end_id",
                  "the token id which indicates the end of a sequence");
     AddComment(R"DOC(
-Pack the result of Beam search op into SentenceIds and SentenceScores.
+Beam Search Decode Operator. This Operator constructs the full hypotheses for
+each source sentence by walking back along the LoDTensorArray Input(ids)
+whose lods can be used to restore the path in the beam search tree.
+
+The Output(SentenceIds) and Output(SentenceScores) separately contain the 
+generated id sequences and the corresponding scores. The shapes and lods of the 
+two LodTensor are same. The lod level is 2 and the two levels separately 
+indicate how many hypotheses each source sentence has and how many ids each 
+hypothesis has.
 )DOC");
   }
 };
