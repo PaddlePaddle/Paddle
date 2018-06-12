@@ -263,6 +263,8 @@ def embedding(input,
 
 def dynamic_lstm(input,
                  size,
+                 h_0=None,
+                 c_0=None,
                  param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
@@ -271,9 +273,7 @@ def dynamic_lstm(input,
                  cell_activation='tanh',
                  candidate_activation='tanh',
                  dtype='float32',
-                 name=None,
-                 h_0=None,
-                 c_0=None):
+                 name=None):
     """
     **Dynamic LSTM Layer**
 
@@ -325,6 +325,13 @@ def dynamic_lstm(input,
                          (T X 4D), where T is the total time steps in this
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the hidden size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
+
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
@@ -359,12 +366,6 @@ def dynamic_lstm(input,
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        h_0(Variable): The initial hidden state is an optional
-                       input. This is a tensor with shape (N x D), where N is the
-                       batch size and D is the hidden size.
-        c_0(Variable): The initial cell state is an optional
-                       input. This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -398,11 +399,11 @@ def dynamic_lstm(input,
     batch_size = input.shape[0]
     if h_0:
         assert h_0.shape == (batch_size, size), \
-            'The shape of h0 should be (-1, %d)' % size
+            'The shape of h0 should be (batch_size, %d)' % size
         inputs['H0'] = h_0
     if c_0:
         assert c_0.shape == (batch_size, size), \
-            'The shape of c0 should be (-1, %d)' % size
+            'The shape of c0 should be (batch_size, %d)' % size
         inputs['C0'] = c_0
 
     helper.append_op(
@@ -691,10 +692,12 @@ def dynamic_gru(input,
         attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
+    batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     if h_0 != None:
-        assert h_0.shape == (-1, size
-                             ), 'The shape of h0 should be(-1, %d)' % size
+        assert h_0.shape == (
+            batch_size, size
+        ), 'The shape of h0 should be(batch_size, %d)' % size
         inputs['h0'] = h_0
 
     hidden = helper.create_tmp_variable(dtype)
