@@ -387,6 +387,12 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_l2_normalize(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8, 7, 10], dtype="float32")
+            output = layers.l2_normalize(x, axis=1)
+
     def test_maxout(self):
         program = Program()
         with program_guard(program):
