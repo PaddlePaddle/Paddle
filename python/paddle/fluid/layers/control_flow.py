@@ -909,37 +909,40 @@ def create_array(dtype):
         dtype=dtype)
 
 
-def less_than(x, y, force_cpu=True, cond=None, **ignored):
+@templatedoc()
+def less_than(x, y, force_cpu=None, cond=None, **ignored):
     """
-    **Less than**
+    ${comment}
 
-    This layer returns the truth value of :math:`x < y` elementwise.
+    >>> import paddle.fluid as fluid
+    >>> less = fluid.layers.less_than(x=label, y=limit)
 
     Args:
-        x(Variable): First operand of *less_than*
-        y(Variable): Second operand of *less_than*
-        force_cpu(Bool|True): The output data will be on CPU if set true.
+        x(${x_type}): ${x_comment}.
+        y(${y_type}): ${y_comment}.
+        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
         cond(Variable|None): Optional output variable to store the result of *less_than*
 
     Returns:
-        Variable: The tensor variable storing the output of *less_than*.
-
-    Examples:
-        .. code-block:: python
-
-          less = fluid.layers.less_than(x=label, y=limit)
+        ${out_comment}.
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
         cond.stop_gradient = True
 
+    attrs = dict()
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
     helper.append_op(
         type='less_than',
         inputs={'X': [x],
                 'Y': [y]},
         outputs={'Out': [cond]},
-        attrs={'force_cpu': force_cpu or force_init_on_cpu()})
+        attrs=attrs)
     return cond
 
 

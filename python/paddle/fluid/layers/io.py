@@ -292,6 +292,7 @@ def _copy_reader_create_op_(block, op):
     return new_op
 
 
+@templatedoc(op_type='create_recordio_file_reader')
 def open_recordio_file(filename,
                        shapes,
                        lod_levels,
@@ -299,34 +300,28 @@ def open_recordio_file(filename,
                        pass_num=1,
                        for_parallel=True):
     """
-    Open a RecordIO file
+    ${comment}
 
-    This layer takes a RecordIO file to read from and returns a Reader Variable.
-    Via the Reader Variable, we can get data from the given RecordIO file.
+    >>> import paddle.fluid as fluid
+    >>> reader = fluid.layers.io.open_recordio_file(
+    >>>                               filename='./data.recordio',
+    >>>                               shapes=[(3,224,224), (1)],
+    >>>                               lod_levels=[0, 0],
+    >>>                               dtypes=['float32', 'int64'])
+    >>> # Via the reader, we can use 'read_file' layer to get data:
+    >>> image, label = fluid.layers.io.read_file(reader)
 
     Args:
-       filename(str): The RecordIO file's name.
+       filename(${filename_type}): ${filename_comment}.
        shapes(list): List of tuples which declaring data shapes.
-       lod_levels(list): List of ints which declaring data lod_level.
+       lod_levels(${lod_levels_type}): ${lod_levels_comment}.
        dtypes(list): List of strs which declaring data type.
        pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run
             subsequent operators in parallel.
 
     Returns:
-       Variable: A Reader Variable via which we can get RecordIO file data.
-
-    Examples:
-       .. code-block:: python
-
-         reader = fluid.layers.io.open_recordio_file(
-                                          filename='./data.recordio',
-                                          shapes=[(3,224,224), (1)],
-                                          lod_levels=[0, 0],
-                                          dtypes=['float32', 'int64'])
-
-         # Via the reader, we can use 'read_file' layer to get data:
-         image, label = fluid.layers.io.read_file(reader)
+       ${out_comment}.
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
