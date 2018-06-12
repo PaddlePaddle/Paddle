@@ -4078,7 +4078,7 @@ def image_resize(input,
                  name=None,
                  resample='BILINEAR'):
     """
-    Resize a batch of images.
+    **Resize a batch of images**
 
     The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
     and the resizing only applies on the last two dimensions(hight and width).
@@ -4208,6 +4208,8 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
 
 def gather(input, index):
     """
+    **Gather Layer**
+
     Output is obtained by gathering entries of the outer-most dimension 
     of X indexed by `index` and concatenate them together.
 
