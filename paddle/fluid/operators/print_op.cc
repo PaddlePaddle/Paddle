@@ -35,8 +35,10 @@ struct Formater {
   framework::LoD lod;
   int summarize;
   void* data{nullptr};
+  int device_id = -1;
 
   void operator()(size_t size) {
+    PrintPlace();
     PrintMessage();
     PrintName();
     PrintDims();
@@ -46,6 +48,11 @@ struct Formater {
   }
 
  private:
+  void PrintPlace() {
+    if (device_id != -1) {
+      CLOG << "\tplace: [" << device_id << "]\t";
+    }
+  }
   void PrintMessage() { CLOG << std::time(nullptr) << "\t" << message << "\t"; }
   void PrintName() {
     if (!name.empty()) {
@@ -167,6 +174,15 @@ class TensorPrintOp : public framework::OperatorBase {
       return;
     }
 
+    std::vector<int> devices = Attr<std::vector<int>>("devices");
+    if (platform::is_gpu_place(in_tensor.place()) && devices.size() > 0 &&
+        std::find(
+            devices.begin(), devices.end(),
+            boost::get<platform::CUDAPlace>(in_tensor.place()).GetDeviceId()) ==
+            devices.end()) {
+      return;
+    }
+
     int first_n = Attr<int>("first_n");
     if (first_n > 0 && ++times_ > first_n) return;
 
@@ -198,6 +214,10 @@ class TensorPrintOp : public framework::OperatorBase {
     if (Attr<bool>("print_tensor_lod")) {
       formater.lod = printed_tensor.lod();
     }
+    if (platform::is_gpu_place(in_tensor.place())) {
+      formater.device_id =
+          boost::get<platform::CUDAPlace>(in_tensor.place()).GetDeviceId();
+    }
     formater.summarize = Attr<int>("summarize");
     formater.data = reinterpret_cast<void*>(printed_tensor.data<void>());
     formater(printed_tensor.numel());
@@ -209,12 +229,12 @@ class TensorPrintOp : public framework::OperatorBase {
 
 class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PrintOpProtoAndCheckMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("In", "Input tensor to be displayed.");
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
     AddAttr<int>("summarize", "Number of elements printed.");
+    AddAttr<std::vector<int>>("devices", "Devices of elements printed.");
     AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.");
     AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
     AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");

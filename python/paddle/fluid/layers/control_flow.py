@@ -13,7 +13,7 @@
 # limitations under the License.
 import contextlib
 
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
@@ -49,6 +49,7 @@ __all__ = [
     'reorder_lod_tensor_by_rank',
     'ParallelDo',
     'Print',
+    'is_empty',
 ]
 
 
@@ -150,6 +151,7 @@ def Print(input,
           first_n=-1,
           message=None,
           summarize=-1,
+          devices=None,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -168,6 +170,9 @@ def Print(input,
         input (Variable): A Tensor to print.
         summarize (int): Print this number of elements in the tensor, will print
                 all if left is negative.
+        devices (list<int>): Only print tensor on these devices. 
+                None or empty list mean printing tensors on all devices. 
+                It is valid just for CUDA devices.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
         print_tensor_name (bool): Print the tensor name.
@@ -197,6 +202,7 @@ def Print(input,
             'first_n': first_n,
             'summarize': summarize,
             'message': message or "",
+            'devices': devices or [],
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
@@ -720,26 +726,22 @@ def lod_rank_table(x, level=0):
     return table
 
 
+@templatedoc()
 def max_sequence_len(rank_table):
-    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
-    returns the max length of a batch of sequences. In fact, a LoDRankTable
-    object contains a list of tuples(<sequence index, sequence length>) and
-    the list is already sorted by sequence length in descending order, so the
-    operator just returns the sequence length of the first tuple element.
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> x = fluid.layers.data(name='x', shape=[10], dtype='float32',
+    >>>                       lod_level=1)
+    >>> rank_table = layers.lod_rank_table(x=x, level=0)
+    >>> max_seq_len = layers.max_sequence_len(rank_table)
 
     Args:
-        rank_table (Variable): Input variable which is a LoDRankTable object.
+        rank_table(${rank_table_type}): ${rank_table_comment}.
 
     Returns:
-        Variable: The max length of sequence.
-
-    Examples:
-        .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[10],
-                            dtype='float32', lod_level=1)
-            rank_table = layers.lod_rank_table(x=x, level=0)
-            max_seq_len = layers.max_sequence_len(rank_table)
+        ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
@@ -1097,7 +1099,7 @@ class ConditionalBlock(object):
         input_set = set([ipt.name for ipt in self.inputs])
 
         param_list = [
-            parent_block.var(each_name) for each_name in params
+            parent_block.var_recursive(each_name) for each_name in params
             if each_name not in input_set
         ]
 
@@ -1562,3 +1564,40 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                 'RankTable': [rank_table]},
         outputs={'Out': [out]})
     return out
+
+
+def is_empty(x, cond=None, **ignored):
+    """
+    **Is Empty**
+
+    This layer returns the truth value of whether the variable is empty.
+
+    Args:
+        x(Variable): Operand of *is_empty*
+        cond(Variable|None): Optional output variable to store the result
+                             of *is_empty*
+
+    Returns:
+        Variable: The tensor variable storing the output of *is_empty*.
+
+    Raises:
+        TypeError: If input cond is not a variable, or cond's dtype is
+                   not bool
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.is_empty(x=input)
+    """
+    helper = LayerHelper("is_empty", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+    elif not isinstance(cond, Variable):
+        raise TypeError("cond takes a variable")
+    elif cond.dtype != 'bool':
+        raise TypeError("The data type of cond must be bool")
+
+    helper.append_op(
+        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
+    return cond
