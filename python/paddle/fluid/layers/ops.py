@@ -71,6 +71,7 @@ __all__ = [
     'cumsum',
     'scatter',
     'sum',
+    'slice',
     'polygon_box_transform',
     'shape',
     'iou_similarity',
