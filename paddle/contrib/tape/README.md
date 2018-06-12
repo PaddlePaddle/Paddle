@@ -131,6 +131,138 @@ for (int i = 0; i < 2; ++i) {
 }
 ```
 
+<details>
+  <summary></summary>
+digraph G {
+
+	subgraph cluster_0 {
+                node [shape=record,style=filled];
+		style=filled;
+		color=lightgrey;
+                linear1 [label="{type: mul | {input | {<before_mul1>X: before_mul1 |<weight1> Y: weight1}} |  {output |<before_bias1> Out: before_bias1}}"];
+                elementwise_add1 [label="{type: elementwise_add | {input | {<before_bias1>X: before_bias1 |<bias1> Y: bias1}} |  {output |<before_act1> Out: before_act1}}"];
+                relu1 [label="{type: relu | {input | {<before_act1>X: before_act1 }} |  {output |<after_act1> Out: after_act1}}"];
+
+		linear1 -> elementwise_add1->relu1;
+		label = "forward tape";
+	}
+
+        linear1:before_mul1->before_mul1
+        linear1:weight1->weight1
+        linear1:before_bias1->before_bias1
+
+        elementwise_add1:bias1->bias1
+        elementwise_add1:before_bias1->before_bias1
+        elementwise_add1:before_act1->before_act1
+
+        relu1:before_act1->before_act1
+        relu1:after_act1->after_act1
+
+	subgraph cluster_1 {
+                node [shape=record,style=filled];
+		style=filled;
+		color=lightgrey;
+                linear1_grad [label="{type: mul_grad | {input | {<before_mul1>X: before_mul1 |<weight1> Y: weight1|<before_bias1_grad> Out_grad: before_bias1_grad}} |  {output |{<before_mul1_grad>X_grad: before_mul1_grad |<weight1_grad> Y_grad: weight1_grad}}}"];
+
+                elementwise_add1_grad [label="{type: elementwise_add_grad | {input | <before_act1_grad> Out_grad: before_act1_grad} |  {output |{<before_bias1_grad>X_grad: before_bias1_grad |<bias1_grad> Y_grad: bias1_grad}}}"];
+
+                relu1_grad [label="{type: relu_grad |  {input |<after_act1_grad> Out_grad: after_act1_grad} | {ouput | {<before_act1_grad>X_grad: before_act1_grad }}}"];
+
+		linear1_grad -> elementwise_add1_grad ->relu1_grad [dir=back];
+                label = "backward tape";
+	}
+
+        relu1_grad:after_act1_grad->after_act1_grad
+        relu1_grad:before_act1_grad->before_act1_grad
+
+        elementwise_add1_grad:before_act1_grad->before_act1_grad
+        elementwise_add1_grad:before_bias1_grad->before_bias1_grad
+        elementwise_add1_grad:bias1_grad->bias1_grad
+
+        linear1_grad:before_mul1->before_mul1
+        linear1_grad:weight1->weight1
+        linear1_grad:before_bias1_grad->before_bias1_grad
+        linear1_grad:before_mul1_grad->before_mul1_grad
+        linear1_grad:weight1_grad->weight1_grad
+
+
+	subgraph cluster_2 {
+                node [shape=record];
+                label = "Linear1";
+                weight1
+                bias1
+	}
+
+        weight1 -> weight1_grad [ label="Grad()", style="dashed" ];
+        bias1 -> bias1_grad [ label="Grad()", style="dashed"];
+
+	
+
+}
+</details>
+![Alt text](https://g.gravizo.com/svg?digraph g {
+    subgraph cluster_0 {
+        node [shape=record,style=filled];
+        style=filled;
+        color=lightgrey;
+        linear1 [label="{type: mul | {input | {<before_mul1>X: before_mul1 |<weight1> Y: weight1}} |  {output |<before_bias1> Out: before_bias1}}"];
+        elementwise_add1 [label="{type: elementwise_add | {input | {<before_bias1>X: before_bias1 |<bias1> Y: bias1}} |  {output |<before_act1> Out: before_act1}}"];
+        relu1 [label="{type: relu | {input | {<before_act1>X: before_act1 }} |  {output |<after_act1> Out: after_act1}}"];
+
+        linear1 -> elementwise_add1->relu1;
+        label = "forward tape";
+    }
+
+    linear1:before_mul1->before_mul1
+    linear1:weight1->weight1
+    linear1:before_bias1->before_bias1
+
+    elementwise_add1:bias1->bias1
+    elementwise_add1:before_bias1->before_bias1
+    elementwise_add1:before_act1->before_act1
+
+    relu1:before_act1->before_act1
+    relu1:after_act1->after_act1
+
+    subgraph cluster_1 {
+        node [shape=record,style=filled];
+        style=filled;
+        color=lightgrey;
+        linear1_grad [label="{type: mul_grad | {input | {<before_mul1>X: before_mul1 |<weight1> Y: weight1|<before_bias1_grad> Out_grad: before_bias1_grad}} |  {output |{<before_mul1_grad>X_grad: before_mul1_grad |<weight1_grad> Y_grad: weight1_grad}}}"];
+
+        elementwise_add1_grad [label="{type: elementwise_add_grad | {input | <before_act1_grad> Out_grad: before_act1_grad} |  {output |{<before_bias1_grad>X_grad: before_bias1_grad |<bias1_grad> Y_grad: bias1_grad}}}"];
+
+        relu1_grad [label="{type: relu_grad |  {input |<after_act1_grad> Out_grad: after_act1_grad} | {ouput | {<before_act1_grad>X_grad: before_act1_grad }}}"];
+
+        linear1_grad -> elementwise_add1_grad ->relu1_grad [dir=back];
+        label = "backward tape";
+    }
+
+    relu1_grad:after_act1_grad->after_act1_grad
+    relu1_grad:before_act1_grad->before_act1_grad
+
+    elementwise_add1_grad:before_act1_grad->before_act1_grad
+    elementwise_add1_grad:before_bias1_grad->before_bias1_grad
+    elementwise_add1_grad:bias1_grad->bias1_grad
+
+    linear1_grad:before_mul1->before_mul1
+    linear1_grad:weight1->weight1
+    linear1_grad:before_bias1_grad->before_bias1_grad
+    linear1_grad:before_mul1_grad->before_mul1_grad
+    linear1_grad:weight1_grad->weight1_grad
+
+
+    subgraph cluster_2 {
+        node [shape=record];
+        label = "Linear1";
+        weight1
+        bias1
+    }
+
+    weight1 -> weight1_grad [ label="Grad()", style="dashed" ];
+    bias1 -> bias1_grad [ label="Grad()", style="dashed"];
+})
+
 ## Code Reuse
 
 We want to stay close to Paddle Fluid as much as possible.
