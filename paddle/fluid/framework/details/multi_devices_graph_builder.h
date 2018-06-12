@@ -65,9 +65,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   bool IsScaleLossOp(const OpDesc &op) const;
 
-  void CreateRPCOp(SSAGraph *result, const OpDesc &op, int place_id) const;
-  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op,
-                         int place_id) const;
+  void CreateRPCOp(SSAGraph *result, const OpDesc &op) const;
+  void CreateDistTrainOp(SSAGraph *result, const OpDesc &op) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
@@ -105,13 +104,16 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
-  bool IsSparseGradient(
-      const std::unordered_map<std::string, VarDesc *> &all_vars,
-      const std::string &og) const;
+  bool IsSparseGradient(const std::string &og) const;
+
+  size_t GetAppropriateDeviceID(
+      const std::vector<std::string> &var_names) const;
 
  private:
   BuildStrategy strategy_;
+  mutable std::unordered_map<std::string, VarDesc *> all_vars_;
   mutable std::unordered_map<std::string, int> var_name_on_devices_;
+  mutable std::vector<int64_t> balance_vars_;
 
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
