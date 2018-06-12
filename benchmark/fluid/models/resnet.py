@@ -201,8 +201,8 @@ def get_model(args):
             train_reader, buf_size=5120),
         batch_size=args.batch_size * args.gpus,
         drop_last=True)
-    batched_test_reader = paddle.batch(train_reader,
-               batch_size=args.batch_size, drop_last=True)
+    batched_test_reader = paddle.batch(
+        train_reader, batch_size=args.batch_size, drop_last=True)
 
     return avg_cost, inference_program, optimizer, batched_train_reader,\
                    batched_test_reader, batch_acc
