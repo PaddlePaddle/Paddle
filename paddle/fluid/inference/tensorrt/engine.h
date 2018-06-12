@@ -165,20 +165,31 @@ class TensorRTEngine : public EngineBase {
  */
 class TRT_EngineManager {
  public:
-  TensorRTEngine* Create(int max_batch, int max_workspace,
-                         cudaStream_t* stream) {
-    engines_.emplace_back(new TensorRTEngine(max_batch, max_workspace, stream));
-    return engines_.back().get();
+  bool HasEngine(const std::string& name) const {
+    return engines_.count(name) != 0;
+  }
+
+  // Get an engine called `name`.
+  TensorRTEngine* Get(const std::string& name) const {
+    return engines_.at(name).get();
+  }
+
+  // Create or get an engine called `key`
+  TensorRTEngine* Create(int max_batch, int max_workspace, cudaStream_t* stream,
+                         const std::string& name) {
+    auto* p = new TensorRTEngine(max_batch, max_workspace, stream);
+    engines_[name].reset(p);
+    return p;
   }
 
   void DeleteALl() {
-    for (auto& ptr : engines_) {
-      ptr.reset(nullptr);
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
     }
   }
 
  private:
-  std::vector<std::unique_ptr<TensorRTEngine>> engines_;
+  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 
 }  // namespace tensorrt
