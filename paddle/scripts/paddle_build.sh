@@ -182,6 +182,7 @@ function build() {
     ============================================
 EOF
     make clean
+    make -j `nproc`
     make install -j `nproc`
 }
 
