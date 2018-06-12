@@ -12,27 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pprint import pprint
 from collections import defaultdict, OrderedDict
+import functools
 import paddle.fluid.core as core
 
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard, Variable, Operator
 from memory_optimization_transpiler import memory_optimize, release_memory
-
-dtype_to_size = {
-    core.VarDesc.VarType.FP16: 2,
-    core.VarDesc.VarType.FP32: 4,
-    core.VarDesc.VarType.FP64: 8,
-    core.VarDesc.VarType.INT16: 2,
-    core.VarDesc.VarType.INT32: 4,
-    core.VarDesc.VarType.INT64: 8,
-    core.VarDesc.VarType.BOOL: 1,
-    # core.VarDesc.VarType.UINT8: 1,
-}
-
-
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+from paddle.fluid.framework import default_startup_program, default_main_program
+from paddle.fluid.executor import Executor
+from paddle.fluid.backward import append_backward
+import numpy
 
 class VarHandle(object):
     def __init__(self, name, version=0):
@@ -74,9 +67,10 @@ class SSAGraph(object):
         self._ssa_vars = defaultdict(list)
         self._inputs = defaultdict(set)
         self._outputs = defaultdict(set)
+        self._doms = {} # the dominators in ssa graph
+        self._preds = defaultdict(list)
+        self._succs = defaultdict(list)
 
-    # def _transform_ssa_graph(self, ops):
-    #     for op in ops:
     def _no_output_vars(self, ops):
         inputs = set()
         outputs = set()
@@ -87,7 +81,53 @@ class SSAGraph(object):
                 outputs.add(output_arg)
         return inputs - outputs
 
-    def _run_graph(self, ops):
+    def _find_dominators(self, post=False):
+        """
+        # See theoretical description in
+        # http://en.wikipedia.org/wiki/Dominator_%28graph_theory%29
+        # The algorithm implemented here uses a todo-list as described
+        # in http://pages.cs.wisc.edu/~fischer/cs701.f08/finding.loops.html
+        """
+        if post:
+            entries = set(self._ops[-1])
+            preds_table = self._succs
+            succs_table = self._preds
+        else:
+            entries = set([self._ops[0]])
+            preds_table = self._preds
+            succs_table = self._succs
+
+        if not entries:
+            raise RuntimeError("no entry points: dominator algorithm "
+                               "cannot be seeded")
+
+        doms = {}
+        for e in entries:
+            doms[e] = set([e])
+
+        todo = []
+        for n in self._nodes:
+            if n not in entries:
+                doms[n] = set(self._nodes)
+                todo.append(n)
+
+        while todo:
+            n = todo.pop()
+            if n in entries:
+                continue
+            new_doms = set([n])
+            preds = preds_table[n]
+            if preds:
+                new_doms |= functools.reduce(set.intersection,
+                                             [doms[p] for p in preds])
+            if new_doms != doms[n]:
+                assert len(new_doms) < len(doms[n])
+                doms[n] = new_doms
+                todo.extend(succs_table[n])
+        self._doms = doms
+        return doms
+
+    def _to_ssa_graph(self, ops):
         def can_run(op, var_set):
             if len(op.output_arg_names) == 0:
                 return True
@@ -99,18 +139,10 @@ class SSAGraph(object):
         ready_vars = self._no_output_vars(ops)
         for var in ready_vars:
             self._ssa_vars[var].append(VarHandle(var, 0))
-        # ready_vars = set()
         op_queue = list(ops)
         while op_queue:
             op = op_queue.pop(0)
-            # print(op.type)
-            # print(ready_ops)
-            # print(ready_vars)
-            # r_ops = [r_op.type for r_op in ready_ops]
-            # print(r_ops)
-            # print(len(ready_vars))
             if can_run(op, ready_vars):
-                # print(op.type)
                 ready_ops.append(op)
                 for output_arg in op.output_arg_names:
                     version = len(self._ssa_vars[output_arg])
@@ -122,36 +154,44 @@ class SSAGraph(object):
                     self._inputs[op].add(self._ssa_vars[input_arg][-1]) # latest version
             else:
                 op_queue.append(op)
-        # print(self._ssa_vars)
-        max_len = max([len(var) for var in self._ssa_vars])
-        print(len(self._ssa_vars))
-        print(len(self._inputs))
-        print("max_len : ", max_len)
 
+    def _use_def_chain(self):
+        for i in range(len(self._ops)):
+            op = self._ops[i]
+            self._uses[i].update(op.output_arg_names)
+            self._defs[i].update(op.output_arg_names)
 
-    def _build_graph2(self, block):
-        for op in block.ops:
-            for output_arg_name in op.output_arg_names:
-                version = len(self._vars[output_arg_name])
-                self._vars[output_arg_name].append(version)
-        all_vars = list()
-        input_vars = list()
-        output_vars = list()
-        for v in block.vars:
-            all_vars.append(v)
-        for op in block.ops:
-            for arg_name in op.input_arg_names:
-                input_vars.append(arg_name)
-            for arg_name in op.output_arg_names:
-                output_vars.append(arg_name)
+    def build_graph(self):
+        connections = [(i, i+1) for i in range(len(self._ops) - 1)]
+        for node1, node2 in connections:
+            self._preds[node2].append(node1)
+            self._succs[node1].append(node2)
+        self._use_def_chain()
+        self._find_dominators()
+        self._to_ssa_graph(self._ops)
 
-        all_vars.sort()
-        input_vars.sort()
-        output_vars.sort()
-        pprint(all_vars)
-        pprint(input_vars)
-        pprint(output_vars)
-        pprint(self._vars)
+    def _up_and_mark(self, live_vars, var):
+        """
+        explore all paths from variable's use to its def
+        """
+        if var in live_vars: #Killed in the block, stop
+            return
+        if var in self._doms:
+            return
+
+        live_out = set()
+        for p in self._preds:
+            live_out = live_out[p] | set(var)
+            self._up_and_mark(live_out, var)
+
+    def liveness_range(self):
+        live_out = defaultdict(set)
+        for v in self._doms:
+            live_out[v] = live_out[v] | self._defs[v]
+            self._up_and_mark(live_out, v)
+        for defs in self._defs:
+            for v in defs:
+                self._up_and_mark(live_out, v)
 
     def _build_graph(self, program):
         block = program.block(0)
@@ -187,13 +227,8 @@ class SSAGraph(object):
                 var_handle = VarHandle()
             for input_arg in op.input_arg_names:
                 if input_arg not in self._vars:
-                    # self._vars[input_arg] =
                     pass
 
-    def build_graph(self):
-        """
-        build ssa graph
-        """
 
 class GraphChecker(object):
     def __init__(self, main_program, startup_program=None):
@@ -208,8 +243,7 @@ class GraphChecker(object):
             for input_arg in op.input_arg_names:
                 input_vars.add(input_arg)
         all_vars = set(program.block(0).vars)
-        # print all_vars - output_vars
-        print all_vars - input_vars
+        return all_vars - input_vars
 
 def GenTestProgram():
     program = Program()
@@ -222,31 +256,31 @@ def GenTestProgram():
         avg_cost = layers.mean(cost)
         opt = optimizer.SGD(learning_rate=0.001)
         opt = opt.minimize(avg_cost)
-    # print startup.block(0).ops
     return program
-    # return program.block(0).ops + startup.block(0).ops
+
+def GenTestProgramWithSubBlock():
+    program = Program()
+    startup = Program()
+    with program_guard(program, startup_program=startup):
+        data = layers.data(name='X', shape=[1], dtype='float32')
+        data.stop_gradient = False
+        cond = layers.ConditionalBlock(inputs=[data])
+        out = layers.create_tensor(dtype='float32')
+        with cond.block():
+            hidden = layers.fc(input=data, size=10)
+            layers.assign(hidden, out)
+    return program
 
 def main():
     ops = GenTestProgram()
-    # print(program)
-    # ssa = SSAGraph(program)
     ssa = SSAGraph()
     ssa._run_graph(ops)
-    # gc = GraphChecker(program)
-    # gc.check_input_output(program)
-    # print(str(program))
-    # print program.block(0).ops
-    # check_program(program)
 
 def test_cfg():
-    program = GenTestProgram()
+    program = GenTestProgramWithSubBlock()
+    print(program)
     result_program = memory_optimize(program, print_log=True)
-    # print program.block(0).ops
 
 
 if __name__ == "__main__":
-    # main()
     test_cfg()
-    # result_program = memory_optimize(program)
-    # print("after optimization")
-    # print(str(program))

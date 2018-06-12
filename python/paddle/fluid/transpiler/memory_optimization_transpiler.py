@@ -135,7 +135,7 @@ class ControlFlowGraph(object):
 
     def _forward_analysis(self):
         fwd_live_in = self._no_output_vars(self._ops_def)
-        print(fwd_live_in)
+        # print(fwd_live_in)
         for i in range(self.op_size):
             self._fwd_live_out[i] = fwd_live_in | self._defs[i]
             fwd_live_in = self._fwd_live_out[i]
@@ -241,14 +241,14 @@ class ControlFlowGraph(object):
         self._dataflow_analyze()
         self._update_skip_opt_set()
         self._forward_analysis()
-        for i in reversed(range(self.op_size)):
-            print(self._ops_def[i].type)
-            print(self._live_in[i])
-            if i>=1:
-                print(self._fwd_live_out[i])
-                print(self._live_in[i] - self._fwd_live_out[i-1])
-            # print(self._live_out[i])
-            print ""
+        # for i in reversed(range(self.op_size)):
+        #     print(self._ops_def[i].type)
+        #     print(self._live_in[i])
+        #     if i>=1:
+        #         print(self._fwd_live_out[i])
+        #         print(self._live_in[i] - self._fwd_live_out[i-1])
+        #     # print(self._live_out[i])
+        #     print ""
         
         # print(self._live_in[0])
         # print(self._live_out[0])
@@ -334,6 +334,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
     ops_list = []
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
+    # print(sub_block_pair)
     for fwd_op, bwd_op in sub_block_pair:
         sub_block_ids = []
         grad_sub_block_ids = []
@@ -372,6 +373,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
+            # print(sub_block_ops)
 
         # Process rest fwd_op block ops
         for fwd_id in sub_block_ids:
