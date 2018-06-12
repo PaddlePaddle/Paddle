@@ -22,71 +22,46 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 
+#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
+
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
-
 namespace paddle {
 namespace operators {
 namespace detail {
 
-class VariableResponse {
+class GRPCVariableResponse : public VariableResponse {
  public:
   VariableResponse(const framework::Scope* scope,
                    const platform::DeviceContext* dev_ctx,
                    bool create_scope = false)
-      : scope_(scope), dev_ctx_(dev_ctx), create_scope_(create_scope) {
-    if (create_scope) {
-      local_scope_ = &scope->NewScope();
-    }
-  }
+      : VariableResponse(scope, dev_ctx, create_scope) {}
 
-  virtual ~VariableResponse() {
-    if (create_scope_) {
-      scope_->DeleteScope(local_scope_);
-    }
-  }
+  virtual ~GRPCVariableResponse() {}
 
-  virtual int Parse(Source* source, sendrecv::VariableResponse* meta) {
-    meta_.set_varname(meta->varname());
-    meta_.set_out_varname(meta->out_var_name());
-    return Parse(source);
-  }
+  int Parse(Source* source) override;
 
   // return:
   // 0:ok.
   // -1: unkown error.
   // other: number of error field.
-  virtual int Parse(Source* source) = 0;
+  int Parse(const ::grpc::ByteBuffer& byte_buffer);
 
-  inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
-  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
-  inline std::string Varname() const { return meta_.varname(); }
-  inline std::string OutVarname() const { return meta_.out_varname(); }
+ private:
+  bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
+                                const platform::DeviceContext& ctx,
+                                const framework::DDim& dims, int length);
 
-  // should call parse first.
-  framework::Variable* GetVar() {
-    if (create_scope_) {
-      return local_scope_->Var(meta_.varname());
-    }
-    return scope_->FindVar(meta_.varname());
-  }
+  bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input,
+                          const platform::DeviceContext& ctx, int length);
 
- protected:
-  bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
-               const platform::DeviceContext& dev_ctx, platform::Place place,
-               void* dest, int size);
-
- protected:
-  const framework::Scope* scope_;
-  const platform::DeviceContext* dev_ctx_;
-  bool create_scope_ = false;
-  framework::Scope* local_scope_ = nullptr;
-
-  sendrecv::VariableMessage meta_;
+  bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input,
+                         const platform::DeviceContext& ctx,
+                         const framework::DDim& dims, int length);
 };
 
 };  // namespace detail

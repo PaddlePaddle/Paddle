@@ -18,18 +18,75 @@ limitations under the License. */
 #include <sys/time.h>
 #include <thread>  // NOLINT
 
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/detail/brpc_serialize.h"
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
-#include "paddle/fluid/operators/detail/proto_encoder_helper.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {}  // namespace detail
+namespace detail {
+
+void SerializeToIOBuf(const std::string& name, framework::Variable* var,
+                      const platform::DeviceContext& ctx, VarMsg* request,
+                      butil::IOBuf* iobuf, const std::string& out_varname) {
+  void* payload = nullptr;
+  size_t payload_size = 0;
+
+  request->set_varname(name);
+  // Note: normally the profiler is enabled in 1 trainer, hence only
+  // 1 trainer returns true for ShouldSendProfileState(). It tells PS
+  // servers the trainer's profiling state so that PS can follow the
+  // trainer.
+  if (platform::ShouldSendProfileState()) {
+    if (platform::IsProfileEnabled()) {
+      request->set_profile(platform::kEnableProfiler);
+    } else {
+      request->set_profile(platform::kDisableProfiler);
+    }
+  }
+  if (!out_name.empty()) {
+    request->set_out_varname(out_name);
+  }
+  if (var->IsType<framework::LoDTensor>()) {
+    request->set_type(::sendrecv::LOD_TENSOR);
+    GetTensorPayload(var, ctx, request, &payload, &payload_size);
+  } else if (var->IsType<framework::SelectedRows>()) {
+    request->set_type(::sendrecv::SELECTED_ROWS);
+    GetSelectedRowsPayload(var, ctx, request, &payload, &payload_size);
+#ifdef PADDLE_WITH_CUDA
+  } else if (var->IsType<ncclUniqueId>()) {
+    request->set_type(::sendrecv::NCCL_ID);
+    const ncclUniqueId& uid = var->Get<ncclUniqueId>();
+    request.set_serialized(uid.inerenal, NCCL_UNIQUE_ID_BYTES);
+    return;
+#endif
+  } else {
+    PADDLE_THROW("Serialize does not support type: %s",
+                 typeid(var->Type()).name());
+  }
+
+  // TODO(gongwb): use append_zero to avoid data copy.
+  IOBufWriter e;
+  std::string key = "serialized";
+  e.Append(key, payload, paylod_size);
+
+  if (var->IsType<framework::SelectedRows>()) {
+    auto* slr = var->GetMutable<framework::SelectedRows>();
+    size_t rows_memory_size =
+        slr->rows().size() * framework::SizeOfType(typeid(int64_t));
+
+    std::string key = "rows";
+    e.Append(key, slr->rows().data(), rows_memory_size);
+  }
+}
+
+void DeserializeFromIOBuf(const butil::IOBuf& iobuf,
+                          const platform::DeviceContext& ctx,
+                          const framework::Scope* scope,
+                          framework::Variable** var) {}
+
+}  // namespace detail
 }  // namespace operators
 }  // namespace paddle
