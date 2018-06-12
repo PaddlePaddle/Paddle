@@ -66,14 +66,14 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1)
         .EqualGreaterThan(-1);
     AddComment(string::Sprintf(R"DOC(
-Limited Elementwise %s Operator.
+Limited Elementwise %s Operator
 
 The equation is:
 
 $$%s$$
 
-$X$ is a tensor of any dimension. And $Y$ is a tensor whose dimensions must be
-less than or equal to the dimensions of $X$.
+- $X$: a tensor of any dimension. 
+- $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
 There are two cases for this operator:
 
