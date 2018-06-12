@@ -27,10 +27,12 @@ AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs)
     : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
+  use_cuda_ = False;
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
     }
+    use_cuda_ = true;
   }
 }
 #else
@@ -122,9 +124,19 @@ void AllReduceOpHandle::RunImpl() {
         auto *dev_ctx = dev_ctxes_[p];
 
         RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
-          auto &tensor_gpu = *var->GetMutable<framework::LoDTensor>();
-          auto &tensor_cpu = trg;
-          TensorCopy(tensor_cpu, p, *dev_ctx, &tensor_gpu);
+#ifdef PADDLE_WITH_CUDA
+          if (use_cuda_) {
+            auto &tensor_dst = *var->GetMutable<framework::LoDTensor>();
+            auto &tensor_src = trg;
+            TensorCopy(tensor_src, p, *dev_ctx, &tensor_dst);
+          } else {
+            auto &tensor_dst = *var->GetMutable<framework::LoDTensor>();
+            tensor_dst.ShareDataWith(trg);
+          }
+#else
+          auto &tensor_dst = *var->GetMutable<framework::LoDTensor>();
+          tensor_dst.ShareDataWith(trg);
+#endif
         });
       }
     }

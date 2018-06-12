@@ -52,6 +52,7 @@ struct AllReduceOpHandle : public OpHandleBase {
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
+  bool use_cuda_;
 };
 
 }  // namespace details
