@@ -340,7 +340,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
-                                      "prefetch block to run on server side.");
+                                      "prefetch blocks to run on server side.")
+        .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
   }
