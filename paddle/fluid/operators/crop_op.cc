@@ -48,6 +48,13 @@ class CropOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Out", y_dim);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
+  }
 };
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -60,13 +67,19 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input used as reference for cropping, "
              "which is of the same dimensions as X.")
         .AsDispensable();
+    AddInput("Offsets",
+             "The input used to describe offsets in runtime, which is a "
+             "1-D vector whose size equals to the rank of input 'X'. The "
+             "elements data type must be int.")
+        .AsDispensable();
     AddOutput("Out",
               "The output of crop op, "
               "which is of the same dimensions as X.");
     AddAttr<std::vector<int>>("offsets",
                               "A list<int> describing offsets to be cropped. "
                               "The size of offsets list should be the same as "
-                              "the dimension size of input X.");
+                              "the dimension size of input X.")
+        .SetDefault(std::vector<int>());
     AddAttr<std::vector<int>>("shape",
                               "A list<int> describing the shape of output. "
                               "The size of shape list should be the same as "
@@ -76,6 +89,17 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
 Crop Operator.
 
 Crop input into output, as specified by offsets and shape.
+
+There are two ways to set the offsets:
+1. In runtime: Using the input 'Offsets', which is a Vairbale and can be 
+               output of other operators. This way is suitable for 
+               dynamic offsets.
+2. In network configuration: Using the attribute 'offsets', which will be 
+                             set in Python configure script. This way is 
+                             suitable for fixed offsets.
+You CANNOT use these two ways at the same time. An exception will be raised 
+if input 'Offset' is configured and meanwhile the attribute 'offsets' is 
+not empty.
 
 There are two ways to set shape:
 1. reference input: crop input X into the same shape as reference input.
@@ -145,6 +169,15 @@ class CropOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
+                ->type()),
+        ctx.device_context());
   }
 };
 

@@ -56,7 +56,9 @@ class Inferencer(object):
         else:
             self.exe = executor.Executor(self.place)
 
-    def infer(self, inputs):
+        self.inference_program = self.inference_program.clone(for_test=True)
+
+    def infer(self, inputs, return_numpy=True):
         """
         :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
         to get the predict value
@@ -66,9 +68,11 @@ class Inferencer(object):
             raise ValueError(
                 "inputs should be a map of {'input_name': input_var}")
 
-        with self._prog_and_scope_guard():
-            results = self.exe.run(feed=inputs,
-                                   fetch_list=[self.predict_var.name])
+        with executor.scope_guard(self.scope):
+            results = self.exe.run(self.inference_program,
+                                   feed=inputs,
+                                   fetch_list=[self.predict_var],
+                                   return_numpy=return_numpy)
 
         return results
 

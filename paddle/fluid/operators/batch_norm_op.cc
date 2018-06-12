@@ -111,14 +111,16 @@ class BatchNormOp : public framework::OperatorWithKernel {
                       "Variance input should be of float type");
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                    library_);
   }
@@ -149,13 +151,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization");
+    AddOutput("Y", "result after normalization").Reuse("X");
     AddOutput("MeanOut",
               "Share memory with Mean. "
-              "Store the global mean when training");
+              "Store the global mean when training")
+        .Reuse("Mean");
     AddOutput("VarianceOut",
               "Share memory with Variance. "
-              "Store the global Variance when training");
+              "Store the global Variance when training")
+        .Reuse("Variance");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
               "will apply to output when training")
@@ -367,17 +371,18 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     }
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library_);
+        layout_, library_);
   }
 };
 

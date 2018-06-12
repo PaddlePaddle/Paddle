@@ -18,6 +18,7 @@ from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
+from layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
@@ -30,6 +31,8 @@ __all__ = [
     'assign',
     'fill_constant_batch_size_like',
     'fill_constant',
+    'argmin',
+    'argmax',
     'ones',
     'zeros',
 ]
@@ -112,7 +115,7 @@ def cast(x, dtype):
     return out
 
 
-def concat(input, axis=0):
+def concat(input, axis=0, name=None):
     """
     **Concat**
 
@@ -122,6 +125,8 @@ def concat(input, axis=0):
     Args:
         input(list): List of tensors to be concatenated
         axis(int): Integer axis along which the tensors will be concatenated
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: Output variable of the concatenation
@@ -264,6 +269,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     return out
 
 
+@templatedoc()
 def fill_constant_batch_size_like(input,
                                   shape,
                                   dtype,
@@ -271,30 +277,28 @@ def fill_constant_batch_size_like(input,
                                   input_dim_idx=0,
                                   output_dim_idx=0):
     """
-    **fill_constant_batch_size_like**
-
-    This function creates a tensor of specified *shape*, *dtype* and batch size,
-    and initializes this with a constant supplied in *value*. The batch size is
-    obtained from the `input` tensor.
+    ${comment}
 
     It also sets *stop_gradient* to True.
 
+    >>> data = fluid.layers.fill_constant_batch_size_like(
+    >>>             input=like, shape=[1], value=0, dtype='int64')
+
     Args:
-        input(Variable): Tensor whose dimensions will be used to get batch size
-        shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
-        value(float): Constant value to initialize the output tensor
-        input_dim_idx(int): Index of input's batch size dimension
-        output_dim_idx(int): Index of output's batch size dimension
+        input(${input_type}): ${input_comment}.
+
+        shape(${shape_type}): ${shape_comment}.
+
+        dtype(${dtype_type}): ${dtype_comment}.
+
+        value(${value_type}): ${value_comment}.
+
+        input_dim_idx(${input_dim_idx_type}): ${input_dim_idx_comment}.
+
+        output_dim_idx(${output_dim_idx_type}): ${output_dim_idx_comment}.
 
     Returns:
-        Variable: The tensor variable storing the output
-
-    Examples:
-        .. code-block:: python
-
-          data = fluid.layers.fill_constant_batch_size_like(
-              input=like, shape=[1], value=0, dtype='int64')
+        ${out_comment}.
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
@@ -310,6 +314,68 @@ def fill_constant_batch_size_like(input,
             'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
+    return out
+
+
+def argmin(x, axis=0):
+    """
+    **argmin**
+
+    This function computes the indices of the min elements 
+    of the input tensor's element along the provided axis.
+
+    Args:
+        x(Variable): The input to compute the indices of
+                     the min elements.
+        axis(int): Axis to compute indices along.
+    
+    Returns:
+        Variable: The tensor variable storing the output
+    
+    Examples:
+        .. code-block:: python
+          
+          out = fluid.layers.argmin(x=in, axis=0)
+          out = fluid.layers.argmin(x=in, axis=-1)  
+    """
+    helper = LayerHelper("arg_min", **locals())
+    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='arg_min',
+        inputs={'X': x},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
+
+
+def argmax(x, axis=0):
+    """
+    **argmax**
+
+    This function computes the indices of the max elements 
+    of the input tensor's element along the provided axis.
+
+    Args:
+        x(Variable): The input to compute the indices of
+                     the max elements.
+        axis(int): Axis to compute indices along.
+    
+    Returns:
+        Variable: The tensor variable storing the output
+    
+    Examples:
+        .. code-block:: python
+          
+          out = fluid.layers.argmax(x=in, axis=0)
+          out = fluid.layers.argmax(x=in, axis=-1)  
+    """
+    helper = LayerHelper("arg_max", **locals())
+    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='arg_max',
+        inputs={'X': x},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
     return out
 
 
@@ -361,6 +427,40 @@ def zeros(shape, dtype, force_cpu=False):
     return fill_constant(value=0.0, **locals())
 
 
+def reverse(x, axis):
+    """
+    **reverse**
+
+    This function reverse the input 'x' along given axises.
+
+    Args:
+        x(Vairbale): the input to be reversed.
+        axis(int|tuple|list): Axis that along which order of elements 
+                    is reversed. If it is a tuple or a list, reversing 
+                    will be apply on each axis in the tuple or list.  
+
+    Returns:
+        Variable: The reversed tensor.
+
+    Examples:
+        .. code-block:: python
+
+          out = fluid.layers.reverse(x=in, axis=0)
+          # or:
+          out = fluid.layers.reverse(x=in, axis=[0,1])
+    """
+    if isinstance(axis, int):
+        axis = [axis]
+    helper = LayerHelper("reverse", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='reverse',
+        inputs={'Input': x},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
+
+
 def save(x, file_path, overwrite=True):
     """
     Saves a variable as a file.
@@ -399,22 +499,6 @@ def save_combine(x, file_path, overwrite=True):
         outputs={},
         args={"file_path": file_path,
               "overwrite": overwrite})
-
-
-def load(out, file_path):
-    """
-    Loads a variable from a given file.
-
-    Args:
-        out(variable): The variable to be read from the disk file.
-        file_path(str): The path of the disk file.
-    """
-    helper = LayerHelper("load", **locals())
-    helper.append_op(
-        type="load",
-        inputs={},
-        output={"Out": out},
-        args={"file_path": file_path})
 
 
 def load_combine(out, file_path):
