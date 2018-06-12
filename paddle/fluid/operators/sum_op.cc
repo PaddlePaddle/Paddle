@@ -115,7 +115,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
+    AddOutput("Out", "(Tensor) The output tensor of sum operator.").Reuse("X");
     AddComment(R"DOC(
 Sum operator.
 
