@@ -28,6 +28,7 @@ endfunction()
 
 # download library
 message(STATUS "Download Anakin library from ${ANAKIN_LIBRARY_URL}")
+execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
 execute_process(COMMAND bash -c "rm -rf ${ANAKIN_INSTALL_DIR}/*")
 execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; wget -q ${ANAKIN_LIBRARY_URL}")
 execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
