@@ -60,15 +60,14 @@ def split_lod_tensor(input, mask, level=0):
     This function takes in an input that contains the complete lod information,
     and takes in a mask which is used to mask certain parts of the input.
     The output is the true branch and the false branch with the mask applied to
-    the input at a certain level in the tensor.
-
-    Mainly used in IfElse to split data into two parts. Related API: IfElse.
+    the input at a certain level in the tensor. Mainly used in IfElse to split
+    data into two parts.
 
     Args:
         input(tuple|list|None): The input tensor that contains complete
                                 lod information needed to construct the output.
         mask(list): A bool column vector which masks the input.
-        level(int): The specific lod level to rank.
+        level(int): The specific lod level to split.
 
     Returns:
         Variable: The true branch of tensor as per the mask applied to input.
@@ -108,8 +107,9 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
 
     This function takes in an input :math:`x`, the True branch, the False
     branch and a binary :math:`mask`. Using this information, this function
-    merges the True and False branches of the tensor into a single Output
-    at a certain lod level indiacted by :math:`level`.
+    merges the True and False branches of the tensor into a single tensor as
+    output at a certain lod level indicated by :math:`level`. Used in IfElse
+    to merge the output if True block and False Block.
 
     Args:
         in_true(tuple|list|None): The True branch to be merged.
@@ -117,7 +117,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
         x(tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
         mask(list): A bool column vector which masks the input.
-        level(int): The specific lod level to rank.
+        level(int): The specific lod level to merge.
 
     Returns:
         Variable: The merged output tensor.
