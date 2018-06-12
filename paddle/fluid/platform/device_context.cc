@@ -14,6 +14,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
@@ -72,15 +73,40 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
+using framework::ThreadPool;
+
+class EigenThreadPoolDevice : public Eigen::ThreadPoolInterface {
+ public:
+  EigenThreadPoolDevice() {
+    // pool_ = EigenThreadPool::GetInstanceIO();
+    pool_ = ThreadPool::GetInstance();
+  }
+  ~EigenThreadPoolDevice() override {}
+  void Schedule(std::function<void()> fn) override { pool_->Run(fn); }
+
+  void Cancel() override {}
+
+  int NumThreads() const override { return pool_->Threads(); }
+
+  int CurrentThreadId() const override { return 0; };
+
+ private:
+  ThreadPool* pool_;  // singleton now owned
+};
+
 CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+  eigen_threadpool_.reset(new EigenThreadPoolDevice);
+  eigen_device_.reset(new Eigen::ThreadPoolDevice(
+      eigen_threadpool_.get(), eigen_threadpool_->NumThreads()));
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+  eigen_threadpool_.reset(new EigenThreadPoolDevice);
+  eigen_device_.reset(new Eigen::ThreadPoolDevice(
+      eigen_threadpool_.get(), eigen_threadpool_->NumThreads()));
 }
 
-Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
+Eigen::ThreadPoolDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
@@ -200,15 +226,19 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+  eigen_threadpool_.reset(new EigenThreadPoolDevice);
+  eigen_device_.reset(new Eigen::ThreadPoolDevice(
+      eigen_threadpool_.get(), eigen_threadpool_->NumThreads()));
 }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
     : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+  eigen_threadpool_.reset(new EigenThreadPoolDevice);
+  eigen_device_.reset(new Eigen::ThreadPoolDevice(
+      eigen_threadpool_.get(), eigen_threadpool_->NumThreads()));
 }
 
-Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
+Eigen::ThreadPoolDevice* CUDAPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 

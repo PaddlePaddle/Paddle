@@ -27,9 +27,12 @@ limitations under the License. */
 #include <mkldnn.hpp>
 #endif
 
+#define EIGEN_USE_THREADS
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+#include "unsupported/Eigen/CXX11/ThreadPool"
 
 #include "glog/logging.h"
 
@@ -44,18 +47,22 @@ class DeviceContext {
   virtual void Wait() const {}
 };
 
+class EigenThreadPoolDevice;
+
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
 
-  Eigen::DefaultDevice* eigen_device() const;
+  Eigen::ThreadPoolDevice* eigen_device() const;
 
   Place GetPlace() const override;
 
  private:
   CPUPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  std::unique_ptr<Eigen::ThreadPoolDevice> eigen_device_;  // eigen device
+  std::unique_ptr<EigenThreadPoolDevice>
+      eigen_threadpool_;  // wrapper on paddle threadpool
 };
 
 template <typename Place>
@@ -135,11 +142,13 @@ class CUDAPinnedDeviceContext : public DeviceContext {
 
   Place GetPlace() const override;
 
-  Eigen::DefaultDevice* eigen_device() const;
+  Eigen::ThreadPoolDevice* eigen_device() const;
 
  private:
   CUDAPinnedPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  std::unique_ptr<Eigen::ThreadPoolDevice> eigen_device_;  // eigen device
+  std::unique_ptr<EigenThreadPoolDevice>
+      eigen_threadpool_;  // wrapper on paddle threadpool
 };
 
 template <>
