@@ -156,9 +156,9 @@ void ParallelExecutor::BCastParamsToGPUs(
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
+      std::vector<void *> buffers;
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
-      platform::NCCLGroupGuard guard;
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -170,12 +170,21 @@ void ParallelExecutor::BCastParamsToGPUs(
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.type());
         }
-
-        auto &nccl_ctx = member_->nccl_ctxs_->at(place);
-        platform::dynload::ncclBcast(buffer, numel, data_type, 0,
-                                     nccl_ctx.comm_, nccl_ctx.stream());
+        buffers.push_back(buffer);
       }
-      member_->nccl_ctxs_->WaitAll();
+
+      PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
+                        "variables' buffer size to bcast NOT equal to places");
+      {
+        platform::NCCLGroupGuard guard;
+        for (size_t i = 0; i < member_->places_.size(); ++i) {
+          auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
+          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
+        }
+        member_->nccl_ctxs_->WaitAll();
+      }
+
 #else
       PADDLE_THROW("Not compiled with CUDA");
 #endif
