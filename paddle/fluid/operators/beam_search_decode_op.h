@@ -27,7 +27,7 @@ using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 
 // all the lod have 2 levels.
-// The First is source level, the second is sentence level.
+// The first is source level, the second is sentence level.
 // source level describe how many prefixes (branchs) for each source sentece
 // (beam). sentence level describe how these candidates belong to the prefixes.
 const size_t kSourceLevel = 0;
