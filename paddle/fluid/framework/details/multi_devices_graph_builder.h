@@ -47,14 +47,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
-
-  int GetRemoteVarDeviceId(const std::string &var_name) const override {
-    auto got = remote_vars_devices_.find(var_name);
-    if (got != remote_vars_devices_.end()) {
-      return got->second;
-    }
-    return -1;
-  }
+  int GetVarDeviceID(const std::string &varname) const;
 
  private:
   void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
@@ -105,9 +98,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
-  int GetOpDeviceID(
-      const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
-      const OpDesc &op) const;
+  int GetOpDeviceID(const OpDesc &op) const;
 
   void InsertAllReduceOp(SSAGraph *result, const std::string &og) const;
 
@@ -120,7 +111,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   BuildStrategy strategy_;
-  mutable std::unordered_map<std::string, int> remote_vars_devices_;
+  mutable std::unordered_map<std::string, int> var_name_on_devices_;
 
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
