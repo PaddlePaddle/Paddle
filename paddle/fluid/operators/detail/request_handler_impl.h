@@ -29,7 +29,6 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/request_handler.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +39,13 @@ class RequestSendHandler final : public RequestHandler {
   explicit RequestSendHandler(bool sync_mode) : RequestHandler(sync_mode) {}
   virtual ~RequestSendHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
-              framework::Variable* var, framework::Variable** outvar) override;
+              framework::Variable* var, framework::Variable** outvar,
+              const std::string& out_var_name = "") override;
+  void ResetSparseVarRecorder();
+
+ private:
+  std::mutex mutex_sparse_vars_;
+  std::vector<framework::Variable*> sparse_vars_;
 };
 
 class RequestGetHandler final : public RequestHandler {
@@ -48,7 +53,8 @@ class RequestGetHandler final : public RequestHandler {
   explicit RequestGetHandler(bool sync_mode) : RequestHandler(sync_mode) {}
   virtual ~RequestGetHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
-              framework::Variable* var, framework::Variable** outvar) override;
+              framework::Variable* var, framework::Variable** outvar,
+              const std::string& out_var_name = "") override;
 };
 
 class RequestPrefetchHandler final : public RequestHandler {
@@ -56,7 +62,8 @@ class RequestPrefetchHandler final : public RequestHandler {
   explicit RequestPrefetchHandler(bool sync_mode) : RequestHandler(sync_mode) {}
   virtual ~RequestPrefetchHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
-              framework::Variable* var, framework::Variable** outvar) override;
+              framework::Variable* var, framework::Variable** outvar,
+              const std::string& out_var_name = "") override;
 };
 
 }  // namespace detail

@@ -18,6 +18,7 @@ import framework
 import executor
 import warnings
 import sys
+import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -101,7 +102,9 @@ class ParallelExecutor(object):
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         else:
-            for i in xrange(multiprocessing.cpu_count()):
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            for i in xrange(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
@@ -110,19 +113,17 @@ class ParallelExecutor(object):
 
         if exec_strategy is None:
             exec_strategy = ExecutionStrategy()
-            if use_cuda:
-                exec_strategy.use_event = True
-            else:
-                exec_strategy.use_event = False
+        exec_strategy.use_cuda = use_cuda
 
         if exec_strategy.num_threads == 0:
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                exec_strategy.num_threads = len(self._places) * 2
+                exec_strategy.num_threads = len(self._places) * 4
             else:
-                exec_strategy.num_threads = min(
-                    len(self._places) * 2, multiprocessing.cpu_count())
+                cpu_num = int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+                exec_strategy.num_threads = cpu_num
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
