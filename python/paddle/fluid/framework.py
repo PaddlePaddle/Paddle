@@ -527,6 +527,13 @@ class Operator(object):
     def has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
+    def has_sub_block(self):
+        attr_names = self.attr_names
+        for n in attr_names:
+            if n == 'sub_block':
+                return True
+        return False
+
     def to_string(self, throw_on_error):
         """
         To debug string.

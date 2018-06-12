@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -63,6 +64,10 @@ bool IsCompiledWithCUDA() {
 #else
   return true;
 #endif
+}
+
+int SizeOfType(const framework::proto::VarType::Type &type) {
+  return framework::SizeOfType(framework::ToTypeIndex(type));
 }
 
 PYBIND11_PLUGIN(core) {
@@ -309,6 +314,8 @@ All parameter, weight, gradient are variables in Paddle.
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
+  m.def("size_of_type",
+        [](framework::proto::VarType::Type type) { return SizeOfType(type); });
   m.def("empty_var_name", []() { return framework::kEmptyVarName; });
   m.def("grad_var_suffix", []() { return framework::kGradVarSuffix; });
   m.def_submodule(
