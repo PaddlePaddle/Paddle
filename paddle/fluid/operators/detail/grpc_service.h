@@ -23,7 +23,7 @@
 #include <grpc++/impl/codegen/stub_options.h>
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/detail/grpc_variable_response.h"
 
 #include "paddle/fluid/platform/profiler.h"
 
@@ -42,7 +42,7 @@ class ServerContext;
 // Support parsing/unparsing of tensorflow::VariableResponse.
 // Wire-format is identical to RecvVariableResponse.
 template <>
-class SerializationTraits<paddle::operators::detail::VariableResponse> {
+class SerializationTraits<paddle::operators::detail::GRPCVariableResponse> {
  public:
   static Status Serialize(
       const paddle::operators::detail::VariableResponse& msg,

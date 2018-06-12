@@ -18,11 +18,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/operators/detail/grpc_variable_response.h"
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -171,14 +169,6 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
   }
 
   return true;
-}
-
-int GRPCVariableResponse::Parse(const ::grpc::ByteBuffer& byte_buffer) {
-  GrpcByteBufferSource source;
-  source.Init(byte_buffer);
-  GrpcByteBufferSourceWrapper r(&source);
-
-  return Parse(&r);
 }
 
 int GRPCVariableResponse::Parse(Source* source) {

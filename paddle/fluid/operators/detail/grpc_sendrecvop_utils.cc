@@ -21,7 +21,8 @@ limitations under the License. */
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
+#include "paddle/fluid/operators/detail/grpc_bytebuffer_stream.h"
+#include "paddle/fluid/operators/detail/grpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/grpc_serialize.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
@@ -32,7 +33,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-using VarMsg = sendrecv::VariableMessage;
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
@@ -148,8 +148,13 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
                                framework::Variable** var) {
-  operators::detail::VariableResponse resp(scope, &ctx);
-  PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
+  operators::detail::GRPCVariableResponse resp(scope, &ctx);
+
+  GrpcByteBufferSource source;
+  source.Init(byte_buffer);
+  GrpcByteBufferSourceWrapper r(&source);
+
+  PADDLE_ENFORCE(resp.Parse(&r) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
 }
 

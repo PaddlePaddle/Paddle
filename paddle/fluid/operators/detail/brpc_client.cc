@@ -60,6 +60,9 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
         google::protobuf::Closure* done =
             brpc::NewCallback(&HandleSendResponse, cntl, response);
 
+        :grpc::ByteBuffer req;
+        SerializeToIOBuf(var_name_val, var, *p_ctx, &req);
+
         sendrecv::VariableMessage request;
         ch_ctx->stub->SendVariable(cntl, &request, response, done);
       });

@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
@@ -21,6 +19,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace paddle {

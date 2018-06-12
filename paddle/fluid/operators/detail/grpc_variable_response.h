@@ -28,7 +28,8 @@
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
+#include "paddle/fluid/operators/detail/grpc_bytebuffer_stream.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace paddle {
 namespace operators {
@@ -44,12 +45,6 @@ class GRPCVariableResponse : public VariableResponse {
   virtual ~GRPCVariableResponse() {}
 
   int Parse(Source* source) override;
-
-  // return:
-  // 0:ok.
-  // -1: unkown error.
-  // other: number of error field.
-  int Parse(const ::grpc::ByteBuffer& byte_buffer);
 
  private:
   bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,

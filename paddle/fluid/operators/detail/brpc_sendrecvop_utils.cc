@@ -19,6 +19,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/detail/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/brpc_serialize.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
@@ -27,6 +28,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace detail {
+
+class IOBufWriter {
+  static void Append(butil::IOBuf* iobuf, int k, const char* v, int64_t vlen) {
+    iobuf->Append(reinterpret_cast<char*>(&k), 4);
+    // FIXME(gongwb): use append_zero to avoid copy
+    iobuf->Append(reinterpret_cast<char*>(&vlen), 8) iobuf->Append(v, vlen);
+  }
+};
 
 void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,
@@ -68,24 +77,41 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   }
 
   // TODO(gongwb): use append_zero to avoid data copy.
-  IOBufWriter e;
-  std::string key = "serialized";
-  e.Append(key, payload, paylod_size);
+  IOBufWriter::Append(iobuf, sendrecv::kSerializeFieldNumber, payload,
+                      paylod_size);
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
     size_t rows_memory_size =
         slr->rows().size() * framework::SizeOfType(typeid(int64_t));
 
-    std::string key = "rows";
-    e.Append(key, slr->rows().data(), rows_memory_size);
+    IOBufWriter::Append(iobuf, sendrecv::kRowsFieldNumber, slr->rows().data(),
+                        rows_memory_size);
   }
 }
 
-void DeserializeFromIOBuf(const butil::IOBuf& iobuf,
+class BRPCSourceWrapper : public Source {
+ public:
+  explicit BRPCSourceWrapper(const butil::IOBuf& iobuf) : source_(iobuf) {}
+  ::google::protobuf::io::ZeroCopyInputStream* contents() override {
+    return &source_;
+  }
+
+ private:
+  IOBufAsZeroCopyInputStream source_;
+};
+
+void DeserializeFromIOBuf(const sendrecv::VariableMessage& meta,
+                          const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
-                          framework::Variable** var) {}
+                          framework::Variable** var) {
+  operators::detail::VariableResponse resp(scope, &ctx);
+  BRPCSourceWrapper wrapper(iobuf);
+  PADDLE_ENFORCE(resp.Parse(&wrapper, meta) == 0,
+                 "parse iobuf to tensor error!");
+  *var = resp.GetVar();
+}
 
 }  // namespace detail
 }  // namespace operators

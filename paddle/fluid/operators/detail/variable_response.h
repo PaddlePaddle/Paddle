@@ -25,13 +25,32 @@
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
+
+// Source provides a way for a particular RPC implementation to provide
+// received data to ParseFrom.
+class Source {
+ public:
+  virtual ~Source() {}
+
+  // Return the stream that contains the data to be parsed.
+  // Note that this method might be invoked more than once if
+  // ParseFrom needs to fall back to a more expensive parsing method.
+  // Every call must return a stream pointing at the beginning of
+  // the serialized RecvTensorResponse.
+  //
+  // Note that a subsequent call to contents() invalidates previous
+  // results of contents().
+  //
+  // Ownership of the returned stream is retained by the Source and
+  // should not be deleted by the caller.
+  virtual ::google::protobuf::io::ZeroCopyInputStream* contents() = 0;
+};
 
 class VariableResponse {
  public:
@@ -50,9 +69,9 @@ class VariableResponse {
     }
   }
 
-  virtual int Parse(Source* source, sendrecv::VariableResponse* meta) {
-    meta_.set_varname(meta->varname());
-    meta_.set_out_varname(meta->out_var_name());
+  virtual int Parse(Source* source, const sendrecv::VariableResponse& meta) {
+    meta_.set_varname(meta.varname());
+    meta_.set_out_varname(meta.out_var_name());
     return Parse(source);
   }
 

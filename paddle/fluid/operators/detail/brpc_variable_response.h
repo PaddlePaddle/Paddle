@@ -22,13 +22,12 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 
-#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace paddle {
 namespace operators {
@@ -45,8 +44,6 @@ class BRPCVariableResponse : public VariableResponse {
 
   // parse attchment from iobuf
   int Parse(Source* source) override;
-
- private:
 };
 
 };  // namespace detail

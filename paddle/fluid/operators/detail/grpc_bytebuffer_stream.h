@@ -24,6 +24,7 @@ limitations under the License. */
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "grpc++/grpc++.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 
 namespace grpc {
 // A ZeroCopyInputStream that reads from grpc_byte_buffer
@@ -107,25 +108,6 @@ class GrpcBufferReader final
 namespace paddle {
 namespace operators {
 namespace detail {
-// Source provides a way for a particular RPC implementation to provide
-// received data to ParseFrom.
-class Source {
- public:
-  virtual ~Source() {}
-
-  // Return the stream that contains the data to be parsed.
-  // Note that this method might be invoked more than once if
-  // ParseFrom needs to fall back to a more expensive parsing method.
-  // Every call must return a stream pointing at the beginning of
-  // the serialized RecvTensorResponse.
-  //
-  // Note that a subsequent call to contents() invalidates previous
-  // results of contents().
-  //
-  // Ownership of the returned stream is retained by the Source and
-  // should not be deleted by the caller.
-  virtual ::google::protobuf::io::ZeroCopyInputStream* contents() = 0;
-};
 
 // A ZeroCopyInputStream that reads from a grpc::ByteBuffer.
 class GrpcByteBufferSource
