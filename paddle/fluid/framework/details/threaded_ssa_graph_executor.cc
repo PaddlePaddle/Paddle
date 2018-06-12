@@ -185,6 +185,7 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
     ready_vars->Push(var);
   }
 }
+
 void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
@@ -192,7 +193,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       if (VLOG_IS_ON(10)) {
         VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       }
-      op->Run(strategy_.use_event_);
+      op->Run(strategy_.use_cuda_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
