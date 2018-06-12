@@ -272,7 +272,9 @@ def dynamic_lstm(input,
                  cell_activation='tanh',
                  candidate_activation='tanh',
                  dtype='float32',
-                 name=None):
+                 name=None,
+                 h_0=None,
+                 c_0=None):
     """
     **Dynamic LSTM Layer**
 
@@ -358,6 +360,12 @@ def dynamic_lstm(input,
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        h_0(Variable): The initial hidden state is an optional
+                       input. This is a tensor with shape (N x D), where N is the
+                       batch size and D is the hidden size.
+        c_0(Variable): The initial cell state is an optional
+                       input. This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -387,12 +395,19 @@ def dynamic_lstm(input,
     cell = helper.create_tmp_variable(dtype)
     batch_gate = helper.create_tmp_variable(dtype)
     batch_cell_pre_act = helper.create_tmp_variable(dtype)
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    if h_0:
+        assert h_0.shape == (-1, size), \
+            'The shape of h0 should be (-1, %d)' % size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (-1, size), \
+            'The shape of c0 should be (-1, %d)' % size
+        inputs['C0'] = c_0
 
     helper.append_op(
         type='lstm',
-        inputs={'Input': input,
-                'Weight': weight,
-                'Bias': bias},
+        inputs=inputs,
         outputs={
             'Hidden': hidden,
             'Cell': cell,
@@ -678,8 +693,8 @@ def dynamic_gru(input,
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     if h_0 != None:
-        assert h_0.shape == (
-            size, size), 'The shape of h0 should be(%d, %d)' % (size, size)
+        assert h_0.shape == (-1, size
+                             ), 'The shape of h0 should be(-1, %d)' % size
         inputs['h0'] = h_0
 
     hidden = helper.create_tmp_variable(dtype)
