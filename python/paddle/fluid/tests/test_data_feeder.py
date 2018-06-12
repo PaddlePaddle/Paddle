@@ -25,8 +25,8 @@ class TestDataFeeder(unittest.TestCase):
 
         self.assertEqual(result['image'].shape(), [2, 1, 28, 28])
         self.assertEqual(result['label'].shape(), [2, 1])
-        self.assertEqual(result['image'].lod(), [])
-        self.assertEqual(result['label'].lod(), [])
+        self.assertEqual(result['image'].recursive_sequence_lengths(), [])
+        self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
     def test_lod_level_1_converter(self):
         # lod_level = 1
@@ -44,8 +44,9 @@ class TestDataFeeder(unittest.TestCase):
 
         self.assertEqual(result['sentences'].shape(), [9, 1])
         self.assertEqual(result['label'].shape(), [3, 1])
-        self.assertEqual(result['sentences'].lod(), [[3, 2, 4]])
-        self.assertEqual(result['label'].lod(), [])
+        self.assertEqual(result['sentences'].recursive_sequence_lengths(),
+                         [[3, 2, 4]])
+        self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
     def test_lod_level_2_converter(self):
         # lod_level = 2
@@ -63,8 +64,9 @@ class TestDataFeeder(unittest.TestCase):
 
         self.assertEqual(result['paragraphs'].shape(), [9, 1])
         self.assertEqual(result['label'].shape(), [2, 1])
-        self.assertEqual(result['paragraphs'].lod(), [[2, 1], [3, 2, 4]])
-        self.assertEqual(result['label'].lod(), [])
+        self.assertEqual(result['paragraphs'].recursive_sequence_lengths(),
+                         [[2, 1], [3, 2, 4]])
+        self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
 
 if __name__ == '__main__':

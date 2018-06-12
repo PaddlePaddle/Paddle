@@ -67,7 +67,7 @@ def create_lod_tensor(data, lod, place):
     elif isinstance(data, np.ndarray):
         tensor = core.LoDTensor()
         tensor.set(data, place)
-        tensor.set_lod(lod)
+        tensor.set_recursive_sequence_lengths(lod)
         assert tensor.has_valid_lod(), "the provided lod info is invalid"
         return tensor
     else:

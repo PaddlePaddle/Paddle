@@ -29,7 +29,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
 
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
-      PADDLE_ENFORCE_GT(level0.size(), 0,
+      PADDLE_ENFORCE_GT(level0.size(), 1,
                         "If Input(Y) not provided, the target lod should be "
                         "specified by attribute `target_lod`.");
     }

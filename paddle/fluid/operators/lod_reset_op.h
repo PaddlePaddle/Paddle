@@ -49,37 +49,27 @@ class LoDResetKernel : public framework::OpKernel<T> {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
-        // the lod level info here is length-based
         level0 = std::vector<int>(lod, lod + lod_t->numel());
       }
     } else {
-      // the lod level info here is length-based
       level0 = ctx.Attr<std::vector<int>>("target_lod");
     }
 
-    // obtain the offset-based LoD from the length-based one
-    std::vector<int> offset_level0;
-    offset_level0.reserve(level0.size() + 1);
-    offset_level0.push_back(0);
-    for (size_t i = 0; i < level0.size(); ++i) {
-      offset_level0.push_back(offset_level0.back() + level0[i]);
-    }
-
-    PADDLE_ENFORCE_GT(offset_level0.size(), 1UL,
+    PADDLE_ENFORCE_GT(level0.size(), 1UL,
                       "Size of target LoD should be greater than 1.");
-    PADDLE_ENFORCE_EQ(offset_level0[0], 0,
+    PADDLE_ENFORCE_EQ(level0[0], 0,
                       "Target LoD should be a vector starting from 0.");
-    PADDLE_ENFORCE_EQ(offset_level0.back(), in->dims()[0],
+    PADDLE_ENFORCE_EQ(level0.back(), in->dims()[0],
                       "Target LoD should be a vector end with the "
                       "first dimension of Input(X).");
-    for (size_t i = 0; i < offset_level0.size() - 1; ++i) {
-      PADDLE_ENFORCE(offset_level0[i + 1] > offset_level0[i],
+    for (size_t i = 0; i < level0.size() - 1; ++i) {
+      PADDLE_ENFORCE(level0[i + 1] > level0[i],
                      "Target LoD should be an ascending vector.");
     }
 
     // cast level0 to size_t
-    std::vector<size_t> ulevel0(offset_level0.size(), 0);
-    std::transform(offset_level0.begin(), offset_level0.end(), ulevel0.begin(),
+    std::vector<size_t> ulevel0(level0.size(), 0);
+    std::transform(level0.begin(), level0.end(), ulevel0.begin(),
                    [](int a) { return static_cast<size_t>(a); });
     framework::LoD target_lod;
     target_lod.push_back(ulevel0);

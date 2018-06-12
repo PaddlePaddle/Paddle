@@ -22,18 +22,18 @@ class TestLoDTensor(unittest.TestCase):
     def test_pybind_lod(self):
         tensor = fluid.LoDTensor()
         lod = []
-        tensor.set_lod(lod)
+        tensor.set_recursive_sequence_lengths(lod)
         self.assertTrue(tensor.has_valid_lod())
         lod = [[], [1], [3]]
-        tensor.set_lod(lod)
+        tensor.set_recursive_sequence_lengths(lod)
         self.assertFalse(tensor.has_valid_lod())
         lod = [[0], [2], [3]]
-        tensor.set_lod(lod)
+        tensor.set_recursive_sequence_lengths(lod)
         self.assertFalse(tensor.has_valid_lod())
 
         lod = [[1, 2, 3]]
-        tensor.set_lod(lod)
-        self.assertEqual(tensor.lod(), lod)
+        tensor.set_recursive_sequence_lengths(lod)
+        self.assertEqual(tensor.recursive_sequence_lengths(), lod)
         tensor.set(np.random.random([6, 1]), fluid.CPUPlace())
         self.assertTrue(tensor.has_valid_lod())
         tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
@@ -42,12 +42,12 @@ class TestLoDTensor(unittest.TestCase):
         # Each level's sum should be equal to the number of items in the next level
         # Moreover, last level's sum should be equal to the tensor height
         lod = [[2, 1], [1, 3, 1, 2, 1]]
-        tensor.set_lod(lod)
-        self.assertEqual(tensor.lod(), lod)
+        tensor.set_recursive_sequence_lengths(lod)
+        self.assertEqual(tensor.recursive_sequence_lengths(), lod)
         tensor.set(np.random.random([8, 1]), fluid.CPUPlace())
         self.assertFalse(tensor.has_valid_lod())
         lod = [[2, 3], [1, 3, 1, 2, 1]]
-        tensor.set_lod(lod)
+        tensor.set_recursive_sequence_lengths(lod)
         self.assertTrue(tensor.has_valid_lod())
         tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
         self.assertFalse(tensor.has_valid_lod())
@@ -60,19 +60,19 @@ class TestLoDTensor(unittest.TestCase):
         self.assertRaises(AssertionError, create_lod_tensor, data, wrong_lod,
                           fluid.CPUPlace())
         tensor = create_lod_tensor(data, correct_lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), correct_lod)
+        self.assertEqual(tensor.recursive_sequence_lengths(), correct_lod)
 
         # Create LoDTensor from numpy array
         data = np.random.random([10, 1])
         lod = [[2, 1], [3, 3, 4]]
         tensor = create_lod_tensor(data, lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), lod)
+        self.assertEqual(tensor.recursive_sequence_lengths(), lod)
 
         # Create LoDTensor from another LoDTensor, they are differnt instances
         new_lod = [[2, 2, 1], [1, 2, 2, 3, 2]]
         new_tensor = create_lod_tensor(tensor, new_lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), lod)
-        self.assertEqual(new_tensor.lod(), new_lod)
+        self.assertEqual(tensor.recursive_sequence_lengths(), lod)
+        self.assertEqual(new_tensor.recursive_sequence_lengths(), new_lod)
 
     def test_create_random_int_lodtensor(self):
         # The shape of a word, commonly used in speech and NLP problem, is [1]
@@ -83,7 +83,7 @@ class TestLoDTensor(unittest.TestCase):
         high = dict_size - 1
         tensor = create_random_int_lodtensor(lod, shape,
                                              fluid.CPUPlace(), low, high)
-        self.assertEqual(tensor.lod(), lod)
+        self.assertEqual(tensor.recursive_sequence_lengths(), lod)
         self.assertEqual(tensor.shape(), [10, 1])
 
 
