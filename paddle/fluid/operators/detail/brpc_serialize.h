@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <sys/time.h>
 #include <iostream>
 #include <string>
@@ -24,38 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/detail/brpc_serialize.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
-
-using VarMsg = sendrecv::VariableMessage;
-
-void GetTensorPayload(framework::Variable* var,
-                      const platform::DeviceContext& ctx, VarMsg* request,
-                      void** payload, size_t* payload_size);
-
-void GetSelectedRowsPayload(framework::Variable* var,
-                            const platform::DeviceContext& ctx, VarMsg* request,
-                            void** payload, size_t* payload_size);
-
-inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
-  switch (type) {
-    case sendrecv::VariableMessage::FP32:
-      return typeid(float);  // NOLINT
-    case sendrecv::VariableMessage::FP64:
-      return typeid(double);  // NOLINT
-    case sendrecv::VariableMessage::INT32:
-      return typeid(int);  // NOLINT
-    case sendrecv::VariableMessage::INT64:
-      return typeid(int64_t);  // NOLINT
-    case sendrecv::VariableMessage::BOOL:
-      return typeid(bool);  // NOLINT
-    default:
-      PADDLE_THROW("Not support type %d", type);
-  }
-}
-
-}  // namespace detail
+namespace detail {}  // namespace detail
 }  // namespace operators
 }  // namespace paddle
