@@ -1132,6 +1132,28 @@ class ConditionalBlock(object):
 
 
 class Switch(object):
+    """
+    **Switch Class**
+
+    Many programming languages provide `switch` as a generalization of `if-elif-else`.
+    Switch class works just like a `if-elif-else`.
+
+    The Semantics:
+
+    1. A `switch` control-flow checks cases one-by-one.
+    1. The condition of each case is a boolean value, which is a scalar.
+    1. It runs the first matched case, or the default case if there is one.
+    1. Once it matches a case, it runs the corresponding branch and only that branch.
+
+    Examples:
+        .. code-block:: python
+
+            with control_flow.Switch() as switch:
+                with switch.case(global_step == zero_var):
+                    tensor.assign(input=one_var, output=div_res)
+
+    """
+
     def __init__(self, name=None):
         self.helper = LayerHelper('switch', name=name)
         self.inside_scope = False
@@ -1161,7 +1183,8 @@ class Switch(object):
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
-        """create a default case for this switch
+        """
+        create a default case for this switch
         """
         pre_cond_num = len(self.pre_not_conditions)
         if pre_cond_num == 0:
