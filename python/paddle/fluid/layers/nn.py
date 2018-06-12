@@ -262,6 +262,7 @@ def embedding(input,
 
 
 # TODO(qijun): expose H0 and C0
+@templatedoc(op_type="lstm")
 def dynamic_lstm(input,
                  size,
                  param_attr=None,
@@ -274,64 +275,19 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
-    **Dynamic LSTM Layer**
-
-    The defalut implementation is diagonal/peephole connection
-    (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
-
-    .. math::
-
-        i_t & = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i)
-
-        f_t & = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f)
-
-        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
-
-        o_t & = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o)
-
-        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-        h_t & = o_t \odot act_h(c_t)
-
-    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is
-    the matrix of weights from the input gate to the input), :math:`W_{ic}, \
-    W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In
-    our implementation, we use vectors to reprenset these diagonal weight
-    matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input
-    gate bias vector), :math:`\sigma` is the non-linear activations, such as
-    logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input
-    gate, forget gate, output gate, and cell activation vectors, respectively,
-    all of which have the same size as the cell output activation vector :math:`h`.
-
-    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
-    and :math:`act_h` are the cell input and cell output activation functions
-    and `tanh` is usually used for them. :math:`\\tilde{c_t}` is also called
-    candidate hidden state, which is computed based on the current input and
-    the previous hidden state.
-
-    Set `use_peepholes` to `False` to disable peephole connection. The formula
-    is omitted here, please refer to the paper
-    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-
-    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
-    operations on the input :math:`x_{t}` are NOT included in this operator.
-    Users can choose to use fully-connect layer before LSTM layer.
+    ${comment}
 
     Args:
-        input(Variable): The input of dynamic_lstm layer, which supports
-                         variable-time length input sequence. The underlying
-                         tensor in this Variable is a matrix with shape
-                         (T X 4D), where T is the total time steps in this
-                         mini-batch, D is the hidden size.
-        size(int): 4 * hidden size.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+        input (Variable): ${input_comment}
+        size (int): 4 * hidden size.
+        param_attr (ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
                                - Weights = {:math:`W_{ch}, W_{ih}, \
                                                 W_{fh}, W_{oh}`}
                                - The shape is (D x 4D), where D is the hidden
                                  size.
-        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
@@ -343,21 +299,14 @@ def dynamic_lstm(input,
                                  - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
                                  - The shape is (1 x 7D).
-        use_peepholes(bool): Whether to enable diagonal/peephole connections,
-                             default `True`.
-        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
-        gate_activation(str): The activation for input gate, forget gate and
-                              output gate. Choices = ["sigmoid", "tanh", "relu",
-                              "identity"], default "sigmoid".
-        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
-                              "tanh", "relu", "identity"], default "tanh".
-        candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
-                              default "tanh".
-        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        use_peepholes (bool): ${use_peepholes_comment}
+        is_reverse (bool): ${is_reverse_comment}
+        gate_activation (str): ${gate_activation_comment}
+        cell_activation (str): ${cell_activation_comment}
+        candidate_activation (str): ${candidate_activation_comment}
+        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \

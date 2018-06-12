@@ -198,20 +198,20 @@ c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
 h_t = o_t \odot act_h(c_t)
 $$
 
-where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
-of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
-are diagonal weight matrices for peephole connections. In our implementation,
-we use vectors to reprenset these diagonal weight matrices. The b terms
-denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
-is the non-line activations, such as logistic sigmoid function, and
-$i, f, o$ and $c$ are the input gate, forget gate, output gate,
-and cell activation vectors, respectively, all of which have the same size as
-the cell output activation vector $h$.
-
-The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
-are the cell input and cell output activation functions and `tanh` is usually
-used for them. $\tilde{c_t}$ is also called candidate hidden state,
-which is computed based on the current input and the previous hidden state.
+- W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
+  of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
+  are diagonal weight matrices for peephole connections. In our implementation,
+  we use vectors to reprenset these diagonal weight matrices.
+- The b terms denote bias vectors ($b_i$ is the input gate bias vector).
+- $\sigma$ is the non-line activations, such as logistic sigmoid function.
+- $i, f, o$ and $c$ are the input gate, forget gate, output gate,
+  and cell activation vectors, respectively, all of which have the same size as
+  the cell output activation vector $h$.
+- The $\odot$ is the element-wise product of the vectors.
+- $act_g$ and $act_h$ are the cell input and cell output activation functions
+  and `tanh` is usually used for them.
+- $\tilde{c_t}$ is also called candidate hidden state,
+  which is computed based on the current input and the previous hidden state.
 
 Set `use_peepholes` False to disable peephole connection. The formula
 is omitted here, please refer to the paper
