@@ -62,6 +62,8 @@ def split_lod_tensor(input, mask, level=0):
     The output is the true branch and the false branch with the mask applied to
     the input at a certain level in the tensor.
 
+    Mainly used in IfElse to split data into two parts. Related API: IfElse.
+
     Args:
         input(tuple|list|None): The input tensor that contains complete
                                 lod information needed to construct the output.
@@ -83,6 +85,7 @@ def split_lod_tensor(input, mask, level=0):
 
           out_true, out_false = layers.split_lod_tensor(
                 input=x, mask=y, level=level)
+
     """
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_tmp_variable(dtype=input.dtype)
@@ -887,14 +890,18 @@ def array_write(x, i, array=None):
 
 
 def create_array(dtype):
-    """This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
-    LayerHelper.
+    """
+    **Create LoDTensor Array**
+
+    This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
+    LayerHelper. It is mainly used to implement RNN with array_write, array_read
+    and While.
 
     Args:
         dtype (int|float): The data type of the elements in the array.
 
     Returns:
-        Variable: The tensor variable storing the elements of data type.
+        Variable: The lod_tensor_array variable storing the elements of data type.
 
     Examples:
         .. code-block:: python
@@ -1020,8 +1027,13 @@ def shrink_memory(x, i, table):
 
 
 def array_length(array):
-    """This function performs the operation to find the length of the input
+    """
+    **Get the length of Input LoDTensorArray**
+
+    This function performs the operation to find the length of the input
     LOD_TENSOR_ARRAY.
+
+    Related API: array_read, array_write, While.
 
     Args:
         array (LOD_TENSOR_ARRAY): The input array that will be used
