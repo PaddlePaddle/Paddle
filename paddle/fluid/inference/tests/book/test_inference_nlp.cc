@@ -29,6 +29,7 @@ DEFINE_string(data_file, "", "File of input index data.");
 DEFINE_int32(repeat, 100, "Running the inference program repeat times");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
 DEFINE_int32(num_threads, 1, "Number of threads should be used");
+DECLARE_bool(use_mkldnn);
 
 inline double GetCurrentMs() {
   struct timeval time;
