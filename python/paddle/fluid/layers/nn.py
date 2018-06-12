@@ -2467,19 +2467,21 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     The l2 normalize layer normalizes `x` along dimension `axis` using an L2
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
-    output = x / sqrt(max(sum(x**2), epsilon))
+    .. math::
+    y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
 
     For `x` with more dimensions, this layer independently normalizes each 1-D
     slice along dimension `axis`.
 
     Args:
        x(Variable|list): The input tensor to l2_normalize layer.
-       axis(int): Dimension along which to normalize the input.
-       epsilon(float): A lower bound value for `x`'s l2 norm. sqrt(epsilon) will
-                       be used as the divisor if the l2 norm of `x` is less than
-                       sqrt(epsilon).
+       axis(int): The axis on which to apply normalization. If `axis < 0`,
+           the dimension to normalization is rank(X) + axis. -1 is the
+           last dimension.
+       epsilon(float): The epsilon value is used to avoid division by zero,
+           the defalut value is 1e-10.
        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+           will be named automatically.
 
 
     Returns:
@@ -2498,46 +2500,17 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         axis = 0
     helper = LayerHelper("l2_normalize", **locals())
 
-    square = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(type="square", inputs={"X": x}, outputs={"Out": square})
-
-    reduced_sum = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type="reduce_sum",
-        inputs={"X": square},
-        outputs={"Out": reduced_sum},
-        attrs={
-            "dim": [1] if axis is None else [axis],
-            "keep_dim": True,
-            "reduce_all": False
-        })
-
-    # TODO(caoying) A lower bound value epsilon for the norm is needed to
-    # imporve the numeric stability of reciprocal. This requires a maximum_op.
-    rsquare = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type="reciprocal", inputs={"X": reduced_sum}, outputs={"Out": rsquare})
-
-    # TODO(caoying) the current elementwise_mul operator does not support a
-    # general broadcast rule which broadcasts input(Y) to have the same
-    # dimension with Input(X) starting from a specified dimension. So this
-    # exanpsion is requred. Once a general broadcast rule is spported, this
-    # expanding canbe removed.
-    rsquare_expanded = helper.create_tmp_variable(dtype=x.dtype)
-    expand_times = [1] * len(x.shape)
-    expand_times[axis] = int(x.shape[axis])
-    helper.append_op(
-        type="expand",
-        inputs={"X": rsquare},
-        outputs={"Out": rsquare_expanded},
-        attrs={"expand_times": expand_times})
-
     out = helper.create_tmp_variable(dtype=x.dtype)
+    norm = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="elementwise_mul",
-        inputs={"X": x,
-                "Y": rsquare_expanded},
-        outputs={"Out": out})
+        type="norm",
+        inputs={"X": x},
+        outputs={"Out": out,
+                 "Norm": norm},
+        attrs={
+            "axis": 1 if axis is None else axis,
+            "epsilon": epsilon,
+        })
     return out
 
 
