@@ -21,15 +21,17 @@ class MergeIdsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}");
-    AddInput("X",
-             "(LoDTensor) the input tensor with shape{batch_num, N}, N is the "
-             "size of embedding table")
+    AddInput(
+        "X",
+        "(LoDTensors) multi input tensor with shape{batch_num, N}, N is the "
+        "size of embedding table")
         .AsDuplicable();
     AddOutput("Out", "(LoDTensor) The merged outputs of the input tensors.");
 
     AddComment(R"DOC(
 Merge multi LoDTensor's into one according to Ids's shard num.
-The values in the input LoDTensor are lookuped from the output of splite_ids_op
+The values in the input LoDTensor are lookuped from the output of split_ids_op
+
 Example:
   Input:
     Ids = [1,2,3,4,5,6]
