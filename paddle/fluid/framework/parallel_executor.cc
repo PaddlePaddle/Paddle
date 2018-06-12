@@ -142,7 +142,9 @@ void ParallelExecutor::BCastParamsToGPUs(
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
+#ifdef PADDLE_WITH_CUDA
     auto &dims = main_tensor.dims();
+#endif
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
       std::vector<void *> buffers;
@@ -182,7 +184,6 @@ void ParallelExecutor::BCastParamsToGPUs(
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-
 #ifdef PADDLE_WITH_CUDA
         if (use_cuda) {
           t->Resize(dims);
