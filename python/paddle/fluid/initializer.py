@@ -15,11 +15,13 @@
 import framework
 import numpy as np
 import contextlib
+from framework import convert_np_dtype_to_dtype_
+from core import VarDesc
 
 __all__ = [
-    'Constant', 'Uniform', 'Normal', 'Xavier', 'force_init_on_cpu',
+    'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'force_init_on_cpu',
     'init_on_cpu', 'ConstantInitializer', 'UniformInitializer',
-    'NormalInitializer', 'XavierInitializer'
+    'NormalInitializer', 'XavierInitializer', 'BilinearInitializer'
 ]
 
 _force_init_on_cpu_ = False
@@ -422,6 +424,102 @@ class MSRAInitializer(Initializer):
         return op
 
 
+class BilinearInitializer(Initializer):
+    """Implements the bilinear initializer.
+
+    This initializer can be used in transposed convolution operator to
+    act as upsampling. Users can upsample a feature map with shape of
+    (B, C, H, W) by any integer factor. The usage is:
+  
+    >>>  factor = 2
+    >>>  w_attr = ParamAttr(learning_rate=0., regularizer=L2Decay(0.),
+    >>>                     initializer=Bilinear())
+    >>>  conv_up = fluid.layers.conv2d_transpose(
+    >>>      input,
+    >>>      num_filters=C,
+    >>>      output_size=None,
+    >>>      filter_size=2 * factor - factor % 2,
+    >>>      padding=ceil((factor - 1) / 2.),
+    >>>      stride=factor,
+    >>>      groups=C,
+    >>>      param_attr=w_attr,
+    >>>      bias_attr=False)
+
+
+    Where, `num_filters=C` and `groups=C` means this is channel-wise tranposed
+    convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
+    This initializer will set a (K, K) interpolation kernel for every channel
+    of the filter identically. The resulting shape of the output feature map
+    will be (B, C, factor * H, factor * W). Note that the learning rate and the
+    weight decay are set to 0 in order to keep coefficient values of bilinear
+    interpolation unchanged during training. 
+    """
+
+    def __init__(self):
+        """Constructor for BilinearInitializer.
+        """
+        super(BilinearInitializer, self).__init__()
+
+    def __call__(self, var, block):
+        """Add biliear initialization ops for a variable
+
+        Args:
+            var (Variable): Variable that needs to be initialized.
+            block (Block): The block in which initialization ops should
+                           be added.
+
+        Returns:
+            the initialization op
+
+        Raises:
+            ValueError: If type of `var` and `block` is not right.
+                        If the shape of `var` size is not 4 and
+                        var.shape[2] != var.shape[3].
+        """
+        if not isinstance(var, framework.Variable):
+            raise ValueError("var must be framework.Variable.")
+
+        if not isinstance(block, framework.Block):
+            raise ValueError("block must be framework.Block.")
+
+        shape = var.shape
+        if len(shape) != 4:
+            raise ValueError("the length of shape must be 4.")
+        if shape[2] != shape[3]:
+            raise ValueError("shape[2] must be equal to shape[3].")
+
+        weight = np.zeros(np.prod(var.shape), dtype='float32')
+        size = shape[3]
+        # factor
+        f = np.ceil(size / 2.)
+        # center
+        c = (2 * f - 1 - f % 2) / (2. * f)
+        for i in range(np.prod(shape)):
+            x = i % size
+            y = (i / size) % size
+            weight[i] = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
+        weight = np.reshape(weight, shape)
+
+        if var.dtype == VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in weight.flat]
+        else:
+            raise ValueError("Unsupported dtype %s", input.dtype)
+        if np.prod(shape) > 1024 * 1024:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        op = block.append_op(
+            type='assign_value',
+            outputs={'Out': [var]},
+            attrs={
+                'dtype': var.dtype,
+                'shape': list(shape),
+                value_name: values
+            })
+        var.op = op
+        return op
+
+
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
@@ -436,3 +534,4 @@ Uniform = UniformInitializer
 Normal = NormalInitializer
 Xavier = XavierInitializer
 MSRA = MSRAInitializer
+Bilinear = BilinearInitializer
