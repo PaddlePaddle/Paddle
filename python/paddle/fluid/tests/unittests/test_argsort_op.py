@@ -21,6 +21,8 @@ class TestArgsortOp(OpTest):
     def setUp(self):
         self.init_axis()
         x = np.random.random((2, 3, 4, 5)).astype("float32")
+        if self.axis < 0:
+            self.axis = self.axis + len(x.shape)
         self.indices = np.argsort(x, kind='quicksort', axis=self.axis)
         self.out = np.sort(x, kind='quicksort', axis=self.axis)
         self.op_type = "argsort"
@@ -43,6 +45,11 @@ class TestArgsortOpAxis0(TestArgsortOp):
 class TestArgsortOpAxis1(TestArgsortOp):
     def init_axis(self):
         self.axis = 1
+
+
+class TestArgsortOpAxisNeg2(TestArgsortOp):
+    def init_axis(self):
+        self.axis = -2
 
 
 if __name__ == "__main__":

@@ -103,7 +103,7 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto in_dims = input->dims();
-    axis = (axis == -1) ? (in_dims.size() - 1) : axis;
+    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
     const T* in_data = input->data<T>();
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
