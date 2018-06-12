@@ -201,7 +201,7 @@ digraph G {
 }
 </details>
 
-![Image of Yaktocat](https://github.com/tonyyang-svail/Paddle/blob/cpp_tap/paddle/contrib/tape/computation_graph.png)
+![Image](https://github.com/tonyyang-svail/Paddle/blob/cpp_tap/paddle/contrib/dynamic/computation_graph.png)
 
 ## Code Reuse
 
