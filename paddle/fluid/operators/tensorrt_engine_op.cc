@@ -74,6 +74,11 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
   block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
   max_batch_ = context.Attr<int>("max_batch");
   auto max_workspace = context.Attr<int>("max_workspace");
+  auto parameters = context.Attr<std::vector<std::string>>("parameters");
+  for (const auto &param : parameters) {
+    parameters_.insert(param);
+  }
+
   engine_ = Singleton<TRT_EngineManager>::Global().Create(
       max_batch_, max_workspace, &stream_);
   engine_->InitNetwork();
@@ -93,9 +98,8 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
         Vec2TRT_Dims(var->GetShape()));
   }
 
-  // TODO(Superjomn) parameters should be passed after analysised from outside.
   inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
-      block_desc, {}, context.scope(), engine_);
+      block_desc, parameters_, context.scope(), engine_);
 
   // Add outputs
   VLOG(4) << "declare outputs";
