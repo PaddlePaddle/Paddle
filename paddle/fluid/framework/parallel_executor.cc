@@ -161,9 +161,8 @@ void ParallelExecutor::BCastParamsToGPUs(
         }
         auto &nccl_ctx = member_->nccl_ctxs_->at(place);
 
-        if (builder_.get() != nullptr &&
-            builder_->GetRemoteVarDeviceId(var) != -1) {
-          int place_id = builder_->GetRemoteVarDeviceId(var);
+        if (builder_.get() != nullptr && builder_->GetVarDeviceID(var) != -1) {
+          int place_id = builder_->GetVarDeviceID(var);
           platform::dynload::ncclBcast(buffer, numel, data_type, place_id,
                                        nccl_ctx.comm_, nccl_ctx.stream());
         } else {

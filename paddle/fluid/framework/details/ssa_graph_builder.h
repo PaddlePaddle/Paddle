@@ -30,9 +30,7 @@ class SSAGraphBuilder {
   SSAGraphBuilder() {}
   virtual ~SSAGraphBuilder() {}
   virtual std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const = 0;
-  virtual int GetRemoteVarDeviceId(const std::string &var_name) const {
-    return -1;
-  }
+  virtual int GetVarDeviceID(const std::string &var_name) const { return -1; }
 
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
