@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "paddle/contrib/tape/variable.h"
+#include "paddle/contrib/dynamic/variable.h"
 
 namespace paddle {
-namespace tape {
+namespace dynamic {
 
 using VariableHandleMap = std::map<std::string, std::vector<VariableHandle>>;
 

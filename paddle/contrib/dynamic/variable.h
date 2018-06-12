@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
-namespace tape {
+namespace dynamic {
 
 class Variable;
 using VariableHandle = std::shared_ptr<Variable>;

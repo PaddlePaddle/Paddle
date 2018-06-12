@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/contrib/tape/function.h"
+#include "paddle/contrib/dynamic/function.h"
 
-using namespace paddle::tape;
+using namespace paddle::dynamic;
 
 TEST(Tape, TestMLP) {
   LOG(INFO) << "TestMLP";
@@ -35,7 +35,7 @@ TEST(Tape, TestMLP) {
   for (int i = 0; i < 2; ++i) {
     reset_global_tape();
 
-    VariableHandle input(new paddle::tape::Variable("input"));
+    VariableHandle input(new Variable("input"));
     filler(input);
 
     auto loss = mean(linear2(linear1(input)));

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/contrib/tape/tape.h"
+#include "paddle/contrib/dynamic/tape.h"
 
 #include <list>
 #include <map>
@@ -29,7 +29,7 @@
 #include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
-namespace tape {
+namespace dynamic {
 
 // borrowed from
 // https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
@@ -129,6 +129,7 @@ void Tape::AddOp(const std::string &type,
   tape_.emplace_back(type, in_vars, out_vars, attrs);
 }
 
+// Temporary Scope for Operator::Run()
 class ScopeWrapper : public framework::Scope {
  public:
   ScopeWrapper(const VariableHandleMap &in_vars,

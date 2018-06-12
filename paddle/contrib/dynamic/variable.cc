@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/contrib/tape/variable.h"
+#include "paddle/contrib/dynamic/variable.h"
 
 namespace paddle {
-namespace tape {
+namespace dynamic {
 
 void Variable::InitializeVariable() {
   LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();
