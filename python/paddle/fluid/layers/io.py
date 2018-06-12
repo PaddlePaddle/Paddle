@@ -596,6 +596,7 @@ class Preprocessor(object):
 
     Examples:
           .. code-block:: python
+
             preprocessor = fluid.layers.io.Preprocessor(reader=reader)
             with preprocessor.block():
                 img, lbl = preprocessor.inputs()
