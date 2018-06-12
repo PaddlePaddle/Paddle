@@ -46,20 +46,16 @@ class OpConverter {
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
 
-    LOG(INFO) << "converting fluid op " << op_desc.Type() << " to TRT layer";
-
     OpConverter* it{nullptr};
 
     if (op_desc.Type() == "mul") {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
-        LOG(INFO) << "convert fc layer";
         it = Registry<OpConverter>::Lookup("fc");
       }
     }
     if (!it) {
-      LOG(INFO) << "convert " << op_desc.Type() << " layer";
       it = Registry<OpConverter>::Lookup(op_desc.Type());
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
