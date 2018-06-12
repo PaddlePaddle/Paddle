@@ -1541,8 +1541,55 @@ def batch_norm(input,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False):
     """
-    This function helps create an operator to implement
-    the BatchNorm layer using the configurations from the input parameters.
+    **Batch Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
+     <https://arxiv.org/pdf/1502.03167.pdf>`_ for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+        act(string, default None): Activation type, linear|relu|prelu|...
+        is_test(bool, default False): Used for training or training.
+        momentum(float, default 0.9):
+        epsilon(float, default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, default False): Make the input and output of batch norm reuse memory.
+        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False):
+
+    Returns:
+        The sequence's last step variable which is a Tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.batch_norm(input=hidden1)
+
     """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
