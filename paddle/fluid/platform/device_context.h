@@ -29,6 +29,7 @@ limitations under the License. */
 
 #define EIGEN_USE_THREADS
 
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -47,7 +48,22 @@ class DeviceContext {
   virtual void Wait() const {}
 };
 
-class EigenThreadPoolDevice;
+using framework::ThreadPool;
+class EigenThreadPoolDevice : public Eigen::ThreadPoolInterface {
+ public:
+  EigenThreadPoolDevice() { pool_ = ThreadPool::GetInstance(); }
+  ~EigenThreadPoolDevice() override {}
+  void Schedule(std::function<void()> fn) override { pool_->Run(fn); }
+
+  void Cancel() override {}
+
+  int NumThreads() const override { return pool_->Threads(); }
+
+  int CurrentThreadId() const override { return 0; };
+
+ private:
+  ThreadPool* pool_;  // singleton now owned
+};
 
 class CPUDeviceContext : public DeviceContext {
  public:

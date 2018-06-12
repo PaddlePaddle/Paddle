@@ -14,7 +14,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
@@ -72,27 +71,6 @@ DeviceContextPool::DeviceContextPool(
     }
   }
 }
-
-using framework::ThreadPool;
-
-class EigenThreadPoolDevice : public Eigen::ThreadPoolInterface {
- public:
-  EigenThreadPoolDevice() {
-    // pool_ = EigenThreadPool::GetInstanceIO();
-    pool_ = ThreadPool::GetInstance();
-  }
-  ~EigenThreadPoolDevice() override {}
-  void Schedule(std::function<void()> fn) override { pool_->Run(fn); }
-
-  void Cancel() override {}
-
-  int NumThreads() const override { return pool_->Threads(); }
-
-  int CurrentThreadId() const override { return 0; };
-
- private:
-  ThreadPool* pool_;  // singleton now owned
-};
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_threadpool_.reset(new EigenThreadPoolDevice);
