@@ -80,7 +80,7 @@ PaddlePaddle currently supports 8 learning rate schedules. The 8 learning rate s
 
   In this example, when the number of trained passes is less than or equal to 1, the learning rate is :code:`1e-3*1.0`; when the number of trained passes is greater than 1 or less than 2, the learning rate is :code:`1e- 3 * 0.9`; when the number of trained passes is greater than 2, the learning rate is :code:`1e-3*0.8`.
 
-How to Initialize Parameters
+3. How to Initialize Parameters
 -----------------
 
 By default, PaddlePaddle initializes parameters with an average of 0 and a standard deviation of :math:`\frac{1}{\sqrt{d}}`, where :math:`d` is the width of the parameter matrix. This initialization method does not produce bad results under normal circumstances. If users want to customize the initialization method, PaddlePaddle provides two ways to initialize the parameters:
