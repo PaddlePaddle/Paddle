@@ -3052,7 +3052,7 @@ def sequence_reshape(input, new_dim):
 # FIXME(wuyi): let docstring_checker.py understand @autodoc.
 # For now, the comments in c++ use types like Tensor, but in python side
 # the type is often "Variable", and arguments may vary.
-@templatedoc
+@templatedoc(op_type="nce")
 def nce(input,
         label,
         num_total_classes,
