@@ -211,8 +211,6 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
                                     std::vector<std::string>({"y"}));
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "b_engine");
-  // SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
-  // {});
 
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());
 
