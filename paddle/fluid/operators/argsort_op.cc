@@ -30,7 +30,7 @@ class ArgsortOp : public framework::OperatorWithKernel {
                    "Output(Indices) of ArgsortOp should not be null.");
 
     auto in_dims = ctx->GetInputDim("X");
-    int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
+    int axis = ctx->Attrs().Get<int>("axis");
 
     auto num_dims = in_dims.size();
     PADDLE_ENFORCE(axis < num_dims,
