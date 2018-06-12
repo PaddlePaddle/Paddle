@@ -195,6 +195,8 @@ class GRPCClient : public RPCClient {
 
   void Wait() override;
 
+  void SendComplete() override;
+
  protected:
   void InitImpl() override;
 
@@ -203,6 +205,9 @@ class GRPCClient : public RPCClient {
   void InitEventLoop();
 
   void Proceed();
+
+  void AsyncSendComplete(const std::string& ep,
+                         int64_t time_out = RPCClient::rpc_time_out);
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
