@@ -46,17 +46,11 @@ class GRPCVariableResponse : public VariableResponse {
 
   int Parse(Source* source) override;
 
- private:
-  bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
-                                const platform::DeviceContext& ctx,
-                                const framework::DDim& dims, int length);
-
-  bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input,
-                          const platform::DeviceContext& ctx, int length);
-
-  bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input,
-                         const platform::DeviceContext& ctx,
-                         const framework::DDim& dims, int length);
+  // return:
+  // 0:ok.
+  // -1: unkown error.
+  // other: number of error field.
+  int Parse(const ::grpc::ByteBuffer& byte_buffer);
 };
 
 };  // namespace detail

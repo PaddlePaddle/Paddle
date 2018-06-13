@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/detail/variable_response.h"
+#include <vector>
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -20,10 +22,11 @@ namespace detail {
 
 bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
                                const platform::DeviceContext& dev_ctx,
-                               platform::Place place, void* dest, int size) {
+                               platform::Place place, void* dest,
+                               int64_t size) {
   const void* data = NULL;
   int size_to_write = 0;
-  int length = size;
+  int64_t length = size;
   int total_written = 0;
 
   if (platform::is_gpu_place(place)) {
@@ -76,6 +79,127 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     total_written += size_to_write;
 
     input->Skip(size_to_write);
+  }
+
+  return true;
+}
+
+bool VariableResponse::CopyLodTensorData(
+    ::google::protobuf::io::CodedInputStream* input,
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
+  auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
+  tensor->Resize(dims);
+
+  framework::LoD lod;
+  for (int i = 0; i < meta_.lod_level(); ++i) {
+    framework::Vector<size_t> v;
+    for (int j = 0; j < meta_.lod(i).lod_data_size(); ++j) {
+      v.push_back(meta_.lod(i).lod_data(j));
+    }
+    lod.push_back(v);
+  }
+  tensor->set_lod(lod);
+
+  void* tensor_data =
+      tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
+
+  if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
+    return false;
+  }
+
+  return true;
+}
+
+inline framework::DDim GetDims(
+    const ::google::protobuf::RepeatedField<::google::protobuf::int64>& dims) {
+  std::vector<int> vecdims;
+  for (auto& d : dims) {
+    vecdims.push_back(d);
+  }
+  return framework::make_ddim(vecdims);
+}
+
+bool VariableResponse::CopySelectRowsTensorData(
+    ::google::protobuf::io::CodedInputStream* input,
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
+  slr->set_height(meta_.slr_height());
+  auto* tensor = slr->mutable_value();
+  tensor->Resize(dims);
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(tensor->numel()),
+      length / framework::SizeOfType(
+                   paddle::operators::detail::ToTypeIndex(meta_.data_type())));
+  void* tensor_data = tensor->mutable_data(
+      ctx.GetPlace(),
+      paddle::operators::detail::ToTypeIndex(meta_.data_type()));
+
+  if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool VariableResponse::CopySelectRowsData(
+    ::google::protobuf::io::CodedInputStream* input,
+    const platform::DeviceContext& ctx, int length) {
+  auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
+  slr->mutable_rows()->resize(length /
+                              framework::SizeOfType(typeid(int64_t)));  // int64
+  int64_t* rows_data = slr->mutable_rows()->data();
+
+  // copy rows CPU data, GPU data will be copied lazily.
+  platform::CPUPlace cpu;
+  if (!ReadRaw(input, ctx, cpu, rows_data, length)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool VariableResponse::ProcSerializedField(
+    int tag, ::google::protobuf::io::CodedInputStream* input,
+    int64_t num_bytes) {
+  PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
+                  meta_.type() == sendrecv::LOD_TENSOR ||
+                  meta_.type() == sendrecv::NCCL_ID) &&
+                     meta_.varname() != "",
+                 "meta info should be got first!");
+
+  if (meta_.type() == sendrecv::NCCL_ID) {
+#ifdef PADDLE_WITH_CUDA
+    auto* var = scope_->FindVar(meta_.varname());
+    if (var != nullptr) {
+      ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
+      if (!ReadRaw(input, *dev_ctx_, platform::CPUPlace(), id->internal,
+                   num_bytes)) {
+        return false;
+      }
+    }
+    return true;
+#else
+    PADDLE_THROW("Not compiled with CUDA!");
+    return false;
+#endif
+  }
+
+  framework::DDim dims = GetDims(meta_.dims());
+  if (meta_.type() == sendrecv::LOD_TENSOR) {
+    PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");
+    if (!CopyLodTensorData(input, *dev_ctx_, dims, num_bytes)) {
+      return false;
+    }
+    return true;
+  }
+
+  if (meta_.type() == sendrecv::SELECTED_ROWS) {
+    if (!CopySelectRowsTensorData(input, *dev_ctx_, dims, num_bytes)) {
+      return false;
+    }
+    return true;
   }
 
   return true;

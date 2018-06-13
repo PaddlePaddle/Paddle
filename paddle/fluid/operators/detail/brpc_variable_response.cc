@@ -14,10 +14,59 @@
 //
 
 #include "paddle/fluid/operators/detail/brpc_variable_response.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
+
 namespace paddle {
 namespace operators {
 namespace detail {
-int BRPCVariableResponse::Parse(Source* source) { return 0; }
+
+namespace pb = ::google::protobuf;
+using vr = ::sendrecv::VariableMessage;
+
+int BRPCVariableResponse::Parse(Source* source) {
+  pb::io::ZeroCopyInputStream* input_stream = source->contents();
+  pb::io::CodedInputStream input(input_stream);
+
+  while (1) {
+    unsigned int tag = 0;
+    if (!input.ReadLittleEndian32(&tag)) {
+      break;
+    }
+
+    uint64_t num_bytes = 0;
+    if (!input.ReadLittleEndian64(&num_bytes)) {
+      break;
+    }
+
+    int field = static_cast<int>(tag);
+    int ret = field == 0 ? -1 : field;
+    switch (field) {
+      case vr::kSerializedFieldNumber: {
+        if (!ProcSerializedField(field, &input, num_bytes)) {
+          return ret;
+        }
+        break;
+      }
+      case vr::kRowsFieldNumber: {
+        PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
+                        meta_.type() == sendrecv::LOD_TENSOR) &&
+                           meta_.varname() != "",
+                       "meta info should be got first!");
+
+        if (!CopySelectRowsData(&input, *dev_ctx_, num_bytes)) {
+          return ret;
+        }
+        break;
+      }
+      default: {
+        PADDLE_ENFORCE(false, "not surpported %u fieldnumber", field);
+        return ret;
+      }
+    }
+  }
+
+  return 0;
+}
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle

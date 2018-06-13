@@ -96,7 +96,22 @@ class VariableResponse {
  protected:
   bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
                const platform::DeviceContext& dev_ctx, platform::Place place,
-               void* dest, int size);
+               void* dest, int64_t size);
+
+  bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
+                                const platform::DeviceContext& ctx,
+                                const framework::DDim& dims, int length);
+
+  bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input,
+                          const platform::DeviceContext& ctx, int length);
+
+  bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input,
+                         const platform::DeviceContext& ctx,
+                         const framework::DDim& dims, int length);
+
+  bool ProcSerializedField(int tag,
+                           ::google::protobuf::io::CodedInputStream* input,
+                           int64_t num_bytes);
 
  protected:
   const framework::Scope* scope_;
