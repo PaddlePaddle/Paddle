@@ -120,7 +120,6 @@ class SGD {
                     {{"ParamOut", {input}}},
                     {});
     temp_tape.Forward();
-    input->ResetGrad();
   }
 
  private:
