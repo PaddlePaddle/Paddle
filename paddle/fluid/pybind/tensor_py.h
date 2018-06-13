@@ -212,7 +212,7 @@ void PyCUDATensorSetFromArray(
   auto *dst = self->mutable_data<platform::float16>(place);
   paddle::platform::GpuMemcpySync(dst, array.data(),
                                   sizeof(uint16_t) * array.size(),
-                                  cudaMemcpyHostToDevice);
+                                  hipMemcpyHostToDevice);
 }
 
 template <typename T>

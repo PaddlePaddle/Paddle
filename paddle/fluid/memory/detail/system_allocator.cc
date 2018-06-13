@@ -189,7 +189,7 @@ bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
 #ifdef PADDLE_WITH_HIP
 
-void* GPUAllocator::Alloc(size_t& index, size_t size) {
+void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // CUDA documentation doesn't explain if hipMalloc returns nullptr
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
@@ -207,7 +207,7 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   }
 
   if (result == hipSuccess) {
-    index = 0;
+    *index = 0;
     gpu_alloc_size_ += size;
     return p;
   } else {
@@ -242,7 +242,7 @@ bool GPUAllocator::UseGpu() const { return true; }
 
 // PINNED memory allows direct DMA transfers by the GPU to and from system
 // memory. It’s locked to a physical address.
-void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
+void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
@@ -263,7 +263,7 @@ void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   hipError_t result = hipHostMalloc(&p, size);
 
   if (result == hipSuccess) {
-    index = 1;  // PINNED memory
+    *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {

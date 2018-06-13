@@ -16,5 +16,5 @@ if(WITH_PYTHON)
     endif(NOT APPLE AND NOT ANDROID)
   endif(WITH_AMD_GPU)
 
-  cc_test(tensor_py_test SRCS tensor_py_test.cc DEPS python)
+  hip_test(tensor_py_test SRCS tensor_py_test.cc DEPS python)
 endif(WITH_PYTHON)
