@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -64,7 +63,7 @@ ParallelExecutor::ParallelExecutor(
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
 
-  // Step 2. Bcast the params to devs.
+  // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
@@ -100,7 +99,7 @@ ParallelExecutor::ParallelExecutor(
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
-  // Step 3. Create vars in each scope;
+  // Step 2. Create vars in each scope;
   std::vector<details::VariableInfo> var_infos;
   for (auto *var : main_program.Block(0).AllVars()) {
     var_infos.emplace_back();
@@ -109,7 +108,7 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-  // Step 4. Convert main_program to SSA form and dependency graph. Also, insert
+  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
 
   details::SSAGraphBuilderFactory builder_factory(
