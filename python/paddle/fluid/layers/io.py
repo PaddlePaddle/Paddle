@@ -753,7 +753,9 @@ def get_test_program(filelist, test_program=None, startup_program=None):
             if op_out_var.type == core.VarDesc.VarType.READER:
                 newname = op_out_var.name + "_test"
                 program.global_block().rename_var(op_out_var.name, newname)
+        if op.type == "create_multi_pass_reader":
+            op.set_attr("pass_num", 1)
 
-        program.sync_with_cpp()
+    program.sync_with_cpp()
 
     return program
