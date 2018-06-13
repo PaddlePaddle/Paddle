@@ -175,8 +175,10 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
 
-  auto AddFCLayer = [&](const std::string& x_name, const std::string& y_name, const std::string& z_name,
-                        bool x_created, const shape_t& x_shape, const shape_t& y_shape, const shape_t& z_shape) {
+  auto AddFCLayer = [&](const std::string& x_name, const std::string& y_name,
+                        const std::string& z_name, bool x_created,
+                        const shape_t& x_shape, const shape_t& y_shape,
+                        const shape_t& z_shape) {
 
     LOG(INFO) << "create fc op";
     auto* fc = block_desc.AppendOp();
@@ -207,10 +209,14 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   };
 
   // Test with 4 layer FC
-  AddFCLayer("x0", "y0", "z0", false, {batch_size, input_dim}, {input_dim, output_dim}, {batch_size, output_dim});
-  AddFCLayer("z0", "y1", "z1", true, {}, {output_dim, output_dim}, {batch_size, output_dim});
-  AddFCLayer("z1", "y2", "z2", true, {}, {output_dim, output_dim}, {batch_size, output_dim});
-  AddFCLayer("z2", "y3", "z3", true, {}, {output_dim, output_dim}, {batch_size, output_dim});
+  AddFCLayer("x0", "y0", "z0", false, {batch_size, input_dim},
+             {input_dim, output_dim}, {batch_size, output_dim});
+  AddFCLayer("z0", "y1", "z1", true, {}, {output_dim, output_dim},
+             {batch_size, output_dim});
+  AddFCLayer("z1", "y2", "z2", true, {}, {output_dim, output_dim},
+             {batch_size, output_dim});
+  AddFCLayer("z2", "y3", "z3", true, {}, {output_dim, output_dim},
+             {batch_size, output_dim});
 
   LOG(INFO) << "create tensorrt desc";
   framework::OpDesc engine_op_desc(nullptr);
@@ -222,8 +228,9 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
                        block_->SerializeAsString());
   SetAttr<int>(engine_op_desc.Proto(), "max_batch", batch_size);
   SetAttr<int>(engine_op_desc.Proto(), "max_workspace", 2 << 10);
-  SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
-                                    std::vector<std::string>({"y0", "y1", "y2", "y3"}));
+  SetAttr<std::vector<std::string>>(
+      engine_op_desc.Proto(), "parameters",
+      std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "b_engine");
 
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());

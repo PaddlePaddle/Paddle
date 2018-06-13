@@ -114,7 +114,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
 
  private:
   // TODO(Superjomn) replace this stream with context's stream.
-  //mutable cudaStream_t stream_;
+  // mutable cudaStream_t stream_;
 };
 
 }  // namespace operators

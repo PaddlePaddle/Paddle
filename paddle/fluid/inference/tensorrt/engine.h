@@ -51,7 +51,8 @@ class TensorRTEngine : public EngineBase {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream= nullptr,
+  TensorRTEngine(int max_batch, int max_workspace,
+                 cudaStream_t* stream = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
