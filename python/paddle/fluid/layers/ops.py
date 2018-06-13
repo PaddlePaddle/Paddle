@@ -40,7 +40,6 @@ __activations__ = [
     'relu6',
     'pow',
     'stanh',
-    'hard_shrink',
     'thresholded_relu',
     'hard_sigmoid',
     'swish',
@@ -92,9 +91,32 @@ def uniform_random(shape, dtype=None, min=None, max=None, seed=None):
             kwargs[name] = val
     return _uniform_random_(**kwargs)
 
-uniform_random.__doc__ = _uniform_random_.__doc__  + "\n"\
-+"""
+
+uniform_random.__doc__ = _uniform_random_.__doc__ + "\n" \
+                         + """
 Examples:
 
     >>> result = fluid.layers.uniform_random(shape=[32, 784])
+"""
+
+__all__ += ['hard_shrink']
+
+_hard_shrink_ = generate_layer_fn('hard_shrink')
+
+
+def hard_shrink(x, threshold=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+    return _hard_shrink_(**kwargs)
+
+
+hard_shrink.__doc__ = _hard_shrink_.__doc__ + "\n" \
+                      + """
+Examples:
+
+    >>> data = fluid.layers.data(name="input", shape=[784])
+    >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
 """

@@ -271,7 +271,8 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of HardShrink operator");
     AddOutput("Out", "Output of HardShrink operator");
-    AddAttr<float>("threshold", "The value of threshold for HardShrink")
+    AddAttr<float>("threshold",
+                   "The value of threshold for HardShrink. [default: 0.5]")
         .SetDefault(0.5f);
     AddComment(R"DOC(
 HardShrink Activation Operator.
