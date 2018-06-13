@@ -87,7 +87,9 @@ def train(use_cuda, train_program, params_dirname):
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
             test_reader = paddle.batch(
-                paddle.dataset.imdb.test(word_dict), batch_size=BATCH_SIZE)
+                paddle.dataset.imdb.test(word_dict),
+                batch_size=BATCH_SIZE,
+                drop_last=False)
             avg_cost, acc = trainer.test(
                 reader=test_reader, feed_order=['words', 'label'])
 
@@ -113,7 +115,8 @@ def train(use_cuda, train_program, params_dirname):
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.imdb.train(word_dict), buf_size=25000),
-        batch_size=BATCH_SIZE)
+        batch_size=BATCH_SIZE,
+        drop_last=False)
 
     trainer.train(
         num_epochs=1,
