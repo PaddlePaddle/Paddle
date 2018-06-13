@@ -77,8 +77,8 @@ void SetDeviceId(int id) {
                  "hipSetDevice failed in paddle::platform::SetDeviceId");
 }
 
-void GpuMemoryUsage(size_t &available, size_t &total) {
-  PADDLE_ENFORCE(hipMemGetInfo(&available, &total),
+void GpuMemoryUsage(size_t* available, size_t* total) {
+  PADDLE_ENFORCE(hipMemGetInfo(available, total),
                  "hipMemGetInfo failed in paddle::platform::GetMemoryUsage");
 }
 
@@ -86,7 +86,7 @@ size_t GpuMaxAllocSize() {
   size_t total = 0;
   size_t available = 0;
 
-  GpuMemoryUsage(available, total);
+  GpuMemoryUsage(&available, &total);
 
   // Reserve the rest for page tables, etc.
   return static_cast<size_t>(total * FLAGS_fraction_of_gpu_memory_to_use);
@@ -101,7 +101,7 @@ size_t GpuMaxChunkSize() {
   size_t total = 0;
   size_t available = 0;
 
-  GpuMemoryUsage(available, total);
+  GpuMemoryUsage(&available, &total);
   VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
            << total / 1024 / 1024 << "M";
   size_t reserving = static_cast<size_t>(0.05 * total);
@@ -126,11 +126,24 @@ void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                  "hipMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
 }
 
-void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
-                   size_t count, hipStream_t stream) {
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum hipMemcpyKind kind) {
+  PADDLE_ENFORCE(hipMemcpy(dst, src, count, kind),
+                 "hipMemcpy failed in paddle::platform::GpuMemcpySync");
+}
+
+void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
+                        int src_device, size_t count, hipStream_t stream) {
   PADDLE_ENFORCE(
       hipMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
-      "hipMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
+      "hipMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeerAsync");
+}
+
+void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
+                       int src_device, size_t count) {
+  PADDLE_ENFORCE(
+      hipMemcpyPeer(dst, dst_device, src, src_device, count),
+      "cudaMemcpyPeer failed in paddle::platform::GpuMemcpyPeerSync");
 }
 
 void GpuMemsetAsync(void *dst, int value, size_t count, hipStream_t stream) {

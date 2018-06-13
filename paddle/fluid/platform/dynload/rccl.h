@@ -17,7 +17,6 @@ limitations under the License. */
 #include <dlfcn.h>
 #include <rccl.h>
 #include <mutex>
-#include "paddle/fluid/platform/call_once.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -28,18 +27,19 @@ extern std::once_flag rccl_dso_flag;
 extern void* rccl_dso_handle;
 
 #ifdef PADDLE_USE_DSO
-extern void LoadRCCLDSO();
 
 #define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name)                   \
-  struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
-      using rccl_func = decltype(__name(args...)) (*)(Args...);  \
-      paddle::platform::dynload::LoadRCCLDSO();                  \
-      void* p_##__name = dlsym(rccl_dso_handle, #__name);        \
-      return reinterpret_cast<rccl_func>(p_##__name)(args...);   \
-    }                                                            \
-  };                                                             \
+  struct DynLoad__##__name {                                             \
+    template <typename... Args>                                          \
+    auto operator()(Args... args) -> decltype(__name(args...)) {         \
+      using rccl_func = decltype(&::__name);                             \
+      std::call_once(rccl_dso_flag, []() {                               \
+        rccl_dso_handle = paddle::platform::dynload::GetRCCLDsoHandle(); \
+      });                                                                \
+      void* p_##__name = dlsym(rccl_dso_handle, #__name);                \
+      return reinterpret_cast<rccl_func>(p_##__name)(args...);           \
+    }                                                                    \
+  };                                                                     \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name) \
@@ -62,8 +62,6 @@ extern void LoadRCCLDSO();
   __macro(rcclCommUserRank);            \
   __macro(rcclAllReduce);               \
   __macro(rcclBcast);                   \
-  __macro(rcclAllGather);               \
-  __macro(rcclReduce);                  \
   __macro(rcclGetErrorString);
 
 RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)

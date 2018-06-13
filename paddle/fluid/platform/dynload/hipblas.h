@@ -17,6 +17,7 @@ limitations under the License. */
 #include <hipblas.h>
 #include <dlfcn.h>
 #include <mutex>
+#include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -34,18 +35,18 @@ extern void *cublas_dso_handle;
  * note: default dynamic linked libs
  */
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                    \
-  struct DynLoad__##__name {                                        \
-    template <typename... Args>                                     \
-    inline hipblasStatus_t operator()(Args... args) {                \
-      typedef hipblasStatus_t (*cublasFunc)(Args...);                \
-      std::call_once(cublas_dso_flag,                               \
-                     paddle::platform::dynload::GetCublasDsoHandle, \
-                     &cublas_dso_handle);                           \
-      void *p_##__name = dlsym(cublas_dso_handle, #__name);         \
-      return reinterpret_cast<cublasFunc>(p_##__name)(args...);     \
-    }                                                               \
-  };                                                                \
+#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
+  struct DynLoad__##__name {                                                 \
+    using FUNC_TYPE = decltype(&::__name);                                   \
+    template <typename... Args>                                              \
+    inline hipblasStatus_t operator()(Args... args) {                         \
+      std::call_once(cublas_dso_flag, []() {                                 \
+        cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
+      });                                                                    \
+      void *p_##__name = dlsym(cublas_dso_handle, #__name);                  \
+      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
+    }                                                                        \
+  };                                                                         \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
@@ -68,6 +69,7 @@ extern void *cublas_dso_handle;
   __macro(hipblasDgemv);                \
   __macro(hipblasSgemm);                \
   __macro(hipblasDgemm);                \
+  __macro(hipblasHgemm);                \
   __macro(hipblasSgeam);                \
   __macro(hipblasDgeam);                \
   __macro(hipblasCreate);               \
@@ -77,18 +79,8 @@ extern void *cublas_dso_handle;
   __macro(hipblasGetPointerMode);       \
   __macro(hipblasSgemmBatched);            \
   __macro(hipblasDgemmBatched);            \
-  __macro(hipblasCgemmBatched);            \
-  __macro(hipblasZgemmBatched);            \
   __macro(hipblasSgemmStridedBatched);     \
-  __macro(hipblasDgemmStridedBatched);     \
-  __macro(hipblasCgemmStridedBatched);     \
-  __macro(hipblasZgemmStridedBatched);     \
-  __macro(hipblasDgetrfBatched);           \
-  __macro(hipblasDgetriBatched)
-
-
-//__macro(hipblasSgetrfBatched);
-//_macro(hipblasSgetriBatched);
+  __macro(hipblasDgemmStridedBatched);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
 

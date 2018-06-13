@@ -44,7 +44,8 @@ CUDNN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
 
 #ifdef PADDLE_USE_DSO
 bool HasMIOpen() {
-  std::call_once(cudnn_dso_flag, GetCUDNNDsoHandle, &cudnn_dso_handle);
+  std::call_once(cudnn_dso_flag,
+               []() { cudnn_dso_handle = GetCUDNNDsoHandle(); });
   return cudnn_dso_handle != nullptr;
 }
 

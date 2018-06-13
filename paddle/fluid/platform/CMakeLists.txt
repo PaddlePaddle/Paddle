@@ -57,4 +57,4 @@ cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu)
-cc_test(float16_test SRCS float16_test.cc)
+hip_test(float16_test SRCS float16_test.cc)

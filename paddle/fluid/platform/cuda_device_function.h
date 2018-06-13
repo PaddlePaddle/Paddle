@@ -13,38 +13,37 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cuda.h>
 
 namespace paddle {
 namespace platform {
 
-#if CUDA_VERSION < 9000
 #define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
-#else
-#define FULL_WARP_MASK 0xFFFFFFFF
-#define CREATE_SHFL_MASK(mask, predicate) \
-  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
-#endif
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
                                                  int delta, int width = 32) {
-#if CUDA_VERSION < 9000
   return __shfl_down(val, delta, width);
-#else
-  return __shfl_down_sync(mask, val, delta, width);
-#endif
 }
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
                                              int width = 32) {
-#if CUDA_VERSION < 9000
   return __shfl(val, src_line, width);
-#else
-  return __shfl_sync(mask, val, src_line, width);
-#endif
 }
+
+template <>
+__forceinline__ __device__ double CudaShuffleDownSync(unsigned mask, double val,
+                                                 int delta, int width) {
+  return 0.0f;
+}
+
+template <>
+__forceinline__ __device__ double CudaShuffleSync(unsigned mask, double val, int src_line,
+                                             int width) {
+  return 0.0f;
+}
+
+
 
 template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {

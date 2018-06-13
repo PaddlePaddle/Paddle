@@ -19,6 +19,8 @@
 #include "paddle/fluid/platform/dynload/rccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#define NCCL_ID_VARNAME "NCCLID"
+
 namespace paddle {
 namespace platform {
 
@@ -36,20 +38,19 @@ inline rcclDataType_t ToNCCLDataType(std::type_index type) {
 
 class NCCLGroupGuard {
  public:
+  static std::mutex &NCCLMutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+
   inline NCCLGroupGuard() {
-    mutex().lock();
-    //PADDLE_ENFORCE(dynload::rcclGroupStart());
+    NCCLMutex().lock();
+    //PADDLE_ENFORCE(dynload::ncclGroupStart());
   }
 
   inline ~NCCLGroupGuard() {
-    //PADDLE_ENFORCE(dynload::rcclGroupEnd());
-    mutex().unlock();
-  }
-
- private:
-  static std::mutex &mutex() {
-    static std::mutex mtx;
-    return mtx;
+    //CHECK_EQ(dynload::ncclGroupEnd(), ncclSuccess);
+    NCCLMutex().unlock();
   }
 };
 
@@ -58,32 +59,12 @@ struct NCCLContext {
   rcclComm_t comm_;
 
   explicit NCCLContext(int dev_id)
-      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))) {}
+      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
 
   hipStream_t stream() const { return ctx_->stream(); }
 
   int device_id() const {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
-  }
-
-  static void InitNCCLContext(std::unordered_map<int, NCCLContext> &contexts,
-                              const std::vector<platform::Place> &places) {
-    std::vector<rcclComm_t> comms;
-    std::vector<int> devs;
-    comms.resize(contexts.size());
-    devs.reserve(contexts.size());
-
-    for (auto &p : places) {
-      devs.push_back(boost::get<platform::CUDAPlace>(p).device);
-    }
-
-    PADDLE_ENFORCE(platform::dynload::rcclCommInitAll(
-        &comms[0], static_cast<int>(contexts.size()), &devs[0]));
-
-    int i = 0;
-    for (auto &dev_id : devs) {
-      contexts.at(dev_id).comm_ = comms[i++];
-    }
   }
 };
 
@@ -91,7 +72,10 @@ struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  NCCLContextMap(const std::vector<platform::Place> &places) {
+  explicit NCCLContextMap(const std::vector<platform::Place> &places,
+                          rcclUniqueId *nccl_id = nullptr,
+                          size_t num_trainers = 1, size_t trainer_id = 0) {
+    PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
@@ -100,19 +84,40 @@ struct NCCLContextMap {
     }
     PADDLE_ENFORCE_EQ(
         order_.size(), contexts_.size(),
-        "RCCL Context Map does not support contain two or more same device");
+        "NCCL Context Map does not support contain two or more same device");
 
-    std::vector<rcclComm_t> comms;
-    comms.resize(order_.size());
-
-    PADDLE_ENFORCE(platform::dynload::rcclCommInitAll(
-        &comms[0], static_cast<int>(order_.size()), &order_[0]));
-
+    if (places.size() <= 1) {
+      return;
+    }
+    std::unique_ptr<rcclComm_t[]> comms(new rcclComm_t[order_.size()]);
+    // if pass nccl_id here, can assume we are doing multi node training
+    if (nccl_id == nullptr) {
+      std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
+      PADDLE_ENFORCE(platform::dynload::rcclCommInitAll(
+          comms.get(), static_cast<int>(order_.size()), order_.data()));
+    } else {
+      PADDLE_ENFORCE_GT(num_trainers, 1);
+      // TODO(wuyi): need to ensure each node have same number of GPUs
+      {
+        int nranks = num_trainers * order_.size();
+        NCCLGroupGuard gurad;
+        for (auto &gpu_id : order_) {
+          int rank = trainer_id * order_.size() + gpu_id;
+          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks;
+          PADDLE_ENFORCE(hipSetDevice(gpu_id));
+          PADDLE_ENFORCE(platform::dynload::rcclCommInitRank(
+              comms.get() + gpu_id, nranks, *nccl_id, rank));
+        }
+      }
+    }
     int i = 0;
     for (auto &dev_id : order_) {
       contexts_.at(dev_id).comm_ = comms[i++];
     }
   }
+
+  NCCLContextMap(const NCCLContextMap &other) = delete;
+  NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
   CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 

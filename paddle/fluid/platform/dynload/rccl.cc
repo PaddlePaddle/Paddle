@@ -25,11 +25,6 @@ void *rccl_dso_handle;
 
 RCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
-void LoadRCCLDSO() {
-  platform::call_once(rccl_dso_flag,
-                      [] { GetRCCLDsoHandle(&rccl_dso_handle); });
-}
-
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

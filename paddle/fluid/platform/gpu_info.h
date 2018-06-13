@@ -82,14 +82,23 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
 #ifdef PADDLE_WITH_HIP
 //! Copy memory from address src to dst asynchronously.
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
-		    enum hipMemcpyKind kind, hipStream_t stream);
+                    enum hipMemcpyKind kind, hipStream_t stream);
 
-//! Copy memory from one device to another device.
-void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
-		   size_t count, hipStream_t stream);
+//! Copy memory from address src to dst synchronously.
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum hipMemcpyKind kind);
+
+//! Copy memory from one device to another device asynchronously.
+void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
+                        int src_device, size_t count, hipStream_t stream);
+
+//! Copy memory from one device to another device synchronously.
+void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
+                       int src_device, size_t count);
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, hipStream_t stream);
+
 #endif  // PADDLE_WITH_HIP
 
 }  // namespace platform
