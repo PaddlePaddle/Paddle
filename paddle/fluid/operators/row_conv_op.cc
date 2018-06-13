@@ -114,7 +114,7 @@ and a filter ($W$) of size $context \times d$,
 the output sequence is convolved as:
 
 $$
-out_{i, :} = \sum_{j=i}^{i + context} in_{j,:} \dot W_{i-j, :}
+out_{i, :} = \\sum_{j=i}^{i + context} in_{j,:} \\cdot W_{i-j, :}
 $$
 
 In the above equation:

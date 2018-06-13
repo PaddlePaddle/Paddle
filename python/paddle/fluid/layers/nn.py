@@ -1718,10 +1718,14 @@ def layer_norm(input,
 
         h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
-    >>>                          dtype='float32')
-    >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+    * :math:`a`: the vector representation of the summed inputs to the neurons
+    in that layer.
+
+    * :math:`H`: the number of hidden units in a layers
+
+    * :math:`g`: the trainable scale parameter.
+
+    * :math:`b`: the trainable bias parameter.
 
     Args:
         input(Variable): The input tensor variable.
@@ -1742,6 +1746,12 @@ def layer_norm(input,
 
     Returns:
         ${y_comment}
+
+    Examples:
+
+        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
     """
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
@@ -3262,12 +3272,6 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> x = fluid.layers.data(name='x', shape=[16],
-    >>>                        dtype='float32', lod_level=1)
-    >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
-
-
     Args:
         input (${x_type}): ${x_comment}.
         future_context_size (int): Future context size. Please note, the shape
@@ -3278,6 +3282,12 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> x = fluid.layers.data(name='x', shape=[16],
+        >>>                        dtype='float32', lod_level=1)
+        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
     dtype = helper.input_dtype()

@@ -88,8 +88,6 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(
-Uniform random operator.
-
 This operator initializes a tensor with random values sampled from a
 uniform distribution. The random result is in set [min, max].
 

@@ -64,7 +64,6 @@ __all__ = [
     'logical_or',
     'logical_xor',
     'logical_not',
-    'uniform_random',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
@@ -79,3 +78,23 @@ __all__ = [
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+__all__ += ["uniform_random"]
+
+_uniform_random_ = generate_layer_fn('uniform_random')
+
+
+def uniform_random(shape, dtype=None, min=None, max=None, seed=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+    return _uniform_random_(**kwargs)
+
+uniform_random.__doc__ = _uniform_random_.__doc__  + "\n"\
++"""
+Examples:
+
+    >>> result = fluid.layers.uniform_random(shape=[32, 784])
+"""
