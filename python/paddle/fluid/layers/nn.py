@@ -1618,8 +1618,9 @@ def batch_norm(input,
     1. NHWC `[batch, in_height, in_width, in_channels]`
     2. NCHW `[batch, in_channels, in_height, in_width]`
 
-    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
-     <https://arxiv.org/pdf/1502.03167.pdf>`_ for more details.
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
 
     :math:`input` is the input features over a mini-batch.
 

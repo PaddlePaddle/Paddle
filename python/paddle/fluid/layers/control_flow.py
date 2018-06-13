@@ -893,12 +893,11 @@ def create_array(dtype):
     """
     **Create LoDTensor Array**
 
-    This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
-    LayerHelper. It is mainly used to implement RNN with array_write, array_read
-    and While.
+    This function creates an array of LOD_TENSOR_ARRAY . It is mainly used to
+    implement RNN with array_write, array_read and While.
 
     Args:
-        dtype (int|float): The data type of the elements in the array.
+        dtype (int|float): The data type of the elements in the lod_tensor_array.
 
     Returns:
         Variable: The lod_tensor_array variable storing the elements of data type.
