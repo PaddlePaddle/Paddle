@@ -54,7 +54,7 @@ class InferenceTranspiler:
             scope = global_scope()
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
-        use_mkldnn = bool(os.environ["FLAGS_use_mkldnn"])
+        use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
         if not use_mkldnn:
             self.fuse_batch_norm(program, place, scope)
         else:
@@ -88,7 +88,6 @@ class InferenceTranspiler:
                     current_op.set_attr("fuse_with_relu", True)
                     # remove relu OP
                     self.block.remove_op(i + 1)
-                    i = i + 1
             i = i + 1
 
         # TODO(luotao): use clone() method to flush the program.desc in force,
