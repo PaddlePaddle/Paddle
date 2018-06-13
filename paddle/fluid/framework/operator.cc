@@ -98,6 +98,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  VLOG(10) << "- " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -107,6 +108,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
   }
   RunImpl(scope, place);
+  VLOG(10) << "+ " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
