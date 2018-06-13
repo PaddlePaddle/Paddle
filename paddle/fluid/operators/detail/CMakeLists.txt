@@ -3,9 +3,9 @@ if(NOT WITH_DISTRIBUTE)
 endif()
 
 if(WITH_GRPC)
-    set(cc_generic_services "true")
-else()
     set(cc_generic_services "false")
+else()
+    set(cc_generic_services "true")
 endif()
 configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
 
@@ -41,8 +41,10 @@ find_library(OPENSSL_SSL_LIBRARY_STATIC NAMES libssl.so)
 ADD_LIBRARY(ssl SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY_STATIC})
 
+set(brpc_test_depends sendrecvop_brpc brpc protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy ssl crypto)
+
 cc_test(brpc_server_test SRCS rpc_server_test.cc 
-    DEPS sendrecvop_brpc brpc protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy ssl crypto SERIAL)
+    DEPS ${brpc_test_depends} SERIAL)
 
 cc_test(brpc_serde_test SRCS brpc_serde_test.cc 
-    DEPS sendrecvop_brpc brpc protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy ssl crypto SERIAL)
+    DEPS ${brpc_test_depends} SERIAL)
