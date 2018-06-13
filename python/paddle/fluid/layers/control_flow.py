@@ -1219,20 +1219,21 @@ class IfElse(object):
     Examples:
           .. code-block:: python
 
-            limit = layers.fill_constant_batch_size_like(
+            limit = fluid.layers.fill_constant_batch_size_like(
                 input=label, dtype='int64', shape=[1], value=5.0)
-            cond = layers.less_than(x=label, y=limit)
-            ie = layers.IfElse(cond)
+            cond = fluid.layers.less_than(x=label, y=limit)
+            ie = fluid.layers.IfElse(cond)
             with ie.true_block():
                 true_image = ie.input(image)
-                hidden = layers.fc(input=true_image, size=100, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
+                hidden = fluid.layers.fc(input=true_image, size=100, act='tanh')
+                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
                 ie.output(prob)
 
             with ie.false_block():
                 false_image = ie.input(image)
-                hidden = layers.fc(input=false_image, size=200, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
+                hidden = fluid.layers.fc(
+                    input=false_image, size=200, act='tanh')
+                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
                 ie.output(prob)
             prob = ie()
     """
