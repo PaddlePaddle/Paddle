@@ -21,36 +21,14 @@ import unittest
 class TestLoDTensor(unittest.TestCase):
     def test_pybind_lod(self):
         tensor = fluid.LoDTensor()
-        lod = []
-        tensor.set_recursive_sequence_lengths(lod)
-        self.assertTrue(tensor.has_valid_lod())
-        lod = [[], [1], [3]]
-        tensor.set_recursive_sequence_lengths(lod)
-        self.assertFalse(tensor.has_valid_lod())
-        lod = [[0], [2], [3]]
-        tensor.set_recursive_sequence_lengths(lod)
-        self.assertFalse(tensor.has_valid_lod())
 
         lod = [[1, 2, 3]]
         tensor.set_recursive_sequence_lengths(lod)
         self.assertEqual(tensor.recursive_sequence_lengths(), lod)
-        tensor.set(np.random.random([6, 1]), fluid.CPUPlace())
-        self.assertTrue(tensor.has_valid_lod())
-        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
-        self.assertFalse(tensor.has_valid_lod())
 
-        # Each level's sum should be equal to the number of items in the next level
-        # Moreover, last level's sum should be equal to the tensor height
         lod = [[2, 1], [1, 3, 1, 2, 1]]
         tensor.set_recursive_sequence_lengths(lod)
         self.assertEqual(tensor.recursive_sequence_lengths(), lod)
-        tensor.set(np.random.random([8, 1]), fluid.CPUPlace())
-        self.assertFalse(tensor.has_valid_lod())
-        lod = [[2, 3], [1, 3, 1, 2, 1]]
-        tensor.set_recursive_sequence_lengths(lod)
-        self.assertTrue(tensor.has_valid_lod())
-        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
-        self.assertFalse(tensor.has_valid_lod())
 
     def test_create_lod_tensor(self):
         # Create LoDTensor from a list
