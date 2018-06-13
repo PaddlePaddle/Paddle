@@ -56,7 +56,7 @@ BATCH_SIZE = 200
 
 # fix the order of training data
 train_reader = paddle.batch(
-    paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
+    paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE, drop_last=False)
 
 # train_reader = paddle.batch(
 #     paddle.reader.shuffle(

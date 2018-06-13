@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
@@ -25,10 +26,6 @@
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
-
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -89,7 +86,7 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainSendVars(
   for (auto *op : program.Block(0).AllOps()) {
     // TODO(Yancey1989): use a graceful method to find send op,
     // instead of the the hard code string
-    if (op->Type() == "send_vars") {
+    if (op->Type() == "send") {
       auto op_vars = op->InputArgumentNames();
       send_vars.reserve(send_vars.size() +
                         std::distance(op_vars.begin(), op_vars.end()));
@@ -243,7 +240,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
                     CreateReduceOp(&result, g_name, 0);
                     CreateBroadcastOp(&result, g_name, 0);
                   } else {
-                    InsertNCCLAllReduceOp(&result, g_name);
+                    InsertAllReduceOp(&result, g_name);
                   }
                   break;
               }
@@ -286,6 +283,19 @@ bool MultiDevSSAGraphBuilder::IsSparseGradient(
   return false;
 }
 
+void MultiDevSSAGraphBuilder::SetCommunicationContext(
+    OpHandleBase *op_handle, const platform::Place &p) const {
+#ifdef PADDLE_WITH_CUDA
+  if (nccl_ctxs_ == nullptr) {
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+  }
+#else
+  op_handle->SetDeviceContext(p,
+                              platform::DeviceContextPool::Instance().Get(p));
+#endif
+}
+
 void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
                                                 const std::string &p_name,
                                                 size_t src_dev_id) const {
@@ -300,15 +310,12 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
   op_handle->AddInput(in);
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto &vars = result->vars_.at(i).at(p_name);
     auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+    auto &vars = result->vars_.at(i).at(p_name);
     auto *out_var = new VarHandle(vars.size(), i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
-#ifndef ADDLE_WITH_CUDA
-    op_handle->SetDeviceContext(p,
-                                platform::DeviceContextPool::Instance().Get(p));
-#endif
   }
 }
 
@@ -320,15 +327,19 @@ void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
   CreateOpHandleIOs(result, op, dev_id);
 }
 
-void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
-    SSAGraph *result, const std::string &og) const {
+void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
+                                                const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA
   result->ops_.emplace_back(
-      new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
+      new AllReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
+  result->ops_.emplace_back(new AllReduceOpHandle(local_scopes_, places_));
+#endif
   auto *op_handle = result->ops_.back().get();
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
     auto &vars = result->vars_[i][og];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
@@ -338,9 +349,6 @@ void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     vars.emplace_back(var);
     op_handle->AddOutput(var);
   }
-#else
-  PADDLE_ENFORCE("Not implemented");
-#endif
 }
 
 bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
@@ -379,7 +387,9 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
   for (size_t i = 0; i < places_.size(); ++i) {
 // Insert ScaleCost OpHandle
 #ifdef PADDLE_WITH_CUDA
-    auto *communication_dev_ctx = nccl_ctxs_->DevCtx(places_[i]);
+    auto *communication_dev_ctx =
+        nccl_ctxs_ ? nccl_ctxs_->DevCtx(places_[i])
+                   : platform::DeviceContextPool::Instance().Get(places_[i]);
 #else
     auto *communication_dev_ctx =
         platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
@@ -424,12 +434,9 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
   auto *op_handle = result->ops_.back().get();
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto &vars = result->vars_[i][og];
-#ifndef PADDLE_WITH_CUDA
     auto &p = places_[i];
-    op_handle->SetDeviceContext(p,
-                                platform::DeviceContextPool::Instance().Get(p));
-#endif
+    SetCommunicationContext(op_handle, p);
+    auto &vars = result->vars_[i][og];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad.get());
@@ -464,22 +471,21 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
                                           const OpDesc &op) const {
-  auto &p = places_[0];
-  auto *s = local_scopes_[0];
-  result->ops_.emplace_back(new RPCOpHandle(op, s, p, op.Type()));
+  result->ops_.emplace_back(
+      new RPCOpHandle(op, local_scopes_[0], op.Type(), places_[0]));
 
   if (op.Type() == "send_barrier") {
-    ConnectOp(result, result->ops_.back().get(), "send_vars");
+    ConnectOp(result, result->ops_.back().get(), "send");
   } else if (op.Type() == "recv") {
     ConnectOp(result, result->ops_.back().get(), "send_barrier");
   } else if (op.Type() == "fetch_barrier") {
     ConnectOp(result, result->ops_.back().get(), "recv");
-  } else if (op.Type() == "send_vars") {
+  } else if (op.Type() == "send") {
     // do nothing
   } else {
     PADDLE_THROW(
         "rpc op should be in ["
-        "send_vars, send_barrier. recv, fetch_barrier]");
+        "send, send_barrier. recv, fetch_barrier]");
   }
 
   // TODO(Yancey1989): schedule rpc op on different place may

@@ -69,6 +69,19 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
+static int GetRowSize(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return -1;
+  }
+
+  if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().rows().size();
+  }
+
+  return -1;
+}
+
 static LoD GetLoD(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
@@ -153,6 +166,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
+        int row_size = GetRowSize(*scope, input.second[i]);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
@@ -173,6 +190,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
+        int row_size = GetRowSize(*scope, output.second[i]);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
         ss << "[" << GetDims(*scope, output.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
@@ -291,6 +312,38 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
+}
+
+bool ExecutionContext::HasInput(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
+  }
+  auto& ins = Inputs(name);
+  size_t length = ins.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input %s should not have more than one inputs", name);
+  auto arg = ins[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
+}
+
+bool ExecutionContext::HasOutput(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto& outs = Outputs(name);
+  size_t length = outs.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output %s should not have more than one inputs", name);
+  auto arg = outs[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
 }
 
 template <>
@@ -661,8 +714,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
-          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                         "DataType of Paddle Op %s must be the same.", Type());
+          PADDLE_ENFORCE(
+              tmp == data_type || data_type == -1,
+              "DataType of Paddle Op %s must be the same. Get %d != %d", Type(),
+              data_type, tmp);
           data_type = tmp;
         }
       }
