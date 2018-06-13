@@ -14,6 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+// https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+#ifndef EIGEN_MAX_ALIGN_BYTES
+#define EIGEN_MAX_ALIGN_BYTES 32ul
+#endif
+
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -41,10 +46,12 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 struct EigenTensor {
   // TODO(qijun) Now, default type in unaligned, and we will make a benchmark on
   // the speed of aligned and unaligned version in future.
-  using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, IndexType>>;
+  using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, IndexType>,
+                                Eigen::Aligned>;
 
   using ConstType =
-      Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
+      Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>,
+                       Eigen::Aligned>;
 
   static Type From(Tensor& tensor, DDim dims) {
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
@@ -100,9 +107,11 @@ template <typename T, int MajorType = Eigen::RowMajor,
 struct EigenScalar {
   // Scalar tensor (implemented as a rank-0 tensor) of scalar type T.
   using Type = Eigen::TensorMap<
-      Eigen::TensorFixedSize<T, Eigen::Sizes<>, MajorType, IndexType>>;
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, MajorType, IndexType>,
+      Eigen::Aligned>;
   using ConstType = Eigen::TensorMap<
-      Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, IndexType>>;
+      Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, IndexType>,
+      Eigen::Aligned>;
 
   static Type From(Tensor& tensor) { return Type(tensor.data<T>()); }
 
