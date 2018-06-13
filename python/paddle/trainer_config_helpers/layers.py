@@ -2556,7 +2556,7 @@ def img_conv_layer(input,
     the output will be obtained by concatenating the two results.
 
     The details of grouped convolution, please refer to:
-    `ImageNet Classification with Deep Convolutional Neural Networks
+    `ImageNet Classification With Deep Convolutional Neural Networks
     <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
     
     The example usage is:
