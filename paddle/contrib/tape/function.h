@@ -112,6 +112,7 @@ class SGD {
   }
 
   void operator()(VariableHandle input) {
+    PADDLE_ENFORCE(get_global_tape().HasBeenBackwarded(), "");
     Tape temp_tape;
     temp_tape.AddOp("sgd",
                     {{"Param", {input}},
