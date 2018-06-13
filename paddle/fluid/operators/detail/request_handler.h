@@ -36,6 +36,7 @@ namespace detail {
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
+constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"

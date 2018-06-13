@@ -253,11 +253,15 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(
       new detail::RequestPrefetchHandler(sync_mode));
+  request_checkpoint_handler_.reset(
+      new detail::RequestCheckpointHandler(sync_mode));
 
   rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestPrefetch,
                             request_prefetch_handler_.get());
+  rpc_service_->RegisterRPC(detail::kRequestCheckpoint,
+                            request_checkpoint_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *program = optimize_block->Program();
@@ -300,6 +304,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_send_handler_.get());
   f(request_get_handler_.get());
   f(request_prefetch_handler_.get());
+  f(request_checkpoint_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
@@ -344,6 +349,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
+    AddAttr<int>(kCheckpointBlockId,
+                 "BolckID to run save checkpoint on pserer.")
+        .SetDefault(-1);
   }
 };
 
