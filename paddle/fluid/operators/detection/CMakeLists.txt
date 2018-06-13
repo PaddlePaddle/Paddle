@@ -25,7 +25,8 @@ detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
 detection_library(target_assign_op SRCS target_assign_op.cc
 target_assign_op.cu)
 detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
-    polygon_box_transform_op.cu)
+polygon_box_transform_op.cu)
+detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 
 # Export local libraries to parent
 set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)

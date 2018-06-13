@@ -30,6 +30,7 @@ __all__ = [
     'detection_output',
     'ssd_loss',
     'detection_map',
+    'rpn_target_assign',
 ]
 
 __auto__ = [
@@ -41,6 +42,102 @@ __all__ += __auto__
 
 for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+
+def rpn_target_assign(location,
+                      scores,
+                      anchor_box,
+                      gt_box,
+                      rpn_batch_size_per_im=256,
+                      fg_fraction=0.25,
+                      rpn_positive_overlap=0.7,
+                      rpn_negative_overlap=0.3):
+    """
+    ** Rpn Target Assign Layer for Faster-RCNN **
+
+    This layer can be, for given the IoU between anchors and ground truth boxes,
+    to assign classification and regression targets to each anchors.
+
+    Args:
+        location(Variable):
+        scores(Variable):
+        anchor_box(Variable):
+        gt_box(Variable):
+        rpn_batch_size_per_im(int):
+        fg_fraction(float):
+        rpn_positive_overlap(float):
+        rpn_negative_overlap(float):
+
+    Returns:
+        predicted_scores(Variable):
+        predicted_location(Variable):
+        filterd_target_label(Variable):
+        filterd_target_bbox(Variable):
+
+    Examples:
+        .. code-block:: python
+
+        location = layers.data(name='location', shape=[2, 80],
+                          append_batch_size=False, dtype='float32')
+        scores = layers.data(name='scores', shape=[2, 40],
+                          append_batch_size=False, dtype='float32')
+        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                          append_batch_size=False, dtype='float32')
+        gt_box = layers.data(name='gt_box', shape=[10, 4],
+                         append_batch_size=False, dtype='float32')
+        loc_pred, score_pred, loc_target, score_target =
+            fluid.layers.detection_output(location=location,
+                                          scores=scores,
+                                          anchor_box=anchor_box,
+                                          gt_box=gt_box)
+    """
+
+    helper = LayerHelper('rpn_target_assign', **locals())
+    # 1. Compute the regression target bboxes
+    target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    helper.append_op(
+        type="box_coder",
+        inputs={
+            'PriorBox': anchor_box,
+            'TargetBox': gt_box,
+        },
+        outputs={'OutputBox': target_bbox},
+        attrs={'code_type': 'encode_center_size',
+               'box_normalized': False})
+
+    # 2. Compute overlaps between the prior boxes and the gt boxes overlaps
+    iou = iou_similarity(x=gt_box, y=anchor_box)
+
+    # 3. Assign target label to anchors
+    loc_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    score_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    target_label = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    helper.append_op(
+        type="rpn_target_assign",
+        inputs={'Overlap': iou, },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+        },
+        attrs={
+            'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_positive_overlap': rpn_positive_overlap,
+            'rpn_negative_overlap': rpn_negative_overlap,
+            'fg_fraction': fg_fraction,
+        })
+
+    # 4. Reshape and gather the target entry
+    scores = nn.reshape(x=scores, shape=(-1, 1))
+    location = nn.reshape(x=location, shape=(-1, 4))
+    target_label = nn.reshape(x=target_label, shape=(-1, 1))
+    target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
+
+    predicted_scores = nn.gather(scores, score_index)
+    predicted_location = nn.gather(location, loc_index)
+    filterd_target_label = nn.gather(target_label, score_index)
+    filterd_target_bbox = nn.gather(target_bbox, loc_index)
+    return predicted_scores, predicted_location, filterd_target_label, filterd_target_bbox
 
 
 def detection_output(loc,
