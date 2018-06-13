@@ -30,8 +30,8 @@ class CumOp : public framework::OperatorWithKernel {
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of Cumsum operator");
-    AddOutput("Out", "Output of Cumsum operator");
+    AddInput("X", "Input of cumsum operator");
+    AddOutput("Out", "Output of cumsum operator");
     AddAttr<int>("axis",
                  "The dimenstion to accumulate along. -1 means the last "
                  "dimenstion [default -1].")
