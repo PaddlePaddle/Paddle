@@ -361,6 +361,12 @@ conv2d
 ..  autofunction:: paddle.fluid.layers.conv2d
     :noindex:
 
+conv3d
+------
+
+..  autofunction:: paddle.fluid.layers.conv3d
+    :noindex:
+
 sequence_pool
 -------------
 
@@ -385,6 +391,12 @@ pool2d
 ..  autofunction:: paddle.fluid.layers.pool2d
     :noindex:
 
+pool3d
+------
+
+..  autofunction:: paddle.fluid.layers.pool3d
+    :noindex:
+
 batch_norm
 ----------
 
@@ -402,6 +414,13 @@ conv2d_transpose
 
 ..  autofunction:: paddle.fluid.layers.conv2d_transpose
     :noindex:
+
+conv3d_transpose
+----------------
+
+..  autofunction:: paddle.fluid.layers.conv2d_transpose
+    :noindex:
+
 
 sequence_expand
 ---------------

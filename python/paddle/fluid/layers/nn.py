@@ -1722,7 +1722,7 @@ def pool2d(input,
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
-    l_type = 'conv2d'
+    l_type = 'pool2d'
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
