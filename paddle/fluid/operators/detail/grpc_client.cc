@@ -19,6 +19,7 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -31,6 +32,12 @@ void GRPCClient::InitEventLoop() {
   // start the client process thread
   // TODO(wuyi): can make this in a threadpool
   client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
+}
+
+void GRPCClient::SendComplete() {
+  for (auto& it : channels_) {
+    this->AsyncSendComplete(it.first);
+  }
 }
 
 GRPCClient::~GRPCClient() {
@@ -205,6 +212,19 @@ void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+}
+
+void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(COMPLETE_MESSAGE);
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
