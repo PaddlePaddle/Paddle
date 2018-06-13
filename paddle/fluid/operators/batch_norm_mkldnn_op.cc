@@ -134,6 +134,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Save the pd to be used in backward pass
     const std::string key = ctx.op().Output("SavedMean");
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
+    const std::string key_batch_norm_workspace_memory =
+        key + "@bn_workspace_memory";
     dev_ctx.SetBlob(key_batch_norm_fwd_pd, batch_norm_fwd_pd);
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
@@ -171,9 +173,21 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto variance_memory = memory(
           batch_norm_fwd_pd->variance_primitive_desc(), batch_variance_data);
 
-      run_batch_norm_op<bn_fwd_types::op_type>(*batch_norm_fwd_pd, src_memory,
-                                               scaleshift_memory, dst_memory,
-                                               mean_memory, variance_memory);
+      if (fuse_with_relu) {
+        std::shared_ptr<mkldnn::memory> workspace_memory =
+            std::make_shared<mkldnn::memory>(
+                batch_norm_fwd_pd->workspace_primitive_desc());
+
+        // save workspace memory to be referred in backward path
+        dev_ctx.SetBlob(key_batch_norm_workspace_memory, workspace_memory);
+        run_batch_norm_op<bn_fwd_types::op_type>(
+            *batch_norm_fwd_pd, src_memory, scaleshift_memory, dst_memory,
+            mean_memory, variance_memory, *workspace_memory);
+      } else {
+        run_batch_norm_op<bn_fwd_types::op_type>(*batch_norm_fwd_pd, src_memory,
+                                                 scaleshift_memory, dst_memory,
+                                                 mean_memory, variance_memory);
+      }
     }
 
     if (!is_test) {
@@ -248,6 +262,10 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto batch_norm_fwd_pd =
         std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
             dev_ctx.GetBlob(key_batch_norm_fwd_pd));
+    const std::string key_batch_norm_workspace_memory =
+        key + "@bn_workspace_memory";
+    auto workspace_memory = std::static_pointer_cast<memory>(
+        dev_ctx.GetBlob(key_batch_norm_workspace_memory));
     PADDLE_ENFORCE(batch_norm_fwd_pd != nullptr,
                    "Fail to find batch_norm_fwd_pd in device context");
 
@@ -276,6 +294,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // create primitive descriptor for batch norm backward
     unsigned flags = mkldnn::use_scale_shift;
+    if (workspace_memory != nullptr) flags |= mkldnn::fuse_bn_relu;
     auto batch_norm_bwd_desc = bn_bwd_types::op_desc{
         mkldnn::prop_kind::backward, diff_dst_md,
         src_memory.get_primitive_desc().desc(), epsilon, flags};
@@ -322,9 +341,15 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // finally create batch_norm backward primitive
     auto batch_norm_bwd_prim =
-        batch_norm_bwd(batch_norm_bwd_pd, src_memory, mean_memory,
-                       variance_memory, diff_dst_memory, scaleshift_memory,
-                       diff_src_memory, diff_scaleshift_memory);
+        workspace_memory != nullptr
+            ? batch_norm_bwd(batch_norm_bwd_pd, src_memory, mean_memory,
+                             variance_memory, diff_dst_memory,
+                             scaleshift_memory, *workspace_memory,
+                             diff_src_memory, diff_scaleshift_memory)
+            : batch_norm_bwd(batch_norm_bwd_pd, src_memory, mean_memory,
+                             variance_memory, diff_dst_memory,
+                             scaleshift_memory, diff_src_memory,
+                             diff_scaleshift_memory);
 
     // execute optional reorder and batch_norm backward primitive
     std::vector<primitive> pipeline;
