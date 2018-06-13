@@ -51,11 +51,11 @@ class TensorRTEngine : public EngineBase {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream,
+  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream= nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        stream_(stream),
+        stream_(stream ? stream : &default_stream_),
         logger_(logger) {}
 
   virtual ~TensorRTEngine();
@@ -121,6 +121,8 @@ class TensorRTEngine : public EngineBase {
   // the max memory size the engine uses
   int max_workspace_;
   cudaStream_t* stream_;
+  // If stream_ is not set from outside, hold its own stream.
+  cudaStream_t default_stream_;
   nvinfer1::ILogger& logger_;
 
   std::vector<Buffer> buffers_;

@@ -82,7 +82,7 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
 
   // TODO(Superjomn) replace this with a different stream
   auto *engine = Singleton<TRT_EngineManager>::Global().Create(
-      max_batch, max_workspace, &stream_,
+      max_batch, max_workspace, nullptr/*engine hold its own stream*/,
       context.Attr<std::string>("engine_uniq_key"));
   engine->InitNetwork();
 

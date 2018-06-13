@@ -170,46 +170,60 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   block_->set_idx(0);
   block_->set_parent_idx(-1);
 
+  using shape_t = std::vector<int64_t>;
+
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
 
-  LOG(INFO) << "create fc op";
-  auto* fc = block_desc.AppendOp();
-  fc->SetType("mul");
-  fc->SetInput("X", std::vector<std::string>({"x"}));
-  fc->SetInput("Y", std::vector<std::string>({"y"}));
-  fc->SetOutput("Out", std::vector<std::string>({"z"}));
+  auto AddFCLayer = [&](const std::string& x_name, const std::string& y_name, const std::string& z_name,
+                        bool x_created, const shape_t& x_shape, const shape_t& y_shape, const shape_t& z_shape) {
 
-  // Set inputs' variable shape in BlockDesc
-  AddTensorToBlockDesc(block_, "x",
-                       std::vector<int64_t>({batch_size, input_dim, 1, 1}));
-  AddTensorToBlockDesc(block_, "y",
-                       std::vector<int64_t>({input_dim, output_dim}));
-  AddTensorToBlockDesc(block_, "z",
-                       std::vector<int64_t>({batch_size, output_dim}));
+    LOG(INFO) << "create fc op";
+    auto* fc = block_desc.AppendOp();
+    fc->SetType("mul");
+    fc->SetInput("X", std::vector<std::string>({x_name}));
+    fc->SetInput("Y", std::vector<std::string>({y_name}));
+    fc->SetOutput("Out", std::vector<std::string>({z_name}));
 
-  // Prepare variables.
-  CreateCPUTensor(&scope, "x", std::vector<int64_t>({batch_size, input_dim}));
-  CreateCPUTensor(&scope, "y", std::vector<int64_t>({input_dim, output_dim}));
-  CreateCPUTensor(&scope, "z", std::vector<int64_t>({batch_size, output_dim}));
+    // Set inputs' variable shape in BlockDesc
+    if (!x_created) {
+      AddTensorToBlockDesc(block_, x_name,
+                           std::vector<int64_t>({batch_size, input_dim, 1, 1}));
+    }
+    AddTensorToBlockDesc(block_, y_name,
+                         std::vector<int64_t>({input_dim, output_dim}));
+    AddTensorToBlockDesc(block_, z_name,
+                         std::vector<int64_t>({batch_size, output_dim}));
 
-  // It is wired, need to copy manually.
-  *block_->add_ops() = *fc->Proto();
+    // Prepare variables.
+    if (!x_created) {
+      CreateCPUTensor(&scope, x_name, std::vector<int64_t>(x_shape));
+    }
+    CreateCPUTensor(&scope, y_name, std::vector<int64_t>(y_shape));
+    CreateCPUTensor(&scope, z_name, std::vector<int64_t>(z_shape));
 
-  ASSERT_EQ(block_->ops_size(), 1);
+    // It is wired, need to copy manually.
+    *block_->add_ops() = *fc->Proto();
+  };
+
+  // Test with 4 layer FC
+  AddFCLayer("x0", "y0", "z0", false, {batch_size, input_dim}, {input_dim, output_dim}, {batch_size, output_dim});
+  AddFCLayer("z0", "y1", "z1", true, {}, {output_dim, output_dim}, {batch_size, output_dim});
+  AddFCLayer("z1", "y2", "z2", true, {}, {output_dim, output_dim}, {batch_size, output_dim});
+  AddFCLayer("z2", "y3", "z3", true, {}, {output_dim, output_dim}, {batch_size, output_dim});
 
   LOG(INFO) << "create tensorrt desc";
   framework::OpDesc engine_op_desc(nullptr);
   engine_op_desc.SetType("tensorrt_engine");
-  engine_op_desc.SetInput("Xs", std::vector<std::string>({"x"}));
-  engine_op_desc.SetOutput("Ys", std::vector<std::string>({"z"}));
+  engine_op_desc.SetInput("Xs", std::vector<std::string>({"x0"}));
+  engine_op_desc.SetOutput("Ys", std::vector<std::string>({"z3"}));
 
   SetAttr<std::string>(engine_op_desc.Proto(), "subgraph",
                        block_->SerializeAsString());
   SetAttr<int>(engine_op_desc.Proto(), "max_batch", batch_size);
-  SetAttr<int>(engine_op_desc.Proto(), "max_workspace", 1 << 10);
+  SetAttr<int>(engine_op_desc.Proto(), "max_workspace", 2 << 10);
   SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
-                                    std::vector<std::string>({"y"}));
+                                    std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "b_engine");
 
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());
@@ -219,7 +233,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 }
 
 // Test with a larger FC layer.
-TEST(TensorRTEngineOp, fc) { Execute(80, 128, 23); }
+TEST(TensorRTEngineOp, fc) { Execute(40, 256, 256); }
 
 }  // namespace operators
 }  // namespace paddle
