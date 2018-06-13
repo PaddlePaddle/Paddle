@@ -14,7 +14,7 @@ limitations under the License. */
 syntax = "proto3";
 package sendrecv;
 
-option cc_generic_services = "@cc_generic_services@"
+option cc_generic_services = @cc_generic_services@;
 
 service SendRecvService {
   // For parameter server round-robin like hashing, do not split tensors.
