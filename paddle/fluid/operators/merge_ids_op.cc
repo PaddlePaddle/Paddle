@@ -49,9 +49,9 @@ Example:
 
 split_ids_op ->
 
-    Id0 = [3, 6]
-    Id1 = [1, 4]
-    Id2 = [2, 5]
+    Id0 = [3, 6] # id % 3 == 0
+    Id1 = [1, 4] # id % 3 == 1
+    Id2 = [2, 5] # id % 3 == 2
 
 prefetch_op ->
 
