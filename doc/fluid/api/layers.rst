@@ -1041,3 +1041,42 @@ box_coder
 ..  autofunction:: paddle.fluid.layers.box_coder
     :noindex:
 
+learning_rate_scheduler
+=======================
+
+exponential_decay
+-----------------
+
+..  autofunction:: paddle.fluid.layers.exponential_decay
+    :noindex:
+
+natural_exp_decay
+-----------------
+
+..  autofunction:: paddle.fluid.layers.natural_exp_decay
+    :noindex:
+
+inverse_time_decay
+------------------
+
+..  autofunction:: paddle.fluid.layers.inverse_time_decay
+    :noindex:
+
+polynomial_decay
+----------------
+
+..  autofunction:: paddle.fluid.layers.polynomial_decay
+    :noindex:
+
+piecewise_decay
+---------------
+
+..  autofunction:: paddle.fluid.layers.piecewise_decay
+    :noindex:
+
+noam_decay
+----------
+
+..  autofunction:: paddle.fluid.layers.noam_decay
+    :noindex:
+
