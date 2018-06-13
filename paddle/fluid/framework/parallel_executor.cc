@@ -64,16 +64,6 @@ ParallelExecutor::ParallelExecutor(
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
 
-  // Step 1. check all memory usages of all places.
-  // This step will create BuddyAllocator for each place, which will
-  //    1. enforce that the place is avaliable and NOT used.
-  //    2. avoid ncclBcast hanging up for NOT enough memory to use.
-  for (size_t i = 0; i < member_->places_.size(); ++i) {
-    size_t usage = memory::memory_usage(member_->places_[i]);
-    VLOG(4) << "Memory usage of device: " << member_->places_[i] << " is "
-            << usage << " bytes";
-  }
-
   // Step 2. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
