@@ -118,7 +118,11 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
-  auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
+  auto* var = GetVar();
+  if (nullptr == var) {
+    return false;
+  }
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
 
   framework::LoD lod;

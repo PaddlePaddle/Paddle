@@ -75,7 +75,11 @@ class VariableResponse {
     if (create_scope_) {
       return local_scope_->Var(meta_.varname());
     }
-    return scope_->FindVar(meta_.varname());
+    auto* var = scope_->FindVar(meta_.varname());
+    if (nullptr == var) {
+      VLOG(3) << "GetVar return NULL, var name = " << meta_.varname();
+    }
+    return var;
   }
 
  private:
