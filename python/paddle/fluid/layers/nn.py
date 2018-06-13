@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-All layers just related to the neural network.
+All layers just related to the neural network. 
 """
 
 from ..layer_helper import LayerHelper
@@ -95,7 +95,6 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
-       use_cudnn=False,
        use_mkldnn=False,
        act=None,
        is_test=False,
@@ -222,6 +221,7 @@ def embedding(input,
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
+        is_distributed (bool): Whether to run lookup table from remote parameter server.
         padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
             Otherwise the given :attr:`padding_idx` indicates padding the output
             with zeros whenever lookup encounters it in :attr:`input`. If
@@ -261,9 +261,10 @@ def embedding(input,
     return tmp
 
 
-# TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
                  size,
+                 h_0=None,
+                 c_0=None,
                  param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
@@ -324,6 +325,13 @@ def dynamic_lstm(input,
                          (T X 4D), where T is the total time steps in this
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the hidden size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
+
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
@@ -387,12 +395,20 @@ def dynamic_lstm(input,
     cell = helper.create_tmp_variable(dtype)
     batch_gate = helper.create_tmp_variable(dtype)
     batch_cell_pre_act = helper.create_tmp_variable(dtype)
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, size), \
+            'The shape of h0 should be (batch_size, %d)' % size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
 
     helper.append_op(
         type='lstm',
-        inputs={'Input': input,
-                'Weight': weight,
-                'Bias': bias},
+        inputs=inputs,
         outputs={
             'Hidden': hidden,
             'Cell': cell,
@@ -654,8 +670,9 @@ def dynamic_gru(input,
             :attr:`False`.
         gate_activation(str): The activation for update gate and reset gate.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
-        activation(str): The activation for candidate hidden state.
+        candidate_activation(str): The activation for candidate hidden state.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
+        h_0 (Variable): The hidden output of the first time step.
 
     Returns:
         Variable: The hidden state of GRU. The shape is :math:`(T \\times D)`, \
@@ -676,11 +693,13 @@ def dynamic_gru(input,
         attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
+    batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     if h_0 != None:
         assert h_0.shape == (
-            size, size), 'The shape of h0 should be(%d, %d)' % (size, size)
-        inputs['h0'] = h_0
+            batch_size, size
+        ), 'The shape of h0 should be(batch_size, %d)' % size
+        inputs['H0'] = h_0
 
     hidden = helper.create_tmp_variable(dtype)
     batch_gate = helper.create_tmp_variable(dtype)
@@ -873,6 +892,13 @@ def cos_sim(X, Y):
     """
     This function performs the cosine similarity between two tensors
     X and Y and returns that as the output.
+
+    Args:
+        X (Variable): The input X.
+        Y (Variable): The input Y.
+    
+    Returns:
+        Variable: the output of cosine(X, Y).
     """
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_tmp_variable(dtype=X.dtype)
@@ -899,15 +925,15 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     unchanged.
 
     Args:
-       x(variable): The input tensor.
-       dropout_prob(float): Probability of setting units to zero.
-       is_test(bool): A flag indicating whether it is in test phrase or not.
-       seed(int): A Python integer used to create random seeds. If this
-                  parameter is set to None, a random seed is used.
-                  NOTE: If an integer seed is given, always the same output
-                  units will be dropped. DO NOT use a fixed seed in training.
-       name(str|None): A name for this layer(optional). If set None, the layer
-                    will be named automatically.
+        x (Variable): The input tensor.
+         dropout_prob (float): Probability of setting units to zero.
+        is_test (bool): A flag indicating whether it is in test phrase or not.
+        seed (int): A Python integer used to create random seeds. If this
+                    parameter is set to None, a random seed is used.
+                    NOTE: If an integer seed is given, always the same output
+                    units will be dropped. DO NOT use a fixed seed in training.
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
 
     Returns:
         Variable: A tensor variable.
@@ -1029,8 +1055,8 @@ def square_error_cost(input, label):
         * :math:`Out`: Output value, same shape with :math:`X`.
 
     Args:
-       input(Variable): Input tensor, has predictions.
-       label(Variable): Label tensor, has target labels.
+        input (Variable): Input tensor, has predictions.
+        label (Variable): Label tensor, has target labels.
 
     Returns:
         Variable: The tensor variable storing the element-wise squared error \
@@ -1059,6 +1085,7 @@ def square_error_cost(input, label):
     return square_out
 
 
+@templatedoc()
 def chunk_eval(input,
                label,
                chunk_scheme,
@@ -1067,6 +1094,18 @@ def chunk_eval(input,
     """
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
+
+    Args:
+        input (Variable): prediction output of the network.
+        label (Variable): label of the test data set.
+        chunk_scheme (str): ${chunk_scheme_comment}
+        num_chunk_types (int): ${num_chunk_types_comment}
+        excluded_chunk_types (list): ${excluded_chunk_types_comment}
+    
+    Returns:
+        tuple: tuple containing: (precision, recall, f1_score,
+               num_infer_chunks, num_label_chunks,
+               num_correct_chunks)
     """
     helper = LayerHelper("chunk_eval", **locals())
 
@@ -1099,6 +1138,7 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
+@templatedoc()
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
@@ -1111,6 +1151,19 @@ def sequence_conv(input,
     This function creates the op for sequence_conv, using the inputs and
     other convolutional configurations for the filters and stride as given
     in the input parameters to the function.
+
+    Args:
+        input (Variable): ${x_comment}
+        num_filters (int): number of filters.
+        filter_size (int): the filter size (H and W).
+        filter_stride (int): stride of the filter.
+        padding (bool): if True, add paddings.
+        bias_attr (ParamAttr|None): attributes for bias
+        param_attr (ParamAttr|None): attributes for parameter
+        act (str): the activation type
+    
+    Returns:
+        Variable: output of sequence_conv
     """
 
     # FIXME(dzh) : want to unify the argument of python layer
@@ -1225,33 +1278,34 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-       input(Variable): The input image with [N, C, H, W] format.
-       num_filters(int): The number of filter. It is as same as the output
-           image channel.
-       filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-           it must contain two integers, (filter_size_H, filter_size_W).
-           Otherwise, the filter will be a square.
-       stride(int|tuple): The stride size. If stride is a tuple, it must
-           contain two integers, (stride_H, stride_W). Otherwise, the
-           stride_H = stride_W = stride. Default: stride = 1.
-       padding(int|tuple): The padding size. If padding is a tuple, it must
-           contain two integers, (padding_H, padding_W). Otherwise, the
-           padding_H = padding_W = padding. Default: padding = 0.
-       dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-           contain two integers, (dilation_H, dilation_W). Otherwise, the
-           dilation_H = dilation_W = dilation. Default: dilation = 1.
-       groups(int): The groups number of the Conv2d Layer. According to grouped
-           convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
-           the first half of the filters is only connected to the first half
-           of the input channels, while the second half of the filters is only
-           connected to the second half of the input channels. Default: groups=1
-       param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
-       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
-       use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-           library is installed. Default: True
-       act(str): Activation type. Default: None
-       name(str|None): A name for this layer(optional). If set None, the layer
-           will be named automatically.
+        input (Variable): The input image with [N, C, H, W] format.
+            num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        padding (int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups (int): The groups number of the Conv2d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1
+        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
+        bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        use_mkldnn (bool): Use mkldnn kernels or not.
+        act (str): Activation type. Default: None
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1409,7 +1463,7 @@ def sequence_pool(input, pool_type):
 
 def sequence_first_step(input):
     """
-    This funciton get the first step of sequence.
+    This function gets the first step of sequence.
 
     .. code-block:: text
 
@@ -1442,7 +1496,7 @@ def sequence_first_step(input):
 
 def sequence_last_step(input):
     """
-    This funciton get the last step of sequence.
+    This function gets the last step of sequence.
 
     .. code-block:: text
 
@@ -1486,6 +1540,22 @@ def pool2d(input,
     """
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
+
+    Args:
+        input (Variable): ${input_comment}
+        pool_size (int): ${ksize_comment}
+        pool_type (str): ${pooling_type_comment}
+        pool_stride (int): stride of the pooling layer.
+        pool_padding (int): padding size.
+        global_pooling (bool): ${global_pooling_comment}
+        use_cudnn (bool): ${use_cudnn_comment}
+        ceil_mode (bool): ${ceil_mode_comment}
+        use_mkldnn (bool): ${use_mkldnn_comment}
+        name (str): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+    
+    Returns:
+        Variable: output of pool2d layer.
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -1543,6 +1613,25 @@ def batch_norm(input,
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
+
+    Args:
+        input (Variable): the input variable.
+        act (str): activation type
+        is_test (bool): whether to run batch_norm as test mode.
+        momentum (float): momentum
+        epsilon (float): epsilon, default 1e-05
+        param_attr (ParamAttr|None): attributes for parameter
+        bias_attr (ParamAttr|None): attributes for bias
+        data_layout (str): data layout, default NCHW
+        in_place (bool): if True, do not create tmp variable
+        use_mkldnn (bool): ${use_mkldnn_comment}
+        name (str): The name of this layer. It is optional.
+        moving_mean_name (str): The name of moving mean variable name, optional.
+        moving_variance_name (str): The name of moving variance name, optional.
+        do_model_average_for_mean_and_var (bool):
+
+    Returns:
+        Variable: output of batch_norm layer.
     """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
@@ -1670,6 +1759,7 @@ def layer_norm(input,
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
             bias :math:`b`.
         act(str): Activation to be applied to the output of layer normalizaiton.
+        name (str): The name of this layer. It is optional.
 
     Returns:
         Variable: A tensor variable with the same shape as the input.
@@ -1721,6 +1811,17 @@ def layer_norm(input,
 
 
 def beam_search_decode(ids, scores, name=None):
+    """
+    ${beam_search_decode}
+
+    Args:
+        ids (Variable): ${ids_comment}
+        scores (Variable): ${scores_comment}
+        name (str): The name of this layer. It is optional.
+    
+    Returns:
+        tuple: a tuple of two output variable: sentence_ids, sentence_scores
+    """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
     sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
@@ -1796,46 +1897,46 @@ def conv2d_transpose(input,
            W_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
 
     Args:
-       input(Variable): The input image with [N, C, H, W] format.
-       num_filters(int): The number of the filter. It is as same as the output
-           image channel.
-       output_size(int|tuple|None): The output image size. If output size is a
-           tuple, it must contain two integers, (image_H, image_W). This
-           parameter only works when filter_size is None.
-       filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-           it must contain two integers, (filter_size_H, filter_size_W).
-           Otherwise, the filter will be a square. None if use output size to
-           calculate filter_size.
-       padding(int|tuple): The padding size. If padding is a tuple, it must
-           contain two integers, (padding_H, padding_W). Otherwise, the
-           padding_H = padding_W = padding. Default: padding = 0.
-       stride(int|tuple): The stride size. If stride is a tuple, it must
-           contain two integers, (stride_H, stride_W). Otherwise, the
-           stride_H = stride_W = stride. Default: stride = 1.
-       dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-           contain two integers, (dilation_H, dilation_W). Otherwise, the
-           dilation_H = dilation_W = dilation. Default: dilation = 1.
-       groups(int): The groups number of the Conv2d transpose layer. Inspired by
-           grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
-           when group=2, the first half of the filters is only connected to the
-           first half of the input channels, while the second half of the
-           filters is only connected to the second half of the input channels.
-           Default: groups=1
-       param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
-                              Default: None
-       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
-       use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-           library is installed. Default: True
-       act(str): Activation type. Default: None
-       name(str|None): A name for this layer(optional). If set None, the layer
-           will be named automatically.
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of the filter. It is as same as the output
+            image channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain two integers, (image_H, image_W). This
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square. None if use output size to
+            calculate filter_size.
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups(int): The groups number of the Conv2d transpose layer. Inspired by
+            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+            when group=2, the first half of the filters is only connected to the
+            first half of the input channels, while the second half of the
+            filters is only connected to the second half of the input channels.
+            Default: groups=1
+        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
+                               Default: None
+        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        act(str): Activation type. Default: None
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
     Returns:
-       Variable: The tensor variable storing the convolution transpose result.
+        Variable: The tensor variable storing the convolution transpose result.
 
     Raises:
-       ValueError: If the shapes of input, filter_size, stride, padding and
-                   groups mismatch.
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
 
     Examples:
        .. code-block:: python
@@ -1972,6 +2073,17 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     '''
     This function implements the beam search algorithm.
+
+    Args:
+        pre_ids (Variable): ${pre_ids_comment}
+        ids (Variable): ${ids_comment}
+        scores (Variable): ${scores_comment}
+        beam_size (int): ${beam_size_comment}
+        end_id (int): ${end_id_comment}
+        level (int): ${level_comment}
+    
+    Returns:
+        tuple: a tuple of beam_search output variables: selected_ids, selected_scores
     '''
     helper = LayerHelper('beam_search', **locals())
     score_type = scores.dtype
@@ -2467,19 +2579,21 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     The l2 normalize layer normalizes `x` along dimension `axis` using an L2
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
-    output = x / sqrt(max(sum(x**2), epsilon))
+    .. math::
+    y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
 
     For `x` with more dimensions, this layer independently normalizes each 1-D
     slice along dimension `axis`.
 
     Args:
-       x(Variable|list): The input tensor to l2_normalize layer.
-       axis(int): Dimension along which to normalize the input.
-       epsilon(float): A lower bound value for `x`'s l2 norm. sqrt(epsilon) will
-                       be used as the divisor if the l2 norm of `x` is less than
-                       sqrt(epsilon).
-       name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        x(Variable|list): The input tensor to l2_normalize layer.
+        axis(int): The axis on which to apply normalization. If `axis < 0`,
+            the dimension to normalization is rank(X) + axis. -1 is the
+            last dimension.
+        epsilon(float): The epsilon value is used to avoid division by zero,
+            the defalut value is 1e-10.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
 
     Returns:
@@ -2498,46 +2612,17 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         axis = 0
     helper = LayerHelper("l2_normalize", **locals())
 
-    square = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(type="square", inputs={"X": x}, outputs={"Out": square})
-
-    reduced_sum = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type="reduce_sum",
-        inputs={"X": square},
-        outputs={"Out": reduced_sum},
-        attrs={
-            "dim": [1] if axis is None else [axis],
-            "keep_dim": True,
-            "reduce_all": False
-        })
-
-    # TODO(caoying) A lower bound value epsilon for the norm is needed to
-    # imporve the numeric stability of reciprocal. This requires a maximum_op.
-    rsquare = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type="reciprocal", inputs={"X": reduced_sum}, outputs={"Out": rsquare})
-
-    # TODO(caoying) the current elementwise_mul operator does not support a
-    # general broadcast rule which broadcasts input(Y) to have the same
-    # dimension with Input(X) starting from a specified dimension. So this
-    # exanpsion is requred. Once a general broadcast rule is spported, this
-    # expanding canbe removed.
-    rsquare_expanded = helper.create_tmp_variable(dtype=x.dtype)
-    expand_times = [1] * len(x.shape)
-    expand_times[axis] = int(x.shape[axis])
-    helper.append_op(
-        type="expand",
-        inputs={"X": rsquare},
-        outputs={"Out": rsquare_expanded},
-        attrs={"expand_times": expand_times})
-
     out = helper.create_tmp_variable(dtype=x.dtype)
+    norm = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="elementwise_mul",
-        inputs={"X": x,
-                "Y": rsquare_expanded},
-        outputs={"Out": out})
+        type="norm",
+        inputs={"X": x},
+        outputs={"Out": out,
+                 "Norm": norm},
+        attrs={
+            "axis": 1 if axis is None else axis,
+            "epsilon": epsilon,
+        })
     return out
 
 
@@ -2721,16 +2806,13 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
     the edit distance will be divided by the length of reference string.
 
     Args:
-
         input(Variable): The indices for hypothesis strings.
-
         label(Variable): The indices for reference strings.
-
         normalized(bool): Indicated whether to normalize the edit distance by
                           the length of reference string.
-
         ignored_tokens(list of int): Tokens that should be removed before
                                      calculating edit distance.
+        name (str): The name of this layer. It is optional.
 
     Returns:
         Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
@@ -2820,10 +2902,10 @@ def ctc_greedy_decoder(input, blank, name=None):
                          where Lp is the sum of all input sequences' length and
                          num_classes is the true number of classes. (not
                          including the blank label).
-
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in thehalf-opened
                     interval [0, num_classes + 1).
+        name (str): The name of this layer. It is optional.
 
     Returns:
         Variable: CTC greedy decode result. If all the sequences in result were
@@ -2860,23 +2942,23 @@ def warpctc(input, label, blank=0, norm_by_times=False):
     input tensor.
 
     Args:
-       input(Variable): (LodTensor, default: LoDTensor<float>),
-         the unscaled probabilities of variable-length sequences,
-         which is a 2-D Tensor with LoD information.
-         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
-         sequences' length and num_classes is the true number of classes.
-         (not including the blank label).
-       label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
-         of variable-length sequence, which is a 2-D Tensor with LoD
-         information. It is of the shape [Lg, 1], where Lg is th sum of
-         all labels' length.
-       blank: (int, default: 0), the blank label index of Connectionist
-         Temporal Classification (CTC) loss, which is in the
-         half-opened interval [0, num_classes + 1).
-       norm_by_times: (bool, default: false), whether to normalize
-       the gradients by the number of time-step, which is also the
-       sequence's length. There is no need to normalize the gradients
-       if warpctc layer was follewed by a mean_op.
+        input(Variable): (LodTensor, default: LoDTensor<float>),
+            the unscaled probabilities of variable-length sequences,
+            which is a 2-D Tensor with LoD information.
+            It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+            sequences' length and num_classes is the true number of classes.
+            (not including the blank label).
+        label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
+            of variable-length sequence, which is a 2-D Tensor with LoD
+            information. It is of the shape [Lg, 1], where Lg is th sum of
+            all labels' length.
+        blank (int): default 0, the blank label index of Connectionist
+            Temporal Classification (CTC) loss, which is in the
+            half-opened interval [0, num_classes + 1).
+        norm_by_times (bool): default false, whether to normalize
+            the gradients by the number of time-step, which is also the
+            sequence's length. There is no need to normalize the gradients
+            if warpctc layer was follewed by a mean_op.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -2935,9 +3017,9 @@ def sequence_reshape(input, new_dim):
     no remainder for each sequence.
 
     Args:
-       input (Variable): (LodTensor, default: LoDTensor<float>), a 2-D LoDTensor
-                with shape being [N, M] where M for dimension.
-       new_dim (int): New dimension which the input LoDTensor is reshaped to.
+        input (Variable): (LodTensor, default: LoDTensor<float>), a 2-D LoDTensor
+            with shape being [N, M] where M for dimension.
+        new_dim (int): New dimension which the input LoDTensor is reshaped to.
 
     Returns:
         Variable: Reshaped LoDTensor according to new dimension.
@@ -2959,7 +3041,10 @@ def sequence_reshape(input, new_dim):
     return out
 
 
-@autodoc()
+# FIXME(wuyi): let docstring_checker.py understand @autodoc.
+# For now, the comments in c++ use types like Tensor, but in python side
+# the type is often "Variable", and arguments may vary.
+@templatedoc(op_type="nce")
 def nce(input,
         label,
         num_total_classes,
@@ -2967,6 +3052,21 @@ def nce(input,
         param_attr=None,
         bias_attr=None,
         num_neg_samples=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): input variable.
+        label (Variable): label.
+        num_total_classes (int):${num_total_classes_comment}
+        sample_weight (int): ${sample_weight_comment}
+        param_attr (ParamAttr|None): attributes for parameter
+        bias_attr (ParamAttr|None): attributes for bias
+        num_neg_samples (int): ${num_neg_samples_comment}
+    
+    Returns:
+        Variable: output of nce layer.
+    """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
     dim = input.shape[1]
@@ -3024,8 +3124,9 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-       input (Variable): (Tensor), A Tensor.
-       perm (list): A permutation of the dimensions of `input`.
+        x (Variable): The input Tensor.
+        perm (list): A permutation of the dimensions of `input`.
+        name (str): The name of this layer. It is optional.
 
     Returns:
         Variable: A transposed Tensor.
@@ -3258,9 +3359,9 @@ def multiplex(inputs, index):
     row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
 
     Args:
-       inputs (list): A list of variables to gather from. All variables have the
+        inputs (list): A list of variables to gather from. All variables have the
                 same shape and the rank is at least 2.
-       index (Variable): Tensor<int32>, index variable which is a 2-D tensor
+        index (Variable): Tensor<int32>, index variable which is a 2-D tensor
                 with shape [M, 1] where M is the batch size.
 
     Returns:
@@ -3459,7 +3560,8 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         begin(int): The first value of this counter.
         step(int): The increment step between each execution.
 
-    Returns(Variable): The global run counter.
+    Returns:
+        Variable: The global run counter.
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
@@ -3520,7 +3622,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     the corresponding dimension of x.
 
     Args:
-        input(variable): The input tensor.
+        x(variable): The input tensor.
         shape(list): The new shape. At most one dimension of the new shape can
                      be -1.
         actual_shape(variable): An optional input. If provided, reshape
@@ -3532,8 +3634,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
         inplace(bool): If this flag is set true, a new output tensor is created
                        whose data is copied from input x, otherwise the output
                        shares data with input without copying.
+        name (str): The name of this layer. It is optional.
 
-    Returns(variable): The output tensor.
+    Returns:
+        Variable: The output tensor.
 
     Examples:
         .. code-block:: python
@@ -4037,18 +4141,24 @@ def image_resize(input,
     return out
 
 
+@templatedoc(op_type="bilinear_interp")
 def resize_bilinear(input, out_shape=None, scale=None, name=None):
     """
-    This is an alias of layer 'image_resize' with bilinear interpolation.
+    ${comment}
 
-    The mathematical meaning of resize bilinear layer is
-    Bilinear interpolation.
-    Bilinear interpolation is an extension of linear interpolation for
-    interpolating functions of two variables (e.g. H-direction and
-    W-direction in this layer) on a rectilinear 2D grid.
+    Args:
+        input(${x_type}): ${x_comment}.
 
-    For details, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bilinear_interpolation
+        out_shape(${out_size_type}): ${out_size_comment}.
+
+        scale(float|None): The multiplier for the input height or width. At
+             least one of out_shape or scale must be set. And out_shape has
+             a higher priority than scale. Default: None.
+
+        name(str|None): The output variable name.
+
+    Returns:
+        ${out_comment}.
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR')
@@ -4066,6 +4176,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
                           This is a 4-D tensor of the shape
                           (num_batches, channels, in_h, in_w).
         out_short_len(int): The length of output images' short edge.
+        resample (str): resample method, default: BILINEAR.
 
     Returns:
         out (Variable): The output is a 4-D tensor of the shape

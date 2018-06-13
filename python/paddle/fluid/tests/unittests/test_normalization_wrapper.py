@@ -70,8 +70,9 @@ class TestNormalization(unittest.TestCase):
     def l2_normalize(self, data, axis, epsilon):
         """ Compute the groundtruth.
         """
-        output = data * np.reciprocal(
-            np.sum(np.square(data), axis=axis, keepdims=True))
+        output = data / np.broadcast_to(
+            np.sqrt(np.sum(np.square(data), axis=axis, keepdims=True)),
+            data.shape)
         return output
 
     def test_l2_normalize(self):
