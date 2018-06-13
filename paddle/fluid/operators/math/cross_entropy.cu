@@ -41,7 +41,7 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
   int idx = blockIdx.x * class_num + tid;
   int end = blockIdx.x * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
-    val += math::TolerableValue<T>()(std::log(X[idx])) * label[idx];
+    val += math::TolerableValue<T>()(logf(X[idx])) * label[idx];
   }
 
   val = paddle::platform::reduceSum(val, tid, blockDim.x);
