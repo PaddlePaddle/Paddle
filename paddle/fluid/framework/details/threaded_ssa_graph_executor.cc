@@ -214,78 +214,141 @@ FasterSSAGraphExecutor::FasterSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     std::unique_ptr<SSAGraph> &&graph)
-    : SSAGraphExecutor(std::move(graph)),
-      strategy_(strategy),
+    : graph_(std::move(graph)),
       local_scopes_(local_scopes),
-      places_(places) {}
-
-FeedFetchList FasterSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
-  std::unordered_map<OpHandleBase *, std::atomic<int>> op_table;
-  BlockingQueue<OpHandleBase *> global_queue;
-  std::atomic<int> runned_ops_;
-  for (auto &op : graph_->ops_) {
-    OpHandleBase *op_ptr = op.get();
-    size_t deps = op_ptr->NoReadyInputSize();
-    op_table.emplace(op_ptr, deps);
-    global_queue.Push(op_ptr);
+      places_(places),
+      fetch_ctxs_(places),
+      strategy_(strategy) {
+  for (size_t i = 0; i < strategy.num_threads_; ++i) {
+    threads_.emplace_back([this] { this->ThreadFunc(); });
   }
-  std::vector<std::thread> threads;
+}
+void FasterSSAGraphExecutor::ThreadFunc() {
+  while (true) {
+    auto job = jobs_.Pop();
+    if (job.op_ == nullptr) {  // End
+      return;
+    }
 
-  std::mutex end_flag_mtx_;
-  std::condition_variable end_flag_cv_;
-  bool end_flag = false;
+    size_t run_op_counter = 0;
+    while (job.op_ != nullptr) {
+      job.op_->Run(strategy_.use_cuda_);
+      ++run_op_counter;
 
-  for (size_t i = 0; i < strategy_.num_threads_; ++i) {
-    threads.emplace_back([&] {
-      OpHandleBase *to_run = nullptr;
-      int op_table_size = static_cast<int>(op_table.size());
-      while (true) {
-        if (to_run == nullptr) {
-          to_run = global_queue.Pop();
-          if (to_run == nullptr) {
-            return;
-          }
-        }
-        to_run->Run(strategy_.use_event_);
-        OpHandleBase *have_run = to_run;
-        to_run = nullptr;
-        if (runned_ops_.fetch_add(1) == op_table_size - 1) {
-          break;
-        }
-        for (auto *var : have_run->Outputs()) {
-          for (auto *pending_op : var->pending_ops_) {
-            if (op_table[pending_op].fetch_sub(1) == 1) {
-              if (to_run == nullptr) {
-                to_run = pending_op;
-              } else {
-                global_queue.Push(pending_op);
-              }
+      auto *prev_op = job.op_;
+      job.op_ = nullptr;
+
+      for (auto &out : prev_op->Outputs()) {
+        for (auto *pending_op : out->pending_ops_) {
+          std::atomic<size_t> &deps = job.pending_ops_->at(pending_op);
+          if (deps.fetch_sub(1) == 1) {
+            if (job.op_ == nullptr) {
+              // Pending Op can run right now.
+              job.op_ = pending_op;
+            } else {
+              // Send Pending Op to other threads.
+              jobs_.Push(JobItem(pending_op, job.pending_ops_, job.op_counter_,
+                                 job.op_counter_mtx_, job.op_counter_cv_));
             }
           }
         }
       }
-      {
-        std::unique_lock<std::mutex> lock(end_flag_mtx_);
-        end_flag = true;
+    }
+    {
+      std::lock_guard<std::mutex> guard(*job.op_counter_mtx_);
+      *job.op_counter_ += run_op_counter;
+    }
+    job.op_counter_cv_->notify_one();
+  }
+}
+
+FeedFetchList FasterSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
+  size_t op_counter{0};
+  std::mutex op_counter_mtx;
+  std::condition_variable op_counter_cv;
+  std::unordered_map<OpHandleBase *, std::atomic<size_t>> pending_ops;
+
+  // Step 2. Insert FetchOps
+  std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
+  std::unordered_set<std::unique_ptr<VarHandleBase>> fetch_dependencies;
+  FeedFetchList fetch_data(fetch_tensors.size());
+
+  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
+                 &fetch_data);
+
+  {  // Send init job to workers
+    std::vector<OpHandleBase *> ready_ops;
+    for (auto &op : graph_->ops_) {
+      size_t deps = op->NotReadyInputSize();
+      if (deps == 0) {
+        ready_ops.emplace_back(op.get());
       }
-      end_flag_cv_.notify_one();
-    });
+      pending_ops[op.get()] = deps;
+    }
+    for (auto *op : ready_ops) {
+      jobs_.Push(JobItem(op, &pending_ops, &op_counter, &op_counter_mtx,
+                         &op_counter_cv));
+    }
   }
 
-  std::unique_lock<std::mutex> lock(end_flag_mtx_);
-  end_flag_cv_.wait(lock, [&] { return end_flag; });
-
-  // Ends
-  for (size_t i = 1; i < strategy_.num_threads_; ++i) {
-    global_queue.Push(nullptr);
+  {  // Wait all worker done.
+    std::unique_lock<std::mutex> lock(op_counter_mtx);
+    while (op_counter != pending_ops.size()) {
+      op_counter_cv.wait(lock);
+    }
   }
 
-  for (auto &th : threads) {
+  return fetch_data;
+}
+
+void FasterSSAGraphExecutor::InsertFetchOps(
+    const std::vector<std::string> &fetch_tensors,
+    std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+    std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+    std::unordered_map<OpHandleBase *, std::atomic<size_t>> *pending_ops,
+    FeedFetchList *fetch_data) {
+  std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
+
+  for (auto &fetch_var_name : fetch_tensors) {
+    for (auto &var_map : graph_->vars_) {
+      auto it = var_map.find(fetch_var_name);
+      if (it != var_map.end()) {
+        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
+      }
+    }
+  }
+
+  for (size_t i = 0; i < fetch_tensors.size(); ++i) {
+    auto &var_name = fetch_tensors[i];
+    auto &vars = fetched_vars.at(var_name);
+    auto *op = new FetchOpHandle(fetch_data, i, &local_scopes_);
+
+    for (auto &p : places_) {
+      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+    }
+
+    for (auto *var : vars) {
+      op->AddInput(var);
+    }
+
+    auto *fetch_dummy = new DummyVarHandle();
+    op->AddOutput(fetch_dummy);
+    (*pending_ops)[op] = op->NotReadyInputSize();
+
+    fetch_dependencies->emplace(fetch_dummy);
+    fetch_ops->emplace_back(op);
+  }
+}
+
+FasterSSAGraphExecutor::~FasterSSAGraphExecutor() {
+  for (size_t i = 0; i < strategy_.num_threads_; ++i) {
+    jobs_.Push(JobItem());
+  }
+
+  for (auto &th : threads_) {
     th.join();
   }
-
-  return paddle::framework::FeedFetchList();
 }
 }  // namespace details
 }  // namespace framework

@@ -123,7 +123,7 @@ class ParallelExecutor(object):
             else:
                 cpu_num = int(
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num
+                exec_strategy.num_threads = cpu_num * 4
 
         if build_strategy is None:
             build_strategy = BuildStrategy()

@@ -122,9 +122,15 @@ ParallelExecutor::ParallelExecutor(
 #endif
   }
 
-  member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places,
-      builder_factory.Create()->Build(main_program)));
+  if (member_->use_cuda_) {
+    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places,
+        builder_factory.Create()->Build(main_program)));
+  } else {
+    member_->executor_.reset(new details::FasterSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places,
+        builder_factory.Create()->Build(main_program)));
+  }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
