@@ -18,3 +18,4 @@ Fluid
     regularizer.rst
     io.rst
     data.rst
+    detection.rst
