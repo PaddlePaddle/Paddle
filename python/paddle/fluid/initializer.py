@@ -506,8 +506,7 @@ class BilinearInitializer(Initializer):
         else:
             raise ValueError("Unsupported dtype %s", input.dtype)
         if np.prod(shape) > 1024 * 1024:
-            raise ValueError("The size of input is too big. Please consider "
-                             "saving it to file and 'load_op' to load it")
+            raise ValueError("The size of input is too big. ")
         op = block.append_op(
             type='assign_value',
             outputs={'Out': [var]},
