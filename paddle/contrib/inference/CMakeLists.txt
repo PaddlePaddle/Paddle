@@ -57,7 +57,6 @@ if (WITH_ANAKIN)
     nv_library(inference_anakin_api SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
     target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-    list(APPEND inference_deps inference_anakin_api)
     cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
                                   ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
                                   DEPS inference_anakin_api)
