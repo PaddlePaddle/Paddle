@@ -149,12 +149,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const framework::Scope* scope,
                                framework::Variable** var) {
   operators::detail::GRPCVariableResponse resp(scope, &ctx);
-
-  GrpcByteBufferSource source;
-  source.Init(byte_buffer);
-  GrpcByteBufferSourceWrapper r(&source);
-
-  PADDLE_ENFORCE(resp.Parse(&r) == 0, "parse bytebuffer to tensor error!");
+  PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
 }
 
