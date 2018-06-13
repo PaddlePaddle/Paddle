@@ -44,11 +44,8 @@ struct EigenDim {
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenTensor {
-  // TODO(qijun) Now, default type in unaligned, and we will make a benchmark on
-  // the speed of aligned and unaligned version in future.
   using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, IndexType>,
                                 Eigen::Aligned>;
-
   using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>,
                        Eigen::Aligned>;
