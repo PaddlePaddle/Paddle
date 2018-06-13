@@ -149,7 +149,9 @@ The operator has three steps:
 
 1. Dividing each region proposal into equal-sized sections with
    the pooled_width and pooled_height
+
 2. Finding the largest value in each section
+
 3. Copying these max values to the output buffer
 
 ROI Pooling for Faster-RCNN. The link below is a further introduction: 
