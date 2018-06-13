@@ -119,6 +119,7 @@ struct RandomCropFunctor {
   }
 
   HOSTDEVICE void operator()(size_t ins_idx) {
+#if 0
     typename Random<DeviceContext>::Engine engine(seed_);
     engine.discard(ins_idx * (rank_ - num_batchsize_dims_));
     size_t offsets[9];
@@ -135,6 +136,7 @@ struct RandomCropFunctor {
                      out_dims_ + num_batchsize_dims_, 0,
                      rank_ - num_batchsize_dims_, prod_x_ins_dims_,
                      prod_out_ins_dims_, offsets);
+#endif
   }
 };
 
