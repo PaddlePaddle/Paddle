@@ -102,14 +102,15 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    The fully connected layer can take multiple tensors as its inputs. It
-    creates a variable called weights for each input tensor, which represents
-    a fully connected weight matrix from each input unit to each output unit.
-    The fully connected layer multiplies each input tensor with its coresponding
-    weight to produce an output Tensor. If multiple input tensors are given,
-    the results of multiple multiplications will be sumed up. If bias_attr is
-    not None, a bias variable will be created and added to the output. Finally,
-    if activation is not None, it will be applied to the output as well.
+    This function creates a fully connected layer in the network. It can take 
+    multiple tensors as its inputs. It creates a variable called weights for 
+    each input tensor, which represents a fully connected weight matrix from 
+    each input unit to each output unit. The fully connected layer multiplies 
+    each input tensor with its coresponding weight to produce an output Tensor. 
+    If multiple input tensors are given, the results of multiple multiplications 
+    will be sumed up. If bias_attr is not None, a bias variable will be created 
+    and added to the output. Finally, if activation is not None, it will be applied 
+    to the output as well.
 
     This process can be formulated as follows:
 
@@ -878,7 +879,7 @@ def cos_sim(X, Y):
     Args:
         X (Variable): The input X.
         Y (Variable): The input Y.
-    
+
     Returns:
         Variable: the output of cosine(X, Y).
     """
@@ -1083,7 +1084,7 @@ def chunk_eval(input,
         chunk_scheme (str): ${chunk_scheme_comment}
         num_chunk_types (int): ${num_chunk_types_comment}
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
-    
+
     Returns:
         tuple: tuple containing: (precision, recall, f1_score,
                num_infer_chunks, num_label_chunks,
@@ -1143,7 +1144,7 @@ def sequence_conv(input,
         bias_attr (ParamAttr|None): attributes for bias
         param_attr (ParamAttr|None): attributes for parameter
         act (str): the activation type
-    
+
     Returns:
         Variable: output of sequence_conv
     """
@@ -1509,6 +1510,7 @@ def sequence_last_step(input):
     return sequence_pool(input=input, pool_type="last")
 
 
+@templatedoc()
 def pool2d(input,
            pool_size=-1,
            pool_type="max",
@@ -1520,12 +1522,12 @@ def pool2d(input,
            use_mkldnn=False,
            name=None):
     """
-    This function adds the operator for pooling in 2 dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
         input (Variable): ${input_comment}
-        pool_size (int): ${ksize_comment}
+        pool_size (int): The side length of pooling windows. All pooling 
+                         windows are squares with pool_size on a side.
         pool_type (str): ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
@@ -1533,11 +1535,29 @@ def pool2d(input,
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
         use_mkldnn (bool): ${use_mkldnn_comment}
-        name (str): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-    
+        name (str|None): A name for this layer(optional). If set None, the 
+                        layer will be named automatically.
+
     Returns:
         Variable: output of pool2d layer.
+
+    Raises:
+        ValueError: If 'pool_type' is not "max" nor "avg"
+        ValueError: If 'global_pooling' is False and 'pool_size' is -1
+        ValueError: If 'use_cudnn' is not a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.pool2d(
+                            input=data, 
+                            pool_size=2, 
+                            pool_type='max', 
+                            pool_stride=1, 
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -1800,7 +1820,7 @@ def beam_search_decode(ids, scores, name=None):
         ids (Variable): ${ids_comment}
         scores (Variable): ${scores_comment}
         name (str): The name of this layer. It is optional.
-    
+
     Returns:
         tuple: a tuple of two output variable: sentence_ids, sentence_scores
     """
@@ -2063,7 +2083,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         beam_size (int): ${beam_size_comment}
         end_id (int): ${end_id_comment}
         level (int): ${level_comment}
-    
+
     Returns:
         tuple: a tuple of beam_search output variables: selected_ids, selected_scores
     '''
@@ -2719,7 +2739,7 @@ def topk(input, k, name=None):
     This operator is used to find values and indices of the k largest entries
     for the last dimension.
 
-    If the input is a vector (rank=1), finds the k largest entries in the vector
+    If the input is a vector (1-D Tensor), finds the k largest entries in the vector
     and outputs their values and indices as vectors. Thus values[j] is the j-th
     largest entry in input, and its index is indices[j].
 
@@ -2729,9 +2749,11 @@ def topk(input, k, name=None):
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
-        k(int): An integer value to specify the top k largest elements.
+        k(int):  The number of top elements to look for along the last dimension 
+                 of input.
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+                       will be named automatically. 
+                       Default: None
 
     Returns:
         values(Variable): The k largest elements along each last dimensional
@@ -2739,13 +2761,16 @@ def topk(input, k, name=None):
         indices(Variable): The indices of values within the last dimension of
             input.
 
+    Raises:
+        ValueError: If k < 1 or k is not less than the last dimension of input
+
     Examples:
         .. code-block:: python
 
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     shape = input.shape
-    if k < 1 and k >= shape[-1]:
+    if k < 1 or k >= shape[-1]:
         raise ValueError("k must be greater than 0 and less than %d." %
                          (shape[-1]))
 
@@ -3045,7 +3070,7 @@ def nce(input,
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
-    
+
     Returns:
         Variable: output of nce layer.
     """
