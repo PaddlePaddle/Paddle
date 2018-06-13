@@ -22,7 +22,8 @@ namespace reader {
 
 class CustomReader : public framework::DecoratedReader {
  public:
-  CustomReader(ReaderBase* reader, const framework::BlockDesc& sub_block,
+  CustomReader(const std::shared_ptr<ReaderBase>& reader,
+               const framework::BlockDesc& sub_block,
                const std::vector<std::string>& source_var_names,
                const std::vector<std::string>& sink_var_names)
       : DecoratedReader(reader),
