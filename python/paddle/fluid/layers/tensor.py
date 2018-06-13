@@ -79,20 +79,33 @@ def create_global_var(shape,
                       force_cpu=False,
                       name=None):
     """
-    Create a global variable. such as global_step
+    Create a new variable in the global block(block 0).
+
     Args:
         shape(list[int]): shape of the variable
-        value(float): the value of the variable
-        dtype(string): element type of the parameter
-        persistable(bool): if this variable is persistable
-        force_cpu(bool): force this variable to be on CPU
+        value(float): the value of the variable. The new created 
+                      variable will be filled with it.
+        dtype(string): data type of the variable
+        persistable(bool): if this variable is persistable. 
+                           Default: False
+        force_cpu(bool): force this variable to be on CPU. 
+                         Default: False
+        name(str|None): The name of the variable. If set to None the variable 
+                        name will be generated automatically. 
+                        Default: None
 
     Returns:
         Variable: the created Variable
+
+    Examples:
+        .. code-block:: python
+
+            var = fluid.create_global_var(shape=[2,3], value=1.0, dtype='float32', 
+                                 persistable=True, force_cpu=True, name='new_var')
     """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
-        dtype=dtype, shape=shape, persistable=persistable, name=name)
+        dtype=dtype, shape=shape, persistable=persistable)
     helper.set_variable_initializer(
         var, initializer=Constant(
             value=float(value), force_cpu=force_cpu))
@@ -152,10 +165,11 @@ def sums(input, out=None):
     Args:
         input (Variable|list): The input tensor that has the elements
                                that need to be summed up.
+        out (Variable|None): Output parameter. Returns the sum result.
+                             Default: None
 
     Returns:
-        Variable: The tensor type variable that has the sum of input
-                  written to it.
+        Variable: the sum of input. The same as the argument 'out'
 
     Examples:
         .. code-block::python
@@ -328,13 +342,13 @@ def argmin(x, axis=0):
         x(Variable): The input to compute the indices of
                      the min elements.
         axis(int): Axis to compute indices along.
-    
+
     Returns:
         Variable: The tensor variable storing the output
-    
+
     Examples:
         .. code-block:: python
-          
+
           out = fluid.layers.argmin(x=in, axis=0)
           out = fluid.layers.argmin(x=in, axis=-1)  
     """
@@ -359,13 +373,13 @@ def argmax(x, axis=0):
         x(Variable): The input to compute the indices of
                      the max elements.
         axis(int): Axis to compute indices along.
-    
+
     Returns:
         Variable: The tensor variable storing the output
-    
+
     Examples:
         .. code-block:: python
-          
+
           out = fluid.layers.argmax(x=in, axis=0)
           out = fluid.layers.argmax(x=in, axis=-1)  
     """

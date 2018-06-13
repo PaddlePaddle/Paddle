@@ -748,16 +748,25 @@ def max_sequence_len(rank_table):
 
 
 def lod_tensor_to_array(x, table):
-    """ Convert a LOD_TENSOR to an LOD_TENSOR_ARRAY.
+    """ 
+    Convert a LoDTensor to a LoDTensorArray.
+
+    This function split a LoDTesnor to a LoDTensorArray according to its LoD 
+    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in 
+    Paddle. The generated LoDTensorArray of this function can be further read 
+    or written by 'read_from_array()' and 'write_to_array()' operators. However, 
+    this function is generally an internal component of Paddle 'DynamicRNN'. 
+    Users should not use it directly.
 
     Args:
-        x (Variable|list): The LOD tensor to be converted to a LOD tensor array.
+        x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
-                                descending order.
+                                descending order. It is generally generated 
+                                by 'layers.lod_rank_table()' API.
 
     Returns:
-        Variable: The variable of type array that has been converted from a
+        Variable: The LoDTensorArray that has been converted from the input 
                   tensor.
 
     Examples:
@@ -1047,6 +1056,13 @@ def array_length(array):
 
 
 class ConditionalBlockGuard(BlockGuard):
+    """
+    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for 
+    holding a ConditionalBlock, and helping users entering and exiting the 
+    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard 
+    is generally an internal component of IfElse, users should not use it directly.
+    """
+
     def __init__(self, block):
         if not isinstance(block, ConditionalBlock):
             raise TypeError("block should be conditional block")
@@ -1563,17 +1579,15 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 def is_empty(x, cond=None, **ignored):
     """
-    **Is Empty**
-
-    This layer returns the truth value of whether the variable is empty.
+    Test whether an Variable is empty.
 
     Args:
-        x(Variable): Operand of *is_empty*
-        cond(Variable|None): Optional output variable to store the result
-                             of *is_empty*
+        x (Variable): The Variable to be tested.
+        cond (Variable|None): Output parameter. Returns the test result 
+                              of given 'x'.
 
     Returns:
-        Variable: The tensor variable storing the output of *is_empty*.
+        Variable: The tensor variable storing the test result of 'x'.
 
     Raises:
         TypeError: If input cond is not a variable, or cond's dtype is
