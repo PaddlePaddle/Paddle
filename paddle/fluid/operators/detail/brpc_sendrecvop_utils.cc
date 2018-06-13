@@ -20,9 +20,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/detail/brpc_sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/brpc_serialize.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/detail/brpc_variable_response.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -30,11 +29,12 @@ namespace operators {
 namespace detail {
 
 class IOBufWriter {
+ public:
   static void Append(butil::IOBuf* iobuf, int k, const char* v, int64_t vlen) {
-    iobuf->Append(reinterpret_cast<char*>(&k), 4);
-    iobuf->Append(reinterpret_cast<char*>(&vlen), 8);
+    iobuf->append(reinterpret_cast<char*>(&k), 4);
+    iobuf->append(reinterpret_cast<char*>(&vlen), 8);
     // TODO(gongwb): use append_zero to avoid copy
-    iobuf->Append(v, vlen);
+    iobuf->append(v, vlen);
   }
 };
 
@@ -56,8 +56,8 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
       request->set_profile(platform::kDisableProfiler);
     }
   }
-  if (!out_name.empty()) {
-    request->set_out_varname(out_name);
+  if (!out_varname.empty()) {
+    request->set_out_varname(out_varname);
   }
   if (var->IsType<framework::LoDTensor>()) {
     request->set_type(::sendrecv::LOD_TENSOR);
@@ -69,7 +69,10 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   } else if (var->IsType<ncclUniqueId>()) {
     request->set_type(::sendrecv::NCCL_ID);
     const ncclUniqueId& uid = var->Get<ncclUniqueId>();
-    request.set_serialized(uid.inerenal, NCCL_UNIQUE_ID_BYTES);
+    // TODO(gongwb): use append_zero to avoid data copy.
+    IOBufWriter::Append(iobuf,
+                        sendrecv::VariableMessage::kSerializedFieldNumber,
+                        uid.internal, NCCL_UNIQUE_ID_BYTES);
     return;
 #endif
   } else {
@@ -78,25 +81,27 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   }
 
   // TODO(gongwb): use append_zero to avoid data copy.
-  IOBufWriter::Append(iobuf, sendrecv::kSerializeFieldNumber, payload,
-                      paylod_size);
+  IOBufWriter::Append(iobuf,
+                      ::sendrecv::VariableMessage::kSerializedFieldNumber,
+                      static_cast<char*>(payload), payload_size);
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
     size_t rows_memory_size =
         slr->rows().size() * framework::SizeOfType(typeid(int64_t));
 
-    IOBufWriter::Append(iobuf, sendrecv::kRowsFieldNumber, slr->rows().data(),
-                        rows_memory_size);
+    IOBufWriter::Append(iobuf, ::sendrecv::VariableMessage::kRowsFieldNumber,
+                        reinterpret_cast<const char*>(slr->rows().data()),
+                        static_cast<int64_t>(rows_memory_size));
   }
 }
 
-void DeserializeFromIOBuf(const sendrecv::VariableMessage& meta,
+void DeserializeFromIOBuf(const ::sendrecv::VariableMessage& meta,
                           const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
                           framework::Variable** var) {
-  operators::detail::VariableResponse resp(scope, &ctx);
+  operators::detail::BRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(iobuf, meta) == 0, "parse iobuf to tensor error!");
   *var = resp.GetVar();
 }

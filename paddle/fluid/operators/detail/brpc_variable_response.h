@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "brpc/channel.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -41,7 +42,7 @@ class BRPCSourceWrapper : public Source {
   }
 
  private:
-  IOBufAsZeroCopyInputStream source_;
+  butil::IOBufAsZeroCopyInputStream source_;
 };
 
 class BRPCVariableResponse : public VariableResponse {
@@ -57,7 +58,7 @@ class BRPCVariableResponse : public VariableResponse {
   int Parse(Source* source) override;
   int Parse(const butil::IOBuf& iobuf, const sendrecv::VariableMessage& meta) {
     BRPCSourceWrapper wrapper(iobuf);
-    return Parse(&wrapper, meta);
+    return VariableResponse::Parse(&wrapper, meta);
   }
 };
 

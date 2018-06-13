@@ -14,4 +14,10 @@
 //
 
 #include "paddle/fluid/operators/detail/brpc_variable_response.h"
+namespace paddle {
+namespace operators {
+namespace detail {
 int BRPCVariableResponse::Parse(Source* source) { return 0; }
+}  // namespace detail
+}  // namespace operators
+}  // namespace paddle

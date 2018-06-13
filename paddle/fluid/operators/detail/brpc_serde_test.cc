@@ -16,11 +16,14 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include "brpc/channel.h"
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/detail/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/brpc_variable_response.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/variable_response.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -39,6 +42,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
 
   butil::IOBuf iobuf;
   sendrecv::VariableMessage msg;
+  int tensor_numel = 564 * 128;
 
   // serialize var to IOBuf
   {
@@ -49,20 +53,17 @@ void RunSerdeTestSelectedRows(platform::Place place) {
     auto* rows = slr->mutable_rows();
     tensor->Resize(framework::make_ddim({564, 128}));
     tensor->mutable_data<float>(place);
-    int tensor_numel = 564 * 128;
     math::set_constant(ctx, tensor, 32.7);
     for (int i = 0; i < 564; ++i) rows->push_back(i);
 
     operators::detail::SerializeToIOBuf("myvar", &var, ctx, &msg, &iobuf);
   }
 
-  // check sendrecv::VariableMessage meta data
-
   // desrialize
   {
     framework::Scope scope;
     scope.Var("myvar");
-    operators::detail::VariableResponse resp(&scope, &ctx);
+    operators::detail::BRPCVariableResponse resp(&scope, &ctx);
     EXPECT_EQ(resp.Parse(iobuf, msg), 0);
 
     framework::Variable* var2 = resp.GetVar();
@@ -93,9 +94,13 @@ void RunSerdeTestSelectedRows(platform::Place place) {
 }
 
 void RunTestLodTensor(platform::Place place) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& ctx = *pool.Get(place);
+
   // serialize var to ByteBuffer
   butil::IOBuf iobuf;
   sendrecv::VariableMessage msg;
+  int tensor_numel = 512 * 8 * 4 * 2;
   {
     framework::Variable var;
     auto* tensor = var.GetMutable<framework::LoDTensor>();
@@ -103,22 +108,31 @@ void RunTestLodTensor(platform::Place place) {
     framework::LoD lod;
     lod.push_back(framework::Vector<size_t>({1, 3, 8}));
     tensor->set_lod(lod);
-    int tensor_numel = 512 * 8 * 4 * 2;
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
     tensor->mutable_data<float>(place);
     math::set_constant(ctx, tensor, 31.9);
 
-    operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg, &iobuf);
+    operators::detail::SerializeToIOBuf("myvar", &var, ctx, &msg, &iobuf);
   }
 
   // check sendrecv::VariableMessage meta data
+  {
+    EXPECT_EQ(msg.varname(), "myvar");
+    EXPECT_EQ(msg.type(), 0);
+    EXPECT_EQ(msg.dims()[0], 512);
+    EXPECT_EQ(msg.dims()[1], 8);
+    EXPECT_EQ(msg.dims()[2], 4);
+    EXPECT_EQ(msg.dims()[3], 2);
+    EXPECT_EQ(msg.lod_level(), 1);
+    EXPECT_EQ(msg.lod(0).lod_data(0), 1);
+    EXPECT_EQ(msg.lod(0).lod_data(1), 3);
+    EXPECT_EQ(msg.lod(0).lod_data(2), 8);
+  }
 
   // deserialize
   {
     framework::Scope scope;
     scope.Var("myvar");
-    operators::detail::VariableResponse resp(&scope, &ctx);
+    operators::detail::BRPCVariableResponse resp(&scope, &ctx);
     EXPECT_EQ(resp.Parse(iobuf, msg), 0);
 
     framework::Variable* var2 = resp.GetVar();

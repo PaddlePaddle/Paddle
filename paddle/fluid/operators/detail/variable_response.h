@@ -69,9 +69,8 @@ class VariableResponse {
     }
   }
 
-  virtual int Parse(Source* source, const sendrecv::VariableResponse& meta) {
-    meta_.set_varname(meta.varname());
-    meta_.set_out_varname(meta.out_var_name());
+  int Parse(Source* source, const sendrecv::VariableMessage& meta) {
+    meta_ = meta;
     return Parse(source);
   }
 

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/detail/brpc_client.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/detail/brpc_sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -52,6 +53,8 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
 
   framework::AsyncIO(
       [var_name_val, p_ctx, ep_val, p_scope, time_out, ch_ptr, this] {
+        auto* var = p_scope->FindVar(var_name_val);
+
         auto ch_ctx = ch_ptr->Pop();
         brpc::Controller* cntl = new brpc::Controller();
         sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
@@ -60,10 +63,10 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
         google::protobuf::Closure* done =
             brpc::NewCallback(&HandleSendResponse, cntl, response);
 
-        :grpc::ByteBuffer req;
-        SerializeToIOBuf(var_name_val, var, *p_ctx, &req);
-
         sendrecv::VariableMessage request;
+        SerializeToIOBuf(var_name_val, var, *p_ctx, &request,
+                         &cntl->request_attachment());
+
         ch_ctx->stub->SendVariable(cntl, &request, response, done);
       });
   req_count_++;
