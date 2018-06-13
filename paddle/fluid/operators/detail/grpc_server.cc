@@ -169,7 +169,7 @@ class RequestPrefetch final : public RequestBase {
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
-    framework::Variable* outvar = scope->FindVar(out_var_name);
+    framework::Variable* outvar = scope->Var(out_var_name);
 
     request_handler_->Handle(in_var_name, scope, invar, &outvar, out_var_name);
 
