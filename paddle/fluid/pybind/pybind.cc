@@ -191,7 +191,12 @@ PYBIND11_PLUGIN(core) {
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              return new_lod;
-           });
+           })
+      .def("has_valid_recursive_sequence_lengths", [](LoDTensor &self) -> bool {
+        // Check that the lod info is valid and match the outermost
+        // dimension of the LoDTensor data
+        return CheckLoD(self.lod(), vectorize(self.dims()).front());
+      });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",

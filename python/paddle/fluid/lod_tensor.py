@@ -68,6 +68,8 @@ def create_lod_tensor(data, lod, place):
         tensor = core.LoDTensor()
         tensor.set(data, place)
         tensor.set_recursive_sequence_lengths(lod)
+        assert tensor.has_valid_recursive_sequence_lengths(
+        ), "the provided lod info is invalid"
         return tensor
     else:
         raise TypeError(

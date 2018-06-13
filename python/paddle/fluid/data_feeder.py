@@ -66,6 +66,8 @@ class DataToLoDTensorConverter(object):
         t.set(arr, self.place)
         if self.lod_level > 0:
             t.set_recursive_sequence_lengths(self.lod)
+            assert t.has_valid_recursive_sequence_lengths(
+            ), "the provided lod info is invalid"
         return t
 
 
