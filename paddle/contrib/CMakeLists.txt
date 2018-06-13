@@ -13,4 +13,4 @@
 # limitations under the License.
 #
 
-add_subdirectory(inference)
+#add_subdirectory(inference)
