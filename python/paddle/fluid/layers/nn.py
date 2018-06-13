@@ -806,7 +806,7 @@ def crf_decoding(input, param_attr, label=None):
         label(${label_type}): ${label_comment}
 
     Returns:
-        ${viterbi_path_comment}
+        Variable: ${viterbi_path_comment}
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
@@ -828,7 +828,7 @@ def cos_sim(X, Y):
 
     Args:
         X (Variable): ${x_comment}
-        Y (Variable): ${x_comment}
+        Y (Variable): ${y_comment}
     
     Returns:
         Variable: the output of cosine(X, Y).
@@ -1036,9 +1036,9 @@ def chunk_eval(input,
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
     
     Returns:
-        tuple: tuple containing: (precision, recall, f1_score,
-               num_infer_chunks, num_label_chunks,
-               num_correct_chunks)
+        tuple: tuple containing: precision, recall, f1_score,
+        num_infer_chunks, num_label_chunks,
+        num_correct_chunks
     """
     helper = LayerHelper("chunk_eval", **locals())
 
@@ -3050,8 +3050,6 @@ def nce(input,
 
 def transpose(x, perm, name=None):
     """
-    **transpose Layer**
-
     Permute the dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
@@ -3918,7 +3916,7 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
     Returns:
-        roi_pool (Variable): ${out_comment}.
+        Variable: ${out_comment}.
 
     Examples:
         .. code-block:: python
