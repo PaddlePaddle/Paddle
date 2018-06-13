@@ -5678,8 +5678,8 @@ def warp_ctc_layer(input,
     <https://github.com/baidu-research/warp-ctc>`_ library, which is used in
     `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
     <https://arxiv.org/pdf/1512.02595v1.pdf>`_, to compute Connectionist Temporal
-    Classification (CTC) loss. Besides, another `warp-ctc
-    <https://github.com/gangliao/warp-ctc>`_ repository, which is forked from
+    Classification (CTC) loss. Besides, another `warp-ctc repository
+    <https://github.com/gangliao/warp-ctc>`_ , which is forked from
     the official one, is maintained to enable more compiling options. During the
     building process, PaddlePaddle will clone the source codes, build and
     install it to :code:`third_party/install/warpctc` directory.
