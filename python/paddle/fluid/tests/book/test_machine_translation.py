@@ -147,7 +147,11 @@ def decoder_decode(context, is_sparse):
         pd.array_write(selected_ids, array=ids_array, i=counter)
         pd.array_write(selected_scores, array=scores_array, i=counter)
 
-        pd.less_than(x=counter, y=array_len, cond=cond)
+        # update the break condition: up to the max length or all candidates of
+        # source sentences have ended.
+        length_cond = pd.less_than(x=counter, y=array_len)
+        finish_cond = pd.logical_not(pd.is_empty(x=selected_ids))
+        pd.logical_and(x=length_cond, y=finish_cond, out=cond)
 
     translation_ids, translation_scores = pd.beam_search_decode(
         ids=ids_array, scores=scores_array, beam_size=beam_size, end_id=10)

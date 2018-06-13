@@ -87,7 +87,7 @@ void BeamSearch::PruneEndBeams(const framework::LoDTensor &pre_ids,
   auto *pre_ids_data = pre_ids.data<int64_t>();
   auto abs_lod = framework::ToAbsOffset(ids_->lod());
   auto &high_level = abs_lod[lod_level_];
-  for (size_t src_idx = 0; src_idx < high_level.size(); ++src_idx) {
+  for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
     size_t src_prefix_start = high_level[src_idx];
     size_t src_prefix_end = high_level[src_idx + 1];
     bool finish_flag = true;
