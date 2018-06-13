@@ -1,7 +1,7 @@
 # Fluid distributed parameter segmentation strategy
-In this article, we'll explain the design of parameters segmentaion when we do pserver-based distributed training with PaddlePaddle Fluid, we will give a case of how this segmentation scheme could be used in python code;
+In this article, we'll explain the reason and the design of parameters segmentaion when we do pserver-based distributed training with PaddlePaddle Fluid, we will give a case of how this segmentation scheme could be used in python code;
 
-## Model Parameter Segmentation Strategy Design
+## Background
 ### Reason for segmentation
 
 In the design of the model, we usually do not limit the size of the parameters used by each layer of the model. Suppose we have 3 parameter servers now and we want to train the following network:
@@ -13,6 +13,7 @@ The fluid.input layer is very wide, causing the w1, b1 parameter dimensions to b
 If we simply assign these parameters to the parameter server, the parameter size obtained by each parameter server will not be uniform, and the lightly loaded parameter server will wait for the parameter server with heavy load.
 Therefore, for the case of non-uniform size of the parameters, in the Distribute Transpiler, we will segment the parameters of the model and the corresponding gradients into one or more parameter blocks.
 
+## Model Parameter Segmentation Strategy Design
 ### Segmentation
 
 Take into account the grain size of segmentation, if the segmentation is fine-grained, then the calculation efficiency of the parameter server will be low, but if the segmentation is too coarse-grained, even distribution of the parameters cannot be achieved;
