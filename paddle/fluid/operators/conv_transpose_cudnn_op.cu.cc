@@ -45,7 +45,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     // cudnn v5 does not support dilations
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
+    //int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -144,7 +144,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     // cudnn v5 does not support dilations
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
+    //int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;

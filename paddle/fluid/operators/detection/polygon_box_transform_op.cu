@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -62,7 +63,8 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
                    (height + threadsPerBlock.y - 1) / threadsPerBlock.y,
                    (width + threadsPerBlock.z - 1) / threadsPerBlock.z);
     auto stream = ctx.cuda_device_context().stream();
-    PolygonBoxTransformKernel<T><<<numBlocks, threadsPerBlock, 0, stream>>>(
+    hipLaunchKernelGGL(PolygonBoxTransformKernel<T>,
+        dim3(numBlocks), dim3(threadsPerBlock), 0, stream,
         batch_size * geo_channels, height, width, in_data, out_data);
   }
 };

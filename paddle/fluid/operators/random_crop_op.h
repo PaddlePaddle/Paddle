@@ -19,7 +19,7 @@
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #include <thrust/random.h>
 #endif
 
@@ -37,7 +37,7 @@ struct Random<platform::CPUDeviceContext> {
   using UniformIntDist = std::uniform_int_distribution<T>;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 template <>
 struct Random<platform::CUDADeviceContext> {
   using Engine = thrust::minstd_rand;

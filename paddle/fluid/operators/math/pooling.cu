@@ -12,12 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-<<<<<<< 97a244ed1def829193ad991baa9a0befb44b89f0
+#include "hip/hip_runtime.h"
 #include <algorithm>
 #include <vector>
-=======
-#include "hip/hip_runtime.h"
->>>>>>> Add HIP support to fluid/operator.
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 

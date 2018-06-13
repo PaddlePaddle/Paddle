@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/random_crop_op.h"
 
 namespace ops = paddle::operators;

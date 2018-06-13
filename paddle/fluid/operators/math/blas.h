@@ -212,6 +212,6 @@ inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
 }  // namespace paddle
 
 #include "paddle/fluid/operators/math/blas_impl.h"
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/math/blas_impl.cu.h"
 #endif
