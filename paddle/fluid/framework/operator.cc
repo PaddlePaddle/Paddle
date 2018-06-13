@@ -69,6 +69,19 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
+static int GetRowSize(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return -1;
+  }
+
+  if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().rows().size();
+  }
+
+  return -1;
+}
+
 static LoD GetLoD(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
@@ -153,6 +166,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
+        int row_size = GetRowSize(*scope, input.second[i]);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
@@ -173,6 +190,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
+        int row_size = GetRowSize(*scope, output.second[i]);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
         ss << "[" << GetDims(*scope, output.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
