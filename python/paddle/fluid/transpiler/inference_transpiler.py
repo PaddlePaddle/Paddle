@@ -23,7 +23,7 @@ class InferenceTranspiler:
     '''
     Convert the fluid program to optimized inference program.
 
-    There are several optimizations, only fuse batch normalization is supported now.
+    There are several optimizations.
 
     Examples:
 
@@ -54,7 +54,47 @@ class InferenceTranspiler:
             scope = global_scope()
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
-        self.fuse_batch_norm(program, place, scope)
+        use_mkldnn = bool(os.environ["FLAGS_use_mkldnn"])
+        if not use_mkldnn:
+            self.fuse_batch_norm(program, place, scope)
+        else:
+            self.fuse_relu(program)
+
+    def fuse_relu(self, program):
+        '''
+        Transpile the program by fused relu activation for MKLDNN program.
+
+        Relu activation following batch norm OP can be fused by adding
+        'fuse_with_relu' attribute to batch norm OP.
+
+        The result of fuse is:
+            - before:
+                - batch_norm->relu->any_other_op
+            - after:
+                - batch_norm->any_other_op
+
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type in ['batch_norm']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'relu':
+                    # modify bnorm OP to include relu
+                    current_op.set_attr("fuse_with_relu", True)
+                    # remove relu OP
+                    self.block.remove_op(i + 1)
+                    i = i + 1
+            i = i + 1
+
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
 
     def fuse_batch_norm(self, program, place, scope):
         '''
@@ -107,13 +147,11 @@ class InferenceTranspiler:
         self.block = program.block(0)
         self.input_map = {}  # store the input names should be adjusted
 
-        use_mkldnn = bool(os.environ["FLAGS_use_mkldnn"])
-
         i = 0
         while i < len(self.block.ops):
             current_op = self.block.ops[i]
             # TODO(luotao1): consider only conv2d now. fc would be delt later.
-            if current_op.type in ['conv2d'] and not use_mkldnn:
+            if current_op.type in ['conv2d']:
                 # TODO(luotao1): consider single chain network now.
                 # For branch network, we counldn't use block.ops[i + 1] as
                 # the judgment condition.
@@ -136,13 +174,6 @@ class InferenceTranspiler:
                         # remove batch_norm_op
                         self.block.remove_op(i + 2)
                         i = i + 1
-            elif current_op.type in ['batch_norm'] and use_mkldnn:
-                next_op = self.block.ops[i + 1]
-                if next_op.type == 'relu':
-                    # modify bnorm OP to include relu
-                    self._add_relu_to_bnorm(current_op)
-                    # remove batch_norm_op
-                    self.block.remove_op(i + 1)
             i = i + 1
 
         self._adjust_input()
@@ -153,9 +184,6 @@ class InferenceTranspiler:
         program = program.clone()
 
     # ====================== private transpiler functions =====================
-    def _add_relu_to_bnorm(self, current_op):
-        current_op.set_attr("fuse_with_relu", True)
-
     def _insert_bias_op(self, index, current_op, bn_op):
         '''
         Construct elementwise_add operator for adding bias

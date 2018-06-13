@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
 import paddle.fluid.transpiler.distribute_transpiler as distribute_transpiler
-import paddle.fluid.transpiler.inference_transpiler as inference_transpiler
 
 from args import *
 
