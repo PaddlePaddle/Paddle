@@ -59,9 +59,10 @@ inline size_t CpuTotalPhysicalMemory() {
 size_t CpuMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
-  return std::min(static_cast<size_t>(FLAGS_fraction_of_cpu_memory_to_use *
-                                      CpuTotalPhysicalMemory()),
-                  FLAGS_initial_cpu_memory_in_mb * 1 << 20);
+  return std::min(
+      static_cast<size_t>(FLAGS_fraction_of_cpu_memory_to_use *
+                          CpuTotalPhysicalMemory()),
+      static_cast<size_t>(FLAGS_initial_cpu_memory_in_mb * 1 << 20));
 }
 
 size_t CpuMinChunkSize() {
