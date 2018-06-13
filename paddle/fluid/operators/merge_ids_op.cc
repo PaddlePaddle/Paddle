@@ -30,25 +30,46 @@ class MergeIdsOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 Merge multi LoDTensor's into one according to Ids's shard num.
-The values in the input LoDTensor are lookuped from the output of split_ids_op
+
+
+split_ids_op -> prefetch_op -> merge_ids_op
+
+
+merge_ids_op should be used after split_ids_op and prefetch_op, split_ids_op
+ will split input Ids into multiple tensors according to Id's shard number.
+prefetch_op will send them to parameter server to prefetch embedding value
+back. During split, the order of ids is disordered. In merge_ids_op we use
+the original Ids to restore the order of the fetched embedding value and
+ also pass the lod information to the merged output.
+
 
 Example:
-  Input:
-    Ids = [1,2,3,4,5,6]
-    X0 = [[0.1 0.2]   # 3
-          [0.2 0.3]]  # 6
-    X1 = [[0.3 0.4]   # 1
-          [0.4 0.5]]  # 4
-    X2 = [[0.5 0.6]   # 2
-          [0.6 0.7]]  # 5
 
-  Output:
-    Out = [[0.3 0.4]  # 1
-           [0.5 0.6]  # 2
-           [0.1 0.2]  # 3
-           [0.4 0.5]  # 4
-           [0.6 0.7]  # 5
-           [0.2 0.3]] # 6
+    Ids = [1,2,3,4,5,6] # 3 shared
+
+split_ids_op ->
+
+    Id0 = [3, 6]
+    Id1 = [1, 4]
+    Id2 = [2, 5]
+
+prefetch_op ->
+
+    X0 = [[0.3 0.3]   # 3
+          [0.6 0.6]]  # 6
+    X1 = [[0.1 0.1]   # 1
+          [0.4 0.4]]  # 4
+    X2 = [[0.2 0.2]   # 2
+          [0.5 0.5]]  # 5
+
+merge_ids_op ->
+
+    Out = [[0.1 0.1]  # 1
+           [0.2 0.2]  # 2
+           [0.3 0.3]  # 3
+           [0.4 0.4]  # 4
+           [0.5 0.5]  # 5
+           [0.6 0.6]] # 6
 )DOC");
   }
 };
