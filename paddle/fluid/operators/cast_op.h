@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/transform.h"
@@ -22,10 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename InT, typename OutT>
-struct CastOpTransformFunctor {
-  HOSTDEVICE OutT operator()(InT in) const { return static_cast<OutT>(in); }
-};
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename InT>
 struct CastOpFunctor {
@@ -38,13 +38,11 @@ struct CastOpFunctor {
 
   template <typename OutT>
   void operator()() const {
-    auto* in_begin = in_->data<InT>();
-    auto numel = in_->numel();
-    auto* in_end = in_begin + numel;
-    auto* out_begin = out_->mutable_data<OutT>(ctx_.GetPlace());
-    platform::Transform<DeviceContext> trans;
-    trans(ctx_, in_begin, in_end, out_begin,
-          CastOpTransformFunctor<InT, OutT>());
+    out_->mutable_data<OutT>(ctx_.GetPlace());
+    auto in_eigen = EigenVector<InT>::Flatten(*in_);
+    auto out_eigen = EigenVector<OutT>::Flatten(*out_);
+    auto& place = *(ctx_.eigen_device());
+    out_eigen.device(place) = in_eigen.template cast<OutT>();
   }
 };
 
