@@ -40,7 +40,11 @@ class SSAGraphBuilderFactory {
         loss_var_name_(loss_var_name),
         param_names_(param_names),
         local_scopes_(local_scopes),
-        strategy_(strategy) {}
+        strategy_(strategy) {
+#ifdef PADDLE_WITH_CUDA
+    nccl_ctxs_ = nullptr;
+#endif
+  }
 
 #ifdef PADDLE_WITH_CUDA
   void SetNCCLContextMap(platform::NCCLContextMap* nccl_ctxs) {

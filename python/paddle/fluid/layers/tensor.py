@@ -31,6 +31,8 @@ __all__ = [
     'assign',
     'fill_constant_batch_size_like',
     'fill_constant',
+    'argmin',
+    'argmax',
     'ones',
     'zeros',
 ]
@@ -323,6 +325,68 @@ def fill_constant_batch_size_like(input,
             'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
+    return out
+
+
+def argmin(x, axis=0):
+    """
+    **argmin**
+
+    This function computes the indices of the min elements 
+    of the input tensor's element along the provided axis.
+
+    Args:
+        x(Variable): The input to compute the indices of
+                     the min elements.
+        axis(int): Axis to compute indices along.
+    
+    Returns:
+        Variable: The tensor variable storing the output
+    
+    Examples:
+        .. code-block:: python
+          
+          out = fluid.layers.argmin(x=in, axis=0)
+          out = fluid.layers.argmin(x=in, axis=-1)  
+    """
+    helper = LayerHelper("arg_min", **locals())
+    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='arg_min',
+        inputs={'X': x},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
+    return out
+
+
+def argmax(x, axis=0):
+    """
+    **argmax**
+
+    This function computes the indices of the max elements 
+    of the input tensor's element along the provided axis.
+
+    Args:
+        x(Variable): The input to compute the indices of
+                     the max elements.
+        axis(int): Axis to compute indices along.
+    
+    Returns:
+        Variable: The tensor variable storing the output
+    
+    Examples:
+        .. code-block:: python
+          
+          out = fluid.layers.argmax(x=in, axis=0)
+          out = fluid.layers.argmax(x=in, axis=-1)  
+    """
+    helper = LayerHelper("arg_max", **locals())
+    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='arg_max',
+        inputs={'X': x},
+        outputs={'Out': [out]},
+        attrs={'axis': axis})
     return out
 
 
