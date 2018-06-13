@@ -522,6 +522,8 @@ class DistributeTranspiler:
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
+            checkpoint_block_id = self._create_checkpoint_save_block(
+                pserver_program, table_opt_block.idx)
 
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
@@ -540,6 +542,7 @@ class DistributeTranspiler:
         if len(prefetch_var_name_to_block_id) > 0:
             attrs['prefetch_var_name_to_block_id'] \
                 = prefetch_var_name_to_block_id
+            attrs['checkpint_block_id'] = checkpoint_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -823,6 +826,23 @@ class DistributeTranspiler:
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
 
         return table_opt_block
+
+    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
+        """
+        create a new block to handle save checkpoint.
+        """
+        import os
+
+        checkpoint_save_block = pserver_program.create_block(pre_block_idx)
+        checkpoint_save_block.append_op(
+            type='save',
+            inputs={'X': [self.table_name]},
+            outputs={},
+            attrs={
+                'file_path': os.path.join("/tmp/pserver_ckpt/", self.table_name)
+            })
+
+        return checkpoint_save_block.idx
 
     def _create_vars_from_blocklist(self,
                                     program,

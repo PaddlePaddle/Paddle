@@ -66,6 +66,16 @@ class RequestPrefetchHandler final : public RequestHandler {
               const std::string& out_var_name = "") override;
 };
 
+class RequestCheckpointHandler final : public RequestHandler {
+ public:
+  explicit RequestCheckpointHandler(bool sync_mode)
+      : RequestHandler(sync_mode) {}
+  virtual ~RequestCheckpointHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const std::string& out_var_name = "") override;
+};
+
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle
