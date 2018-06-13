@@ -210,6 +210,83 @@ void ThreadedSSAGraphExecutor::RunOp(
     op_run();
   }
 }
+FasterSSAGraphExecutor::FasterSSAGraphExecutor(
+    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places,
+    std::unique_ptr<SSAGraph> &&graph)
+    : SSAGraphExecutor(std::move(graph)),
+      strategy_(strategy),
+      local_scopes_(local_scopes),
+      places_(places) {}
+
+FeedFetchList FasterSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
+  std::unordered_map<OpHandleBase *, std::atomic<int>> op_table;
+  BlockingQueue<OpHandleBase *> global_queue;
+  std::atomic<int> runned_ops_;
+  for (auto &op : graph_->ops_) {
+    OpHandleBase *op_ptr = op.get();
+    size_t deps = op_ptr->NoReadyInputSize();
+    op_table.emplace(op_ptr, deps);
+    global_queue.Push(op_ptr);
+  }
+  std::vector<std::thread> threads;
+
+  std::mutex end_flag_mtx_;
+  std::condition_variable end_flag_cv_;
+  bool end_flag = false;
+
+  for (size_t i = 0; i < strategy_.num_threads_; ++i) {
+    threads.emplace_back([&] {
+      OpHandleBase *to_run = nullptr;
+      int op_table_size = static_cast<int>(op_table.size());
+      while (true) {
+        if (to_run == nullptr) {
+          to_run = global_queue.Pop();
+          if (to_run == nullptr) {
+            return;
+          }
+        }
+        to_run->Run(strategy_.use_event_);
+        OpHandleBase *have_run = to_run;
+        to_run = nullptr;
+        if (runned_ops_.fetch_add(1) == op_table_size - 1) {
+          break;
+        }
+        for (auto *var : have_run->Outputs()) {
+          for (auto *pending_op : var->pending_ops_) {
+            if (op_table[pending_op].fetch_sub(1) == 1) {
+              if (to_run == nullptr) {
+                to_run = pending_op;
+              } else {
+                global_queue.Push(pending_op);
+              }
+            }
+          }
+        }
+      }
+      {
+        std::unique_lock<std::mutex> lock(end_flag_mtx_);
+        end_flag = true;
+      }
+      end_flag_cv_.notify_one();
+    });
+  }
+
+  std::unique_lock<std::mutex> lock(end_flag_mtx_);
+  end_flag_cv_.wait(lock, [&] { return end_flag; });
+
+  // Ends
+  for (size_t i = 1; i < strategy_.num_threads_; ++i) {
+    global_queue.Push(nullptr);
+  }
+
+  for (auto &th : threads) {
+    th.join();
+  }
+
+  return paddle::framework::FeedFetchList();
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
