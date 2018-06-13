@@ -96,6 +96,8 @@ class OpHandleBase {
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;
+#elif PADDLE_WITH_HIP
+  std::unordered_map<int, hipEvent_t> events_;
 #endif
 
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);

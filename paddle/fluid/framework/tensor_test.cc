@@ -75,7 +75,7 @@ TEST(Tensor, MutableData) {
     EXPECT_EQ(p1, p2);
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   {
     framework::Tensor src_tensor;
     float* p1 = nullptr;
@@ -130,7 +130,7 @@ TEST(Tensor, ShareDataWith) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   {
     framework::Tensor src_tensor;
     framework::Tensor dst_tensor;

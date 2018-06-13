@@ -83,7 +83,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
 // Bcast Parameters to all GPUs
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
+#ifdef PADDLE_WITH_CUDA
   auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
   ncclUniqueId *nccl_id = nullptr;
   if (nccl_id_var != nullptr) {
@@ -92,6 +92,16 @@ ParallelExecutor::ParallelExecutor(
   member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
       member_->places_, nccl_id, num_trainers, trainer_id));
 #endif
+#ifdef PADDLE_WITH_HIP
+  auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
+  rcclUniqueId *nccl_id = nullptr;
+  if (nccl_id_var != nullptr) {
+    nccl_id = nccl_id_var->GetMutable<rcclUniqueId>();
+  }
+  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
+      member_->places_, nccl_id, num_trainers, trainer_id));
+#endif
+
   if (platform::is_gpu_place(places[0]) && member_->local_scopes_.size() != 1 &&
       local_scopes.empty()) {  // Is CUDA
     BCastParamsToGPUs(bcast_vars);

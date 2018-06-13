@@ -83,13 +83,13 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
     }
   }
 #elif defined(PADDLE_WITH_HIP)
-  if (platform::is_cpu_place(waited_dev->GetPlace()) || events_.empty()) {
+  if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
       dev_ctx.second->Wait();
     }
   } else {
     auto stream =
-        static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
+        static_cast<platform::CUDADeviceContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
       PADDLE_ENFORCE(hipStreamWaitEvent(stream, ev.second, 0));
     }
