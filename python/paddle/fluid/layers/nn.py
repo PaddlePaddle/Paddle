@@ -4099,7 +4099,7 @@ def image_resize(input,
                  name=None,
                  resample='BILINEAR'):
     """
-    **Resize a batch of images**
+    **Resize a Batch of Images**
 
     The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
     and the resizing only applies on the last two dimensions(hight and width).
