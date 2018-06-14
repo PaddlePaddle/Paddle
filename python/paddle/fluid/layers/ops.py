@@ -40,7 +40,6 @@ __activations__ = [
     'relu6',
     'pow',
     'stanh',
-    'thresholded_relu',
     'hard_sigmoid',
     'swish',
 ]
@@ -91,8 +90,7 @@ def uniform_random(shape, dtype=None, min=None, max=None, seed=None):
     return _uniform_random_(**kwargs)
 
 
-uniform_random.__doc__ = _uniform_random_.__doc__ + "\n" \
-                         + """
+uniform_random.__doc__ = _uniform_random_.__doc__ + """
 Examples:
 
     >>> result = fluid.layers.uniform_random(shape=[32, 784])
@@ -112,8 +110,7 @@ def hard_shrink(x, threshold=None):
     return _hard_shrink_(**kwargs)
 
 
-hard_shrink.__doc__ = _hard_shrink_.__doc__ + "\n" \
-                      + """
+hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
 Examples:
 
     >>> data = fluid.layers.data(name="input", shape=[784])
@@ -140,4 +137,26 @@ Examples:
 
     >>> data = fluid.layers.data(name="input", shape=[32, 784])
     >>> result = fluid.layers.cumsum(data, axis=0)
+"""
+
+__all__ += ['thresholded_relu']
+
+_thresholded_relu_ = generate_layer_fn('thresholded_relu')
+
+
+def thresholded_relu(x, threshold=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+
+    _thresholded_relu_(**kwargs)
+
+
+thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
+Examples:
+
+    >>> data = fluid.layers.data(name="input", shape=[1])
+    >>> result = fluid.layers.thresholded_relu(data, threshold=0.4)
 """
