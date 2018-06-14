@@ -3411,8 +3411,8 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
-    This layer computes the smooth L1 loss for Variable `x` and `y`.
-    It takes the first dimension of `x` and `y` as batch size.
+    This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
+    It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
     For each instance, it computes the smooth L1 loss element by element first
     and then sums all the losses. So the shape of ouput Variable is 
     [batch_size, 1].
@@ -3421,15 +3421,15 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            L1 loss op with same shape as `x`.
+            L1 loss op with same shape as :attr:`x`.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
-            input is optional and should have same shape with `x`. If provided,
-            the result of (`x - y`) will be multiplied by this tensor element by
-            element.
+            input is optional and should have same shape with :attr:`x`. If 
+            provided, the result of (:attr:`x` - :attr:`y`) will be multiplied 
+            by this tensor element by element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
-            input is optional and should have same shape with x. If provided,
-            the out smooth L1 loss will be multiplied by this tensor element
-            by element.
+            input is optional and should have same shape with :attr:`x`. If 
+            provided, the out smooth L1 loss will be multiplied by this tensor 
+            element by element.
         sigma (float|None): Hyper parameter of smooth L1 loss layer. A float 
            scalar with default value 1.0.
 
@@ -3634,12 +3634,12 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
 def lod_reset(x, y=None, target_lod=None):
     """
-    LoD Reset Operator. Set LoD of **x** to a new one specified by **y** or
-    **target_lod**. When **y** provided, **y.lod** would be considered as target
-    LoD first, otherwise **y.data** would be considered as target LoD. If **y**
-    is not provided, target LoD should be specified by **target_lod**.
-    If target LoD is specified by **Y.data** or **target_lod**, only one level
-    LoD is supported.
+    Set LoD of :attr:`x` to a new one specified by :attr:`y` or
+    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be 
+    considered as target LoD first, otherwise :attr:`y.data` would be 
+    considered as target LoD. If :attr:`y` is not provided, target LoD should 
+    be specified by :attr:`target_lod`. If target LoD is specified by 
+    :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
@@ -3692,15 +3692,16 @@ def lod_reset(x, y=None, target_lod=None):
 
     Args:
         x (Variable): Input variable which could be a Tensor or LodTensor.
-        y (Variable|None): If provided, output's LoD would be derived from y.
+        y (Variable|None): If provided, output's LoD would be derived 
+                           from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
-                                      as target LoD when y not provided.
+                                      as target LoD when :attr:`y` not provided.
 
     Returns:
-        Variable: Output variable with LoD specified by this operator.
+        Variable: Output variable with LoD specified by this layer.
 
     Raises:
-        ValueError: If y and target_lod are both None.
+        ValueError: If :attr:`y` and :attr:`target_lod` are both None.
 
     Examples:
         .. code-block:: python
