@@ -500,6 +500,7 @@ def save_checkpoint(executor,
 
     if trainer_id == 0:
         save_persist_vars_without_grad(executor, cur_dir, main_program)
+        save_pserver_vars_by_notify(executor, cur_dir, "")
 
     _scroll_delete(checkpoint_dir, max_num_checkpoints)
 
@@ -530,7 +531,8 @@ def load_checkpoint(executor, checkpoint_dir, serial, main_program):
 
 def clean_checkpoint(checkpoint_dir, delete_dir=False):
     """
-    clean the checkpoint dir, when the train exits normally, the trainer will call clean_checkpoint to delete checkpoint directory saved before.
+    clean the checkpoint dir, when the train exits normally, 
+    the trainer will call clean_checkpoint to delete checkpoint directory saved before.
     delete_dir only works when the directory is empty, otherwise, OSError is raised.  
 
     :param checkpoint_dir
@@ -596,6 +598,23 @@ def save_persist_vars_without_grad(executor, dirname, program):
         predicate=_is_checkpoint_var,
         filename=None)
     _write_success(cur_dir)
+
+
+def save_pserver_vars_by_notify(executor, dirname, epmap):
+    """
+    """
+    cur_dir = _get_lookuptable_dir(dirname)
+
+    checkpoint_notify_program = Program()
+    checkpoint_notify_block = checkpoint_notify_program.global_block()
+
+    attrs = {}
+    attrs['epmap'] = None
+    attrs['dir'] = cur_dir
+
+    checkpoint_notify_block.append_op(
+        type='checkpointnotify', inputs={}, output={}, attrs=attrs)
+    executor.run(checkpoint_notify_program)
 
 
 def save_trainer_args(dirname, trainer_id, trainer_args):
@@ -678,6 +697,15 @@ def _get_model_dir(dirname):
         os.makedirs(model_dir)
 
     return model_dir
+
+
+def _get_lookuptable_dir(dirname):
+    lookuptable_dir = os.path.join(dirname, LOOKUP_TABLE_DIR)
+
+    if not os.path.isdir(lookuptable_dir):
+        os.makedirs(lookuptable_dir)
+
+    return lookuptable_dir
 
 
 def _get_trainer_dir(dirname, trainer_id):
