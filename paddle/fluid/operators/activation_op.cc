@@ -275,7 +275,7 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
                    "The value of threshold for HardShrink. [default: 0.5]")
         .SetDefault(0.5f);
     AddComment(R"DOC(
-HardShrink Activation Operator.
+** HardShrink activation operator **
 
 ..  math::
     out = \begin{cases}
@@ -399,13 +399,12 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 ThresholdedRelu Activation Operator.
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > threshold \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
 
+    out = \begin{cases}
+             x, \text{if } x > threshold \\
+             0,  \text{otherwise}
+          \end{cases}
 )DOC");
   }
 };

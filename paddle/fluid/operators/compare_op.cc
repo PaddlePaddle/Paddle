@@ -34,16 +34,15 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
                                      comment.equation));
-    AddComment(string::Sprintf(R"DOC(%s Operator
-
+    AddComment(string::Sprintf(R"DOC(
 It operates element-wise on X and Y, and returns the Out. Each of them is a
 N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
 calculated by $%s$
 )DOC",
-                               comment.type, comment.equation));
-    AddAttr<int>("axis",
-                 "(int, default -1). The start dimension index "
-                 "for broadcasting Y onto X.")
+                               comment.equation));
+    AddAttr<int>(
+        "axis",
+        "The start dimension index for broadcasting Y onto X. [default -1]")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
   }
