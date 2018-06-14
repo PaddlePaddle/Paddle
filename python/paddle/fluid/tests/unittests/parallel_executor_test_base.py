@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import multiprocessing
+import os
 import unittest
 import paddle.fluid as fluid
 import time
@@ -23,6 +25,7 @@ __all__ = ['TestParallelExecutorBase']
 class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(self,
                                   method,
+                                  use_cuda=True,
                                   memory_opt=True,
                                   iter=50,
                                   batch_size=None,
@@ -53,7 +56,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
-            place = fluid.CUDAPlace(0)
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
             exec_strategy = fluid.ExecutionStrategy()
@@ -64,7 +67,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
-                    True,
+                    use_cuda,
                     loss_name=loss.name,
                     exec_strategy=exec_strategy,
                     build_strategy=build_strategy)
@@ -72,7 +75,9 @@ class TestParallelExecutorBase(unittest.TestCase):
                 exe = fluid.Executor(place=place)
 
             if batch_size is not None:
-                batch_size *= fluid.core.get_cuda_device_count()
+                batch_size *= fluid.core.get_cuda_device_count(
+                ) if use_cuda else int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             begin = time.time()
             first_loss, = run_executor(
                 exe=exe, feed=feed_dict, fetch_list=[loss.name])

@@ -19,32 +19,43 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
-std::once_flag RPCClient::init_flag_;
+void GRPCClient::InitImpl() { InitEventLoop(); }
 
-std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
-
-RPCClient* RPCClient::GetInstance() {
-  std::call_once(init_flag_, &RPCClient::Init);
-  return rpc_client_.get();
+void GRPCClient::InitEventLoop() {
+  // start the client process thread
+  // TODO(wuyi): can make this in a threadpool
+  client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
 }
 
-void RPCClient::Init() {
-  if (rpc_client_.get() == nullptr) {
-    rpc_client_.reset(new RPCClient());
+void GRPCClient::SendComplete() {
+  for (auto& it : channels_) {
+    this->AsyncSendComplete(it.first);
   }
 }
 
-bool RPCClient::AsyncSendVariable(const std::string& ep,
-                                  const platform::DeviceContext& ctx,
-                                  const framework::Scope& scope,
-                                  const std::string& var_name,
-                                  int64_t time_out) {
+GRPCClient::~GRPCClient() {
+  Wait();
+  cq_.Shutdown();
+  {
+    std::lock_guard<std::mutex> guard(chan_mutex_);
+    for (auto& it : channels_) {
+      it.second.reset();
+    }
+  }
+  client_thread_->join();
+}
+
+bool GRPCClient::AsyncSendVar(const std::string& ep,
+                              const platform::DeviceContext& ctx,
+                              const framework::Scope& scope,
+                              const std::string& var_name, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -94,11 +105,10 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-bool RPCClient::AsyncGetVariable(const std::string& ep,
-                                 const platform::DeviceContext& ctx,
-                                 const framework::Scope& scope,
-                                 const std::string& var_name,
-                                 int64_t time_out) {
+bool GRPCClient::AsyncGetVar(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& var_name, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -136,12 +146,12 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
-                                      const platform::DeviceContext& ctx,
-                                      const framework::Scope& scope,
-                                      const std::string& in_var_name,
-                                      const std::string& out_var_name,
-                                      int64_t time_out) {
+bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
+                                  const platform::DeviceContext& ctx,
+                                  const framework::Scope& scope,
+                                  const std::string& in_var_name,
+                                  const std::string& out_var_name,
+                                  int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
@@ -179,7 +189,8 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
   return true;
 }
 
-void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
+void GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
+                                       int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -192,7 +203,8 @@ void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
-void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
+void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
+                                       int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
   s->Prepare(time_out);
@@ -204,70 +216,50 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
-bool RPCClient::Wait() {
-  VLOG(3) << "RPCClient begin Wait()"
-          << " req_count_:" << req_count_;
-  if (req_count_ <= 0) {
-    return true;
-  }
-  const size_t kReqCnt = req_count_;
-  bool a[kReqCnt];
-  std::vector<std::future<void>> waits(req_count_);
-  std::mutex mu;
+void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
 
-  for (int i = 0; i < req_count_; i++) {
-    waits[i] = framework::AsyncIO([i, &a, &mu, this] {
-      bool ret = Proceed();
-      std::lock_guard<std::mutex> l(mu);
-      a[i] = ret;
-    });
-  }
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  s->Prepare(time_out);
 
-  for (int i = 0; i < req_count_; i++) {
-    waits[i].wait();
-  }
-
-  int last_req_count = req_count_;
-  req_count_ = 0;
-
-  for (int i = 0; i < last_req_count; i++) {
-    if (!a[i]) {
-      return false;
-    }
-  }
-
-  return true;
+  sendrecv::VariableMessage req;
+  req.set_varname(COMPLETE_MESSAGE);
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
 }
 
-bool RPCClient::Proceed() {
-  void* tag = NULL;
+void GRPCClient::Wait() {
+  std::unique_lock<std::mutex> lk(sync_mutex_);
+  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+}
+
+void GRPCClient::Proceed() {
+  void* tag = nullptr;
   bool ok = false;
 
-  // request counts.
-  if (!cq_.Next(&tag, &ok)) {
-    LOG(ERROR) << "Get meets CompletionQueue error";
-    return false;
-  }
-
-  GPR_ASSERT(ok);
-  PADDLE_ENFORCE(tag);
-
-  // TODO(gongwb): add more retries.
-  BaseProcessor* c = static_cast<BaseProcessor*>(tag);
-  if (!c->status_.ok()) {
-    LOG(ERROR) << "proc param error:" << c->var_h_.String()
-               << " grpc error:" << c->status_.error_message();
+  while (cq_.Next(&tag, &ok)) {
+    BaseProcessor* c = static_cast<BaseProcessor*>(tag);
+    GPR_ASSERT(ok);
+    PADDLE_ENFORCE(c);
+    if (c->status_.ok()) {
+      c->Process();
+    } else {
+      LOG(ERROR) << "var: " << c->var_h_.String()
+                 << " grpc error:" << c->status_.error_message();
+    }
     delete c;
-    return false;
+    {
+      std::lock_guard<std::mutex> lk(sync_mutex_);
+      req_count_--;
+    }
+    sync_cond_.notify_all();
   }
-
-  c->Process();
-  delete c;
-  return true;
 }
-std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
+
+std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
   // TODO(Yancey1989): make grpc client completely thread-safe
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;

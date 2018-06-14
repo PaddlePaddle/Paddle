@@ -26,6 +26,7 @@ from trainer import BeginEpochEvent
 from trainer import EndEpochEvent
 from trainer import BeginStepEvent
 from trainer import EndStepEvent
+from trainer import CheckpointConfig
 
 import inferencer
 from inferencer import Inferencer
@@ -44,8 +45,8 @@ import transpiler
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
-from transpiler import DistributeTranspiler, SimpleDistributeTranspiler, \
-    InferenceTranspiler, memory_optimize, release_memory
+from transpiler import DistributeTranspiler, InferenceTranspiler, \
+    memory_optimize, release_memory
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
 from lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -116,11 +117,11 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope'
+        'eager_delete_scope', 'use_mkldnn'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_algo_use_autotune'
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
