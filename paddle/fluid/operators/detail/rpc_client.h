@@ -53,6 +53,11 @@ class RPCClient {
   virtual void AsyncSendFetchBarrier(const std::string& ep,
                                      int64_t time_out = rpc_time_out) = 0;
 
+  // SendComplete tells all the server that current trainer have no more data
+  // to train, so that the pserver can reduce it's barrier count, and continue
+  // to train with other trainers.
+  virtual void SendComplete() = 0;
+
   virtual void Wait() = 0;
 
   static constexpr int64_t rpc_time_out = 120 * 1000;

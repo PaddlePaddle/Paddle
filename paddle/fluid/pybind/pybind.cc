@@ -413,6 +413,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
+#ifdef PADDLE_WITH_DISTRIBUTE
+      .def("complete", &Executor::Complete)
+#endif
       .def("run",
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
                Executor::Run);
