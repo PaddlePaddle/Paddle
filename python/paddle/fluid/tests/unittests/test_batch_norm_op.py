@@ -422,5 +422,44 @@ class TestBatchNormOpTraining(unittest.TestCase):
         pass
 
 
+class TestBatchNormOpWhenForOneSample(OpTest):
+    def initTestCase(self):
+        self.shape = (1, 32)
+
+    def setUp(self):
+        self.op_type = "batch_norm"
+        self.initTestCase()
+        x = np.random.random(self.shape).astype("float32")
+        zero = np.zeros(self.shape[1]).astype("float32")
+        one = np.ones(self.shape[1]).astype("float32")
+
+        scale = np.random.random(self.shape[1]).astype("float32")
+        bias = np.random.random(self.shape[1]).astype("float32")
+
+        self.inputs = {
+            'X': x,
+            'Scale': scale,
+            'Bias': bias,
+            'Mean': zero,
+            'Variance': one
+        }
+        self.attrs = {'is_test': False}
+        self.outputs = {
+            'Y': x,
+            'MeanOut': zero,
+            'VarianceOut': one,
+            'SavedMean': zero,
+            'SavedVariance': zero
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestBatchNormOpWhenForOneSample2(TestBatchNormOpWhenForOneSample):
+    def initTestCase(self):
+        self.shape = (1, 8, 1, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

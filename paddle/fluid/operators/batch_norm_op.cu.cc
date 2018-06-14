@@ -72,6 +72,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
+    auto *y = ctx.Output<Tensor>("Y");
+    y->mutable_data<T>(ctx.GetPlace());
+
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
@@ -93,7 +96,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
 
-    VLOG(1) << "Setting descriptors.";
+    VLOG(3) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
     if (data_layout == DataLayout::kNCHW) {
@@ -112,11 +115,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-
-    auto *y = ctx.Output<Tensor>("Y");
-
-    // alloc memory
-    y->mutable_data<T>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -162,22 +160,28 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
-      double this_factor = 1. - momentum;
+      if ((N * H * W * D) == 1) {
+        LOG(WARNING) << "Only 1 elementwise in normalization dimension, "
+                     << "we kip the batch norm calculation, let y = x";
+        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+      } else {
+        double this_factor = 1. - momentum;
 
-      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
-          handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-          data_desc_, x->template data<T>(), data_desc_,
-          y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-          scale->template data<BatchNormParamType<T>>(),
-          bias->template data<BatchNormParamType<T>>(), this_factor,
-          mean_out->template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          variance_out->template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
-                       ctx.GetPlace()),
-          saved_variance->template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace())));
+        CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
+            handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
+            data_desc_, x->template data<T>(), data_desc_,
+            y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
+            scale->template data<BatchNormParamType<T>>(),
+            bias->template data<BatchNormParamType<T>>(), this_factor,
+            mean_out->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
+            variance_out->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
+            epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
+                         ctx.GetPlace()),
+            saved_variance->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace())));
+      }
     }
 
     // clean when exit.
@@ -208,6 +212,25 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                    "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+
+    // init output
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    d_x->mutable_data<T>(ctx.GetPlace());
+    d_scale->mutable_data<T>(ctx.GetPlace());
+    d_bias->mutable_data<T>(ctx.GetPlace());
+
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    if ((N * H * W * D) == 1) {
+      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
+      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+          functor;
+      functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
+      functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+      return;
+    }
 
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
     PADDLE_ENFORCE_EQ(scale->dims()[0], C);
@@ -247,21 +270,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
-    // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
-
-    d_x->mutable_data<T>(ctx.GetPlace());
-    d_scale->mutable_data<T>(ctx.GetPlace());
-    d_bias->mutable_data<T>(ctx.GetPlace());
-
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
     const void *saved_mean_data = saved_mean->template data<T>();
     const void *saved_var_data = saved_var->template data<T>();
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
         dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
         CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),

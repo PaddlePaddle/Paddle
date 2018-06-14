@@ -69,6 +69,7 @@ class OpProtoAndCheckerMaker {
 
     VariableBuilder &Reuse(const std::string &name) {
       var_->set_reuse(name);
+      LOG(ERROR) << "name = " << name;
       return *this;
     }
   };

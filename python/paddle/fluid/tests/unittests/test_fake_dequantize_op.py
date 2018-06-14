@@ -40,7 +40,6 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
         self.op_type = "fake_dequantize_max_abs"
         x = np.random.randn(31, 65).astype("float32")
         yq, scale = quantize_max_abs(x, self.num_bits)
-        print 'scale ', scale
         ydq = dequantize_max_abs(yq, self.num_bits, scale)
 
         self.inputs = {'X': yq}
