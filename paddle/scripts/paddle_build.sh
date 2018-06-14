@@ -459,6 +459,7 @@ EOF
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
+    ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 EOF
     if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
