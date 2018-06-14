@@ -14,4 +14,4 @@
 #
 
 add_subdirectory(inference)
-add_subdirectory(dynamic)
+add_subdirectory(tape)

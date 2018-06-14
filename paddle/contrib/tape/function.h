@@ -16,12 +16,12 @@
 
 #include <string>
 
-#include "paddle/contrib/dynamic/tape.h"
-#include "paddle/contrib/dynamic/variable.h"
+#include "paddle/contrib/tape/tape.h"
+#include "paddle/contrib/tape/variable.h"
 #include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
-namespace dynamic {
+namespace tape {
 
 class Function {};
 
