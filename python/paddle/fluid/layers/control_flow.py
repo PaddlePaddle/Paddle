@@ -233,9 +233,8 @@ class BlockGuard(object):
 
 class ParallelDo(object):
     """
-    ParallelDo class.
-
-    ParallelDo class is used to create a ParallelDo.
+    ParallelDo class is used to create a ParallelDo. 
+    It will be soon deprecated, please use ParallelExecutor instead.
     """
 
     def __init__(self, places, use_nccl=False, name=None):
