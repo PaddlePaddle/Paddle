@@ -753,9 +753,9 @@ def lod_tensor_to_array(x, table):
 
     This function split a LoDTesnor to a LoDTensorArray according to its LoD 
     information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in 
-    Paddle. The generated LoDTensorArray of this function can be further read 
-    or written by 'read_from_array()' and 'write_to_array()' operators. However, 
-    this function is generally an internal component of Paddle 'DynamicRNN'. 
+    PaddlePaddle. The generated LoDTensorArray of this function can be further read 
+    or written by `read_from_array()` and `write_to_array()` operators. However, 
+    this function is generally an internal component of PaddlePaddle `DynamicRNN`. 
     Users should not use it directly.
 
     Args:
@@ -763,11 +763,10 @@ def lod_tensor_to_array(x, table):
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order. It is generally generated 
-                                by 'layers.lod_rank_table()' API.
+                                by `layers.lod_rank_table()` API.
 
     Returns:
-        Variable: The LoDTensorArray that has been converted from the input 
-                  tensor.
+        Variable: The LoDTensorArray that has been converted from the input tensor.
 
     Examples:
         .. code-block:: python
@@ -1579,24 +1578,26 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 def is_empty(x, cond=None, **ignored):
     """
-    Test whether an Variable is empty.
+    Test whether a Variable is empty.
 
     Args:
         x (Variable): The Variable to be tested.
         cond (Variable|None): Output parameter. Returns the test result 
-                              of given 'x'.
+                              of given 'x'. Default: None
 
     Returns:
-        Variable: The tensor variable storing the test result of 'x'.
+        Variable: A bool scalar. True if 'x' is an empty Variable.
 
     Raises:
         TypeError: If input cond is not a variable, or cond's dtype is
-                   not bool
+                   not bool.
 
     Examples:
         .. code-block:: python
 
-          less = fluid.layers.is_empty(x=input)
+          res = fluid.layers.is_empty(x=input)
+          # or:
+          fluid.layers.is_empty(x=input, cond=res)
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:

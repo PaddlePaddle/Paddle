@@ -151,7 +151,7 @@ def fc(input,
         name (str, default None): The name of this layer.
 
     Returns:
-        A tensor variable storing the transformation result.
+        Variable: The transformation result.
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
@@ -159,8 +159,7 @@ def fc(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name="data", shape=[32, 32], dtype="float32")
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
 
@@ -1543,21 +1542,24 @@ def pool2d(input,
     ${comment}
 
     Args:
-        input (Variable): ${input_comment}
+        input (Variable): The input tensor of pooling operator. The format of 
+        input tensor is NCHW, where N is batch size, C is the number of 
+        channels, H is the height of the feature, and W is the width of 
+        the feature.
         pool_size (int): The side length of pooling windows. All pooling 
                          windows are squares with pool_size on a side.
-        pool_type (str): ${pooling_type_comment}
+        pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
-        global_pooling (bool): ${global_pooling_comment}
-        use_cudnn (bool): ${use_cudnn_comment}
-        ceil_mode (bool): ${ceil_mode_comment}
-        use_mkldnn (bool): ${use_mkldnn_comment}
+        global_pooling: ${global_pooling_comment}
+        use_cudnn: ${use_cudnn_comment}
+        ceil_mode: ${ceil_mode_comment}
+        use_mkldnn: ${use_mkldnn_comment}
         name (str|None): A name for this layer(optional). If set None, the 
                         layer will be named automatically.
 
     Returns:
-        Variable: output of pool2d layer.
+        Variable: The pooling result.
 
     Raises:
         ValueError: If 'pool_type' is not "max" nor "avg"
@@ -2764,6 +2766,27 @@ def topk(input, k, name=None):
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
 
+    For example:
+
+    .. code-block:: text
+
+        If:
+            input = [[5, 4, 2, 3],
+                     [9, 7, 10, 25],
+                     [6, 2, 10, 1]]
+            k = 2
+
+        Then:
+            The first output:
+            values = [[5, 4],
+                      [10, 25],
+                      [6, 10]]
+
+            The second output:
+            indices = [[0, 1],
+                       [2, 3],
+                       [0, 2]]
+
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
@@ -2774,10 +2797,10 @@ def topk(input, k, name=None):
                        Default: None
 
     Returns:
-        values(Variable): The k largest elements along each last dimensional
-            slice.
-        indices(Variable): The indices of values within the last dimension of
-            input.
+        Tuple[Variable]: A tuple with two elements. Each element is a Variable. 
+        The first one is k largest elements along each last 
+        dimensional slice. The second one is indices of values 
+        within the last dimension of input.
 
     Raises:
         ValueError: If k < 1 or k is not less than the last dimension of input

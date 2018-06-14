@@ -90,7 +90,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                             Default: False
 
     Returns:
-        The decayed learning rate
+        Variable: The decayed learning rate
 
     Examples:
         .. code-block:: python
@@ -167,7 +167,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                             Default: False
 
     Returns:
-        The decayed learning rate
+        Variable: The decayed learning rate
 
     Examples:
         .. code-block:: python
