@@ -112,6 +112,8 @@ class SGD {
   }
 
   void operator()(VariableHandle input) {
+    PADDLE_ENFORCE(get_global_tape().HasBeenBackwarded(),
+                   "optimization must happen after the backward");
     Tape temp_tape;
     temp_tape.AddOp("sgd",
                     {{"Param", {input}},
@@ -120,7 +122,6 @@ class SGD {
                     {{"ParamOut", {input}}},
                     {});
     temp_tape.Forward();
-    input->ResetGrad();
   }
 
  private:
