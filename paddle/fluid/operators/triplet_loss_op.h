@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -24,6 +26,13 @@ using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
+using DIM1 = Eigen::array<int, 1>;
+using DIM2 = Eigen::array<int, 2>;
 
 template <typename DeviceContext>
 std::vector<int> GetOffsets(const Tensor* t);
@@ -35,44 +44,71 @@ class TripletLossKernel : public framework::OpKernel<T> {
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* loss = context.Output<Tensor>("Loss");
+    Tensor* d_logits = context.Output<Tensor>("LogitsGrad");
     loss->mutable_data<T>(context.GetPlace());
+    d_logits->mutable_data<T>(context.GetPlace());
     auto x_dims = logits->dims();
-    int barch_size = x_dims[0];
+    int batch_size = x_dims[0];
     int feature_len = x_dims[1];
 
-    // step 1: distance matrix
+    // step 1: get distance matrix
     Tensor distances;
-    distances.mutable_data<T>(context.GetPlace(), {batch_size, batch_size});
+    distances.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
+    Tensor d_distances;
+    d_distances.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
     auto x_t = EigenMatrix<T>::From(*logits);
+    auto d_x_t = EigenMatrix<T>::From(*d_logits);
     auto loss_t = EigenVector<T>::From(*loss);
-    auto D = EigenMatrix<T>::From(distances);
+    auto distances_t = EigenMatrix<T>::From(distances);
+    auto d_distances_t = EigenMatrix<T>::From(d_distances);
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto x_mat = math::CreateMatrixDescriptor(x_dims, 0, false);
     auto x_mat_trans = math::CreateMatrixDescriptor(x_dims, 0, true);
     blas.MatMul(x_t, x_mat, x_t, x_mat_trans, T(1), distances, T(0));
+    distances_t = x_t.square().sum(DIM1({1})).broadcast(DIM2({1, batch_size})) +
+                  x_t.square()
+                      .sum(DIM1({1}))
+                      .shuffle(DIM2({1, 0}))
+                      .broadcast(DIM2({batch_size, 1})) -
+                  2 * D;
 
-    auto D = x_t.square().sum({1}).broadcast({1, batch_size}) +
-             x_t.square().sum({1}).shuffle({1, 0}).broadcast({batch_size, 1}) -
-             2 * D;
-
-    // step 2:
+    // step 2: get loss in each line of distance matrix
     float eps = 0.5;
     auto relu = [eps](float x) { return x < 0 ? eps : x + eps; };
+    auto relu_grad = [](float x) { return x < 0 ? 0 : 1; };
     auto offsets = GetOffsets<DeviceContext>(labels);
     for (size_t i = 0; i < offsets.size() - 1; ++i) {
-      size_t begin = offsets[i];
-      size_t end = offsets[i + 1];
+      int begin = offsets[i];
+      int end = offsets[i + 1];
+      int pos_num = end - begin;
+      int neg_num = batch_size - pos_num;
       for (size_t j = begin; j < end; ++j) {
-        auto p_dis = D.slice({j, begin}, {1, end - begin});
-        auto n_dis = D.slice({j, 0}, {1, batch_size}).reshape({batch_size, 1});
-        auto n_p_sub = n_dis.broadcast({end - begin, 1}) -
-                       p_dis.shuffle({1, 0}).broadcast({1, end - begin});
-        auto p_p_sub = p_dis.broadcast({end - begin, 1}) -
-                       p_dis.shuffle({1, 0}).broadcast({1, end - begin});
-        loss_t[j] =
+        // get loss in current line
+        auto p_dis = distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}));
+        auto n_dis = distances_t.slice(DIM2({j, 0}), DIM2({1, batch_size}))
+                         .reshape(DIM2({batch_size, 1}));
+        auto n_p_sub =
+            n_dis.broadcast(DIM2({pos_num, 1})) -
+            p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, neg_num}));
+        auto p_p_sub =
+            p_dis.broadcast(DIM2({pos_num, 1})) -
+            p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, pos_num}));
+        loss_t(j) =
             n_p_sub.unaryExpr(relu).sum() - p_p_sub.unaryExpr(relu).sum();
+        // get gradient of distance matric in current line
+        d_distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num})) =
+            p_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).shuffle(DIM2({1, 0})) -
+            n_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).shuffle(DIM2({1, 0})) -
+            p_p_sub.unaryExpr(relu_grad).sum(DIM1({0}));
+        d_distances_t.slice(DIM2({j, 0}), DIM2({1, batch_size})) =
+            n_p_sub.unaryExpr(relu_grad).sum(DIM1({0}));
       }
+      // get gradient of logits
+      auto d_x_t_2_sum = d_distances_t.sum(DIM1({1})) +
+                         d_distances_t.sum(DIM1({0})).shuffle(DIM2({1, 0}));
+      auto d_x_t_2 = d_x_t_2_sum.broadcast(DIM2({1, feature_len}));
+      d_x_t = 2 * x_t * d_x_t_2 + 2 * x_t;
     }
   }
 };
@@ -82,62 +118,20 @@ class TripletLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* loss = context.Input<Tensor>(framework::GradVarName("Loss"));
-    const Tensor* labels = context.Input<Tensor>("Label");
-    const Tensor* logits = context.Input<Tensor>("Logits");
-    auto x_dims = logits->dims();
-    int barch_size = x_dims[0];
-    int feature_len = x_dims[1];
-
-    Tensor* d_logits = context.Output<Tensor>(framework::GradVarName("Logits"));
-    d_logits->mutable_data<T>(context.GetPlace());
-
-    Tensor d_distances;
-    distances.mutable_data<T>(context.GetPlace(), {batch_size, batch_size});
-    auto x_t = EigenMatrix<T>::From(*logits);
-    auto d_x_t = EigenMatrix<T>::From(*d_logits);
+    const Tensor* d_logits = context.Input<Tensor>("LogitsGrad");
+    Tensor* d_in = context.Output<Tensor>(framework::GradVarName("Logits"));
+    d_in->mutable_data<T>(context.GetPlace());
+    auto d_in_dims = d_in->dims();
+    int batch_size = d_in_dims[0];
+    int feature_len = d_in_dims[1] auto d_logits_t =
+        EigenMatrix<T>::From(*d_logits);
     auto d_loss_t = EigenVector<T>::From(*d_loss);
-    auto d_D = EigenMatrix<T>::From(d_distances);
-
-    // step 1: get d_Distances
-    auto relu_grad = [](float x) { return x < 0 ? 0 : 1; };
-    auto offsets = GetOffsets<DeviceContext>(labels);
-    for (size_t i = 0; i < offsets.size() - 1; ++i) {
-      size_t begin = offsets[i];
-      size_t end = offsets[i + 1];
-      size_t pos_num = end - begin;
-      size_t neg_num = batch_szie - pos_num;
-      for (size_t j = begin; j < end; ++j) {
-        d_n_p_sub_relu_sum = d_loss_t[j];
-        d_p_p_sub_relu_sum = d_loss_t[j]* -1 d_p_p_sub_relu =
-            d_p_p_sub_relu_sum.broadcast({(end - begin), (end - begin)})
-                d_p_p_sub = d_p_p_sub.unaryExpr(
-                relu_grad)* d_p_p_sub_relu d_n_p_sub_relu =
-                d_n_p_sub_relu_sum.broadcast(
-                    {(end - begin), (batch_size - (end - begin))}) d_n_p_sub =
-                    d_n_p_sub.unaryExpr(relu_grad)* d_n_p_sub_relu d_p_dis_bc =
-                        d_p_p_sub d_p_dis_trans_bc_1 =
-                            d_p_p_sub* -1 d_p_dis_trans =
-                                d_p_dis_trans_bc_1.sum(1) d_p_dis =
-                                    p_dis_bc.sum(0) d_p_dis +=
-            d_p_dis_trans.shuffle({1, 0}) d_n_dis_bc =
-                d_n_p_sub d_p_dis_trans_bc_0 += d_n_p_sub* -1 d_p_dis_trans +=
-            d_p_dis_trans_bc_0.sum(1) d_p_dis +=
-            d_p_dis_trans.shuffle({1, 0}) d_D.slice({j, 0}, {1, batch_size}) =
-                d_n_dis_bc.sum(0) d_D.slice({j, begin}, {1, end - begin}) =
-                    d_p_dis
-      }
+    auto d_in_t = EigenMatrix<T>::From(*d_in);
+    // d_in = d_logis * d_loss
+    for (size_t i = 0; i < batch_size; ++i) {
+      d_in_t.slice(DIM2({i, 0}), DIM2({1, feature_len})) =
+          d_logits_t.slice(DIM2({i, 0}), DIM2({1, feature_len})) * d_loss_t(i);
     }
-
-    d_x_t_2_sum_bc = d_D d_x_t_2_sum_trans_bc = d_D d_AB = d_D* -2
-
-        d_x_t_2_sum_trans = d_x_t_2_sum_trans_bc.sum(0) d_x_t_2_sum =
-            d_x_t_2_sum_trans.shuffle({1, 0})
-
-                d_x_t_2_sum += d_x_t_2_sum_bc.sum(1) d_x_t_2 =
-                d_x_t_2_sum.broadcast({1, feature_len}) d_x_t = 2 * x_t* d_x_t_2
-
-                    d_x_t += d_AB* x_t_trans d_x_t_trans = d_AB* x_t.T d_x_t +=
-        d_x_t_trans.T
   }
 };
 
