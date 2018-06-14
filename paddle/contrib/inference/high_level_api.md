@@ -4,8 +4,7 @@ This document describes the high-level inference APIs one can use to easily depl
 The APIs are described in `paddle_inference_api.h`, just one header file, and two libaries `libpaddle_fluid.so` and `libpaddle_fluid_api.so` are needed.
 
 ## PaddleTensor
-Forget the hard-to-understand `LoDTensor`, 
-we provide the `PaddleTensor` data structure is to give a general tensor interface.
+We provide the `PaddleTensor` data structure is to give a general tensor interface.
 
 The definition is 
 
@@ -30,10 +29,10 @@ struct PaddleTensor {
 
 The data is stored in a continuous memory `PaddleBuf`, and tensor's data type is specified by a `PaddleDType`. 
 The `name` field is used to specify the name of input variable, 
-that is important when there are multiple inputs and need to distiuish which variable to set the content.
+that is important when there are multiple inputs and need to distiuish which variable to set.
 
 ## engine
-The inference APIs has different underlying implementation, currently there are two valid engines:
+The inference APIs has two different underlying implementation, currently there are two valid engines:
 
 - the native engine, which is consists of the native operators and framework,
 - the Anakin engine, which is a Anakin library embeded.
