@@ -1142,16 +1142,19 @@ class Switch(object):
     The Semantics:
 
     1. A `switch` control-flow checks cases one-by-one.
-    1. The condition of each case is a boolean value, which is a scalar.
-    1. It runs the first matched case, or the default case if there is one.
-    1. Once it matches a case, it runs the corresponding branch and only that branch.
+
+    2. The condition of each case is a boolean value, which is a scalar.
+
+    3. It runs the first matched case, or the default case if there is one.
+
+    4. Once it matches a case, it runs the corresponding branch and only that branch.
 
     Examples:
         .. code-block:: python
 
-            with control_flow.Switch() as switch:
+            with fluid.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    tensor.assign(input=one_var, output=div_res)
+                    fluid.tensor.assign(input=one_var, output=div_res)
 
     """
 
