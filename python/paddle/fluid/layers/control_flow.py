@@ -76,13 +76,13 @@ def split_lod_tensor(input, mask, level=0):
     Examples:
         .. code-block:: python
 
-          x = layers.data(name='x', shape=[1])
+          x = fluid.layers.data(name='x', shape=[1])
           x.persistable = True
 
-          y = layers.data(name='y', shape=[1])
+          y = fluid.layers.data(name='y', shape=[1])
           y.persistable = True
 
-          out_true, out_false = layers.split_lod_tensor(
+          out_true, out_false = fluid.layers.split_lod_tensor(
                 input=x, mask=y, level=level)
 
     """
@@ -891,7 +891,7 @@ def array_write(x, i, array=None):
 
 def create_array(dtype):
     """
-    **Create LoDTensor Array**
+    **Create LoDTensorArray**
 
     This function creates an array of LOD_TENSOR_ARRAY . It is mainly used to
     implement RNN with array_write, array_read and While.
@@ -989,7 +989,8 @@ def array_read(array, i):
     Returns:
         Variable: The tensor type variable that has the data written to it.
     Examples:
-        .. code-block::python
+        .. code-block:: python
+
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = layers.array_read(tmp, i=i)
@@ -1027,7 +1028,7 @@ def shrink_memory(x, i, table):
 
 def array_length(array):
     """
-    **Get the length of Input LoDTensorArray**
+    **Get the Length of Input LoDTensorArray**
 
     This function performs the operation to find the length of the input
     LOD_TENSOR_ARRAY.
@@ -1042,12 +1043,13 @@ def array_length(array):
         Variable: The length of the input LoDTensorArray.
 
     Examples:
-        .. code-block::python
+        .. code-block:: python
 
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
           arr_len = fluid.layers.array_length(arr)
+
     """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_tmp_variable(dtype='int64')

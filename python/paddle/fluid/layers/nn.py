@@ -1615,7 +1615,9 @@ def batch_norm(input,
 
     Can be used as a normalizer function for conv2d and fully_connected operations.
     The required data format for this layer is one of the following:
+
     1. NHWC `[batch, in_height, in_width, in_channels]`
+
     2. NCHW `[batch, in_channels, in_height, in_width]`
 
     Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
