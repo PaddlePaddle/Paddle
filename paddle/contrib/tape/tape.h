@@ -47,6 +47,8 @@ class Tape {
   void Forward();
   void Backward(VariableHandle target);
 
+  bool HasBeenBackwarded() { return has_been_backwarded_; }
+
  private:
   bool has_been_backwarded_ = false;
   size_t current_position_ = 0;
