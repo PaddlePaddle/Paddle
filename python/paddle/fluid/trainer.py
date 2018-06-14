@@ -446,7 +446,8 @@ class Trainer(object):
     def _save_checkpoint(self, epoch_id, step_id):
         assert self.checkpoint_cfg
 
-        if epoch_id % self.checkpoint_cfg.epoch_interval == 0 and step_id % self.checkpoint_cfg.step_interval == 0:
+        if epoch_id % self.checkpoint_cfg.epoch_interval == 0 \
+            and step_id % self.checkpoint_cfg.step_interval == 0:
             exe = executor.Executor(self.place)
             io.save_checkpoint(
                 executor=exe,
