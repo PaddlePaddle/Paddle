@@ -20,26 +20,30 @@ namespace paddle {
 namespace operators {
 
 std::vector<int> GetOffsets<platform::CUDADeviceContext>(const Tensor* t) {
-    TensorCopy t_cpu;
-    framework::TensorCopySync(*t, platform::CPUPlace(), t_cpu);
-    std::vector<int> offsets;
-    int64_t* data = t_cpu->data<int64_t>();
-    int offset = 0;
-    int64_t currrent_value = data[0];
-    for (int i=1; i<t->numel(); ++i) {
-        if (data[i] != currrent_value) {
-            offsets.push(i);
-        }
-        currrent_value = data[i]; 
+  TensorCopy t_cpu;
+  framework::TensorCopySync(*t, platform::CPUPlace(), t_cpu);
+  std::vector<int> offsets;
+  int64_t* data = t_cpu->data<int64_t>();
+  int offset = 0;
+  int64_t currrent_value = data[0];
+  for (int i = 1; i < t->numel(); ++i) {
+    if (data[i] != currrent_value) {
+      offsets.push(i);
     }
-    offsets.push(t->numel());
-    return offsets;
+    currrent_value = data[i];
+  }
+  offsets.push(t->numel());
+  return offsets;
 }
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(triplet_loss,
-                        ops::TripletLossKernel<platform::CUDADeviceContext, float>,
-                        ops::TripletLossKernel<platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    triplet_loss, ops::TripletLossKernel<platform::CUDADeviceContext, float>,
+    ops::TripletLossKernel<platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    triplet_loss_grad,
+    ops::TripletLossGradKernel<platform::CUDADeviceContext, float>,
+    ops::TripletLossGradKernel<platform::CUDADeviceContext, double>);
