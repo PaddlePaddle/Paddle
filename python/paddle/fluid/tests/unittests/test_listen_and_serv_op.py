@@ -92,7 +92,6 @@ class TestListenAndServOp(OpTest):
         pid = self._start_pserver(False, True)
         self._wait_ps_ready(pid)
 
-        print("send kill signal, ", pid)
         # raise SIGTERM to pserver
         os.kill(pid, signal.SIGTERM)
 
@@ -100,7 +99,6 @@ class TestListenAndServOp(OpTest):
         pid = self._start_pserver(False, False)
         self._wait_ps_ready(pid)
 
-        print("send kill signal, ", pid)
         # raise SIGTERM to pserver
         os.kill(pid, signal.SIGTERM)
 
