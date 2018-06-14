@@ -25,68 +25,20 @@ import utils
 import random
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
+    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop', 'mean_iou'
 ]
 
 
@@ -4231,6 +4183,7 @@ def gather(input, index):
         output (Variable): The output is a tensor with the same rank as input.
 
     Examples:
+
         .. code-block:: python
 
             output = fluid.layers.gather(x, index)
@@ -4295,3 +4248,53 @@ def random_crop(x, shape, seed=None):
                  "SeedOut": seed_out},
         attrs={"shape": shape})
     return out
+
+
+def mean_iou(input, label, num_classes):
+    """
+    Mean Intersection-Over-Union is a common evaluation metric for
+    semantic image segmentation, which first computes the IOU for each 
+    semantic class and then computes the average over classes. 
+    IOU is defined as follows: 
+    
+    .. math::
+        
+        IOU = true_positive / (true_positive + false_positive + false_negative). 
+
+    The predictions are accumulated in a confusion matrix and mean-IOU 
+    is then calculated from it.
+
+
+    Args:
+        input (Variable): A Tensor of prediction results for semantic labels with type int32 or int64.
+        label (Variable):  A Tensor of ground truth labels with type int32 or int64. 
+                           Its shape should be the same as input.
+
+    Returns:
+        mean_iou (Variable): A Tensor representing the mean intersection-over-union with shape [1].
+        out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
+        out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class. 
+
+
+    Examples:
+
+        .. code-block:: python
+
+            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
+    """
+    helper = LayerHelper('mean_iou', **locals())
+    dtype = helper.input_dtype()
+    out_mean_iou = helper.create_tmp_variable(dtype='float32')
+    out_wrong = helper.create_tmp_variable(dtype='int32')
+    out_correct = helper.create_tmp_variable(dtype='int32')
+    helper.append_op(
+        type="mean_iou",
+        inputs={"predictions": input,
+                "labels": label},
+        outputs={
+            "out_mean_iou": out_mean_iou,
+            "out_wrong": out_wrong,
+            "out_correct": out_correct
+        },
+        attrs={"num_classes": num_classes})
+    return out_mean_iou, out_wrong, out_correct
