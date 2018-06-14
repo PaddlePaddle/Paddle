@@ -1,0 +1,81 @@
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include <future>  // NOLINT
+#include <ostream>
+
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/send_recv_util.h"
+
+namespace paddle {
+namespace operators {
+
+class CheckpointNotifyOp : public framework::OperatorBase {
+ public:
+  CheckpointNotifyOp(const std::string& type,
+                     const framework::VariableNameMap& inputs,
+                     const framework::VariableNameMap& outputs,
+                     const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {
+    std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    std::string dir = Attr<std::string>("dir");
+
+    detail::RPCClient* rpc_client =
+        detail::RPCClient::GetInstance<RPCCLIENT_T>();
+    VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
+            << outs[i] << " back";
+    rpc_client->AsyncCheckpointNotify(epmap[i], dir);
+    rpc_client->Wait();
+  }
+};
+
+class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({"127.0.0.1:6164"});
+    AddAttr<std::string>(
+        "dir", "(string, default '') indicate the folder checkpoint will use");
+    AddComment(R"DOC(
+Prefetch operator
+
+This operator will send Ids variables to listen_and_serve op at
+the parameter server and fetch result back.
+)DOC");
+  }
+};
+
+class CheckpointNotifyOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {}
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(checkpointnotify, ops::CheckpointNotifyOp,
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::CheckpointNotifyOpMaker,
+                  ops::CheckpointNotifyOpShapeInference);

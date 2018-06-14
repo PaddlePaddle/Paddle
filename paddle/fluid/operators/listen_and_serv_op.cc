@@ -221,6 +221,7 @@ static void FillRequestCtx(
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ExecutorPrepareContext>>
         *prefetch_ctx,
+    std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_ctx,
     detail::RPCServer *rpc_server) {
   h->SetScope(scope);
   h->SetDevCtx(dev_ctx);
@@ -228,6 +229,7 @@ static void FillRequestCtx(
   h->SetProgram(program);
   h->SetPrefetchPreparedCtx(prefetch_ctx);
   h->SetRPCServer(rpc_server);
+  h->SetCheckpointNotifyPreparedCtx(checkpoint_ctx);
 }
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
@@ -297,9 +299,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
   }
 
-  auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
-                     &dev_ctx, &executor, program,
-                     &prefetch_var_name_to_prepared_ctx, rpc_service_.get());
+  int checkpoint_point_block_id = Attr<int>(kCheckpointBlockId);
+  std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context =
+      executor.Prepare(*program, checkpoint_point_block_id);
+
+  auto f =
+      std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
+                &executor, program, &prefetch_var_name_to_prepared_ctx,
+                &ckpt_pre_context, rpc_service_.get());
 
   f(request_send_handler_.get());
   f(request_get_handler_.get());
