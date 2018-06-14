@@ -2243,23 +2243,24 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the mean of tensor elements over the given dimension.
+    Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the mean is computed. If
-            :attr:`None`, compute the mean over all elements of :attr:`input`
-            and return a Tensor variable with a single element, otherwise
+        dim (list|int|None): The dimension along which the mean is computed. If
+            `None`, compute the mean over all elements of :attr:`input`
+            and return a variable with a single element, otherwise it
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+            :math:`dim[i] < 0`, the dimension to reduce is 
+            :math:`rank(input) + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set `None`, the layer
                        will be named automatically.
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: The reduced mean Variable.
 
     Examples:
         .. code-block:: python
