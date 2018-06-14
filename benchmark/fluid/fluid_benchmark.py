@@ -188,7 +188,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         print_train_time(start_time, time.time(), num_samples)
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
-        if not args.no_test and batch_acc:
+        if not args.no_test and batch_acc and not args.use_reader_op:
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -285,11 +285,12 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             batch_id += 1
 
         print_train_time(start_time, time.time(), num_samples)
-        if not args.no_test and batch_acc:
+        if not args.no_test and batch_acc and not args.use_reader_op:
+            # we have not implement record io for test
+            # skip test when use args.use_reader_op
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
-        exit(0)
 
 
 def print_arguments(args):
