@@ -20,7 +20,7 @@ namespace reader {
 
 class BatchReader : public framework::DecoratedReader {
  public:
-  BatchReader(ReaderBase* reader, int batch_size)
+  BatchReader(const std::shared_ptr<ReaderBase>& reader, int batch_size)
       : DecoratedReader(reader), batch_size_(batch_size) {
     buffer_.reserve(batch_size_);
   }

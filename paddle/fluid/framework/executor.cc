@@ -330,8 +330,12 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
+    VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
+    // NOTE! Please do not delete this line, it's usefull because the debug
+    // string before and after op.run are different, after run the output
+    // will have right shape which is usefull for debug.
+    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
