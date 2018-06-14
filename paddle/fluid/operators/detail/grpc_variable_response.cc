@@ -206,7 +206,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         }
 
         if (!input.DecrementRecursionDepthAndPopLimit(p.first)) {
-          return false;
+          return tag;
         }
 
         if (lod_data.size() == 0) {
@@ -234,9 +234,8 @@ int GRPCVariableResponse::Parse(Source* source) {
           return tag;
         }
 
-        int ret = ProcSerializedField(tag, &input, num_bytes);
-        if (ret != 0) {
-          return ret;
+        if (!ProcSerializedField(tag, &input, num_bytes)) {
+          return tag;
         }
 
         break;
