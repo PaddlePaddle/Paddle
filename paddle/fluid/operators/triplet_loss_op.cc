@@ -132,9 +132,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(triplet_loss, ops::TripletLossOp, ops::TripletLossOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
-    triplet_loss, ops::TripletLossKernel<platform::CPUDeviceContext, float>,
-    ops::TripletLossKernel<platform::CPUDeviceContext, double>);
+    triplet_loss,
+    ops::TripletLossKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::TripletLossKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     triplet_loss_grad,
-    ops::TripletLossGradKernel<platform::CPUDeviceContext, float>,
-    ops::TripletLossGradKernel<platform::CPUDeviceContext, double>);
+    ops::TripletLossGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::TripletLossGradKernel<paddle::platform::CPUDeviceContext, double>);

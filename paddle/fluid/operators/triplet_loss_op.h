@@ -71,7 +71,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
                       .sum(DIM1({1}))
                       .shuffle(DIM2({1, 0}))
                       .broadcast(DIM2({batch_size, 1})) -
-                  2 * D;
+                  2 * distances_t;
 
     // step 2: get loss in each line of distance matrix
     float eps = 0.5;
@@ -83,7 +83,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
       int end = offsets[i + 1];
       int pos_num = end - begin;
       int neg_num = batch_size - pos_num;
-      for (size_t j = begin; j < end; ++j) {
+      for (int j = begin; j < end; ++j) {
         // get loss in current line
         auto p_dis = distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}));
         auto n_dis = distances_t.slice(DIM2({j, 0}), DIM2({1, batch_size}))
