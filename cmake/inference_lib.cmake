@@ -163,6 +163,7 @@ if(WITH_CONTRIB)
            SRCS ${contrib_dir}/${module}/paddle_inference_api.h
            ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
            DSTS ${dst_dir} ${dst_dir}
+           DEPS paddle_inference_api
    )
 endif()
 
