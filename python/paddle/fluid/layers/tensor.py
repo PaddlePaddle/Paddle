@@ -159,20 +159,21 @@ def concat(input, axis=0, name=None):
 
 
 def sums(input, out=None):
-    """This function performs the sum operation on the input and returns the
+    """
+    This function performs the sum operation on the input and returns the
     result as the output.
 
     Args:
         input (Variable|list): The input tensor that has the elements
                                that need to be summed up.
-        out (Variable|None): Output parameter. Returns the sum result.
+        out (Variable|None): Output parameter. The sum result.
                              Default: None
 
     Returns:
         Variable: the sum of input. The same as the argument 'out'
 
     Examples:
-        .. code-block::python
+        .. code-block:: python
 
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
