@@ -11,7 +11,7 @@ To build PaddlePaddle, you need
 1. A computer -- Linux, Windows, MacOS.
 2. Docker.
 
-Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image. 
+Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image.
 We run all the tools by running this image.
 
 .. _build_step:
@@ -22,7 +22,11 @@ How To Build
 You need to use Docker to build PaddlePaddle
 to avoid installing dependencies by yourself. We have several pre-built
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ ,
+you can also find how to build and use paddle_manylinux_devel Docker image from
+`here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__
 Or you can build your own image from source as the optional step below:
+
+If you don't wish to use docker，you need to install several compile dependencies manually as :ref:`Compile Dependencies <_compile_deps>` shows to start compilation.
 
 .. code-block:: bash
 
@@ -32,14 +36,12 @@ Or you can build your own image from source as the optional step below:
    # 2. Optional: build development docker image from source
    docker build -t paddle:dev .
    # 3. Run the following command to build a CPU-Only binaries
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh build
    # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
 NOTE: The above command try to mount the current working directory (root directory of source code)
-into :code:`/paddle` directory inside docker container. If you are using your own image
-(Step 4) it will run default entry-point :code:`build.sh` , so you could omit the last
-command in step 3.
+into :code:`/paddle` directory inside docker container.
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local
@@ -72,21 +74,21 @@ Set :code:`WITH_GPU=ON` Can also run tests on GPU.
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh test
 
 If you wish to run only one unit test, like :code:`test_sum_op`:
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
-   bash /paddle/paddle/scripts/docker/build.sh
-   cd /paddle/build
+   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
+   ./paddle/scripts/paddle_build.sh build
+   cd build
    ctest -R test_sum_op -V
 
 .. _faq_docker:
 
 Frequently Asked Questions
-----------------
+---------------------------
 
 - What is Docker?
 
@@ -108,7 +110,7 @@ Frequently Asked Questions
 
 - How difficult is it to learn Docker?
 
-    It takes you ten minutes to read [an introductory article](https://docs.docker.com/get-started) and saves you more than one hour to install all required build tools, configure them, especially when new versions of PaddlePaddle require some new tools.  Not even to mention the time saved when other people trying to reproduce the issue you have.
+    It takes you ten minutes to read `an introductory article <https://docs.docker.com/get-started>`_ and saves you more than one hour to install all required build tools, configure them, especially when new versions of PaddlePaddle require some new tools.  Not even to mention the time saved when other people trying to reproduce the issue you have.
 
 - Can I use my favorite IDE?
 
@@ -116,17 +118,16 @@ Frequently Asked Questions
 
   Many PaddlePaddle developers are using Emacs.  They add the following few lines into their `~/.emacs` configure file:
 
-  ```emacs
-  (global-set-key "\C-cc" 'compile)
-  (setq compile-command
-   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
-  ```
+  .. code-block:: emacs
+
+    (global-set-key "\C-cc" 'compile)
+    (setq compile-command "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
 
   so they could type `Ctrl-C` and `c` to build PaddlePaddle from source.
 
 - Does Docker do parallel building?
 
-  Our building Docker image runs a [Bash script](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh), which calls `make -j$(nproc)` to starts as many processes as the number of your CPU cores.
+  Our building Docker image runs a  `Bash script <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh>`_ , which calls `make -j$(nproc)` to starts as many processes as the number of your CPU cores.
 
 - Docker requires sudo
 
@@ -134,16 +135,16 @@ Frequently Asked Questions
 
 - Docker on Windows/MacOS builds slowly
 
-  On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to [this issue](https://github.com/PaddlePaddle/Paddle/issues/627) for details.
+  On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to `this issue  <https://github.com/PaddlePaddle/Paddle/issues/627>`_ for details.
 
 - Not enough disk space
 
-  Examples in this article use option `--rm` with the `docker run` command.  This option ensures that stopped containers do not exist on hard disks.  We can use `docker ps -a` to list all containers, including stopped.  Sometimes `docker build` generates some intermediate dangling images, which also take disk space.  To clean them, please refer to [this article](https://zaiste.net/posts/removing_docker_containers/).
+  Examples in this article use option `--rm` with the `docker run` command.  This option ensures that stopped containers do not exist on hard disks.  We can use `docker ps -a` to list all containers, including stopped.  Sometimes `docker build` generates some intermediate dangling images, which also take disk space.  To clean them, please refer to `this article <https://zaiste.net/posts/removing_docker_containers/>`_ .
 
 .. _compile_deps:
 
 Appendix: Compile Dependencies
-----------------
+-------------------------------
 
 PaddlePaddle need the following dependencies when compiling, other dependencies
 will be downloaded automatically.
@@ -164,11 +165,11 @@ will be downloaded automatically.
 .. _build_options:
 
 Appendix: Build Options
-----------------
+-------------------------
 
 Build options include whether build binaries for CPU or GPU, which BLAS
 library to use etc. You may pass these settings when running cmake.
-For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`_ 。
+For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`__ 。
 
 
 You can add :code:`-D` argument to pass such options, like:
@@ -217,7 +218,7 @@ keep on with latest cuDNN versions. Be sure to run with the same version of cuDN
 you built.
 
 Pass Compile Options
-++++++++++++++
+++++++++++++++++++++++
 
 You can pass compile options to use intended BLAS/CUDA/Cudnn libraries.
 When running cmake command, it will search system paths like

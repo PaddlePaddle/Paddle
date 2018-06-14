@@ -39,9 +39,9 @@ OpHandleBase::~OpHandleBase() {
 #endif
 }
 
-void OpHandleBase::Run(bool use_event) {
+void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_event) {
+  if (events_.empty() && use_cuda) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
@@ -50,21 +50,21 @@ void OpHandleBase::Run(bool use_event) {
     }
   }
 #else
-  PADDLE_ENFORCE(!use_event);
+  PADDLE_ENFORCE(!use_cuda);
 #endif
 
   RunImpl();
 }
 
-void OpHandleBase::Wait(platform::DeviceContext *waited_dev) {
+void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_cpu_place(waited_dev->GetPlace()) || events_.empty()) {
+  if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
       dev_ctx.second->Wait();
     }
   } else {
     auto stream =
-        static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
+        static_cast<platform::CUDADeviceContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
       PADDLE_ENFORCE(cudaStreamWaitEvent(stream, ev.second, 0));
     }
@@ -84,6 +84,38 @@ void OpHandleBase::AddInput(VarHandleBase *in) {
 void OpHandleBase::AddOutput(VarHandleBase *out) {
   outputs_.emplace_back(out);
   out->generated_op_ = this;
+}
+
+void OpHandleBase::WaitInputVarGenerated() {
+  for (auto in_var : inputs_) {
+    if (NeedWait(in_var)) {
+      for (auto &pair : dev_ctxes_) {
+        in_var->generated_op_->RecordWaitEventOnCtx(pair.second);
+      }
+    }
+  }
+}
+
+void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
+  for (auto *in : inputs_) {
+    if (NeedWait(in)) {
+      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[place]);
+    }
+  }
+}
+
+size_t OpHandleBase::NoDummyInputSize() const {
+  size_t cnt = 0;
+  for (auto *in : inputs_) {
+    if (dynamic_cast<DummyVarHandle *>(in) == nullptr) {
+      ++cnt;
+    }
+  }
+  return cnt;
+}
+
+bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
+  return in_var && in_var->generated_op_;
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {

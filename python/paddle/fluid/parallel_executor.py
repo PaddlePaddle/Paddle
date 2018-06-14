@@ -18,8 +18,12 @@ import framework
 import executor
 import warnings
 import sys
+import os
 
-__all__ = ['ParallelExecutor']
+__all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
+
+ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
+BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
 class ParallelExecutor(object):
@@ -27,10 +31,12 @@ class ParallelExecutor(object):
                  use_cuda,
                  loss_name=None,
                  main_program=None,
-                 num_threads=None,
-                 allow_op_delay=False,
                  share_vars_from=None,
-                 use_default_grad_scale=True):
+                 exec_strategy=None,
+                 build_strategy=None,
+                 num_trainers=1,
+                 trainer_id=0,
+                 **kwargs):
         """
         ParallelExecutor can run program in parallel.
 
@@ -39,18 +45,13 @@ class ParallelExecutor(object):
             loss_name(str, default None): The loss name must set in training.
             main_program(Program, default None): The program that need to run,
                 if not provided, then default_main_program will be used.
-            num_threads(int, default None): How many threads are used for
-                training.
-            allow_op_delay(bool, default False): Whether to delay and buffer
-                some operators together for scheduling or not, which may
-                improve performance in some cases, defalut False.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
-            use_default_grad_scale(bool, default True): If set True, a default
-                scale value equal to `1./device_count` would be multiplied to
-                gradients of each device and scaled gradients would be
-                aggregated. Otherwise, a customized scale value should be fed
-                to the network.
+            num_trainers(int, default 1): If greater than 1, NCCL will be
+                initialized with multpile rank of nodes, each node should have
+                same number of GPUs. Distributed training will be enabled then.
+            trainer_id(int, default 0): Must use together with num_trainers.
+                trainer_id is the "rank" of current node starts from 0.
 
         Returns:
             A ParallelExecutor object.
@@ -72,6 +73,25 @@ class ParallelExecutor(object):
               train_loss, = train_exe.run([loss.name], feed=feed_dict)
               test_loss, = test_exe.run([loss.name], feed=feed_dict)
         """
+        if len(kwargs) != 0:
+            err_msg = ""
+            for key in kwargs:
+                if key in dir(ExecutionStrategy):
+                    err_msg += \
+                        "Setting {0} by constructor is deprecated. Use " \
+                        "strategy=ExecutionStrategy(); strategy.{0}=xxx; " \
+                        "pe=ParallelExecutor(exec_strategy=strategy) " \
+                        "instead.\n ".format(key)
+                elif key in dir(BuildStrategy):
+                    err_msg += \
+                        "Setting {0} by constructor is deprecated. Use " \
+                        "strategy=BuildStrategy(); See help(" \
+                        "paddle.fluid.ParallelExecutor.BuildStrategy) \n".format(
+                            key)
+                else:
+                    err_msg += "Setting {0} by constructor is deprecated. Use strategy.\n".format(
+                        key)
+            raise ValueError(err_msg)
 
         self._places = []
         self._act_places = []
@@ -82,21 +102,31 @@ class ParallelExecutor(object):
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         else:
-            for i in xrange(multiprocessing.cpu_count()):
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            for i in xrange(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         assert self._places, "no place for execution"
 
-        if num_threads is None:
+        if exec_strategy is None:
+            exec_strategy = ExecutionStrategy()
+        exec_strategy.use_cuda = use_cuda
+
+        if exec_strategy.num_threads == 0:
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                num_threads = len(self._places)
+                exec_strategy.num_threads = len(self._places) * 4
             else:
-                num_threads = min(
-                    len(self._places) * 2, multiprocessing.cpu_count())
+                cpu_num = int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+                exec_strategy.num_threads = cpu_num
+
+        if build_strategy is None:
+            build_strategy = BuildStrategy()
 
         main = main_program
         main = main if main else framework.default_main_program()
@@ -116,20 +146,14 @@ class ParallelExecutor(object):
         ]
 
         self.executor = core.ParallelExecutor(
-            num_threads,
-            True if use_cuda else False,  # use_event
             self._places,
             set([
                 p.name for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(self.persistable_vars),
-            main.desc,
-            loss_name if loss_name else '',
-            scope,
-            local_scopes,
-            allow_op_delay,
-            use_default_grad_scale)
+            set(self.persistable_vars), main.desc, loss_name
+            if loss_name else '', scope, local_scopes, exec_strategy,
+            build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None):

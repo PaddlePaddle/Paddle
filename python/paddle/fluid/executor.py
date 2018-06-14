@@ -170,6 +170,8 @@ def get_program_cache_key(feed, fetch_list):
             return var.desc.name()
         elif isinstance(var, str):
             return var
+        elif isinstance(var, basestring):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
 
@@ -299,14 +301,18 @@ class Executor(object):
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
-            raise TypeError("feed should be a map")
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s" %
+                (type(feed)))
         if fetch_list is None:
             fetch_list = []
         if program is None:
             program = default_main_program()
 
         if not isinstance(program, Program):
-            raise TypeError()
+            raise TypeError(
+                "Executor requires Program as its Parameter. But you passed in %s"
+                % (type(program)))
 
         if scope is None:
             scope = global_scope()

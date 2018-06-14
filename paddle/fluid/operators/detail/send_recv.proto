@@ -14,6 +14,8 @@ limitations under the License. */
 syntax = "proto3";
 package sendrecv;
 
+// option cc_generic_services = true;
+
 service SendRecvService {
   // For parameter server round-robin like hashing, do not split tensors.
   // Send and recv only one tensor
@@ -32,6 +34,7 @@ service SendRecvService {
 enum VarType {
   LOD_TENSOR = 0;
   SELECTED_ROWS = 1;
+  NCCL_ID = 2;
 }
 
 // NOTICE(gongwb):don't modify this proto if you are not
@@ -69,6 +72,10 @@ message VariableMessage {
   bytes rows = 9;
   // Look up table block execution output variable name.
   string out_varname = 10;
+  // If 1, the ps server will start profiling, the ps
+  // server stops profiling and generates a profile to /tmp/profile_ps_*
+  // when profile switches from 1 to 2.
+  int64 profile = 11;
 }
 
 message VoidMessage {}

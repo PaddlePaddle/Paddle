@@ -66,8 +66,7 @@ class FetchOp : public framework::OperatorBase {
 
 class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FetchOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of fetch op");
     AddOutput("Out", "The output of fetch op");
     AddAttr<int>("col", "(int) The column of fetch");

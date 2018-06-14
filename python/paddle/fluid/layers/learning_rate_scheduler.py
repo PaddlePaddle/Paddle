@@ -11,6 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+When training a model, it's often useful to decay the
+learning rate during training process, this is called
+learning_rate_decay. There are many strategies to do
+this, this module will provide some classical method.
+User can also implement their own learning_rate_decay
+strategy according to this module.
+"""
 
 import control_flow
 import nn
@@ -23,14 +31,6 @@ __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
     'polynomial_decay', 'piecewise_decay', 'noam_decay', 'append_LARS'
 ]
-"""
-When training a model, it's often useful to decay the
-learning rate during training process, this is called
-learning_rate_decay. There are many strategies to do
-this, this module will provide some classical method.
-User can also implement their own learning_rate_decay
-strategy according to this module.
-"""
 
 
 def _decay_step_counter(begin=0):
@@ -42,18 +42,20 @@ def _decay_step_counter(begin=0):
 
 
 def noam_decay(d_model, warmup_steps):
-    """Apply decay to learning rate.
-    ```python
-    lr_value = np.power(d_model, -0.5) * np.min([
-            np.power(current_steps, -0.5),
-            np.power(warmup_steps, -1.5) * current_steps
-        ])
-    ```
+    """
+    Noam decay method. The numpy implementation of noam decay as follows.
+
+    >>> import numpy as np
+    >>> lr_value = np.power(d_model, -0.5) * np.min([
+    >>>                         np.power(current_steps, -0.5),
+    >>>                         np.power(warmup_steps, -1.5) * current_steps])
+
+    Please reference `attention is all you need
+    <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
     Args:
         d_model(Variable): The dimensionality of input and output of model.
-            Reference: attention is all you need
-                https://arxiv.org/pdf/1706.03762.pdf
+
         warmup_steps(Variable): A super parameter.
 
     Returns:

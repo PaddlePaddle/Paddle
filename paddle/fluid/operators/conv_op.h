@@ -17,9 +17,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 
 namespace paddle {
@@ -60,12 +60,12 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class ConvOp : public framework::OperatorWithKernel {
@@ -161,6 +161,7 @@ class GemmConvKernel : public framework::OpKernel<T> {
     math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     for (int i = 0; i < batch_size; i++) {
       Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
       Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
@@ -186,8 +187,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
         // gemm
         Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
         Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-        math::matmul<DeviceContext, T>(dev_ctx, filter_slice, false, col_matrix,
-                                       false, T(1.0), &out_slice, T(0.0));
+        blas.MatMul(filter_slice, false, col_matrix, false, T(1.0), &out_slice,
+                    T(0.0));
       }
     }
   }
@@ -274,6 +275,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
@@ -303,9 +305,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
             col_matrix.ShareDataWith(in_grad_slice);
             col_matrix.Resize(col_matrix_shape);
           }
-          math::matmul<DeviceContext, T>(dev_ctx, filter_slice, true,
-                                         out_grad_slice, false, T(1.0),
-                                         &col_matrix, T(0.0));
+          blas.MatMul(filter_slice, true, out_grad_slice, false, T(1.0),
+                      &col_matrix, T(0.0));
 
           if (is_expand && data_dim == 2U) {
             col2im(dev_ctx, col, dilations, strides,
@@ -352,9 +353,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
           // gemm
           Tensor filter_grad_slice =
               filter_grad_.Slice(g * out_step, (g + 1) * out_step);
-          math::matmul<DeviceContext, T>(dev_ctx, out_grad_slice, false,
-                                         col_matrix, true, T(1.0),
-                                         &filter_grad_slice, T(1.0));
+          blas.MatMul(out_grad_slice, false, col_matrix, true, T(1.0),
+                      &filter_grad_slice, T(1.0));
         }
       }
     }

@@ -68,14 +68,14 @@ class SGDOpInferVarType : public framework::VarTypeInference {
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
-              "Output parameter, should share the same memory with Param");
+              "Output parameter, should share the same memory with Param")
+        .Reuse("Param");
     AddComment(R"DOC(
 
 SGD operator

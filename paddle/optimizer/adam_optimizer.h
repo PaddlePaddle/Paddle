@@ -20,7 +20,7 @@ namespace paddle {
 namespace optimizer {
 
 class AdamOptimizer : public ParameterOptimizer {
-public:
+ public:
   AdamOptimizer(Tensor *parameter,
                 LrPolicy *lr,
                 double beta_1,
@@ -42,7 +42,7 @@ public:
   std::string SerializeState();
   void DeserializeState(const std::string &state);
 
-private:
+ private:
   Tensor *momentums_;
   Tensor *velocitys_;
   double beta_1_;

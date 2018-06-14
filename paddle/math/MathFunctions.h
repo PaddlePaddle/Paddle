@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef MATHFUNCTIONS_H_
-#define MATHFUNCTIONS_H_
+#pragma once
 
 #ifdef PADDLE_WITH_MKLML
 #include <mkl_cblas.h>
@@ -21,7 +20,7 @@ limitations under the License. */
 #include <mkl_vml_functions.h>
 #endif
 
-#if defined(PADDLE_USE_VECLIB)
+#ifdef PADDLE_USE_VECLIB
 extern "C" {
 #include <cblas.h>
 #include <clapack.h>
@@ -30,7 +29,9 @@ extern "C" {
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
+#ifdef LAPACK_FOUND
 #include <lapacke.h>
+#endif
 #endif
 
 #ifndef LAPACK_FOUND
@@ -126,5 +127,3 @@ template <class T>
 void vTanh(const int n, const T* a, T* r);
 
 }  // namespace paddle
-
-#endif  // MATHFUNCTIONS_H_

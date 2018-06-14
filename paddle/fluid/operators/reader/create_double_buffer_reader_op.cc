@@ -34,7 +34,8 @@ static constexpr size_t kChannelSize = 1;  // kCacheSize - 2
 class DoubleBufferReader : public framework::DecoratedReader {
  public:
   explicit DoubleBufferReader(
-      ReaderBase* reader, platform::Place target_place = platform::CPUPlace())
+      const std::shared_ptr<ReaderBase>& reader,
+      platform::Place target_place = platform::CPUPlace())
       : DecoratedReader(reader), place_(target_place) {
     cpu_tensor_cache_.resize(kCacheSize);
     gpu_tensor_cache_.resize(kCacheSize);
@@ -113,14 +114,13 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 };
 
 class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateDoubleBufferReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddComment(R"DOC(
       CreateDoubleBufferReader Operator
 
       A double buffer reader takes another reader as its 'underlying reader'.
-      It launches another thread to execute the 'underlying reader' asynchronously, 
+      It launches another thread to execute the 'underlying reader' asynchronously,
       which prevents reading process from blocking subsequent training.
     )DOC");
     std::unordered_set<std::string> enum_range;

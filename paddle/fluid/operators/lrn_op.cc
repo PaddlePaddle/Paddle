@@ -124,16 +124,17 @@ namespace {
 framework::OpKernelType GetExpectedLRNKernel(
     const framework::ExecutionContext& ctx) {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
       layout_, library_);
@@ -169,8 +170,7 @@ class LRNOp : public framework::OperatorWithKernel {
 template <typename T>
 class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LRNOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input of LRN operator. "
              "It must be a 4D tenor with NCHW format.");

@@ -5,11 +5,11 @@ proto_library(framework_proto SRCS framework.proto)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-
+cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 if(WITH_GPU)
-  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place memory device_context framework_proto)
+  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place memory device_context framework_proto)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -57,7 +57,7 @@ cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
 cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
-cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
+cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
@@ -83,11 +83,16 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope
-framework_proto glog lod_rank_table feed_fetch_method)
+if(WITH_DISTRIBUTE)
+  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+else()
+  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method)
+endif()
 
 
-cc_library(parallel_executor SRCS parallel_executor.cc DEPS multi_devices_graph_builder threaded_ssa_graph_executor)
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

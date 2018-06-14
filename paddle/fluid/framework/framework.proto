@@ -71,6 +71,7 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
+    optional string reuse = 6;
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -101,6 +102,9 @@ message VarType {
     FP16 = 4;
     FP32 = 5;
     FP64 = 6;
+    // Tensor<size_t> is used in C++.
+    SIZE_T = 19;
+    UINT8 = 20;
 
     // Other types that may need additional descriptions
     LOD_TENSOR = 7;

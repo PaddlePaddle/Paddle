@@ -125,7 +125,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimize_ops, params_grads = optimizer.minimize(avg_cost)
+    optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -246,26 +246,6 @@ def infer(use_cuda, save_dirname=None):
         fluid.io.save_inference_model(save_dirname, feed_target_names,
                                       fetch_targets, exe,
                                       inference_transpiler_program)
-
-        if use_cuda and fluid.core.is_float16_supported(place):
-            # Use float16_transpiler to speedup
-            fp16_transpiler_program = inference_transpiler_program.clone()
-            t.float16_transpile(fp16_transpiler_program, place)
-
-            fp16_results = exe.run(fp16_transpiler_program,
-                                   feed={feed_target_names[0]: tensor_img},
-                                   fetch_list=fetch_targets)
-
-            assert len(results[0]) == len(fp16_results[0])
-            for i in range(len(results[0])):
-                np.testing.assert_almost_equal(
-                    results[0][i], fp16_results[0][i], decimal=2)
-
-            print("float16 infer results: ", fp16_results[0])
-
-            fluid.io.save_inference_model("float16_" + save_dirname,
-                                          feed_target_names, fetch_targets, exe,
-                                          fp16_transpiler_program)
 
 
 def main(net_type, use_cuda, is_local=True):

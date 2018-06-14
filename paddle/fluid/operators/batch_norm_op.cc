@@ -110,24 +110,25 @@ class BatchNormOp : public framework::OperatorWithKernel {
                                          ctx.Input<Tensor>("Variance")->type()),
                       "Variance input should be of float type");
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
+    if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library_);
+                                   library);
   }
 };
 
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "")
@@ -150,13 +151,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization");
+    AddOutput("Y", "result after normalization").Reuse("X");
     AddOutput("MeanOut",
               "Share memory with Mean. "
-              "Store the global mean when training");
+              "Store the global mean when training")
+        .Reuse("Mean");
     AddOutput("VarianceOut",
               "Share memory with Variance. "
-              "Store the global Variance when training");
+              "Store the global Variance when training")
+        .Reuse("Variance");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
               "will apply to output when training")
@@ -367,18 +370,21 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       PADDLE_THROW("can't find Y@GRAD");
     }
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
+    if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library_);
+        layout, library);
   }
 };
 

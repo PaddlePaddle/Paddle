@@ -48,10 +48,9 @@ class TopkOp : public framework::OperatorWithKernel {
 
 class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TopkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) The input of Topk op");
-    AddOutput("Out", "(Tensor) The output tensor of Topk op");
+    AddOutput("Out", "(Tensor) The output tensor of Topk op").Reuse("X");
     AddOutput("Indices", "(Tensor) The indices of Topk elements of input");
     AddComment(R"DOC(
 Top K operator

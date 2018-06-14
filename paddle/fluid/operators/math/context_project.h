@@ -17,8 +17,8 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -211,6 +211,7 @@ class ContextProjectGradFunctor {
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
     sequence_width = in.dims()[1];
+    auto blas = math::GetBlas<DeviceContext, T>(context);
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
@@ -262,8 +263,8 @@ class ContextProjectGradFunctor {
               Tensor out_t_sub = out_t.Slice(k * context_length,
                                              k * context_length + padding_size);
               Tensor w_sub = padding_data->Slice(k, k + padding_size);
-              axpy<DeviceContext, T>(context, w_sub.numel(), static_cast<T>(1),
-                                     out_t_sub.data<T>(), w_sub.data<T>());
+              blas.AXPY(w_sub.numel(), static_cast<T>(1), out_t_sub.data<T>(),
+                        w_sub.data<T>());
             }
           }
           if (down_pad > 0) {
@@ -294,8 +295,8 @@ class ContextProjectGradFunctor {
                   (down_pad_begin_row + t) * context_length);
               Tensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              axpy<DeviceContext, T>(context, w_sub.numel(), static_cast<T>(1),
-                                     out_t_sub.data<T>(), w_sub.data<T>());
+              blas.AXPY(w_sub.numel(), static_cast<T>(1), out_t_sub.data<T>(),
+                        w_sub.data<T>());
             }
           }
           out_t.Resize({sequence_height, context_length * sequence_width});

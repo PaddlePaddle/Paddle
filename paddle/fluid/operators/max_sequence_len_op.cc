@@ -41,12 +41,16 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
 
 class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxSeqenceLenOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("RankTable", "The lod_rank_table.");
-    AddOutput("Out", "The max sequence length.");
-    AddComment(
-        R"DOC(Calculate the max sequence length through lod_rank_table.)DOC");
+  void Make() override {
+    AddInput("RankTable", "Input variable which is a LoDRankTable object");
+    AddOutput("Out", "The max sequence length");
+    AddComment(R"DOC(
+    Given a LoDRankTable object, this layer returns the max length of
+    a batch of sequences. In fact, a LoDRankTable object contains a list of
+    tuples(<sequence index, sequence length>) and the list is already sorted by
+    sequence length in descending order, so the operator just returns the
+    sequence length of the first tuple element
+)DOC");
   }
 };
 

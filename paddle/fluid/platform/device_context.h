@@ -11,6 +11,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -100,7 +101,7 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
-    std::lock_guard<std::recursive_mutex> guard(mutex_);
+    std::lock_guard<std::mutex> guard(mtx_);
     callback();
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
@@ -110,8 +111,6 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-
-  mutable std::recursive_mutex mutex_;
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
@@ -119,6 +118,8 @@ class CUDADeviceContext : public DeviceContext {
   int compute_capability;
   int multi_process;
   int max_threads_per_mp;
+
+  std::mutex mtx_;
 };
 
 template <>
