@@ -349,11 +349,12 @@ def zeros(shape, dtype, force_cpu=False):
     It also sets *stop_gradient* to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
+        shape(tuple|list|None): Shape of output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor.
+        force_cpu(bool, default False): Whether to make output stay on CPU.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: The tensor variable storing the output.
 
     Examples:
         .. code-block:: python
