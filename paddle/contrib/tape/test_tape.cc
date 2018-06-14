@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/contrib/dynamic/function.h"
+#include "paddle/contrib/tape/function.h"
 
-using namespace paddle::dynamic;
+using namespace paddle::tape;
 
 TEST(Tape, TestMLP) {
   LOG(INFO) << "TestMLP";

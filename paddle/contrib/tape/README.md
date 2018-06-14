@@ -1,6 +1,11 @@
 # Dynamic Graph on Fluid
 
-PaddlePaddle Fluid is targeting the autodiff without tape, which, however, is very challenging and we are still way from there. DyNet and PyTorch provide a good design idea, the *tape*, that significantly eases the challenge.  Also, DyNet provides a C++ API that is as convenient as Python but with higher efficiency and could conveniently integrate with industrial/production systems. This package, `tape`, combines the good of 
+PaddlePaddle Fluid is targeting the autodiff without tape, which, however, is very
+challenging and we are still way from there. DyNet and PyTorch provide a good design
+idea, the *tape*, that significantly eases the challenge.  Also, DyNet provides
+a C++ API that is as convenient as Python but with higher efficiency and could
+conveniently integrate with industrial/production systems. This package, `tape`,
+combines the good of
 
 1. tape from PyTorch and DyNet
 2. C++ API and core from DyNet
@@ -8,8 +13,8 @@ PaddlePaddle Fluid is targeting the autodiff without tape, which, however, is ve
 
 ## Overview
 
-We can implement Dynet-like Tape(See this survey) by wrapping Paddle Fluid's `Operator`
-and `Variable`.
+We can implement Dynet-like Tape(See this [survey](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/survey/dynamic_graph.md))
+by wrapping Paddle Fluid's `Operator` and `Variable`.
 
 The user API is straight forward since
 
@@ -121,13 +126,14 @@ paddle::tape::SGD sgd(0.001);
 // Data Feeder
 paddle::tape::Fill data_feeder(...);
 VariableHandle input(new paddle::tape::Variable("input"));
+VariableHandle label(new paddle::tape::Variable("label"));
 
 for (int i = 0; i < 2; ++i) {
   reset_global_tape();
 
-  data_feeder(input);
+  data_feeder(input, label);
 
-  auto loss = mean(linear2(linear1(input))); // compile time InferShape & InferVarType
+  auto loss = softmax(linear2(linear1(input)), label); // compile time InferShape & InferVarType
   LOG(INFO) << loss.value(); // Run forward up to loss
 
   // Run backward, store gradient of w at w->Grad()
@@ -209,7 +215,7 @@ digraph G {
 }
 </details>
 
-![Image](https://github.com/tonyyang-svail/Paddle/blob/cpp_tap/paddle/contrib/dynamic/computation_graph.png)
+![Image](https://github.com/tonyyang-svail/Paddle/blob/cpp_tap/paddle/contrib/tape/computation_graph.png)
 
 ## Code Reuse
 

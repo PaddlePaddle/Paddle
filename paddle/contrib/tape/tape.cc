@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/contrib/dynamic/tape.h"
+#include "paddle/contrib/tape/tape.h"
 
 #include <list>
 #include <map>
@@ -29,7 +29,7 @@
 #include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
-namespace dynamic {
+namespace tape {
 
 // borrowed from
 // https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
