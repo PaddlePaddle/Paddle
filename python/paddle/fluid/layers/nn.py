@@ -1638,23 +1638,23 @@ def batch_norm(input,
 
     Args:
         input(variable): The input variable which is a LoDTensor.
-        act(string, default None): Activation type, linear|relu|prelu|...
-        is_test(bool, default False): Used for training or training.
-        momentum(float, default 0.9):
-        epsilon(float, default 1e-05):
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test(bool, Default False): Used for training or training.
+        momentum(float, Default 0.9):
+        epsilon(float, Default 1e-05):
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
         data_layout(string, default NCHW): NCHW|NHWC
-        in_place(bool, default False): Make the input and output of batch norm reuse memory.
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default False):
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
 
     Returns:
-        The sequence's last step variable which is a Tensor.
+        Variable: A tensor variable which is the result after applying batch normalization on the input.
 
     Examples:
 

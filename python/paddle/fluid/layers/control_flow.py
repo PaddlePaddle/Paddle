@@ -55,8 +55,6 @@ __all__ = [
 
 def split_lod_tensor(input, mask, level=0):
     """
-    **split_lod_tensor**
-
     This function takes in an input that contains the complete lod information,
     and takes in a mask which is used to mask certain parts of the input.
     The output is the true branch and the false branch with the mask applied to
