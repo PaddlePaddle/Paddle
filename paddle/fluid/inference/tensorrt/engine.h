@@ -177,7 +177,7 @@ class TRT_EngineManager {
     return engines_.at(name).get();
   }
 
-  // Create or get an engine called `key`
+  // Create or get an engine called `name`
   TensorRTEngine* Create(int max_batch, int max_workspace, cudaStream_t* stream,
                          const std::string& name) {
     auto* p = new TensorRTEngine(max_batch, max_workspace, stream);
