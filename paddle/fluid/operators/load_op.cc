@@ -74,25 +74,18 @@ class LoadOp : public framework::OperatorBase {
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "(Tensor) The tensor need to be loaded");
+    AddOutput("Out", "The tensor need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
-        "(boolean, default false)"
         "If true, the tensor will be first loaded and then "
         "converted to float16 data type. Otherwise, the tensor will be "
-        "directly loaded without data type conversion.")
+        "directly loaded without data type conversion. Default is false.")
         .SetDefault(false);
     AddAttr<std::string>("file_path",
-                         "(string) "
-                         "Variable will be loaded from \"file_path\".")
+                         R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddComment(R"DOC(
-Load Operator.
-
-Load operator will load a tensor variable from disk file.
-
-)DOC");
+    AddComment("Load operator will load a tensor variable from disk file.");
   }
 };
 }  // namespace operators
