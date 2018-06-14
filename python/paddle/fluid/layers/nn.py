@@ -173,11 +173,11 @@ def embedding(input,
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
-        is_distributed (bool): Whether to run lookup table from remote parameter server.
+        is_distributed(bool): Whether to run lookup table from remote parameter server.
         padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
             Otherwise the given :attr:`padding_idx` indicates padding the output
             with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the padding_idx to use in lookup is
+            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
