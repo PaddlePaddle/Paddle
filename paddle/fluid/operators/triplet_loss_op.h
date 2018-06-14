@@ -43,6 +43,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
+    T eps = static_cast<T>(context.Attr<float>("epsilon"));
     Tensor* loss = context.Output<Tensor>("Loss");
     Tensor* d_logits = context.Output<Tensor>("LogitsGrad");
     loss->mutable_data<T>(context.GetPlace());
@@ -65,18 +66,17 @@ class TripletLossKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto x_mat = math::CreateMatrixDescriptor(x_dims, 0, false);
     auto x_mat_trans = math::CreateMatrixDescriptor(x_dims, 0, true);
-    blas.MatMul(x_t, x_mat, x_t, x_mat_trans, T(1), distances, T(0));
+    blas.MatMul(*logits, x_mat, *logits, x_mat_trans, T(1), &distances, T(0));
     distances_t = x_t.square().sum(DIM1({1})).broadcast(DIM2({1, batch_size})) +
                   x_t.square()
                       .sum(DIM1({1}))
                       .shuffle(DIM2({1, 0}))
                       .broadcast(DIM2({batch_size, 1})) -
-                  2 * distances_t;
+                  distances_t * T(2.0);
 
     // step 2: get loss in each line of distance matrix
-    float eps = 0.5;
-    auto relu = [eps](float x) { return x < 0 ? eps : x + eps; };
-    auto relu_grad = [](float x) { return x < 0 ? 0 : 1; };
+    auto relu = [eps](T x) { return x < 0 ? T(eps) : T(x + eps); };
+    auto relu_grad = [](T x) { return x < 0 ? T(0) : T(1); };
     auto offsets = GetOffsets<DeviceContext>(labels);
     for (size_t i = 0; i < offsets.size() - 1; ++i) {
       int begin = offsets[i];
@@ -94,7 +94,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
         auto p_p_sub =
             p_dis.broadcast(DIM2({pos_num, 1})) -
             p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, pos_num}));
-        loss_t(j) =
+        loss_t.chip(j, 0) =
             n_p_sub.unaryExpr(relu).sum() - p_p_sub.unaryExpr(relu).sum();
         // get gradient of distance matric in current line
         d_distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num})) =
@@ -108,7 +108,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
       auto d_x_t_2_sum = d_distances_t.sum(DIM1({1})) +
                          d_distances_t.sum(DIM1({0})).shuffle(DIM2({1, 0}));
       auto d_x_t_2 = d_x_t_2_sum.broadcast(DIM2({1, feature_len}));
-      d_x_t = 2 * x_t * d_x_t_2 + 2 * x_t;
+      d_x_t = (x_t * d_x_t_2 + x_t) * T(2.0);
     }
   }
 };
@@ -117,18 +117,19 @@ template <typename DeviceContext, typename T>
 class TripletLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* loss = context.Input<Tensor>(framework::GradVarName("Loss"));
+    const Tensor* d_loss =
+        context.Input<Tensor>(framework::GradVarName("Loss"));
     const Tensor* d_logits = context.Input<Tensor>("LogitsGrad");
     Tensor* d_in = context.Output<Tensor>(framework::GradVarName("Logits"));
     d_in->mutable_data<T>(context.GetPlace());
     auto d_in_dims = d_in->dims();
     int batch_size = d_in_dims[0];
-    int feature_len = d_in_dims[1] auto d_logits_t =
-        EigenMatrix<T>::From(*d_logits);
+    int feature_len = d_in_dims[1];
+    auto d_logits_t = EigenMatrix<T>::From(*d_logits);
     auto d_loss_t = EigenVector<T>::From(*d_loss);
     auto d_in_t = EigenMatrix<T>::From(*d_in);
     // d_in = d_logis * d_loss
-    for (size_t i = 0; i < batch_size; ++i) {
+    for (int i = 0; i < batch_size; ++i) {
       d_in_t.slice(DIM2({i, 0}), DIM2({1, feature_len})) =
           d_logits_t.slice(DIM2({i, 0}), DIM2({1, feature_len})) * d_loss_t(i);
     }

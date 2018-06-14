@@ -19,12 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <>
 std::vector<int> GetOffsets<platform::CUDADeviceContext>(const Tensor* t) {
   framework::Tensor t_cpu;
   framework::TensorCopy(*t, platform::CPUPlace(), &t_cpu);
   std::vector<int> offsets;
   int64_t* data = t_cpu.data<int64_t>();
-  int offset = 0;
   int64_t currrent_value = data[0];
   for (int i = 1; i < t->numel(); ++i) {
     if (data[i] != currrent_value) {

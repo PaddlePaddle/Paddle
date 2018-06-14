@@ -16,18 +16,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <>
 std::vector<int> GetOffsets<platform::CPUDeviceContext>(const Tensor* t) {
   std::vector<int> offsets;
-  int64_t* data = t->data<int64_t>();
-  int offset = 0;
+  const int64_t* data = t->data<int64_t>();
   int64_t currrent_value = data[0];
   for (int i = 1; i < t->numel(); ++i) {
     if (data[i] != currrent_value) {
-      offsets.push(i);
+      offsets.push_back(i);
     }
     currrent_value = data[i];
   }
-  offsets.push(t->numel());
+  offsets.push_back(t->numel());
+  return offsets;
 }
 
 class TripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -62,6 +63,7 @@ class TripletLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    LOG(ERROR) << "TripletLossOp::InferShape!";
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
                    "Input(Logits) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
@@ -69,6 +71,7 @@ class TripletLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("LogitsGrad"),
                    "Output(LogitsGrad) should be not null.");
     auto labels_dims = ctx->GetInputDim("Label");
+    auto logits_dims = ctx->GetInputDim("Logits");
     PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
                       "The input of triplet_loss should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
@@ -95,6 +98,7 @@ class TripletLossOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    LOG(ERROR) << "TripletLossGradOp::InferShape!";
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
                    "Input(Loss@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
