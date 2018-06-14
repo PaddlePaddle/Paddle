@@ -87,6 +87,9 @@ class BRPCClient : public RPCClient {
   void AsyncSendComplete(const std::string& ep,
                          int64_t time_out = RPCClient::rpc_time_out);
 
+  void AsyncSendMessage(const std::string& ep, const std::string& message,
+                        int64_t time_out);
+
  private:
   std::unordered_map<std::string, ChannelQueuePtr> channels_;
 

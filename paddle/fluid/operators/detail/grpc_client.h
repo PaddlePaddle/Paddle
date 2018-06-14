@@ -46,19 +46,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-struct VarHandle {
-  std::string ep;
-  const platform::DeviceContext* ctx;
-  const framework::Scope* scope;
-  std::string name;
-
-  std::string String() const {
-    std::ostringstream s;
-    s << "name:[" << name << "] ep:[" << ep << "]";
-    return s.str();
-  }
-};
-
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {

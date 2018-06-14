@@ -44,6 +44,19 @@ constexpr char kRequestPrefetch[] = "RequestPrefetch";
 
 class RPCServer;
 
+struct VarHandle {
+  std::string ep;
+  const platform::DeviceContext* ctx;
+  const framework::Scope* scope;
+  std::string name;
+
+  std::string String() const {
+    std::ostringstream s;
+    s << "name:[" << name << "] ep:[" << ep << "]";
+    return s.str();
+  }
+};
+
 class RequestHandler {
  public:
   explicit RequestHandler(bool sync_mode)
