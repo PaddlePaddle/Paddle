@@ -50,7 +50,7 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
-if (WITH_ANAKIN)
+if (WITH_ANAKIN AND WITH_TESTING) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
     # compile the libinference_anakin_api.a and compile with anakin.so.
