@@ -151,13 +151,20 @@ copy(memory_lib
 )
 
 set(module "inference")
-copy(inference_lib DEPS paddle_fluid_shared paddle_fluid paddle_inference_api
-  SRCS ${src_dir}/${module}/*.h
-       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-       ${contrib_dir}/${module}/paddle_inference_api.h
-       ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
+
+if(WITH_CONTRIB)
+   set(module "inference")
+   set(dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
+   copy(contrib_inference_lib DEPS paddle_inference_api
+           SRCS ${contrib_dir}/${module}/paddle_inference_api.h
+           ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
+           DSTS ${dst_dir} ${dst_dir}
+   )
+endif()
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto
