@@ -486,11 +486,26 @@ def save_combine(x, file_path, overwrite=True):
     Saves a list of variables into a single file.
 
     Args:
-        x(list): A list of Tensor/LoDTensor to be saved together in a single file.
+        x(list): A list of Tensor/LoDTensor variables to be saved together in
+                 a single file.
         file_path(str): The file path where variables will be saved.
-        overwrite(bool): Whether or not cover the given file when it has already 
+        overwrite(bool): Whether or not cover the given file when it has already
             existed. If it's set 'False' and the file is existed, a runtime 
             error will be thrown. 
+
+    Returns:
+        There is no return value.
+
+    Examples:
+        .. code-block:: python
+
+        v1 = fluid.layers.data(name="data",
+                               shape=(4, 6),
+                               dtype="float32")
+        v2 = fluid.layers.data(name="data",
+                               shape=(6, 8, 4),
+                               dtype="float32")
+        normed = fluid.layers.save_combine([v1, v2], file_path="output")
     """
     helper = LayerHelper("save_combine", **locals())
     helper.append_op(
