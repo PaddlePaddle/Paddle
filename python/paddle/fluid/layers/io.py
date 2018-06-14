@@ -544,6 +544,9 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 
 def shuffle(reader, buffer_size):
+    """
+    Shuffle the reader.
+    """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
 
