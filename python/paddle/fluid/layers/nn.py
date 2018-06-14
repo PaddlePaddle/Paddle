@@ -3411,31 +3411,30 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
-    **Smooth L1 Loss Operator. **
-
-    This operator computes the smooth L1 loss for X and Y.
-    The operator takes the first dimension of X and Y as batch size.
+    This layer computes the smooth L1 loss for Variable `x` and `y`.
+    It takes the first dimension of `x` and `y` as batch size.
     For each instance, it computes the smooth L1 loss element by element first
-    and then sums all the losses. So the shape of Out is [batch_size, 1].
+    and then sums all the losses. So the shape of ouput Variable is 
+    [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            L1 loss op with same shape as x.
+            L1 loss op with same shape as `x`.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
-            input is optional and should have same shape with x. If provided,
-            the result of (x - y) will be multiplied by this tensor element by
+            input is optional and should have same shape with `x`. If provided,
+            the result of (`x - y`) will be multiplied by this tensor element by
             element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the out smooth L1 loss will be multiplied by this tensor element
             by element.
-        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
-            with default value 1.0.
+        sigma (float|None): Hyper parameter of smooth L1 loss layer. A float 
+           scalar with default value 1.0.
+
     Returns:
-        Variable: A tensor with rank be 2. The output smooth L1 loss with
-            shape [batch_size, 1].
+        Variable: The output smooth L1 loss with shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
@@ -3446,6 +3445,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
+
     helper = LayerHelper('smooth_l1_loss', **locals())
     diff = helper.create_tmp_variable(dtype=x.dtype)
     loss = helper.create_tmp_variable(dtype=x.dtype)
