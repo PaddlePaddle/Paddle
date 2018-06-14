@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
 #include "paddle/fluid/operators/detail/rpc_client.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -89,6 +90,23 @@ class BRPCClient : public RPCClient {
 
   void AsyncSendMessage(const std::string& ep, const std::string& message,
                         int64_t time_out);
+
+  friend void HandleSendResponse(brpc::Controller* cntl,
+                                 sendrecv::VoidMessage* response,
+                                 VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                 ChannelContextPtr ch_ctx, BRPCClient* cls);
+
+  friend void HandleGetResponse(brpc::Controller* cntl,
+                                sendrecv::VariableMessage* response,
+                                VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                ChannelContextPtr ch_ctx, BRPCClient* cls);
+
+  void DecreaseReqCount() {
+    req_count_--;
+    if (req_count_.load() <= 0) {
+      sync_cond_.notify_all();
+    }
+  }
 
  private:
   std::unordered_map<std::string, ChannelQueuePtr> channels_;

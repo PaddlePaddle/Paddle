@@ -19,11 +19,9 @@
 
 namespace sendrecv {
 
-typedef std::unordered_map<std::string,
-                           paddle::operators::detail::RequestHandler*>
-    HandlerMap;
-
 namespace detail = paddle::operators::detail;
+
+typedef std::unordered_map<std::string, detail::RequestHandler*> HandlerMap;
 
 class BRPCServiceImpl : public SendRecvService {
  public:
@@ -31,12 +29,13 @@ class BRPCServiceImpl : public SendRecvService {
       : request_send_h_(nullptr),
         request_get_h_(nullptr),
         request_prefetch_h_(nullptr) {
-    auto it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
+    VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map.size();
+    auto it = rpc_call_map.find(detail::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_send_h_ = it->second;
     }
 
-    it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
+    it = rpc_call_map.find(detail::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_get_h_ = it->second;
     }
@@ -61,7 +60,8 @@ class BRPCServiceImpl : public SendRecvService {
     VLOG(3) << "RequestSend var_name:" << varname;
 
     detail::BRPCVariableResponse resp(request_send_h_->scope(),
-                                      request_send_h_->dev_ctx());
+                                      request_send_h_->dev_ctx(),
+                                      !request_send_h_->sync_mode());
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
 
@@ -84,10 +84,12 @@ class BRPCServiceImpl : public SendRecvService {
     std::string varname = request->varname();
     VLOG(3) << "RequestGet " << varname;
 
+    /*
     detail::BRPCVariableResponse resp(request_get_h_->scope(),
                                       request_get_h_->dev_ctx());
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
+                   */
 
     auto scope = request_get_h_->scope();
     auto invar = scope->FindVar(varname);
@@ -115,10 +117,10 @@ class BRPCServiceImpl : public SendRecvService {
     std::string in_var_name = request->varname();
     std::string out_var_name = request->out_varname();
     VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name;
+            << ", out_var_name: " << out_var_name;
 
     detail::BRPCVariableResponse resp(request_prefetch_h_->scope(),
-                                      request_prefetch_h_->dev_ctx());
+                                      request_prefetch_h_->dev_ctx(), true);
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
 

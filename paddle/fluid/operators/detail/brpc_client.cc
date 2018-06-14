@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/detail/brpc_client.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/brpc_sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
 
 namespace paddle {
 namespace operators {
@@ -29,10 +28,15 @@ DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 BRPCClient::~BRPCClient() { Wait(); }
 
 void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
-                        VarHandle var_h) {
+                        VarHandle var_h, ChannelQueuePtr ch_ptr,
+                        ChannelContextPtr ch_ctx, BRPCClient* cls) {
   // std::unique_ptr makes sure cntl/response will be deleted before returning.
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
+
+  // this channel can be used by other now.
+  ch_ptr->Push(ch_ctx);
+  cls->DecreaseReqCount();
 
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send SendVar: " << var_h.name
@@ -43,6 +47,7 @@ void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
   VLOG(4) << "Received SendResponse from: " << cntl->remote_side()
           << ", varname: " << var_h.name << ", latency: " << cntl->latency_us()
           << "us";
+  VLOG(4) << "Finish HandleSendResponse";
 }
 
 bool BRPCClient::AsyncSendVar(const std::string& ep,
@@ -57,12 +62,15 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
 
   framework::AsyncIO(
       [var_name_val, p_ctx, ep_val, p_scope, time_out, ch_ptr, this] {
-        auto* var = p_scope->FindVar(var_name_val);
-
         auto ch_ctx = ch_ptr->Pop();
         brpc::Controller* cntl = new brpc::Controller();
         sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
         cntl->set_timeout_ms(time_out);
+
+        auto* var = p_scope->FindVar(var_name_val);
+        sendrecv::VariableMessage request;
+        SerializeToIOBuf(var_name_val, var, *p_ctx, &request,
+                         &cntl->request_attachment());
 
         // varhandle
         VarHandle var_h;
@@ -71,15 +79,10 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
         var_h.name = var_name_val;
         var_h.ctx = p_ctx;
 
-        google::protobuf::Closure* done =
-            brpc::NewCallback(&HandleSendResponse, cntl, response, var_h);
-
-        sendrecv::VariableMessage request;
-        SerializeToIOBuf(var_name_val, var, *p_ctx, &request,
-                         &cntl->request_attachment());
+        google::protobuf::Closure* done = brpc::NewCallback(
+            &HandleSendResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
         ch_ctx->stub->SendVariable(cntl, &request, response, done);
-        ch_ptr->Push(ch_ctx);
       });
   req_count_++;
 
@@ -87,15 +90,20 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
 }
 
 void HandleGetResponse(brpc::Controller* cntl,
-                       sendrecv::VariableMessage* response,
-                       detail::VarHandle var_h) {
+                       sendrecv::VariableMessage* response, VarHandle var_h,
+                       ChannelQueuePtr ch_ptr, ChannelContextPtr ch_ctx,
+                       BRPCClient* cls) {
   // std::unique_ptr makes sure cntl/response will be deleted before returning.
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   std::unique_ptr<sendrecv::VariableMessage> response_guard(response);
 
+  // this channel can be used other now.
+  ch_ptr->Push(ch_ctx);
+
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send SendVar: " << var_h.name
                  << ", error text: " << cntl->ErrorText();
+    cls->DecreaseReqCount();
     return;
   }
 
@@ -106,6 +114,8 @@ void HandleGetResponse(brpc::Controller* cntl,
   framework::Variable* outvar = nullptr;
   detail::DeserializeFromIOBuf(*response, cntl->response_attachment(),
                                *var_h.ctx, var_h.scope, &outvar);
+  VLOG(4) << "Finish HandleGetResponse";
+  cls->DecreaseReqCount();
 }
 
 bool BRPCClient::AsyncGetVar(const std::string& ep,
@@ -120,12 +130,14 @@ bool BRPCClient::AsyncGetVar(const std::string& ep,
 
   framework::AsyncIO(
       [var_name_val, ep_val, p_scope, p_ctx, time_out, ch_ptr, this] {
-        // auto* var = p_scope->FindVar(var_name_val);
         auto ch_ctx = ch_ptr->Pop();
 
         brpc::Controller* cntl = new brpc::Controller();
         sendrecv::VariableMessage* response = new sendrecv::VariableMessage();
         cntl->set_timeout_ms(time_out);
+
+        sendrecv::VariableMessage req;
+        req.set_varname(var_name_val);
 
         // var handle
         VarHandle var_h;
@@ -134,14 +146,10 @@ bool BRPCClient::AsyncGetVar(const std::string& ep,
         var_h.name = var_name_val;
         var_h.ctx = p_ctx;
 
-        google::protobuf::Closure* done =
-            brpc::NewCallback(&HandleGetResponse, cntl, response, var_h);
-
-        sendrecv::VariableMessage req;
-        req.set_varname(var_name_val);
+        google::protobuf::Closure* done = brpc::NewCallback(
+            &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
         ch_ctx->stub->GetVariable(cntl, &req, response, done);
-        ch_ptr->Push(ch_ctx);
       });
 
   req_count_++;
@@ -182,11 +190,10 @@ bool BRPCClient::AsyncPrefetchVar(const std::string& ep,
     var_h.name = out_var_name_val;
     var_h.ctx = p_ctx;
 
-    google::protobuf::Closure* done =
-        brpc::NewCallback(&HandleGetResponse, cntl, response, var_h);
+    google::protobuf::Closure* done = brpc::NewCallback(
+        &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
-    ch_ctx->stub->GetVariable(cntl, &req, response, done);
-    ch_ptr->Push(ch_ctx);
+    ch_ctx->stub->PrefetchVariable(cntl, &req, response, done);
   });
 
   req_count_++;
@@ -258,7 +265,7 @@ void BRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
 void BRPCClient::AsyncSendMessage(const std::string& ep,
                                   const std::string& message,
                                   int64_t time_out) {
-  const auto ch_ptr = GetChannel(ep);
+  auto ch_ptr = GetChannel(ep);
   auto ch_ctx = ch_ptr->Pop();
 
   brpc::Controller* cntl = new brpc::Controller();
@@ -272,12 +279,10 @@ void BRPCClient::AsyncSendMessage(const std::string& ep,
   VarHandle var_h;
   var_h.name = message;
 
-  google::protobuf::Closure* done =
-      brpc::NewCallback(&HandleSendResponse, cntl, response, var_h);
+  google::protobuf::Closure* done = brpc::NewCallback(
+      &HandleSendResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
   ch_ctx->stub->SendVariable(cntl, &req, response, done);
-  ch_ptr->Push(ch_ctx);
-
   req_count_++;
 }
 
