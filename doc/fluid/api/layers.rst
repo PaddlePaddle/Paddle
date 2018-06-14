@@ -594,7 +594,6 @@ roi_pool
 ..  autofunction:: paddle.fluid.layers.roi_pool
     :noindex:
 
-
 ops
 ===
 
@@ -991,27 +990,93 @@ zeros
 ..  autofunction:: paddle.fluid.layers.zeros
     :noindex:
 
-topk
-----
+detection
+=========
 
-..  autofunction:: paddle.fluid.layers.topk
+multi_box_head
+--------------
+
+..  autofunction:: paddle.fluid.layers.multi_box_head
     :noindex:
 
-dice_loss
-----
+bipartite_match
+---------------
 
-..  autofunction:: paddle.fluid.layers.dice_loss
+..  autofunction:: paddle.fluid.layers.bipartite_match
     :noindex:
 
-resize_bilinear
-____
+target_assign
+-------------
 
-..  autofunction:: paddle.fluid.layers.resize_bilinear
+..  autofunction:: paddle.fluid.layers.target_assign
     :noindex:
 
-gather
-____
+detection_output
+----------------
 
-..  autofunction:: paddle.fluid.layers.gather
+..  autofunction:: paddle.fluid.layers.detection_output
+    :noindex:
+
+ssd_loss
+--------
+
+..  autofunction:: paddle.fluid.layers.ssd_loss
+    :noindex:
+
+detection_map
+-------------
+
+..  autofunction:: paddle.fluid.layers.detection_map
+    :noindex:
+
+iou_similarity
+--------------
+
+..  autofunction:: paddle.fluid.layers.iou_similarity
+    :noindex:
+
+box_coder
+---------
+
+..  autofunction:: paddle.fluid.layers.box_coder
+    :noindex:
+
+learning_rate_scheduler
+=======================
+
+exponential_decay
+-----------------
+
+..  autofunction:: paddle.fluid.layers.exponential_decay
+    :noindex:
+
+natural_exp_decay
+-----------------
+
+..  autofunction:: paddle.fluid.layers.natural_exp_decay
+    :noindex:
+
+inverse_time_decay
+------------------
+
+..  autofunction:: paddle.fluid.layers.inverse_time_decay
+    :noindex:
+
+polynomial_decay
+----------------
+
+..  autofunction:: paddle.fluid.layers.polynomial_decay
+    :noindex:
+
+piecewise_decay
+---------------
+
+..  autofunction:: paddle.fluid.layers.piecewise_decay
+    :noindex:
+
+noam_decay
+----------
+
+..  autofunction:: paddle.fluid.layers.noam_decay
     :noindex:
 

@@ -24,9 +24,9 @@ Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
 2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
 3. modify trainer program add split_op to each grad variable.
-4. append send_op to send splited variables to server and fetch
-    params(splited blocks or origin param) from server.
-5. append concat_op to merge splited blocks to update local weights.
+4. append send_op to send splited variables to server and 
+5. add recv_op to fetch params(splited blocks or origin param) from server.
+6. append concat_op to merge splited blocks to update local weights.
 
 Steps to transpile pserver:
 1. create new program for parameter server.
@@ -39,6 +39,7 @@ Steps to transpile pserver:
 from __future__ import print_function
 
 import math
+import numpy as np
 
 from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -70,7 +71,7 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def split_variable(var_list, service_count, min_block_size=8192):
+def slice_variable(var_list, slice_count, min_block_size=8192):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
@@ -78,25 +79,25 @@ def split_variable(var_list, service_count, min_block_size=8192):
 
     We need to have a minimal block size so that the calculations in
     the parameter server side can gain better performance. By default
-    minimum block size 8K elements (maybe 16bit or 32bit or 64bit). 
+    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
 
     Args:
         var_list (list): List of variables.
-        service_count (int): Numel of pserver services. A pserver may have two
-            or more listening ports.
+        slice_count (int): Numel of count that variables will be sliced, which
+            could be the pserver services' count.
         min_block_size (int): Minimum splitted block size.
     Returns:
-        blocks (list[(varname, block_id, current_block_size)]): A list 
+        blocks (list[(varname, block_id, current_block_size)]): A list
             of VarBlocks. Each VarBlock specifies a shard of the var.
     """
     blocks = []
     for var in var_list:
-        split_count = service_count
+        split_count = slice_count
         var_numel = reduce(lambda x, y: x * y, var.shape)
         max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
         if max_pserver_count == 0:
             max_pserver_count = 1
-        if max_pserver_count < service_count:
+        if max_pserver_count < slice_count:
             split_count = max_pserver_count
         block_size = int(math.ceil(var_numel / float(split_count)))
 
@@ -176,8 +177,9 @@ class DistributeTranspiler:
                         dtype=table_grad_var.dtype)
                     for index in range(len(self.pserver_endpoints))
                 ]
+        return param_list, grad_list
 
-    def _init_splited_vars(self, split_method):
+    def _init_splited_vars(self, slice_var_up):
         # update these mappings for further transpile:
         # 1. param_var_mapping: param var name -> [splited params vars]
         # 2. grad_var_mapping: grad var name -> [splited grads vars]
@@ -186,19 +188,34 @@ class DistributeTranspiler:
 
         param_list = []
         grad_list = []
+        param_grad_set = set()
         for p, g in self.params_grads:
             # skip parameter marked not trainable
             if type(p) == Parameter and p.trainable == False:
                 continue
-            param_list.append(p)
-            grad_list.append(g)
+            if p.name not in param_grad_set:
+                param_list.append(p)
+                param_grad_set.add(p.name)
+            if g.name not in param_grad_set:
+                grad_list.append(g)
+                param_grad_set.add(g.name)
 
-        self._update_dist_lookup_table_vars(param_list, grad_list,
-                                            self.params_grads)
+        param_list, grad_list = self._update_dist_lookup_table_vars(
+            param_list, grad_list, self.params_grads)
 
-        grad_blocks = split_variable(grad_list, len(self.pserver_endpoints))
-        param_blocks = split_variable(param_list, len(self.pserver_endpoints))
+        if slice_var_up:
+            # when we slice var up into blocks, we will slice the var according to
+            # pserver services' count. A pserver may have two or more listening ports.
+            grad_blocks = slice_variable(grad_list, len(self.pserver_endpoints))
+            param_blocks = slice_variable(param_list,
+                                          len(self.pserver_endpoints))
+        else:
+            # when we do NOT slice var up into blocks, we will always slice params
+            # grads into one block.
+            grad_blocks = slice_variable(grad_list, 1)
+            param_blocks = slice_variable(param_list, 1)
         assert (len(grad_blocks) == len(param_blocks))
+
         # origin_varname -> [splited_var]
         self.param_var_mapping = self._create_vars_from_blocklist(
             self.origin_program, param_blocks)
@@ -229,6 +246,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
+                  slice_var_up=True,
                   split_method=RoundRobin,
                   sync_mode=True):
         """
@@ -262,13 +280,27 @@ class DistributeTranspiler:
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
         # split and create vars, then put splited vars in dicts for later use.
-        self._init_splited_vars(split_method)
+        self._init_splited_vars(slice_var_up)
 
         # step 3.1: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
         send_vars = []
-        for orig_varname, splited_vars in self.grad_var_mapping.items():
+
+        # in general cases, the number of pservers is times of 2, and this
+        # will lead to uneven distribution among weights and bias:
+        #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
+        #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
+        # shuffle the map will avoid the uneven distribution above
+        grad_var_mapping_items = self.grad_var_mapping.items()
+        if not slice_var_up:
+            np.random.shuffle(grad_var_mapping_items)
+
+        for orig_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
+
+            if not slice_var_up:
+                assert (len(splited_vars) == 1)
+
             if len(splited_vars) == 1:
                 orig_varname = splited_vars[0].name
                 index = find_op_by_output_arg(program.global_block(),
@@ -285,7 +317,7 @@ class DistributeTranspiler:
 
             program.global_block().insert_op(
                 index=index + 1,
-                type="send_vars",
+                type="send",
                 inputs={"X": splited_vars},
                 outputs={},
                 attrs={
@@ -316,6 +348,7 @@ class DistributeTranspiler:
         for i, ep in enumerate(eplist):
             self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+
         # step4: Concat the parameters splits together after recv.
         for varname, splited_var in self.param_var_mapping.iteritems():
             eps = []
@@ -482,35 +515,38 @@ class DistributeTranspiler:
                                        grad_to_block_id, None)
 
         # process distributed lookup_table
-        prefetch_block = None
+        prefetch_var_name_to_block_id = []
         if self.has_distributed_lookup_table:
             pserver_index = self.pserver_endpoints.index(endpoint)
             table_opt_block = self._create_table_optimize_block(
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
-            prefetch_block = self._create_prefetch_block(
+            prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
 
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
         if self.has_distributed_lookup_table:
-            assert prefetch_block is not None
+            assert len(prefetch_var_name_to_block_id) > 0
         else:
-            assert prefetch_block is None
-            prefetch_block = pserver_program.global_block()
+            assert len(prefetch_var_name_to_block_id) == 0
+
+        attrs = {
+            "OptimizeBlock": pserver_program.block(1),
+            "endpoint": endpoint,
+            "Fanin": self.trainer_num,
+            "sync_mode": self.sync_mode,
+            "grad_to_block_id": grad_to_block_id
+        }
+        if len(prefetch_var_name_to_block_id) > 0:
+            attrs['prefetch_var_name_to_block_id'] \
+                = prefetch_var_name_to_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
             inputs={'X': recv_inputs},
             outputs={},
-            attrs={
-                "OptimizeBlock": pserver_program.block(1),
-                "endpoint": endpoint,
-                "Fanin": self.trainer_num,
-                "PrefetchBlock": prefetch_block,
-                "sync_mode": self.sync_mode,
-                "grad_to_block_id": grad_to_block_id
-            })
+            attrs=attrs)
 
         pserver_program.sync_with_cpp()
         return pserver_program
@@ -575,8 +611,15 @@ class DistributeTranspiler:
     def _replace_lookup_table_op_with_prefetch(self, program,
                                                pserver_endpoints):
         # 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
-        self.prefetch_input_vars = None
-        self.prefetch_output_vars = None
+        # self.all_prefetch_input_vars =
+        #       [[var0_prefetch_in_pserver0, var0_prefetch_in_pserver1]
+        #        [var1_prefetch_in_pserver0, var1_prefetch_in_pserver1]]
+        self.all_prefetch_input_vars = []
+
+        # self.all_prefetch_input_vars =
+        #       [[var0_prefetch_in_pserver0, var0_prefetch_in_pserver1]
+        #        [var1_prefetch_in_pserver0, var1_prefetch_in_pserver1]]
+        self.all_prefetch_output_vars = []
 
         continue_search_lookup_table_op = True
         while continue_search_lookup_table_op:
@@ -586,26 +629,27 @@ class DistributeTranspiler:
                 if op.type == LOOKUP_TABLE_TYPE:
                     continue_search_lookup_table_op = True
 
-                    op_index = list(all_ops).index(op)
+                    lookup_table_op_index = list(all_ops).index(op)
                     ids_name = op.input("Ids")
                     out_name = op.output("Out")
 
-                    if self.prefetch_input_vars is None:
-                        ids_var = program.global_block().vars[ids_name[0]]
-                        self.prefetch_input_vars = self.create_splited_vars(
-                            source_var=ids_var,
-                            block=program.global_block(),
-                            tag="_prefetch_in_")
-                    if self.prefetch_output_vars is None:
-                        out_var = program.global_block().vars[out_name[0]]
-                        self.prefetch_output_vars = self.create_splited_vars(
-                            source_var=out_var,
-                            block=program.global_block(),
-                            tag="_prefetch_out_")
+                    ids_var = program.global_block().vars[ids_name[0]]
+                    prefetch_input_vars = self.create_splited_vars(
+                        source_var=ids_var,
+                        block=program.global_block(),
+                        tag="_prefetch_in_")
+                    self.all_prefetch_input_vars.append(prefetch_input_vars)
+
+                    out_var = program.global_block().vars[out_name[0]]
+                    prefetch_output_vars = self.create_splited_vars(
+                        source_var=out_var,
+                        block=program.global_block(),
+                        tag="_prefetch_out_")
+                    self.all_prefetch_output_vars.append(prefetch_output_vars)
 
                     # insert split_ids_op
                     program.global_block().insert_op(
-                        index=op_index,
+                        index=lookup_table_op_index,
                         type="split_ids",
                         inputs={
                             'Ids': [
@@ -613,14 +657,14 @@ class DistributeTranspiler:
                                 for varname in ids_name
                             ]
                         },
-                        outputs={"Out": self.prefetch_input_vars})
+                        outputs={"Out": prefetch_input_vars})
 
                     # insert prefetch_op
                     program.global_block().insert_op(
-                        index=op_index + 1,
+                        index=lookup_table_op_index + 1,
                         type="prefetch",
-                        inputs={'X': self.prefetch_input_vars},
-                        outputs={"Out": self.prefetch_output_vars},
+                        inputs={'X': prefetch_input_vars},
+                        outputs={"Out": prefetch_output_vars},
                         attrs={
                             "epmap": pserver_endpoints,
                             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -628,16 +672,21 @@ class DistributeTranspiler:
 
                     # insert concat_op
                     program.global_block().insert_op(
-                        index=op_index + 2,
-                        type="concat",
-                        inputs={'X': self.prefetch_output_vars},
+                        index=lookup_table_op_index + 2,
+                        type="merge_ids",
+                        inputs={
+                            'Ids': [
+                                program.global_block().vars[varname]
+                                for varname in ids_name
+                            ],
+                            'X': prefetch_output_vars
+                        },
                         outputs={
                             "Out": [
                                 program.global_block().vars[varname]
                                 for varname in out_name
                             ]
-                        },
-                        attrs={"axis": 0})
+                        })
 
                     # delete lookup_table_op
                     delete_ops(program.global_block(), [op])
@@ -645,7 +694,7 @@ class DistributeTranspiler:
                     break
 
     def _split_table_grad_and_add_send_vars(self, program, pserver_endpoints):
-        # 2. add split_ids_op and send_vars_op to send gradient to pservers
+        # 2. add split_ids_op and send_op to send gradient to pservers
         # there should only be one table_name
         all_ops = program.global_block().ops
         table_grad_name = grad_var_name(self.table_name)
@@ -662,11 +711,11 @@ class DistributeTranspiler:
                     outputs={"Out": self.trainer_side_table_grad_list})
                 program.global_block().insert_op(
                     index=op_index + 2,
-                    type="send_vars",
+                    type="send",
                     inputs={'X': self.trainer_side_table_grad_list},
                     outputs={},
                     attrs={
-                        "sync_send": True,
+                        "sync_mode": True,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
@@ -676,30 +725,34 @@ class DistributeTranspiler:
                                optimize_block):
         # STEP: create prefetch block
         table_var = pserver_program.global_block().vars[self.table_name]
-        prefetch_block = pserver_program.create_block(optimize_block.idx)
-        trainer_ids = self.prefetch_input_vars[pserver_index]
-        pserver_ids = pserver_program.global_block().create_var(
-            name=trainer_ids.name,
-            type=trainer_ids.type,
-            shape=trainer_ids.shape,
-            dtype=trainer_ids.dtype)
-        trainer_out = self.prefetch_output_vars[pserver_index]
-        pserver_out = pserver_program.global_block().create_var(
-            name=trainer_out.name,
-            type=trainer_out.type,
-            shape=trainer_out.shape,
-            dtype=trainer_out.dtype)
-        prefetch_block.append_op(
-            type="lookup_sparse_table",
-            inputs={'Ids': pserver_ids,
-                    "W": table_var},
-            outputs={"Out": pserver_out},
-            attrs={
-                "is_sparse": True,  # has no effect on lookup_table op
-                "is_distributed": True,
-                "padding_idx": -1
-            })
-        return prefetch_block
+        prefetch_var_name_to_block_id = []
+        for index in range(len(self.all_prefetch_input_vars)):
+            prefetch_block = pserver_program.create_block(optimize_block.idx)
+            trainer_ids = self.all_prefetch_input_vars[index][pserver_index]
+            pserver_ids = pserver_program.global_block().create_var(
+                name=trainer_ids.name,
+                type=trainer_ids.type,
+                shape=trainer_ids.shape,
+                dtype=trainer_ids.dtype)
+            trainer_out = self.all_prefetch_output_vars[index][pserver_index]
+            pserver_out = pserver_program.global_block().create_var(
+                name=trainer_out.name,
+                type=trainer_out.type,
+                shape=trainer_out.shape,
+                dtype=trainer_out.dtype)
+            prefetch_block.append_op(
+                type="lookup_sparse_table",
+                inputs={'Ids': pserver_ids,
+                        "W": table_var},
+                outputs={"Out": pserver_out},
+                attrs={
+                    "is_sparse": True,  # has no effect on lookup_table op
+                    "is_distributed": True,
+                    "padding_idx": -1
+                })
+            prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
+                prefetch_block.idx))
+        return prefetch_var_name_to_block_id
 
     def _create_table_optimize_block(self, pserver_index, pserver_program,
                                      pre_block_idx, grad_to_block_id):
@@ -788,8 +841,8 @@ class DistributeTranspiler:
             program (ProgramDesc): ProgramDesc which gradients blong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
-        Returns: 
-            var_mapping (dict(varname->[new_varname_variable])):A dict mapping 
+        Returns:
+            var_mapping (dict(varname->[new_varname_variable])):A dict mapping
                 from original var name to each var split.
         """
 
@@ -802,6 +855,9 @@ class DistributeTranspiler:
             if not block_map.has_key(varname):
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
+        # Do not remove this important debug message:
+        print("block map: %s" % block_map)
+
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
             if len(splited) == 1:

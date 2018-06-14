@@ -56,6 +56,8 @@ class Inferencer(object):
         else:
             self.exe = executor.Executor(self.place)
 
+        self.inference_program = self.inference_program.clone(for_test=True)
+
     def infer(self, inputs, return_numpy=True):
         """
         :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
