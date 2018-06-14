@@ -3159,8 +3159,6 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
     Examples:
 
-    As an example:
-
         .. code-block:: text
 
             Given:
@@ -3204,7 +3202,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
             output.lod = [[0, 4, 8]]
 
-        The simple usage is:
+     Examples:
 
         .. code-block:: python
 
@@ -3738,7 +3736,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
         Output(i, x, y) = Input(i, x, y) / \left(
         k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
-        (Input(j, x, y))^2 \right)^{\beta}
+        (Input(j, x, y))^2\right)^{\beta}
 
     In the above equation:
 
