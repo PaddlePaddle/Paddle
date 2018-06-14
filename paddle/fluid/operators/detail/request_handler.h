@@ -43,6 +43,9 @@ constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
 
+#define CHECKPOINT_SAVE_MESSAGE "SAVE"
+#define CHECKPOINT_LOAD_MESSAGE "LOAD"
+
 class RPCServer;
 
 class RequestHandler {
@@ -68,6 +71,11 @@ class RequestHandler {
       std::unordered_map<
           std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
     prefetch_var_name_to_prepared_ctx_ = g;
+  }
+
+  void SetCheckpointNotifyPreparedCtx(
+      std::shared_ptr<framework::ExecutorPrepareContext> g) {
+    checkpoint_prepared_ctx_ = g;
   }
 
   // Used for async.
@@ -116,6 +124,8 @@ class RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       prefetch_var_name_to_prepared_ctx_;
+  // used for checkpoint notify
+  std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_prepared_ctx_;
 
   // Used for async.
   std::unordered_map<std::string,

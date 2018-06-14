@@ -25,6 +25,8 @@ service SendRecvService {
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
   // pre-fetch variable by given variable name and Ids
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
+
+  rpc CheckpointNotify(CheckpointMessage) returns (VoidMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.
@@ -79,3 +81,8 @@ message VariableMessage {
 }
 
 message VoidMessage {}
+
+message CheckpointMessage {
+  string notify_type = 1;
+  string checkpoint_dir = 2;
+}
