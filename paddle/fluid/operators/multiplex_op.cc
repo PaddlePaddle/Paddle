@@ -96,7 +96,9 @@ the (Ids[i])-th tensor.
 
 For i-th row of the output tensor:
 
-$ y[i] = x_{k}[i] $
+$$
+y[i] = x_{k}[i]
+$$
 
 where $y$ is the output tensor, $x_{k}$ is the k-th input tensor,
 and $k = Ids[i]$.

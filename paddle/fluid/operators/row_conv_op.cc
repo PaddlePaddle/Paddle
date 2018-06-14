@@ -94,7 +94,7 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
               "in this LodTensor is a matrix with shape T x N, i.e., the "
               "same shape as X.");
     AddComment(R"DOC(
-Row-convolution Operator.
+** Row-convolution operator **
 
 The row convolution is called lookahead convolution.  This operator was 
 introduced in the following paper for DeepSpeech2:

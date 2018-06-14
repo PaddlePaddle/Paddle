@@ -302,15 +302,6 @@ def open_recordio_file(filename,
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> reader = fluid.layers.io.open_recordio_file(
-    >>>                               filename='./data.recordio',
-    >>>                               shapes=[(3,224,224), (1)],
-    >>>                               lod_levels=[0, 0],
-    >>>                               dtypes=['float32', 'int64'])
-    >>> # Via the reader, we can use 'read_file' layer to get data:
-    >>> image, label = fluid.layers.io.read_file(reader)
-
     Args:
        filename(${filename_type}): ${filename_comment}.
        shapes(list): List of tuples which declaring data shapes.
@@ -322,6 +313,17 @@ def open_recordio_file(filename,
 
     Returns:
        ${out_comment}.
+
+    Examples:
+
+        >>> import paddle.fluid as fluid
+        >>> reader = fluid.layers.io.open_recordio_file(
+        >>>                               filename='./data.recordio',
+        >>>                               shapes=[(3,224,224), (1)],
+        >>>                               lod_levels=[0, 0],
+        >>>                               dtypes=['float32', 'int64'])
+        >>> # Via the reader, we can use 'read_file' layer to get data:
+        >>> image, label = fluid.layers.io.read_file(reader)
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -549,6 +551,29 @@ def batch(reader, batch_size):
 
 
 def double_buffer(reader, place=None, name=None):
+    """
+    Wrap a double buffer reader. The data will copy to target place with a
+    double buffer queue. If the target place is None, the place that executor
+    perform on will be used.
+
+    Args:
+        reader(Variable): the reader variable need to be wrapped.
+        place(Place): the place of target data. Default is the sample place of
+            executor perform.
+
+        name(str): Variable name. None if the user does not care.
+
+    Returns:
+        wrapped reader with double buffer.
+
+    Examples:
+
+        >>> reader = fluid.layers.open_files(filenames=['somefile'],
+        >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  dtypes=['float32', 'int64'])
+        >>> reader = fluid.layers.double_buffer(reader)
+        >>> img, label = fluid.layers.read_file(reader)
+    """
     attrs = dict()
     if place is not None:
         attrs['place'] = str(place).upper()

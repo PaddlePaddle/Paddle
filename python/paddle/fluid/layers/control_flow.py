@@ -1008,8 +1008,28 @@ def array_read(array, i):
 
 def shrink_memory(x, i, table):
     """
-    This function creates an operator to shrink_rnn_memory using the RankTable
+    This function creates an operator to shrink rnn memory using the RankTable
     as mentioned in the input parameter.
+
+    NOTE: This API is very low-level API. It is used by DynamicRNN only.
+
+    Since the Dynamic RNN uses no-padding way to implement RNN. The sequence
+    will be sorted by order, and the length of valid memory will be shrink after
+    each time step.
+
+    Args:
+        x(Variable): The memory object in the previous time step.
+        i(Variable): The step count variable. A int scalar as LoDTensor.
+        table(Variable): The RNNRankTable object.
+
+    Returns:
+        the memory variable after shrink.
+
+    Examples:
+
+        Since this API is very low level API. The example is not provided.
+        Please reference the implementation of class DynamicRNN for detail
+        usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
@@ -1316,10 +1336,9 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
-    Dynamic RNN.
-
-    This RNN can process a batch of sequence data. The length of each sample
-    sequence can be different. This API automatically process them in batch.
+    The dynamic RNN can process a batch of sequence data. The length of each
+    sample sequence can be different. This API automatically process them in
+    batch.
 
     The input lod must be set. Please reference `lod_tensor`
 
@@ -1500,7 +1519,7 @@ class DynamicRNN(object):
                need_reorder=False,
                dtype='float32'):
         """
-        Create a memory variable.
+        Create a memory variable for dynamic rnn.
 
         If the :code:`init` is not None, :code:`memory` will be initialized by
         this variable. The :code:`need_reorder` is used to reorder the memory as
