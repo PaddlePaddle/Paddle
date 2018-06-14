@@ -81,6 +81,9 @@ class Scope {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
+ protected:
+  mutable std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
+
  private:
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
@@ -92,8 +95,6 @@ class Scope {
   // Called by FindVarInternal and Var.
   // Caller doesn't own the returned Variable.
   Variable* FindVarLocally(const std::string& name) const;
-
-  mutable std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
 
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
