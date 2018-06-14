@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/detail/brpc_client.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/request_handler.h"
 
 namespace paddle {
 namespace operators {
@@ -37,8 +38,22 @@ void HandleSendResponse(brpc::Controller* cntl,
     LOG(WARNING) << "Fail to send EchoRequest, " << cntl->ErrorText();
     return;
   }
-  LOG(INFO) << "Received response from " << cntl->remote_side()
-            << " latency=" << cntl->latency_us() << "us";
+  VLOG(4) << "Received SendResponse from " << cntl->remote_side()
+          << " latency=" << cntl->latency_us() << "us";
+}
+
+void HandleSendCompleteResponse(brpc::Controller* cntl,
+                                sendrecv::VoidMessage* response) {
+  // std::unique_ptr makes sure cntl/response will be deleted before returning.
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
+
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send EchoRequest, " << cntl->ErrorText();
+    return;
+  }
+  VLOG(4) << "Received SendCompleteResponse from " << cntl->remote_side()
+          << " latency=" << cntl->latency_us() << "us";
 }
 
 bool BRPCClient::AsyncSendVar(const std::string& ep,
@@ -68,6 +83,7 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
                          &cntl->request_attachment());
 
         ch_ctx->stub->SendVariable(cntl, &request, response, done);
+        ch_ptr->Push(ch_ctx);
       });
   req_count_++;
 
@@ -179,6 +195,32 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   }
 
   return q;
+}
+
+void BRPCClient::SendComplete() {
+  for (auto& it : channels_) {
+    this->AsyncSendComplete(it.first);
+  }
+}
+
+void BRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+  const auto ch_ptr = GetChannel(ep);
+  auto ch_ctx = ch_ptr->Pop();
+
+  brpc::Controller* cntl = new brpc::Controller();
+  sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
+  cntl->set_timeout_ms(time_out);
+
+  google::protobuf::Closure* done =
+      brpc::NewCallback(&HandleSendCompleteResponse, cntl, response);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(COMPLETE_MESSAGE);
+
+  ch_ctx->stub->SendVariable(cntl, &req, response, done);
+  ch_ptr->Push(ch_ctx);
+
+  req_count_++;
 }
 
 }  // namespace detail
