@@ -13,7 +13,7 @@ if(WITH_GRPC)
   grpc_library(sendrecvop_grpc SRCS grpc_bytebuffer_stream.cc sendrecvop_utils.cc grpc_client.cc
         request_handler_impl.cc rpc_client.cc rpc_server.cc grpc_server.cc grpc_variable_response.cc variable_response.cc
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows memory DEPENDS send_recv_proto send_recv.proto)
+      DEPS lod_tensor selected_rows memory)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_test(grpc_serde_test SRCS grpc_serde_test.cc 
