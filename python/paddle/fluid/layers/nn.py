@@ -25,68 +25,20 @@ import utils
 import random
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
+    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop', 'mean_iou'
 ]
 
 
@@ -261,9 +213,10 @@ def embedding(input,
     return tmp
 
 
-# TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
                  size,
+                 h_0=None,
+                 c_0=None,
                  param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
@@ -324,6 +277,13 @@ def dynamic_lstm(input,
                          (T X 4D), where T is the total time steps in this
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the hidden size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
+
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
@@ -387,12 +347,20 @@ def dynamic_lstm(input,
     cell = helper.create_tmp_variable(dtype)
     batch_gate = helper.create_tmp_variable(dtype)
     batch_cell_pre_act = helper.create_tmp_variable(dtype)
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, size), \
+            'The shape of h0 should be (batch_size, %d)' % size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
 
     helper.append_op(
         type='lstm',
-        inputs={'Input': input,
-                'Weight': weight,
-                'Bias': bias},
+        inputs=inputs,
         outputs={
             'Hidden': hidden,
             'Cell': cell,
@@ -677,11 +645,13 @@ def dynamic_gru(input,
         attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
+    batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     if h_0 != None:
         assert h_0.shape == (
-            size, size), 'The shape of h0 should be(%d, %d)' % (size, size)
-        inputs['h0'] = h_0
+            batch_size, size
+        ), 'The shape of h0 should be(batch_size, %d)' % size
+        inputs['H0'] = h_0
 
     hidden = helper.create_tmp_variable(dtype)
     batch_gate = helper.create_tmp_variable(dtype)
@@ -4213,6 +4183,7 @@ def gather(input, index):
         output (Variable): The output is a tensor with the same rank as input.
 
     Examples:
+
         .. code-block:: python
 
             output = fluid.layers.gather(x, index)
@@ -4271,9 +4242,59 @@ def random_crop(x, shape, seed=None):
     seed_out = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="random_crop",
-        inputs={"X": input,
+        inputs={"X": x,
                 "Seed": seed},
         outputs={"Out": out,
                  "SeedOut": seed_out},
         attrs={"shape": shape})
     return out
+
+
+def mean_iou(input, label, num_classes):
+    """
+    Mean Intersection-Over-Union is a common evaluation metric for
+    semantic image segmentation, which first computes the IOU for each 
+    semantic class and then computes the average over classes. 
+    IOU is defined as follows: 
+    
+    .. math::
+        
+        IOU = true_positive / (true_positive + false_positive + false_negative). 
+
+    The predictions are accumulated in a confusion matrix and mean-IOU 
+    is then calculated from it.
+
+
+    Args:
+        input (Variable): A Tensor of prediction results for semantic labels with type int32 or int64.
+        label (Variable):  A Tensor of ground truth labels with type int32 or int64. 
+                           Its shape should be the same as input.
+
+    Returns:
+        mean_iou (Variable): A Tensor representing the mean intersection-over-union with shape [1].
+        out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
+        out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class. 
+
+
+    Examples:
+
+        .. code-block:: python
+
+            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
+    """
+    helper = LayerHelper('mean_iou', **locals())
+    dtype = helper.input_dtype()
+    out_mean_iou = helper.create_tmp_variable(dtype='float32')
+    out_wrong = helper.create_tmp_variable(dtype='int32')
+    out_correct = helper.create_tmp_variable(dtype='int32')
+    helper.append_op(
+        type="mean_iou",
+        inputs={"predictions": input,
+                "labels": label},
+        outputs={
+            "out_mean_iou": out_mean_iou,
+            "out_wrong": out_wrong,
+            "out_correct": out_correct
+        },
+        attrs={"num_classes": num_classes})
+    return out_mean_iou, out_wrong, out_correct
