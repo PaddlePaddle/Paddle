@@ -4696,7 +4696,7 @@ def random_crop(x, shape, seed=None):
     seed_out = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="random_crop",
-        inputs={"X": input,
+        inputs={"X": x,
                 "Seed": seed},
         outputs={"Out": out,
                  "SeedOut": seed_out},
