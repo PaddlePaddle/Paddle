@@ -15,7 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/concat_op.h"
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CUDADeviceContext, float>);
+    concat, ops::ConcatKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, int>);
 REGISTER_OP_CUDA_KERNEL(
     concat_grad,
-    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int>);
