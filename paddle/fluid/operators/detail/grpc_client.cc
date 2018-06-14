@@ -19,6 +19,7 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/detail/grpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 

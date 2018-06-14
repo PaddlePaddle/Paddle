@@ -236,7 +236,7 @@ int GRPCVariableResponse::Parse(Source* source) {
 
         int ret = ProcSerializedField(tag, &input, num_bytes);
         if (ret != 0) {
-          return ret
+          return ret;
         }
 
         break;

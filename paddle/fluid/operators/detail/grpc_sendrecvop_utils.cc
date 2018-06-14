@@ -23,10 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/detail/grpc_bytebuffer_stream.h"
 #include "paddle/fluid/operators/detail/grpc_sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/grpc_serialize.h"
+#include "paddle/fluid/operators/detail/grpc_variable_response.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/variable_response.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {

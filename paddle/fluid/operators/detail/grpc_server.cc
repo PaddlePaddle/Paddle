@@ -15,6 +15,7 @@ limitations under the License. */
 #include <limits>
 #include <string>
 
+#include "paddle/fluid/operators/detail/grpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
 
 using ::grpc::ServerAsyncResponseWriter;
@@ -71,9 +72,9 @@ class RequestSend final : public RequestBase {
                        ::grpc::ServerCompletionQueue* cq,
                        RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new VariableResponse(request_handler->scope(),
-                                        request_handler->dev_ctx(),
-                                        !request_handler->sync_mode()));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(),
+                                            !request_handler->sync_mode()));
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -96,7 +97,7 @@ class RequestSend final : public RequestBase {
 
  protected:
   sendrecv::VoidMessage reply_;
-  std::shared_ptr<VariableResponse> request_;
+  std::shared_ptr<GRPCVariableResponse> request_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
@@ -148,8 +149,8 @@ class RequestPrefetch final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id),
         responder_(&ctx_),
         local_scope_(nullptr) {
-    request_.reset(new VariableResponse(request_handler->scope(),
-                                        request_handler->dev_ctx(), true));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -179,7 +180,7 @@ class RequestPrefetch final : public RequestBase {
   }
 
  protected:
-  std::shared_ptr<VariableResponse> request_;
+  std::shared_ptr<GRPCVariableResponse> request_;
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* local_scope_;

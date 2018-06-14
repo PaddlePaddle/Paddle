@@ -37,9 +37,9 @@ namespace detail {
 
 class GRPCVariableResponse : public VariableResponse {
  public:
-  VariableResponse(const framework::Scope* scope,
-                   const platform::DeviceContext* dev_ctx,
-                   bool create_scope = false)
+  GRPCVariableResponse(const framework::Scope* scope,
+                       const platform::DeviceContext* dev_ctx,
+                       bool create_scope = false)
       : VariableResponse(scope, dev_ctx, create_scope) {}
 
   virtual ~GRPCVariableResponse() {}
