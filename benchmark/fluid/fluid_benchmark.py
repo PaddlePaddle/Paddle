@@ -156,15 +156,23 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
                 start_time = time.time()
                 num_samples = 0
 
+            if arg.profile and pass_id == 0 and batch_id == 5:
+                profiler.start_profiler("All")
+            elif args.profile and pass_id == 0 and batch_id == 10:
+                profiler.stop_profiler("total", "/tmp/profile")
+
             if args.use_reader_op:
                 try:
-                    loss = exe.run(train_prog, fetch_list=[avg_loss])
+                    loss = exe.run(train_prog,
+                                   fetch_list=[avg_loss],
+                                   use_program_cache=True)
                 except fluid.core.EnforceNotMet as ex:
                     break
             else:
                 loss = exe.run(train_prog,
                                feed=feeder.feed(data),
-                               fetch_list=[avg_loss])
+                               fetch_list=[avg_loss],
+                               use_program_cache=True)
             iters += 1
             batch_id += 1
             # FIXME(wuyi): For use_reader_op, if the current
