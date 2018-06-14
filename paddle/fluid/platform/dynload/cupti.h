@@ -72,7 +72,6 @@ extern void *cupti_dso_handle;
   __macro(cuptiGetResultString);              \
   __macro(cuptiActivityGetNumDroppedRecords); \
   __macro(cuptiActivityFlushAll);             \
-  __macro(cuptiFinalize);                     \
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
   __macro(cuptiEnableCallback);               \
