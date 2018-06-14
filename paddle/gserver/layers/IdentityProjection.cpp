@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ namespace paddle {
  * The config file api is identity_projection.
  */
 class IdentityProjection : public Projection {
-public:
+ public:
   IdentityProjection(const ProjectionConfig& config,
                      const ParameterPtr& parameter,
                      bool useGpu);
@@ -68,7 +68,7 @@ void IdentityProjection::backward(const UpdateCallback& callback) {
  * The config file api is identity_projection.
  */
 class IdentityOffsetProjection : public Projection {
-public:
+ public:
   IdentityOffsetProjection(const ProjectionConfig& config,
                            const ParameterPtr& parameter,
                            bool useGpu);

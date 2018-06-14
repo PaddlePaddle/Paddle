@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,12 +38,12 @@ namespace paddle {
  */
 
 class SequenceLastInstanceLayer : public SequencePoolLayer {
-protected:
+ protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
   std::vector<int> instanceIds_;
 
-public:
+ public:
   explicit SequenceLastInstanceLayer(const LayerConfig& config)
       : SequencePoolLayer(config) {}
 

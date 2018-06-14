@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ limitations under the License. */
 namespace paddle {
 
 class MultiDataProvider : public DataProvider {
-protected:
+ protected:
   std::vector<std::unique_ptr<DataProvider>> subDataProviders_;
 
-public:
+ public:
   MultiDataProvider(const DataConfig& config,
                     const ModelConfig& modelConfig,
                     bool useGpu);
@@ -33,7 +33,7 @@ public:
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch);
   bool isTestMode() const { return isTestMode_; }
 
-private:
+ private:
   int totalDataRatio_;
   bool isTestMode_;
 };

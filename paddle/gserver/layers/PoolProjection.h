@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 
 class PoolProjection : public Projection {
-protected:
+ protected:
   size_t imgSizeY_, imgSize_;
   size_t outputY_, outputX_;
   size_t strideY_, stride_;
@@ -30,7 +30,7 @@ protected:
   std::string poolType_;
   bool excludeMode_;
 
-public:
+ public:
   PoolProjection(const ProjectionConfig& config,
                  ParameterPtr parameter,
                  bool useGpu);
@@ -45,7 +45,7 @@ public:
 };
 
 class MaxPoolProjection : public PoolProjection {
-public:
+ public:
   MaxPoolProjection(const ProjectionConfig& config,
                     ParameterPtr parameter,
                     bool useGpu)
@@ -56,7 +56,7 @@ public:
 };
 
 class AvgPoolProjection : public PoolProjection {
-public:
+ public:
   AvgPoolProjection(const ProjectionConfig& config,
                     ParameterPtr parameter,
                     bool useGpu)

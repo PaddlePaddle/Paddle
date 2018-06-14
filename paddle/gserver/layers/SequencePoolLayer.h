@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ namespace paddle {
  */
 
 class SequencePoolLayer : public Layer {
-protected:
+ protected:
   int type_;
   std::unique_ptr<Weight> biases_;
   enum SequenceLevel { kNonSeq = 0, kSeq = 1 };
@@ -51,7 +51,7 @@ protected:
   // Whether the input sequence is reversed or not.
   bool reversed_ = false;
 
-public:
+ public:
   explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

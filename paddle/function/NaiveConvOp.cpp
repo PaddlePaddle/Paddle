@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ namespace paddle {
  */
 template <class T>
 class NaiveConvFunctor {
-public:
+ public:
   void operator()(const T* inputData,
                   size_t batchSize,
                   size_t inputChannels,
@@ -85,7 +85,7 @@ public:
 
 template <DeviceType Device>
 class NaiveConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }

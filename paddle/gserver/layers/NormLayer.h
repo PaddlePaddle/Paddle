@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace paddle {
  * @note Normalize the input in local region
  */
 class NormLayer : public Layer {
-public:
+ public:
   explicit NormLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -49,12 +49,12 @@ public:
  * Need to implement in the futrue.
  */
 class ResponseNormLayer : public NormLayer {
-protected:
+ protected:
   size_t channels_, size_, outputX_, imgSize_, outputY_, imgSizeY_;
   real scale_, pow_;
   MatrixPtr denoms_;
 
-public:
+ public:
   explicit ResponseNormLayer(const LayerConfig& config) : NormLayer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -76,7 +76,7 @@ public:
  *    Cheng-Yang Fu, Alexander C. Berg. SSD: Single Shot MultiBox Detector
  */
 class CrossChannelNormLayer : public NormLayer {
-public:
+ public:
   explicit CrossChannelNormLayer(const LayerConfig& config)
       : NormLayer(config) {}
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -85,7 +85,7 @@ public:
   MatrixPtr createSampleMatrix(MatrixPtr data, size_t iter, size_t spatialDim);
   MatrixPtr createSpatialMatrix(MatrixPtr data, size_t iter, size_t spatialDim);
 
-protected:
+ protected:
   size_t channels_;
   std::unique_ptr<Weight> scale_;
   MatrixPtr scaleDiff_;

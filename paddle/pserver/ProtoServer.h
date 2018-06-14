@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ namespace paddle {
  * for single NIC hardward with --port=N(N>1) for small cluster job.
  */
 class ProtoServer : public SocketServer {
-public:
+ public:
   /// rdmaCpu controls the cpu affinity of RDMA server daemon,
   /// which could benifit performance. rdmaCpu = -1 means TCP
   /// is used instead of RDMA transport.
@@ -87,7 +87,7 @@ public:
                          std::unique_ptr<MsgReader> msgReader,
                          ProtoResponseCallbackEx callback)> func);
 
-protected:
+ protected:
   /**
    * @brief handle rpc request
    * @param[in] msgReader  Message reader for reading data from connection
@@ -111,7 +111,7 @@ protected:
   void registerServiceFunctionImp(const std::string& funcName,
                                   ServiceFunction func);
 
-protected:
+ protected:
   /// Tuning bare network overhead: the beginning of receiving request
   ThreadLocal<struct timeval> handleRequestBegin_;
 
@@ -120,7 +120,7 @@ protected:
 };
 
 class ProtoClient : public SocketClient {
-public:
+ public:
   ProtoClient(const std::string& serverAddr,
               int serverPort,
               enum ChannelType channelType = F_TCP)

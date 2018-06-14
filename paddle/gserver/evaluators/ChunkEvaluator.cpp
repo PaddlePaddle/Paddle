@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ class ChunkEvaluator : public Evaluator {
   std::set<int> excludedChunkTypes_;
   mutable std::unordered_map<std::string, real> values_;
 
-public:
+ public:
   virtual void init(const EvaluatorConfig& config) {
     Evaluator::init(config);
     if (config.chunk_scheme() == "IOB") {
@@ -276,7 +276,7 @@ public:
     return "chunk";
   }
 
-private:
+ private:
   void storeLocalValues() const {
     CHECK_GE(numOutputSegments_, 0);
     CHECK_GE(numLabelSegments_, 0);

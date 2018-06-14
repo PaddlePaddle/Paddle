@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ typedef bool_constant<bool, true> true_type;
   address += row * ld + col;
 
 class MatrixOffset {
-public:
+ public:
   size_t aCol_;
   size_t aRow_;
   size_t bCol_;
@@ -72,14 +72,14 @@ public:
 
 template <class T>
 class BaseMatrixT : public TensorExpression<BaseMatrixT<T>, T> {
-public:
+ public:
   size_t height_, width_;
   size_t stride_;
   T* data_;
   bool trans_;
   bool useGpu_;
 
-public:
+ public:
   virtual ~BaseMatrixT() {}
   BaseMatrixT(size_t height, size_t width, T* data, bool trans, bool useGpu)
       : height_(height),

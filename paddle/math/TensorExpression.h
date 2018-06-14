@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ class TensorAssignOp;
  */
 template <typename Derived, class T>
 class TensorExpression {
-public:
+ public:
   /**
    * Element wise unary expression.
    */
@@ -355,7 +355,7 @@ public:
     return TensorAssignOp<Derived, ExpressionType, T>(derived(), expr);
   }
 
-protected:
+ protected:
   const Derived& derived() const { return *static_cast<const Derived*>(this); }
 };
 
@@ -365,7 +365,7 @@ protected:
 template <class OP, typename ExprType, class T>
 class TensorUnaryOp
     : public TensorExpression<TensorUnaryOp<OP, ExprType, T>, T> {
-public:
+ public:
   explicit TensorUnaryOp(const OP op, const ExprType& expr)
       : op_(op), expr_(expr) {}
 
@@ -379,7 +379,7 @@ public:
 template <class OP, typename LhsType, typename RhsType, class T>
 class TensorBinaryOp
     : public TensorExpression<TensorBinaryOp<OP, LhsType, RhsType, T>, T> {
-public:
+ public:
   explicit TensorBinaryOp(const OP op, const LhsType& lhs, const RhsType& rhs)
       : op_(op), lhs_(lhs), rhs_(rhs) {}
 
@@ -395,7 +395,7 @@ template <typename ExprType1, typename ExprType2, typename ExprType3, class T>
 class TensorTernaryOp : public TensorExpression<
                             TensorTernaryOp<ExprType1, ExprType2, ExprType3, T>,
                             T> {
-public:
+ public:
   explicit TensorTernaryOp(const ExprType1& expr1,
                            const ExprType2& expr2,
                            const ExprType3& expr3)
@@ -412,7 +412,7 @@ public:
 template <class OP, typename ExprType, class T>
 class TensorConstant
     : public TensorExpression<TensorConstant<OP, ExprType, T>, T> {
-public:
+ public:
   explicit TensorConstant(const OP op, const ExprType& expr)
       : op_(op), expr_(expr) {}
 

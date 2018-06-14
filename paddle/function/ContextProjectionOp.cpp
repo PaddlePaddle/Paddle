@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,7 +100,7 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
  */
 template <DeviceType Device>
 class ContextProjectionForwardFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
@@ -146,7 +146,7 @@ public:
                                      begin_pad_);
   }
 
-private:
+ private:
   size_t context_length_;
   int context_start_;
   size_t begin_pad_;
@@ -223,7 +223,7 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
  */
 template <DeviceType Device>
 class ContextProjectionBackwardFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
@@ -278,7 +278,7 @@ public:
                                       total_pad_);
   }
 
-private:
+ private:
   size_t context_length_;
   int context_start_;
   size_t begin_pad_;
@@ -299,7 +299,7 @@ private:
  */
 template <DeviceType Device>
 class ContextProjectionBackwardDataFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
@@ -331,7 +331,7 @@ public:
         out_grad_mat, in_grad_mat, seq_vec, context_length_, context_start_);
   }
 
-private:
+ private:
   size_t context_length_;
   int context_start_;
 };
@@ -348,7 +348,7 @@ private:
  */
 template <DeviceType Device>
 class ContextProjectionBackwardWeightFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
@@ -382,7 +382,7 @@ public:
                                             begin_pad_);
   }
 
-private:
+ private:
   size_t context_length_;
   int context_start_;
   size_t begin_pad_;

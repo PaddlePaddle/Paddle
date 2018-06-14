@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace paddle {
  * The argument type of Function::init.
  */
 class FuncConfig {
-public:
+ public:
   template <typename T>
   T get(const std::string& key, Error* err = nullptr) const {
     try {
@@ -59,7 +59,7 @@ public:
     return *this;
   }
 
-protected:
+ protected:
   mutable std::unordered_map<std::string, any> valueMap_;
 };
 
@@ -77,7 +77,7 @@ protected:
  * in the BufferArgs life time.
  */
 class BufferArgs {
-public:
+ public:
   BufferArgs() {}
 
   ~BufferArgs() {
@@ -137,7 +137,7 @@ public:
 
   void addArg(SparseMatrixArg& arg) { args_.push_back(&arg); }
 
-private:
+ private:
   std::vector<BufferArg*> args_;
   // The BufferArg object is constructed and freed by BufferArgs.
   std::vector<BufferArg*> _args_;
@@ -163,7 +163,7 @@ private:
  * If Function has more than one output, each output can have different modes.
  */
 class FunctionBase {
-public:
+ public:
   virtual ~FunctionBase() {}
 
   virtual void init(const FuncConfig& config) {}
@@ -192,7 +192,7 @@ public:
 
   static ClassRegistrar<FunctionBase> funcRegistrar_;
 
-protected:
+ protected:
   // numInputs_ and numOutputs_ represents the maximum
   // input and output supported by Function.
   // Some functions are optimized for input and output,

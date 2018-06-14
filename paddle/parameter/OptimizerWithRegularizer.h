@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ namespace paddle {
 
 // add regularizer for objective function to do optimization
 class OptimizerWithRegularizer : public ParameterOptimizer {
-public:
+ public:
   static ParameterOptimizer* create(const OptimizationConfig& optConfig,
                                     const ParameterConfig& paraConfig,
                                     bool isParameterSparse,
@@ -67,7 +67,7 @@ public:
     regularizer_->update(vecs, config, optimizer_->getLearningRate(), 0, 1);
   }
 
-protected:
+ protected:
   std::unique_ptr<ParameterOptimizer> optimizer_;
   Regularizer* regularizer_;
 
@@ -84,7 +84,7 @@ protected:
 // Regularized Loss function for every num of batches
 class OptimizerWithRegularizerEveryNumBatches
     : public OptimizerWithRegularizer {
-public:
+ public:
   OptimizerWithRegularizerEveryNumBatches(const OptimizationConfig& optConfig,
                                           ParameterOptimizer* optimizer,
                                           Regularizer* regularizer)
@@ -112,7 +112,7 @@ public:
   virtual TraverseCallback startCatchUpWith() const;
   virtual void finishCatchUpWith() { baseTimer_ = timer_; }
 
-protected:
+ protected:
   bool isRegularizationBatch(const ParameterConfig& config) const {
     return ((timer_ + 1) % config.num_batches_regularization() == 0);
   }
@@ -125,7 +125,7 @@ protected:
 
 // Regularized Loss function with Sparse support
 class OptimizerWithRegularizerSparse : public OptimizerWithRegularizer {
-public:
+ public:
   OptimizerWithRegularizerSparse(const OptimizationConfig& optConfig,
                                  ParameterOptimizer* optimizer,
                                  Regularizer* regularizer)
@@ -145,7 +145,7 @@ public:
     t0Vec_.assign(t0Vec_.size(), 0);
   }
 
-protected:
+ protected:
   /**
    *  t0Vec_ are last occur time of i rows
    *  if one block is update by multi threads,

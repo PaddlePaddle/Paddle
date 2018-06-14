@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ namespace paddle {
  */
 
 class DetectionOutputLayer : public Layer {
-public:
+ public:
   explicit DetectionOutputLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -42,7 +42,7 @@ public:
 
   void backward(const UpdateCallback& callback = nullptr) {}
 
-protected:
+ protected:
   inline LayerPtr getPriorBoxLayer() { return inputLayers_[0]; }
 
   inline LayerPtr getLocInputLayer(size_t index) {
@@ -53,7 +53,7 @@ protected:
     return inputLayers_[1 + inputNum_ + index];
   }
 
-private:
+ private:
   size_t numClasses_;  // number of classes
   size_t inputNum_;    // number of input layers
   real nmsThreshold_;

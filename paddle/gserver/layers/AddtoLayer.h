@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,10 +33,10 @@ namespace paddle {
  * The config file api is addto_layer.
  */
 class AddtoLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
 
-public:
+ public:
   explicit AddtoLayer(const LayerConfig& config) : Layer(config) {}
 
   ~AddtoLayer() {}

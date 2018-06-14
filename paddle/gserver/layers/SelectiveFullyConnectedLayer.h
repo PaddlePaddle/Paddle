@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,11 +33,11 @@ namespace paddle {
  * The config file api is selective_fc_layer.
  */
 class SelectiveFullyConnectedLayer : public Layer {
-protected:
+ protected:
   WeightList weights_;
   std::unique_ptr<Weight> biases_;
 
-private:
+ private:
   /**
    * Get selected columns each forward.
    */
@@ -60,7 +60,7 @@ private:
   /// if true, means output_.value is the same as Fc Layer
   bool fullOutput_;
 
-public:
+ public:
   explicit SelectiveFullyConnectedLayer(const LayerConfig& config)
       : Layer(config), selCols_(nullptr) {}
 
@@ -94,7 +94,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-private:
+ private:
   /**
    * @brief Make SelectiveFC act as FullyConnectedLayer
    */

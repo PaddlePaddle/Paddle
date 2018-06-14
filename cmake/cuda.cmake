@@ -155,7 +155,8 @@ endif()
 include_directories(${CUDA_INCLUDE_DIRS})
 list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
 if(NOT WITH_DSO)
-    list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
+    # TODO(panyx0718): CUPTI only allows DSO?
+    list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUPTI_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
 endif(NOT WITH_DSO)
 
 # setting nvcc arch flags
@@ -171,6 +172,8 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
+# in cuda9, suppress cuda warning on eigen 
+list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 
@@ -181,7 +184,8 @@ elseif(CMAKE_BUILD_TYPE  STREQUAL "Release")
 elseif(CMAKE_BUILD_TYPE  STREQUAL "RelWithDebInfo")
     list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
-    list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_MINSIZEREL})
+    # nvcc 9 does not support -Os. Use Release flags instead
+    list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
 endif()
 
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)

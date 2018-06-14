@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 
 class LinearChainCRF {
-public:
+ public:
   /**
    * The size of para must be \f$(numClasses + 2) * numClasses\f$.
    * The first numClasses values of para are for starting weights (\f$a\f$).
@@ -71,7 +71,7 @@ public:
    */
   MatrixPtr getXGrad() { return matGrad_; }
 
-protected:
+ protected:
   int numClasses_;
   MatrixPtr a_;
   MatrixPtr b_;

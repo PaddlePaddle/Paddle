@@ -34,6 +34,16 @@ else()
     message(STATUS "Compile with MKLDNNLayers and MKLDNNActivations")
 endif()
 
+if(NOT WITH_MKLML)
+    file(GLOB_RECURSE MKL_HEADER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLPacked*.h")
+    file(GLOB_RECURSE MKL_SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "MKLPacked*.cpp")
+    list(REMOVE_ITEM GSERVER_HEADER ${MKL_HEADER})
+    list(REMOVE_ITEM GSERVER_SOURCES ${MKL_SOURCES})
+    message(STATUS "Skip compiling with MKLPackedLayers")
+else()
+    message(STATUS "Compile with MKLPackedLayers")
+endif()
+
 if(NOT WITH_GPU)
     list(REMOVE_ITEM GSERVER_HEADER
         layers/CudnnConvBaseLayer.h
@@ -136,8 +146,6 @@ else()
         ${GSERVER_SOURCES})
 endif()
 
-add_style_check_target(paddle_gserver ${GSERVER_SOURCES})
-add_style_check_target(paddle_gserver ${GSERVER_HEADER})
 add_dependencies(paddle_gserver paddle_proto ${external_project_dependencies})
 if(WITH_TESTING)
     add_subdirectory(tests)

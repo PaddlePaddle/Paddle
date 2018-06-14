@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ namespace paddle {
  * Pools the input within regions
  */
 class PoolLayer : public Layer {
-protected:
+ protected:
   size_t channels_, sizeX_, stride_, outputX_, imgSize_;
   int confPadding_;
 
@@ -40,7 +40,7 @@ protected:
 
   bool excludeMode_;
 
-public:
+ public:
   explicit PoolLayer(const LayerConfig& config) : Layer(config) {}
 
   /**

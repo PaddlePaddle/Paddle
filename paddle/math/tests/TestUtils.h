@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,31 +56,31 @@ using paddle::GpuSparseMatrix;
 
 template <typename T1, typename T2>
 class ReplaceType {
-public:
+ public:
   typedef T1 type;
 };
 
 template <>
 class ReplaceType<BaseMatrix, CpuMatrix> {
-public:
+ public:
   typedef CpuMatrix type;
 };
 
 template <>
 class ReplaceType<BaseMatrix, GpuMatrix> {
-public:
+ public:
   typedef GpuMatrix type;
 };
 
 template <>
 class ReplaceType<Matrix, CpuMatrix> {
-public:
+ public:
   typedef CpuMatrix type;
 };
 
 template <>
 class ReplaceType<Matrix, GpuMatrix> {
-public:
+ public:
   typedef GpuMatrix type;
 };
 
@@ -180,25 +180,25 @@ R call(C& obj, R (FC::*f)(FArgs...), Args&&... args) {
 
 template <typename T>
 class ReturnType {
-public:
+ public:
   typedef T type;
 };
 
 template <>
 class ReturnType<CpuMatrix> {
-public:
+ public:
   typedef GpuMatrix type;
 };
 
 template <>
 class ReturnType<CpuIVector> {
-public:
+ public:
   typedef GpuIVector type;
 };
 
 template <>
 class ReturnType<CpuSparseMatrix> {
-public:
+ public:
   typedef GpuSparseMatrix type;
 };
 
@@ -234,7 +234,7 @@ GpuSparseMatrix autoArgs(CpuSparseMatrix& v) {
 }
 
 class AutoCompare {
-public:
+ public:
   /**
    * err is the allowed calculation error.
    * The smaller the value of err,
@@ -285,7 +285,7 @@ public:
     TensorCheck(compare, cpu, gpu);
   }
 
-protected:
+ protected:
   CpuMatrix cpu;
   GpuMatrix gpu;
   AssertEqual compare;

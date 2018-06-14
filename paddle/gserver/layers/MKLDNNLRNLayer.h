@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ typedef mkldnn::lrn_backward lrn_bwd;
  * The config file api is mkldnn_lrn
  */
 class MKLDNNLRNLayer : public MKLDNNLayer {
-protected:
+ protected:
   // save forward primitive_desc, which can be used in backward
   std::shared_ptr<lrn_fwd::primitive_desc> fwdPD_;
   // according to https://github.com/01org/mkl-dnn/blob/master/tests/gtests/
@@ -37,7 +37,7 @@ protected:
   int localSize_;
   float alpha_, beta_;  // scale and pow in paddle
 
-public:
+ public:
   explicit MKLDNNLRNLayer(const LayerConfig& config) : MKLDNNLayer(config) {}
 
   ~MKLDNNLRNLayer() {}
@@ -56,7 +56,7 @@ public:
                 std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
-protected:
+ protected:
   void resetFwdBuffers(MKLDNNMatrixPtr& in, MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<lrn_fwd::primitive_desc>& pd,
                   MKLDNNMatrixPtr in,

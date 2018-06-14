@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,10 @@ if(USE_EIGEN_FOR_BLAS)
     add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
 endif(USE_EIGEN_FOR_BLAS)
 
+if(EIGEN_USE_THREADS)
+    add_definitions(-DEIGEN_USE_THREADS)
+endif(EIGEN_USE_THREADS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -57,11 +61,7 @@ if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)
 
-if(NOT WITH_GPU)
-    add_definitions(-DHPPL_STUB_FUNC)
-
-    list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
-else()
+if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
 
     FIND_PACKAGE(CUDA REQUIRED)
@@ -73,13 +73,35 @@ else()
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
-
+    if(CUPTI_FOUND)
+        include_directories(${CUPTI_INCLUDE_DIR})
+        add_definitions(-DPADDLE_WITH_CUPTI)
+    else()
+        message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
+    endif()
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
-endif(NOT WITH_GPU)
+
+    if(TENSORRT_FOUND)
+        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
+        endif()
+        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+            message(FATAL_ERROR "TensorRT needs CUDNN >= 7.0 to compile")
+        endif()
+        include_directories(${TENSORRT_INCLUDE_DIR})
+    endif()
+elseif(WITH_AMD_GPU)
+    add_definitions(-DPADDLE_WITH_HIP)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+else()
+    add_definitions(-DHPPL_STUB_FUNC)
+    list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
+endif()
 
 if (WITH_MKLML AND MKLML_IOMP_LIB)
     message(STATUS "Enable Intel OpenMP with ${MKLML_IOMP_LIB}")

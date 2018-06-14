@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 
 class CommonTest : public ::testing::Test {
-protected:
+ protected:
   CommonTest() : testStat_("test") {}
   virtual ~CommonTest() {}
   virtual void SetUp() {
@@ -51,7 +51,7 @@ protected:
 
   virtual void TreaDown() { LOG(INFO) << "All Test Finished."; }
 
-protected:
+ protected:
   std::vector<std::pair<real, real>> valueUint_;
   std::vector<size_t> sizeVec_;
   real learningRate_;

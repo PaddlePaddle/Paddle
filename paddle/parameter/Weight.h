@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,12 +23,12 @@ limitations under the License. */
 namespace paddle {
 
 class Weight {
-private:
+ private:
   MatrixPtr weight_;
   MatrixPtr weightGrad_;
   ParameterPtr parameter_;
 
-public:
+ public:
   Weight(size_t height, size_t width, ParameterPtr parameter);
   Weight(size_t height, size_t width, ParameterPtr parameter, size_t offset);
 

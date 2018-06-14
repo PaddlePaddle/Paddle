@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 
 class CTCLayer : public Layer {
-public:
+ public:
   explicit CTCLayer(const LayerConfig& config) : Layer(config) {}
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
@@ -31,7 +31,7 @@ public:
                    const Argument& softmaxSeqs,
                    const Argument& labelSeqs);
 
-protected:
+ protected:
   size_t numClasses_;
   bool normByTimes_;
   std::vector<LinearChainCTC> ctcs_;

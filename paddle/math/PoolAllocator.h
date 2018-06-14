@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace paddle {
  * @brief Memory pool allocator implementation.
  */
 class PoolAllocator {
-public:
+ public:
   /**
    * @brief constructor.
    * @param allocator a Allocator object.
@@ -47,7 +47,7 @@ public:
   void free(void* ptr, size_t size);
   std::string getName() { return name_; }
 
-private:
+ private:
   void freeAll();
   void printAll();
   std::unique_ptr<Allocator> allocator_;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ using paddle::CpuVectorT;
 using paddle::GpuVectorT;
 
 class AssertEqual {
-public:
+ public:
   AssertEqual(real err = 0) : err_(err) {}
 
   inline bool operator()(real a, real b) {
@@ -51,7 +51,7 @@ public:
     return true;
   }
 
-private:
+ private:
   real err_;
 };
 
@@ -60,71 +60,71 @@ class CopyToCpu;
 
 template <>
 class CopyToCpu<CpuMatrix> {
-public:
+ public:
   explicit CopyToCpu(const CpuMatrix& arg) : arg_(arg) {}
   const CpuMatrix& copiedArg() const { return arg_; }
 
-private:
+ private:
   const CpuMatrix& arg_;
 };
 
 template <>
 class CopyToCpu<GpuMatrix> {
-public:
+ public:
   explicit CopyToCpu(const GpuMatrix& arg)
       : arg_(arg.getHeight(), arg.getWidth()) {
     arg_.copyFrom(arg);
   }
   CpuMatrix& copiedArg() { return arg_; }
 
-private:
+ private:
   CpuMatrix arg_;
 };
 
 template <>
 class CopyToCpu<Matrix> {
-public:
+ public:
   explicit CopyToCpu(const Matrix& arg)
       : arg_(arg.getHeight(), arg.getWidth()) {
     arg_.copyFrom(arg);
   }
   CpuMatrix& copiedArg() { return arg_; }
 
-private:
+ private:
   CpuMatrix arg_;
 };
 
 template <typename T>
 class CopyToCpu<CpuVectorT<T>> {
-public:
+ public:
   explicit CopyToCpu(const CpuVectorT<T>& arg) : arg_(arg) {}
   const CpuVectorT<T>& copiedArg() const { return arg_; }
 
-private:
+ private:
   const CpuVectorT<T>& arg_;
 };
 
 template <typename T>
 class CopyToCpu<GpuVectorT<T>> {
-public:
+ public:
   explicit CopyToCpu(const GpuVectorT<T>& arg) : arg_(arg.getSize()) {
     arg_.copyFrom(arg);
   }
   CpuVectorT<T>& copiedArg() { return arg_; }
 
-private:
+ private:
   CpuVectorT<T> arg_;
 };
 
 template <typename T>
 class CopyToCpu<VectorT<T>> {
-public:
+ public:
   explicit CopyToCpu(const VectorT<T>& arg) : arg_(arg.getSize()) {
     arg_.copyFrom(arg);
   }
   CpuVectorT<T>& copiedArg() { return arg_; }
 
-private:
+ private:
   CpuVectorT<T> arg_;
 };
 

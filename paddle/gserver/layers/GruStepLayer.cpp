@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,13 +44,13 @@ namespace paddle {
  * The config file api if gru_step_layer.
  */
 class GruStepLayer : public Layer, public GruCompute {
-protected:
+ protected:
   Argument gate_;
   Argument resetOutput_;
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> bias_;
 
-public:
+ public:
   explicit GruStepLayer(const LayerConfig& config) : Layer(config) {}
 
   ~GruStepLayer() {}

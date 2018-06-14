@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,11 +50,11 @@ struct PServerVector {
  * @brief A class to help to prepare server-side operations.
  */
 class PreparedOperations {
-protected:
+ protected:
   class ResultsAdder;
   struct LocalOperationResult;
 
-public:
+ public:
   /**
    * Offers an easy way to prepare operations that will be performed on
    * server-side.
@@ -93,7 +93,7 @@ public:
     return ResultsAdder(&localResults_.back());
   }
 
-protected:
+ protected:
   void addOperationHelper(Operation* op) {}
 
   /**
@@ -151,7 +151,7 @@ protected:
    * @brief ResultsAdder offers easy ways to quickly store operation results.
    */
   class ResultsAdder {
-  public:
+   public:
     explicit ResultsAdder(LocalOperationResult* localResult)
         : localResult_(localResult) {}
     template <typename... Args>
@@ -172,11 +172,11 @@ protected:
       addResult(args...);
     }
 
-  protected:
+   protected:
     LocalOperationResult* localResult_;
   };
 
-protected:
+ protected:
   DoOperationRequest request_;
   std::vector<iovec> inputIovs_;
   struct LocalOperationResult {
@@ -214,7 +214,7 @@ struct ParameterSegments {
  * waiting until all parameters are received to CPU host end.
  */
 class ParameterClient2 : public BaseClient {
-public:
+ public:
   /** Constructor.
    * @param separate True if sending and recieving activities are separated
    *                 into 2 threads, otherwise false.
@@ -232,7 +232,7 @@ public:
   static int calcParameterBlockSize(const std::vector<ParameterPtr>& parameters,
                                     size_t serviceNum);
 
-public:
+ public:
   bool init(const std::vector<ParameterPtr>& parameters);
 
   /// service functions
@@ -514,7 +514,7 @@ public:
   void setForwardbackwardTime(uint64_t delta) { forwardbackwordTime_ = delta; }
 #endif
 
-protected:
+ protected:
   template <typename ProtoIn, typename ProtoOut>
   void multiCall(const char* funcName,
                  const ProtoIn& request,
@@ -529,7 +529,7 @@ protected:
     }
   }
 
-private:
+ private:
   void destroy();
 
   /**
@@ -573,7 +573,7 @@ private:
   /// start necessary threads for threadPool
   void initThreads();
 
-protected:
+ protected:
   /// start port number of pserver
   /// it deduce all ports for dense and sparse with some rules
   int port_;

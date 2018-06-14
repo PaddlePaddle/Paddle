@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ DECLARE_int32(trainer_id);
 namespace paddle {
 
 class ValidationLayer : public Layer {
-public:
+ public:
   explicit ValidationLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,
@@ -51,7 +51,7 @@ public:
  * AucValidation
  */
 class AucValidation : public ValidationLayer {
-public:
+ public:
   explicit AucValidation(const LayerConfig& config)
       : ValidationLayer(config),
         cpuOutput_(nullptr),
@@ -72,7 +72,7 @@ public:
   };
   std::vector<PredictionResult> predictArray_;
 
-private:
+ private:
   bool passBegin_;
   std::unique_ptr<Evaluator> evaluator_;
   MatrixPtr cpuOutput_;
@@ -84,7 +84,7 @@ private:
  * positive-negative pair rate Validation
  */
 class PnpairValidation : public ValidationLayer {
-public:
+ public:
   explicit PnpairValidation(const LayerConfig& config)
       : ValidationLayer(config) {}
 
@@ -95,7 +95,7 @@ public:
 
   void onPassEnd() override;
 
-private:
+ private:
   bool passBegin_;
   std::unique_ptr<Evaluator> evaluator_;
 };

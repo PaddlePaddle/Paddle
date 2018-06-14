@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,20 +28,20 @@ LearningRateScheduler* LearningRateScheduler::create(
 // LRS stands for LearningRateScheduler
 
 class BaseLRS : public LearningRateScheduler {
-public:
+ public:
   explicit BaseLRS(const OptimizationConfig& config)
       : learningRate_(config.learning_rate()),
         a_(config.learning_rate_decay_a()),
         b_(config.learning_rate_decay_b()) {}
 
-protected:
+ protected:
   real learningRate_;
   real a_;
   real b_;
 };
 
 class ConstLRS : public BaseLRS {
-public:
+ public:
   explicit ConstLRS(const OptimizationConfig& config) : BaseLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {
     return learningRate_;
@@ -50,7 +50,7 @@ public:
 REGISTER_LEARNING_RATE_SCHEDULER(constant, ConstLRS);
 
 class PolyLRS : public BaseLRS {
-public:
+ public:
   explicit PolyLRS(const OptimizationConfig& config) : BaseLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {
     return learningRate_ * pow(1.0 + a_ * numSamplesProcessed, -b_);
@@ -59,7 +59,7 @@ public:
 REGISTER_LEARNING_RATE_SCHEDULER(poly, PolyLRS);
 
 class CaffePolyLRS : public BaseLRS {
-public:
+ public:
   explicit CaffePolyLRS(const OptimizationConfig& config) : BaseLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {
     if (numSamplesProcessed > a_) {
@@ -78,7 +78,7 @@ public:
 REGISTER_LEARNING_RATE_SCHEDULER(caffe_poly, CaffePolyLRS);
 
 class ExpLRS : public BaseLRS {
-public:
+ public:
   explicit ExpLRS(const OptimizationConfig& config) : BaseLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {
     double decayRatio = (double)numSamplesProcessed / b_;
@@ -88,7 +88,7 @@ public:
 REGISTER_LEARNING_RATE_SCHEDULER(exp, ExpLRS);
 
 class DiscreteExpLRS : public BaseLRS {
-public:
+ public:
   explicit DiscreteExpLRS(const OptimizationConfig& config) : BaseLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {
     int numDecays = floor(numSamplesProcessed / b_);
@@ -98,7 +98,7 @@ public:
 REGISTER_LEARNING_RATE_SCHEDULER(discexp, DiscreteExpLRS);
 
 class LinearLRS : public BaseLRS {
-public:
+ public:
   explicit LinearLRS(const OptimizationConfig& config) : BaseLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {
     return std::max(learningRate_ - a_ * numSamplesProcessed, b_);
@@ -113,7 +113,7 @@ REGISTER_LEARNING_RATE_SCHEDULER(linear, LinearLRS);
   then learning_rate = learning_rate_base * rate_i
 */
 class ManualLRS : public BaseLRS {
-public:
+ public:
   explicit ManualLRS(const OptimizationConfig& config)
       : BaseLRS(config), currentSegment_(0), lastNum_(0) {
     std::vector<std::string> pieces;
@@ -151,7 +151,7 @@ public:
     return learningRate_ * rates_.back();
   }
 
-protected:
+ protected:
   std::vector<real> rates_;
   std::vector<int64_t> segments_;
   size_t currentSegment_;
@@ -161,7 +161,7 @@ protected:
 REGISTER_LEARNING_RATE_SCHEDULER(manual, ManualLRS);
 
 class PassManualLRS : public ManualLRS {
-public:
+ public:
   explicit PassManualLRS(const OptimizationConfig& config)
       : ManualLRS(config) {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) {

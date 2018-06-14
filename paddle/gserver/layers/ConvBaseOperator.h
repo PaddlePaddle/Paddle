@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class ConvBaseOperator : public Operator {
-public:
+ public:
   ConvBaseOperator(const OperatorConfig &config, bool useGpu);
   /**
    * Free workspace in device and destroy cudnn tensor descriptor.
@@ -46,7 +46,7 @@ public:
     hl_destroy_convolution_descriptor(convDesc_);
   }
 
-protected:
+ protected:
   /**
    * Get convolution parameters from layer config and
    * initialize member variables.

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,14 +31,14 @@ namespace paddle {
  * The config file api is img_conv_layer.
  */
 class CudnnConvBaseLayer : public ConvBaseLayer {
-protected:
+ protected:
   std::vector<std::unique_ptr<ProjectionConfig>> projConf_;
   std::vector<std::unique_ptr<Projection>> projections_;
 
   hl_tensor_descriptor biasDesc_;
   hl_tensor_descriptor outputDesc_;
 
-public:
+ public:
   explicit CudnnConvBaseLayer(const LayerConfig& config)
       : ConvBaseLayer(config) {}
 

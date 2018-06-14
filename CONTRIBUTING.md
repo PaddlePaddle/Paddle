@@ -1,5 +1,8 @@
 # Contribute Code
 
+You are welcome to contribute to project PaddlePaddle. To contribute to PaddlePaddle, you have to agree with the 
+[PaddlePaddle Contributor License Agreement](https://gist.github.com/wangkuiyi/0c22c7b1bd3bb7eb27d76f85c3a3e329).
+
 We sincerely appreciate your contribution.  This document explains our workflow and work style.
 
 ## Workflow
@@ -54,6 +57,8 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
     1 file changed, 0 insertions(+), 0 deletions(-)
     create mode 100644 233
    ```
+
+	NOTE: The `yapf` installed by `pip install pre-commit` and `conda install -c conda-forge pre-commit` is slightly different. Paddle developers use `pip install pre-commit`.
 
 1. Build and test
 

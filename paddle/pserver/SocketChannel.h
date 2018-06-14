@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ enum ChannelType {
 
 /// reading a set of blocks of data from SocketChannel.
 class MsgReader {
-public:
+ public:
   MsgReader(SocketChannel* channel, size_t numIovs);
   ~MsgReader() {
     /// ensure all data blocks have been processed
@@ -75,7 +75,7 @@ public:
   void readBlocks(const std::vector<void*>& bufs);
   void readNextBlock(void* buf);
 
-protected:
+ protected:
   SocketChannel* channel_;
   std::vector<size_t> blockLengths_;
   size_t currentBlockIndex_;
@@ -84,7 +84,7 @@ protected:
 /// APIs for reading and writing byte stream data or naive iov data
 /// from the APIs both RDMA and TCP exhibits byte stream style
 class SocketChannel {
-public:
+ public:
   SocketChannel(int socket, const std::string& peerName)
       : tcpSocket_(socket), peerName_(peerName) {
     tcpRdma_ = F_TCP;
@@ -137,7 +137,7 @@ public:
   /// return null to indicate socket is closed
   std::unique_ptr<MsgReader> readMessage();
 
-protected:
+ protected:
   struct MessageHeader {
     int64_t totalLength;  /// include the header
     int64_t numIovs;

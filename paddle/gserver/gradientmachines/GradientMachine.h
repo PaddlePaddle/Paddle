@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ class GradientMachine;
 typedef std::shared_ptr<GradientMachine> GradientMachinePtr;
 
 class GradientMachine {
-public:
+ public:
   enum CreateMode {
     kNormal = 0,
     kSgdSparseCpuTraining = 3,
@@ -233,7 +233,14 @@ public:
     (void)numProcessed;
   }
 
-protected:
+  /**
+   * @brief   Release the middle layer's output memory.
+   *
+   * @note    This function is used for memory optimization in inference.
+   */
+  virtual void releaseOutput() {}
+
+ protected:
   virtual void onLoadParameter() {}
 
   std::vector<ParameterPtr> parameters_;

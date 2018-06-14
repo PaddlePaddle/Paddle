@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ void Evaluator::eval(const NeuralNetwork& nn) {
  * The config file api is classification_error_evaluator.
  */
 class ClassificationErrorEvaluator : public Evaluator {
-public:
+ public:
   /*
   ClassificationErrorEvaluator() : totalScore2_(0) {}
 
@@ -124,7 +124,7 @@ public:
   }
 
   // Evaluator interface
-protected:
+ protected:
   std::string getTypeImpl() const { return "classification_error"; }
 };
 
@@ -135,7 +135,7 @@ protected:
  */
 class SequenceClassificationErrorEvaluator
     : public ClassificationErrorEvaluator {
-public:
+ public:
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
     numSamples_ += arguments[0].getNumSequences();
   }
@@ -166,7 +166,7 @@ public:
   }
 
   // Evaluator interface
-protected:
+ protected:
   std::string getTypeImpl() const { return "seq_classification_error"; }
 };
 REGISTER_EVALUATOR(seq_classification_error,
@@ -178,7 +178,7 @@ REGISTER_EVALUATOR(seq_classification_error,
  * The config file api is sum_evaluator.
  */
 class SumEvaluator : public Evaluator {
-public:
+ public:
   SumEvaluator() : cpuLabel_(nullptr), cpuWeight_(nullptr) {}
 
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
@@ -255,12 +255,12 @@ public:
     mergeResultsOfAllClients(client);
   }
 
-private:
+ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 
   // Evaluator interface
-protected:
+ protected:
   std::string getTypeImpl() const { return "sum"; }
 };
 /**
@@ -274,7 +274,7 @@ protected:
  *
  */
 class ColumnSumEvaluator : public Evaluator {
-public:
+ public:
   explicit ColumnSumEvaluator(int32_t colIdx)
       : colIdx_(colIdx), colNum_(0), sum_(nullptr) {}
 
@@ -368,13 +368,13 @@ public:
     client->reduce(&numSamples_, &numSamples_, 1, FLAGS_trainer_id, 0);
   }
 
-private:
+ private:
   int32_t colIdx_;
   size_t colNum_;
   MatrixPtr sum_; /* cpu matrix */
 
   // Evaluator interface
-protected:
+ protected:
   std::string getTypeImpl() const {
     if (colIdx_ == -1)
       return "last-column-sum";
@@ -1018,7 +1018,7 @@ static InitFunction __reg_type_auc_sum__([]() {
  * The config file api is value_printer_evaluator.
  */
 class ValuePrinter : public NotGetableEvaluator {
-public:
+ public:
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
       nn.getLayer(name)->getOutput().printValueString(LOG(INFO),
@@ -1038,7 +1038,7 @@ REGISTER_EVALUATOR(value_printer, ValuePrinter);
  * The config file api is gradient_printer_evaluator.
  */
 class GradientPrinter : public NotGetableEvaluator {
-public:
+ public:
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
       const Argument& argu = nn.getLayer(name)->getOutput();
@@ -1061,11 +1061,11 @@ REGISTER_EVALUATOR(gradient_printer, GradientPrinter);
  * The config file api is maxid_printer_evaluator.
  */
 class MaxIdPrinter : public NotGetableEvaluator {
-private:
+ private:
   IVectorPtr maxIds_;
   MatrixPtr maxValues_;
 
-public:
+ public:
   MaxIdPrinter() {}
 
   virtual void eval(const NeuralNetwork& nn) {
@@ -1103,12 +1103,12 @@ REGISTER_EVALUATOR(max_id_printer, MaxIdPrinter);
  * The config file api is maxframe_printer_evaluator.
  */
 class MaxFramePrinter : public NotGetableEvaluator {
-private:
+ private:
   IVectorPtr maxIds_;
   MatrixPtr maxValues_;
   MatrixPtr value_;
 
-public:
+ public:
   MaxFramePrinter() {
     value_ =
         Matrix::create(nullptr, /* height= */ 1, 1, /* trans= */ false, false);
@@ -1190,7 +1190,7 @@ REGISTER_EVALUATOR(max_frame_printer, MaxFramePrinter);
  *
  */
 class SequenceTextPrinter : public NotGetableEvaluator {
-private:
+ private:
   /// dict_file, which contains a list of tokens
   std::vector<std::string> dict_;
   /// result_file, which is the output file
@@ -1203,7 +1203,7 @@ private:
   /// store the probability associated with each sequence
   std::vector<MatrixPtr> cpuIn_;
 
-public:
+ public:
   SequenceTextPrinter() {}
 
   virtual void init(const EvaluatorConfig& config) {
@@ -1334,7 +1334,7 @@ REGISTER_EVALUATOR(seq_text_printer, SequenceTextPrinter);
  * The config file api is classification_error_printer_evaluator.
  */
 class ClassificationErrorPrinter : public ClassificationErrorEvaluator {
-public:
+ public:
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {}
 
   virtual real evalImp(std::vector<Argument>& arguments) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace paddle {
  * This is the base class of all Allocator class.
  */
 class Allocator {
-public:
+ public:
   virtual ~Allocator() {}
   virtual void* alloc(size_t size) = 0;
   virtual void free(void* ptr) = 0;
@@ -38,7 +38,7 @@ public:
  * @brief CPU allocator implementation.
  */
 class CpuAllocator : public Allocator {
-public:
+ public:
   ~CpuAllocator() {}
 
   /**
@@ -48,7 +48,7 @@ public:
    */
   virtual void* alloc(size_t size) {
     void* ptr;
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
     // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
     // memory alignment
     CHECK_EQ(posix_memalign(&ptr, 4096ul, size), 0);
@@ -76,7 +76,7 @@ public:
  * @brief GPU allocator implementation.
  */
 class GpuAllocator : public Allocator {
-public:
+ public:
   ~GpuAllocator() {}
 
   /**
@@ -107,7 +107,7 @@ public:
  * @brief CPU pinned memory allocator implementation.
  */
 class CudaHostAllocator : public Allocator {
-public:
+ public:
   ~CudaHostAllocator() {}
 
   /**

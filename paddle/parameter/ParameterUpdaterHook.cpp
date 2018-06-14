@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ namespace paddle {
  */
 
 class StaticPruningHook : public IParameterUpdaterHook {
-public:
+ public:
   explicit StaticPruningHook(const ParameterUpdaterHookConfig &hookConfig)
       : initCount_(0) {
     sparsityRatio_ = hookConfig.sparsity_ratio();
@@ -96,7 +96,7 @@ public:
     paraVec->dotMul(*maskVec_);
   }
 
-private:
+ private:
   SameThreadChecker updateThreadChecker_;
   std::atomic<size_t> initCount_;
   VectorPtr maskVec_;
@@ -116,12 +116,12 @@ IParameterUpdaterHook::~IParameterUpdaterHook() {}
  * May be extracted to Util.h to unify the hasher.
  */
 class StringIntPairHasher {
-public:
+ public:
   size_t operator()(const std::pair<std::string, int> &k) const {
     return intHasher_(strHasher_(k.first) + k.second);
   }
 
-private:
+ private:
   std::hash<std::string> strHasher_;
   std::hash<int> intHasher_;
 };

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/gserver/layers/MKLDNNLayer.h"
 #endif
 
@@ -187,6 +187,31 @@ void NeuralNetwork::init(const ModelConfig& config,
     CHECK(it != layerMap_.end());
     outputLayers_.push_back(it->second);
   }
+
+  for (const auto& layer : layers_) {
+    const auto& name = layer->getName();
+    bool isMiddleLayer = true;
+
+    // if data layer
+    for (const auto& dataLayer : dataLayers_) {
+      if (name == dataLayer->getName()) {
+        isMiddleLayer = false;
+        break;
+      }
+    }
+
+    // if output layer
+    for (const auto& dataLayer : outputLayers_) {
+      if (name == dataLayer->getName()) {
+        isMiddleLayer = false;
+        break;
+      }
+    }
+
+    if (isMiddleLayer) {
+      middleLayers_.push_back(layer);
+    }
+  }
 }
 
 void NeuralNetwork::connect(LayerPtr agentLayer,
@@ -307,7 +332,7 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
 }
 
 void NeuralNetwork::finish() {
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   FOR_EACH_R(layer, layers_) {
     MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(*layer);
     if (dnnLayer) {
@@ -327,10 +352,17 @@ void NeuralNetwork::onPassEnd() {
   }
 }
 
+void NeuralNetwork::releaseOutput() {
+  for (auto& layer : middleLayers_) {
+    Argument& arg = layer->getOutput();
+    arg.value.reset();
+  }
+}
+
 #ifndef PADDLE_MOBILE_INFERENCE
 
 class CombinedEvaluator : public Evaluator {
-public:
+ public:
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
   }
@@ -368,11 +400,11 @@ public:
     }
   }
 
-protected:
+ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 
   // Evaluator interface
-public:
+ public:
   /**
    * @brief getNames will return all inside evaluators' names.
    * @param names [out]: return names.
@@ -403,7 +435,7 @@ public:
         });
   }
 
-private:
+ private:
   template <typename T>
   T getMethodHelper(const std::string& name,
                     Error* err,
@@ -422,7 +454,7 @@ private:
 };
 
 class SubnetEvaluator : public CombinedEvaluator {
-public:
+ public:
   SubnetEvaluator(const std::string& layerName,
                   std::unique_ptr<Evaluator>&& evaluator)
       : layerName_(layerName) {
@@ -441,7 +473,7 @@ public:
                     << " in submodel " << nn.getName();
   }
 
-protected:
+ protected:
   std::string layerName_;
 };
 

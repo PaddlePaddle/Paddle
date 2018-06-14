@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ __global__ void im2col(const T* data_im,
  */
 template <class T>
 class Im2ColFunctor<kCFO, DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,
@@ -184,7 +184,7 @@ __global__ void col2im(size_t n,
  */
 template <class T>
 class Col2ImFunctor<kCFO, DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(T* imData,
                   const TensorShape& imShape,
                   const T* colData,
@@ -292,7 +292,7 @@ __global__ void im2colOCF(const T* imData,
  */
 template <class T>
 class Im2ColFunctor<kOCF, DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(const T* imData,
                   const TensorShape& imShape,
                   T* colData,
@@ -399,7 +399,7 @@ __global__ void col2imOCF(T* imData,
  */
 template <class T>
 class Col2ImFunctor<kOCF, DEVICE_TYPE_GPU, T> {
-public:
+ public:
   void operator()(T* imData,
                   const TensorShape& imShape,
                   const T* colData,

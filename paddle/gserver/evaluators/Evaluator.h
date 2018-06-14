@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ class NeuralNetwork;
  * has been by a trained model.
  */
 class Evaluator {
-public:
+ public:
   static Evaluator* create(const EvaluatorConfig& config);
 
   Evaluator() : numSamples_(0), totalScore_(0) {}
@@ -172,7 +172,7 @@ public:
     return this->getTypeImpl();
   }
 
-protected:
+ protected:
   /**
    * @brief getValueImpl The simplest way to define getValue result. If this
    * evaluator doesn't contain multiple fields, and do not throw any error, just
@@ -191,7 +191,7 @@ protected:
    */
   virtual std::string getTypeImpl() const { return "base"; }
 
-protected:
+ protected:
   EvaluatorConfig config_;
   double numSamples_;
   double totalScore_;
@@ -204,7 +204,7 @@ protected:
  */
 class NotGetableEvaluator : public Evaluator {
   // Evaluator interface
-public:
+ public:
   void getNames(std::vector<std::string>* names) {}
 
   real getValue(const std::string& name, Error* err) const {
@@ -219,7 +219,7 @@ public:
 };
 
 class DummyEvaluator : public Evaluator {
-public:
+ public:
   DummyEvaluator() {}
   virtual void init(const EvaluatorConfig&) {}
   virtual void start() {}
@@ -232,7 +232,7 @@ public:
   virtual void printStats(std::ostream&) const {}
 
   // Evaluator interface
-protected:
+ protected:
   std::string getTypeImpl() const;
 };
 /**
@@ -251,7 +251,7 @@ protected:
  *
  */
 class AucEvaluator : public Evaluator {
-public:
+ public:
   AucEvaluator(int32_t colIdx)
       : colIdx_(colIdx),
         realColumnIdx_(0),
@@ -269,7 +269,7 @@ public:
 
   virtual void distributeEval(ParameterClient2* client);
 
-private:
+ private:
   static const uint32_t kBinNum_ = (1 << 24) - 1;
   static const int kNegativeLabel_ = 0;
   double statPos_[kBinNum_ + 1];
@@ -292,7 +292,7 @@ private:
   double calcAuc() const;
 
   // Evaluator interface
-protected:
+ protected:
   real getValueImpl() const;
   std::string getTypeImpl() const;
 };
@@ -305,7 +305,7 @@ protected:
  * dense value.
  */
 class RankAucEvaluator : public Evaluator {
-public:
+ public:
   // evaluate ranking AUC
   virtual void start();
 
@@ -317,7 +317,7 @@ public:
     mergeResultsOfAllClients(client);
   }
 
-private:
+ private:
   MatrixPtr output_;
   MatrixPtr click_;
   MatrixPtr pv_;
@@ -329,7 +329,7 @@ private:
                      size_t size);
 
   // Evaluator interface
-protected:
+ protected:
   std::string getTypeImpl() const;
 };
 
@@ -344,7 +344,7 @@ protected:
  * The config file api is precision_recall_evaluator.
  */
 class PrecisionRecallEvaluator : public Evaluator {
-public:
+ public:
   // Evaluate precision, recall and F1 score
   PrecisionRecallEvaluator()
       : isMultiBinaryLabel_(false),
@@ -379,7 +379,7 @@ public:
     StatsInfo() : TP(0.0), TN(0.0), FP(0.0), FN(0.0) {}
   };
 
-private:
+ private:
   bool isMultiBinaryLabel_;
   std::vector<StatsInfo> statsInfo_;
 
@@ -444,7 +444,7 @@ private:
  * The config file api is pnpair_evaluator.
  */
 class PnpairEvaluator : public Evaluator {
-public:
+ public:
   PnpairEvaluator()
       : cpuOutput_(nullptr),
         cpuLabel_(nullptr),
@@ -491,7 +491,7 @@ public:
               << " calc total neg pair: " << pairArray_[1];
   }
 
-private:
+ private:
   static const uint32_t kPairArrayNum_ = 2;
   double pairArray_[kPairArrayNum_];
   MatrixPtr cpuOutput_;
@@ -500,7 +500,7 @@ private:
   MatrixPtr cpuWeight_;
 
   // Evaluator interface
-protected:
+ protected:
   real getValueImpl() const {
     return pairArray_[0] / ((pairArray_[1] <= 0) ? 1.0 : pairArray_[1]);
   }

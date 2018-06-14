@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace paddle {
  *                  region.
  */
 class ScaleSubRegionLayer : public Layer {
-public:
+ public:
   explicit ScaleSubRegionLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ScaleSubRegionLayer() {}
@@ -40,7 +40,7 @@ public:
 
   void backward(const UpdateCallback& callback = nullptr);
 
-protected:
+ protected:
   TensorShape shape_;
   TensorShape indicesShape_;
   size_t imgH_;

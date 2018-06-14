@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ namespace paddle {
  * by gflags or proto.
  */
 class ParameterServerController final {
-public:
+ public:
   DISABLE_COPY(ParameterServerController);
 
   /**
@@ -67,7 +67,7 @@ public:
    */
   void wait();
 
-private:
+ private:
   std::vector<std::unique_ptr<ParameterServer2>> parameterServers_;
 };
 

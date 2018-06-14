@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ enum TaskType {
  * multiple threads in parallel.
  */
 class ParallelNeuralNetwork : public NeuralNetwork {
-public:
+ public:
   ParallelNeuralNetwork(std::string subModelName = "",
                         NeuralNetwork *rootNetwork = nullptr)
       : NeuralNetwork(subModelName, rootNetwork) {}
@@ -66,7 +66,7 @@ public:
 
   // virtual void eval(Evaluator* evaluator);
 
-protected:
+ protected:
   bool useGpu_;
   /// number of gpu devices
   int numDevices_;
@@ -74,7 +74,7 @@ protected:
 };
 
 class ParallelThread {
-public:
+ public:
   ParallelThread(int threadId, int deviceId, bool useGpu);
   ~ParallelThread();
   void jobEnqueue(LayerPtr layer, TaskType task);
@@ -87,10 +87,10 @@ public:
   }
   void setForwardPassType(PassType passType) { passType_ = passType; }
 
-protected:
+ protected:
   void computeThread();
 
-public:
+ public:
   struct Job {
     LayerPtr layer_;
     TaskType task_;
@@ -98,7 +98,7 @@ public:
   typedef Queue<Job> JobQueue;
   JobQueue queue_;
 
-protected:
+ protected:
   /// from 0 to threads-1
   int threadId_;
   /// the GPU device Id which the computeThread_ used

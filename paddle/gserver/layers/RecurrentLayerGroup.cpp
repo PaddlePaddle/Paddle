@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace paddle {
  * between RecurrentLayerGroupBegin and RecurrentLayerGroupEnd.
  */
 class RecurrentLayerGroup : public Layer {
-public:
+ public:
   explicit RecurrentLayerGroup(const LayerConfig& config) : Layer(config) {}
 
   void initSubNetwork(NeuralNetwork* rootNetwork,
@@ -58,7 +58,7 @@ public:
     callback(*network_);
   }
 
-private:
+ private:
   std::unique_ptr<RecurrentGradientMachine> network_;
 };
 
@@ -72,7 +72,7 @@ void RecurrentLayerGroup::initSubNetwork(
   setNeedGradient(true);
 
   network_.reset(new RecurrentGradientMachine(config_.name(), rootNetwork));
-  ParamInitCallback cb = [this, rootNetwork](int paramId, Parameter* para) {
+  ParamInitCallback cb = [rootNetwork](int paramId, Parameter* para) {
     para->enableSharedType(
         PARAMETER_VALUE,
         rootNetwork->getParameters()[paramId]->getBuf(PARAMETER_VALUE),

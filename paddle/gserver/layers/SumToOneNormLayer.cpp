@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,13 +32,13 @@ namespace paddle {
  */
 
 class SumToOneNormLayer : public Layer {
-protected:
+ protected:
   /// reciprocalRowSum_ = \f$1 / \sum_{k=1}^N in[k]\f$
   MatrixPtr reciprocalRowSum_;
   /// dotSum = output_.grad \f$.*\f$ output_.value
   MatrixPtr dotSum_;
 
-public:
+ public:
   explicit SumToOneNormLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

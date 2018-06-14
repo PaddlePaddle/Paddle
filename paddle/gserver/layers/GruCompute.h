@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 
 class GruCompute {
-public:
+ public:
   void init(LayerConfig &config);
 
   template <bool useGpu>
@@ -33,7 +33,7 @@ public:
                 int frameSize,
                 int batchSize = 1);
 
-public:
+ public:
   hl_activation_mode_t activeNode_;
   hl_activation_mode_t activeGate_;
 };

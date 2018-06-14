@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ namespace paddle {
  * \param outputs[0] Image data of NCHW format.
  */
 class BlockExpandFunction : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     // function arguments
     strides_ = config.get<std::vector<size_t>>("strides");
@@ -81,7 +81,7 @@ public:
                         (size_t)blockW()});
   }
 
-protected:
+ protected:
   std::vector<size_t> strides_;
   std::vector<size_t> paddings_;
   std::vector<size_t> blocks_;
@@ -101,7 +101,7 @@ protected:
 
 template <DeviceType Device>
 class BlockExpandForward : public BlockExpandFunction {
-public:
+ public:
   void init(const FuncConfig& config) override {
     BlockExpandFunction::init(config);
   }
@@ -149,7 +149,7 @@ public:
 
 template <DeviceType Device>
 class BlockExpandBackward : public BlockExpandFunction {
-public:
+ public:
   void init(const FuncConfig& config) override {
     BlockExpandFunction::init(config);
   }

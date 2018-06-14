@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ namespace paddle {
  */
 
 class MultiplexLayer : public Layer {
-protected:
+ protected:
   /**
    * @brief A struct is used to save the copy information, includes input
    * layer index and copy size.
@@ -64,7 +64,7 @@ protected:
   /// Temporary matrix pointer to point to output data.
   MatrixPtr tmpDest_;
 
-public:
+ public:
   explicit MultiplexLayer(const LayerConfig& config) : Layer(config) {}
 
   ~MultiplexLayer() {}
@@ -75,7 +75,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-private:
+ private:
   /**
    * @brief Calculate copy info for input layers.
    */

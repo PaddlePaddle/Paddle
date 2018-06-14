@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ namespace paddle {
  */
 
 class ExpandLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
   /// if input[0] is dense data, ExpandLevel=kNonSeq;
   /// if input[0] is sequence data, ExpandLevel=kSeq
@@ -48,7 +48,7 @@ protected:
   /// of input[1]
   ICpuGpuVectorPtr expandStartsPos_;
 
-public:
+ public:
   explicit ExpandLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ExpandLayer() {}

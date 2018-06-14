@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ namespace paddle {
  * connections.
  */
 class BaseClient {
-protected:
+ protected:
   typedef std::unique_ptr<std::thread> ThreadPtr;
   typedef std::vector<std::vector<iovec>> InputIovs;
   typedef std::vector<SendParameterRequest> SendRequest;
@@ -49,7 +49,7 @@ protected:
     SendDataRequestVec parallelDataRequests;
   };
 
-public:
+ public:
   explicit BaseClient(bool separate = false, int numPorts = FLAGS_ports_num);
 
   virtual ~BaseClient();
@@ -141,7 +141,7 @@ public:
     return dataType;
   }
 
-protected:
+ protected:
   /// for a > 0, b > 0:
   /// return the smallest x s.t. b*x >= a
   static int divup(int a, int b) { return (a + b - 1) / b; }
@@ -264,7 +264,7 @@ protected:
    */
   virtual void recv(int threadId) = 0;
 
-protected:
+ protected:
   bool stopping_;
   /// nodes * ports that means the number of real pservers
   int serviceNum_;

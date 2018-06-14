@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,10 +35,10 @@ static ClassRegistrar<ActivationFunction> gMKLDNNActivationRegistrar;
  * @def END_MKLDNN_ACTIVATION
  */
 #define END_MKLDNN_ACTIVATION(ACT_TYPE)                            \
-private:                                                           \
+ private:                                                          \
   static const std::string name;                                   \
                                                                    \
-public:                                                            \
+ public:                                                           \
   const std::string& getName() const { return name; }              \
   }                                                                \
   ;                                                                \
@@ -63,11 +63,11 @@ public:                                                            \
 #define DEFINE_MKLDNN_ELTWISE_ACTIVATION(                            \
     ACT_TYPE, BASE_CLASS, ALPHA, BWD_ALPHA)                          \
   BEGIN_MKLDNN_ACTIVATION(ACT_TYPE, BASE_CLASS)                      \
-private:                                                             \
+ private:                                                            \
   static const float alpha;                                          \
   static const float bwdAlpha;                                       \
                                                                      \
-public:                                                              \
+ public:                                                             \
   float getAlpha() const { return alpha; }                           \
   float getBwdAlpha() const { return bwdAlpha; }                     \
   END_MKLDNN_ACTIVATION(ACT_TYPE)                                    \

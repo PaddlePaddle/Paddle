@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace paddle {
  */
 template <typename Derived, class T>
 class TensorApply {
-public:
+ public:
   explicit INLINE TensorApply(const Derived& p)
       : data_(p.data_),
         stride_(p.stride_),
@@ -52,7 +52,7 @@ public:
  */
 template <typename Derived, class T>
 class TensorApply<const Derived, T> {
-public:
+ public:
   explicit INLINE TensorApply(const Derived& p)
       : data_(p.data_),
         stride_(p.stride_),
@@ -77,7 +77,7 @@ public:
 
 template <typename Derived, class T>
 class TensorApply<const TensorExpression<Derived, T>, T> {
-public:
+ public:
   explicit TensorApply(const TensorExpression<Derived, T>& expr)
       : expr_(expr.derived()) {}
 
@@ -97,7 +97,7 @@ public:
  */
 template <class OP, typename ArgType, class T>
 class TensorApply<const TensorUnaryOp<OP, ArgType, T>, T> {
-public:
+ public:
   explicit INLINE TensorApply(const TensorUnaryOp<OP, ArgType, T>& expr)
       : op_(expr.op_), expr_(expr.expr_) {}
 
@@ -118,7 +118,7 @@ public:
  */
 template <class OP, typename LhsType, typename RhsType, class T>
 class TensorApply<const TensorBinaryOp<OP, LhsType, RhsType, T>, T> {
-public:
+ public:
   explicit INLINE TensorApply(
       const TensorBinaryOp<OP, LhsType, RhsType, T>& expr)
       : op_(expr.op_), lhs_(expr.lhs_), rhs_(expr.rhs_) {
@@ -153,7 +153,7 @@ public:
  */
 template <typename ArgType1, typename ArgType2, typename ArgType3, class T>
 class TensorApply<const TensorTernaryOp<ArgType1, ArgType2, ArgType3, T>, T> {
-public:
+ public:
   explicit INLINE TensorApply(
       const TensorTernaryOp<ArgType1, ArgType2, ArgType3, T>& expr)
       : expr1_(expr.expr1_), expr2_(expr.expr2_), expr3_(expr.expr3_) {
@@ -192,7 +192,7 @@ public:
  */
 template <class OP, typename ArgType, class T>
 class TensorApply<const TensorConstant<OP, ArgType, T>, T> {
-public:
+ public:
   explicit INLINE TensorApply(const TensorConstant<OP, ArgType, T>& expr)
       : op_(expr.op_), expr_(expr.expr_) {}
 

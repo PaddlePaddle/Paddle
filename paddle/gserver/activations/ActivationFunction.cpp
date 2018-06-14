@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Logging.h"
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 #include "MKLDNNActivation.h"
 #endif
 
@@ -44,10 +44,10 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  */
 #define BEGIN_DEFINE_ACTIVATION(ACTIVATION_NAME)                             \
   class ACTIVATION_CLASS_NAME(ACTIVATION_NAME) : public ActivationFunction { \
-  private:                                                                   \
+   private:                                                                  \
     static const std::string name;                                           \
                                                                              \
-  public:                                                                    \
+   public:                                                                   \
     const std::string& getName() const { return name; }
 /**
  * @def END_DEFINE_ACTIVATION
@@ -70,7 +70,7 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  * Do nothing when forward/backward.
  */
 class IdentityActivation : public ActivationFunction {
-public:
+ public:
   static const std::string name;
   Error __must_check forward(Argument& act) {
     (void)act;
@@ -490,7 +490,7 @@ Error __must_check backward(Argument& act) {
 END_DEFINE_ACTIVATION(log)
 
 ActivationFunction* ActivationFunction::create(const std::string& type) {
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   if (!type.empty() && type.compare(0, 7, "mkldnn_") == 0) {
     return MKLDNNActivation::create(type);
   }

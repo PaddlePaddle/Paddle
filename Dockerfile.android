@@ -21,23 +21,13 @@ RUN apt-get update && \
     wget curl tar unzip gcc g++ locales clang-format-3.8 swig cmake && \
     apt-get clean -y
 
-# Install Go and glide
-RUN wget -qO- go.tgz https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
-    tar -xz -C /usr/local && \
-    mkdir /root/gopath && \
-    mkdir /root/gopath/bin && \
-    mkdir /root/gopath/src
-ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
-ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
-
 # git credential to skip password typing
 RUN git config --global credential.helper store
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-RUN pip install --upgrade pip && \
+RUN pip install --upgrade pip==9.0.3 && \
     pip install -U 'protobuf==3.1.0' && \
     pip install -U wheel sphinx && \
     pip install pre-commit
@@ -50,5 +40,3 @@ RUN mkdir -p ${ANDROID_TOOLCHAINS_DIR} && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
     rm -rf /opt/android-ndk-tmp
-
-CMD ["bash", "/paddle/paddle/scripts/docker/build_android.sh"]

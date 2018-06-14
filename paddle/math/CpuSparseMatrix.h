@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 
 class CpuSparseMatrix : public Matrix {
-public:
+ public:
   CpuSparseMatrix(size_t height,
                   size_t width,
                   size_t nnz, /* used to allocate space */
@@ -291,10 +291,10 @@ public:
     LOG(FATAL) << "not supported!";
   }
 
-private:
+ private:
   MatrixPtr clone(size_t height = 0, size_t width = 0, bool useGpu = false);
 
-protected:
+ protected:
   void sparseResize();
   /*for csr , record row start position, for csc, record row index for every no
    * zero value*/
@@ -310,10 +310,10 @@ protected:
   static ThreadLocal<std::vector<CpuSparseMatrixPtr>> cpuLocalMats_;
 
   // BaseMatrixT interface
-public:
+ public:
   bool isSparse() const { return true; }
 
-private:
+ private:
   using Matrix::mul;
   using Matrix::copyFrom;
   using Matrix::rowMax;
@@ -329,7 +329,7 @@ private:
 namespace paddle {
 
 class CpuSparseMatrix : public Matrix {
-public:
+ public:
   CpuSparseMatrix(size_t height,
                   size_t width,
                   size_t nnz, /* used to allocate space */

@@ -140,8 +140,13 @@ def init_config_environment(
         g_submodel_stack=[],
         g_add_submodel_suffix=False, ):
 
-    for k, v in locals().iteritems():
-        globals()[k] = copy.deepcopy(v)
+    # directly iterate through locals().iteritems() will change
+    # the size of locals() due to introducing k, v into scope
+    # which will break the process in some env
+
+    local_vars = copy.deepcopy(locals())
+    for k, v in local_vars.iteritems():
+        globals()[k] = v
 
 
 # Because type is widely used as a variable name in this code.
@@ -466,6 +471,7 @@ class Input(Cfg):
             maxout=None,
             spp=None,
             pad=None,
+            upsample=None,
             format=None,
             nnz=None,
             is_static=None,
@@ -975,6 +981,13 @@ class SpatialPyramidPool(Cfg):
 @config_class
 class Pad(Cfg):
     def __init__(self, channels, pad_c, pad_h, pad_w):
+        self.add_keys(locals())
+
+
+@config_class
+class Upsample(Cfg):
+    def __init__(self, scale, scale_y, pad_out_x, pad_out_y, upsample_size,
+                 upsample_size_y):
         self.add_keys(locals())
 
 
@@ -2375,6 +2388,46 @@ class SpatialPyramidPoolLayer(LayerBase):
             self.set_cnn_layer(name, 1, output_x, spp_conf.image_conf.channels)
 
 
+@config_layer('upsample')
+class UpsampleLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(UpsampleLayer, self).__init__(
+            name, 'upsample', 0, inputs=inputs, **xargs)
+
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].upsample_conf.image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+
+        upsample = self.inputs[0].upsample
+        output_x = 0
+        output_y = 0
+        output_size = 0
+
+        if upsample.scale:
+            self.config.inputs[0].upsample_conf.scale = upsample.scale
+            self.config.inputs[0].upsample_conf.scale_y = upsample.scale_y
+            output_x = input_layer.width * upsample.scale
+            output_y = input_layer.height * upsample.scale_y
+        self.config.inputs[0].upsample_conf.pad_out_x = upsample.pad_out_x
+        self.config.inputs[0].upsample_conf.pad_out_y = upsample.pad_out_y
+        if upsample.upsample_size:
+            self.config.inputs[
+                0].upsample_conf.upsample_size = upsample.upsample_size
+            self.config.inputs[
+                0].upsample_conf.upsample_size_y = upsample.upsample_size_y
+            output_x = upsample.upsample_size
+            output_y = upsample.upsample_size_y
+
+        output_size = image_conf.channels * output_x * output_y
+
+        self.set_layer_height_width(output_y, output_x)
+        self.set_layer_depth(input_layer.depth)
+        self.set_layer_size(output_size)
+
+
 @config_layer('pad')
 class PadLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):
@@ -3622,8 +3675,13 @@ class ConcatenateLayer2(LayerBase):
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):
+    layer_type = 'recurrent'
+
     def __init__(self, name, inputs, reversed=False, bias=True, **xargs):
-        super(RecurrentLayer, self).__init__(name, 'recurrent', 0, inputs,
+        use_mkl_packed = bool(
+            int(g_command_config_args.get("use_mkl_packed", 0)))
+        self.layer_type = 'mkl_packed_recurrent' if use_mkl_packed else 'recurrent'
+        super(RecurrentLayer, self).__init__(name, self.layer_type, 0, inputs,
                                              **xargs)
         config_assert(len(self.inputs) == 1, 'RecurrentLayer must have 1 input')
         input_layer = self.get_input_layer(0)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -325,12 +325,12 @@ void Argument::concat(const std::vector<Argument>& args,
         ->copyFrom(*src->subVec(srcStartRow, size), stream);
   };
 
-  auto copyStrs = [batchSize, stream](SVectorPtr& dst,
-                                      const SVectorPtr& src,
-                                      int desStartRow,
-                                      int srcStartRow,
-                                      int size,
-                                      bool useGpu) {
+  auto copyStrs = [batchSize](SVectorPtr& dst,
+                              const SVectorPtr& src,
+                              int desStartRow,
+                              int srcStartRow,
+                              int size,
+                              bool useGpu) {
     if (!src) {
       dst.reset();
       return;
@@ -413,7 +413,7 @@ void Argument::concat(const std::vector<Argument>& args,
     dst->subVec(startRow, src->getSize())->copyFrom(*src, stream);
   };
 
-  auto copyStrs = [batchSize, stream](
+  auto copyStrs = [batchSize](
       SVectorPtr& dst, const SVectorPtr& src, int startRow, bool useGpu) {
     if (!src) {
       dst.reset();

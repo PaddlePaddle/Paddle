@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ namespace paddle {
 
 template <class T>
 class DepthwiseConvFunctor<DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(const T* inputData,
                   const T* filterData,
                   int batchSize,
@@ -43,7 +43,7 @@ public:
 
 template <class T>
 class DepthwiseConvGradInputFunctor<DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(const T* outputGrad,
                   const T* filterData,
                   int batchSize,
@@ -66,7 +66,7 @@ public:
 
 template <class T>
 class DepthwiseConvGradFilterFunctor<DEVICE_TYPE_CPU, T> {
-public:
+ public:
   void operator()(const T* outputGrad,
                   const T* inputData,
                   int batchSize,
@@ -93,7 +93,7 @@ public:
  */
 template <DeviceType Device>
 class DepthwiseConvFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }
@@ -156,7 +156,7 @@ public:
  */
 template <DeviceType Device>
 class DepthwiseConvGradInputFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }
@@ -220,7 +220,7 @@ public:
  */
 template <DeviceType Device>
 class DepthwiseConvGradFilterFunction : public ConvFunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
   }

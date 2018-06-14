@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ class SocketServer : public Thread {
   // rdmaCpu controls the cpu affinity of RDMA server daemon,
   // which could benifit performance. rdmaCpu = -1 means TCP
   // is used instead of RDMA transport.
-public:
+ public:
   SocketServer(const std::string& addr, int port, int rdmaCpu);
   ~SocketServer();
 
@@ -50,7 +50,7 @@ public:
   typedef std::function<void(const std::vector<iovec>& outputIovs)>
       ResponseCallback;
 
-protected:
+ protected:
   //
   // The derived class needs to implement this function
   // to handle the request received by SocketWorker
@@ -70,13 +70,13 @@ protected:
 
   friend class SocketWorker;
 
-private:
+ private:
   void rdmaServer();
   void tcpServer();
 
   void detach() {}  // detach accept thread is forbidden
 
-protected:
+ protected:
   enum ChannelType tcpRdma_;
   // for rdma
   int rdmaCpu_;
@@ -96,7 +96,7 @@ protected:
  * @note  all parameter processing will run in the context of this worker
  */
 class SocketWorker : public Thread {
-public:
+ public:
   SocketWorker(std::unique_ptr<SocketChannel>&& channel, SocketServer* server)
       : channel_(std::move(channel)), server_(server) {}
 
@@ -104,7 +104,7 @@ public:
 
   virtual void run();
 
-protected:
+ protected:
   std::unique_ptr<SocketChannel> channel_;
   SocketServer* server_;
   enum ChannelType tcpRdma_;
@@ -118,12 +118,12 @@ protected:
  *        single cpu core for better load balance performance
  */
 class RdmaClientDaemons {
-private:
+ private:
   RdmaClientDaemons();
 
   static std::unique_ptr<RdmaClientDaemons> daemons_;
 
-public:
+ public:
   static RdmaClientDaemons* get() {
     std::call_once(RdmaClientDaemons::initDataFlag_,
                    &RdmaClientDaemons::getInstance);
@@ -141,10 +141,10 @@ public:
 
   ~RdmaClientDaemons();
 
-public:
+ public:
   friend class SocketClient;
 
-private:
+ private:
   static std::once_flag initDataFlag_;
   static void getInstance() {
     if (!daemons_.get()) daemons_.reset(new RdmaClientDaemons());
@@ -162,19 +162,19 @@ private:
  *        read data
  */
 class SocketClient {
-public:
+ public:
   SocketClient(const std::string& serverAddr,
                int serverPort,
                enum ChannelType channelType);
 
   SocketChannel* getChannel() { return channel_.get(); }
 
-protected:
+ protected:
   std::unique_ptr<SocketChannel> channel_;
   struct sxi_socket* socketDaemon_;
   enum ChannelType tcpRdma_;
 
-private:
+ private:
   void RdmaClient(const std::string& serverAddr, int serverPort);
   void TcpClient(const std::string& serverAddr, int serverPort);
 };

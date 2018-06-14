@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -166,7 +166,7 @@ struct GradBuffer {
  *     the merged gradient to parameter server.
  */
 class MultiGradientMachine : public GradientMachine {
-public:
+ public:
   enum TaskType {
     TASK_FORWARD_BACKWARD = 0,
     TASK_FORWARD = 1,
@@ -213,7 +213,7 @@ public:
   /// The gradietns will be copied to each thread in the computing threads.
   virtual void setOutputGrad(const std::vector<Argument>& args);
 
-protected:
+ protected:
   friend class TrainerThread;
 
   std::vector<TrainerThreadPtr>& getAllThreads() { return threads_; }
@@ -281,7 +281,7 @@ protected:
 
   int paraMainThread(int pid) const { return paraMainThread_[pid]; }
 
-protected:
+ protected:
   virtual void forwardImp(const std::vector<Argument>& inArgs,
                           std::vector<Argument>* outArgs,
                           PassType passType,
@@ -298,7 +298,7 @@ protected:
 
   void allocGradBufs();
 
-protected:
+ protected:
   bool useGpu_;
 
   bool hasNonstaticCpuParamters_;
@@ -342,7 +342,7 @@ protected:
 };
 
 class TrainerThread {
-public:
+ public:
   TrainerThread(const ModelConfig& config,
                 int threadId,
                 MultiGradientMachine* multiMachine);
@@ -392,7 +392,7 @@ public:
   /// Whether the thread has input data.
   bool hasInputData() { return batchSize_ != 0; }
 
-protected:
+ protected:
   void mergeCpuGradients();
 
   void mergeGradSparse(
@@ -421,7 +421,7 @@ protected:
   /// GradientMachine::backward
   void doCallback(int pid);
 
-protected:
+ protected:
   MultiGradientMachine* multiMachine_;
   ModelConfig config_;
   /// whether the thread should stop

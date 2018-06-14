@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace paddle {
 class ParameterOptimizer;
 
 class ParameterUpdater {
-public:
+ public:
   ParameterUpdater() : parameterTypes_{PARAMETER_VALUE, PARAMETER_GRADIENT} {}
   virtual ~ParameterUpdater() {}
 
@@ -89,7 +89,7 @@ public:
   virtual void setForwardbackwardTime(uint64_t delta) {}
 #endif
 
-protected:
+ protected:
   virtual void updateImpl(Parameter* para) = 0;
 
   std::vector<ParameterType> parameterTypes_;
@@ -101,7 +101,7 @@ protected:
 // part of all Parameters. It's useful when we need different
 // update strategy for different Parameter.
 class ParameterUpdaterComposite : public ParameterUpdater {
-public:
+ public:
   ParameterUpdaterComposite() {}
   virtual ~ParameterUpdaterComposite() {}
 
@@ -173,7 +173,7 @@ public:
         [&](int tid, size_t numThreads) { updaters_[tid]->restore(); });
   }
 
-protected:
+ protected:
   virtual void updateImpl(Parameter* para) {}
   std::vector<std::unique_ptr<ParameterUpdater>> updaters_;
   std::unique_ptr<SyncThreadPool> syncThreadPool_;

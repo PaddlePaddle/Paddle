@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace paddle {
  */
 
 class BatchNormalizationLayer : public BatchNormBaseLayer {
-public:
+ public:
   explicit BatchNormalizationLayer(const LayerConfig& config)
       : BatchNormBaseLayer(config), firstTest_(true) {}
 
@@ -38,7 +38,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   /// Load pre-calculated mean and std.
   void setMeanAndStd();
 
