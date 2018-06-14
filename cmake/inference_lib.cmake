@@ -136,7 +136,6 @@ endif()
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
-set(contrib_dir "${PADDLE_SOURCE_DIR}/paddle/contrib")
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
 copy(framework_lib DEPS framework_py_proto 
@@ -157,13 +156,11 @@ copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
 )
 
 if(WITH_CONTRIB)
-   set(module "inference")
-   set(dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
+   set(contrib_dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
    copy(contrib_inference_lib DEPS paddle_inference_api
-           SRCS ${contrib_dir}/${module}/paddle_inference_api.h
-           ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
-           DSTS ${dst_dir} ${dst_dir}
-           DEPS paddle_inference_api
+        SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
+        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
+        DSTS ${contrib_dst_dir} ${contrib_dst_dir}
    )
 endif()
 
