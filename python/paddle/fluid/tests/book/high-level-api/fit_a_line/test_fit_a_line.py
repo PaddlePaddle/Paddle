@@ -38,7 +38,7 @@ def inference_program():
     return y_predict
 
 
-def linear():
+def train_program():
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
     y_predict = inference_program()
 
@@ -48,13 +48,15 @@ def linear():
     return avg_loss
 
 
+def optimizer_func():
+    return fluid.optimizer.SGD(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        train_func=train_program,
-        place=place,
-        optimizer=fluid.optimizer.SGD(learning_rate=0.001))
+        train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
@@ -102,7 +104,7 @@ def main(use_cuda):
     # Directory for saving the trained model
     params_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, linear, params_dirname)
+    train(use_cuda, train_program, params_dirname)
     infer(use_cuda, inference_program, params_dirname)
 
 

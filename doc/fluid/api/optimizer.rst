@@ -47,28 +47,6 @@ DecayedAdagrad
     :members:
     :noindex:
 
-Adadelta
------------------
-
-..  autoclass:: paddle.fluid.optimizer.Adadelta
-    :members:
-    :noindex:
-
-RMSProp
------------------
-
-..  autoclass:: paddle.fluid.optimizer.RMSProp
-    :members:
-    :noindex:
-
-ModelAverage
------------------
-
-..  autoclass:: paddle.fluid.optimizer.ModelAverage
-    :members:
-    :noindex:
-
-
 SGDOptimizer
 ------------
 
@@ -111,25 +89,24 @@ DecayedAdagradOptimizer
     :members:
     :noindex:
 
+Adadelta
+--------
 
-AdadeltaOptimizer
------------------
-
-..  autoclass:: paddle.fluid.optimizer.AdadeltaOptimizer
+..  autoclass:: paddle.fluid.optimizer.Adadelta
     :members:
     :noindex:
 
+ModelAverage
+------------
 
-RMSPropOptimizer
------------------
-
-..  autoclass:: paddle.fluid.optimizer.RMSPropOptimizer
+..  autoclass:: paddle.fluid.optimizer.ModelAverage
     :members:
     :noindex:
-    
+
 Optimizer
 ---------
 
 ..  autoclass:: paddle.fluid.optimizer.Optimizer
     :members:
     :noindex:
+

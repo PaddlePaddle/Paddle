@@ -59,47 +59,48 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() final {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-    AddOutput("Out", "The output of elementwise op.");
+    AddOutput("Out", "The output of elementwise op.").Reuse("X");
     AddAttr<int>("axis",
                  "(int, default -1). The start dimension index "
                  "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
     AddComment(string::Sprintf(R"DOC(
-Limited Elementwise %s Operator.
+Limited Elementwise %s Operator
 
 The equation is:
 
 $$%s$$
 
-$X$ is a tensor of any dimension and the dimensions of tensor $Y$ must be
-smaller than or equal to the dimensions of $X$.
+- $X$: a tensor of any dimension. 
+- $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
 There are two cases for this operator:
-1. The shape of $Y$ is same with $X$;
-2. The shape of $Y$ is a congiguous subsequencet of $X$. The trailing dimensions
-   of size 1 for $Y$ will be ignored for the consideration of subsequence.
 
+1. The shape of $Y$ is the same with $X$.
+2. The shape of $Y$ is a continuous subsequence of $X$.
 
 For case 2:
 
-$Y$ will be broadcasted to match the shape of $X$ and axis should be
-set to index of the start dimension to broadcast $Y$ onto $X$.
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index 
+   for broadcasting $Y$ onto $X$. 
+2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
+3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of 
+   subsequence, such as shape(Y) = (2, 1) => (2).
 
-If axis is -1, it is treated as axis=rank(X)-rank(Y).
+For example:
 
-For example
   .. code-block:: python
 
     shape(X) = (2, 3, 4, 5), shape(Y) = (,)
     shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
-    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
     shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
     shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
     shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
-Either of the inputs $X$ and $Y$ or none can carry the LoD (Level of Details)
-information. However, the output only shares the LoD information with input $X$.
+The inputs $X$ and $Y$ can carry the different LoD information. 
+But the output only shares the LoD information with the input $X$.
 
 )DOC",
                                GetName(), GetEquation()));

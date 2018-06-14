@@ -19,12 +19,12 @@ namespace framework {
 namespace details {
 
 RPCOpHandle::RPCOpHandle(const framework::OpDesc &op_desc,
-                         const Scope *local_scope, const platform::Place &place,
-                         const std::string &name)
+                         const Scope *local_scope, const std::string &name,
+                         const platform::Place &place)
     : op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
-      place_(place),
-      name_(name) {}
+      name_(name),
+      place_(place) {}
 
 void RPCOpHandle::RunImpl() {
   // TODO(wuyi): need further analysis whether wait VarDummyHandle.
