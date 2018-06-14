@@ -104,8 +104,9 @@ def get_model(args):
     loss = fluid.layers.mean(x=loss)
 
     # add acc
+    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
     batch_acc = fluid.layers.accuracy(input=logit, label=fluid.layers.data(name='label', \
-                shape=[1], dtype='int64'))
+                shape=[1], dtype='int64'), total=batch_size_tensor)
 
     inference_program = fluid.default_main_program().clone()
     with fluid.program_guard(inference_program):

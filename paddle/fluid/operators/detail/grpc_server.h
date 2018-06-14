@@ -53,6 +53,7 @@ class AsyncGRPCServer final : public RPCServer {
   void StartServer() override;
 
  private:
+  // HandleRequest needs to be thread-safe.
   void HandleRequest(
       ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
       std::function<void(const std::string&, int)> TryToRegisterNewOne);
