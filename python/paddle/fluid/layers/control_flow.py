@@ -13,7 +13,7 @@
 # limitations under the License.
 import contextlib
 
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
@@ -721,26 +721,22 @@ def lod_rank_table(x, level=0):
     return table
 
 
+@templatedoc()
 def max_sequence_len(rank_table):
-    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
-    returns the max length of a batch of sequences. In fact, a LoDRankTable
-    object contains a list of tuples(<sequence index, sequence length>) and
-    the list is already sorted by sequence length in descending order, so the
-    operator just returns the sequence length of the first tuple element.
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> x = fluid.layers.data(name='x', shape=[10], dtype='float32',
+    >>>                       lod_level=1)
+    >>> rank_table = layers.lod_rank_table(x=x, level=0)
+    >>> max_seq_len = layers.max_sequence_len(rank_table)
 
     Args:
-        rank_table (Variable): Input variable which is a LoDRankTable object.
+        rank_table(${rank_table_type}): ${rank_table_comment}.
 
     Returns:
-        Variable: The max length of sequence.
-
-    Examples:
-        .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[10],
-                            dtype='float32', lod_level=1)
-            rank_table = layers.lod_rank_table(x=x, level=0)
-            max_seq_len = layers.max_sequence_len(rank_table)
+        ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
@@ -978,19 +974,38 @@ def equal(x, y, cond=None, **ignored):
 
 
 def array_read(array, i):
-    """This function performs the operation to read the data in as an
+    """
+    This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
+
+    .. code-block:: text
+
+        Given:
+
+        array = [0.6, 0.1, 0.3, 0.1]
+        
+        And:
+        
+        i = 2
+
+        Then:
+
+        output = 0.3
+
     Args:
-        array (Variable|list): The input tensor that will be written to an array.
-        i (Variable|list): The subscript index in tensor array, that points the
-                           place where data will be written to.
+        array (Variable|list): The input tensor that store data to be read.
+        i (Variable|list): The index of the data to be read from input array.
+
     Returns:
         Variable: The tensor type variable that has the data written to it.
+
     Examples:
-        .. code-block::python
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_read(tmp, i=i)
+        .. code-block:: python
+
+            tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            arr = layers.array_read(tmp, i=i)
+
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
