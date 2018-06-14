@@ -14,7 +14,7 @@ enum PaddleDType {
   INT64,
 };
 
-struct PaddleBuf {
+struct PaddleBuf {// row major.
   void* data;     // pointer to the data memory.
   size_t length;  // number of memory bytes.
 };
@@ -45,10 +45,6 @@ The Anakin engine can only take the Anakin model as input(user need to manully t
 enum class PaddleEngineKind {
   kNative = 0,  // Use the native Fluid facility.
   kAnakin,      // Use Anakin for inference.
-  // TODO(Superjomn) support following engines latter.
-  // kTensorRT,           // Use TensorRT for inference.
-  // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
-  // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
 };
 ```
 
@@ -59,7 +55,7 @@ The main interface is `PaddlePredictor`, there are following methods
   - take inputs and output `output_data`
 - `Clone` to clone a predictor from an existing one, with model parameter shared.
 
-There is a factory method to help create a predictor
+There is a factory method to help create a predictor, and the user takes the ownership of this object.
 
 ```c++
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
