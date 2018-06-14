@@ -267,11 +267,17 @@ class SGDOptimizer(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
+        param = param_and_grad[0]
+        param_replica = layers.create_parameter(name=unique_name.generate("ParamReplica"),
+                                                shape=param.shape,
+                                                dtype="float32",
+                                                lod_level=param.lod_level,
+                                                persistable=True)
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
             inputs={
-                "Param": param_and_grad[0],
+                "Param": param,
                 "Grad": param_and_grad[1],
                 "LearningRate": self._create_param_lr(param_and_grad)
             },

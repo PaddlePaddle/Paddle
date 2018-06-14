@@ -37,6 +37,15 @@ class SGDOp : public framework::OperatorWithKernel {
     auto param_dim = ctx->GetInputDim("Param");
     // TODO(qijun): check dimensions of Param and Grad at compile
     // and runtime.
+    if (ctx->Attrs().Get<bool>("mixed_precision_mode")) {
+      PADDLE_ENFORCE(ctx->HasInput("ParamReplica"),
+                     "Input(ParamReplica) of SGDOp should not be null in mixed "
+                     "precision mode.");
+      PADDLE_ENFORCE(ctx->HasOutput("ParamReplicaOut"),
+                     "Output(ParamReplicaOut) of SGDOp should not be null in "
+                     "mixed precision mode.");
+      ctx->SetOutputDim("ParamReplicaOut", param_dim);
+    }
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 
@@ -70,12 +79,19 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
+    AddInput("ParamReplica", "(Tensor or SelectedRows) A master copy of Param in FP32,
+used in mixed_precision_mode.");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param")
         .Reuse("Param");
+    AddAttr<bool>("mixed_precision_mode",
+                  R"DOC(bool, default false), If use mixed_precision_mode, then
+sgd behave a little differece. In mixed_precision_mode, then
+fp16 will be applyed in forward/backward pass. The gradient will hold a master
+copy of fp32.)");
     AddComment(R"DOC(
 
 SGD operator

@@ -28,5 +28,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+                                  plat::float16>);

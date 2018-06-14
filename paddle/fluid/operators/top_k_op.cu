@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -325,5 +326,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>,
-                        paddle::operators::TopkOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    top_k, paddle::operators::TopkOpCUDAKernel<float>,
+    paddle::operators::TopkOpCUDAKernel<double>,
+    paddle::operators::TopkOpCUDAKernel<paddle::platform::float16>);

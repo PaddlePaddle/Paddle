@@ -15,6 +15,8 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/sgd_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
@@ -22,16 +24,40 @@ namespace operators {
 namespace {
 
 template <typename T>
-__global__ void SGDKernel(const T* g, const T* p, const T* learning_rate,
-                          const int num, T* p_out) {
-  T lr = learning_rate[0];
-  int grid_size = blockDim.x * gridDim.x;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num; i += grid_size) {
-    T g_data = g[i];
-    T p_data = p[i];
-    p_out[i] = p_data - lr * g_data;
+struct SGDFunctor {
+  const T* g;
+  const T* p;
+  const T* learning_rate;
+  T* p_out;
+  SGDFunctor(const T* g, const T* p, const T* l, const int num, T* p_out)
+      : g(g), p(p), learning_rate(l), num(num), p_out(p_out) {}
+
+  inline HOSTDEVICE void operator()(size_t i) const {
+    p_out[i] = p[i] - lr * g[i];
   }
-}
+};
+
+template <typename T>
+struct SGDWithReplicaKernel {
+  const T* g;
+  const float* p_replica;
+  const T* learning_rate;
+  T* p_out;
+  float* p_replica_out;
+  SGDWithReplicaKernel(const T* g, const float* p_replica, const T* l,
+                       const int num, T* p_out, float* p_replica_out)
+      : g(g),
+        p_replica(p_replica),
+        learning_rate(l),
+        num(num),
+        p_out(p_out),
+        p_replica_out(p_replica_out) {}
+
+  inline HOSTDEVICE void operator()(size_t i) const {
+    p_replica_out[i] = p_replica[i] - lr.float() * g_data.float();
+    p_out[i] = platform::float16(p_replica_out[i]);
+  }
+};
 
 template <typename T, int block_size>
 __global__ void SparseSGDFunctorKernel(const T* selected_rows,
@@ -66,16 +92,27 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
-      auto* grad_data = grad->data<T>();
-      auto* param_data = param->data<T>();
-      auto* param_out_data = param_out->data<T>();
 
-      int block = 512;
-      int grid = (param->numel() + block - 1) / block;
+      auto for_range(ctx.template device_context(), param->numel());
 
-      SGDKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-          grad_data, param_data, learning_rate->data<T>(), param->numel(),
-          param_out_data);
+      if (ctx.Attr<bool>("mixed_precision_mode")) {
+        PADDLE_ENFORCE(std::type_index(typeid(T)) ==
+                           std::type_index(typeid(platform::float16)),
+                       "mixed_precision_mode is only supported in float16.");
+        auto* param_replica = ctx.Input<framework::Tensor>("ParamReplica");
+        auto* param_replica_out =
+            ctx.Output<framework::Tensor>("ParamReplicaOut");
+        SGDWithReplicaKernel<T> functor(
+            grad->data<T>(), param_replica->data<T>(), learning_rate->data<T>(),
+            param_out->mutable_data<T>(ctx.GetPlace()),
+            param_replica_out->mutable_data<T>(ctx.GetPlace()));
+        for_range(functor);
+      } else {
+        SGDFunctor<T> functor(grad->data<T>(), param->data<T>(),
+                              learning_rate->data<T>(),
+                              param_out->mutable_data<T>(ctx.GetPlace()));
+        for_range(functor);
+      }
 
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
@@ -114,5 +151,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(sgd, ops::SGDOpCUDAKernel<float>,
-                        ops::SGDOpCUDAKernel<double>);
+                        ops::SGDOpCUDAKernel<double>,
+                        ops::SGDOpCUDAKernel<plat::float16>);
