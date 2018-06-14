@@ -25,7 +25,8 @@ __all__ = [
     'load_persistables', 'save_inference_model', 'load_inference_model',
     'get_inference_program', 'save_checkpoint', 'load_checkpoint',
     'clean_checkpoint', 'load_persist_vars_without_grad',
-    'save_persist_vars_without_grad', 'get_latest_checkpoint_serial'
+    'load_lookup_table_vars', 'save_persist_vars_without_grad',
+    'get_latest_checkpoint_serial'
 ]
 
 
@@ -459,7 +460,9 @@ def get_parameter_value_by_name(name, executor, program=None):
 SUCCESS_MARK_FILENAME = "_SUCCESS"
 CHECKPOINT_PREFIX = "checkpoint"
 MODEL_DIR = "__model__"
+LOOKUP_TABLE_DIR = "__lookup_table__"
 TRAINER_PREFIX = "trainer"
+PSERVER_PREFIX = "pserver"
 CHECKPOINT_SEPARATOR = "_"
 
 
@@ -565,6 +568,14 @@ def load_persist_vars_without_grad(executor,
         main_program=program,
         predicate=_is_checkpoint_var,
         filename=None)
+
+
+def load_lookup_table_vars(executor, dirname, pserver_id, table_name):
+    lookup_table_dir = os.path.join(dirname, LOOKUP_TABLE_DIR)
+    table_file = table_name + CHECKPOINT_SEPARATOR + PSERVER_PREFIX + CHECKPOINT_SEPARATOR + str(
+        pserver_id)
+
+    load_vars(executor, lookup_table_dir, vars=table_name, filename=table_file)
 
 
 def save_persist_vars_without_grad(executor, dirname, program):
