@@ -79,6 +79,7 @@ enum class GrpcMethod {
   kSendVariable,
   kGetVariable,
   kPrefetchVariable,
+  kCheckpointNotify,
 };
 
 static const int kGrpcNumMethods =
@@ -92,6 +93,8 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/GetVariable";
     case GrpcMethod::kPrefetchVariable:
       return "/sendrecv.SendRecvService/PrefetchVariable";
+    case GrpcMethod::kCheckpointNotify:
+      return "/sendrecv.SendRecvService/CheckpointNotify";
   }
 
   // Shouldn't be reached.

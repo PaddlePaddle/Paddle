@@ -119,6 +119,12 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   return true;
 }
 
+bool RequestCheckpointHandler::Handle(const std::string& varname,
+                                      framework::Scope* scope,
+                                      framework::Variable* invar,
+                                      framework::Variable** outvar,
+                                      const std::string& out_var_name) {}
+
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle

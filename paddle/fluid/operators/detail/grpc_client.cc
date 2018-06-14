@@ -229,6 +229,22 @@ void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
+void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                       const std::string& dir,
+                                       int64_t time_out) {
+  const auto ch = GetChannel(ep);
+  CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
+  s.prepare(time_out);
+
+  sendrecv::CheckpointMessage req;
+  req.set_notify_type(CHECKPOINT_SAVE_MESSAGE);
+  req.set_checkpoint_dir(dir);
+
+  auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+}
+
 void GRPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
   sync_cond_.wait(lk, [this] { return req_count_ == 0; });
