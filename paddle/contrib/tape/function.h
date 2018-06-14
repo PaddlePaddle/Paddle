@@ -112,7 +112,8 @@ class SGD {
   }
 
   void operator()(VariableHandle input) {
-    PADDLE_ENFORCE(get_global_tape().HasBeenBackwarded(), "");
+    PADDLE_ENFORCE(get_global_tape().HasBeenBackwarded(),
+                   "optimization must happen after the backward");
     Tape temp_tape;
     temp_tape.AddOp("sgd",
                     {{"Param", {input}},
