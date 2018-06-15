@@ -1952,6 +1952,7 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
+@templatedoc()
 def layer_norm(input,
                scale=True,
                shift=True,
@@ -1962,26 +1963,26 @@ def layer_norm(input,
                act=None,
                name=None):
     """
-    **Layer Normalization**
-
-    Assume feature vectors exist on dimensions
-    :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
-    along these dimensions for each feature vector :math:`a` with size
-    :math:`H`, then normalize each feature vector using the corresponding
-    statistics. After that, apply learnable gain and bias on the normalized
-    tensor to scale and shift if :attr:`scale` and :attr:`shift` are set.
-
-    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+    ${comment}
 
     The formula is as follows:
 
-    .. math::
+    ..  math::
 
         \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
 
         \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
 
         h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+    * :math:`a`: the vector representation of the summed inputs to the neurons
+    in that layer.
+
+    * :math:`H`: the number of hidden units in a layers
+
+    * :math:`g`: the trainable scale parameter.
+
+    * :math:`b`: the trainable bias parameter.
 
     Args:
         input(Variable): The input tensor variable.
@@ -2001,14 +2002,13 @@ def layer_norm(input,
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: A tensor variable with the same shape as the input.
+        ${y_comment}
 
     Examples:
-        .. code-block:: python
 
-            data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-            x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
     """
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
@@ -3691,29 +3691,13 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
     return out
 
 
+@templatedoc()
 def row_conv(input, future_context_size, param_attr=None, act=None):
-    """Row Conv Operator. This layer will apply lookahead convolution to
-    **input**. The input variable should be a 2D LoDTensor with shape [T, D].
-    Parameters with shape [future_context_size + 1, D] will be created. The math
-    equation of row convolution is as follows:
-
-    .. math::
-        Out_{i} = \sum_{j = i} ^ {i + \\tau} X_{j} \odot W_{i - j}
-
-    In the above equation:
-
-    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
-    * :math:`\\tau`: Future context size.
-    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
-    * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
-
-    More details about row_conv please refer to the paper \
-    (http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf) and
-    the design document \
-    (https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645).
+    """
+    ${comment}
 
     Args:
-        input (Variable): Input variable, a 2D LoDTensor with shape [T, D].
+        input (${x_type}): ${x_comment}.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
@@ -3721,14 +3705,13 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         act (str): Non-linear activation to be applied to output variable.
 
     Returns:
-        Variable: The output tensor with same shape as input tensor.
+        ${out_comment}.
 
     Examples:
-        .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[16],
-                            dtype='float32', lod_level=1)
-            out = fluid.layers.row_conv(input=x, future_context_size=2)
+        >>> import paddle.fluid as fluid
+        >>> x = fluid.layers.data(name='x', shape=[16],
+        >>>                        dtype='float32', lod_level=1)
+        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
     dtype = helper.input_dtype()
@@ -3744,42 +3727,23 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     return helper.append_activation(out)
 
 
+@templatedoc()
 def multiplex(inputs, index):
     """
-    **Multiplex Layer**
+    ${comment}
 
-    Referring to the given index variable, this layer selects rows from the
-    input variables to construct a multiplex variable. Assuming that there are
-    :math:`m` input variables and :math:`I_i` represents the i-th input
-    variable and :math:`i` is in [0, :math:`m`). All input variables are
-    tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
-    Please note that rank of the input tensor should be at least 2. Each input
-    variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
-    where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
-    * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
-    variable. The given index variable should be a 2-D tensor with shape
-    [:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
-    Then the output variable will be a tensor with shape [:math:`d_0`,
-    :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
-    matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
-    row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
+    >>> import paddle.fluid as fluid
+    >>> x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+    >>> x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+    >>> index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+    >>> out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
     Args:
-        inputs (list): A list of variables to gather from. All variables have the
-                same shape and the rank is at least 2.
-        index (Variable): Tensor<int32>, index variable which is a 2-D tensor
-                with shape [M, 1] where M is the batch size.
+       inputs (list): ${x_comment}.
+       index (${ids_type}): ${ids_comment}.
 
     Returns:
-        Variable: Multiplex variable gathered from input variables.
-
-    Examples:
-        .. code-block:: python
-
-            x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-            index = fluid.layers.data(name='index', shape=[1], dtype='int32')
-            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+        ${out_comment}.
     """
     helper = LayerHelper('multiplex', **locals())
 
