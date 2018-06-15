@@ -209,6 +209,18 @@ def polynomial_decay(learning_rate,
 def piecewise_decay(boundaries, values):
     """Applies piecewise decay to the initial learning rate.
 
+      The algorithm can be described as the code below.
+
+      .. code-block:: python
+
+        boundaries = [10000, 20000]
+        values = [1.0, 0.5, 0.1]
+        if step < 10000:
+            learning_rate = 1.0
+        elif 10000 <= step < 20000:
+            learning_rate = 0.5
+        else:
+            learning_rate = 0.1
     Args:
         boundaries: A list of steps numbers.
         values: A list of learning rate values that will be picked during
@@ -217,15 +229,7 @@ def piecewise_decay(boundaries, values):
     Returns:
         The decayed learning rate.
 
-    >>> boundaries = [10000, 20000]
-    >>> values = [1.0, 0.5, 0.1]
-    >>>
-    >>> if step < 10000:
-    >>>     learning_rate = 1.0
-    >>> elif 10000 <= step < 20000:
-    >>>     learning_rate = 0.5
-    >>> else:
-    >>>     learning_rate = 0.1
+
     """
 
     if len(values) - len(boundaries) != 1:
