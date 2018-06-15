@@ -21,11 +21,16 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <algorithm>
 #include "gflags/gflags.h"
 
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
+
+DEFINE_uint64(
+    initial_cpu_memory_in_mb, 500,
+    "Default initial 500MB of CPU memory for PaddlePaddle, in MD unit.");
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
@@ -54,7 +59,10 @@ inline size_t CpuTotalPhysicalMemory() {
 size_t CpuMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
-  return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
+  return std::min(
+      static_cast<size_t>(FLAGS_fraction_of_cpu_memory_to_use *
+                          CpuTotalPhysicalMemory()),
+      static_cast<size_t>(FLAGS_initial_cpu_memory_in_mb * 1 << 20));
 }
 
 size_t CpuMinChunkSize() {

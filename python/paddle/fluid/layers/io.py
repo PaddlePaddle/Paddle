@@ -19,11 +19,12 @@ from ..unique_name import generate as unique_name
 from control_flow import BlockGuard
 from ..layer_helper import LayerHelper
 from ..executor import global_scope
+from layer_function_generator import generate_layer_fn, templatedoc
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
     'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'Preprocessor'
+    'random_data_generator', 'Preprocessor', 'load'
 ]
 
 
@@ -586,6 +587,26 @@ def read_file(file_obj):
 
 
 class Preprocessor(object):
+    """
+    A block for data pre-processing in reader.
+
+    Args:
+        reader (Variable): A reader variable.
+        name (str, default None): The name of the reader.
+
+    Examples:
+          .. code-block:: python
+
+            preprocessor = fluid.layers.io.Preprocessor(reader=reader)
+            with preprocessor.block():
+                img, lbl = preprocessor.inputs()
+                img_out = img / 2
+                lbl_out = lbl + 1
+                preprocessor.outputs(img_out, lbl_out)
+
+            data_file = fluid.layers.io.double_buffer(preprocessor())
+
+    """
     BEFORE_SUB_BLOCK = 0
     IN_SUB_BLOCK = 1
     AFTER_SUB_BLOCK = 2
@@ -662,3 +683,29 @@ class Preprocessor(object):
                 "sink_var_names": self.sink_var_names
             })
         return monkey_patch_reader_methods(self.reader)
+
+
+@templatedoc()
+def load(out, file_path, load_as_fp16=None):
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
+
+    Args:
+        out(${out_type}): ${out_comment}.
+
+        file_path(${file_path_type}): ${file_path_comment}.
+
+        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
+
+    Returns:
+        None
+    """
+    helper = LayerHelper("load", **locals())
+    attrs = {"file_path": file_path}
+    if load_as_fp16 is not None:
+        attrs['load_as_fp16'] = load_as_fp16
+    helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)

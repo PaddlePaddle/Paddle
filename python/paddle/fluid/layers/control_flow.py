@@ -13,7 +13,7 @@
 # limitations under the License.
 import contextlib
 
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
@@ -721,26 +721,22 @@ def lod_rank_table(x, level=0):
     return table
 
 
+@templatedoc()
 def max_sequence_len(rank_table):
-    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
-    returns the max length of a batch of sequences. In fact, a LoDRankTable
-    object contains a list of tuples(<sequence index, sequence length>) and
-    the list is already sorted by sequence length in descending order, so the
-    operator just returns the sequence length of the first tuple element.
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> x = fluid.layers.data(name='x', shape=[10], dtype='float32',
+    >>>                       lod_level=1)
+    >>> rank_table = layers.lod_rank_table(x=x, level=0)
+    >>> max_seq_len = layers.max_sequence_len(rank_table)
 
     Args:
-        rank_table (Variable): Input variable which is a LoDRankTable object.
+        rank_table(${rank_table_type}): ${rank_table_comment}.
 
     Returns:
-        Variable: The max length of sequence.
-
-    Examples:
-        .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[10],
-                            dtype='float32', lod_level=1)
-            rank_table = layers.lod_rank_table(x=x, level=0)
-            max_seq_len = layers.max_sequence_len(rank_table)
+        ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
@@ -1213,6 +1209,34 @@ class IfElseBlockGuard(object):
 
 
 class IfElse(object):
+    """
+    if-else control flow.
+
+    Args:
+        cond (Variable): condition used to compare.
+        name (str, default None): The name of this layer.
+
+    Examples:
+          .. code-block:: python
+
+            limit = fluid.layers.fill_constant_batch_size_like(
+                input=label, dtype='int64', shape=[1], value=5.0)
+            cond = fluid.layers.less_than(x=label, y=limit)
+            ie = fluid.layers.IfElse(cond)
+            with ie.true_block():
+                true_image = ie.input(image)
+                hidden = fluid.layers.fc(input=true_image, size=100, act='tanh')
+                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                ie.output(prob)
+
+            with ie.false_block():
+                false_image = ie.input(image)
+                hidden = fluid.layers.fc(
+                    input=false_image, size=200, act='tanh')
+                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                ie.output(prob)
+            prob = ie()
+    """
     OUT_IF_ELSE_BLOCKS = 0
     IN_IF_ELSE_TRUE_BLOCKS = 1
     IN_IF_ELSE_FALSE_BLOCKS = 2
