@@ -36,7 +36,7 @@ class CodeTable(object):
         return self.c & (1 << bit)
 
 
-def hsigmoid(x, w, ids, bias, num_classes):
+def hsigmoid(x, w, label, bias, num_classes):
     global pre_output
     batch_size = x.shape[0]
     code_length = find_latest_set(num_classes - 1)
@@ -45,13 +45,13 @@ def hsigmoid(x, w, ids, bias, num_classes):
     pre_sum = np.zeros((batch_size, 1))
     out = np.zeros((batch_size, 1)).astype("float32")
     for i in range(batch_size):
-        code_table = CodeTable(num_classes, ids[i])
+        code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
         for j in range(length):
             idx = code_table.cal_index(j)
             pre_output[i][j] += bias[0][idx]
     for j in range(batch_size):
-        code_table = CodeTable(num_classes, ids[j])
+        code_table = CodeTable(num_classes, label[j])
         length = code_table.get_length()
         for k in range(length):
             idx = code_table.cal_index(k)
@@ -60,10 +60,10 @@ def hsigmoid(x, w, ids, bias, num_classes):
                 sum += w[idx][l] * x[j][l]
             pre_output[j][k] += sum
     # clip[-40.0, 40.0]
-    np.clip(pre_output, -40.0, 40.0)
+    pre_output = np.clip(pre_output, -40.0, 40.0)
     # out(i, 0) = \sum_j  bit(i, j) * preout(i, j)
     for i in range(batch_size):
-        code_table = CodeTable(num_classes, ids[i])
+        code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
         sum = 0.0
         for j in range(length):
@@ -86,18 +86,18 @@ class TestHSigmoidOp(OpTest):
         batch_size = 1
         x = np.random.random((batch_size, embded_size)).astype("float32")
         w = np.random.random((num_classes - 1, embded_size)).astype("float32")
-        ids = np.random.randint(0, num_classes, batch_size)
+        label = np.random.randint(0, num_classes, batch_size)
         bias = np.random.random((1, num_classes - 1)).astype("float32")
         self.attrs = {'num_classes': num_classes}
-        self.inputs = {'X': x, 'W': w, 'Ids': ids, 'Bias': bias}
-        out = hsigmoid(x, w, ids, bias, num_classes)
+        self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
+        out = hsigmoid(x, w, label, bias, num_classes)
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], 'Out', no_grad_set=set('Ids'))
+        self.check_grad(['Bias', 'X', 'W'], 'Out', no_grad_set=set('Label'))
 
 
 if __name__ == '__main__':
