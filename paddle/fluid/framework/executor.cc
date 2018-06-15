@@ -126,11 +126,9 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
-  LOG(ERROR) << "XXXX";
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id);
-  LOG(ERROR) << "XXXX";
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
@@ -299,11 +297,8 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id) {
   std::unique_ptr<ExecutorPrepareContext> ctx(
       new ExecutorPrepareContext(program, block_id));
-  LOG(ERROR) << "XXXX";
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
-  LOG(ERROR) << "XXXX";
   auto& block = program.Block(block_id);
-  LOG(ERROR) << "XXXX";
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -327,7 +322,6 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
-  LOG(ERROR) << "XXXX";
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -336,7 +330,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
-  LOG(ERROR) << "XXXX";
   for (auto& op : ctx->ops_) {
     VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);

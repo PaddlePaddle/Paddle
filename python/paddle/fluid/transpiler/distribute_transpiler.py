@@ -505,13 +505,12 @@ class DistributeTranspiler:
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
-        for op in lr_ops:
-            print("LR Op: ", op)
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
             for _, op in enumerate(lr_ops):
                 self._append_pserver_non_opt_ops(lr_decay_block, op)
+                # append sub blocks to pserver_program in lr_decay_op
                 __clone_sub_block__(op, pserver_program)
 
         # append op to the current block
@@ -574,8 +573,6 @@ class DistributeTranspiler:
             inputs={'X': recv_inputs},
             outputs={},
             attrs=attrs)
-
-        # step6 append blocks in lr_decay_op
 
         pserver_program.sync_with_cpp()
         return pserver_program
