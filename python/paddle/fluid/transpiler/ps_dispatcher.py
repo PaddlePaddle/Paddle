@@ -41,7 +41,11 @@ class PSDispatcher(object):
 
 class HashName(PSDispatcher):
     """
-      Hash variable names to several endpoints
+    Hash variable names to several endpoints using python
+    "hash()" function.
+
+    Args:
+        pserver_endpoints (list): list of endpoint(ip:port).
     """
 
     def __init__(self, pserver_endpoints):
@@ -61,7 +65,11 @@ class HashName(PSDispatcher):
 
 class RoundRobin(PSDispatcher):
     """
-    Distribute variables to serveral endpoints.
+    Distribute variables to serveral endpoints using
+    RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
+
+    Args:
+        pserver_endpoints (list): list of endpoint(ip:port).
     """
 
     def __init__(self, pserver_endpoints):
