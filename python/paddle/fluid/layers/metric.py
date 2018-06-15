@@ -54,7 +54,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
 def auc(input, label, curve='ROC', num_thresholds=200):
     """
-    **Area Under The Curve (AUC) Layer**
+    **Area Under the Curve (AUC) Layer**
 
     This implementation computes the AUC according to forward output and label.
     It is used very widely in binary classification evaluation. 
