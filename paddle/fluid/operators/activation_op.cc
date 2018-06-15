@@ -112,7 +112,7 @@ $$out = \frac{1}{1 + e^{-x}}$$
 __attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
-$$out = \log \frac{1}{1 + e^{-x}}$$
+$$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
