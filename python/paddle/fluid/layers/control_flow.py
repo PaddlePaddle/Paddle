@@ -617,48 +617,17 @@ class While(object):
     Examples:
           .. code-block:: python
 
-            # The value these d0, d1 and d2 can be fed from python.
-            d0 = fluid.layers.data(
-                "d0", shape=[10], append_batch_size=False, dtype='float32')
-            d1 = fluid.layers.data(
-                "d1", shape=[10], append_batch_size=False, dtype='float32')
-            d2 = fluid.layers.data(
-                "d2", shape=[10], append_batch_size=False, dtype='float32')
-            i = fluid.layers.zeros(shape=[1], dtype='int64')
-            i.stop_gradient = True
-            init = fluid.layers.zeros(shape=[10], dtype='float32')
-            # Initialize mem_array from init
-            mem_array = fluid.layers.array_write(x=init, i=i)
-            # Initialize data_array from d0
-            data_array = fluid.layers.array_write(x=d0, i=i)
-            # Set a value to data_array using d1[i].
-            i = fluid.layers.increment(i)
-            fluid.layers.array_write(d1, i, array=data_array)
-            # Set a value to data_array using d2[i].
-            i = fluid.layers.increment(i)
-            fluid.layers.array_write(d2, i, array=data_array)
-            # Create a idx to start the while loop.
-            i = fluid.layers.zeros(shape=[1], dtype='int64')
-            i.stop_gradient = True
+            d0 = layers.data("d0", shape=[10], dtype='float32')
+            data_array = layers.array_write(x=d0, i=i)
+            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
 
-            array_len = fluid.layers.fill_constant(
-                shape=[1], dtype='int64', value=3)
-            array_len.stop_gradient = True
-            # Create the while loop condition.
-            cond = fluid.layers.less_than(x=i, y=array_len)
-
-            # Within the loop, perform sums.
-            while_op = fluid.layers.While(cond=cond)
+            cond = layers.less_than(x=i, y=array_len)
+            while_op = layers.While(cond=cond)
             with while_op.block():
-                d = fluid.layers.array_read(array=data_array, i=i)
-                prev = fluid.layers.array_read(array=mem_array, i=i)
-                result = fluid.layers.sums(input=[d, prev])
-
-                i = fluid.layers.increment(x=i, in_place=True)
-                fluid.layers.array_write(result, i=i, array=mem_array)
-                fluid.layers.less_than(x=i, y=array_len, cond=cond)
-
-            sum_result = fluid.layers.array_read(array=mem_array, i=i)
+                d = layers.array_read(array=data_array, i=i)
+                i = layers.increment(x=i, in_place=True)
+                layers.array_write(result, i=i, array=d)
+                layers.less_than(x=i, y=array_len, cond=cond)
     """
 
     BEFORE_WHILE_BLOCK = 0
