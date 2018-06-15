@@ -236,7 +236,7 @@ class ParallelDo(object):
     """
     ParallelDo is used to represent multi-thread data parallel processing.
 
-    Its vanilla implementation can be shown as the following (:math:`|` means 
+    Its vanilla implementation can be shown as the following (:math:`|` means
     single thread and :math:`||||` means multiple threads)
 
     .. code-block:: text
@@ -252,7 +252,7 @@ class ParallelDo(object):
         ||||   Compute backward pass in parallel
         |      accumulate param@grad from different devices to the first device
         |      Merge input@grad from different devices
-        |      Copy param@grad to the place of parallel_do_op
+        |      Copy param@grad to the place of parallel_do_op
 
     Examples:
 
