@@ -21,7 +21,7 @@ class TestSequenceExpand(OpTest):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [3, 1]).astype('float32')
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
-        y_lod = [[0, 1, 4, 8]]
+        y_lod = [[1, 3, 4]]
         self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
 
     def compute(self):
@@ -37,23 +37,27 @@ class TestSequenceExpand(OpTest):
         out = np.zeros(shape=((0, ) + x_data.shape[1:]), dtype=x_data.dtype)
 
         if x_lod is None:
-            x_idx = [i for i in xrange(x_data.shape[0] + 1)]
+            # x_idx = [i for i in xrange(x_data.shape[0] + 1)]
+            x_idx = [1] * x_data.shape[0]
         else:
             x_idx = x_lod[0]
-            out_lod = [[0]]
+            out_lod = [[]]
 
-        for i in xrange(1, len(y_lod[ref_level])):
-            repeat_num = y_lod[ref_level][i] - y_lod[ref_level][i - 1]
-            x_len = x_idx[i] - x_idx[i - 1]
+        offset = 0
+        for i in xrange(len(y_lod[ref_level])):
+            repeat_num = y_lod[ref_level][i]
+            x_len = x_idx[i]
+
             if repeat_num > 0:
-                x_sub = x_data[x_idx[i - 1]:x_idx[i], :]
+                x_sub = x_data[offset:(offset + x_len), :]
                 stacked_x_sub = x_sub
                 for r in range(repeat_num - 1):
                     stacked_x_sub = np.vstack((stacked_x_sub, x_sub))
                 out = np.vstack((out, stacked_x_sub))
                 if x_lod is not None:
                     for j in xrange(repeat_num):
-                        out_lod[0].append(out_lod[0][-1] + x_len)
+                        out_lod[0].append(x_len)
+            offset += x_len
 
         if x_lod is None:
             self.outputs = {'Out': out}
@@ -75,9 +79,9 @@ class TestSequenceExpand(OpTest):
 class TestSequenceExpandCase1(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
-        x_lod = [[0, 2, 5]]
+        x_lod = [[2, 3]]
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float32')
-        y_lod = [[0, 2, 5], [0, 2, 4, 7, 10, 13]]
+        y_lod = [[2, 3], [2, 2, 3, 3, 3]]
         self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
         self.attrs = {'ref_level': 0}
 
@@ -85,9 +89,9 @@ class TestSequenceExpandCase1(TestSequenceExpand):
 class TestSequenceExpandCase2(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [1, 2, 2]).astype('float32')
-        x_lod = [[0, 1]]
+        x_lod = [[1]]
         y_data = np.random.uniform(0.1, 1, [2, 2, 2]).astype('float32')
-        y_lod = [[0, 2], [0, 2]]
+        y_lod = [[2], [1, 1]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
         self.attrs = {'ref_level': 0}
 
@@ -95,9 +99,9 @@ class TestSequenceExpandCase2(TestSequenceExpand):
 class TestSequenceExpandCase3(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
-        x_lod = [[0, 1, 2, 3, 4]]
-        y_data = np.random.uniform(0.1, 1, [6, 1]).astype('float32')
-        y_lod = [[0, 2, 4, 4, 6]]
+        x_lod = [[1, 1, 1, 1]]
+        y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
+        y_lod = [[2, 2, 2, 2]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 
@@ -105,9 +109,9 @@ class TestSequenceExpandCase4(TestSequenceExpand):
     def set_data(self):
         data = np.random.uniform(0.1, 1, [5 * 2, 1])
         x_data = np.array(data).reshape([5, 2]).astype('float32')
-        x_lod = [[0, 2, 5]]
-        y_data = np.random.uniform(0.1, 1, [3, 1]).astype('float32')
-        y_lod = [[0, 1, 3], [0, 1, 3]]
+        x_lod = [[2, 3]]
+        y_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
+        y_lod = [[2], [2, 3]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 

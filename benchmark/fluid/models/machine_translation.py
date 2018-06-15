@@ -173,21 +173,6 @@ def seq_to_seq_net(embedding_dim, encoder_size, decoder_size, source_dict_dim,
         return avg_cost, feeding_list
 
 
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    lod_t = core.LoDTensor()
-    lod_t.set(flattened_data, place)
-    lod_t.set_lod([lod])
-    return lod_t, lod[-1]
-
-
 def lodtensor_to_ndarray(lod_tensor):
     dims = lod_tensor.get_dims()
     ndarray = np.zeros(shape=dims).astype('float32')

@@ -18,14 +18,19 @@ import sys
 from op_test import OpTest
 
 
-def to_abs_lod(lod):
-    if len(lod) == 0 or len(lod) == 1:
-        return lod
+def to_abs_offset_lod(lod):
+    offset_lod = [[0] for i in lod]
+    for i, level in enumerate(lod):
+        for seq_len in level:
+            offset_lod[i].append(offset_lod[i][-1] + seq_len)
+
+    if len(offset_lod) == 0 or len(offset_lod) == 1:
+        return offset_lod
     import copy
-    new_lod = copy.deepcopy(lod)
-    for idx, val in enumerate(lod[0]):
-        new_lod[0][idx] = lod[1][val]
-    return new_lod
+    new_offset_lod = copy.deepcopy(offset_lod)
+    for idx, val in enumerate(offset_lod[0]):
+        new_offset_lod[0][idx] = offset_lod[1][val]
+    return new_offset_lod
 
 
 def seq_concat(inputs, level):
@@ -35,11 +40,11 @@ def seq_concat(inputs, level):
     x1 = inputs['X'][1][1][0]
     level_idx = len(lod0) - level - 1
     outs = []
-    for i in range(len(lod0[level_idx]) - 1):
-        sub_x0 = x0[to_abs_lod(lod0)[level_idx][i]:to_abs_lod(lod0)[level_idx][
-            i + 1], :]
-        sub_x1 = x1[to_abs_lod(lod1)[level_idx][i]:to_abs_lod(lod1)[level_idx][
-            i + 1], :]
+    for i in range(len(lod0[level_idx])):
+        sub_x0 = x0[to_abs_offset_lod(lod0)[level_idx][i]:to_abs_offset_lod(
+            lod0)[level_idx][i + 1], :]
+        sub_x1 = x1[to_abs_offset_lod(lod1)[level_idx][i]:to_abs_offset_lod(
+            lod1)[level_idx][i + 1], :]
         outs.append(np.concatenate((sub_x0, sub_x1), axis=0))
     return np.concatenate(outs, axis=0)
 
@@ -48,9 +53,9 @@ class TestSeqConcatOp(OpTest):
     def set_data(self):
         # two level, batch size is 3
         x0 = np.random.random((4, 6, 3)).astype('float32')
-        lod0 = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        lod0 = [[2, 2], [1, 1, 1, 1]]
         x1 = np.random.random((4, 8, 3)).astype('float32')
-        lod1 = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        lod1 = [[2, 2], [1, 1, 1, 1]]
         axis = 1
         level = 1
         self.inputs = {'X': [('x0', (x0, lod0)), ('x1', (x1, lod1))]}
@@ -72,14 +77,14 @@ class TestSeqConcatOpLevelZeroNestedSequence(TestSeqConcatOp):
     def set_data(self):
         # two level, batch size is 3
         x0 = np.random.random((4, 6, 3)).astype('float32')
-        lod0 = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        lod0 = [[2, 2], [1, 1, 1, 1]]
         x1 = np.random.random((7, 6, 3)).astype('float32')
-        lod1 = [[0, 2, 4], [0, 1, 3, 5, 7]]
+        lod1 = [[2, 2], [1, 2, 2, 2]]
         axis = 0
         level = 0
         self.inputs = {'X': [('x0', (x0, lod0)), ('x1', (x1, lod1))]}
         self.attrs = {'axis': axis, 'level': level}
-        out_lod = [[0, 2, 4], [0, 2, 5, 8, 11]]
+        out_lod = [[2, 2], [2, 3, 3, 3]]
         self.outputs = {'Out': (seq_concat(self.inputs, level), out_lod)}
 
 
@@ -87,14 +92,14 @@ class TestSeqConcatOplevelOneNestedSequence(TestSeqConcatOp):
     def set_data(self):
         # two level, batch size is 3
         x0 = np.random.random((4, 6, 3)).astype('float32')
-        lod0 = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        lod0 = [[2, 2], [1, 1, 1, 1]]
         x1 = np.random.random((7, 6, 3)).astype('float32')
-        lod1 = [[0, 3, 4], [0, 1, 3, 5, 7]]
+        lod1 = [[3, 1], [1, 2, 2, 2]]
         axis = 0
         level = 1
         self.inputs = {'X': [('x0', (x0, lod0)), ('x1', (x1, lod1))]}
         self.attrs = {'axis': axis, 'level': level}
-        out_lod = [[0, 5, 8], [0, 1, 2, 3, 5, 7, 8, 9, 11]]
+        out_lod = [[5, 3], [1, 1, 1, 2, 2, 1, 1, 2]]
         self.outputs = {'Out': (seq_concat(self.inputs, level), out_lod)}
 
 
@@ -102,14 +107,14 @@ class TestSeqConcatOpLevelZeroSequence(TestSeqConcatOp):
     def set_data(self):
         # two level, batch size is 3
         x0 = np.random.random((4, 3, 4)).astype('float32')
-        lod0 = [[0, 1, 2, 3, 4]]
+        lod0 = [[1, 1, 1, 1]]
         x1 = np.random.random((7, 3, 4)).astype('float32')
-        lod1 = [[0, 1, 3, 5, 7]]
+        lod1 = [[1, 2, 2, 2]]
         axis = 0
         level = 0
         self.inputs = {'X': [('x0', (x0, lod0)), ('x1', (x1, lod1))]}
         self.attrs = {'axis': axis, 'level': level}
-        out_lod = [[0, 2, 5, 8, 11]]
+        out_lod = [[2, 3, 3, 3]]
         self.outputs = {'Out': (seq_concat(self.inputs, level), out_lod)}
 
 
