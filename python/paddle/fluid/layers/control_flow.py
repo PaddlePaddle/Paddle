@@ -866,8 +866,7 @@ def array_write(x, i, array=None):
         Variable: The output LOD_TENSOR_ARRAY where the input tensor is written.
 
     Examples:
-
-        .. code-block::python
+        .. code-block:: python
 
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
