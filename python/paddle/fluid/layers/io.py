@@ -648,6 +648,26 @@ def read_file(reader):
 
 
 class Preprocessor(object):
+    """
+    A block for data pre-processing in reader.
+
+    Args:
+        reader (Variable): A reader variable.
+        name (str, default None): The name of the reader.
+
+    Examples:
+          .. code-block:: python
+
+            preprocessor = fluid.layers.io.Preprocessor(reader=reader)
+            with preprocessor.block():
+                img, lbl = preprocessor.inputs()
+                img_out = img / 2
+                lbl_out = lbl + 1
+                preprocessor.outputs(img_out, lbl_out)
+
+            data_file = fluid.layers.io.double_buffer(preprocessor())
+
+    """
     BEFORE_SUB_BLOCK = 0
     IN_SUB_BLOCK = 1
     AFTER_SUB_BLOCK = 2
