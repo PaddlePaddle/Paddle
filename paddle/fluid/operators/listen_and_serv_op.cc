@@ -300,10 +300,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   }
 
   int checkpoint_point_block_id = Attr<int>(kCheckpointBlockId);
-  auto *ctx = new ExecutorPrepareContext(*program, checkpoint_point_block_id);
+  auto ctx = executor.Prepare(*program, checkpoint_point_block_id);
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context =
-      std::shared_ptr<ExecutorPrepareContext>(ctx);
+      std::move(ctx);
 
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
