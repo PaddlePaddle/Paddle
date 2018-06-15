@@ -308,7 +308,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
                 &executor, program, &prefetch_var_name_to_prepared_ctx,
-                &ckpt_pre_context, rpc_service_.get());
+                ckpt_pre_context, rpc_service_.get());
 
   f(request_send_handler_.get());
   f(request_get_handler_.get());
