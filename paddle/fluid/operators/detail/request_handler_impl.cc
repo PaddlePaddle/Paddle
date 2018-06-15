@@ -124,7 +124,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
                                       const std::string& out_var_name) {
-  executor_->RunPreparedContext(checkpoint_prepared_ctx_, scope);
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
 }
 
