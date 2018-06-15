@@ -1057,6 +1057,7 @@ class Program(object):
             fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
 
     """
+
     def __init__(self):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
