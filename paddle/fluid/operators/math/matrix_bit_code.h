@@ -20,13 +20,39 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
+/**
+ * SimpleCodeTable class should support 3 functions:
+ *
+ * size_t size()
+ *   return the number of ids
+ *
+ * int get_max_code_length()
+ *   return the maximal code length
+ *
+ * SimpleCode operator()(size_t i)
+ *   return the i-th code. Code class is descriebed below.
+ *
+ * SimpleCode class should support 3 functions:
+ *
+ * int get_length()
+ *   return the length of the code
+ *
+ * size_t cal_index(int bit)
+ *   bit ranges from 0 to get_length() - 1
+ *   return the index for the (1+bit) level parent
+ *
+ * bool calc_bit(int bit)
+ *   return true if the bit level parent is the right child of (1+bit) level
+ *   parent
+ *
+ */
 
 /**
  * return the 1-based index of the highest bit set
  *
  * for x > 0:
  * \f[
- *    findLastSet(x) = 1 + \floor*{\log_{2}x}
+ *    FindLastSet(x) = 1 + \floor*{\log_{2}x}
  * \f]
  */
 inline constexpr size_t FindLastSet(size_t x) {
@@ -100,10 +126,6 @@ class MatrixBitCodeFunctor {
   */
   void MulGradError(const framework::Tensor& tmat,
                     const framework::Tensor& weight, framework::Tensor* input);
-  /* For j < code_length
-    tmat(i, j) == input(i)
-  */
-  void OutGrad(framework::Tensor* tmat, const framework::Tensor& input);
 
   size_t num_classes_;
   const int64_t* ids_;

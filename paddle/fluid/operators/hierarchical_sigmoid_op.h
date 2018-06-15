@@ -34,7 +34,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* w = ctx.Input<framework::Tensor>("W");
-    auto* ids = ctx.Input<framework::Tensor>("Ids");
+    auto* label = ctx.Input<framework::Tensor>("Label");
     auto* bias = ctx.Input<framework::Tensor>("Bias");
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* pre_out = ctx.Output<framework::Tensor>("PreOut");
@@ -50,7 +50,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     zero(dev_ctx, pre_out, static_cast<T>(0.0));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     math::RowwiseSum<DeviceContext, T> row_sum;
-    math::MatrixBitCodeFunctor<T> bit_code(num_classes, ids->data<int64_t>());
+    math::MatrixBitCodeFunctor<T> bit_code(num_classes, label->data<int64_t>());
 
     std::vector<int64_t> sum_dims({batch_size, 1UL});
     sum.mutable_data<T>(framework::make_ddim(sum_dims), ctx.GetPlace());
@@ -87,7 +87,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto* w_grad = ctx.Output<framework::Tensor>(framework::GradVarName("W"));
     auto* bias_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
-    auto* ids = ctx.Input<framework::Tensor>("Ids");
+    auto* label = ctx.Input<framework::Tensor>("Label");
     auto* pre_out = ctx.Input<framework::Tensor>("PreOut");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -101,9 +101,11 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
     auto pre_out_grad_mat = EigenMatrix<T>::From(pre_out_grad);
-    math::MatrixBitCodeFunctor<T> bit_code(num_classes, ids->data<int64_t>());
+    math::MatrixBitCodeFunctor<T> bit_code(num_classes, label->data<int64_t>());
     // softrelu derivative
-    bit_code.OutGrad(&pre_out_grad, *out_grad);
+    Eigen::array<int, 2> bcast({1, static_cast<int>(pre_out_grad.dims()[1])});
+    auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
+    pre_out_grad_mat = out_grad_mat.broadcast(bcast);
     pre_out_grad_mat.device(place) =
         pre_out_grad_mat *
         (static_cast<T>(1.0) - static_cast<T>(1.0) / pre_out_mat.exp());

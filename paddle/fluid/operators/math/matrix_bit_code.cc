@@ -18,32 +18,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-/**
- * CodeTable class should support 3 functions:
- *
- * size_t size()
- *   return the number of ids
- *
- * int getMaxCodeLength()
- *   return the maximal code length
- *
- * Code operator()(size_t i)
- *   return the i-th code. Code class is descriebed below.
- *
- * Code class should support 3 functions:
- *
- * int getLength()
- *   return the length of the code
- *
- * bool calcIndex(int bit)
- *   bit ranges from 0 to getLength() - 1
- *   return the index for the (1+bit) level parent
- *
- * bool calcBit(int bit)
- *   return true if the bit level parent is the right child of (1+bit) level
- *   parent
- *
- */
 template <typename T>
 void MatrixBitCodeFunctor<T>::Add(framework::Tensor* tmat,
                                   const framework::Tensor& vec) {
@@ -190,17 +164,6 @@ void MatrixBitCodeFunctor<T>::Sub(framework::Tensor* tmat) {
       }
     }
   }
-}
-
-template <typename T>
-void MatrixBitCodeFunctor<T>::OutGrad(framework::Tensor* tmat,
-                                      const framework::Tensor& input) {
-  size_t num_samples = tmat->dims()[0];
-  size_t code_length = tmat->dims()[1];
-  for (size_t i = 0; i < num_samples; ++i)
-    for (size_t j = 0; j < code_length; ++j) {
-      tmat->data<T>()[i * code_length + j] = input.data<T>()[i];
-    }
 }
 
 template class MatrixBitCodeFunctor<float>;

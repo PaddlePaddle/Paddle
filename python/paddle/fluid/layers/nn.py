@@ -3571,18 +3571,17 @@ def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
         shape=[num_classes - 1, dim],
         is_bias=False,
         dtype=input.dtype)
-    bias = helper.create_parameter(
-        attr=helper.bias_attr,
-        shape=[1, num_classes - 1],
-        is_bias=True,
-        dtype=input.dtype)
-
+    inputs = {"X": input, "W": weights, "Label": label}
+    if helper.bias_attr:
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=[1, num_classes - 1],
+            is_bias=True,
+            dtype=input.dtype)
+        inputs['Bias'] = bias
     helper.append_op(
         type="hierarchical_sigmoid",
-        inputs={"X": input,
-                "W": weights,
-                "Ids": label,
-                "Bias": bias},
+        inputs=inputs,
         outputs={"Out": out,
                  "PreOut": pre_out},
         attrs={"num_classes": num_classes})
