@@ -234,8 +234,56 @@ class BlockGuard(object):
 
 class ParallelDo(object):
     """
-    ParallelDo class is used to create a ParallelDo. 
-    It will be soon deprecated, please use ParallelExecutor instead.
+    ParallelDo is used to represent multi-thread data parallel processing.
+
+    Its vanilla implementation can be shown as the following (:math:`|` means 
+    single thread and :math:`||||` means multiple threads)
+
+    .. code-block:: text
+
+      In the forward pass
+        |      Split input onto different devices
+        |      Copy parameter onto different devices
+        ||||   Compute forward pass in parallel
+        |      Merge output from different devices
+
+      In the backward pass
+        |      Split output@grad onto different devices
+        ||||   Compute backward pass in parallel
+        |      accumulate param@grad from different devices to the first device
+        |      Merge input@grad from different devices
+        |      Copy param@grad to the place of parallel_do_op
+
+    Examples:
+
+    .. code-block:: python
+
+      images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+      label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+      # ParallelDo version & Single-thread version
+      if thread_num > 1:
+          places = fluid.layers.get_places(thread_num)
+          pd = fluid.layers.ParallelDo(places)
+          with pd.do():
+              images = pd.read_input(images)
+              label = pd.read_input(label)
+              predict = cnn_model(images)
+              cost = fluid.layers.cross_entropy(input=predict, label=label)
+
+              avg_cost = fluid.layers.mean(x=cost)
+              pd.write_output(avg_cost)
+
+          avg_cost = pd()
+          avg_cost = fluid.layers.mean(avg_cost)
+      else:
+          predict = cnn_model(images)
+          cost = fluid.layers.cross_entropy(input=predict, label=label)
+          avg_cost = fluid.layers.mean(x=cost)
+
+    .. warning::
+    
+       It will be soon deprecated, please use ParallelExecutor instead.
     """
 
     def __init__(self, places, use_nccl=False, name=None):
