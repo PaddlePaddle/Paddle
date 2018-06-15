@@ -6,7 +6,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
+# Unlessf required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
@@ -51,7 +51,12 @@ def create_parameter(shape,
                      is_bias=False,
                      default_initializer=None):
     """
-    Create a parameter
+    Create a parameter. The parameter is a learnable variable, which can have
+    gradient, and can be optimized.
+
+    NOTE: this is a very low-level API. This API is useful when you create
+    operator by your self. instead of using layers.
+
     Args:
         shape(list[int]): shape of the parameter
         dtype(string): element type of the parameter
@@ -63,7 +68,12 @@ def create_parameter(shape,
         default_initializer(Initializer): initializer for the parameter
 
     Returns:
-        Parameter: the created parameter
+        the created parameter.
+
+    Examples:
+        >>> W = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+        >>> data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+        >>> hidden = fluid.layers.matmul(x=data, y=W)
     """
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
@@ -207,6 +217,7 @@ def assign(input, output):
 
     Examples:
         .. code-block:: python
+
           out = fluid.layers.create_tensor(dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           fluid.layers.assign(hidden, out)
