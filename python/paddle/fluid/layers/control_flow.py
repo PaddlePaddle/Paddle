@@ -1004,7 +1004,7 @@ def array_read(array, i):
 
             tmp = fluid.layers.zeros(shape=[10], dtype='int32')
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            arr = layers.array_read(tmp, i=i)
+            arr = fluid.layers.array_read(tmp, i=i)
 
     """
     helper = LayerHelper('array_read', **locals())
