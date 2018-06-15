@@ -4210,8 +4210,8 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-        Output(i, x, y) = Input(i, x, y) / \left(
-        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+        Output(i, x, y) = Input(i, x, y) / \left( \\
+        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)} \\
         (Input(j, x, y))^2\right)^{\beta}
 
     In the above equation:
