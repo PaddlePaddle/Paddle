@@ -24,7 +24,7 @@ Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
 2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
 3. modify trainer program add split_op to each grad variable.
-4. append send_op to send splited variables to server and 
+4. append send_op to send splited variables to server and
 5. add recv_op to fetch params(splited blocks or origin param) from server.
 6. append concat_op to merge splited blocks to update local weights.
 
@@ -44,7 +44,7 @@ import numpy as np
 from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
 from ..framework import Program, default_main_program, \
-                        default_startup_program, \
+                        default_startup_program, Block, \
                         Variable, Parameter, grad_var_name
 from details import *
 
@@ -471,7 +471,7 @@ class DistributeTranspiler:
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
                                          self.origin_program, merged_var)
             else:
-                self._append_pserver_non_opt_ops(block, op, endpoint)
+                self._append_pserver_non_opt_ops(block, op)
 
         def __op_have_grad_input__(op):
             for varname in op.input_arg_names:
@@ -479,13 +479,40 @@ class DistributeTranspiler:
                     return varname
             return ""
 
+        def __clone_sub_block__(op, program):
+            if not op.has_attr('sub_block'):
+                return
+
+            origin_block_desc = op.attr('sub_block')
+            origin_block = self.origin_program.block(origin_block_desc.id)
+            assert isinstance(origin_block, Block)
+            print("origin_block's parent_idx: ", origin_block.parent_idx)
+            new_sub_block = program.create_block(origin_block.parent_idx)
+
+            # clone vars
+            for var in origin_block.vars:
+                new_sub_block.clone_variable(var)
+
+            # clone ops
+            for op in origin_block.ops:
+                self._clone_op(pserver_program, new_sub_block, op)
+                #  self._append_pserver_non_opt_ops(new_sub_block, op)
+                # clone sub_block of op
+                __clone_sub_block__(op, program)
+
+            # reset the block of op
+            op.set_attr('sub_block', new_sub_block)
+
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
+        for op in lr_ops:
+            print("LR Op: ", op)
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
             for _, op in enumerate(lr_ops):
-                self._append_pserver_non_opt_ops(lr_decay_block, op, endpoint)
+                self._append_pserver_non_opt_ops(lr_decay_block, op)
+                __clone_sub_block__(op, pserver_program)
 
         # append op to the current block
         grad_to_block_id = []
@@ -547,6 +574,8 @@ class DistributeTranspiler:
             inputs={'X': recv_inputs},
             outputs={},
             attrs=attrs)
+
+        # step6 append blocks in lr_decay_op
 
         pserver_program.sync_with_cpp()
         return pserver_program
@@ -1116,7 +1145,35 @@ class DistributeTranspiler:
                     break
         return grad_block
 
-    def _append_pserver_non_opt_ops(self, optimize_block, opt_op, endpoint):
+    def _clone_op(self, program, block, op):
+        inputs = self._get_input_map_from_op(
+            self.origin_program.global_block().vars, op)
+        for key, varlist in inputs.iteritems():
+            if not isinstance(varlist, list):
+                varlist = [varlist]
+            for var in varlist:
+                if var not in program.global_block().vars:
+                    print("Find not in var:\n")
+                    print(var)
+                    print(block.vars)
+                    block.clone_variable(var)
+
+        outputs = self._get_output_map_from_op(
+            self.origin_program.global_block().vars, op)
+        for key, varlist in outputs.iteritems():
+            if not isinstance(varlist, list):
+                varlist = [varlist]
+            for var in varlist:
+                if var not in program.global_block().vars:
+                    print("Find not in var:\n")
+                    print(var)
+                    print(block.vars)
+                    block.clone_variable(var)
+
+        program.global_block().append_op(
+            type=op.type, inputs=inputs, outputs=outputs, attrs=op.attrs)
+
+    def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(

@@ -72,6 +72,7 @@ class VariableResponse {
 
   // should call parse first.
   framework::Variable* GetVar() {
+    LOG(ERROR) << "XXX GetVar: " << meta_.varname();
     if (create_scope_) {
       return local_scope_->Var(meta_.varname());
     }

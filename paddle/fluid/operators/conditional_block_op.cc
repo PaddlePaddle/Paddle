@@ -29,6 +29,7 @@ class ConditionalOp : public framework::OperatorBase {
  protected:
   std::vector<const framework::LoDTensor *> InputTensors(
       const framework::Scope &scope) const {
+    LOG(ERROR) << "XXXX InputTensors";
     std::vector<const framework::LoDTensor *> retv;
     auto xs = Inputs("X");
     retv.resize(xs.size(), nullptr);
@@ -39,6 +40,7 @@ class ConditionalOp : public framework::OperatorBase {
           PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", var_name);
           return &var->Get<framework::LoDTensor>();
         });
+    LOG(ERROR) << "XXXX InputTensors end";
     return retv;
   }
 
@@ -80,8 +82,10 @@ class ConditionalBlockOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    LOG(ERROR) << "XXXX";
     auto xs = InputTensors(scope);
 
+    LOG(ERROR) << "XXXX";
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
       need_run = ScalarCondition(xs);
@@ -91,17 +95,27 @@ class ConditionalBlockOp : public ConditionalOp {
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
     }
 
+    LOG(ERROR) << "XXXX";
     if (need_run) {
+      LOG(ERROR) << "XXXX";
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
+      LOG(ERROR) << "XXXX";
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
+      LOG(ERROR) << "XXXX";
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
+      LOG(ERROR) << "XXXX";
+      LOG(ERROR) << block;
+      LOG(ERROR) << (block == nullptr);
+      LOG(ERROR) << block->ID();
+      LOG(ERROR) << block->Program();
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+      LOG(ERROR) << "XXXX" << block->ID();
     }
   }
 };
