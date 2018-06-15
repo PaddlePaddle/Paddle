@@ -69,8 +69,10 @@ def split_lod_tensor(input, mask, level=0):
         level(int): The specific lod level to split.
 
     Returns:
-        Variable: The true branch of tensor as per the mask applied to input.
-        Variable: The false branch of tensor as per the mask applied to input.
+        tuple(Variable, Variable):
+        The true branch of tensor as per the mask applied to input.
+
+        The false branch of tensor as per the mask applied to input.
 
     Examples:
         .. code-block:: python
