@@ -39,13 +39,13 @@ class TestLoDTensorArray(unittest.TestCase):
 
             t = core.LoDTensor()
             t.set(numpy.array([i + 10], dtype='float32'), cpu)
-            t.set_recursive_sequence_lengths([[2]])
+            t.set_recursive_sequence_lengths([[1]])
             tensor_array[i] = t
             t = tensor_array[i]
             self.assertEqual(
                 numpy.array(t), numpy.array(
                     [i + 10], dtype='float32'))
-            self.assertEqual([[2]], t.recursive_sequence_lengths())
+            self.assertEqual([[1]], t.recursive_sequence_lengths())
 
 
 if __name__ == '__main__':

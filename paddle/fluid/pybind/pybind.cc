@@ -153,8 +153,9 @@ PYBIND11_PLUGIN(core) {
                        recursive_sequence_lengths.end(),
                        std::back_inserter(new_lod));
              LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE(CheckLoD(new_offset_lod, -1),
-                            "the provided lod info is invalid");
+             PADDLE_ENFORCE(
+                 CheckLoD(new_offset_lod, -1),
+                 "the provided recursive_sequence_lengths info is invalid");
              new (&instance) LoDTensor(new_offset_lod);
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
@@ -184,7 +185,7 @@ PYBIND11_PLUGIN(core) {
              LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
              PADDLE_ENFORCE(
                  CheckLoD(new_offset_lod, vectorize(self.dims()).front()),
-                 "the provided lod info is invalid");
+                 "the provided recursive_sequence_lengths info is invalid");
              self.set_lod(new_offset_lod);
            })
       .def("lod",

@@ -52,8 +52,8 @@ class TestEditDistanceOp(OpTest):
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = False
-        x1 = np.array([[0, 12, 3, 5, 8, 2]]).astype("int64")
-        x2 = np.array([[0, 12, 4, 7, 8]]).astype("int64")
+        x1 = np.array([[12, 3, 5, 8, 2]]).astype("int64")
+        x2 = np.array([[12, 4, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
         x1_lod = [1, 4]
@@ -87,8 +87,8 @@ class TestEditDistanceOpNormalized(OpTest):
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = True
-        x1 = np.array([[0, 10, 3, 6, 5, 8, 2]]).astype("int64")
-        x2 = np.array([[0, 10, 4, 6, 7, 8]]).astype("int64")
+        x1 = np.array([[10, 3, 6, 5, 8, 2]]).astype("int64")
+        x2 = np.array([[10, 4, 6, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
         x1_lod = [1, 2, 3]
