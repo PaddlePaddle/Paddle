@@ -507,11 +507,11 @@ def dynamic_lstmp(input,
         .. code-block:: python
 
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='sequence', shape=(128),
+            data = fluid.layers.data(name='sequence', shape=[1],
                                      dtype='int32', lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
-            fc_out = fluid.layers.fc(input=hidden, size=hidden_dim * 4,
+            fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                      act=None, bias_attr=None)
             proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
                                                      size=hidden_dim * 4,
@@ -641,7 +641,7 @@ def dynamic_gru(input,
         .. code-block:: python
 
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='sequence', shape=(128),
+            data = fluid.layers.data(name='sequence', shape=[1],
                                      dtype='int32', lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
