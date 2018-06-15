@@ -240,14 +240,15 @@ class ExtraLayerAttribute(object):
     :type error_clipping_threshold: float
     :param drop_rate: Dropout rate. Dropout will create a mask on layer output.
                       The dropout rate is the zero rate of this mask. The
-                      details of what dropout is please refer to `here
-                      <https://www.cs.toronto.edu/~hinton/absps/
-                      JMLRdropout.pdf>`_.
+                      details of what dropout is please refer to `JMLRdropout
+                      <https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf
+                      >`_.
     :type drop_rate: float
     :param device: device ID of layer. device=-1, use CPU. device>=0, use GPU.
-                   The details allocation in parallel_nn please refer to `here
-                   <http://www.paddlepaddle.org/doc/ui/cmd_argument/
-                   use_case.html#case-2-specify-layers-in-different-devices>`_.
+                   The details allocation in parallel_nn please refer to `use_case
+                   <https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2
+                   /howto/cmd_parameter/use_case_en.md#case-2-specify-layers-in
+                   -different-devices>`_.
     :type device: int
     """
 
