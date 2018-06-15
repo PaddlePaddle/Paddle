@@ -654,6 +654,29 @@ class WhileGuard(BlockGuard):
 
 
 class While(object):
+    """
+    while loop control flow.
+
+    Args:
+        cond (Variable): condition used to compare.
+        name (str): The name of this layer.
+
+    Examples:
+          .. code-block:: python
+
+            d0 = layers.data("d0", shape=[10], dtype='float32')
+            data_array = layers.array_write(x=d0, i=i)
+            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
+
+            cond = layers.less_than(x=i, y=array_len)
+            while_op = layers.While(cond=cond)
+            with while_op.block():
+                d = layers.array_read(array=data_array, i=i)
+                i = layers.increment(x=i, in_place=True)
+                layers.array_write(result, i=i, array=d)
+                layers.less_than(x=i, y=array_len, cond=cond)
+    """
+
     BEFORE_WHILE_BLOCK = 0
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
