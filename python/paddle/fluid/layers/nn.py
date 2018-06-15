@@ -4475,6 +4475,7 @@ def image_resize(input,
     and the resizing only applies on the last two dimensions(hight and width).
 
     Supporting resample methods:
+
         'BILINEAR' : Bilinear interpolation
 
     Args:
@@ -4494,8 +4495,8 @@ def image_resize(input,
                        Default: 'BILINEAR'
 
     Returns:
-        out (Variable): The output is a 4-D tensor of the shape
-                        (num_batches, channls, out_h, out_w).
+        Variable: The output is a 4-D tensor of the shape
+        (num_batches, channls, out_h, out_w).
 
     Examples:
         .. code-block:: python
@@ -4579,7 +4580,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
         resample (str): resample method, default: BILINEAR.
 
     Returns:
-        out (Variable): The output is a 4-D tensor of the shape
+        Variable: The output is a 4-D tensor of the shape
                         (num_batches, channls, out_h, out_w).
     """
     in_shape = input.shape

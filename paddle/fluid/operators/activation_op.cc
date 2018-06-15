@@ -133,7 +133,7 @@ $out = \max(x, 0)$
 __attribute__((unused)) constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
-$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
