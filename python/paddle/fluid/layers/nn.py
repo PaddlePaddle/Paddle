@@ -2935,7 +2935,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                        will be named automatically.
 
     Returns:
-        List: The list of segmented tensor variables.
+        list(Variable): The list of segmented tensor variables.
 
     Examples:
         .. code-block:: python
