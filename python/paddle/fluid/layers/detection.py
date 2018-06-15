@@ -210,53 +210,68 @@ def bipartite_match(dist_matrix,
                     dist_threshold=None,
                     name=None):
     """
-    **Bipartite matchint operator**
-
-    This operator is a greedy bipartite matching algorithm, which is used to
-    obtain the matching with the maximum distance based on the input
+    This operator implements a greedy bipartite matching algorithm, which is
+    used to obtain the matching with the maximum distance based on the input
     distance matrix. For input 2D matrix, the bipartite matching algorithm can
-    find the matched column for each row, also can find the matched row for
-    each column. And this operator only calculate matched indices from column
-    to row. For each instance, the number of matched indices is the number of
-    of columns of the input ditance matrix.
+    find the matched column for each row (matched means the largest distance),
+    also can find the matched row for each column. And this operator only
+    calculate matched indices from column to row. For each instance,
+    the number of matched indices is the column number of the input distance
+    matrix.
 
-    There are two outputs to save matched indices and distance.
-    A simple description, this algothrim matched the best (maximum distance)
+    There are two outputs, matched indices and distance.
+    A simple description, this algorithm matched the best (maximum distance)
     row entity to the column entity and the matched indices are not duplicated
     in each row of ColToRowMatchIndices. If the column entity is not matched
     any row entity, set -1 in ColToRowMatchIndices.
 
-    Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
+    NOTE: the input DistMat can be LoDTensor (with LoD) or Tensor.
     If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
     If Tensor, the height of ColToRowMatchIndices is 1.
+
+    NOTE: This API is a very low level API. It is used by :code:`ssd_loss`
+    layer. Please consider to use :code:`ssd_loss` instead.
 
     Args:
         dist_matrix(Variable): This input is a 2-D LoDTensor with shape
             [K, M]. It is pair-wise distance matrix between the entities
             represented by each row and each column. For example, assumed one
             entity is A with shape [K], another entity is B with shape [M]. The
-            dist_matirx[i][j] is the distance between A[i] and B[j]. The bigger
-            the distance is, the better macthing the pairs are. Please note,
-            This tensor can contain LoD information to represent a batch of
-            inputs. One instance of this batch can contain different numbers of
-            entities.
+            dist_matrix[i][j] is the distance between A[i] and B[j]. The bigger
+            the distance is, the better matching the pairs are.
+
+            NOTE: This tensor can contain LoD information to represent a batch
+            of inputs. One instance of this batch can contain different numbers
+            of entities.
         match_type(string|None): The type of matching method, should be
-           'bipartite' or 'per_prediction', 'bipartite' by defalut.
+           'bipartite' or 'per_prediction'. [default 'bipartite'].
         dist_threshold(float|None): If `match_type` is 'per_prediction',
             this threshold is to determine the extra matching bboxes based
-            on the maximum distance, 0.5 by defalut.
+            on the maximum distance, 0.5 by default.
     Returns:
-        match_indices(Variable): A 2-D Tensor with shape [N, M] in int type.
-            N is the batch size. If match_indices[i][j] is -1, it
-            means B[j] does not match any entity in i-th instance.
-            Otherwise, it means B[j] is matched to row
-            match_indices[i][j] in i-th instance. The row number of
-            i-th instance is saved in match_indices[i][j].
-        match_distance(Variable): A 2-D Tensor with shape [N, M] in float type.
-            N is batch size. If match_indices[i][j] is -1,
-            match_distance[i][j] is also -1.0. Otherwise, assumed
-            match_distance[i][j] = d, and the row offsets of each instance
-            are called LoD. Then match_distance[i][j] = dist_matrix[d+LoD[i]][j].
+        tuple: a tuple with two elements is returned. The first is
+        matched_indices, the second is matched_distance.
+
+        The matched_indices is a 2-D Tensor with shape [N, M] in int type.
+        N is the batch size. If match_indices[i][j] is -1, it
+        means B[j] does not match any entity in i-th instance.
+        Otherwise, it means B[j] is matched to row
+        match_indices[i][j] in i-th instance. The row number of
+        i-th instance is saved in match_indices[i][j].
+
+        The matched_distance is a 2-D Tensor with shape [N, M] in float type
+        . N is batch size. If match_indices[i][j] is -1,
+        match_distance[i][j] is also -1.0. Otherwise, assumed
+        match_distance[i][j] = d, and the row offsets of each instance
+        are called LoD. Then match_distance[i][j] =
+        dist_matrix[d+LoD[i]][j].
+
+    Examples:
+
+        >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+        >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+        >>> iou = fluid.layers.iou_similarity(x=x, y=y)
+        >>> matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
     """
     helper = LayerHelper('bipartite_match', **locals())
     match_indices = helper.create_tmp_variable(dtype='int32')
@@ -364,7 +379,7 @@ def ssd_loss(location,
              normalize=True,
              sample_size=None):
     """
-    **Multi-box loss layer for object dection algorithm of SSD**
+    **Multi-box loss layer for object detection algorithm of SSD**
 
     This layer is to compute dection loss for SSD given the location offset
     predictions, confidence predictions, prior boxes and ground-truth boudding
@@ -372,21 +387,35 @@ def ssd_loss(location,
     is a weighted sum of the localization loss (or regression loss) and
     confidence loss (or classification loss) by performing the following steps:
 
-    1. Find matched boundding box by bipartite matching algorithm.
+    1. Find matched bounding box by bipartite matching algorithm.
+
       1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
+
       1.2 Compute matched boundding box by bipartite matching algorithm.
+
     2. Compute confidence for mining hard examples
+
       2.1. Get the target label based on matched indices.
+
       2.2. Compute confidence loss.
+
     3. Apply hard example mining to get the negative example indices and update
        the matched indices.
+
     4. Assign classification and regression targets
+
       4.1. Encoded bbox according to the prior boxes.
+
       4.2. Assign regression targets.
+
       4.3. Assign classification targets.
+
     5. Compute the overall objective loss.
+
       5.1 Compute confidence loss.
+
       5.1 Compute localization loss.
+
       5.3 Compute the overall weighted loss.
 
     Args:
@@ -421,39 +450,36 @@ def ssd_loss(location,
         mining_type (str): The hard example mining type, should be 'hard_example'
             or 'max_negative', now only support `max_negative`.
         normalize (bool): Whether to normalize the SSD loss by the total number
-            of output locations, True by defalut.
+            of output locations, True by default.
         sample_size (int): The max sample size of negative box, used only when
             mining_type is 'hard_example'.
 
     Returns:
-        Variable: The weighted sum of the localization loss and confidence loss,
-            with shape [N * Np, 1], N and Np are the same as they are
-            in `location`.
+        The weighted sum of the localization loss and confidence loss, with \
+        shape [N * Np, 1], N and Np are the same as they are in `location`.
 
     Raises:
-        ValueError: If mining_type is 'hard_example', now only support
-            mining type of `max_negative`.
+        ValueError: If mining_type is 'hard_example', now only support mining \
+        type of `max_negative`.
 
     Examples:
-        .. code-block:: python
-
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
-            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32')
-            gt_label = layers.data(
-                name='gt_label', shape=[1], lod_level=1, dtype='float32')
-            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+        >>> pb = fluid.layers.data(
+        >>>                   name='prior_box',
+        >>>                   shape=[10, 4],
+        >>>                   append_batch_size=False,
+        >>>                   dtype='float32')
+        >>> pbv = fluid.layers.data(
+        >>>                   name='prior_box_var',
+        >>>                   shape=[10, 4],
+        >>>                   append_batch_size=False,
+        >>>                   dtype='float32')
+        >>> loc = fluid.layers.data(name='target_box', shape=[10, 4], dtype='float32')
+        >>> scores = fluid.layers.data(name='scores', shape=[10, 21], dtype='float32')
+        >>> gt_box = fluid.layers.data(
+        >>>         name='gt_box', shape=[4], lod_level=1, dtype='float32')
+        >>> gt_label = fluid.layers.data(
+        >>>         name='gt_label', shape=[1], lod_level=1, dtype='float32')
+        >>> loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
     """
 
     helper = LayerHelper('ssd_loss', **locals())
