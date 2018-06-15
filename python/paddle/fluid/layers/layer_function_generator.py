@@ -76,7 +76,6 @@ def _generate_doc_string_(op_proto):
         line_begin = '    {0}: '.format(_convert_(each_input.name))
         buf.write(line_begin)
         buf.write(escape_math(each_input.comment))
-        buf.write('\n')
         if each_input.duplicable:
             buf.write("  Duplicatable.")
         if each_input.dispensable:
