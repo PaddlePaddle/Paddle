@@ -111,8 +111,21 @@ def create_global_var(shape,
 
 def cast(x, dtype):
     """
-    This function takes in the input with input_dtype
-    and casts it to the output_dtype as the output.
+    This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts 
+    it to the output with :attr:`dtype`.
+
+    Args:
+        x (Variable): The input Variable for casting.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output Variable.
+
+    Returns:
+        Variable: The output Variable after casting.
+
+    Examples:
+        .. code-block:: python
+             
+            data = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            result = fluid.layers.cast(x=data, dtype='float64')
     """
     helper = LayerHelper('cast', **locals())
     out = helper.create_tmp_variable(dtype=dtype)
