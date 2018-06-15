@@ -25,20 +25,72 @@ import utils
 import random
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
-    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
-    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
-    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
-    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
-    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
-    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
-    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop', 'mean_iou'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'random_crop',
+    'mean_iou',
 ]
 
 
@@ -1275,8 +1327,6 @@ def conv2d(input,
           conv2d = fluid.layers.conv2d(
               input=data, num_filters=2, filter_size=3, act="relu")
     """
-    if stride is None:
-        stride = [1, 1]
 
     num_channels = input.shape[1]
 
@@ -1308,6 +1358,171 @@ def conv2d(input,
 
     def _get_default_param_initializer():
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return Normal(0.0, std, 0)
+
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        default_initializer=_get_default_param_initializer())
+
+    pre_bias = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type=l_type,
+        inputs={
+            'Input': input,
+            'Filter': filter_param,
+        },
+        outputs={"Output": pre_bias},
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': use_mkldnn
+        })
+
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+
+    return helper.append_activation(pre_act)
+
+
+def conv3d(input,
+           num_filters,
+           filter_size,
+           stride=1,
+           padding=0,
+           dilation=1,
+           groups=None,
+           param_attr=None,
+           bias_attr=None,
+           use_cudnn=True,
+           use_mkldnn=False,
+           act=None,
+           name=None):
+    """
+    **Convlution3D Layer**
+
+    The convolution3D layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are in NCDHW format. Where N is batch size C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    but adds one dimension(depth). If bias attribution and activation type are
+    provided, bias is added to the output of the convolution, and the
+    corresponding activation function is applied to the final result.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
+                   different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+
+        - Output:
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+
+    Args:
+        input (Variable): The input image with [N, C, D, H, W] format.
+            num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
+            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+        padding (int|tuple): The padding size. If padding is a tuple, it must
+            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
+            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups (int): The groups number of the Conv3d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1
+        param_attr (ParamAttr): The parameters to the Conv3d Layer. Default: None
+        bias_attr (ParamAttr): Bias parameter for the Conv3d layer. Default: None
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        use_mkldnn (bool): Use mkldnn kernels or not.
+        act (str): Activation type. Default: None
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable storing the convolution and \
+                  non-linearity activation result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv3d(
+              input=data, num_filters=2, filter_size=3, act="relu")
+    """
+
+    l_type = 'conv3d'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+
+    num_channels = input.shape[1]
+
+    if groups is None:
+        num_filter_channels = num_channels
+    else:
+        if num_channels % groups != 0:
+            raise ValueError("num_channels must be divisible by groups.")
+        num_filter_channels = num_channels / groups
+
+    filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
+    stride = utils.convert_to_list(stride, 3, 'stride')
+    padding = utils.convert_to_list(padding, 3, 'padding')
+    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
+
+    input_shape = input.shape
+    filter_shape = [num_filters, num_filter_channels] + filter_size
+
+    def _get_default_param_initializer():
+        std = (2.0 / (filter_size[0]**3 * num_channels))**0.5
         return Normal(0.0, std, 0)
 
     filter_param = helper.create_parameter(
@@ -1526,12 +1741,84 @@ def pool2d(input,
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
-    helper = LayerHelper('pool2d', **locals())
+    l_type = 'pool2d'
+
+    helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type="pool2d",
+        type=l_type,
+        inputs={"X": input},
+        outputs={"Out": pool_out},
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "global_pooling": global_pooling,
+            "strides": pool_stride,
+            "paddings": pool_padding,
+            "use_cudnn": use_cudnn,
+            "ceil_mode": ceil_mode,
+            "use_mkldnn": use_mkldnn
+        })
+
+    return pool_out
+
+
+def pool3d(input,
+           pool_size=-1,
+           pool_type="max",
+           pool_stride=1,
+           pool_padding=0,
+           global_pooling=False,
+           use_cudnn=True,
+           ceil_mode=False,
+           use_mkldnn=False,
+           name=None):
+    """
+    This function adds the operator for pooling in 3-dimensions, using the
+    pooling configurations mentioned in input parameters.
+
+    Args:
+        input (Variable): ${input_comment}
+        pool_size (int): ${ksize_comment}
+        pool_type (str): ${pooling_type_comment}
+        pool_stride (int): stride of the pooling layer.
+        pool_padding (int): padding size.
+        global_pooling (bool): ${global_pooling_comment}
+        use_cudnn (bool): ${use_cudnn_comment}
+        ceil_mode (bool): ${ceil_mode_comment}
+        use_mkldnn (bool): ${use_mkldnn_comment}
+        name (str): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: output of pool3d layer.
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if global_pooling is False and pool_size == -1:
+        raise ValueError(
+            "When the global_pooling is False, pool_size must be passed "
+            "and be a valid value. Received pool_size: " + str(pool_size))
+
+    pool_size = utils.convert_to_list(pool_size, 3, 'pool_size')
+    pool_padding = utils.convert_to_list(pool_padding, 3, 'pool_padding')
+    pool_stride = utils.convert_to_list(pool_stride, 3, 'pool_stride')
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
+
+    l_type = "pool3d"
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type=l_type,
         inputs={"X": input},
         outputs={"Out": pool_out},
         attrs={
@@ -1936,6 +2223,173 @@ def conv2d_transpose(input,
     pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='conv2d_transpose',
+        inputs={'Input': [input],
+                'Filter': [img_filter]},
+        outputs={'Output': pre_bias},
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn
+        })
+
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    out = helper.append_activation(pre_act)
+    return out
+
+
+def conv3d_transpose(input,
+                     num_filters,
+                     output_size=None,
+                     filter_size=None,
+                     padding=0,
+                     stride=1,
+                     dilation=1,
+                     groups=None,
+                     param_attr=None,
+                     bias_attr=None,
+                     use_cudnn=True,
+                     act=None,
+                     name=None):
+    """
+    **Convlution3D transpose layer**
+
+    The convolution3D transpose layer calculates the output based on the input,
+    filter, and dilations, strides, paddings. Input(Input) and output(Output)
+    are in NCDHW format. Where N is batch size, C is the number of channels,
+    D is the depth of the feature, H is the height of the feature, and W
+    is the width of the feature. Parameters(dilations, strides, paddings) are
+    two elements. These two elements represent height and width, respectively.
+    The details of convolution transpose layer, please refer to the following
+    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = W \\ast X
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast` : Convolution transpose operation.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
+                   different.
+
+    Example:
+
+        - Input:
+
+          Input shape: $(N, C_{in}, D_{in}, H_{in}, W_{in})$
+
+          Filter shape: $(C_{in}, C_{out}, D_f, H_f, W_f)$
+
+        - Output:
+
+          Output shape: $(N, C_{out}, D_{out}, H_{out}, W_{out})$
+
+        Where
+
+        .. math::
+
+           D_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
+           H_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
+           W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
+
+    Args:
+        input(Variable): The input image with [N, C, D, H, W] format.
+        num_filters(int): The number of the filter. It is as same as the output
+            image channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain three integers, (image_D, image_H, image_W). This
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square. None if use output size to
+            calculate filter_size.
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
+            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
+            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups(int): The groups number of the Conv3d transpose layer. Inspired by
+            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+            when group=2, the first half of the filters is only connected to the
+            first half of the input channels, while the second half of the
+            filters is only connected to the second half of the input channels.
+            Default: groups=1
+        param_attr(ParamAttr): The parameters to the Conv3d_transpose Layer.
+            Default: None
+        bias_attr(ParamAttr): Bias parameter for the Conv3d layer. Default: None
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        act(str): Activation type. Default: None
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable storing the convolution transpose result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+       .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv3d_transpose(
+              input=data, num_filters=2, filter_size=3)
+    """
+    l_type = "conv3d_transpose"
+    helper = LayerHelper(l_type, **locals())
+    if not isinstance(input, Variable):
+        raise TypeError("Input of conv3d_transpose must be Variable")
+    input_channel = input.shape[1]
+
+    padding = utils.convert_to_list(padding, 3, 'padding')
+    stride = utils.convert_to_list(stride, 3, 'stride')
+    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
+
+    if filter_size is None:
+        if output_size is None:
+            raise ValueError("output_size must be set when filter_size is None")
+        if isinstance(output_size, int):
+            output_size = [output_size, output_size]
+
+        d_in = input.shape[2]
+        h_in = input.shape[3]
+        w_in = input.shape[4]
+
+        filter_size_d = (output_size[0] - (d_in - 1) * stride[0] + 2 *
+                         padding[0] - 1) / dilation[0] + 1
+        filter_size_h = (output_size[1] - (h_in - 1) * stride[1] + 2 *
+                         padding[1] - 1) / dilation[1] + 1
+        filter_size_w = (output_size[2] - (w_in - 1) * stride[2] + 2 *
+                         padding[2] - 1) / dilation[2] + 1
+        filter_size = [filter_size_d, filter_size_h, filter_size_w]
+    else:
+        filter_size = utils.convert_to_list(filter_size, 3,
+                                            'conv3d_transpose.filter_size')
+
+    groups = 1 if groups is None else groups
+    filter_shape = [input_channel, num_filters / groups] + filter_size
+    img_filter = helper.create_parameter(
+        dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
+
+    pre_bias = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type=l_type,
         inputs={'Input': [input],
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
