@@ -252,15 +252,14 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "Output of Softshrink operator");
     AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
     AddComment(R"DOC(
-Softshrink Activation Operator.
+:strong:`Softshrink Activation Operator`
 
-$$
-out = \begin{cases} 
-    x - \lambda, \text{if } x > \lambda \\
-    x + \lambda, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases} 
+         x - \lambda, \text{if } x > \lambda \\
+         x + \lambda, \text{if } x < -\lambda \\
+         0,  \text{otherwise}
+         \end{cases}
 
 )DOC");
   }
