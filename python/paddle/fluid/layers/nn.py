@@ -2024,14 +2024,14 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     '''
-    **Beam Search**
+    ${beam_search}
 
     This function implements the beam search algorithm.
 
     Beam search is a classical algorithm for selecting candidate words
     in a machine translation task.
 
-    Refer to `Beam search<https://en.wikipedia.org/wiki/Beam_search>`_
+    Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
 
     Args:
@@ -2048,11 +2048,11 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     Examples:
         .. code-block:: python
 
-        # current_score is a Tensor of shape (num_batch_size, embed_size), which
-        # consists score of each candidate word.
-        topk_scores, topk_indices = pd.topk(current_score, k=50)
-        selected_ids, selected_scores = pd.beam_search(
-            pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
+             # current_score is a Tensor of shape (num_batch_size, embed_size), which
+             # consists score of each candidate word.
+             topk_scores, topk_indices = pd.topk(current_score, k=50)
+             selected_ids, selected_scores = pd.beam_search(
+                 pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
     '''
     helper = LayerHelper('beam_search', **locals())
     score_type = scores.dtype

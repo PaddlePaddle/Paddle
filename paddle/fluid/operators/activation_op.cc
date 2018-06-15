@@ -112,7 +112,7 @@ $$out = \frac{1}{1 + e^{-x}}$$
 __attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
-$$out = \log \frac{1}{1 + e^{-x}}$$
+$$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -140,7 +140,7 @@ $$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 __attribute__((unused)) constexpr char TanhShrinkDoc[] = R"DOC(
 TanhShrink Activation Operator.
 
-$$out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
@@ -383,7 +383,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 STanh Activation Operator.
 
-$$out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
+$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 )DOC");
   }
