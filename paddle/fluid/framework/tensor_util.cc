@@ -101,7 +101,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
