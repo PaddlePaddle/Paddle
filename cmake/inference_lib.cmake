@@ -39,7 +39,7 @@ function(copy TARGET)
         message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
     endif()
     math(EXPR len "${copy_lib_SRCS_len} - 1")
-    
+
     add_custom_target(${TARGET} DEPENDS ${copy_lib_DEPS})
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
@@ -154,6 +154,15 @@ copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
+
+if(WITH_CONTRIB)
+   set(contrib_dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
+   copy(contrib_inference_lib DEPS paddle_inference_api
+        SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
+        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
+        DSTS ${contrib_dst_dir} ${contrib_dst_dir}
+   )
+endif()
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto
