@@ -2051,15 +2051,36 @@ def layer_norm(input,
 
 def beam_search_decode(ids, scores, name=None):
     """
-    ${beam_search_decode}
+    Beam Search Decode
+
+    This layers is to pack the output of beam search layer into sentences and 
+    associated scores. It is usually called after the beam search layer. 
+    Typically, the output of beam search layer is a tensor of selected ids, with
+    a tensor of the score of each id. Beam search layer's output ids, however, 
+    are generated directly during the tree search, and they are stacked by each 
+    level of the search tree. Thus we need to reorganize them into sentences, 
+    based on the score of each id. This layer takes the output of beam search
+    layer as input and repack them into sentences.
 
     Args:
-        ids (Variable): ${ids_comment}
-        scores (Variable): ${scores_comment}
+        ids (Variable): The selected ids, output of beam search layer. 
+        scores (Variable): The associated scores of the ids, out put of beam
+            search layer.
         name (str): The name of this layer. It is optional.
     
     Returns:
-        tuple: a tuple of two output variable: sentence_ids, sentence_scores
+        tuple: a tuple of two output tensors: sentence_ids, sentence_scores.
+        sentence_ids is a tensor with shape [size, length], where size is the
+        beam size of beam search, and length is the length of each sentence. 
+        Note that the length of sentences may vary.
+        sentence_scores is a tensor with the same shape as sentence_ids.
+
+    Examples:
+        .. code-block:: python
+            ids, scores = fluid.layers.beam_search(
+                pre_ids, ids, scores, beam_size, end_id)
+            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
+                ids, scores)
     """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
