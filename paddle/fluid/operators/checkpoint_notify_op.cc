@@ -39,9 +39,10 @@ class CheckpointNotifyOp : public framework::OperatorBase {
 
     detail::RPCClient* rpc_client =
         detail::RPCClient::GetInstance<RPCCLIENT_T>();
-    VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
-            << outs[i] << " back";
-    rpc_client->AsyncCheckpointNotify(epmap[i], dir);
+    for (size_t i = 0; i < epmap.size(); i++) {
+      VLOG(3) << "sending to " << epmap[i] << " to checkpoint notify ... ";
+      rpc_client->AsyncCheckpointNotify(epmap[i], dir);
+    }
     rpc_client->Wait();
   }
 };
