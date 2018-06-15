@@ -3466,7 +3466,9 @@ def nce(input,
         input (Variable): input variable.
         label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
-        sample_weight (int): ${sample_weight_comment}
+        sample_weight (Variable|None): A Variable of shape [batch_size, 1] 
+            storing a weight for each sample. The default weight for each 
+            sample is 1.0.
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
@@ -4638,10 +4640,6 @@ def random_crop(x, shape, seed=None):
     """
     ${comment}
 
-    Examples:
-        >>> img = fluid.layers.data("img", [3, 256, 256])
-        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
     Args:
         x(${x_type}): ${x_comment}
         shape(${shape_type}): ${shape_comment}
@@ -4650,7 +4648,10 @@ def random_crop(x, shape, seed=None):
 
     Returns:
         ${out_comment}
-
+    
+    Examples:
+        >>> img = fluid.layers.data("img", [3, 256, 256])
+        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()
