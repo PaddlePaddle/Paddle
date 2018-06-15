@@ -96,8 +96,8 @@ class SaveOp : public framework::OperatorBase {
     }
   }
 
-  SaveLodTensor(const std::string &filename, const platform::Place &place,
-                framework::Variable *var) {
+  void SaveLodTensor(const std::string &filename, const platform::Place &place,
+                     framework::Variable *var) const {
     auto &tensor = var->Get<framework::LoDTensor>();
 
     // get device context from pool
@@ -128,8 +128,9 @@ class SaveOp : public framework::OperatorBase {
     fout.close();
   }
 
-  SaveSelectedRows(const std::string &filename, const platform::Place &place,
-                   framework::Variable *var) {
+  void SaveSelectedRows(const std::string &filename,
+                        const platform::Place &place,
+                        framework::Variable *var) const {
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool
