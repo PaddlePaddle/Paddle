@@ -321,6 +321,7 @@ class DistributeTranspiler:
                 inputs={"X": splited_vars},
                 outputs={},
                 attrs={
+                    "sync_mode": True,
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })

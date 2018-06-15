@@ -59,6 +59,7 @@ class SendOp : public framework::OperatorBase {
       }
     }
     if (sync_send) {
+      // TODO(Yancey1989): wait current request finished.
       rpc_client->Wait();
     }
   }
