@@ -839,9 +839,9 @@ def linear_chain_crf(input, label, param_attr=None):
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
-        ${log_likelihood_comment}
-        ${transitionexps_comment}
-        ${emissionexps_comment}
+        output(${emission_exps_type}): ${emission_exps_comment} \n
+        output(${transition_exps_type}): ${transition_exps_comment} \n
+        output(${log_likelihood_type}): ${log_likelihood_comment}
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -4210,7 +4210,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-        Output(i, x, y) = Input(i, x, y) / \left( \\
+      Output(i, x, y) = Input(i, x, y) / \left( \\
         k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)} \\
         (Input(j, x, y))^2\right)^{\beta}
 
