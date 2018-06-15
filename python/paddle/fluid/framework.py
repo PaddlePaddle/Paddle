@@ -1130,6 +1130,8 @@ class Program(object):
 
     def clone(self, for_test=False):
         """Clone the Program object
+        Args:
+           for_test(bool): indicate whether clone for test.
 
         Set for_test to False when we want to clone the program for training.
         Set for_test to True when we want to clone the program for testing.
@@ -1140,8 +1142,9 @@ class Program(object):
                 the is_test attributes in these operators will be set to True for
                 testing purposes, otherwise, they remain unchanged.
 
-        Returns(Program):
-            The cloned Program object.
+        Returns:
+            Program: The cloned Program object.
+
         """
         if for_test:
             p = self.inference_optimize()
@@ -1259,6 +1262,7 @@ class Program(object):
     def copy_param_info_from(self, other):
         """
         Copy the information of parameters from other program.
+
         Args:
             other(Program): Other program
 
@@ -1277,6 +1281,7 @@ class Program(object):
     def copy_data_info_from(self, other):
         """
         Copy the information of data variables from other program.
+
         Args:
             other(Program): Other program
 
@@ -1330,6 +1335,7 @@ class Parameter(Variable):
     def to_string(self, throw_on_error, with_details=False):
         """
         To debug string.
+
         Args:
             throw_on_error(bool): raise exception when self is not initialized
                 when throw_on_error is True

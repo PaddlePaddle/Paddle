@@ -2061,8 +2061,6 @@ def beam_search_decode(ids, scores, name=None):
     based on the score of each id. This layer takes the output of beam search
     layer as input and repack them into sentences.
 
-    ${beam_search_decode}
-
     Args:
         ids (Variable): The selected ids, output of beam search layer. 
         scores (Variable): The associated scores of the ids, out put of beam
