@@ -22,9 +22,9 @@ from ..executor import global_scope
 from layer_function_generator import generate_layer_fn, templatedoc
 
 __all__ = [
-    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'Preprocessor', 'load'
+    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
+    'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
+    'double_buffer', 'random_data_generator', 'Preprocessor', 'load'
 ]
 
 
@@ -177,18 +177,17 @@ class ListenAndServ(object):
             })
 
 
-def Send(endpoints, send_vars, get_vars=None):
+def Send(endpoints, send_vars, sync=True):
     """
-    Send layer
-
-    Args:
-        endpoints: comma seperated IP:PORT pairs in the order
-                   of send_vars to send
-        send_vars: vars to send
-        get_vars: vars to get from server after send completes.
-
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
+
+    Args:
+        endpoints (str): comma seperated IP:PORT pairs in the order
+                   of send_vars to send
+        send_vars (list): variables to send to server
+        sync (bool): whether to wait the request finish
+    
     """
     assert (type(send_vars) == list)
 
@@ -196,40 +195,33 @@ def Send(endpoints, send_vars, get_vars=None):
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Send", **locals())
-    if not get_vars:
-        get_vars = []
-        for s in send_vars:
-            v = helper.create_tmp_variable(dtype=s.dtype, stop_gradient=True)
-            get_vars.append(v)
     rpc_op_role_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
-        outputs={"Out": get_vars},
         attrs={
             "endpoints": endpoints,
             "epmap": epmap,
             rpc_op_role_name: core.op_proto_and_checker_maker.OpRole.RPC
         })
+    if sync:
+        helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
 
-    return get_vars
 
-
-def Recv(endpoints, get_vars):
+def Recv(endpoints, get_vars, sync=True):
     """
-    Recv layer
+    Receive variables from server side
 
     Args:
-        endpoints: comma seperated IP:PORT pairs in the order
+        endpoints (str): comma seperated IP:PORT pairs in the order
                    of send_vars to send
-        send_vars: vars to send
-        get_vars: vars to get from server after send completes.
+        get_vars (list): vars to get from server after send completes.
+        sync (bool): whether to wait the request finish
 
-    Send variables to the server side, and get vars from server
-    side when server have finished running server side program.
+    Returns:
+        list: list of received variables
     """
-    assert (type(send_vars) == list)
     assert (type(get_vars) == list)
 
     epmap = endpoints.split(",")
@@ -242,6 +234,9 @@ def Recv(endpoints, get_vars):
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
+    if sync:
+        helper.append_op(type="fetch_barrier", attrs={"endpoints": endpoints})
+    return get_vars
 
 
 def monkey_patch_reader_methods(reader):
@@ -541,6 +536,9 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 
 def shuffle(reader, buffer_size):
+    """
+    Shuffle the reader.
+    """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
 
