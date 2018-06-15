@@ -1621,13 +1621,13 @@ def sequence_pool(input, pool_type):
     .. code-block:: text
 
        x is a 1-level LoDTensor:
-         x.lod = [[0, 2, 5, 7]]
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
          out.dim = [3, 1]
-         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         with condition len(x.lod[-1]) == out.dims[0]
 
        for different pool_type:
          average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -1686,13 +1686,13 @@ def sequence_first_step(input):
     .. code-block:: text
 
        x is a 1-level LoDTensor:
-         x.lod = [[0, 2, 5, 7]]
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
          out.dim = [3, 1]
-         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         with condition len(x.lod[-1]) == out.dims[0]
          out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
@@ -1719,13 +1719,13 @@ def sequence_last_step(input):
     .. code-block:: text
 
        x is a 1-level LoDTensor:
-         x.lod = [[0, 2, 5, 7]]
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
          out.dim = [3, 1]
-         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         with condition len(x.lod[-1]) == out.dims[0]
          out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
 
     Args:
@@ -2468,18 +2468,18 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
         * Case 1
             x is a LoDTensor:
-                x.lod  = [[0,   2,        4]]
+                x.lod  = [[2,        2]]
                 x.data = [[a], [b], [c], [d]]
                 x.dims = [4, 1]
 
             y is a LoDTensor:
-                y.lod = [[0,    2,    4],
-                         [0, 3, 6, 7, 8]]
+                y.lod = [[2,    2],
+                         [3, 3, 1, 1]]
 
             ref_level: 0
 
             then output is a 1-level LoDTensor:
-                out.lod =  [[0,   2,        4,        6,        8]]
+                out.lod =  [[2,        2,        2,        2]]
                 out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
                 out.dims = [8, 1]
 
@@ -2489,7 +2489,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
                 x.dims = [3, 1]
 
             y is a LoDTensor:
-                y.lod = [[0, 2, 2, 5]]
+                y.lod = [[2, 0, 3]]
 
             ref_level: -1
 
@@ -3343,7 +3343,7 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.2, 0.2, 0.1, 0.5],
                       [0.5, 0.1, 0.3, 0.1]]
 
-        input.lod = [[0, 4, 8]]
+        input.lod = [[4, 4]]
 
         Then:
 
@@ -3351,7 +3351,7 @@ def ctc_greedy_decoder(input, blank, name=None):
                        [1],
                        [3]]
 
-        output.lod = [[0, 2, 3]]
+        output.lod = [[2, 1]]
 
     Args:
 
@@ -3368,7 +3368,7 @@ def ctc_greedy_decoder(input, blank, name=None):
 
     Returns:
         Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[0]] and dims [1, 1].
+        empty, the result LoDTensor will be [-1] with LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -3458,7 +3458,7 @@ def sequence_reshape(input, new_dim):
     .. code-block:: text
 
         x is a LoDTensor:
-            x.lod  = [[0, 2, 6]]
+            x.lod  = [[2, 4]]
             x.data = [[1, 2], [3, 4],
                       [5, 6], [7, 8], [9, 10], [11, 12]]
             x.dims = [6, 2]
@@ -3466,7 +3466,7 @@ def sequence_reshape(input, new_dim):
         set new_dim = 4
 
         then out is a LoDTensor:
-            out.lod  = [[0, 1, 3]]
+            out.lod  = [[1, 2]]
             out.data = [[1, 2, 3, 4],
                         [5, 6, 7, 8], [9, 10, 11, 12]]
             out.dims = [3, 4]
@@ -3737,7 +3737,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
             output.dims = {8, 9}
 
-            output.lod = [[0, 4, 8]]
+            output.lod = [[4, 4]]
 
         The simple usage is:
 
@@ -4133,47 +4133,47 @@ def lod_reset(x, y=None, target_lod=None):
         * Example 1:
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[ 0,     2,                   5      6 ]]
+                x.lod =  [[ 2,           3,                   1 ]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
-            target_lod: [0, 4, 6]
+            target_lod: [4, 2]
 
             then we get a 1-level LoDTensor:
-                out.lod =  [[ 0,                   4,            6 ]]
+                out.lod =  [[4,                          2]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
         * Example 2:
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[ 0,     2,                   5      6 ]]
+                x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             y is a Tensor:
-                y.data = [[0, 2, 6]]
+                y.data = [[2, 4]]
                 y.dims = [1, 3]
 
             then we get a 1-level LoDTensor:
-                out.lod =  [[ 0,     2,                          6 ]]
+                out.lod =  [[2,            4]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
         * Example 3:
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[ 0,      2,                   5     6 ]]
+                x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             y is a 2-level LoDTensor:
-                y.lod =  [[0, 2, 4], [0, 2, 5, 6]]
+                y.lod =  [[2, 2], [2, 2, 1, 1]]
                 y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
                 y.dims = [6, 1]
 
             then we get a 2-level LoDTensor:
-                out.lod =  [[0, 2, 4], [0, 2, 5, 6]]
+                out.lod =  [[2, 2], [2, 2, 1, 1]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 

@@ -746,8 +746,8 @@ def lod_rank_table(x, level=0):
         .. code-block:: text
 
             x is a LoDTensor:
-                x.lod = [[0,                2, 3],
-                         [0,             5, 6, 7]]
+                x.lod = [[2,                1],
+                         [5,             1, 1]]
                 x.data = [a, b, c, d, e, f, g]
 
             1. set level to 0:
