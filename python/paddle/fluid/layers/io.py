@@ -392,7 +392,7 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
             reader = fluid.layers.random_data_generator(
                                              low=0.0,
                                              high=1.0,
-                                             shapes=[(3,224,224), (1)],
+                                             shapes=[[3,224,224], [1]],
                                              lod_levels=[0, 0])
             # Via the reader, we can use 'read_file' layer to get data:
             image, label = fluid.layers.read_file(reader)
