@@ -2916,9 +2916,9 @@ def warpctc(input, label, blank=0, norm_by_times=False):
 
         .. code-block:: python
 
-            label = layers.data(shape=[11, 8], dtype='float32', lod_level=1)
-            predict = layers.data(shape=[11, 1], dtype='float32')
-            cost = layers.warpctc(input=predict, label=label)
+            label = fluid.layers.data(shape=[11, 8], dtype='float32', lod_level=1)
+            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
+            cost = fluid.layers.warpctc(input=predict, label=label)
 
     """
     helper = LayerHelper('warpctc', **locals())
@@ -2982,7 +2982,7 @@ def sequence_reshape(input, new_dim):
         .. code-block:: python
 
             x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
-            x_reshaped = layers.sequence_reshape(input=x, new_dim=10)
+            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
     helper = LayerHelper('sequence_reshape', **locals())
     out = helper.create_tmp_variable(helper.input_dtype())
