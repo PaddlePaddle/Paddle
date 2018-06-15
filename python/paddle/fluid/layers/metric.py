@@ -59,14 +59,14 @@ def auc(input, label, curve='ROC', num_thresholds=200):
     This implementation computes the AUC according to forward output and label.
     It is used very widely in binary classification evaluation. 
 
-    As a note: If input label contains values other than 0 and 1, it will be 
-    cast to bool. You can find the relevant definitions `here 
-     <https://en.wikipedia.org/wiki/Receiver_operating_characteristic
-      #Area_under_the_curve>`_.
+    Note: If input label contains values other than 0 and 1, it will be cast 
+    to `bool`. Find the relevant definitions `here <https://en.wikipedia.org\
+    /wiki/Receiver_operating_characteristic#Area_under_the_curve>`_.
 
     There are two types of possible curves:
-    1. ROC: Receiver operating characteristic
-    2. PR: Precision Recall
+
+        1. ROC: Receiver operating characteristic;
+        2. PR: Precision Recall
 
     Args:
         input(Variable): A floating-point 2D Variable, values are in the range 
@@ -85,9 +85,9 @@ def auc(input, label, curve='ROC', num_thresholds=200):
     Examples:
         .. code-block:: python
         
-        # network is a binary classification model and label the ground truth
-        prediction = network(image, is_infer=True)
-        auc_out=fluid.layers.auc(input=prediction, label=label)
+            # network is a binary classification model and label the ground truth
+            prediction = network(image, is_infer=True)
+            auc_out=fluid.layers.auc(input=prediction, label=label)
     """
 
     warnings.warn(
