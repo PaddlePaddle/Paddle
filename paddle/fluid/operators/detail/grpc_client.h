@@ -177,7 +177,7 @@ class CheckpointNotifyProcessor : public BaseProcessor {
   virtual void Process() {}
   sendrecv::VoidMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
-}
+};
 
 class GRPCClient : public RPCClient {
  public:
