@@ -234,7 +234,7 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
                                        int64_t time_out) {
   const auto ch = GetChannel(ep);
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
-  s.prepare(time_out);
+  s->Prepare(time_out);
 
   sendrecv::CheckpointMessage req;
   req.set_notify_type(CHECKPOINT_SAVE_MESSAGE);
