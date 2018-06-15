@@ -613,7 +613,7 @@ def save_pserver_vars_by_notify(executor, dirname, epmap):
     attrs['dir'] = cur_dir
 
     checkpoint_notify_block.append_op(
-        type='checkpointnotify', inputs={}, output={}, attrs=attrs)
+        type='checkpoint_notify', inputs={}, output={}, attrs=attrs)
     executor.run(checkpoint_notify_program)
 
 
