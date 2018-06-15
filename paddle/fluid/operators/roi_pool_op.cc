@@ -139,7 +139,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The pooled output width.")
         .SetDefault(1);
     AddComment(R"DOC(
-ROIPool operator
+**ROIPool Operator**
 
 Region of interest pooling (also known as RoI pooling) is to perform
 is to perform max pooling on inputs of nonuniform sizes to obtain

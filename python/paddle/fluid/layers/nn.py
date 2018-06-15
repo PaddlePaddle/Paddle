@@ -825,6 +825,12 @@ def crf_decoding(input, param_attr, label=None):
 
     Returns:
         Variable: ${viterbi_path_comment}
+    
+    Examples:
+        .. code-block:: python
+
+           crf_decode = layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
@@ -1043,8 +1049,69 @@ def chunk_eval(input,
                num_chunk_types,
                excluded_chunk_types=None):
     """
+    ***Chunk Evaluator***
+
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
+
+    For some basics of chunking, please refer to
+    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+
+    ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
+    and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
+    Here is a NER example of labeling for these tagging schemes:
+
+    .. code-block:: python
+    
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+              Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+       IO     I-PER  I-PER   O      O   I-ORG          I-ORG  I-ORG I-ORG  O   I-LOC
+       IOB    B-PER  I-PER   O      O   B-ORG          I-ORG  I-ORG I-ORG  O   B-LOC
+       IOE    I-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   E-LOC
+       IOBES  B-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   S-LOC
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+
+    There are three chunk types(named entity types) including PER(person), ORG(organization)
+    and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
+
+    Since the calculations actually use label ids rather than labels, extra attention
+    should be paid when mapping labels to ids to make CheckEvalOp work. The key point
+    is that the listed equations are satisfied by ids.
+
+    .. code-block:: python
+
+       tag_type = label % num_tag_type
+       chunk_type = label / num_tag_type
+
+    where `num_tag_type` is the num of tag types in the tagging scheme, `num_chunk_type`
+    is the num of chunk types, and `tag_type` get its value from the following table.
+
+    .. code-block:: python
+    
+       Scheme Begin Inside End   Single
+        plain   0     -      -     -
+        IOB     0     1      -     -
+        IOE     -     0      1     -
+        IOBES   0     1      2     3
+
+    Still use NER as example, assuming the tagging scheme is IOB while chunk types are ORG,
+    PER and LOC. To satisfy the above equations, the label map can be like this:
+
+    .. code-block:: python
+
+       B-ORG  0
+       I-ORG  1
+       B-PER  2
+       I-PER  3
+       B-LOC  4
+       I-LOC  5
+       O      6
+
+    It's not hard to verify the equations noting that the num of chunk types
+    is 3 and the num of tag types in IOB scheme is 2. For example, the label
+    id of I-LOC is 5, the tag type id of I-LOC is 1, and the chunk type id of
+    I-LOC is 2, which consistent with the results from the equations.
 
     Args:
         input (Variable): prediction output of the network.
@@ -1057,6 +1124,19 @@ def chunk_eval(input,
         tuple: tuple containing: precision, recall, f1_score,
         num_infer_chunks, num_label_chunks,
         num_correct_chunks
+    
+    Examples:
+        .. code-block:: python
+
+            crf = fluid.layers.linear_chain_crf(
+                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+            crf_decode = fluid.layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
+            fluid.layers.chunk_eval(
+                input=crf_decode,
+                label=label,
+                chunk_scheme="IOB",
+                num_chunk_types=(label_dict_len - 1) / 2)
     """
     helper = LayerHelper("chunk_eval", **locals())
 
@@ -1803,7 +1883,7 @@ def conv2d_transpose(input,
                      act=None,
                      name=None):
     """
-    **Convlution2D transpose layer**
+    ***Convlution2D Transpose Layer****
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1832,13 +1912,13 @@ def conv2d_transpose(input,
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{in}, C_{out}, H_f, W_f)$
+          Filter shape: :math:`(C_{in}, C_{out}, H_f, W_f)`
 
         - Output:
 
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
@@ -3513,6 +3593,12 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
 
     Returns:
         Variable: The global run counter.
+
+    Examples:
+        .. code-block:: python
+
+           global_step = fluid.layers.autoincreased_step_counter(
+               counter_name='@LR_DECAY_COUNTER@', begin=begin, step=1)
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
