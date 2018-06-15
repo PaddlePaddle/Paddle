@@ -352,8 +352,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // some operators may create local scope when running, such as while_op.
       // But when while_op also create a local executor to run it's sub block,
       // the sub scopes it created should not be dropped immediately, because
-      // while_grad_op will use some variables during while_op run, so we need
-      // to keep the kids and wait for the outer executor to drop them.
+      // while_grad_op will use some variables created during while_op run, so
+      // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
     }
   }
