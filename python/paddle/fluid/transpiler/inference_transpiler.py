@@ -18,7 +18,7 @@ from ..framework import Program
 from ..executor import global_scope
 
 
-class InferenceTranspiler:
+class InferenceTranspiler(object):
     def transpile(self, program, place, scope=None):
         '''
         Transpile the program. Support only fuse batch normalization now.

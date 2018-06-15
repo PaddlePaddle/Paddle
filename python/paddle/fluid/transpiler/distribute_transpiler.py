@@ -109,7 +109,7 @@ def slice_variable(var_list, slice_count, min_block_size=8192):
     return blocks
 
 
-class DistributeTranspiler:
+class DistributeTranspiler(object):
     """
     **DistributeTranspiler**
 
