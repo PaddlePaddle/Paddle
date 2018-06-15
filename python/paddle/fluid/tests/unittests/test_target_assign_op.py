@@ -22,22 +22,23 @@ def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
     if len(gt_lod) != len(neg_lod):
         raise AssertionError("The input arguments are illegal.")
 
-    batch_size = len(gt_lod) - 1
+    batch_size = len(gt_lod)
 
     match_indices = -1 * np.ones((batch_size, num_prior)).astype('int32')
-    neg_indices = np.zeros((neg_lod[-1], 1)).astype('int32')
+    neg_indices = np.zeros((sum(neg_lod), 1)).astype('int32')
 
+    offset = 0
     for n in range(batch_size):
-        gt_num = gt_lod[n + 1] - gt_lod[n]
+        gt_num = gt_lod[n]
         ids = random.sample([i for i in range(num_prior)], gt_num)
         match_indices[n, ids] = [i for i in range(gt_num)]
 
         ret_ids = set([i for i in range(num_prior)]) - set(ids)
-        s = neg_lod[n]
-        e = neg_lod[n + 1]
-        l = e - s
+        l = neg_lod[n]
         neg_ids = random.sample(ret_ids, l)
-        neg_indices[s:e, :] = np.array(neg_ids).astype('int32').reshape(l, 1)
+        neg_indices[offset:offset + neg_lod[n], :] = np.array(neg_ids).astype(
+            'int32').reshape(l, 1)
+        offset += neg_lod[n]
 
     return match_indices, neg_indices
 
@@ -56,24 +57,28 @@ def target_assign(encoded_box, gt_label, match_indices, neg_indices, gt_lod,
     # init weight for target label
     trg_label_wt = np.zeros((batch_size, num_prior, 1)).astype('float32')
 
+    gt_offset = 0
+    neg_offset = 0
     for i in range(batch_size):
         cur_indices = match_indices[i]
         col_ids = np.where(cur_indices > -1)
         col_val = cur_indices[col_ids]
 
-        gt_start = gt_lod[i]
         # target bbox
-        for v, c in zip(col_val + gt_start, col_ids[0].tolist()):
+        for v, c in zip(col_val + gt_offset, col_ids[0].tolist()):
             trg_box[i][c][:] = encoded_box[v][c][:]
         # weight for target bbox
         trg_box_wt[i][col_ids] = 1.0
 
-        trg_label[i][col_ids] = gt_label[col_val + gt_start]
+        trg_label[i][col_ids] = gt_label[col_val + gt_offset]
         trg_label_wt[i][col_ids] = 1.0
         # set target label weight to 1.0 for the negative samples
         if neg_indices is not None:
-            neg_ids = neg_indices[neg_lod[i]:neg_lod[i + 1]]
+            neg_ids = neg_indices[neg_offset:neg_offset + neg_lod[i]]
             trg_label_wt[i][neg_ids] = 1.0
+        # update offset
+        gt_offset += gt_lod[i]
+        neg_offset += neg_lod[i]
 
     return trg_box, trg_box_wt, trg_label, trg_label_wt
 
@@ -83,11 +88,11 @@ class TestTargetAssginFloatType(OpTest):
         self.op_type = "target_assign"
         num_prior = 120
         num_class = 21
-        gt_lod = [0, 5, 11, 23]
-        neg_lod = [0, 4, 7, 13]
+        gt_lod = [5, 6, 12]
+        neg_lod = [4, 3, 6]
         mismatch_value = 0
-        batch_size = len(gt_lod) - 1
-        num_gt = gt_lod[-1]
+        batch_size = len(gt_lod)
+        num_gt = sum(gt_lod)
 
         encoded_box = np.random.random((num_gt, num_prior, 4)).astype('float32')
         gt_label = np.random.randint(
@@ -121,11 +126,11 @@ class TestTargetAssginIntType(OpTest):
         self.op_type = "target_assign"
         num_prior = 120
         num_class = 21
-        gt_lod = [0, 5, 11, 23]
-        neg_lod = [0, 4, 7, 13]
+        gt_lod = [5, 6, 12]
+        neg_lod = [4, 3, 6]
         mismatch_value = 0
-        batch_size = len(gt_lod) - 1
-        num_gt = gt_lod[-1]
+        batch_size = len(gt_lod)
+        num_gt = sum(gt_lod)
 
         encoded_box = np.random.random((num_gt, num_prior, 4)).astype('float32')
         gt_label = np.random.randint(

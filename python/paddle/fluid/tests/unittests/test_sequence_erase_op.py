@@ -18,15 +18,17 @@ from op_test import OpTest
 
 
 def sequence_erase(in_seq, lod0, tokens):
-    new_lod0 = [0]
+    new_lod0 = []
     out_seq = []
-    for i in range(0, len(lod0) - 1):
+    offset = 0
+    for i in range(0, len(lod0)):
         num_out = 0
-        for dat in in_seq[lod0[i]:lod0[i + 1]]:
+        for dat in in_seq[offset:(offset + lod0[i])]:
             if dat not in tokens:
                 out_seq.append(dat)
                 num_out += 1
-        new_lod0.append(new_lod0[-1] + num_out)
+        offset += lod0[i]
+        new_lod0.append(num_out)
     return np.array(out_seq).astype("int32"), new_lod0
 
 
@@ -34,7 +36,7 @@ class TestSequenceEraseOpInt32(OpTest):
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
-        lod = [[0, 9, 13, 24, 30]]
+        lod = [[9, 4, 11, 6]]
         tokens = [2, 3, 5]
         out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
         self.attrs = {'tokens': tokens}
@@ -49,7 +51,7 @@ class TestSequenceEraseOpInt64(OpTest):
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
-        lod = [[0, 9, 13, 24, 30]]
+        lod = [[9, 4, 11, 6]]
         tokens = [2, 3, 5]
         out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
         self.attrs = {'tokens': tokens}
@@ -64,7 +66,7 @@ class TestSequenceEraseOpEmpty(OpTest):
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
-        lod = [[0, 9, 13, 24, 30]]
+        lod = [[9, 4, 11, 6]]
         tokens = []
         out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
         self.attrs = {'tokens': tokens}
