@@ -209,6 +209,14 @@ def polynomial_decay(learning_rate,
 def piecewise_decay(boundaries, values):
     """Applies piecewise decay to the initial learning rate.
 
+    Args:
+        boundaries: A list of steps numbers.
+        values: A list of learning rate values that will be picked during
+            different step boundaries.
+
+    Returns:
+        The decayed learning rate.
+
     >>> boundaries = [10000, 20000]
     >>> values = [1.0, 0.5, 0.1]
     >>>
