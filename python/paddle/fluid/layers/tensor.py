@@ -146,7 +146,8 @@ def concat(input, axis=0, name=None):
 
     Examples:
         .. code-block:: python
-          out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
+        
+           out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
