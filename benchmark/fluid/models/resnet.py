@@ -19,6 +19,7 @@ from __future__ import print_function
 import functools
 import numpy as np
 import time
+import os
 
 import cProfile, pstats, StringIO
 
@@ -26,6 +27,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
+from recordio_converter import imagenet_train, imagenet_test
 
 
 def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
@@ -122,40 +124,85 @@ def get_model(args):
         else:
             dshape = [32, 32, 3]
         model = resnet_cifar10
-    else:
+        train_reader = paddle.dataset.cifar.train10()
+        test_reader = paddle.dataset.cifar.test10()
+    elif args.data_set == "flowers":
         class_dim = 102
         if args.data_format == 'NCHW':
             dshape = [3, 224, 224]
         else:
             dshape = [224, 224, 3]
         model = resnet_imagenet
+        train_reader = paddle.dataset.flowers.train()
+        test_reader = paddle.dataset.flowers.test()
+    elif args.data_set == "imagenet":
+        class_dim = 1000
+        if args.data_format == 'NCHW':
+            dshape = [3, 224, 224]
+        else:
+            dshape = [224, 224, 3]
+        model = resnet_imagenet
+        if not args.data_path:
+            raise Exception(
+                "Must specify --data_path when training with imagenet")
+        train_reader = imagenet_train(args.data_path)
+        test_reader = imagenet_test(args.data_path)
 
-    input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    predict = model(input, class_dim)
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    if args.use_reader_op:
+        filelist = [
+            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
+        ]
+        data_file = fluid.layers.open_files(
+            filenames=filelist,
+            shapes=[[-1] + dshape, (-1, 1)],
+            lod_levels=[0, 0],
+            dtypes=["float32", "int64"],
+            thread_num=args.gpus,
+            pass_num=args.pass_num)
+        data_file = fluid.layers.double_buffer(
+            fluid.layers.batch(
+                data_file, batch_size=args.batch_size))
+        input, label = fluid.layers.read_file(data_file)
+    else:
+        input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(
-        input=predict, label=label, total=batch_size_tensor)
+    if args.device == 'CPU' and args.cpus > 1:
+        places = fluid.layers.get_places(args.cpus)
+        pd = fluid.layers.ParallelDo(places)
+        with pd.do():
+            predict = model(pd.read_input(input), class_dim)
+            label = pd.read_input(label)
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+            batch_acc = fluid.layers.accuracy(input=predict, label=label)
+
+            pd.write_output(avg_cost)
+            pd.write_output(batch_acc)
+
+        avg_cost, batch_acc = pd()
+        avg_cost = fluid.layers.mean(avg_cost)
+        batch_acc = fluid.layers.mean(batch_acc)
+    else:
+        predict = model(input, class_dim)
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        avg_cost = fluid.layers.mean(x=cost)
+        batch_acc = fluid.layers.accuracy(input=predict, label=label)
 
     inference_program = fluid.default_main_program().clone()
     with fluid.program_guard(inference_program):
         inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc, batch_size_tensor])
+            target_vars=[batch_acc])
 
     optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
-    train_reader = paddle.batch(
+    batched_train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.cifar.train10()
-            if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
-            buf_size=5120),
-        batch_size=args.batch_size)
-    test_reader = paddle.batch(
-        paddle.dataset.cifar.test10()
-        if args.data_set == 'cifar10' else paddle.dataset.flowers.test(),
-        batch_size=args.batch_size)
+            train_reader, buf_size=5120),
+        batch_size=args.batch_size * args.gpus,
+        drop_last=True)
+    batched_test_reader = paddle.batch(
+        train_reader, batch_size=args.batch_size, drop_last=True)
 
-    return avg_cost, inference_program, optimizer, train_reader, test_reader, batch_acc
+    return avg_cost, inference_program, optimizer, batched_train_reader,\
+                   batched_test_reader, batch_acc

@@ -18,6 +18,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -50,7 +52,7 @@ struct DataTypeNamer {
     return dic_.at(x);
   }
 
-  const std::string &repr(size_t &hash) const {
+  const std::string &repr(size_t &hash) const {  // NOLINT
     PADDLE_ENFORCE(dic_.count(hash), "unknown type for representation");
     return dic_.at(hash);
   }
@@ -62,7 +64,9 @@ struct DataTypeNamer {
     SET_TYPE(float);
   }
 
-  std::unordered_map<decltype(typeid(int).hash_code()), std::string> dic_;
+  std::unordered_map<decltype(typeid(int).hash_code()),  // NOLINT
+                     std::string>
+      dic_;
 };
 #undef SET_TYPE
 
@@ -104,6 +108,13 @@ class OrderedRegistry {
   std::unordered_map<std::string, int> dic_;
   std::vector<std::unique_ptr<T>> data_;
 };
+
+template <typename T>
+T &GetFromScope(const framework::Scope &scope, const std::string &name) {
+  framework::Variable *var = scope.FindVar(name);
+  PADDLE_ENFORCE(var != nullptr);
+  return *var->GetMutable<T>();
+}
 
 }  // namespace analysis
 }  // namespace inference
