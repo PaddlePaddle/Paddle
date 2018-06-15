@@ -14,3 +14,5 @@
 #
 
 inference_api_test(simple_on_word2vec ARGS test_word2vec)
+cc_test(mobilenet_infernce_demo SRCS mobilenet.cc DEPS
+        paddle_inference_api paddle_fluid)
