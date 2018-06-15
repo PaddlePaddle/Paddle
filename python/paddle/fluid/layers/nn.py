@@ -3466,32 +3466,20 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
 def one_hot(input, depth):
     """
-    One Hot Operator. This operator creates the one-hot representations for input
-    index values. The following example will help to explain the function of this
-    operator.
+    This layer creates the one-hot representations for input indices.
 
     Args:
-        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
-        depth(scalar): an interger defining the depth of the one hot dimension.
+        input(Variable): Input indices, last dimension must be 1.
+        depth(scalar): An interger defining the depth of the one-hot dimension.
 
     Returns:
-         The one-hot tensor or LodTensor, same as input.
+        Variable: The one-hot representations of input.
 
     Examples:
         .. code-block:: python
-
-        X is a LoDTensor:
-          X.lod = [[0, 1, 4]]
-          X.shape = [4, 1]
-          X.data = [[1], [1], [3], [0]]
-        set depth = 4
-        Out is a LoDTensor:
-          Out.lod = [[0, 1, 4]]
-          Out.shape = [4, 4]
-          Out.data = [[0., 1., 0., 0.],
-                      [0., 1., 0., 0.],
-                      [0., 0., 0., 1.],
-                      [1., 0., 0., 0.]]
+        
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_tmp_variable(dtype='float32')
