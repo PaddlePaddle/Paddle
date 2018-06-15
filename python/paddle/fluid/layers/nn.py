@@ -2748,23 +2748,24 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the mean of tensor elements over the given dimension.
+    Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the mean is computed. If
-            :attr:`None`, compute the mean over all elements of :attr:`input`
-            and return a Tensor variable with a single element, otherwise
+        dim (list|int|None): The dimension along which the mean is computed. If
+            `None`, compute the mean over all elements of :attr:`input`
+            and return a variable with a single element, otherwise it
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+            :math:`dim[i] < 0`, the dimension to reduce is 
+            :math:`rank(input) + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set `None`, the layer
                        will be named automatically.
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: The reduced mean Variable.
 
     Examples:
         .. code-block:: python
@@ -3517,13 +3518,41 @@ def nce(input,
         input (Variable): input variable.
         label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
-        sample_weight (int): ${sample_weight_comment}
+        sample_weight (Variable|None): A Variable of shape [batch_size, 1] 
+            storing a weight for each sample. The default weight for each 
+            sample is 1.0.
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
     
     Returns:
-        Variable: output of nce layer.
+        Variable: The output nce loss.
+
+    Examples:
+        .. code-block:: python
+
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
+
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
+
+                emb = layers.embedding(input=words[i], size=[dict_size, 32],
+                                       param_attr='emb.w', is_sparse=True)
+                embs.append(emb)
+
+            embs = layers.concat(input=embs, axis=1)
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=dict_size, param_attr='nce.w',
+                          bias_attr='nce.b')
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -3881,31 +3910,30 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
-    **Smooth L1 Loss Operator. **
-
-    This operator computes the smooth L1 loss for X and Y.
-    The operator takes the first dimension of X and Y as batch size.
+    This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
+    It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
     For each instance, it computes the smooth L1 loss element by element first
-    and then sums all the losses. So the shape of Out is [batch_size, 1].
+    and then sums all the losses. So the shape of ouput Variable is 
+    [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            L1 loss op with same shape as x.
+            L1 loss op with same shape as :attr:`x`.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
-            input is optional and should have same shape with x. If provided,
-            the result of (x - y) will be multiplied by this tensor element by
-            element.
+            input is optional and should have same shape with :attr:`x`. If 
+            provided, the result of (:attr:`x` - :attr:`y`) will be multiplied 
+            by this tensor element by element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
-            input is optional and should have same shape with x. If provided,
-            the out smooth L1 loss will be multiplied by this tensor element
-            by element.
-        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
-            with default value 1.0.
+            input is optional and should have same shape with :attr:`x`. If 
+            provided, the out smooth L1 loss will be multiplied by this tensor 
+            element by element.
+        sigma (float|None): Hyper parameter of smooth L1 loss layer. A float 
+           scalar with default value 1.0.
+
     Returns:
-        Variable: A tensor with rank be 2. The output smooth L1 loss with
-            shape [batch_size, 1].
+        Variable: The output smooth L1 loss with shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
@@ -3916,6 +3944,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
+
     helper = LayerHelper('smooth_l1_loss', **locals())
     diff = helper.create_tmp_variable(dtype=x.dtype)
     loss = helper.create_tmp_variable(dtype=x.dtype)
@@ -3935,32 +3964,20 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
 def one_hot(input, depth):
     """
-    One Hot Operator. This operator creates the one-hot representations for input
-    index values. The following example will help to explain the function of this
-    operator.
+    This layer creates the one-hot representations for input indices.
 
     Args:
-        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
-        depth(scalar): an interger defining the depth of the one hot dimension.
+        input(Variable): Input indices, last dimension must be 1.
+        depth(scalar): An interger defining the depth of the one-hot dimension.
 
     Returns:
-         The one-hot tensor or LodTensor, same as input.
+        Variable: The one-hot representations of input.
 
     Examples:
         .. code-block:: python
-
-        X is a LoDTensor:
-          X.lod = [[0, 1, 4]]
-          X.shape = [4, 1]
-          X.data = [[1], [1], [3], [0]]
-        set depth = 4
-        Out is a LoDTensor:
-          Out.lod = [[0, 1, 4]]
-          Out.shape = [4, 4]
-          Out.data = [[0., 1., 0., 0.],
-                      [0., 1., 0., 0.],
-                      [0., 0., 0., 1.],
-                      [1., 0., 0., 0.]]
+        
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_tmp_variable(dtype='float32')
@@ -4104,12 +4121,12 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
 def lod_reset(x, y=None, target_lod=None):
     """
-    LoD Reset Operator. Set LoD of **x** to a new one specified by **y** or
-    **target_lod**. When **y** provided, **y.lod** would be considered as target
-    LoD first, otherwise **y.data** would be considered as target LoD. If **y**
-    is not provided, target LoD should be specified by **target_lod**.
-    If target LoD is specified by **Y.data** or **target_lod**, only one level
-    LoD is supported.
+    Set LoD of :attr:`x` to a new one specified by :attr:`y` or
+    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be 
+    considered as target LoD first, otherwise :attr:`y.data` would be 
+    considered as target LoD. If :attr:`y` is not provided, target LoD should 
+    be specified by :attr:`target_lod`. If target LoD is specified by 
+    :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
@@ -4162,15 +4179,16 @@ def lod_reset(x, y=None, target_lod=None):
 
     Args:
         x (Variable): Input variable which could be a Tensor or LodTensor.
-        y (Variable|None): If provided, output's LoD would be derived from y.
+        y (Variable|None): If provided, output's LoD would be derived 
+                           from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
-                                      as target LoD when y not provided.
+                                      as target LoD when :attr:`y` not provided.
 
     Returns:
-        Variable: Output variable with LoD specified by this operator.
+        Variable: Output variable with LoD specified by this layer.
 
     Raises:
-        ValueError: If y and target_lod are both None.
+        ValueError: If :attr:`y` and :attr:`target_lod` are both None.
 
     Examples:
         .. code-block:: python
@@ -4674,10 +4692,6 @@ def random_crop(x, shape, seed=None):
     """
     ${comment}
 
-    Examples:
-        >>> img = fluid.layers.data("img", [3, 256, 256])
-        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
     Args:
         x(${x_type}): ${x_comment}
         shape(${shape_type}): ${shape_comment}
@@ -4686,7 +4700,10 @@ def random_crop(x, shape, seed=None):
 
     Returns:
         ${out_comment}
-
+    
+    Examples:
+        >>> img = fluid.layers.data("img", [3, 256, 256])
+        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()

@@ -97,7 +97,9 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+        Variable: 
+        
+            The detection outputs is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
             instance, the offsets in first dimension are called LoD, the offset
@@ -110,15 +112,15 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
-        pb = layers.data(name='prior_box', shape=[10, 4],
+            pb = layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-        pbv = layers.data(name='prior_box_var', shape=[10, 4],
+            pbv = layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-        loc = layers.data(name='target_box', shape=[2, 21, 4],
+            loc = layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
-        scores = layers.data(name='scores', shape=[2, 21, 10],
+            scores = layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
-        nmsed_outs = fluid.layers.detection_output(scores=scores,
+            nmsed_outs = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
                                        prior_box_var=pbv)
@@ -296,8 +298,6 @@ def target_assign(input,
                   mismatch_value=None,
                   name=None):
     """
-    **Target assigner operator**
-
     This operator can be, for given the target bounding boxes or labels,
     to assign classification and regression targets to each prediction as well as
     weights to prediction. The weights is used to specify which prediction would
@@ -311,20 +311,24 @@ def target_assign(input,
 
     1. Assigning all outpts based on `match_indices`:
 
-    If id = match_indices[i][j] > 0,
+    .. code-block:: text
 
-        out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
-        out_weight[i][j] = 1.
+        If id = match_indices[i][j] > 0,
 
-    Otherwise,
+            out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
+            out_weight[i][j] = 1.
 
-        out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
-        out_weight[i][j] = 0.
+        Otherwise,
+
+            out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
+            out_weight[i][j] = 0.
 
     2. Assigning out_weight based on `neg_indices` if `neg_indices` is provided:
 
     Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
     for i-th instance and each `id` of neg_indices in this instance:
+    
+    .. code-block:: text
 
         out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
         out_weight[i][id] = 1.0
@@ -341,10 +345,23 @@ def target_assign(input,
        mismatch_value (float32): Fill this value to the mismatched location.
 
     Returns:
-       out (Variable): The output is a 3D Tensor with shape [N, P, K],
-           N and P is the same as they are in `neg_indices`, K is the
-           same as it in input of X. If `match_indices[i][j]`.
-       out_weight (Variable): The weight for output with the shape of [N, P, 1].
+        tuple: 
+        
+               A tuple(out, out_weight) is returned. out is a 3D Tensor with 
+               shape [N, P, K], N and P is the same as they are in 
+               `neg_indices`, K is the same as it in input of X. If 
+               `match_indices[i][j]`. out_weight is the weight for output with 
+               the shape of [N, P, 1].
+
+    Examples:
+
+        .. code-block:: python
+
+            matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
+            gt = layers.data(
+                        name='gt', shape=[1, 1], dtype='int32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                            gt, matched_indices, mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)

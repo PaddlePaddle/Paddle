@@ -19,18 +19,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
-  class OP_NAME##OpMaker                                                \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
-   public:                                                              \
-    void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME " operator");                  \
-      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
-      AddAttr<bool>("use_mkldnn",                                       \
-                    "(bool, default false) Only used in mkldnn kernel") \
-          .SetDefault(false);                                           \
-      AddComment(OP_COMMENT);                                           \
-    }                                                                   \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)             \
+  class OP_NAME##OpMaker                                              \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {          \
+   public:                                                            \
+    void Make() override {                                            \
+      AddInput("X", "Input of " #OP_NAME " operator");                \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X"); \
+      AddAttr<bool>("use_mkldnn",                                     \
+                    "(default false) Only used in mkldnn kernel")     \
+          .SetDefault(false);                                         \
+      AddComment(OP_COMMENT);                                         \
+    }                                                                 \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -196,7 +196,7 @@ $out = [x]$
 __attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \frac{1}{x}$$
+$$out = \\frac{1}{x}$$
 
 )DOC";
 
