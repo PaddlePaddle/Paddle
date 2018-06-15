@@ -1495,9 +1495,9 @@ def pool2d(input,
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of 
-        input tensor is NCHW, where N is batch size, C is the number of 
-        channels, H is the height of the feature, and W is the width of 
-        the feature.
+                          input tensor is NCHW, where N is batch size, C is 
+                          the number of channels, H is the height of the 
+                          feature, and W is the width of the feature.
         pool_size (int): The side length of pooling windows. All pooling 
                          windows are squares with pool_size on a side.
         pool_type: ${pooling_type_comment}
