@@ -196,7 +196,7 @@ $out = [x]$
 __attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \frac{1}{x}$$
+$$out = \\frac{1}{x}$$
 
 )DOC";
 
