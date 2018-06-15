@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_OP(elementwise_mul, "Mul", "Out = X \\odot\\ Y");
+REGISTER_ELEMWISE_OP(elementwise_mul, "Mul", "Out = X \\\\odot Y");
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
