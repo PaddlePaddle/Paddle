@@ -2076,6 +2076,7 @@ def beam_search_decode(ids, scores, name=None):
 
     Examples:
         .. code-block:: python
+
             ids, scores = fluid.layers.beam_search(
                 pre_ids, ids, scores, beam_size, end_id)
             sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
