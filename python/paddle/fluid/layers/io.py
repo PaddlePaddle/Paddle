@@ -292,6 +292,7 @@ def _copy_reader_create_op_(block, op):
     return new_op
 
 
+@templatedoc(op_type='create_recordio_file_reader')
 def open_recordio_file(filename,
                        shapes,
                        lod_levels,
@@ -299,34 +300,30 @@ def open_recordio_file(filename,
                        pass_num=1,
                        for_parallel=True):
     """
-    Open a RecordIO file
-
-    This layer takes a RecordIO file to read from and returns a Reader Variable.
-    Via the Reader Variable, we can get data from the given RecordIO file.
+    ${comment}
 
     Args:
-       filename(str): The RecordIO file's name.
+       filename(${filename_type}): ${filename_comment}.
        shapes(list): List of tuples which declaring data shapes.
-       lod_levels(list): List of ints which declaring data lod_level.
+       lod_levels(${lod_levels_type}): ${lod_levels_comment}.
        dtypes(list): List of strs which declaring data type.
        pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run
             subsequent operators in parallel.
 
     Returns:
-       Variable: A Reader Variable via which we can get RecordIO file data.
+       ${out_comment}.
 
     Examples:
-       .. code-block:: python
 
-         reader = fluid.layers.io.open_recordio_file(
-                                          filename='./data.recordio',
-                                          shapes=[(3,224,224), (1)],
-                                          lod_levels=[0, 0],
-                                          dtypes=['float32', 'int64'])
-
-         # Via the reader, we can use 'read_file' layer to get data:
-         image, label = fluid.layers.io.read_file(reader)
+        >>> import paddle.fluid as fluid
+        >>> reader = fluid.layers.io.open_recordio_file(
+        >>>                               filename='./data.recordio',
+        >>>                               shapes=[(3,224,224), (1)],
+        >>>                               lod_levels=[0, 0],
+        >>>                               dtypes=['float32', 'int64'])
+        >>> # Via the reader, we can use 'read_file' layer to get data:
+        >>> image, label = fluid.layers.io.read_file(reader)
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -554,6 +551,29 @@ def batch(reader, batch_size):
 
 
 def double_buffer(reader, place=None, name=None):
+    """
+    Wrap a double buffer reader. The data will copy to target place with a
+    double buffer queue. If the target place is None, the place that executor
+    perform on will be used.
+
+    Args:
+        reader(Variable): the reader variable need to be wrapped.
+        place(Place): the place of target data. Default is the sample place of
+            executor perform.
+
+        name(str): Variable name. None if the user does not care.
+
+    Returns:
+        wrapped reader with double buffer.
+
+    Examples:
+
+        >>> reader = fluid.layers.open_files(filenames=['somefile'],
+        >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  dtypes=['float32', 'int64'])
+        >>> reader = fluid.layers.double_buffer(reader)
+        >>> img, label = fluid.layers.read_file(reader)
+    """
     attrs = dict()
     if place is not None:
         attrs['place'] = str(place).upper()
@@ -587,6 +607,26 @@ def read_file(file_obj):
 
 
 class Preprocessor(object):
+    """
+    A block for data pre-processing in reader.
+
+    Args:
+        reader (Variable): A reader variable.
+        name (str, default None): The name of the reader.
+
+    Examples:
+          .. code-block:: python
+
+            preprocessor = fluid.layers.io.Preprocessor(reader=reader)
+            with preprocessor.block():
+                img, lbl = preprocessor.inputs()
+                img_out = img / 2
+                lbl_out = lbl + 1
+                preprocessor.outputs(img_out, lbl_out)
+
+            data_file = fluid.layers.io.double_buffer(preprocessor())
+
+    """
     BEFORE_SUB_BLOCK = 0
     IN_SUB_BLOCK = 1
     AFTER_SUB_BLOCK = 2

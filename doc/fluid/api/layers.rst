@@ -342,6 +342,12 @@ conv2d
 ..  autofunction:: paddle.fluid.layers.conv2d
     :noindex:
 
+conv3d
+------
+
+..  autofunction:: paddle.fluid.layers.conv3d
+    :noindex:
+
 sequence_pool
 -------------
 
@@ -366,6 +372,12 @@ pool2d
 ..  autofunction:: paddle.fluid.layers.pool2d
     :noindex:
 
+pool3d
+------
+
+..  autofunction:: paddle.fluid.layers.pool3d
+    :noindex:
+
 batch_norm
 ----------
 
@@ -383,6 +395,13 @@ conv2d_transpose
 
 ..  autofunction:: paddle.fluid.layers.conv2d_transpose
     :noindex:
+
+conv3d_transpose
+----------------
+
+..  autofunction:: paddle.fluid.layers.conv2d_transpose
+    :noindex:
+
 
 sequence_expand
 ---------------
@@ -1039,5 +1058,44 @@ box_coder
 ---------
 
 ..  autofunction:: paddle.fluid.layers.box_coder
+    :noindex:
+
+learning_rate_scheduler
+=======================
+
+exponential_decay
+-----------------
+
+..  autofunction:: paddle.fluid.layers.exponential_decay
+    :noindex:
+
+natural_exp_decay
+-----------------
+
+..  autofunction:: paddle.fluid.layers.natural_exp_decay
+    :noindex:
+
+inverse_time_decay
+------------------
+
+..  autofunction:: paddle.fluid.layers.inverse_time_decay
+    :noindex:
+
+polynomial_decay
+----------------
+
+..  autofunction:: paddle.fluid.layers.polynomial_decay
+    :noindex:
+
+piecewise_decay
+---------------
+
+..  autofunction:: paddle.fluid.layers.piecewise_decay
+    :noindex:
+
+noam_decay
+----------
+
+..  autofunction:: paddle.fluid.layers.noam_decay
     :noindex:
 
