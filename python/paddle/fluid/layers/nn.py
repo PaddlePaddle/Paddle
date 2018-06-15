@@ -1210,6 +1210,41 @@ def sequence_conv(input,
 
 
 def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+    """
+    This function computes the softmax activation among all time-steps for each
+    sequence. The dimension of each time-step should be 1. Thus, the shape of
+    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N` 
+    is the sum of the length of all sequences.
+
+    For i-th sequence in a mini-batch:
+
+    .. math::
+
+        Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
+
+    For example, for a mini-batch of 3 sequences with variable-length,
+    each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
+    then softmax will be computed among :math:`X[0:2, :]`, :math:`X[2:5, :]`,
+    :math:`X[5:7, :]`, and :math:`N` turns out to be 7.
+
+    Args:
+        input (Variable): The input variable which is a LoDTensor.
+        bias_attr (ParamAttr|None): attributes for bias
+        param_attr (ParamAttr|None): attributes for parameter
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        library is installed. Default: True
+    
+    Returns:
+        Variable: output of sequence_softmax
+
+    Examples:
+
+        .. code-block:: python
+
+             x = fluid.layers.data(name='x', shape=[7, 1],
+                              dtype='float32', lod_level=1)
+             x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
+    """
     helper = LayerHelper('sequence_softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
