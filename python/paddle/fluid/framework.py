@@ -1035,10 +1035,17 @@ class Block(object):
 
 class Program(object):
     """
-    Python Program. Beneath it is a ProgramDesc, which is used for create c++ Program.
-    A program is a self-contained programing language like container. It has at least one Block, and the control flow op like conditional_block, while_op is included, then it will contains nested block.
+    Python Program. Beneath it is a ProgramDesc, which is used for
+    create c++ Program. A program is a self-contained programing
+    language like container. It has at least one Block, when the
+    control flow op like conditional_block, while_op is included,
+    it will contains nested block.
     Please reference the framework.proto for details.
-    Notes: we have default_startup_program and default_main_program by default, a pair of them will shared the parameters. The default_startup_program only run once to initialize parameters,  default_main_program run in every minibatch and adjust the weights.
+
+    Notes: we have default_startup_program and default_main_program
+    by default, a pair of them will shared the parameters.
+    The default_startup_program only run once to initialize parameters,
+    default_main_program run in every minibatch and adjust the weights.
 
     Args:
         None
