@@ -20,6 +20,7 @@ from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from ops import logical_and, logical_not, logical_or
+import numpy
 
 __all__ = [
     'split_lod_tensor',
@@ -909,37 +910,40 @@ def create_array(dtype):
         dtype=dtype)
 
 
-def less_than(x, y, force_cpu=True, cond=None, **ignored):
+@templatedoc()
+def less_than(x, y, force_cpu=None, cond=None, **ignored):
     """
-    **Less than**
+    ${comment}
 
-    This layer returns the truth value of :math:`x < y` elementwise.
+    >>> import paddle.fluid as fluid
+    >>> less = fluid.layers.less_than(x=label, y=limit)
 
     Args:
-        x(Variable): First operand of *less_than*
-        y(Variable): Second operand of *less_than*
-        force_cpu(Bool|True): The output data will be on CPU if set true.
+        x(${x_type}): ${x_comment}.
+        y(${y_type}): ${y_comment}.
+        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
         cond(Variable|None): Optional output variable to store the result of *less_than*
 
     Returns:
-        Variable: The tensor variable storing the output of *less_than*.
-
-    Examples:
-        .. code-block:: python
-
-          less = fluid.layers.less_than(x=label, y=limit)
+        ${out_comment}.
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
         cond.stop_gradient = True
 
+    attrs = dict()
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
     helper.append_op(
         type='less_than',
         inputs={'X': [x],
                 'Y': [y]},
         outputs={'Out': [cond]},
-        attrs={'force_cpu': force_cpu or force_init_on_cpu()})
+        attrs=attrs)
     return cond
 
 
@@ -1004,8 +1008,28 @@ def array_read(array, i):
 
 def shrink_memory(x, i, table):
     """
-    This function creates an operator to shrink_rnn_memory using the RankTable
+    This function creates an operator to shrink rnn memory using the RankTable
     as mentioned in the input parameter.
+
+    NOTE: This API is very low-level API. It is used by DynamicRNN only.
+
+    Since the Dynamic RNN uses no-padding way to implement RNN. The sequence
+    will be sorted by order, and the length of valid memory will be shrink after
+    each time step.
+
+    Args:
+        x(Variable): The memory object in the previous time step.
+        i(Variable): The step count variable. A int scalar as LoDTensor.
+        table(Variable): The RNNRankTable object.
+
+    Returns:
+        the memory variable after shrink.
+
+    Examples:
+
+        Since this API is very low level API. The example is not provided.
+        Please reference the implementation of class DynamicRNN for detail
+        usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
@@ -1339,6 +1363,38 @@ class IfElse(object):
 
 
 class DynamicRNN(object):
+    """
+    The dynamic RNN can process a batch of sequence data. The length of each
+    sample sequence can be different. This API automatically process them in
+    batch.
+
+    The input lod must be set. Please reference `lod_tensor`
+
+    >>> import paddle.fluid as fluid
+    >>> data = fluid.layers.data(name='sentence', dtype='int64', lod_level=1)
+    >>> embedding = fluid.layers.embedding(input=data, size=[65535, 32],
+    >>>                                    is_sparse=True)
+    >>>
+    >>> drnn = fluid.layers.DynamicRNN()
+    >>> with drnn.block():
+    >>>     word = drnn.step_input(embedding)
+    >>>     prev = drnn.memory(shape=[200])
+    >>>     hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
+    >>>     drnn.update_memory(prev, hidden)  # set prev to hidden
+    >>>     drnn.output(hidden)
+    >>>
+    >>> # last is the last time step of rnn. It is the encoding result.
+    >>> last = fluid.layers.sequence_last_step(drnn())
+
+    The dynamic RNN will unfold sequence into timesteps. Users need to define
+    how to process each time step during the :code:`with` block.
+
+    The `memory` is used staging data cross time step. The initial value of
+    memory can be zero or another variable.
+
+    The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
+    get the output sequence.
+    """
     BEFORE_RNN = 0
     IN_RNN = 1
     AFTER_RNN = 2
@@ -1361,6 +1417,15 @@ class DynamicRNN(object):
         self.mem_link = []
 
     def step_input(self, x):
+        """
+        Mark a sequence as a dynamic RNN input.
+        Args:
+            x(Variable): The input sequence.
+
+        Returns:
+            The current timestep in the input sequence.
+
+        """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
             raise TypeError(
@@ -1404,6 +1469,15 @@ class DynamicRNN(object):
         return array_read(array=input_array, i=self.step_idx)
 
     def static_input(self, x):
+        """
+        Mark a variable as a RNN input. The input will not be scattered into
+        time steps.
+        Args:
+            x(Variable): The input variable.
+
+        Returns:
+            The input variable that can access in RNN.
+        """
         self._assert_in_rnn_block_("static_input")
         if not isinstance(x, Variable):
             raise TypeError(
@@ -1425,6 +1499,10 @@ class DynamicRNN(object):
 
     @contextlib.contextmanager
     def block(self):
+        """
+        The block for user to define operators in RNN. See the class docstring
+        for more details.
+        """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
         self.step_idx = fill_constant(
@@ -1451,6 +1529,9 @@ class DynamicRNN(object):
                     x=each_array, table=self.lod_rank_table))
 
     def __call__(self, *args, **kwargs):
+        """
+        Get the output of RNN. This API should only be invoked after RNN.block()
+        """
         if self.status != DynamicRNN.AFTER_RNN:
             raise ValueError(("Output of the dynamic RNN can only be visited "
                               "outside the rnn block."))
@@ -1465,6 +1546,70 @@ class DynamicRNN(object):
                value=0.0,
                need_reorder=False,
                dtype='float32'):
+        """
+        Create a memory variable for dynamic rnn.
+
+        If the :code:`init` is not None, :code:`memory` will be initialized by
+        this variable. The :code:`need_reorder` is used to reorder the memory as
+        the input variable. It should be set to true when the initialized memory
+        depends on the input sample.
+
+        For example,
+
+        >>> import paddle.fluid as fluid
+        >>> sentence = fluid.layers.data(
+        >>>                 name='sentence', dtype='float32', shape=[32])
+        >>> boot_memory = fluid.layers.data(
+        >>>                 name='boot', dtype='float32', shape=[10])
+        >>>
+        >>> drnn = fluid.layers.DynamicRNN()
+        >>> with drnn.block():
+        >>>     word = drnn.step_input(sentence)
+        >>>     memory = drnn.memory(init=boot_memory, need_reorder=True)
+        >>>     hidden = fluid.layers.fc(
+        >>>                 input=[word, memory], size=10, act='tanh')
+        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
+        >>>     drnn.output(hidden)
+        >>> rnn_output = drnn()
+
+
+        Otherwise, if :code:`shape`, :code:`value`, :code:`dtype` are set, the
+        :code:`memory` will be initialized by this :code:`value`.
+
+        For example,
+
+        >>> import paddle.fluid as fluid
+        >>> sentence = fluid.layers.data(
+        >>>                 name='sentence', dtype='float32', shape=[32])
+        >>>
+        >>> drnn = fluid.layers.DynamicRNN()
+        >>> with drnn.block():
+        >>>     word = drnn.step_input(sentence)
+        >>>     memory = drnn.memory(shape=[10], dtype='float32', value=0)
+        >>>     hidden = fluid.layers.fc(
+        >>>             input=[word, memory], size=10, act='tanh')
+        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
+        >>>     drnn.output(hidden)
+        >>> rnn_output = drnn()
+
+
+        Args:
+            init(Variable|None): The initialized variable.
+
+            shape(list|tuple): The memory shape. NOTE the shape does not contain
+            batch_size.
+
+            value(float): the initalized value.
+
+            need_reorder(bool): True if the initialized memory depends on the
+            input sample.
+
+            dtype(str|numpy.dtype): The data type of the initialized memory.
+
+        Returns:
+            the memory variable.
+
+        """
         self._assert_in_rnn_block_('memory')
         if init is not None:
             if not isinstance(init, Variable):
@@ -1532,6 +1677,16 @@ class DynamicRNN(object):
             return self.memory(init=init)
 
     def update_memory(self, ex_mem, new_mem):
+        """
+        Update the memory from ex_mem to new_mem. NOTE that the shape and data
+        type of :code:`ex_mem` and :code:`new_mem` must be same.
+        Args:
+            ex_mem(Variable): the memory variable.
+            new_mem(Variable): the plain variable generated in RNN block.
+
+        Returns:
+            None
+        """
         self._assert_in_rnn_block_('update_memory')
         if not isinstance(ex_mem, Variable):
             raise TypeError("The input arg `ex_mem` of update_memory() must "
@@ -1549,6 +1704,15 @@ class DynamicRNN(object):
         self.mem_link.append((new_mem, mem_array))
 
     def output(self, *outputs):
+        """
+        mark the RNN output variables.
+
+        Args:
+            outputs: The output variables.
+
+        Returns:
+            None
+        """
         self._assert_in_rnn_block_('output')
         parent_block = self._parent_block_()
         for each in outputs:
