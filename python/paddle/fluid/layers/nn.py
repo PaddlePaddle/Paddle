@@ -503,22 +503,23 @@ def dynamic_lstmp(input,
                with the `input`.
 
     Examples:
+
         .. code-block:: python
 
-        dict_dim, emb_dim = 128, 64
-        data = fluid.layers.data(name='sequence', shape=(128),
-                                 dtype='int32', lod_level=1)
-        emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
-        hidden_dim, proj_dim = 512, 256
-        fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
-                                 act=None, bias_attr=None)
-        proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
-                                                 size=hidden_dim * 4,
-                                                 proj_size=proj_dim,
-                                                 use_peepholes=False,
-                                                 is_reverse=True,
-                                                 cell_activation="tanh",
-                                                 proj_activation="tanh")
+            dict_dim, emb_dim = 128, 64
+            data = fluid.layers.data(name='sequence', shape=(128),
+                                     dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            hidden_dim, proj_dim = 512, 256
+            fc_out = fluid.layers.fc(input=hidden, size=hidden_dim * 4,
+                                     act=None, bias_attr=None)
+            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
+                                                     size=hidden_dim * 4,
+                                                     proj_size=proj_dim,
+                                                     use_peepholes=False,
+                                                     is_reverse=True,
+                                                     cell_activation="tanh",
+                                                     proj_activation="tanh")
     """
 
     helper = LayerHelper('lstmp', **locals())
@@ -636,6 +637,7 @@ def dynamic_gru(input,
             and sequence length is the same with the input.
 
     Examples:
+
         .. code-block:: python
 
             dict_dim, emb_dim = 128, 64
@@ -900,10 +902,11 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
         Variable: A tensor variable is the shape with `x`.
 
     Examples:
+
         .. code-block:: python
 
-        x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-        droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
     """
 
     helper = LayerHelper('dropout', **locals())
@@ -2541,31 +2544,33 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
     .. math::
-    y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
+
+        y = \\frac{x}{ \sqrt{\sum {x^2} + epsion }}
 
     For `x` with more dimensions, this layer independently normalizes each 1-D
     slice along dimension `axis`.
 
     Args:
         x(Variable|list): The input tensor to l2_normalize layer.
-        axis(int): The axis on which to apply normalization. If `axis < 0`,
+        axis(int): The axis on which to apply normalization. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
-        epsilon(float): The epsilon value is used to avoid division by zero,
+        epsilon(float): The epsilon value is used to avoid division by zero, \
             the defalut value is 1e-10.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
     Returns:
         Variable: The output tensor variable is the same shape with `x`.
 
     Examples:
+
         .. code-block:: python
 
-        data = fluid.layers.data(name="data",
-                                 shape=(3, 17, 13),
-                                 dtype="float32")
-        normed = fluid.layers.l2_normalize(x=data, axis=1)
+            data = fluid.layers.data(name="data",
+                                     shape=(3, 17, 13),
+                                     dtype="float32")
+            normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
     if len(x.shape) == 1:

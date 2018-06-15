@@ -386,16 +386,16 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
        Variable: A Reader Variable from which we can get random data.
 
     Examples:
+
         .. code-block:: python
 
-        import paddle.fluid as fluid
-        reader = fluid.layers.io.random_data_generator(
-                                         low=0.0,
-                                         high=1.0,
-                                         shapes=[(3,224,224), (1)],
-                                         lod_levels=[0, 0])
-        # Via the reader, we can use 'read_file' layer to get data:
-        image, label = fluid.layers.io.read_file(reader)
+            reader = fluid.layers.random_data_generator(
+                                             low=0.0,
+                                             high=1.0,
+                                             shapes=[(3,224,224), (1)],
+                                             lod_levels=[0, 0])
+            # Via the reader, we can use 'read_file' layer to get data:
+            image, label = fluid.layers.read_file(reader)
     """
     dtypes = [core.VarDesc.VarType.FP32] * len(shapes)
     shape_concat = []

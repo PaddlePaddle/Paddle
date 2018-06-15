@@ -497,15 +497,16 @@ def save_combine(x, file_path, overwrite=True):
         There is no return value.
 
     Examples:
+
         .. code-block:: python
 
-        v1 = fluid.layers.data(name="data",
-                               shape=(4, 6),
-                               dtype="float32")
-        v2 = fluid.layers.data(name="data",
-                               shape=(6, 8, 4),
-                               dtype="float32")
-        normed = fluid.layers.save_combine([v1, v2], file_path="output")
+            v1 = fluid.layers.data(name="data",
+                                   shape=(4, 6),
+                                   dtype="float32")
+            v2 = fluid.layers.data(name="data",
+                                   shape=(6, 8, 4),
+                                   dtype="float32")
+            normed = fluid.layers.save_combine([v1, v2], file_path="output")
     """
     helper = LayerHelper("save_combine", **locals())
     helper.append_op(
