@@ -109,7 +109,7 @@ class BlockGuardServ(BlockGuard):
 
 class ListenAndServ(object):
     """
-    ***ListenAndServ Layer***
+    **ListenAndServ Layer**
     
     ListenAndServ is used to create a rpc server bind and listen
     on specific TCP port, this server will run the sub-block when
@@ -120,9 +120,6 @@ class ListenAndServ(object):
         inputs(list): a list of variables that the server will get from clients.
         fan_in(int): how many client are expected to report to this server, default: 1.
         optimizer_mode(bool): whether to run the server as a parameter server, default: True.
-    
-    Returns:
-        None
 
     Examples:
         .. code-block:: python

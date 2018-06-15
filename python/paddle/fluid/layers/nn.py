@@ -1049,7 +1049,7 @@ def chunk_eval(input,
                num_chunk_types,
                excluded_chunk_types=None):
     """
-    ***Chunk Evaluator***
+    **Chunk Evaluator**
 
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
@@ -1883,7 +1883,7 @@ def conv2d_transpose(input,
                      act=None,
                      name=None):
     """
-    ***Convlution2D Transpose Layer****
+    **Convlution2D Transpose Layer**
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
