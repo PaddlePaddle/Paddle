@@ -1326,10 +1326,8 @@ def conv2d(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(
-              input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     num_channels = input.shape[1]
@@ -1431,8 +1429,7 @@ def conv3d(input,
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
@@ -1494,10 +1491,8 @@ def conv3d(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 12, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv3d(
-              input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     l_type = 'conv3d'
@@ -2105,32 +2100,36 @@ def conv2d_transpose(input,
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
     `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    If bias attribution and activation type are provided, bias is added to
+    the output of the convolution, and the corresponding activation function
+    is applied to the final result.
 
     For each input :math:`X`, the equation is:
 
     .. math::
 
-        Out = W \\ast X
+        Out = \sigma (W \\ast X + b)
 
-    In the above equation:
+    Where:
 
     * :math:`X`: Input value, a tensor with NCHW format.
     * :math:`W`: Filter value, a tensor with MCHW format.
-    * :math:`\\ast` : Convolution transpose operation.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{in}, C_{out}, H_f, W_f)$
+          Filter shape: :math:`(C_{in}, C_{out}, H_f, W_f)`
 
         - Output:
 
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
@@ -2184,10 +2183,8 @@ def conv2d_transpose(input,
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(
-              input=data, num_filters=2, filter_size=3)
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
     helper = LayerHelper("conv2d_transpose", **locals())
     if not isinstance(input, Variable):
@@ -2267,32 +2264,36 @@ def conv3d_transpose(input,
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
     explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    If bias attribution and activation type are provided, bias is added to
+    the output of the convolution, and the corresponding activation function
+    is applied to the final result.
 
     For each input :math:`X`, the equation is:
 
     .. math::
 
-        Out = W \\ast X
+        Out = \sigma (W \\ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
-    * :math:`\\ast` : Convolution transpose operation.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
         - Input:
 
-          Input shape: $(N, C_{in}, D_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{in}, C_{out}, D_f, H_f, W_f)$
+          Filter shape: :math:`(C_{in}, C_{out}, D_f, H_f, W_f)`
 
         - Output:
 
-          Output shape: $(N, C_{out}, D_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 
         Where
 
@@ -2347,10 +2348,8 @@ def conv3d_transpose(input,
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 12, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv3d_transpose(
-              input=data, num_filters=2, filter_size=3)
+          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
@@ -4680,8 +4679,8 @@ def mean_iou(input, label, num_classes):
     IOU is defined as follows: 
     
     .. math::
-        
-        IOU = true_positive / (true_positive + false_positive + false_negative). 
+
+        IOU = \\frac{true\_positiv}{(true\_positive + false\_positive + false\_negative)}.
 
     The predictions are accumulated in a confusion matrix and mean-IOU 
     is then calculated from it.
@@ -4689,8 +4688,9 @@ def mean_iou(input, label, num_classes):
 
     Args:
         input (Variable): A Tensor of prediction results for semantic labels with type int32 or int64.
-        label (Variable):  A Tensor of ground truth labels with type int32 or int64. 
+        label (Variable): A Tensor of ground truth labels with type int32 or int64.
                            Its shape should be the same as input.
+        num_classes (int): The possible number of labels.
 
     Returns:
         mean_iou (Variable): A Tensor representing the mean intersection-over-union with shape [1].
