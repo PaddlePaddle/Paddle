@@ -1156,16 +1156,14 @@ class ConditionalBlock(object):
 
 class Switch(object):
     """
-    **Switch Class**
-
-    Many programming languages provide `switch` as a generalization of `if-elif-else`.
-    Switch class works just like a `if-elif-else`.
+    Switch class works just like a `if-elif-else`. Can be used in learning rate scheduler
+    to modify learning rate
 
     The Semantics:
 
     1. A `switch` control-flow checks cases one-by-one.
 
-    2. The condition of each case is a boolean value, which is a scalar.
+    2. The condition of each case is a boolean value, which is a scalar Variable.
 
     3. It runs the first matched case, or the default case if there is one.
 
@@ -1174,9 +1172,22 @@ class Switch(object):
     Examples:
         .. code-block:: python
 
-            with fluid.control_flow.Switch() as switch:
+            lr = fluid.layers.tensor.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype='float32',
+                persistable=True,
+                name="learning_rate")
+            one_var = tensor.fill_constant(
+                shape=[1], dtype='float32', value=1.0)
+            two_var = tensor.fill_constant(
+                shape=[1], dtype='float32', value=2.0)
+
+            with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.tensor.assign(input=one_var, output=div_res)
+                    fluid.layers.tensor.assign(input=one_var, output=lr)
+                with switch.default():
+                    fluid.layers.tensor.assign(input=two_var, output=lr)
 
     """
 
