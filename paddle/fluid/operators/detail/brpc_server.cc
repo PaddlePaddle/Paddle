@@ -84,13 +84,6 @@ class BRPCServiceImpl : public SendRecvService {
     std::string varname = request->varname();
     VLOG(3) << "RequestGet " << varname;
 
-    /*
-    detail::BRPCVariableResponse resp(request_get_h_->scope(),
-                                      request_get_h_->dev_ctx());
-    PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
-                   "parse iobuf to tensor error!");
-                   */
-
     auto scope = request_get_h_->scope();
     auto invar = scope->FindVar(varname);
     paddle::framework::Variable* outvar = nullptr;
