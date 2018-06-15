@@ -637,10 +637,10 @@ def read_file(reader):
     out = [
         helper.create_tmp_variable(
             stop_gradient=True, dtype='float32')
-        for _ in range(len(file_obj.desc.shapes()))
+        for _ in range(len(reader.desc.shapes()))
     ]
     helper.append_op(
-        type='read', inputs={'Reader': [file_obj]}, outputs={'Out': out})
+        type='read', inputs={'Reader': [reader]}, outputs={'Out': out})
     if len(out) == 1:
         return out[0]
     else:
