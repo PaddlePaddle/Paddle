@@ -2051,15 +2051,25 @@ def layer_norm(input,
 
 def beam_search_decode(ids, scores, name=None):
     """
+    This layers is to pack the output of beam search layer into sentences and
+    associated scores. It is usually called after the beam search layer.
+
     ${beam_search_decode}
 
     Args:
         ids (Variable): ${ids_comment}
         scores (Variable): ${scores_comment}
         name (str): The name of this layer. It is optional.
-    
+
     Returns:
-        tuple: a tuple of two output variable: sentence_ids, sentence_scores
+        tuple(Variable): a tuple of two output variable: sentence_ids, sentence_scores
+
+    Examples:
+        .. code-block:: python
+            ids, scores = fluid.layers.beam_search(
+                pre_ids, ids, scores, beam_size, end_id)
+            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
+                ids, scores)
     """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
