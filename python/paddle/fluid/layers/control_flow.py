@@ -823,8 +823,7 @@ def increment(x, value=1.0, in_place=True):
         in_place (bool): If the increment should be performed in-place.
 
     Returns:
-        Variable: The tensor variable storing the transformation of
-                  element-wise increment of each value in the input.
+        Variable: The elementwise-incremented object.
 
     Examples:
         .. code-block:: python

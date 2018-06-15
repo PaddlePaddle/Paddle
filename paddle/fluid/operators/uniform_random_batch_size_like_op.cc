@@ -38,7 +38,7 @@ class UniformRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
 UniformRandomBatchSizeLike operator.
 
 This operator initializes a tensor with the same batch_size as the Input tensor
- with random values sampled from a uniform distribution.
+with random values sampled from a uniform distribution.
 
 )DOC");
     AddAttr<float>("min",
