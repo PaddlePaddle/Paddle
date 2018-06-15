@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/detail/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
@@ -60,12 +60,17 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
-    detail::RPCClient client;
+    detail::RPCClient* client = detail::RPCClient::GetInstance<RPCCLIENT_T>();
+
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
-      client.AsyncSendVariable(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
+      client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
     }
-    client.Wait();
+    client->Wait();
+    for (auto& ep : endpoint_list) {
+      client->AsyncSendBatchBarrier(ep);
+    }
+    client->Wait();
     VLOG(3) << "sending completed...";
   }
 
@@ -75,21 +80,28 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::AsyncGRPCServer rpc_service(endpoint, true);
+    detail::RequestSendHandler rpc_h(true);
+    std::unique_ptr<detail::RPCServer> rpc_service(
+        new RPCSERVER_T(endpoint, 1));
+
+    rpc_service->RegisterRPC(detail::kRequestSend, &rpc_h);
+    rpc_h.SetRPCServer(rpc_service.get());
+
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
-    rpc_service.SetScope(scope);
-    rpc_service.SetDevCtx(&dev_ctx);
-    rpc_service.SetProgram(&empty_program);
-    rpc_service.SetExecutor(&executor);
+    rpc_h.SetScope(scope);
+    rpc_h.SetDevCtx(&dev_ctx);
+    rpc_h.SetProgram(&empty_program);
+    rpc_h.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncGRPCServer::RunSyncUpdate, &rpc_service));
-    rpc_service.SetCond(0);
+        std::bind(&detail::RPCServer::StartServer, rpc_service.get()));
+
+    rpc_service->SetCond(detail::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    auto recv = rpc_service.Get();
+    rpc_service->WaitBarrier(detail::kRequestSend);
     VLOG(3) << "got nccl id and stop server...";
-    rpc_service.ShutDown();
+    rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
   }
