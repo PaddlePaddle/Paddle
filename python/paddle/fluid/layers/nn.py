@@ -3472,7 +3472,33 @@ def nce(input,
         num_neg_samples (int): ${num_neg_samples_comment}
     
     Returns:
-        Variable: output of nce layer.
+        Variable: The output nce loss.
+
+    Examples:
+        .. code-block:: python
+
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
+
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
+
+                emb = layers.embedding(input=words[i], size=[dict_size, 32],
+                                       param_attr='emb.w', is_sparse=True)
+                embs.append(emb)
+
+            embs = layers.concat(input=embs, axis=1)
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=dict_size, param_attr='nce.w',
+                          bias_attr='nce.b')
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
