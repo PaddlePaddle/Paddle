@@ -70,6 +70,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'hsigmoid',
     'beam_search',
     'row_conv',
     'multiplex',
@@ -3520,6 +3521,74 @@ def nce(input,
     return cost / (num_neg_samples + 1)
 
 
+def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
+    """
+    The hierarchical sigmoid operator is used to accelerate the training
+    process of language model. This operator organizes the classes into a 
+    complete binary tree, each leaf node represents a class(a word) and each internal
+    node acts likea binary classifier. For each word there's a unique path from root 
+    to it's leaf node, hsigmoid calculate the cost for each internal node on the path
+    (include root), and sum them to get a total cost. hsigmoid can achive a acceleration 
+    from N to logN, for which N represents the size of word dict. This idea is from "F. 
+    Morin, Y. Bengio(AISTATS 05): Hierarchical Probabilistic Neural Network Language Model.
+
+    Args:
+        input (Variable): (Tensor) The input Tensor, which the shape is
+             [N * D], which N is the size of mini-batch,D is the embded size
+        label (Variable): (Tensor), The labels of training data. It's a
+             1-D tensor, which the shape is [1, N]
+        num_classes: (int, default 2), The number of classes, must be lager or
+             equal than 2.
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter
+             attribute for learnable parameters/weights of this layer.
+        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter 
+             attribute for the bias of this layer. If it is set to None, no bias 
+             will be added to the output units.
+
+    Returns:
+        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[3, 2],
+                                dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1, 3],
+                                dtype='int64')
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=2)
+    """
+
+    helper = LayerHelper('hierarchical_sigmoid', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    pre_out = helper.create_tmp_variable(dtype)
+    dim = input.shape[1]
+    if num_classes < 2:
+        raise ValueError("num_classes must be lager or equal than 2.")
+    weights = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[num_classes - 1, dim],
+        is_bias=False,
+        dtype=input.dtype)
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=[1, num_classes - 1],
+        is_bias=True,
+        dtype=input.dtype)
+
+    helper.append_op(
+        type="hierarchical_sigmoid",
+        inputs={"X": input,
+                "W": weights,
+                "Ids": label,
+                "Bias": bias},
+        outputs={"Out": out,
+                 "PreOut": pre_out},
+        attrs={"num_classes": num_classes})
+    return out
+
+
 def transpose(x, perm, name=None):
     """
     **transpose Layer**
@@ -4688,8 +4757,7 @@ def random_crop(x, shape, seed=None):
             attrs={
                 "dtype": seed.dtype,
                 "shape": [1],
-                "value": float(seed_value),
-                "force_cpu": True
+                "value": float(seed_value)
             })
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
