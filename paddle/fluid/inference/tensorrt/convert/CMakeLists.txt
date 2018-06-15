@@ -13,3 +13,5 @@ nv_test(test_trt_fc_op SRCS test_fc_op.cc fc_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine mul_op SERIAL)
 nv_test(test_trt_activation_op SRCS test_activation_op.cc activation_op.cc
         DEPS ${FLUID_CORE_MODULES} tensorrt_engine activation_op SERIAL)
+nv_test(test_trt_softmax_op SRCS test_softmax_op.cc softmax_op.cc
+        DEPS ${FLUID_CORE_MODULES} tensorrt_engine softmax_op SERIAL)

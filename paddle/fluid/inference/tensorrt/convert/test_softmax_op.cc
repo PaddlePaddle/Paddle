@@ -20,24 +20,21 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(MulOpConverter, main) {
+TEST(SoftmaxOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
   TRTConvertValidation validator(10, parameters, scope, 1000);
-  validator.DeclInputVar("mul-X", nvinfer1::Dims2(10, 6));
-  validator.DeclInputVar("mul-Y", nvinfer1::Dims2(6, 10));
-  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(10, 10));
 
-  // Prepare Op description
+  validator.DeclInputVar("x", nvinfer1::Dims2(10, 6));
+  validator.DeclOutputVar("out", nvinfer1::Dims2(10, 6));
+
   framework::OpDesc desc;
-  desc.SetType("mul");
-  desc.SetInput("X", {"mul-X"});
-  desc.SetInput("Y", {"mul-Y"});
-  desc.SetOutput("Out", {"mul-Out"});
+  desc.SetType("softmax");
 
-  LOG(INFO) << "set OP";
+  desc.SetInput("X", {"x"});
+  desc.SetOutput("Out", {"out"});
+
   validator.SetOp(*desc.Proto());
-  LOG(INFO) << "execute";
 
   validator.Execute(10);
 }
@@ -46,4 +43,4 @@ TEST(MulOpConverter, main) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP(softmax);
