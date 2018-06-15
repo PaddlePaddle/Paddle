@@ -240,7 +240,7 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req.set_notify_type(CHECKPOINT_SAVE_MESSAGE);
   req.set_checkpoint_dir(dir);
 
-  auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq);
+  auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }

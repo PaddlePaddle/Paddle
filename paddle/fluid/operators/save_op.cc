@@ -96,7 +96,7 @@ class SaveOp : public framework::OperatorBase {
     }
   }
 
-  SaveLodTensor(const string &filename, const platform::Place &place,
+  SaveLodTensor(const std::string &filename, const platform::Place &place,
                 Variable *var) {
     auto &tensor = var->Get<framework::LoDTensor>();
 
@@ -127,7 +127,7 @@ class SaveOp : public framework::OperatorBase {
     fout.close()
   }
 
-  SaveSelectedRows(const string &filename, const platform::Place &place,
+  SaveSelectedRows(const std::string &filename, const platform::Place &place,
                    Variable *var) {
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
@@ -141,7 +141,7 @@ class SaveOp : public framework::OperatorBase {
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
     framework::SerializeToStream(fout, selectedRows, dev_ctx);
-    fout.close()
+    fout.close();
   }
 };
 

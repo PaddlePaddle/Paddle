@@ -123,7 +123,10 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Scope* scope,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
-                                      const std::string& out_var_name) {}
+                                      const std::string& out_var_name) {
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_);
+  return true;
+}
 
 }  // namespace detail
 }  // namespace operators
