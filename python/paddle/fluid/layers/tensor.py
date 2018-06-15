@@ -219,6 +219,7 @@ def assign(input, output):
 
     Examples:
         .. code-block:: python
+
           out = fluid.layers.create_tensor(dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           fluid.layers.assign(hidden, out)
