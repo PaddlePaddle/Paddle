@@ -40,14 +40,14 @@ __all__ = [
 
 def create_tensor(dtype, name=None, persistable=False):
     """
-    **Create a Tensor**
+    Create an variable, which will hold a LoDTensor with data type dtype.
 
     Args:
-        dtype (string): 'float32'|'int32'|..., the data type of the
+        dtype(string): 'float32'|'int32'|..., the data type of the
             created tensor.
-        name (string, Default: None): The name of the created tensor, if not set,
+        name(string): The name of the created tensor, if not set,
             the name will be a random unique one.
-        persistable (bool, Default: False): Set the persistable flag of the create tensor.
+        persistable(bool): Set the persistable flag of the create tensor.
 
     Returns:
         Variable: The tensor variable storing the created tensor.

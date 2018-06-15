@@ -163,8 +163,6 @@ def polynomial_decay(learning_rate,
                      power=1.0,
                      cycle=False):
     """
-    **Polynomial Decay**
-
     Applies polynomial decay to the initial learning rate.
 
     .. code-block:: python
@@ -178,14 +176,14 @@ def polynomial_decay(learning_rate,
 
     Args:
         learning_rate(Variable|float32): A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
+          will be the initial learning rate during training.
         decay_steps(int32): A Python `int32` number.
-        end_learning_rate(float, Default: 0.0001): A Python `float` number.
-        power(float, Default: 1.0): A Python `float` number
-        cycle(bool, Default: False): Boolean. If set true, decay the learning rate every decay_steps.
+        end_learning_rate(float): A Python `float` number.
+        power(float): A Python `float` number.
+        cycle(bool): If set true, decay the learning rate every decay_steps.
 
     Returns:
-        The decayed learning rate
+        Variable: The decayed learning rate
     """
     global_step = _decay_step_counter()
 
