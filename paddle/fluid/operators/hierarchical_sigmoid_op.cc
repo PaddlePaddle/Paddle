@@ -95,7 +95,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
              "[num_classes - 1, D]");
     AddInput("Label",
              "(Tensor, required), The labels of training data. It's a"
-             "1-D tensor, which the shape is [1, N]");
+             "1-D tensor, which the shape is [N, 1]");
     AddInput("Bias",
              "(Tensor, optional), The bias is a tensor with shape"
              "[1, num_classes - 1]");
