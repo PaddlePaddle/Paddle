@@ -320,7 +320,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars) {
+                                  bool create_local_scope, bool create_vars,
+                                  bool keep_kids) {
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -343,12 +344,20 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  if (create_vars && create_local_scope) {
+  if (local_scope != scope) {
     scope->DeleteScope(local_scope);
   } else {
-    // Delete the local scopes created in operators.
-    scope->DropKids();
+    if (!keep_kids) {
+      // By default, we should delete all kid scopes after run executor because
+      // some operators may create local scope when running, such as while_op.
+      // But when while_op also create a local executor to run it's sub block,
+      // the sub scopes it created should not be dropped immediately, because
+      // while_grad_op will use some variables during while_op run, so we need
+      // to keep the kids and wait for the outer executor to drop them.
+      scope->DropKids();
+    }
   }
+
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
     VLOG(2) << "Memory used after deleting local scope: "
