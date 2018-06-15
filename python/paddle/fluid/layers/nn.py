@@ -225,11 +225,11 @@ def embedding(input,
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
-        is_distributed (bool): Whether to run lookup table from remote parameter server.
+        is_distributed(bool): Whether to run lookup table from remote parameter server.
         padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
             Otherwise the given :attr:`padding_idx` indicates padding the output
             with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the padding_idx to use in lookup is
+            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
@@ -364,8 +364,7 @@ def dynamic_lstm(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -540,27 +539,31 @@ def dynamic_lstmp(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         proj_activation(str): The activation for projection output.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
     Returns:
-        tuple: The projection of hidden state, and cell state of LSTMP. The \
-               shape of projection is (T x P), for the cell state which is \
-               (T x D), and both LoD is the same with the `input`.
+        tuple: A tuple of two output variable: the projection of hidden state, \
+               and cell state of LSTMP. The shape of projection is (T x P), \
+               for the cell state which is (T x D), and both LoD is the same \
+               with the `input`.
 
     Examples:
+
         .. code-block:: python
 
+            dict_dim, emb_dim = 128, 64
+            data = fluid.layers.data(name='sequence', shape=[1],
+                                     dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
-            fc_out = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+            fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                      act=None, bias_attr=None)
             proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
                                                      size=hidden_dim * 4,
@@ -626,10 +629,10 @@ def dynamic_gru(input,
                 candidate_activation='tanh',
                 h_0=None):
     """
-    **Dynamic GRU Layer**
+    **Gated Recurrent Unit (GRU) Layer**
 
     Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
-    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_
+    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_ .
 
     The formula is as follows:
 
@@ -676,17 +679,25 @@ def dynamic_gru(input,
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
         candidate_activation(str): The activation for candidate hidden state.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
-        h_0 (Variable): The hidden output of the first time step.
+        h_0 (Variable): This is initial hidden state. If not set, default is
+            zero. This is a tensor with shape (N x D), where N is the number of
+            total time steps of input mini-batch feature and D is the hidden
+            size.
 
     Returns:
         Variable: The hidden state of GRU. The shape is :math:`(T \\times D)`, \
-            and lod is the same with the input.
+            and sequence length is the same with the input.
 
     Examples:
+
         .. code-block:: python
 
+            dict_dim, emb_dim = 128, 64
+            data = fluid.layers.data(name='sequence', shape=[1],
+                                     dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = fluid.layers.fc(input=data, size=hidden_dim * 3)
+            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
             hidden = fluid.layers.dynamic_gru(input=x, dim=hidden_dim)
     """
 
@@ -924,13 +935,13 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
 
     Drop or keep each element of `x` independently. Dropout is a regularization
     technique for reducing overfitting by preventing neuron co-adaption during
-    training. The dropout operator randomly set (according to the given dropout
+    training. The dropout operator randomly sets (according to the given dropout
     probability) the outputs of some units to zero, while others are remain
     unchanged.
 
     Args:
-        x (Variable): The input tensor.
-         dropout_prob (float): Probability of setting units to zero.
+        x (Variable): The input tensor variable.
+        dropout_prob (float): Probability of setting units to zero.
         is_test (bool): A flag indicating whether it is in test phrase or not.
         seed (int): A Python integer used to create random seeds. If this
                     parameter is set to None, a random seed is used.
@@ -940,13 +951,14 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
                          will be named automatically.
 
     Returns:
-        Variable: A tensor variable.
+        Variable: A tensor variable is the shape with `x`.
 
     Examples:
+
         .. code-block:: python
 
-          x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-          droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
     helper = LayerHelper('dropout', **locals())
@@ -1235,14 +1247,17 @@ def conv2d(input,
            act=None,
            name=None):
     """
-    **Convlution2D Layer**
-
     The convolution2D layer calculates the output based on the input, filter
-    and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are in NCHW format. Where N is batch size, C is the number of
+    and strides, paddings, dilations, groups parameters. Input and
+    Output are in NCHW format, where N is batch size, C is the number of
     channels, H is the height of the feature, and W is the width of the feature.
-    The details of convolution layer, please refer UFLDL's `convolution,
-    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_ .
+    Filter is in MCHW format, where M is the number of output image channels,
+    C is the number of input image channels, H is the height of the filter,
+    and W is the width of the filter. If the groups is greater than 1,
+    C will equal the number of input image channels divided by the groups.
+    Please refer to UFLDL's `convolution
+    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
+    for more detials.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
@@ -1253,15 +1268,14 @@ def conv2d(input,
 
         Out = \sigma (W \\ast X + b)
 
-    In the above equation:
+    Where:
 
     * :math:`X`: Input value, a tensor with NCHW format.
     * :math:`W`: Filter value, a tensor with MCHW format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
@@ -1272,6 +1286,7 @@ def conv2d(input,
           Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
 
         - Output:
+
           Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
@@ -1283,7 +1298,7 @@ def conv2d(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format.
-            num_filters(int): The number of filter. It is as same as the output
+        num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
@@ -1306,7 +1321,8 @@ def conv2d(input,
         bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not.
+        use_mkldnn (bool): Use mkldnn kernels or not, it is valid only when compiled
+            with mkldnn library. Default: False
         act (str): Activation type. Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -2987,32 +3003,33 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
     .. math::
-    y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
+
+        y = \\frac{x}{ \sqrt{\sum {x^2} + epsion }}
 
     For `x` with more dimensions, this layer independently normalizes each 1-D
     slice along dimension `axis`.
 
     Args:
         x(Variable|list): The input tensor to l2_normalize layer.
-        axis(int): The axis on which to apply normalization. If `axis < 0`,
+        axis(int): The axis on which to apply normalization. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
-        epsilon(float): The epsilon value is used to avoid division by zero,
+        epsilon(float): The epsilon value is used to avoid division by zero, \
             the defalut value is 1e-10.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
-
     Returns:
-        Variable: The output tensor variable.
+        Variable: The output tensor variable is the same shape with `x`.
 
     Examples:
+
         .. code-block:: python
 
-          data = fluid.layers.data(name="data",
-                                   shape=(3, 17, 13),
-                                   dtype="float32")
-          normed = fluid.layers.l2_normalize(x=data, axis=1)
+            data = fluid.layers.data(name="data",
+                                     shape=(3, 17, 13),
+                                     dtype="float32")
+            normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
     if len(x.shape) == 1:

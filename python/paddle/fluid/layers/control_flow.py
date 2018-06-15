@@ -707,7 +707,7 @@ def lod_rank_table(x, level=0):
         .. code-block:: python
 
             x = fluid.layers.data(name='x', shape=[10],
-                            dtype='float32', lod_level=1)
+                                  dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
     """
     helper = LayerHelper("lod_rank_table", **locals())
