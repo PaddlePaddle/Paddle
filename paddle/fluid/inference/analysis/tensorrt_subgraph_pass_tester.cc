@@ -60,7 +60,6 @@ TEST(TensorRTSubGraph, single_pass) {
   // Check the TRT op's block desc
   for (auto node : dfg.nodes.nodes()) {
     if (node->IsFunctionBlock() ) {
-      auto& desc =
     }
   }
 }

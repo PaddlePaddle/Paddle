@@ -13,7 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /*
- * This file defines the interface for pass management.
+ * This file defines the logic of pass management. The analysis for inference is
+ * a pipeline of Passes, a PassManager is a agency that helps to manage the
+ * executation of the Passes.
+ *
+ * There are two modes of Passes, the first one is called NodePass and takes
+ * an Node as input and output; the second one is called DFGPass and takes a
+ * DFG(Data Flow Graph) as input and output. It is hard to put all the passes in
+ * the same pipeline, there are two kinds of PassManagers, both takes a DFG as
+ * input and output a DFG, but the Passes inside are different:
+ *
+ *   1. NodePassManager: the passes inside are all NodePasses, it can have
+ *      different graph trivial algorithm, for example, DFS_NodePassManager will
+ *      trigger the passes in depth first order;
+ *   2. DfgPassManager: the passes inside are all DfgPasses.
  */
 
 #pragma once
@@ -26,46 +39,12 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-class PassManager;
-
-/*
- * PassManagerMain - Executes all the PassManagers.
- */
-class PassManagerMain : public OrderedRegistry<PassManager> {
- public:
-  static PassManagerMain &Global() {
-    static auto *x = new PassManagerMain;
-    return *x;
-  }
-
-  // Execute all the PassManagers registered.
-  void RunAll(const framework::proto::ProgramDesc &desc);
-
-  PADDLE_DISALLOW_COPY_AND_ASSIGN(PassManagerMain)
-
- protected:
-  DataFlowGraph data_flow_graph_;
-
- private:
-  PassManagerMain() = default;
-};
-
 /*
  * PassManager is the base class for all pass managers, a pass manager has
- * several Pass-es registered, and execute them in the right order.
+ * several Pass-es registered, and execute them in the linear order.
  */
 class PassManager : public OrderedRegistry<Pass> {
  public:
-  enum Type {
-    kUnknown = -1,
-    // The outer iteration is DFS algorithm.
-    kDFS_PM,
-    // The outer iteratoin is BFS algorithm.
-    kBFS_PM,
-    // The outer iteration follows a customized order.
-    kCustomIter
-  };
-
   // Call all the passes' Initialize methods. The desc and data_flow_graph are
   // globally shared, so pass them as the arguemnts for all the pass managers.
   virtual bool Initialize(const framework::proto::ProgramDesc &desc,
@@ -77,37 +56,20 @@ class PassManager : public OrderedRegistry<Pass> {
   // Call all the passes' Finalize methods.
   virtual bool Finalize() = 0;
 
-  virtual ~PassManager() {}
+  // Short identifier.
+  virtual std::string repr() const = 0;
+  // Long description.
+  virtual std::string description() const = 0;
 
- protected:
-  Type type_{Type::kUnknown};
+  virtual ~PassManager() = default;
 };
-
-// A pass manager that traverse the graph in DFS order.
-template <typename GraphType>
-class DFSPassManager : public PassManager {
- public:
-  DFSPassManager(const GraphType &graph);
-
-  bool Initialize(const framework::proto::ProgramDesc &desc,
-                  DataFlowGraph *data_flow_graph) override;
-  bool Finalize() override;
-  // DFS traverse the graph, call the passes in each step.
-  void RunAll() override;
-
- private:
-  GraphType graph_;
-};
-
-// TODO(Superjomn) Implement BFSPassManager if needed.
 
 /*
- * A pass manager that traverse the graph in a customized order, it is a virtual
- * class and need to be override by sub-classes.
+ * A pass manager that process a DFG.
  */
-class DFG_PassManager : public PassManager {
+class DfgPassManager : public PassManager {
  public:
-  DFG_PassManager();
+  DfgPassManager();
   bool Initialize(const framework::proto::ProgramDesc &desc,
                   DataFlowGraph *data_flow_graph) override {
     graph_ = data_flow_graph;
@@ -130,10 +92,6 @@ class DFG_PassManager : public PassManager {
  private:
   DataFlowGraph *graph_;
 };
-
-
-// Run all the pass managers to analysis and optimize the graph.
-static void RunAnalysis() {}
 
 }  // namespace analysis
 }  // namespace inference
