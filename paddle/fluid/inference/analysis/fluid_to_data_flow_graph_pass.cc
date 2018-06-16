@@ -21,13 +21,14 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-FluidToDataFlowGraphPass::FluidToDataFlowGraphPass() {}
-
-bool FluidToDataFlowGraphPass::Initialize() { return Pass::Initialize(); }
-
-bool FluidToDataFlowGraphPass::Initialize(
-    const framework::proto::ProgramDesc &desc) {
-  desc_ = &desc;
+bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
+  PADDLE_ENFORCE(argument);
+  if (!argument->main_dfg) {
+    argument->main_dfg.reset(new DataFlowGraph);
+  }
+  desc_ = argument->origin_program_desc.get();
   return true;
 }
 

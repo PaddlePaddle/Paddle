@@ -41,7 +41,9 @@ static DataFlowGraph ProgramDescToDFG(
     const framework::proto::ProgramDesc& desc) {
   DataFlowGraph graph;
   FluidToDataFlowGraphPass pass;
-  pass.Initialize(desc);
+  Argument argument;
+  argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
+  pass.Initialize(&argument);
   pass.Run(&graph);
   pass.Finalize();
   return graph;
@@ -49,9 +51,12 @@ static DataFlowGraph ProgramDescToDFG(
 
 class DFG_Tester : public ::testing::Test {
  protected:
-  void SetUp() override { desc = LoadProgramDesc(FLAGS_inference_model_dir); }
+  void SetUp() override {
+    auto desc = LoadProgramDesc(FLAGS_inference_model_dir);
+    argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
+  }
 
-  framework::proto::ProgramDesc desc;
+  Argument argument;
 };
 
 }  // namespace analysis

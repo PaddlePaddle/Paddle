@@ -47,8 +47,8 @@ class PassManager : public OrderedRegistry<Pass> {
  public:
   // Call all the passes' Initialize methods. The desc and data_flow_graph are
   // globally shared, so pass them as the arguemnts for all the pass managers.
-  virtual bool Initialize(const framework::proto::ProgramDesc &desc,
-                          DataFlowGraph *data_flow_graph) = 0;
+  virtual bool Initialize(Argument* argument) { return false; }
+  virtual bool Initialize(const Argument& argument) { return false; }
 
   // Run all the passes.
   virtual void RunAll() = 0;
@@ -70,12 +70,9 @@ class PassManager : public OrderedRegistry<Pass> {
 class DfgPassManager : public PassManager {
  public:
   DfgPassManager();
-  bool Initialize(const framework::proto::ProgramDesc &desc,
-                  DataFlowGraph *data_flow_graph) override {
-    graph_ = data_flow_graph;
-    for (auto &pass : data_) {
-      pass->Initialize();
-      pass->Initialize(desc);
+  bool Initialize(Argument* argument) override {
+    for (auto& pass : data_) {
+      PADDLE_ENFORCE(pass->Initialize(argument));
     }
     return true;
   }
@@ -83,14 +80,14 @@ class DfgPassManager : public PassManager {
   void RunAll() override;
 
   bool Finalize() override {
-    for (auto &pass : data_) {
+    for (auto& pass : data_) {
       pass->Finalize();
     }
     return true;
   }
 
  private:
-  DataFlowGraph *graph_;
+  DataFlowGraph* graph_;
 };
 
 }  // namespace analysis

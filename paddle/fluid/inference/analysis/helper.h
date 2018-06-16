@@ -60,6 +60,7 @@ struct DataTypeNamer {
     SET_TYPE(int);
     SET_TYPE(bool);
     SET_TYPE(float);
+    SET_TYPE(void *);
   }
 
   std::unordered_map<decltype(typeid(int).hash_code()),  // NOLINT

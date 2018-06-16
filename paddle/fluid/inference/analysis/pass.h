@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/node.h"
@@ -33,16 +34,21 @@ class Pass {
   virtual ~Pass() {}
   // Virtual method overridden by subclasses to do only necessary initialization
   // before any pass is run.
-  virtual bool Initialize() { return false; }
+  // virtual bool Initialize() { return false; }
   // There is some passes such as FlowToDataFlowGraphPass that needs a
   // ProgramDesc. Here use the native ProgramDesc ProtoBuf message, so that it
   // only couple with the proto file.
-  virtual bool Initialize(const framework::proto::ProgramDesc &desc) {
-    return false;
-  }
+  // virtual bool Initialize(const framework::proto::ProgramDesc &desc) { return
+  // false; }
   // There are some Passes such as DataFlowGraphToFluidPass that will output a
   // ProgramDesc.
-  virtual bool Initialize(framework::proto::ProgramDesc *desc) { return false; }
+  // virtual bool Initialize(framework::proto::ProgramDesc *desc) { return
+  // false; }
+
+  // Mutable Pass.
+  virtual bool Initialize(Argument *argument) { return false; }
+  // Readonly Pass.
+  virtual bool Initialize(const Argument &argument) { return false; }
 
   // Virtual method overriden by subclasses to do any necessary clean up after
   // all passes have run.

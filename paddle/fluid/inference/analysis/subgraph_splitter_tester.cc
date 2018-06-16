@@ -72,7 +72,7 @@ TEST_F(DFG_Tester, Fuse) {
   SubGraphFuse fuse(&dfg, teller);
   fuse();
 
-  int count1=0;
+  int count1 = 0;
   for (auto& node : dfg.nodes.nodes()) {
     if (node->deleted()) {
       LOG(INFO) << "deleted " << node->repr();
@@ -81,7 +81,7 @@ TEST_F(DFG_Tester, Fuse) {
   }
 
   // At least one nodes should be deleted.
-  ASSERT_EQ(dfg.nodes.size(), count0+1); // added a new FunctionBlock
+  ASSERT_EQ(dfg.nodes.size(), count0 + 1);  // added a new FunctionBlock
   ASSERT_EQ(6UL, count1);
 }
 

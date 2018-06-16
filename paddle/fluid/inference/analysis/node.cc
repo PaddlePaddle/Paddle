@@ -40,7 +40,7 @@ Node *NodeMap::Create(Node::Type type) {
     case Node::Type::kValue:
       nodes_.emplace_back(new Value);
       break;
-    case Node::Type ::kFunctionBlock:
+    case Node::Type::kFunctionBlock:
       nodes_.emplace_back(new FunctionBlock);
       break;
     default:

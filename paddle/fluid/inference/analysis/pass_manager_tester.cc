@@ -18,12 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace inference {
-namespace analysis {
-
-
-
-
-
-}  // namespace analysis
+namespace analysis {}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

@@ -48,7 +48,6 @@ class DFG_GraphvizDrawPass : public DataFlowGraphPass {
 
   DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
 
-  bool Initialize() override { return Pass::Initialize(); }
   void Run(DataFlowGraph *graph) override;
   bool Finalize() override { return Pass::Finalize(); }
 

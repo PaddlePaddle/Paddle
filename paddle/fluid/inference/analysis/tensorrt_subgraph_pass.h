@@ -32,7 +32,7 @@ class TensorRTSubGraphPass : public DataFlowGraphPass {
 
   TensorRTSubGraphPass(const NodeInsideSubgraphTeller& teller);
 
-  bool Initialize() override { return true; }
+  bool Initialize(Argument* argument) override { return true; }
 
   // This class get a sub-graph as input and determine whether to transform this
   // sub-graph into TensorRT.

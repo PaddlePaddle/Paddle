@@ -17,29 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace inference {
-namespace analysis {
-
-void PassManagerMain::RunAll(const framework::proto::ProgramDesc &desc) {
-  for (auto &pass : data_) {
-    pass->RunAll();
-  }
-}
-
-//
-// CustomIterPassManager
-//
-
-DFG_PassManager::DFG_PassManager() {
-  type_ = kCustomIter;
-  Register("fluid_to_data_flow_graph", new FluidToDataFlowGraphPass);
-}
-
-void DFG_PassManager::RunAll() {
-  for (auto &pass : data_) {
-    pass->Run(graph_);
-  }
-}
-
-}  // namespace analysis
+namespace analysis {}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

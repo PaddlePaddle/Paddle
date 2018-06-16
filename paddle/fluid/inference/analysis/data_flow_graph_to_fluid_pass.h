@@ -30,7 +30,7 @@ class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
  public:
   DataFlowGraphToFluidPass() = default;
 
-  bool Initialize(framework::proto::ProgramDesc *desc) override;
+  bool Initialize(Argument *argument) override;
   bool Finalize() override;
 
   void Run(DataFlowGraph *graph) override;

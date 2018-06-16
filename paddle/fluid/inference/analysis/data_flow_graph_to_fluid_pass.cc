@@ -19,8 +19,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-bool DataFlowGraphToFluidPass::Initialize(framework::proto::ProgramDesc* desc) {
-  desc_ = desc;
+bool DataFlowGraphToFluidPass::Initialize(Argument* argument) {
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument)
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc)
+  desc_ = argument->origin_program_desc.get();
   // Here some logic from program_desc.cc and will not add new interfaces into
   // framework::ProgramDesc class, use some UT to assure the correctness.
   auto* block = desc_->mutable_blocks()->Add();
@@ -51,7 +53,7 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node* node) {
   LOG(INFO) << "processing func " << node->name();
-  auto* ori_op = static_cast<framework::proto::OpDesc*>(node->extra_info());
+  auto* ori_op = static_cast<framework::proto::OpDesc*>(node->pb_desc());
   // currently only the main block is analyzed.
   auto* main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto* op = main_block->add_ops();
