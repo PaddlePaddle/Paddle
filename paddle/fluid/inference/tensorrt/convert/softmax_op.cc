@@ -25,6 +25,7 @@ class SoftmaxOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     op_desc.SetAttr("is_test", true);
+    op_desc.SetAttr("data_format", "NHWC");
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
