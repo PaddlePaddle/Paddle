@@ -129,8 +129,21 @@ def create_global_var(shape,
 
 def cast(x, dtype):
     """
-    This function takes in the input with input_dtype
-    and casts it to the output_dtype as the output.
+    This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts 
+    it to the output with :attr:`dtype`.
+
+    Args:
+        x (Variable): The input Variable for casting.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output Variable.
+
+    Returns:
+        Variable: The output Variable after casting.
+
+    Examples:
+        .. code-block:: python
+             
+            data = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            result = fluid.layers.cast(x=data, dtype='float64')
     """
     helper = LayerHelper('cast', **locals())
     out = helper.create_tmp_variable(dtype=dtype)
@@ -515,11 +528,27 @@ def save_combine(x, file_path, overwrite=True):
     Saves a list of variables into a single file.
 
     Args:
-        x(list): A list of Tensor/LoDTensor to be saved together in a single file.
+        x(list): A list of Tensor/LoDTensor variables to be saved together in
+                 a single file.
         file_path(str): The file path where variables will be saved.
-        overwrite(bool): Whether or not cover the given file when it has already 
+        overwrite(bool): Whether or not cover the given file when it has already
             existed. If it's set 'False' and the file is existed, a runtime 
             error will be thrown. 
+
+    Returns:
+        There is no return value.
+
+    Examples:
+
+        .. code-block:: python
+
+            v1 = fluid.layers.data(name="data",
+                                   shape=(4, 6),
+                                   dtype="float32")
+            v2 = fluid.layers.data(name="data",
+                                   shape=(6, 8, 4),
+                                   dtype="float32")
+            normed = fluid.layers.save_combine([v1, v2], file_path="output")
     """
     helper = LayerHelper("save_combine", **locals())
     helper.append_op(

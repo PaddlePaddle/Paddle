@@ -237,9 +237,56 @@ class BlockGuard(object):
 
 class ParallelDo(object):
     """
-    ParallelDo class.
+    ParallelDo is used to represent multi-thread data parallel processing.
 
-    ParallelDo class is used to create a ParallelDo.
+    Its vanilla implementation can be shown as the following (:math:`|` means
+    single thread and :math:`||||` means multiple threads)
+
+    .. code-block:: text
+
+      In the forward pass
+        |      Split input onto different devices
+        |      Copy parameter onto different devices
+        ||||   Compute forward pass in parallel
+        |      Merge output from different devices
+
+      In the backward pass
+        |      Split output@grad onto different devices
+        ||||   Compute backward pass in parallel
+        |      accumulate param@grad from different devices to the first device
+        |      Merge input@grad from different devices
+        |      Copy param@grad to the place of parallel_do_op
+
+    Examples:
+
+    .. code-block:: python
+
+      images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+      label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+      # ParallelDo version & Single-thread version
+      if thread_num > 1:
+          places = fluid.layers.get_places(thread_num)
+          pd = fluid.layers.ParallelDo(places)
+          with pd.do():
+              images = pd.read_input(images)
+              label = pd.read_input(label)
+              predict = cnn_model(images)
+              cost = fluid.layers.cross_entropy(input=predict, label=label)
+
+              avg_cost = fluid.layers.mean(x=cost)
+              pd.write_output(avg_cost)
+
+          avg_cost = pd()
+          avg_cost = fluid.layers.mean(avg_cost)
+      else:
+          predict = cnn_model(images)
+          cost = fluid.layers.cross_entropy(input=predict, label=label)
+          avg_cost = fluid.layers.mean(x=cost)
+
+    .. warning::
+    
+       It will be soon deprecated, please use ParallelExecutor instead.
     """
 
     def __init__(self, places, use_nccl=False, name=None):
@@ -610,6 +657,29 @@ class WhileGuard(BlockGuard):
 
 
 class While(object):
+    """
+    while loop control flow.
+
+    Args:
+        cond (Variable): condition used to compare.
+        name (str): The name of this layer.
+
+    Examples:
+          .. code-block:: python
+
+            d0 = layers.data("d0", shape=[10], dtype='float32')
+            data_array = layers.array_write(x=d0, i=i)
+            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
+
+            cond = layers.less_than(x=i, y=array_len)
+            while_op = layers.While(cond=cond)
+            with while_op.block():
+                d = layers.array_read(array=data_array, i=i)
+                i = layers.increment(x=i, in_place=True)
+                layers.array_write(result, i=i, array=d)
+                layers.less_than(x=i, y=array_len, cond=cond)
+    """
+
     BEFORE_WHILE_BLOCK = 0
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
@@ -679,8 +749,8 @@ def lod_rank_table(x, level=0):
         .. code-block:: text
 
             x is a LoDTensor:
-                x.lod = [[0,                2, 3],
-                         [0,             5, 6, 7]]
+                x.lod = [[2,                1],
+                         [5,             1, 1]]
                 x.data = [a, b, c, d, e, f, g]
 
             1. set level to 0:

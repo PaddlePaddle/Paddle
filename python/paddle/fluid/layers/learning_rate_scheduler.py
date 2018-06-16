@@ -25,10 +25,11 @@ import nn
 import ops
 import tensor
 from ..initializer import init_on_cpu
+from ..framework import default_main_program, Parameter
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
-    'polynomial_decay', 'piecewise_decay', 'noam_decay'
+    'polynomial_decay', 'piecewise_decay', 'noam_decay', 'append_LARS'
 ]
 
 
@@ -212,15 +213,27 @@ def polynomial_decay(learning_rate,
 def piecewise_decay(boundaries, values):
     """Applies piecewise decay to the initial learning rate.
 
-    >>> boundaries = [10000, 20000]
-    >>> values = [1.0, 0.5, 0.1]
-    >>>
-    >>> if step < 10000:
-    >>>     learning_rate = 1.0
-    >>> elif 10000 <= step < 20000:
-    >>>     learning_rate = 0.5
-    >>> else:
-    >>>     learning_rate = 0.1
+      The algorithm can be described as the code below.
+
+      .. code-block:: python
+
+        boundaries = [10000, 20000]
+        values = [1.0, 0.5, 0.1]
+        if step < 10000:
+            learning_rate = 1.0
+        elif 10000 <= step < 20000:
+            learning_rate = 0.5
+        else:
+            learning_rate = 0.1
+    Args:
+        boundaries: A list of steps numbers.
+        values: A list of learning rate values that will be picked during
+            different step boundaries.
+
+    Returns:
+        The decayed learning rate.
+
+
     """
 
     if len(values) - len(boundaries) != 1:
@@ -252,3 +265,41 @@ def piecewise_decay(boundaries, values):
                 tensor.assign(last_value_var, lr)
 
     return lr
+
+
+def append_LARS(params_grads, learning_rate, weight_decay):
+    """Applies LARS (LAYER-WISE ADAPTIVE RATE SCALING) to learning rate for
+       each layer.
+
+    ```python
+        learning_rate *= local_gw_ratio * sqrt(sumsq(param))
+                        / (sqrt(sumsq(gradient))+ weight_decay * sqrt(sumsq(param)))
+    ```
+
+    Args:
+        learning_rate: A learning rate Variable. This
+          is the global learning rate for LARS.
+        weight_decay: A Python `float` number.
+
+    Returns:
+        The decayed learning rate
+    """
+
+    def _balanced_weight(param_norm, grad_norm):
+        if weight_decay == 1.0:
+            return grad_norm + param_norm
+        else:
+            return grad_norm + weight_decay * param_norm
+
+    for param, grad in params_grads:
+        param_lr = param.optimize_attr['learning_rate']
+        param_norm = ops.sqrt(nn.reduce_sum(input=ops.square(param)))
+        grad_norm = ops.sqrt(nn.reduce_sum(input=ops.square(grad)))
+        if type(param_lr) == float and param_lr == 1.0:
+            decayed_lr = learning_rate * param_norm \
+                         / _balanced_weight(param_norm, grad_norm)
+        else:
+            decayed_lr = learning_rate * param_lr * param_norm \
+                         / _balanced_weight(param_norm, grad_norm)
+        # set back param local learning rate
+        param.optimize_attr['learning_rate'] = decayed_lr

@@ -364,8 +364,7 @@ def dynamic_lstm(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -540,27 +539,31 @@ def dynamic_lstmp(input,
         cell_activation(str): The activation for cell output. Choices = ["sigmoid",
                               "tanh", "relu", "identity"], default "tanh".
         candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         proj_activation(str): The activation for projection output.
-                              Choices = ["sigmoid", "tanh",
-                                  "relu", "identity"],
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
     Returns:
-        tuple: The projection of hidden state, and cell state of LSTMP. The \
-               shape of projection is (T x P), for the cell state which is \
-               (T x D), and both LoD is the same with the `input`.
+        tuple: A tuple of two output variable: the projection of hidden state, \
+               and cell state of LSTMP. The shape of projection is (T x P), \
+               for the cell state which is (T x D), and both LoD is the same \
+               with the `input`.
 
     Examples:
+
         .. code-block:: python
 
+            dict_dim, emb_dim = 128, 64
+            data = fluid.layers.data(name='sequence', shape=[1],
+                                     dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
-            fc_out = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+            fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                      act=None, bias_attr=None)
             proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
                                                      size=hidden_dim * 4,
@@ -626,10 +629,10 @@ def dynamic_gru(input,
                 candidate_activation='tanh',
                 h_0=None):
     """
-    **Dynamic GRU Layer**
+    **Gated Recurrent Unit (GRU) Layer**
 
     Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
-    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_
+    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_ .
 
     The formula is as follows:
 
@@ -676,17 +679,25 @@ def dynamic_gru(input,
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
         candidate_activation(str): The activation for candidate hidden state.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
-        h_0 (Variable): The hidden output of the first time step.
+        h_0 (Variable): This is initial hidden state. If not set, default is
+            zero. This is a tensor with shape (N x D), where N is the number of
+            total time steps of input mini-batch feature and D is the hidden
+            size.
 
     Returns:
         Variable: The hidden state of GRU. The shape is :math:`(T \\times D)`, \
-            and lod is the same with the input.
+            and sequence length is the same with the input.
 
     Examples:
+
         .. code-block:: python
 
+            dict_dim, emb_dim = 128, 64
+            data = fluid.layers.data(name='sequence', shape=[1],
+                                     dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = fluid.layers.fc(input=data, size=hidden_dim * 3)
+            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
             hidden = fluid.layers.dynamic_gru(input=x, dim=hidden_dim)
     """
 
@@ -924,13 +935,13 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
 
     Drop or keep each element of `x` independently. Dropout is a regularization
     technique for reducing overfitting by preventing neuron co-adaption during
-    training. The dropout operator randomly set (according to the given dropout
+    training. The dropout operator randomly sets (according to the given dropout
     probability) the outputs of some units to zero, while others are remain
     unchanged.
 
     Args:
-        x (Variable): The input tensor.
-         dropout_prob (float): Probability of setting units to zero.
+        x (Variable): The input tensor variable.
+        dropout_prob (float): Probability of setting units to zero.
         is_test (bool): A flag indicating whether it is in test phrase or not.
         seed (int): A Python integer used to create random seeds. If this
                     parameter is set to None, a random seed is used.
@@ -940,13 +951,14 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
                          will be named automatically.
 
     Returns:
-        Variable: A tensor variable.
+        Variable: A tensor variable is the shape with `x`.
 
     Examples:
+
         .. code-block:: python
 
-          x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-          droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
     helper = LayerHelper('dropout', **locals())
@@ -1198,6 +1210,41 @@ def sequence_conv(input,
 
 
 def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+    """
+    This function computes the softmax activation among all time-steps for each
+    sequence. The dimension of each time-step should be 1. Thus, the shape of
+    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N` 
+    is the sum of the length of all sequences.
+
+    For i-th sequence in a mini-batch:
+
+    .. math::
+
+        Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
+
+    For example, for a mini-batch of 3 sequences with variable-length,
+    each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
+    then softmax will be computed among :math:`X[0:2, :]`, :math:`X[2:5, :]`,
+    :math:`X[5:7, :]`, and :math:`N` turns out to be 7.
+
+    Args:
+        input (Variable): The input variable which is a LoDTensor.
+        bias_attr (ParamAttr|None): attributes for bias
+        param_attr (ParamAttr|None): attributes for parameter
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        library is installed. Default: True
+    
+    Returns:
+        Variable: output of sequence_softmax
+
+    Examples:
+
+        .. code-block:: python
+
+             x = fluid.layers.data(name='x', shape=[7, 1],
+                              dtype='float32', lod_level=1)
+             x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
+    """
     helper = LayerHelper('sequence_softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
@@ -1574,13 +1621,13 @@ def sequence_pool(input, pool_type):
     .. code-block:: text
 
        x is a 1-level LoDTensor:
-         x.lod = [[0, 2, 5, 7]]
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
          out.dim = [3, 1]
-         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         with condition len(x.lod[-1]) == out.dims[0]
 
        for different pool_type:
          average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -1639,13 +1686,13 @@ def sequence_first_step(input):
     .. code-block:: text
 
        x is a 1-level LoDTensor:
-         x.lod = [[0, 2, 5, 7]]
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
          out.dim = [3, 1]
-         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         with condition len(x.lod[-1]) == out.dims[0]
          out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
@@ -1672,13 +1719,13 @@ def sequence_last_step(input):
     .. code-block:: text
 
        x is a 1-level LoDTensor:
-         x.lod = [[0, 2, 5, 7]]
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
          out.dim = [3, 1]
-         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         with condition len(x.lod[-1]) == out.dims[0]
          out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
 
     Args:
@@ -2451,18 +2498,18 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
         * Case 1
             x is a LoDTensor:
-                x.lod  = [[0,   2,        4]]
+                x.lod  = [[2,        2]]
                 x.data = [[a], [b], [c], [d]]
                 x.dims = [4, 1]
 
             y is a LoDTensor:
-                y.lod = [[0,    2,    4],
-                         [0, 3, 6, 7, 8]]
+                y.lod = [[2,    2],
+                         [3, 3, 1, 1]]
 
             ref_level: 0
 
             then output is a 1-level LoDTensor:
-                out.lod =  [[0,   2,        4,        6,        8]]
+                out.lod =  [[2,        2,        2,        2]]
                 out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
                 out.dims = [8, 1]
 
@@ -2472,7 +2519,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
                 x.dims = [3, 1]
 
             y is a LoDTensor:
-                y.lod = [[0, 2, 2, 5]]
+                y.lod = [[2, 0, 3]]
 
             ref_level: -1
 
@@ -2731,23 +2778,24 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the mean of tensor elements over the given dimension.
+    Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the mean is computed. If
-            :attr:`None`, compute the mean over all elements of :attr:`input`
-            and return a Tensor variable with a single element, otherwise
+        dim (list|int|None): The dimension along which the mean is computed. If
+            `None`, compute the mean over all elements of :attr:`input`
+            and return a variable with a single element, otherwise it
             must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+            :math:`dim[i] < 0`, the dimension to reduce is 
+            :math:`rank(input) + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set `None`, the layer
                        will be named automatically.
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: The reduced mean Variable.
 
     Examples:
         .. code-block:: python
@@ -3020,32 +3068,33 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
     .. math::
-    y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
+
+        y = \\frac{x}{ \sqrt{\sum {x^2} + epsion }}
 
     For `x` with more dimensions, this layer independently normalizes each 1-D
     slice along dimension `axis`.
 
     Args:
         x(Variable|list): The input tensor to l2_normalize layer.
-        axis(int): The axis on which to apply normalization. If `axis < 0`,
+        axis(int): The axis on which to apply normalization. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
-        epsilon(float): The epsilon value is used to avoid division by zero,
+        epsilon(float): The epsilon value is used to avoid division by zero, \
             the defalut value is 1e-10.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
-
     Returns:
-        Variable: The output tensor variable.
+        Variable: The output tensor variable is the same shape with `x`.
 
     Examples:
+
         .. code-block:: python
 
-          data = fluid.layers.data(name="data",
-                                   shape=(3, 17, 13),
-                                   dtype="float32")
-          normed = fluid.layers.l2_normalize(x=data, axis=1)
+            data = fluid.layers.data(name="data",
+                                     shape=(3, 17, 13),
+                                     dtype="float32")
+            normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
     if len(x.shape) == 1:
@@ -3324,7 +3373,7 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.2, 0.2, 0.1, 0.5],
                       [0.5, 0.1, 0.3, 0.1]]
 
-        input.lod = [[0, 4, 8]]
+        input.lod = [[4, 4]]
 
         Then:
 
@@ -3332,7 +3381,7 @@ def ctc_greedy_decoder(input, blank, name=None):
                        [1],
                        [3]]
 
-        output.lod = [[0, 2, 3]]
+        output.lod = [[2, 1]]
 
     Args:
 
@@ -3349,7 +3398,7 @@ def ctc_greedy_decoder(input, blank, name=None):
 
     Returns:
         Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[0]] and dims [1, 1].
+        empty, the result LoDTensor will be [-1] with LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -3439,7 +3488,7 @@ def sequence_reshape(input, new_dim):
     .. code-block:: text
 
         x is a LoDTensor:
-            x.lod  = [[0, 2, 6]]
+            x.lod  = [[2, 4]]
             x.data = [[1, 2], [3, 4],
                       [5, 6], [7, 8], [9, 10], [11, 12]]
             x.dims = [6, 2]
@@ -3447,7 +3496,7 @@ def sequence_reshape(input, new_dim):
         set new_dim = 4
 
         then out is a LoDTensor:
-            out.lod  = [[0, 1, 3]]
+            out.lod  = [[1, 2]]
             out.data = [[1, 2, 3, 4],
                         [5, 6, 7, 8], [9, 10, 11, 12]]
             out.dims = [3, 4]
@@ -3499,13 +3548,41 @@ def nce(input,
         input (Variable): input variable.
         label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
-        sample_weight (int): ${sample_weight_comment}
+        sample_weight (Variable|None): A Variable of shape [batch_size, 1] 
+            storing a weight for each sample. The default weight for each 
+            sample is 1.0.
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
     
     Returns:
-        Variable: output of nce layer.
+        Variable: The output nce loss.
+
+    Examples:
+        .. code-block:: python
+
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
+
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
+
+                emb = layers.embedding(input=words[i], size=[dict_size, 32],
+                                       param_attr='emb.w', is_sparse=True)
+                embs.append(emb)
+
+            embs = layers.concat(input=embs, axis=1)
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=dict_size, param_attr='nce.w',
+                          bias_attr='nce.b')
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -3690,7 +3767,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
             output.dims = {8, 9}
 
-            output.lod = [[0, 4, 8]]
+            output.lod = [[4, 4]]
 
         The simple usage is:
 
@@ -3863,31 +3940,30 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
-    **Smooth L1 Loss Operator. **
-
-    This operator computes the smooth L1 loss for X and Y.
-    The operator takes the first dimension of X and Y as batch size.
+    This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
+    It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
     For each instance, it computes the smooth L1 loss element by element first
-    and then sums all the losses. So the shape of Out is [batch_size, 1].
+    and then sums all the losses. So the shape of ouput Variable is 
+    [batch_size, 1].
 
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
-            L1 loss op with same shape as x.
+            L1 loss op with same shape as :attr:`x`.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
-            input is optional and should have same shape with x. If provided,
-            the result of (x - y) will be multiplied by this tensor element by
-            element.
+            input is optional and should have same shape with :attr:`x`. If 
+            provided, the result of (:attr:`x` - :attr:`y`) will be multiplied 
+            by this tensor element by element.
         outside_weight (Variable|None): A tensor with rank at least 2. This
-            input is optional and should have same shape with x. If provided,
-            the out smooth L1 loss will be multiplied by this tensor element
-            by element.
-        sigma (float|None): Hyper parameter of smooth L1 loss op. A float scalar
-            with default value 1.0.
+            input is optional and should have same shape with :attr:`x`. If 
+            provided, the out smooth L1 loss will be multiplied by this tensor 
+            element by element.
+        sigma (float|None): Hyper parameter of smooth L1 loss layer. A float 
+           scalar with default value 1.0.
+
     Returns:
-        Variable: A tensor with rank be 2. The output smooth L1 loss with
-            shape [batch_size, 1].
+        Variable: The output smooth L1 loss with shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
@@ -3898,6 +3974,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.smooth_l1(x=fc, y=label)
     """
+
     helper = LayerHelper('smooth_l1_loss', **locals())
     diff = helper.create_tmp_variable(dtype=x.dtype)
     loss = helper.create_tmp_variable(dtype=x.dtype)
@@ -3917,32 +3994,20 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
 def one_hot(input, depth):
     """
-    One Hot Operator. This operator creates the one-hot representations for input
-    index values. The following example will help to explain the function of this
-    operator.
+    This layer creates the one-hot representations for input indices.
 
     Args:
-        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
-        depth(scalar): an interger defining the depth of the one hot dimension.
+        input(Variable): Input indices, last dimension must be 1.
+        depth(scalar): An interger defining the depth of the one-hot dimension.
 
     Returns:
-         The one-hot tensor or LodTensor, same as input.
+        Variable: The one-hot representations of input.
 
     Examples:
         .. code-block:: python
-
-        X is a LoDTensor:
-          X.lod = [[0, 1, 4]]
-          X.shape = [4, 1]
-          X.data = [[1], [1], [3], [0]]
-        set depth = 4
-        Out is a LoDTensor:
-          Out.lod = [[0, 1, 4]]
-          Out.shape = [4, 4]
-          Out.data = [[0., 1., 0., 0.],
-                      [0., 1., 0., 0.],
-                      [0., 0., 0., 1.],
-                      [1., 0., 0., 0.]]
+        
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_tmp_variable(dtype='float32')
@@ -4086,73 +4151,74 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
 def lod_reset(x, y=None, target_lod=None):
     """
-    LoD Reset Operator. Set LoD of **x** to a new one specified by **y** or
-    **target_lod**. When **y** provided, **y.lod** would be considered as target
-    LoD first, otherwise **y.data** would be considered as target LoD. If **y**
-    is not provided, target LoD should be specified by **target_lod**.
-    If target LoD is specified by **Y.data** or **target_lod**, only one level
-    LoD is supported.
+    Set LoD of :attr:`x` to a new one specified by :attr:`y` or
+    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be 
+    considered as target LoD first, otherwise :attr:`y.data` would be 
+    considered as target LoD. If :attr:`y` is not provided, target LoD should 
+    be specified by :attr:`target_lod`. If target LoD is specified by 
+    :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
         * Example 1:
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[ 0,     2,                   5      6 ]]
+                x.lod =  [[ 2,           3,                   1 ]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
-            target_lod: [0, 4, 6]
+            target_lod: [4, 2]
 
             then we get a 1-level LoDTensor:
-                out.lod =  [[ 0,                   4,            6 ]]
+                out.lod =  [[4,                          2]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
         * Example 2:
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[ 0,     2,                   5      6 ]]
+                x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             y is a Tensor:
-                y.data = [[0, 2, 6]]
+                y.data = [[2, 4]]
                 y.dims = [1, 3]
 
             then we get a 1-level LoDTensor:
-                out.lod =  [[ 0,     2,                          6 ]]
+                out.lod =  [[2,            4]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
         * Example 3:
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[ 0,      2,                   5     6 ]]
+                x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             y is a 2-level LoDTensor:
-                y.lod =  [[0, 2, 4], [0, 2, 5, 6]]
+                y.lod =  [[2, 2], [2, 2, 1, 1]]
                 y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
                 y.dims = [6, 1]
 
             then we get a 2-level LoDTensor:
-                out.lod =  [[0, 2, 4], [0, 2, 5, 6]]
+                out.lod =  [[2, 2], [2, 2, 1, 1]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
     Args:
         x (Variable): Input variable which could be a Tensor or LodTensor.
-        y (Variable|None): If provided, output's LoD would be derived from y.
+        y (Variable|None): If provided, output's LoD would be derived 
+                           from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
-                                      as target LoD when y not provided.
+                                      as target LoD when :attr:`y` not provided.
 
     Returns:
-        Variable: Output variable with LoD specified by this operator.
+        Variable: Output variable with LoD specified by this layer.
 
     Raises:
-        ValueError: If y and target_lod are both None.
+        ValueError: If :attr:`y` and :attr:`target_lod` are both None.
 
     Examples:
         .. code-block:: python
@@ -4659,10 +4725,6 @@ def random_crop(x, shape, seed=None):
     """
     ${comment}
 
-    Examples:
-        >>> img = fluid.layers.data("img", [3, 256, 256])
-        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
     Args:
         x(${x_type}): ${x_comment}
         shape(${shape_type}): ${shape_comment}
@@ -4671,7 +4733,10 @@ def random_crop(x, shape, seed=None):
 
     Returns:
         ${out_comment}
-
+    
+    Examples:
+        >>> img = fluid.layers.data("img", [3, 256, 256])
+        >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
     helper = LayerHelper("random_crop", **locals())
     dtype = helper.input_dtype()
