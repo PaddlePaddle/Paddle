@@ -35,6 +35,7 @@ __all__ = [
     'argmax',
     'ones',
     'zeros',
+    'reverse',
 ]
 
 
