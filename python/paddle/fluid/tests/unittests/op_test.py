@@ -162,7 +162,7 @@ class OpTest(unittest.TestCase):
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
-                        tensor.set_lod(np_value[1])
+                        tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
                         tensor.set(np_value, place)
                     feed_map[name] = tensor
@@ -170,7 +170,8 @@ class OpTest(unittest.TestCase):
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    tensor.set_lod(self.inputs[var_name][1])
+                    tensor.set_recursive_sequence_lengths(self.inputs[var_name][
+                        1])
                 else:
                     tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
@@ -293,7 +294,8 @@ class OpTest(unittest.TestCase):
                         str(place))
                     if isinstance(expect, tuple):
                         self.assertListEqual(
-                            actual.lod(), expect[1], "Output (" + sub_out_name +
+                            actual.recursive_sequence_lengths(), expect[1],
+                            "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
             else:
                 idx = find_actual(out_name, fetch_list)
@@ -307,8 +309,8 @@ class OpTest(unittest.TestCase):
                     "Output (" + out_name + ") has diff at " + str(place) +
                     str(actual_t) + "\n" + str(expect_t))
                 if isinstance(expect, tuple):
-                    self.assertListEqual(actual.lod(), expect[1],
-                                         "Output (" + out_name +
+                    self.assertListEqual(actual.recursive_sequence_lengths(),
+                                         expect[1], "Output (" + out_name +
                                          ") has different lod at " + str(place))
 
     def _get_places(self):
@@ -408,7 +410,7 @@ class OpTest(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(np_value, place)
         if lod is not None:
-            tensor.set_lod(lod)
+            tensor.set_recursive_sequence_lengths(lod)
         return tensor
 
     @staticmethod
