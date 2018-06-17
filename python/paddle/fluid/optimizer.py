@@ -706,7 +706,34 @@ class AdamaxOptimizer(Optimizer):
 
 
 class DecayedAdagradOptimizer(Optimizer):
-    """Simple Decayed Adagrad optimizer with moment state
+    """
+    **Decayed Adagrad Optimizer**
+
+    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+
+    The update is done as follows:
+
+    .. math::
+
+        moment\_out & = decay * moment + (1 - decay) * grad * grad
+
+        param\_out & = param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
+
+    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+    does not have an epsilon attribute. It is added here for numerical
+    stability to avoid the division by zero error.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        decay (float): decay rate.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
+            optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
 
