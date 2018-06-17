@@ -91,6 +91,8 @@ __all__ = [
     'gather',
     'random_crop',
     'mean_iou',
+    'relu',
+    'log',
 ]
 
 
@@ -106,14 +108,15 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    The fully connected layer can take multiple tensors as its inputs. It
-    creates a variable called weights for each input tensor, which represents
-    a fully connected weight matrix from each input unit to each output unit.
-    The fully connected layer multiplies each input tensor with its coresponding
-    weight to produce an output Tensor. If multiple input tensors are given,
-    the results of multiple multiplications will be sumed up. If bias_attr is
-    not None, a bias variable will be created and added to the output. Finally,
-    if activation is not None, it will be applied to the output as well.
+    This function creates a fully connected layer in the network. It can take 
+    multiple tensors as its inputs. It creates a variable called weights for 
+    each input tensor, which represents a fully connected weight matrix from 
+    each input unit to each output unit. The fully connected layer multiplies 
+    each input tensor with its coresponding weight to produce an output Tensor. 
+    If multiple input tensors are given, the results of multiple multiplications 
+    will be sumed up. If bias_attr is not None, a bias variable will be created 
+    and added to the output. Finally, if activation is not None, it will be applied 
+    to the output as well.
 
     This process can be formulated as follows:
 
@@ -154,7 +157,7 @@ def fc(input,
         name (str, default None): The name of this layer.
 
     Returns:
-        A tensor variable storing the transformation result.
+        Variable: The transformation result.
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
@@ -162,8 +165,7 @@ def fc(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name="data", shape=[32, 32], dtype="float32")
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
 
@@ -845,11 +847,14 @@ def linear_chain_crf(input, label, param_attr=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
+        input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
-        ${log_likelihood_comment}
+        output(${emission_exps_type}): ${emission_exps_comment} \n
+        output(${transition_exps_type}): ${transition_exps_comment} \n
+        output(${log_likelihood_type}): ${log_likelihood_comment}
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -911,7 +916,7 @@ def cos_sim(X, Y):
     Args:
         X (Variable): The input X.
         Y (Variable): The input Y.
-    
+
     Returns:
         Variable: the output of cosine(X, Y).
     """
@@ -1117,7 +1122,7 @@ def chunk_eval(input,
         chunk_scheme (str): ${chunk_scheme_comment}
         num_chunk_types (int): ${num_chunk_types_comment}
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
-    
+
     Returns:
         tuple: tuple containing: (precision, recall, f1_score,
                num_infer_chunks, num_label_chunks,
@@ -1177,14 +1182,10 @@ def sequence_conv(input,
         bias_attr (ParamAttr|None): attributes for bias
         param_attr (ParamAttr|None): attributes for parameter
         act (str): the activation type
-    
+
     Returns:
         Variable: output of sequence_conv
     """
-
-    # FIXME(dzh) : want to unify the argument of python layer
-    # function. So we ignore some unecessary attributes.
-    # such as, padding_trainable, context_start.
 
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
@@ -1740,6 +1741,7 @@ def sequence_last_step(input):
     return sequence_pool(input=input, pool_type="last")
 
 
+@templatedoc()
 def pool2d(input,
            pool_size=-1,
            pool_type="max",
@@ -1751,24 +1753,45 @@ def pool2d(input,
            use_mkldnn=False,
            name=None):
     """
-    This function adds the operator for pooling in 2 dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
-        input (Variable): ${input_comment}
-        pool_size (int): ${ksize_comment}
-        pool_type (str): ${pooling_type_comment}
+        input (Variable): The input tensor of pooling operator. The format of 
+                          input tensor is NCHW, where N is batch size, C is 
+                          the number of channels, H is the height of the 
+                          feature, and W is the width of the feature.
+        pool_size (int): The side length of pooling windows. All pooling 
+                         windows are squares with pool_size on a side.
+        pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
-        global_pooling (bool): ${global_pooling_comment}
-        use_cudnn (bool): ${use_cudnn_comment}
-        ceil_mode (bool): ${ceil_mode_comment}
-        use_mkldnn (bool): ${use_mkldnn_comment}
-        name (str): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-    
+        global_pooling: ${global_pooling_comment}
+        use_cudnn: ${use_cudnn_comment}
+        ceil_mode: ${ceil_mode_comment}
+        use_mkldnn: ${use_mkldnn_comment}
+        name (str|None): A name for this layer(optional). If set None, the 
+                        layer will be named automatically.
+
     Returns:
-        Variable: output of pool2d layer.
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: If 'pool_type' is not "max" nor "avg"
+        ValueError: If 'global_pooling' is False and 'pool_size' is -1
+        ValueError: If 'use_cudnn' is not a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.pool2d(
+                            input=data, 
+                            pool_size=2, 
+                            pool_type='max', 
+                            pool_stride=1, 
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -2127,15 +2150,37 @@ def layer_norm(input,
 
 def beam_search_decode(ids, scores, name=None):
     """
-    ${beam_search_decode}
+    Beam Search Decode
+
+    This layers is to pack the output of beam search layer into sentences and
+    associated scores. It is usually called after the beam search layer.
+    Typically, the output of beam search layer is a tensor of selected ids, with
+    a tensor of the score of each id. Beam search layer's output ids, however, 
+    are generated directly during the tree search, and they are stacked by each 
+    level of the search tree. Thus we need to reorganize them into sentences, 
+    based on the score of each id. This layer takes the output of beam search
+    layer as input and repack them into sentences.
 
     Args:
-        ids (Variable): ${ids_comment}
-        scores (Variable): ${scores_comment}
+        ids (Variable): The selected ids, output of beam search layer. 
+        scores (Variable): The associated scores of the ids, out put of beam
+            search layer.
         name (str): The name of this layer. It is optional.
-    
+
     Returns:
-        tuple: a tuple of two output variable: sentence_ids, sentence_scores
+        tuple(Variable): a tuple of two output tensors: sentence_ids, sentence_scores.
+        sentence_ids is a tensor with shape [size, length], where size is the
+        beam size of beam search, and length is the length of each sentence. 
+        Note that the length of sentences may vary.
+        sentence_scores is a tensor with the same shape as sentence_ids.
+
+    Examples:
+        .. code-block:: python
+
+            ids, scores = fluid.layers.beam_search(
+                pre_ids, ids, scores, beam_size, end_id)
+            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
+                ids, scores)
     """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
@@ -2567,7 +2612,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         beam_size (int): ${beam_size_comment}
         end_id (int): ${end_id_comment}
         level (int): ${level_comment}
-    
+
     Returns:
         tuple: a tuple of beam_search output variables: selected_ids, selected_scores
     '''
@@ -3016,7 +3061,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                        will be named automatically.
 
     Returns:
-        List: The list of segmented tensor variables.
+        list(Variable): The list of segmented tensor variables.
 
     Examples:
         .. code-block:: python
@@ -3225,25 +3270,51 @@ def topk(input, k, name=None):
     This operator is used to find values and indices of the k largest entries
     for the last dimension.
 
-    If the input is a vector (rank=1), finds the k largest entries in the vector
+    If the input is a vector (1-D Tensor), finds the k largest entries in the vector
     and outputs their values and indices as vectors. Thus values[j] is the j-th
     largest entry in input, and its index is indices[j].
 
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
 
+    For example:
+
+    .. code-block:: text
+
+        If:
+            input = [[5, 4, 2, 3],
+                     [9, 7, 10, 25],
+                     [6, 2, 10, 1]]
+            k = 2
+
+        Then:
+            The first output:
+            values = [[5, 4],
+                      [10, 25],
+                      [6, 10]]
+
+            The second output:
+            indices = [[0, 1],
+                       [2, 3],
+                       [0, 2]]
+
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
-        k(int): An integer value to specify the top k largest elements.
+        k(int):  The number of top elements to look for along the last dimension 
+                 of input.
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+                       will be named automatically. 
+                       Default: None
 
     Returns:
-        values(Variable): The k largest elements along each last dimensional
-            slice.
-        indices(Variable): The indices of values within the last dimension of
-            input.
+        Tuple[Variable]: A tuple with two elements. Each element is a Variable. 
+        The first one is k largest elements along each last 
+        dimensional slice. The second one is indices of values 
+        within the last dimension of input.
+
+    Raises:
+        ValueError: If k < 1 or k is not less than the last dimension of input
 
     Examples:
         .. code-block:: python
@@ -3251,7 +3322,7 @@ def topk(input, k, name=None):
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     shape = input.shape
-    if k < 1 and k >= shape[-1]:
+    if k < 1 or k >= shape[-1]:
         raise ValueError("k must be greater than 0 and less than %d." %
                          (shape[-1]))
 
@@ -3269,8 +3340,7 @@ def topk(input, k, name=None):
     return values, indices
 
 
-def edit_distance(input, label, normalized=True, ignored_tokens=None,
-                  name=None):
+def edit_distance(input, label, normalized=True, ignored_tokens=None):
     """
     EditDistance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
@@ -3284,21 +3354,21 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 
     "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with
+    The input is a LoDTensor consisting of all the hypothesis strings with
     the total number denoted by `batch_size`, and the separation is specified
     by the LoD information. And the `batch_size` reference strings are arranged
-    in order in the same way in the LoDTensor Input(Refs).
+    in order in the same way in the input LoDTensor.
 
-    Output(Out) contains the `batch_size` results and each stands for the edit
+    The output contains the `batch_size` results and each stands for the edit
     distance for a pair of strings respectively. If Attr(normalized) is true,
     the edit distance will be divided by the length of reference string.
 
     Args:
         input(Variable): The indices for hypothesis strings.
         label(Variable): The indices for reference strings.
-        normalized(bool): Indicated whether to normalize the edit distance by
+        normalized(bool, default True): Indicated whether to normalize the edit distance by
                           the length of reference string.
-        ignored_tokens(list of int): Tokens that should be removed before
+        ignored_tokens(list<int>, default None): Tokens that should be removed before
                                      calculating edit distance.
         name (str): The name of this layer. It is optional.
 
@@ -3310,7 +3380,6 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             y = fluid.layers.data(name='y', shape=[7], dtype='float32')
-
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -3430,35 +3499,33 @@ def warpctc(input, label, blank=0, norm_by_times=False):
     input tensor.
 
     Args:
-        input(Variable): (LodTensor, default: LoDTensor<float>),
-            the unscaled probabilities of variable-length sequences,
-            which is a 2-D Tensor with LoD information.
-            It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
-            sequences' length and num_classes is the true number of classes.
-            (not including the blank label).
-        label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
-            of variable-length sequence, which is a 2-D Tensor with LoD
-            information. It is of the shape [Lg, 1], where Lg is th sum of
-            all labels' length.
-        blank (int): default 0, the blank label index of Connectionist
-            Temporal Classification (CTC) loss, which is in the
-            half-opened interval [0, num_classes + 1).
-        norm_by_times (bool): default false, whether to normalize
-            the gradients by the number of time-step, which is also the
-            sequence's length. There is no need to normalize the gradients
-            if warpctc layer was follewed by a mean_op.
+       input (Variable): The unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information.
+         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         sequences' length and num_classes is the true number of classes.
+         (not including the blank label).
+       label (Variable): The ground truth of variable-length sequence, 
+         which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
+         where Lg is th sum of all labels' length.
+       blank (int, default 0): The blank label index of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval [0, num_classes + 1).
+       norm_by_times(bool, default false): Whether to normalize the gradients 
+         by the number of time-step, which is also the sequence's length. 
+         There is no need to normalize the gradients if warpctc layer was 
+         follewed by a mean_op.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor of the shape [batch_size, 1].
 
     Examples:
+
         .. code-block:: python
-            y = layers.data(
-                name='y', shape=[11, 8], dtype='float32', lod_level=1)
-            y_predict = layers.data(
-                name='y_predict', shape=[11, 1], dtype='float32')
-            cost = layers.warpctc(input=y_predict, label=y)
+
+            label = fluid.layers.data(shape=[11, 8], dtype='float32', lod_level=1)
+            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
+            cost = fluid.layers.warpctc(input=predict, label=label)
 
     """
     helper = LayerHelper('warpctc', **locals())
@@ -3487,17 +3554,21 @@ def sequence_reshape(input, new_dim):
     .. code-block:: text
 
         x is a LoDTensor:
-            x.lod  = [[2, 4]]
-            x.data = [[1, 2], [3, 4],
-                      [5, 6], [7, 8], [9, 10], [11, 12]]
+            x.lod  = [[0, 2, 6]]
+            x.data = [[1,  2], [3,  4],
+                      [5,  6], [7,  8],
+                      [9, 10], [11, 12]]
             x.dims = [6, 2]
 
         set new_dim = 4
 
         then out is a LoDTensor:
-            out.lod  = [[1, 2]]
-            out.data = [[1, 2, 3, 4],
-                        [5, 6, 7, 8], [9, 10, 11, 12]]
+
+            out.lod  = [[0, 1, 3]]
+
+            out.data = [[1,  2,  3,  4],
+                        [5,  6,  7,  8],
+                        [9, 10, 11, 12]]
             out.dims = [3, 4]
 
     Currently, only 1-level LoDTensor is supported and please make sure
@@ -3505,19 +3576,19 @@ def sequence_reshape(input, new_dim):
     no remainder for each sequence.
 
     Args:
-        input (Variable): (LodTensor, default: LoDTensor<float>), a 2-D LoDTensor
-            with shape being [N, M] where M for dimension.
-        new_dim (int): New dimension which the input LoDTensor is reshaped to.
+
+       input (Variable): A 2-D LoDTensor with shape being [N, M] where M for dimension.
+       new_dim (int): New dimension that the input LoDTensor is reshaped to.
 
     Returns:
+
         Variable: Reshaped LoDTensor according to new dimension.
 
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[5, 20],
-                              dtype='float32', lod_level=1)
-            x_reshaped = layers.sequence_reshape(input=x, new_dim=10)
+            x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
+            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
     helper = LayerHelper('sequence_reshape', **locals())
     out = helper.create_tmp_variable(helper.input_dtype())
@@ -3553,7 +3624,7 @@ def nce(input,
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
-    
+
     Returns:
         Variable: The output nce loss.
 
@@ -3723,8 +3794,6 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
     Examples:
 
-    As an example:
-
         .. code-block:: text
 
             Given:
@@ -3768,7 +3837,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
             output.lod = [[4, 4]]
 
-        The simple usage is:
+     Examples:
 
         .. code-block:: python
 
@@ -4253,9 +4322,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-        Output(i, x, y) = Input(i, x, y) / \left(
-        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
-        (Input(j, x, y))^2 \right)^{\beta}
+      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C, c + n/2)}_{j = \\max(0, c - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 
@@ -4769,6 +4836,62 @@ def random_crop(x, shape, seed=None):
     return out
 
 
+def log(x):
+    """
+    Calculates the natural log of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\ln(x)
+
+    Args:
+        x (Variable): Input tensor. 
+
+    Returns:
+        Variable: The natural log of the input tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.log(x)
+    """
+    helper = LayerHelper('log', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(type="log", inputs={"X": input}, outputs={"Out": out})
+    return out
+
+
+def relu(x):
+    """
+    Relu takes one input data (Tensor) and produces one output data (Tensor)
+    where the rectified linear function, y = max(0, x), is applied to
+    the tensor elementwise.
+
+    .. math::
+
+        Out = \\max(0, x)
+
+    Args:
+        x (Variable): The input tensor. 
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.relu(x)
+    """
+    helper = LayerHelper('relu', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(type="relu", inputs={"X": input}, outputs={"Out": out})
+    return out
+
+
 def mean_iou(input, label, num_classes):
     """
     Mean Intersection-Over-Union is a common evaluation metric for
@@ -4795,11 +4918,10 @@ def mean_iou(input, label, num_classes):
         out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
         out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class. 
 
-
     Examples:
 
         .. code-block:: python
-
+            
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
