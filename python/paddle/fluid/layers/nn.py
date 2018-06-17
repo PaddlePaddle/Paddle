@@ -1290,6 +1290,45 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
+    """
+    The input of the softmax layer is a 2-D tensor with shape N x K (N is the
+    batch_size, K is the dimension of input feature). The output tensor has the
+    same shape as the input tensor.
+
+    For each row of the input tensor, the softmax operator squashes the
+    K-dimensional vector of arbitrary real values to a K-dimensional vector of real
+    values in the range [0, 1] that add up to 1.
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in Input(X), we have:
+
+    .. math::
+
+        Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
+
+    Args:
+        input (Variable): The input variable.
+        bias_attr (ParamAttr): attributes for bias
+        param_attr (ParamAttr): attributes for parameter
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        library is installed.
+
+    Returns:
+        Variable: output of softmax
+
+    Examples:
+
+        .. code-block:: python
+
+             fc = fluid.layers.fc(input=x, size=10)
+             softmax = fluid.layers.softmax(input=fc)
+
+    """
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
@@ -1951,27 +1990,57 @@ def batch_norm(input,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False):
     """
-    This function helps create an operator to implement
-    the BatchNorm layer using the configurations from the input parameters.
+    **Batch Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
     Args:
-        input (Variable): the input variable.
-        act (str): activation type
-        is_test (bool): whether to run batch_norm as test mode.
-        momentum (float): momentum
-        epsilon (float): epsilon, default 1e-05
-        param_attr (ParamAttr|None): attributes for parameter
-        bias_attr (ParamAttr|None): attributes for bias
-        data_layout (str): data layout, default NCHW
-        in_place (bool): if True, do not create tmp variable
-        use_mkldnn (bool): ${use_mkldnn_comment}
-        name (str): The name of this layer. It is optional.
-        moving_mean_name (str): The name of moving mean variable name, optional.
-        moving_variance_name (str): The name of moving variance name, optional.
-        do_model_average_for_mean_and_var (bool):
+        input(variable): The input variable which is a LoDTensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test(bool, Default False): Used for training or training.
+        momentum(float, Default 0.9):
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
 
     Returns:
-        Variable: output of batch_norm layer.
+        Variable: A tensor variable which is the result after applying batch normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
@@ -4599,12 +4668,13 @@ def image_resize(input,
                  name=None,
                  resample='BILINEAR'):
     """
-    Resize a batch of images.
+    **Resize a Batch of Images**
 
     The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
     and the resizing only applies on the last two dimensions(hight and width).
 
     Supporting resample methods:
+
         'BILINEAR' : Bilinear interpolation
 
     Args:
@@ -4624,8 +4694,8 @@ def image_resize(input,
                        Default: 'BILINEAR'
 
     Returns:
-        out (Variable): The output is a 4-D tensor of the shape
-                        (num_batches, channls, out_h, out_w).
+        Variable: The output is a 4-D tensor of the shape
+        (num_batches, channls, out_h, out_w).
 
     Examples:
         .. code-block:: python
@@ -4709,8 +4779,8 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
         resample (str): resample method, default: BILINEAR.
 
     Returns:
-        out (Variable): The output is a 4-D tensor of the shape
-                        (num_batches, channls, out_h, out_w).
+        Variable: The output is a 4-D tensor of the shape
+        (num_batches, channls, out_h, out_w).
     """
     in_shape = input.shape
     if len(in_shape) != 4:
@@ -4729,6 +4799,8 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
 
 def gather(input, index):
     """
+    **Gather Layer**
+
     Output is obtained by gathering entries of the outer-most dimension 
     of X indexed by `index` and concatenate them together.
 

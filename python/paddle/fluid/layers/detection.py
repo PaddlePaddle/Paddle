@@ -620,7 +620,7 @@ def prior_box(input,
               offset=0.5,
               name=None):
     """
-    **Prior box operator**
+    **Prior Box Operator**
 
     Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
@@ -649,26 +649,30 @@ def prior_box(input,
        name(str): Name of the prior box op. Default: None.
 
     Returns:
-        boxes(Variable): the output prior boxes of PriorBox.
-             The layout is [H, W, num_priors, 4].
-             H is the height of input, W is the width of input,
-             num_priors is the total
-             box count of each position of input.
-        Variances(Variable): the expanded variances of PriorBox.
-             The layout is [H, W, num_priors, 4].
-             H is the height of input, W is the width of input
-             num_priors is the total
-             box count of each position of input
+        tuple: A tuple with two Variable (boxes, variances)
+
+        boxes: the output prior boxes of PriorBox.
+        The layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input,
+        num_priors is the total
+        box count of each position of input.
+
+        variances: the expanded variances of PriorBox.
+        The layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input
+        num_priors is the total
+        box count of each position of input
 
 
     Examples:
         .. code-block:: python
-            box, var = prior_box(
-            input=conv1,
-            image=images,
-            min_sizes=[100.],
-            flip=True,
-            clip=True)
+
+            box, var = fluid.layers.prior_box(
+                input=conv1,
+                image=images,
+                min_sizes=[100.],
+                flip=True,
+                clip=True)
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -738,11 +742,9 @@ def multi_box_head(inputs,
                    stride=1,
                    name=None):
     """
-    **Prior_boxes**
-
     Generate prior boxes for SSD(Single Shot MultiBox Detector)
     algorithm. The details of this algorithm, please refer the
-    section 2.2 of SSD paper (SSD: Single Shot MultiBox Detector)
+    section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
@@ -783,24 +785,27 @@ def multi_box_head(inputs,
        name(str): Name of the prior box layer. Default: None.
 
     Returns:
-        mbox_loc(Variable): The predicted boxes' location of the inputs.
-             The layout is [N, H*W*Priors, 4]. where Priors
-             is the number of predicted boxes each position of each input.
-        mbox_conf(Variable): The predicted boxes' confidence of the inputs.
-             The layout is [N, H*W*Priors, C]. where Priors
-             is the number of predicted boxes each position of each input
-             and C is the number of Classes.
-        boxes(Variable): the output prior boxes of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
-             box count of each position of inputs.
-        Variances(Variable): the expanded variances of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
-             box count of each position of inputs
+        tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
+
+        mbox_loc: The predicted boxes' location of the inputs. The layout
+        is [N, H*W*Priors, 4]. where Priors is the number of predicted
+        boxes each position of each input.
+
+        mbox_conf: The predicted boxes' confidence of the inputs. The layout
+        is [N, H*W*Priors, C]. where Priors is the number of predicted boxes
+        each position of each input and C is the number of Classes.
+
+        boxes: the output prior boxes of PriorBox. The layout is [num_priors, 4].
+        num_priors is the total box count of each position of inputs.
+
+        variances: the expanded variances of PriorBox. The layout is
+        [num_priors, 4]. num_priors is the total box count of each position of inputs
 
 
     Examples:
         .. code-block:: python
-          mbox_locs, mbox_confs, box, var = layers.multi_box_head(
+
+          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
             image=images,
             num_classes=21,
