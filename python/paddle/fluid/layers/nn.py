@@ -1258,6 +1258,45 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
+    """
+    The input of the softmax layer is a 2-D tensor with shape N x K (N is the
+    batch_size, K is the dimension of input feature). The output tensor has the
+    same shape as the input tensor.
+
+    For each row of the input tensor, the softmax operator squashes the
+    K-dimensional vector of arbitrary real values to a K-dimensional vector of real
+    values in the range [0, 1] that add up to 1.
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in Input(X), we have:
+
+    .. math::
+
+        Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
+
+    Args:
+        input (Variable): The input variable.
+        bias_attr (ParamAttr): attributes for bias
+        param_attr (ParamAttr): attributes for parameter
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        library is installed.
+
+    Returns:
+        Variable: output of softmax
+
+    Examples:
+
+        .. code-block:: python
+
+             fc = fluid.layers.fc(input=x, size=10)
+             softmax = fluid.layers.softmax(input=fc)
+
+    """
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
