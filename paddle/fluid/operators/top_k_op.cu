@@ -22,6 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using paddle::platform::float16;
 
 template <typename T>
 struct Pair {
@@ -31,6 +32,11 @@ struct Pair {
   __device__ __forceinline__ void set(T value, int64_t id) {
     v = value;
     id = id;
+  }
+
+  __device__ __forceinline__ void clear() {
+    v = -INFINITY;
+    id = -1;
   }
 
   __device__ __forceinline__ void operator=(const Pair<T>& in) {
@@ -52,6 +58,12 @@ struct Pair {
 
   T v;
   int64_t id;
+};
+
+template <>
+__device__ __forceinline__ void Pair<float16>::clear() {
+  v = platform::raw_uint16_to_float16(0x400);
+  id = -1;
 };
 
 template <typename T>
@@ -151,7 +163,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].clear();
         }
       }
       if (!(*is_empty)) {
@@ -161,7 +173,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
     }
 
     *max = topk[MaxLength - 1];
-    if ((*max).v == -1) *is_empty = true;
+    if ((*max).v == static_cast<T>(-1)) *is_empty = true;
     *beam = 0;
   }
 }
@@ -182,7 +194,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - *beam) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(std::numeric_limits<T>::min(), -1);
         }
       }
       if (!(*is_empty)) {
@@ -274,7 +286,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
   bool firststep = true;
 
   for (int k = 0; k < MaxLength; k++) {
-    topk[k].set(-INFINITY, -1);
+    topk[k].clear();
   }
   while (k) {
     ThreadGetTopK<T, MaxLength, BlockSize>(topk, &beam, k,

@@ -21,6 +21,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+// TODO(dzhwinter): the cross entropy need a code clean up.
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
@@ -30,6 +31,22 @@ struct TolerableValue {
     if (x == INFINITY) return kApproInf;
     if (x == -INFINITY) return -kApproInf;
     return x;
+  }
+};
+
+// float16 value clip behave different.
+using paddle::platform::float16;
+using paddle::platform::isinf;
+using paddle::platform::isfinite;
+template <>
+struct TolerableValue<float16> {
+  HOSTDEVICE float16 operator()(const float16& x) const {
+    if (isfinite(x))
+      return x;
+    else if (x > 0)
+      return x.max();
+    else
+      return x.min();
   }
 };
 

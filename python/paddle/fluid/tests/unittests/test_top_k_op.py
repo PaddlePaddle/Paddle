@@ -20,8 +20,10 @@ from op_test import OpTest
 class TestTopkOp(OpTest):
     def setUp(self):
         self.op_type = "top_k"
+        self.dtype = np.float32
+        self.init_dtype()
         k = 1
-        input = np.random.random((32, 84)).astype("float32")
+        input = np.random.random((32, 84)).astype(self.dtype)
         output = np.ndarray((32, k))
         indices = np.ndarray((32, k)).astype("int64")
 
@@ -37,6 +39,17 @@ class TestTopkOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestFP16TopkOp(TestTopkOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestTopkOp3d(OpTest):

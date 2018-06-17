@@ -141,6 +141,11 @@ TEST(float16, lod_tensor_cpu) {
   }
 }
 
+TEST(float16, floating) {
+  // compile time assert.
+  PADDLE_ASSERT(std::is_floating_point<float16>::value);
+}
+
 TEST(float16, print) {
   float16 a = float16(1.0f);
   std::cout << a << std::endl;

@@ -47,6 +47,11 @@ __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
 }
 
 template <typename T>
+HOSTDEVICE T Infinity() {
+  return INFINITY;
+}
+
+template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {
   // NOTE(zcd): The warp size should be taken from the
   // parameters of the GPU but not specified as 32 simply.

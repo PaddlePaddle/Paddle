@@ -67,8 +67,9 @@ struct float16;
 }  // namespace platform
 }  // namespace paddle
 
-#include "paddle/fluid/framework/eigen.h"
+// #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace platform {
@@ -897,6 +898,13 @@ struct is_pod<paddle::platform::float16> {
       is_trivial<paddle::platform::float16>::value &&
       is_standard_layout<paddle::platform::float16>::value;
 };
+
+template <>
+struct is_floating_point<paddle::platform::float16>
+    : std::integral_constant<
+          bool, std::is_same<paddle::platform::float16,
+                             typename std::remove_cv<
+                                 paddle::platform::float16>::type>::value> {};
 
 template <>
 struct numeric_limits<paddle::platform::float16> {
