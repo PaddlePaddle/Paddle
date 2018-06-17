@@ -27,7 +27,6 @@ __all__ = [
     'merge_lod_tensor',
     'BlockGuard',
     'BlockGuardWithCompletion',
-    'StaticRNNMemoryLink',
     'WhileGuard',
     'While',
     'Switch',
@@ -410,16 +409,17 @@ class StaticRNNMemoryLink(object):
     """
     StaticRNNMemoryLink class.
 
-    Args:
-        init: the initial variable for Memory
-        init: Variable
-        pre_mem: the memory variable in previous time step
-        pre_mem: Variable
-        mem: the memory variable in current time step
-        mem: Variable
-
     StaticRNNMemoryLink class is used to create a link between two
     memory cells of a StaticRNN.
+
+
+    NOTE: This is a internal data structure of a very low-level API.
+    Please use StaticRNN instead.
+
+    Args:
+        init(Variable): the initial variable for Memory.
+        pre_mem(Variable): the memory variable in previous time step.
+        mem(Variable): the memory variable in current time step.
     """
 
     def __init__(self, init, pre_mem, mem=None):
