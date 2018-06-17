@@ -28,8 +28,8 @@ from contextlib import contextmanager
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'Adadelta', 'ModelAverage', 'Optimizer'
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'AdadeltaOptimizer',
+    'RMSPropOptimizer', 'Adadelta', 'ModelAverage', 'Optimizer'
 ]
 
 
@@ -192,15 +192,15 @@ class Optimizer(object):
         """Add optimization operators to update gradients to variables.
 
         Args:
-          loss: the target that this optimization is for.
-          parameters_and_grads: a list of (variable, gradient) pair to update.
+          loss(Variable): the target that this optimization is for.
+          parameters_and_grads(list(tuple(Variable, Variable))):
+          a list of (variable, gradient) pair to update.
 
         Returns:
           return_op_list: a list of operators that will complete one step of
           optimization. This will include parameter update ops, global step
           update ops and any other custom ops required by subclasses to manage
           their internal state.
-          :param startup_program:
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -268,7 +268,22 @@ class Optimizer(object):
 
 
 class SGDOptimizer(Optimizer):
-    """ Simple SGD optimizer without any state.
+    """
+    Optimizer of the stochastic gradient descent algorithm.
+
+    .. math::
+
+        param\_out = param - learning\_rate * grad
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+
+    Examples:
+        .. code-block:: python
+
+            sgd_optimizer = SGDOptimizer(learning_rate=0.2)
+            sgd_optimizer.minimize(cost)
     """
 
     def __init__(self, learning_rate, **kwargs):
@@ -294,7 +309,37 @@ class SGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(Optimizer):
-    """Simple Momentum optimizer with velocity state
+    """
+
+    Simple Momentum optimizer with velocity state
+
+    This optimizer has a flag for Nestrov Momentum.
+
+    The update equations are as follows:
+
+    .. math::
+
+        & velocity = mu * velocity + gradient
+
+        & if (use\_nesterov):
+
+        &   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
+
+        & else:
+
+        &   param = param - learning\_rate * velocity
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        momentum (float): momentum factor
+        use_nesterov (bool): enables Nesterov momentum
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = MomentumOptimizer(learning_rate=0.2, momentum=0.1)
+            optimizer.minimize(cost)
     """
     _velocity_acc_str = "velocity"
 
@@ -614,6 +659,7 @@ class DecayedAdagradOptimizer(Optimizer):
 class AdadeltaOptimizer(Optimizer):
     """
     **Adadelta Optimizer**
+
     Simple Adadelta optimizer with average squared grad state and
     average squared update state.
     The details of adadelta please refer to this
@@ -703,7 +749,7 @@ class RMSPropOptimizer(Optimizer):
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\
 
         w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
 
@@ -844,7 +890,9 @@ class ModelAverage(Optimizer):
         max_average_window: The maximum size of average window.
 
     Examples:
-        ...
+
+      .. code-block:: python
+
         optimizer = fluid.optimizer.Momentum()
         _, params_grads = optimizer.minimize(cost)
         model_average = fluid.optimizer.ModelAverage(params_grads, 0.15,
