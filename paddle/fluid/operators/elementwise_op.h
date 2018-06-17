@@ -88,6 +88,9 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false). Used by MKLDNN.")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 Limited Elementwise %s Operator
 
