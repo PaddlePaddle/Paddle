@@ -1055,19 +1055,38 @@ def equal(x, y, cond=None, **ignored):
 
 
 def array_read(array, i):
-    """This function performs the operation to read the data in as an
+    """
+    This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
+
+    .. code-block:: text
+
+        Given:
+
+        array = [0.6, 0.1, 0.3, 0.1]
+        
+        And:
+        
+        i = 2
+
+        Then:
+
+        output = 0.3
+
     Args:
-        array (Variable|list): The input tensor that will be written to an array.
-        i (Variable|list): The subscript index in tensor array, that points the
-                           place where data will be written to.
+        array (Variable|list): The input tensor that store data to be read.
+        i (Variable|list): The index of the data to be read from input array.
+
     Returns:
         Variable: The tensor type variable that has the data written to it.
+
     Examples:
-        .. code-block::python
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_read(tmp, i=i)
+        .. code-block:: python
+
+            tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            arr = fluid.layers.array_read(tmp, i=i)
+
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(

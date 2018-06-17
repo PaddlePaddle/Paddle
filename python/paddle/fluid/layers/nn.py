@@ -25,21 +25,74 @@ import utils
 import random
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
-    'sequence_expand', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
-    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
-    'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance', 'l2_normalize',
-    'matmul', 'topk', 'warpctc', 'sequence_reshape', 'transpose', 'im2sequence',
-    'nce', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
-    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
-    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
-    'mean_iou', 'relu', 'log'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'log',
 ]
 
 
@@ -3257,8 +3310,7 @@ def topk(input, k, name=None):
     return values, indices
 
 
-def edit_distance(input, label, normalized=True, ignored_tokens=None,
-                  name=None):
+def edit_distance(input, label, normalized=True, ignored_tokens=None):
     """
     EditDistance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
@@ -3272,21 +3324,21 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 
     "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with
+    The input is a LoDTensor consisting of all the hypothesis strings with
     the total number denoted by `batch_size`, and the separation is specified
     by the LoD information. And the `batch_size` reference strings are arranged
-    in order in the same way in the LoDTensor Input(Refs).
+    in order in the same way in the input LoDTensor.
 
-    Output(Out) contains the `batch_size` results and each stands for the edit
+    The output contains the `batch_size` results and each stands for the edit
     distance for a pair of strings respectively. If Attr(normalized) is true,
     the edit distance will be divided by the length of reference string.
 
     Args:
         input(Variable): The indices for hypothesis strings.
         label(Variable): The indices for reference strings.
-        normalized(bool): Indicated whether to normalize the edit distance by
+        normalized(bool, default True): Indicated whether to normalize the edit distance by
                           the length of reference string.
-        ignored_tokens(list of int): Tokens that should be removed before
+        ignored_tokens(list<int>, default None): Tokens that should be removed before
                                      calculating edit distance.
         name (str): The name of this layer. It is optional.
 
@@ -3298,7 +3350,6 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             y = fluid.layers.data(name='y', shape=[7], dtype='float32')
-
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -3418,35 +3469,33 @@ def warpctc(input, label, blank=0, norm_by_times=False):
     input tensor.
 
     Args:
-        input(Variable): (LodTensor, default: LoDTensor<float>),
-            the unscaled probabilities of variable-length sequences,
-            which is a 2-D Tensor with LoD information.
-            It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
-            sequences' length and num_classes is the true number of classes.
-            (not including the blank label).
-        label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
-            of variable-length sequence, which is a 2-D Tensor with LoD
-            information. It is of the shape [Lg, 1], where Lg is th sum of
-            all labels' length.
-        blank (int): default 0, the blank label index of Connectionist
-            Temporal Classification (CTC) loss, which is in the
-            half-opened interval [0, num_classes + 1).
-        norm_by_times (bool): default false, whether to normalize
-            the gradients by the number of time-step, which is also the
-            sequence's length. There is no need to normalize the gradients
-            if warpctc layer was follewed by a mean_op.
+       input (Variable): The unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information.
+         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         sequences' length and num_classes is the true number of classes.
+         (not including the blank label).
+       label (Variable): The ground truth of variable-length sequence, 
+         which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
+         where Lg is th sum of all labels' length.
+       blank (int, default 0): The blank label index of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval [0, num_classes + 1).
+       norm_by_times(bool, default false): Whether to normalize the gradients 
+         by the number of time-step, which is also the sequence's length. 
+         There is no need to normalize the gradients if warpctc layer was 
+         follewed by a mean_op.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor of the shape [batch_size, 1].
 
     Examples:
+
         .. code-block:: python
-            y = layers.data(
-                name='y', shape=[11, 8], dtype='float32', lod_level=1)
-            y_predict = layers.data(
-                name='y_predict', shape=[11, 1], dtype='float32')
-            cost = layers.warpctc(input=y_predict, label=y)
+
+            label = fluid.layers.data(shape=[11, 8], dtype='float32', lod_level=1)
+            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
+            cost = fluid.layers.warpctc(input=predict, label=label)
 
     """
     helper = LayerHelper('warpctc', **locals())
@@ -3475,17 +3524,21 @@ def sequence_reshape(input, new_dim):
     .. code-block:: text
 
         x is a LoDTensor:
-            x.lod  = [[2, 4]]
-            x.data = [[1, 2], [3, 4],
-                      [5, 6], [7, 8], [9, 10], [11, 12]]
+            x.lod  = [[0, 2, 6]]
+            x.data = [[1,  2], [3,  4],
+                      [5,  6], [7,  8],
+                      [9, 10], [11, 12]]
             x.dims = [6, 2]
 
         set new_dim = 4
 
         then out is a LoDTensor:
-            out.lod  = [[1, 2]]
-            out.data = [[1, 2, 3, 4],
-                        [5, 6, 7, 8], [9, 10, 11, 12]]
+
+            out.lod  = [[0, 1, 3]]
+
+            out.data = [[1,  2,  3,  4],
+                        [5,  6,  7,  8],
+                        [9, 10, 11, 12]]
             out.dims = [3, 4]
 
     Currently, only 1-level LoDTensor is supported and please make sure
@@ -3493,19 +3546,19 @@ def sequence_reshape(input, new_dim):
     no remainder for each sequence.
 
     Args:
-        input (Variable): (LodTensor, default: LoDTensor<float>), a 2-D LoDTensor
-            with shape being [N, M] where M for dimension.
-        new_dim (int): New dimension which the input LoDTensor is reshaped to.
+
+       input (Variable): A 2-D LoDTensor with shape being [N, M] where M for dimension.
+       new_dim (int): New dimension that the input LoDTensor is reshaped to.
 
     Returns:
+
         Variable: Reshaped LoDTensor according to new dimension.
 
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[5, 20],
-                              dtype='float32', lod_level=1)
-            x_reshaped = layers.sequence_reshape(input=x, new_dim=10)
+            x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
+            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
     helper = LayerHelper('sequence_reshape', **locals())
     out = helper.create_tmp_variable(helper.input_dtype())
