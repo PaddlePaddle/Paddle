@@ -19,18 +19,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
-  class OP_NAME##OpMaker                                                \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
-   public:                                                              \
-    void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME " operator");                  \
-      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
-      AddAttr<bool>("use_mkldnn",                                       \
-                    "(bool, default false) Only used in mkldnn kernel") \
-          .SetDefault(false);                                           \
-      AddComment(OP_COMMENT);                                           \
-    }                                                                   \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)             \
+  class OP_NAME##OpMaker                                              \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {          \
+   public:                                                            \
+    void Make() override {                                            \
+      AddInput("X", "Input of " #OP_NAME " operator");                \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X"); \
+      AddAttr<bool>("use_mkldnn",                                     \
+                    "(default false) Only used in mkldnn kernel")     \
+          .SetDefault(false);                                         \
+      AddComment(OP_COMMENT);                                         \
+    }                                                                 \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -112,7 +112,7 @@ $$out = \frac{1}{1 + e^{-x}}$$
 __attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
-$$out = \log \frac{1}{1 + e^{-x}}$$
+$$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -196,7 +196,7 @@ $out = [x]$
 __attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \frac{1}{x}$$
+$$out = \\frac{1}{x}$$
 
 )DOC";
 
@@ -252,15 +252,14 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "Output of Softshrink operator");
     AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
     AddComment(R"DOC(
-Softshrink Activation Operator.
+:strong:`Softshrink Activation Operator`
 
-$$
-out = \begin{cases} 
-    x - \lambda, \text{if } x > \lambda \\
-    x + \lambda, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases} 
+         x - \lambda, \text{if } x > \lambda \\
+         x + \lambda, \text{if } x < -\lambda \\
+         0,  \text{otherwise}
+         \end{cases}
 
 )DOC");
   }
@@ -271,18 +270,18 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of HardShrink operator");
     AddOutput("Out", "Output of HardShrink operator");
-    AddAttr<float>("threshold", "The value of threshold for HardShrink")
+    AddAttr<float>("threshold",
+                   "The value of threshold for HardShrink. [default: 0.5]")
         .SetDefault(0.5f);
     AddComment(R"DOC(
-HardShrink Activation Operator.
+:strong:`HardShrink activation operator`
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > \lambda \\
-    x, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases}
+            x, \text{if } x > \lambda \\
+            x, \text{if } x < -\lambda \\
+            0,  \text{otherwise}
+          \end{cases}
 
 )DOC");
   }
@@ -394,18 +393,18 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of ThresholdedRelu operator");
     AddOutput("Out", "Output of ThresholdedRelu operator");
-    AddAttr<float>("threshold", "The threshold location of activation")
+    AddAttr<float>("threshold",
+                   "The threshold location of activation. [default 1.0].")
         .SetDefault(1.0f);
     AddComment(R"DOC(
-ThresholdedRelu Activation Operator.
+:strong:`ThresholdedRelu activation operator`
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > threshold \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
 
+    out = \begin{cases}
+             x,  \text{if } x > threshold \\
+             0,  \text{otherwise}
+          \end{cases}
 )DOC");
   }
 };
@@ -444,7 +443,7 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \frac{x}{1 + e^{- \beta x}}$$
+$$out = \\frac{x}{1 + e^{- \beta x}}$$
 
 )DOC");
   }

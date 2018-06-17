@@ -13,7 +13,7 @@
 # limitations under the License.
 import re
 from collections import defaultdict
-from paddle.fluid.framework import Program
+from paddle.fluid.framework import Program, Variable
 import framework
 import layers
 from backward import append_backward
@@ -41,7 +41,10 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, learning_rate, regularization=None):
+    def __init__(self,
+                 learning_rate,
+                 regularization=None,
+                 LARS_weight_decay=0.0):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
@@ -61,6 +64,7 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._LARS_weight_decay = LARS_weight_decay
 
     def _create_global_learning_rate(self):
         lr = self.global_learning_rate()
@@ -100,10 +104,15 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
-        if param_lr == 1.0:
-            return self.global_learning_rate()
+        if type(param_lr) == Variable:
+            # param learning rate has been updated (LARS)
+            print("returns updated param lr ", param_lr)
+            return param_lr
         else:
-            return self.global_learning_rate() * param_lr
+            if param_lr == 1.0:
+                return self.global_learning_rate()
+            else:
+                return self.global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -210,6 +219,10 @@ class Optimizer(object):
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
             self._create_global_learning_rate()
+            if self._LARS_weight_decay > 0.0:
+                layers.append_LARS(parameters_and_grads,
+                                   self.global_learning_rate(),
+                                   self._LARS_weight_decay)
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
