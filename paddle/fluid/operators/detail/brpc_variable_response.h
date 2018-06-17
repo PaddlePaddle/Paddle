@@ -54,7 +54,7 @@ class BRPCVariableResponse : public VariableResponse {
 
   virtual ~BRPCVariableResponse() {}
 
-  // parse attchment from iobuf
+  // parse attachment from iobuf
   int Parse(Source* source) override;
   int Parse(const butil::IOBuf& iobuf, const sendrecv::VariableMessage& meta) {
     BRPCSourceWrapper wrapper(iobuf);
