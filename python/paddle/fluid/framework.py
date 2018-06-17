@@ -1045,23 +1045,18 @@ class Program(object):
     Notes: we have default_startup_program and default_main_program
     by default, a pair of them will shared the parameters.
     The default_startup_program only run once to initialize parameters,
-    default_main_program run in every minibatch and adjust the weights.
-
-    Args:
-        None
+    default_main_program run in every mini batch and adjust the weights.
 
     Returns:
-        Python Program
+        A empty program.
 
     Examples:
-       .. code-block:: python
-
-         main_program = Program()
-         startup_program = Program()
-         with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-            fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-            fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-            fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
+        >>> main_program = fluid.Program()
+        >>> startup_program = fluid.Program()
+        >>> with fluid.program_guard(main_program=main_program, startup_program=startup_program):
+        >>>     fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
+        >>>     fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
+        >>>     fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
 
     """
 
@@ -1075,6 +1070,19 @@ class Program(object):
 
     @property
     def op_role(self):
+        """
+        The operator role. In a enum {Forward, Backward, Optimize}.
+
+        Notes: this is a low level API. It is used only for ParallelExecutor to
+        duplicate or schedule operator to devices.
+
+        For example, the forward operator should be executed on every device.
+        The backward operator should be executed on every device and the
+        parameter gradient of backward (use :code:`op_role_var` to get this
+        variable) operator should be merged to one device. The optimization
+        operators should be executed on only one device and broadcast the
+        optimization result, i.e., the new parameter, to every other device.
+        """
         return self._current_role
 
     @op_role.setter
@@ -1083,6 +1091,13 @@ class Program(object):
 
     @property
     def op_role_var(self):
+        """
+        The auxiliary variables for :code:`op_role` property.
+
+        See Also: :code:`Program.op_role`'s documentation for details.
+
+        Notes: This is a very low-level API. Users should not use it directly.
+        """
         return self._op_role_var
 
     @op_role_var.setter
@@ -1090,7 +1105,22 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimized_guard(self, var):
+    def optimization_guard(self, var):
+        """
+        A with guard to set :code:`Optimization` :code:`OpRole` and
+        :code:`OpRoleVar` automatically.
+
+        Notes: This is a very low level API. Users should not use it directly.
+
+        Args:
+            var(Variable|str): The variable (name) to be optimized.
+
+        Examples:
+
+            >>> p, g = backward(...)
+            >>> with program.optimization_guard(p):
+            >>>     p = p - 0.001 * g
+        """
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
         self._op_role_var = [var.name if isinstance(var, Variable) else var]
@@ -1099,18 +1129,35 @@ class Program(object):
         self._current_role = OpRole.Forward
 
     def __str__(self):
+        """
+        Get the protobuf debug string of this Program.
+
+        Returns:
+            (str): The protobuf debug string.
+
+        Raises:
+            ValueError: If any of required fields is not set.
+        """
         return self.to_string(True)
 
     def to_string(self, throw_on_error, with_details=False):
         """
         To debug string.
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
-            with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
-        Returns(str): The debug string.
+        Args:
+            throw_on_error(bool): raise Value error when any of required fields
+                is not set.
+
+            with_details(bool): True if more details about variables and
+                parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
+                to print.
+
+        Returns
+            (str): The debug string.
+
+        Raises:
+            ValueError: If any of required fields is not set and throw_on_error is
+                True.
 
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
@@ -1126,25 +1173,89 @@ class Program(object):
         return res_str
 
     def get_desc(self):
+        """
+        Get the C++ side of `ProgramDesc` object pointer. The C++ object is
+        exposed by :code:`pybind`.
+
+        Notes: This is a very low level API. Users should not use this API
+        directly.
+        """
         return self.desc
 
     def clone(self, for_test=False):
-        """Clone the Program object
-        Args:
-           for_test(bool): indicate whether clone for test.
+        """
+        Create a new, duplicated program.
 
-        Set for_test to False when we want to clone the program for training.
-        Set for_test to True when we want to clone the program for testing.
+
+        Some operators, e.g., :code:`batch_norm`, behave differently between
+        training and testing. They have an attribute, :code:`is_test`, to
+        control this behaviour. This method will change the :code:`is_test`
+        attribute of them to :code:`True` when :code:`for_test=True`.
+
+        * Set for_test to False when we want to clone the program for training.
+        * Set for_test to True when we want to clone the program for testing.
+
+        Notes: This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please.
 
         Args:
-            for_test(bool): Some operators, such as batch_norm and drop_out ops,
-                behave differently in training and testing. If for_test is True,
-                the is_test attributes in these operators will be set to True for
-                testing purposes, otherwise, they remain unchanged.
+            for_test(bool): True if change the :code:`is_test` attribute of
+                operators to :code:`True`.
 
         Returns:
-            Program: The cloned Program object.
+            Program: The new, duplicated Program object.
 
+        Examples:
+
+            1. To clone a test program, the sample code is:
+
+            >>> import paddle.fluid as fluid
+            >>> train_program = fluid.Program()
+            >>> startup_program = fluid.Program()
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     img = fluid.layers.data(name='image', shape=[784])
+            >>>     hidden = fluid.layers.fc(input=img, size=200, act='relu')
+            >>>     hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
+            >>>     loss = fluid.layers.cross_entropy(
+            >>>                 input=fluid.layers.fc(hidden, size=10, act='softmax'),
+            >>>                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+            >>>
+            >>> test_program = train_program.clone(for_test=True)
+            >>>
+            >>> sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     sgd.minimize(loss)
+
+            2. The :code:`clone` method can be avoid if you create program for
+            training and program for testing individually.
+
+            >>> import paddle.fluid as fluid
+            >>>
+            >>> def network(is_test):
+            >>>     img = fluid.layers.data(name='image', shape=[784])
+            >>>     hidden = fluid.layers.fc(input=img, size=200, act='relu')
+            >>>     hidden = fluid.layers.dropout(hidden, dropout_prob=0.5, is_test=is_test)
+            >>>     loss = fluid.layers.cross_entropy(
+            >>>                 input=fluid.layers.fc(hidden, size=10, act='softmax'),
+            >>>                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+            >>>     return loss
+            >>>
+            >>> train_program = fluid.Program()
+            >>> startup_program = fluid.Program()
+            >>> test_program = fluid.Program()
+            >>>
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     with fluid.unique_name.guard():
+            >>>         loss = network(is_test=False)
+            >>>         sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            >>>         sgd.minimize(loss)
+            >>>
+            >>> # the test startup program is not used.
+            >>> with fluid.program_guard(test_program, fluid.Program()):
+            >>>     with fluid.unique_name.guard():
+            >>>         loss = network(is_test=True)
+
+            The two code snippets above will generate same programs.
         """
         if for_test:
             p = self.inference_optimize()
@@ -1159,6 +1270,21 @@ class Program(object):
         return p
 
     def prune(self, targets):
+        """
+        Prune operators and variables which are not needed to generate
+        :code:`targets`.
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. This API is in flux and not stable.
+
+        Args:
+            targets(list|Variable|Operator): A list of variables or operators
+                need to be pruned
+
+        Returns:
+            Program:  A new, pruned program.
+
+        """
         if not isinstance(targets, list):
             targets = [targets]
         targets_idx = []
@@ -1193,6 +1319,17 @@ class Program(object):
         return res
 
     def inference_optimize(self):
+        """
+        This method will create a new program and change the :code:`is_test`
+        attribute of operators to :code:`True`. All the :code:`Parameter`
+        information will be lost.
+
+        Notes: This API is a very low level API. Use
+        :code:`Program.clone(for_test=True)` instead.
+
+        Returns:
+            Program: The new program.
+        """
         # this is an alternative implement before
         # core.inference_optimize being fixed.
         res = Program()
@@ -1209,6 +1346,18 @@ class Program(object):
 
     @staticmethod
     def parse_from_string(binary_str):
+        """
+        Deserialize a program desc from protobuf binary string.
+
+        Notes: All information about parameters will be lost after serialization
+        and deserialization.
+
+        Args:
+            binary_str(str): The binary prootbuf string.
+
+        Returns:
+            Program: A deserialized program desc.
+        """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
         p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
@@ -1217,10 +1366,19 @@ class Program(object):
 
     @property
     def random_seed(self):
+        """
+        The default random seed for random operators in Program. Zero means get
+        the random seed from random device.
+
+        Notes: It must be set before the operators have been added.
+        """
         return self._seed
 
     @property
     def num_blocks(self):
+        """
+        The number of blocks in this program.
+        """
         return self.desc.num_blocks()
 
     @random_seed.setter
@@ -1233,15 +1391,40 @@ class Program(object):
         return str(self)
 
     def global_block(self):
+        """
+        Get the first block of this program.
+        """
         return self.blocks[0]
 
     def block(self, index):
+        """
+        Get the :code:`index` block of this program
+        Args:
+            index(int): The index of block to get
+
+        Returns:
+            Block: The :code:`index` block
+        """
         return self.blocks[index]
 
     def current_block(self):
+        """
+        Get the current block. The :code:`current` block is the block to append
+        operators.
+        """
         return self.blocks[self.current_block_idx]
 
     def create_block(self, parent_idx=None):
+        """
+        Create a new block with the :code:`parent_idx` and change the current block
+        to new block.
+
+        Args:
+            parent_idx(int): The parent block index.
+
+        Returns:
+            Block: The new block.
+        """
         new_block_idx = len(self.blocks)
         parent = self.current_block() if parent_idx is None else self.block(
             parent_idx)
@@ -1251,9 +1434,24 @@ class Program(object):
         return self.current_block()
 
     def rollback(self):
+        """
+        Exit a code block, i.e., roll back to the parent block.
+        Returns:
+            None
+        """
         self.current_block_idx = self.current_block().parent_idx
 
     def sync_with_cpp(self):
+        """
+        Synchronize Python instance to its binding C++ object instance.
+        If the program is modified in C++ space, this method should be invoked.
+
+        Notes: This is a very low level API. Users should not invoke it
+        directly.
+
+        Returns:
+            None
+        """
         for block_idx in range(len(self.blocks), self.desc.num_blocks()):
             self.blocks.append(Block(self, block_idx))
         for block in self.blocks:
@@ -1262,6 +1460,9 @@ class Program(object):
     def copy_param_info_from(self, other):
         """
         Copy the information of parameters from other program.
+
+        Notes: This is a very low level API. Users should not invoke it
+        directly.
 
         Args:
             other(Program): Other program
@@ -1282,6 +1483,9 @@ class Program(object):
         """
         Copy the information of data variables from other program.
 
+        Notes: This is a very low level API. Users should not invoke it
+        directly.
+
         Args:
             other(Program): Other program
 
@@ -1300,6 +1504,12 @@ class Program(object):
                 self.global_block().var(var.name).is_data = True
 
     def list_vars(self):
+        """
+        Get all variables from this Program. A iterable object is returned.
+
+        Returns:
+            iterable: The generator will yield every variable in this program.
+        """
         for each_block in self.blocks:
             for each_var in each_block.vars.itervalues():
                 yield each_var

@@ -226,7 +226,7 @@ class Optimizer(object):
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
-                with param_and_grad[0].block.program.optimized_guard(
+                with param_and_grad[0].block.program.optimization_guard(
                         param_and_grad[0]):
                     if param_and_grad[0].trainable is True and param_and_grad[
                             1] is not None:
