@@ -25,72 +25,21 @@ import utils
 import random
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
-    'mean_iou',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
+    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
+    'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance', 'l2_normalize',
+    'matmul', 'topk', 'warpctc', 'sequence_reshape', 'transpose', 'im2sequence',
+    'nce', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
+    'mean_iou', 'relu', 'log'
 ]
 
 
@@ -4784,6 +4733,62 @@ def random_crop(x, shape, seed=None):
     return out
 
 
+def log(x):
+    """
+    Calculates the natural log of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\ln(x)
+
+    Args:
+        x (Variable): Input tensor. 
+
+    Returns:
+        Variable: The natural log of the input tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.log(x)
+    """
+    helper = LayerHelper('log', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(type="log", inputs={"X": input}, outputs={"Out": out})
+    return out
+
+
+def relu(x):
+    """
+    Relu takes one input data (Tensor) and produces one output data (Tensor)
+    where the rectified linear function, y = max(0, x), is applied to
+    the tensor elementwise.
+
+    .. math::
+
+        Out = \\max(0, x)
+
+    Args:
+        x (Variable): The input tensor. 
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.relu(x)
+    """
+    helper = LayerHelper('relu', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(type="relu", inputs={"X": input}, outputs={"Out": out})
+    return out
+
+
 def mean_iou(input, label, num_classes):
     """
     Mean Intersection-Over-Union is a common evaluation metric for
@@ -4810,11 +4815,10 @@ def mean_iou(input, label, num_classes):
         out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
         out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class. 
 
-
     Examples:
 
         .. code-block:: python
-
+            
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
