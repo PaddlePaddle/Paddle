@@ -33,6 +33,13 @@ __all__ = [
 
 
 class BeginEpochEvent(object):
+    """
+    The begin of a training epoch.
+
+    Args:
+        epoch_id(int): The current epoch ID.
+    """
+
     def __init__(self, epoch_id):
         self.epoch = epoch_id
 
@@ -50,10 +57,22 @@ class EndEpochEvent(object):
 
 
 class BeginStepEvent(object):
+    """
+    The begin of a training epoch.
+
+    Args:
+        epoch_id(int): The current epoch ID.
+        step_id(int): The current step ID.
+    """
+
     def __init__(self, epoch_id, step_id):
         self.epoch = epoch_id
         self.step = step_id
         self.fetch_metrics = True
+        """
+        If fetch_metrics is true, the metrics will be fetched at the 
+        EndStepEvent. Default is True.
+        """
 
 
 class EndStepEvent(object):
