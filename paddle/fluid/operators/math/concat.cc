@@ -98,7 +98,7 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
       int col_idx = 0;
       for (int j = 0; j < num; ++j) {
         int col_len = output_cols[j];
-        auto* out_tensor = (*outputs)[j];
+        auto* out_tensor = outputs->at(j);
         if (out_tensor != nullptr) {
           T* dst_ptr = out_tensor->data<T>() + k * col_len;
           memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
