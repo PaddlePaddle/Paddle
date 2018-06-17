@@ -68,6 +68,7 @@ __all__ = [
     'slice',
     'polygon_box_transform',
     'shape',
+    'iou_similarity',
     'maxout',
 ] + __activations__
 

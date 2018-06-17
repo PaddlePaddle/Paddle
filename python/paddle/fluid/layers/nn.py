@@ -267,6 +267,7 @@ def embedding(input,
     return tmp
 
 
+@templatedoc(op_type="lstm")
 def dynamic_lstm(input,
                  size,
                  h_0=None,
@@ -281,56 +282,11 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
-    **Dynamic LSTM Layer**
-
-    The defalut implementation is diagonal/peephole connection
-    (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
-
-    .. math::
-
-        i_t & = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i)
-
-        f_t & = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f)
-
-        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
-
-        o_t & = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o)
-
-        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-        h_t & = o_t \odot act_h(c_t)
-
-    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is
-    the matrix of weights from the input gate to the input), :math:`W_{ic}, \
-    W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In
-    our implementation, we use vectors to reprenset these diagonal weight
-    matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input
-    gate bias vector), :math:`\sigma` is the non-linear activations, such as
-    logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input
-    gate, forget gate, output gate, and cell activation vectors, respectively,
-    all of which have the same size as the cell output activation vector :math:`h`.
-
-    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
-    and :math:`act_h` are the cell input and cell output activation functions
-    and `tanh` is usually used for them. :math:`\\tilde{c_t}` is also called
-    candidate hidden state, which is computed based on the current input and
-    the previous hidden state.
-
-    Set `use_peepholes` to `False` to disable peephole connection. The formula
-    is omitted here, please refer to the paper
-    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-
-    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
-    operations on the input :math:`x_{t}` are NOT included in this operator.
-    Users can choose to use fully-connect layer before LSTM layer.
+    ${comment}
 
     Args:
-        input(Variable): The input of dynamic_lstm layer, which supports
-                         variable-time length input sequence. The underlying
-                         tensor in this Variable is a matrix with shape
-                         (T X 4D), where T is the total time steps in this
-                         mini-batch, D is the hidden size.
-        size(int): 4 * hidden size.
+        input (Variable): ${input_comment}
+        size (int): 4 * hidden size.
         h_0(Variable): The initial hidden state is an optional input, default is zero.
                        This is a tensor with shape (N x D), where N is the
                        batch size and D is the hidden size.
@@ -345,32 +301,26 @@ def dynamic_lstm(input,
                                                 W_{fh}, W_{oh}`}
                                - The shape is (D x 4D), where D is the hidden
                                  size.
-        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
 
                               1. `use_peepholes = False`
-                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                - The shape is (1 x 4D).
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is (1 x 4D).
                               2. `use_peepholes = True`
-                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
-                                - The shape is (1 x 7D).
-        use_peepholes(bool): Whether to enable diagonal/peephole connections,
-                             default `True`.
-        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
-        gate_activation(str): The activation for input gate, forget gate and
-                              output gate. Choices = ["sigmoid", "tanh", "relu",
-                              "identity"], default "sigmoid".
-        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
-                              "tanh", "relu", "identity"], default "tanh".
-        candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
-        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                                 - The shape is (1 x 7D).
+        use_peepholes (bool): ${use_peepholes_comment}
+        is_reverse (bool): ${is_reverse_comment}
+        gate_activation (str): ${gate_activation_comment}
+        cell_activation (str): ${cell_activation_comment}
+        candidate_activation (str): ${candidate_activation_comment}
+        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -889,11 +839,19 @@ def crf_decoding(input, param_attr, label=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
+
         param_attr(ParamAttr): The parameter attribute for training.
+
         label(${label_type}): ${label_comment}
 
     Returns:
-        ${viterbi_path_comment}
+        Variable: ${viterbi_path_comment}
+    
+    Examples:
+        .. code-block:: python
+
+           crf_decode = layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
@@ -908,14 +866,14 @@ def crf_decoding(input, param_attr, label=None):
     return viterbi_path
 
 
+@templatedoc()
 def cos_sim(X, Y):
     """
-    This function performs the cosine similarity between two tensors
-    X and Y and returns that as the output.
+    ${comment}
 
     Args:
-        X (Variable): The input X.
-        Y (Variable): The input Y.
+        X (Variable): ${x_comment}.
+        Y (Variable): ${y_comment}.
 
     Returns:
         Variable: the output of cosine(X, Y).
@@ -1113,8 +1071,69 @@ def chunk_eval(input,
                num_chunk_types,
                excluded_chunk_types=None):
     """
+    **Chunk Evaluator**
+
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
+
+    For some basics of chunking, please refer to
+    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+
+    ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
+    and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
+    Here is a NER example of labeling for these tagging schemes:
+
+    .. code-block:: python
+    
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+              Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+       IO     I-PER  I-PER   O      O   I-ORG          I-ORG  I-ORG I-ORG  O   I-LOC
+       IOB    B-PER  I-PER   O      O   B-ORG          I-ORG  I-ORG I-ORG  O   B-LOC
+       IOE    I-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   E-LOC
+       IOBES  B-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   S-LOC
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+
+    There are three chunk types(named entity types) including PER(person), ORG(organization)
+    and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
+
+    Since the calculations actually use label ids rather than labels, extra attention
+    should be paid when mapping labels to ids to make CheckEvalOp work. The key point
+    is that the listed equations are satisfied by ids.
+
+    .. code-block:: python
+
+       tag_type = label % num_tag_type
+       chunk_type = label / num_tag_type
+
+    where `num_tag_type` is the num of tag types in the tagging scheme, `num_chunk_type`
+    is the num of chunk types, and `tag_type` get its value from the following table.
+
+    .. code-block:: python
+    
+       Scheme Begin Inside End   Single
+        plain   0     -      -     -
+        IOB     0     1      -     -
+        IOE     -     0      1     -
+        IOBES   0     1      2     3
+
+    Still use NER as example, assuming the tagging scheme is IOB while chunk types are ORG,
+    PER and LOC. To satisfy the above equations, the label map can be like this:
+
+    .. code-block:: python
+
+       B-ORG  0
+       I-ORG  1
+       B-PER  2
+       I-PER  3
+       B-LOC  4
+       I-LOC  5
+       O      6
+
+    It's not hard to verify the equations noting that the num of chunk types
+    is 3 and the num of tag types in IOB scheme is 2. For example, the label
+    id of I-LOC is 5, the tag type id of I-LOC is 1, and the chunk type id of
+    I-LOC is 2, which consistent with the results from the equations.
 
     Args:
         input (Variable): prediction output of the network.
@@ -1124,9 +1143,22 @@ def chunk_eval(input,
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
 
     Returns:
-        tuple: tuple containing: (precision, recall, f1_score,
-               num_infer_chunks, num_label_chunks,
-               num_correct_chunks)
+        tuple: tuple containing: precision, recall, f1_score,
+        num_infer_chunks, num_label_chunks,
+        num_correct_chunks
+    
+    Examples:
+        .. code-block:: python
+
+            crf = fluid.layers.linear_chain_crf(
+                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+            crf_decode = fluid.layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
+            fluid.layers.chunk_eval(
+                input=crf_decode,
+                label=label,
+                chunk_scheme="IOB",
+                num_chunk_types=(label_dict_len - 1) / 2)
     """
     helper = LayerHelper("chunk_eval", **locals())
 
@@ -3390,6 +3422,7 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
 def ctc_greedy_decoder(input, blank, name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
+
     1. Get the indexes of max value for each row in input. a.k.a.
        numpy.argmax(input, axis=0).
     2. For each sequence in result of step1, merge repeated tokens between two
@@ -3673,8 +3706,6 @@ def nce(input,
 
 def transpose(x, perm, name=None):
     """
-    **transpose Layer**
-
     Permute the dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
@@ -4059,8 +4090,9 @@ def one_hot(input, depth):
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """
-    NOTE: The counter will be automatically increased by 1 every mini-batch
-    Return the run counter of the main program, which is started with 1.
+    Create an auto-increase variable
+    which will be automatically increased by 1 every mini-batch
+    Return the run counter of the main program, default is started from 1.
 
     Args:
         counter_name(str): The counter name, default is '@STEP_COUNTER@'.
@@ -4069,6 +4101,12 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
 
     Returns:
         Variable: The global run counter.
+
+    Examples:
+        .. code-block:: python
+
+           global_step = fluid.layers.autoincreased_step_counter(
+               counter_name='@LR_DECAY_COUNTER@', begin=begin, step=1)
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
@@ -4476,34 +4514,20 @@ def label_smooth(label,
     return smooth_label
 
 
+@templatedoc()
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform
-        is to perform max pooling on inputs of nonuniform sizes to obtain
-        fixed-size feature maps (e.g. 7*7).
-    The operator has three steps:
-        1. Dividing each region proposal into equal-sized sections with
-           the pooled_width and pooled_height
-        2. Finding the largest value in each section
-        3. Copying these max values to the output buffer
+    ${comment}
 
     Args:
-        input (Variable): The input for ROI pooling.
-        rois (Variable): ROIs (Regions of Interest) to pool over. It should
-                         be a 2-D one level LoTensor of shape [num_rois, 4].
-                         The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the
-                         bottom right coordinates. The num_rois is the
-                         total number of ROIs in this batch data.
-        pooled_height (integer): The pooled output height. Default: 1
-        pooled_width (integer): The pooled output width. Default: 1
-        spatial_scale (float): Multiplicative spatial scale factor. To
-                               translate ROI coords from their input scale
-                               to the scale used when pooling. Default: 1.0
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape
-                             (num_rois, channels, pooled_h, pooled_w).
+        Variable: ${out_comment}.
 
     Examples:
         .. code-block:: python
