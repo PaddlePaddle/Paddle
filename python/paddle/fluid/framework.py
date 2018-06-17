@@ -30,8 +30,6 @@ __all__ = [
     'default_startup_program',
     'default_main_program',
     'program_guard',
-    'switch_startup_program',
-    'switch_main_program',
     'get_var',
 ]
 
@@ -1578,8 +1576,15 @@ _startup_program_ = Program()
 
 def default_startup_program():
     """
-    Get default startup program. In startup program, Paddle will initialize
-    parameters, initialize nccl handle, etc.
+    Get default/global startup program.
+
+    The layer function in :code:`fluid.layers` will create parameters, readers,
+    NCCL handles as global variables. The :code:`startup_program` will
+    initialize them by the operators in startup program. The layer function will
+    append these initialization operators into startup program.
+
+    This method will return the :code:`default` or the :code:`current` startup
+    program. Users can use :code:`fluid.program_guard` to switch program.
 
     Returns:
         Program: startup program
@@ -1589,7 +1594,15 @@ def default_startup_program():
 
 def default_main_program():
     """
-    Get default main program. The main program is used for training or testing.
+    Get default/global main program. The main program is used for training or
+    testing.
+
+    All layer function in :code:`fluid.layers` will append operators and
+    variables to the :code:`default_main_program`.
+
+    The :code:`default_main_program` is the default program in a lot of APIs.
+    For example, the :code:`Executor.run()` will execute the
+    :code:`default_main_program` when the program is not specified.
 
     Returns:
         Program: main program
@@ -1631,20 +1644,34 @@ def switch_startup_program(program):
 @contextlib.contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Switch program with `with` statement
+    Change the global main program and startup program with `with` statement.
+    Layer functions in the Python `with` block will append operators and
+    variables to the new main programs.
 
     Examples:
-        >>> with program_guard(Program()):
-        >>>   data = fluid.layers.data(...)
-        >>>   hidden = fluid.layers.fc(...)
+
+        >>> import paddle.fluid as fluid
+        >>> main_program = fluid.Program()
+        >>> startup_program = fluid.Program()
+        >>> with fluid.program_guard(main_program, startup_program):
+        >>>     data = fluid.layers.data(...)
+        >>>     hidden = fluid.layers.fc(...)
+
+    Notes: The temporary :code:`Program` can be used if the user does not need
+    to construct either of startup program or main program.
+
+    Examples:
+
+        >>> import paddle.fluid as fluid
+        >>> main_program = fluid.Program()
+        >>> # does not care about startup program. Just pass a temporary value.
+        >>> with fluid.program_guard(main_program, fluid.Program()):
+        >>>     data = ...
 
     Args:
-        main_program(Program): New main program inside `with` statement
+        main_program(Program): New main program inside `with` statement.
         startup_program(Program): New startup program inside `with` statement.
             None means do not change startup program.
-
-    Returns:
-        None
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")
@@ -1661,7 +1688,8 @@ def program_guard(main_program, startup_program=None):
 
 def get_var(name, program=None):
     """
-    Get a variable by name from the global block of a program
+    Get a variable by name from the global block of a program.
+    
     Args:
         name(str): name of the variable
         program(Program|None): program object.

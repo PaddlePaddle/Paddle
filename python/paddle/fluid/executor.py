@@ -25,6 +25,13 @@ g_scope = core.Scope()
 
 
 def global_scope():
+    """
+    Get the global/default scope instance. There are a lot of APIs use
+    :code:`global_scope` as its default value, e.g., :code:`Executor.run`
+
+    Returns:
+        Scope: The global/default scope instance.
+    """
     return g_scope
 
 
@@ -37,6 +44,19 @@ def switch_scope(scope):
 
 @contextlib.contextmanager
 def scope_guard(scope):
+    """
+    Change the global/default scope instance by Python `with` statement. All
+    variable in runtime will assigned to the new scope.
+
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> new_scope = fluid.Scope()
+        >>> with fluid.scope_guard(new_scope):
+        >>>     ...
+
+    Args:
+        scope: The new global/default scope.
+    """
     ex = switch_scope(scope)
     yield
     switch_scope(ex)
