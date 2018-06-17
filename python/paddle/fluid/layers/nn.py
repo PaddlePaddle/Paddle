@@ -4650,7 +4650,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
-                        (num_batches, channls, out_h, out_w).
+        (num_batches, channls, out_h, out_w).
     """
     in_shape = input.shape
     if len(in_shape) != 4:
