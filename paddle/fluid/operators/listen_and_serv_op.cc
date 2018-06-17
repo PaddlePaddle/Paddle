@@ -348,7 +348,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 void SignalHandler::StopAndExit(int signal_num) {
-  VLOG(3) << "Catch interrupt signal: " << signal_num << ", program will exit";
+  // Do not use VLOG here for the device for printing maybe already released.
+  // exit will release interal allocated resoureces.
   exit(0);
 }
 

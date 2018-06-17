@@ -58,8 +58,8 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
     def setUp(self):
         super(TestIOUSimilarityOpWithLoD, self).setUp()
-        self.boxes1_lod = [[0, 1, 2]]
-        self.output_lod = [[0, 1, 2]]
+        self.boxes1_lod = [[1, 1]]
+        self.output_lod = [[1, 1]]
 
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
         self.outputs = {'Out': (self.output, self.output_lod)}
