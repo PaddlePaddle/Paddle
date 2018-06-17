@@ -449,7 +449,40 @@ class AdagradOptimizer(Optimizer):
 
 
 class AdamOptimizer(Optimizer):
-    """Implements the Adam Optimizer
+    """
+    This implements the Adam optimizer from Section 2 of the Adam
+    paper : https://arxiv.org/abs/1412.6980.
+    Adam is a first-order gradient-based optimization method based on
+    adaptive estimates of lower-order moments.
+
+    Adam updates:
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+
+        moment\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+
+        learning\_rate & = learning\_rate * \\
+                          \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
+
+        param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adam(learning_rate=0.2)
+            optimizer.minimize(cost)
+
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
