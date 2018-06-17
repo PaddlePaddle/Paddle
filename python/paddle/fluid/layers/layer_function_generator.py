@@ -49,6 +49,13 @@ _single_dollar_pattern_ = re.compile(r"\$([^\$]+)\$")
 _two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
 
 
+def escape_math(text):
+    return _two_bang_pattern_.sub(
+        r'$$\1$$',
+        _single_dollar_pattern_.sub(r':math:`\1`',
+                                    _two_dollar_pattern_.sub(r"!!\1!!", text)))
+
+
 def _generate_doc_string_(op_proto):
     """
     Generate docstring by OpProto
@@ -59,12 +66,6 @@ def _generate_doc_string_(op_proto):
     Returns:
         str: the document string
     """
-
-    def escape_math(text):
-        return _two_bang_pattern_.sub(
-            r'$$\1$$',
-            _single_dollar_pattern_.sub(
-                r':math:`\1`', _two_dollar_pattern_.sub(r"!!\1!!", text)))
 
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
@@ -233,9 +234,6 @@ def autodoc(comment=""):
     return __impl__
 
 
-_inline_math_single_dollar = re.compile(r"\$([^\$]+)\$")
-
-
 def templatedoc(op_type=None):
     """
     Decorator of layer function. It will use the docstring from the layer
@@ -253,9 +251,6 @@ def templatedoc(op_type=None):
     def trim_ending_dot(msg):
         return msg.rstrip('.')
 
-    def escape_inline_math(msg):
-        return _inline_math_single_dollar.sub(repl=r':math:`\1`', string=msg)
-
     def __impl__(func):
         if op_type is None:
             op_type_name = func.__name__
@@ -269,7 +264,7 @@ def templatedoc(op_type=None):
         for line in comment_lines:
             line = line.strip()
             if len(line) != 0:
-                comment += escape_inline_math(line)
+                comment += escape_math(line)
                 comment += " "
             elif len(comment) != 0:
                 comment += "\n    \n    "
