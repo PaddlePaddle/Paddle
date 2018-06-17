@@ -587,7 +587,42 @@ class AdamOptimizer(Optimizer):
 
 
 class AdamaxOptimizer(Optimizer):
-    """Implements the Adamax Optimizer
+    """
+    We implement the Adamax optimizer from Section 7 of the Adam
+    paper: https://arxiv.org/abs/1412.6980. Adamax is a variant of the
+    Adam algorithm based on the infinity norm.
+
+    Adamax updates:
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_out & = {\\beta}_1 * moment + (1 - {\\beta}_1) * grad
+
+        inf\_norm\_out & = max({\\beta}_2 * inf\_norm + \epsilon, |grad|)
+
+        learning\_rate & = \\frac{learning\_rate}{1 - {\\beta}_1^t}
+
+        param\_out & = param - learning\_rate * \\frac{moment\_out}{inf\_norm\_out}
+
+
+    The original paper does not have an epsilon attribute.
+    However, it is added here for numerical stability to prevent the
+    division by 0 error.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adamax(learning_rate=0.2)
+            optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
