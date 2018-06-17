@@ -38,8 +38,8 @@ class ArgsortOp : public framework::OperatorWithKernel {
                    "dimension %d.",
                    axis, num_dims);
     PADDLE_ENFORCE(in_dims.size() + axis >= 0,
-                   "Attr(axis) %d of ArgsortOp plus the number of Input(X)'s "
-                   "dimensions %d must be nonnegative.",
+                   "Attr(axis) %d of ArgsortOp plus the rank %d of Input(X) "
+                   "must be nonnegative.",
                    axis, in_dims.size());
 
     ctx->SetOutputDim("Out", in_dims);
