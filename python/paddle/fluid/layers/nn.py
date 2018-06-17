@@ -794,11 +794,14 @@ def linear_chain_crf(input, label, param_attr=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
+        input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
-        ${log_likelihood_comment}
+        output(${emission_exps_type}): ${emission_exps_comment} \n
+        output(${transition_exps_type}): ${transition_exps_comment} \n
+        output(${log_likelihood_type}): ${log_likelihood_comment}
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -1130,10 +1133,6 @@ def sequence_conv(input,
     Returns:
         Variable: output of sequence_conv
     """
-
-    # FIXME(dzh) : want to unify the argument of python layer
-    # function. So we ignore some unecessary attributes.
-    # such as, padding_trainable, context_start.
 
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
@@ -2068,15 +2067,37 @@ def layer_norm(input,
 
 def beam_search_decode(ids, scores, name=None):
     """
-    ${beam_search_decode}
+    Beam Search Decode
+
+    This layers is to pack the output of beam search layer into sentences and
+    associated scores. It is usually called after the beam search layer.
+    Typically, the output of beam search layer is a tensor of selected ids, with
+    a tensor of the score of each id. Beam search layer's output ids, however, 
+    are generated directly during the tree search, and they are stacked by each 
+    level of the search tree. Thus we need to reorganize them into sentences, 
+    based on the score of each id. This layer takes the output of beam search
+    layer as input and repack them into sentences.
 
     Args:
-        ids (Variable): ${ids_comment}
-        scores (Variable): ${scores_comment}
+        ids (Variable): The selected ids, output of beam search layer. 
+        scores (Variable): The associated scores of the ids, out put of beam
+            search layer.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        tuple: a tuple of two output variable: sentence_ids, sentence_scores
+        tuple(Variable): a tuple of two output tensors: sentence_ids, sentence_scores.
+        sentence_ids is a tensor with shape [size, length], where size is the
+        beam size of beam search, and length is the length of each sentence. 
+        Note that the length of sentences may vary.
+        sentence_scores is a tensor with the same shape as sentence_ids.
+
+    Examples:
+        .. code-block:: python
+
+            ids, scores = fluid.layers.beam_search(
+                pre_ids, ids, scores, beam_size, end_id)
+            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
+                ids, scores)
     """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
@@ -2957,7 +2978,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                        will be named automatically.
 
     Returns:
-        List: The list of segmented tensor variables.
+        list(Variable): The list of segmented tensor variables.
 
     Examples:
         .. code-block:: python
@@ -3690,8 +3711,6 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
     Examples:
 
-    As an example:
-
         .. code-block:: text
 
             Given:
@@ -3735,7 +3754,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
             output.lod = [[4, 4]]
 
-        The simple usage is:
+     Examples:
 
         .. code-block:: python
 
@@ -4220,9 +4239,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-        Output(i, x, y) = Input(i, x, y) / \left(
-        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
-        (Input(j, x, y))^2 \right)^{\beta}
+      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C, c + n/2)}_{j = \\max(0, c - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 

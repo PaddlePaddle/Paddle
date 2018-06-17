@@ -27,8 +27,32 @@ __all__ = ['accuracy', 'auc']
 
 def accuracy(input, label, k=1, correct=None, total=None):
     """
+    accuracy layer.
+    Refer to the https://en.wikipedia.org/wiki/Precision_and_recall
+
     This function computes the accuracy using the input and label.
-    The output is the top k inputs and their indices.
+    If the correct label occurs in top k predictions, then correct will increment by one.
+    Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
+
+    Args:
+        input(Variable): The input of accuracy layer, which is the predictions of network.
+          Carry LoD information is supported.
+        label(Variable): The label of dataset.
+        k(int): The top k predictions for each class will be checked.
+        correct(Variable): The correct predictions count.
+        total(Variable): The total entries count.
+
+    Returns:
+        Variable: The correct rate.
+
+    Examples:
+        .. code-block:: python
+
+           data = fluid.layers.data(name="data", shape=[-1, 32, 32], dtype="float32")
+           label = fluid.layers.data(name="data", shape=[-1,1], dtype="int32")
+           predict = fluid.layers.fc(input=data, size=10)
+           acc = fluid.layers.accuracy(input=predict, label=label, k=5)
+
     """
     helper = LayerHelper("accuracy", **locals())
     topk_out, topk_indices = nn.topk(input, k=k)
