@@ -17,6 +17,28 @@ limitations under the License. */
 
 namespace paddle {
 namespace inference {
-namespace analysis {}  // namespace analysis
+namespace analysis {
+
+void DfgPassManager::RunAll() {
+  PADDLE_ENFORCE(argument_);
+  for (auto& pass : data_) {
+    VLOG(4) << "Running pass [" << pass->repr() << "]";
+    pass->Run(argument_->main_dfg.get());
+  }
+}
+
+void NodePassManager::RunAll() {
+  PADDLE_ENFORCE(argument_);
+  PADDLE_ENFORCE(argument_->main_dfg.get());
+  auto trait =
+      GraphTraits<DataFlowGraph>(argument_->main_dfg.get()).nodes_in_DFS();
+  for (auto& node : trait) {
+    for (auto& pass : data_) {
+      pass->Run(&node);
+    }
+  }
+}
+
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

@@ -31,7 +31,7 @@ namespace analysis {
 class Pass {
  public:
   Pass() = default;
-  virtual ~Pass() {}
+  virtual ~Pass() = default;
   // Virtual method overridden by subclasses to do only necessary initialization
   // before any pass is run.
   // virtual bool Initialize() { return false; }
@@ -68,6 +68,11 @@ class Pass {
   virtual void Run(FunctionBlock *x) { LOG(FATAL) << "not valid"; }
   // Run on a single DataFlowGraph.
   virtual void Run(DataFlowGraph *x) { LOG(FATAL) << "not valid"; }
+
+  // Human-readable short representation.
+  virtual std::string repr() const = 0;
+  // Human-readable long description.
+  virtual std::string description() const = 0;
 };
 
 // NodePass process on any Node types.

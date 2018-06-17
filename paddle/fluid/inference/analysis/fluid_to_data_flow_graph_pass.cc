@@ -26,6 +26,7 @@ bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
   PADDLE_ENFORCE(argument);
   if (!argument->main_dfg) {
+    LOG(INFO) << "Init DFG";
     argument->main_dfg.reset(new DataFlowGraph);
   }
   desc_ = argument->origin_program_desc.get();
@@ -35,6 +36,8 @@ bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
 bool FluidToDataFlowGraphPass::Finalize() { return Pass::Finalize(); }
 
 void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
+  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE(desc_);
   // insert vars
   std::unordered_map<std::string, size_t> var2id;
   auto &main_block = desc_->blocks(framework::kRootBlockIndex);

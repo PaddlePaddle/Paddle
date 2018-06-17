@@ -41,6 +41,11 @@ class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
 
   void Run(DataFlowGraph *graph) override;
 
+  std::string repr() const override { return "fluid-to-data-flow-graph"; }
+  std::string description() const override {
+    return "transform a fluid ProgramDesc to a data flow graph.";
+  }
+
   Pass *CreatePrinterPass(std::ostream &os,
                           const std::string &banner) const override;
 

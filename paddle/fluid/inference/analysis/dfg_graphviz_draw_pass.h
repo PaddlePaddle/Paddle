@@ -48,8 +48,14 @@ class DFG_GraphvizDrawPass : public DataFlowGraphPass {
 
   DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
 
+  bool Initialize(Argument *argument) override { return true; }
   void Run(DataFlowGraph *graph) override;
   bool Finalize() override { return Pass::Finalize(); }
+
+  std::string repr() const override { return "DFG graphviz drawer"; }
+  std::string description() const override {
+    return "Debug a DFG by draw with graphviz";
+  }
 
  private:
   // Path of the dot file to output.

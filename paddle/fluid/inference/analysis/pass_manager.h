@@ -45,16 +45,36 @@ namespace analysis {
  */
 class PassManager : public OrderedRegistry<Pass> {
  public:
+  PassManager() = default;
   // Call all the passes' Initialize methods. The desc and data_flow_graph are
   // globally shared, so pass them as the arguemnts for all the pass managers.
-  virtual bool Initialize(Argument* argument) { return false; }
   virtual bool Initialize(const Argument& argument) { return false; }
+
+  virtual bool Initialize(Argument* argument) {
+    argument_ = argument;
+    for (auto& pass : data_) {
+      LOG(INFO) << "Initializing pass " << pass->repr();
+      if (!pass->Initialize(argument)) {
+        LOG(ERROR) << "Failed to initialize pass [" << pass->repr() << "]";
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Call all the passes' Finalize methods.
+  virtual bool Finalize() {
+    for (auto& pass : data_) {
+      if (!pass->Finalize()) {
+        LOG(ERROR) << "Failed to finalize pass [" << pass->repr() << "]";
+        return false;
+      }
+    }
+    return true;
+  }
 
   // Run all the passes.
   virtual void RunAll() = 0;
-
-  // Call all the passes' Finalize methods.
-  virtual bool Finalize() = 0;
 
   // Short identifier.
   virtual std::string repr() const = 0;
@@ -62,6 +82,9 @@ class PassManager : public OrderedRegistry<Pass> {
   virtual std::string description() const = 0;
 
   virtual ~PassManager() = default;
+
+ protected:
+  Argument* argument_{nullptr};
 };
 
 /*
@@ -69,25 +92,23 @@ class PassManager : public OrderedRegistry<Pass> {
  */
 class DfgPassManager : public PassManager {
  public:
-  DfgPassManager();
-  bool Initialize(Argument* argument) override {
-    for (auto& pass : data_) {
-      PADDLE_ENFORCE(pass->Initialize(argument));
-    }
-    return true;
-  }
+  DfgPassManager() = default;
 
   void RunAll() override;
 
-  bool Finalize() override {
-    for (auto& pass : data_) {
-      pass->Finalize();
-    }
-    return true;
-  }
+  virtual ~DfgPassManager() = default;
+};
 
- private:
-  DataFlowGraph* graph_;
+/*
+ * A pass manager that process a Node each time.
+ */
+class NodePassManager : public PassManager {
+ public:
+  NodePassManager() = default;
+
+  void RunAll() override;
+
+  virtual ~NodePassManager() = default;
 };
 
 }  // namespace analysis
