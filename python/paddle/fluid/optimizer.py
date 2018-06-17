@@ -282,7 +282,7 @@ class SGDOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            sgd_optimizer = SGDOptimizer(learning_rate=0.2)
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.2)
             sgd_optimizer.minimize(cost)
     """
 
@@ -338,7 +338,7 @@ class MomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = MomentumOptimizer(learning_rate=0.2, momentum=0.1)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(cost)
     """
     _velocity_acc_str = "velocity"
@@ -383,7 +383,32 @@ class MomentumOptimizer(Optimizer):
 
 
 class AdagradOptimizer(Optimizer):
-    """Simple Adagrad optimizer with moment state
+    """
+    **Adaptive Gradient Algorithm (Adagrad)**
+
+    The update is done as follows:
+
+    .. math::
+
+        moment\_out &= moment + grad * grad
+
+        param\_out &= param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
+
+    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+    does not have the epsilon attribute. It is added here in our implementation
+    as also proposed here: http://cs231n.github.io/neural-networks-3/#ada
+    for numerical stability to avoid the division by zero error.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
+            optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
 
