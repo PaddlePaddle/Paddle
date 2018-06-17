@@ -88,12 +88,20 @@ class Scope {
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
 
+  // Called by Var.
+  Variable* VarInternal(const std::string& name);
+
+  // Called by FindScope.
+  const Scope* FindScopeInternal(const Variable* var) const;
+
+  // Called by Rename.
+  void RenameInternal(const std::string& origin_name,
+                      const std::string& new_name) const;
+
   // Called by FindVar recursively.
-  // Caller doesn't own the returned Variable.
   Variable* FindVarInternal(const std::string& name) const;
 
   // Called by FindVarInternal and Var.
-  // Caller doesn't own the returned Variable.
   Variable* FindVarLocally(const std::string& name) const;
 
   // Scope in `kids_` are owned by this class.

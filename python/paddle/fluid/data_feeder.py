@@ -47,7 +47,7 @@ class DataToLoDTensorConverter(object):
         self.lod = []
 
         for i in six.range(lod_level):
-            self.lod.append([0])
+            self.lod.append([])
 
     def feed(self, data):
         self._feed_impl_(data, self.lod, self.lod_level)
@@ -56,8 +56,7 @@ class DataToLoDTensorConverter(object):
         if lod_level == 0:
             self.data.append(data)
         else:
-            cur_lod_len = len(data)
-            lod[0].append(lod[0][-1] + cur_lod_len)
+            lod[0].append(len(data))
             for each_data in data:
                 self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
@@ -66,7 +65,7 @@ class DataToLoDTensorConverter(object):
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
-            t.set_lod(self.lod)
+            t.set_recursive_sequence_lengths(self.lod)
         return t
 
 
