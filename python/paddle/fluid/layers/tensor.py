@@ -35,10 +35,29 @@ __all__ = [
     'argmax',
     'ones',
     'zeros',
+    'reverse',
 ]
 
 
 def create_tensor(dtype, name=None, persistable=False):
+    """
+    Create an variable, which will hold a LoDTensor with data type dtype.
+
+    Args:
+        dtype(string): 'float32'|'int32'|..., the data type of the
+            created tensor.
+        name(string): The name of the created tensor, if not set,
+            the name will be a random unique one.
+        persistable(bool): Set the persistable flag of the create tensor.
+
+    Returns:
+        Variable: The tensor variable storing the created tensor.
+
+    Examples:
+        .. code-block:: python
+
+          tensor = fluid.layers.create_tensor(dtype='float32')
+    """
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(
         name=helper.name, dtype=dtype, persistable=persistable)
