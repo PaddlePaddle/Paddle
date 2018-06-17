@@ -245,10 +245,8 @@ void GRPCClient::Proceed() {
     if (c->status_.ok()) {
       c->Process();
     } else {
-      LOG(ERROR) << "var: " << c->var_h_.String()
+      LOG(FATAL) << "var: " << c->var_h_.String()
                  << " grpc error:" << c->status_.error_message();
-      PADDLE_ENFORCE(false, "Get var from pserver error!context:%s",
-                     c->var_h_.String().c_str());
     }
     delete c;
     {
