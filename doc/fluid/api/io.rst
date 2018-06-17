@@ -77,3 +77,21 @@ clean_checkpoint
 ..  autofunction:: paddle.fluid.io.clean_checkpoint
     :noindex:
 
+load_persist_vars_without_grad
+------------------------------
+
+..  autofunction:: paddle.fluid.io.load_persist_vars_without_grad
+    :noindex:
+
+save_persist_vars_without_grad
+------------------------------
+
+..  autofunction:: paddle.fluid.io.save_persist_vars_without_grad
+    :noindex:
+
+get_latest_checkpoint_serial
+----------------------------
+
+..  autofunction:: paddle.fluid.io.get_latest_checkpoint_serial
+    :noindex:
+

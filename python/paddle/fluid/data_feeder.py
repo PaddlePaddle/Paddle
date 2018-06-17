@@ -15,6 +15,7 @@
 from __future__ import print_function
 import core
 import numpy
+import os
 import six.moves as six
 import multiprocessing
 
@@ -46,7 +47,7 @@ class DataToLoDTensorConverter(object):
         self.lod = []
 
         for i in six.range(lod_level):
-            self.lod.append([0])
+            self.lod.append([])
 
     def feed(self, data):
         self._feed_impl_(data, self.lod, self.lod_level)
@@ -55,8 +56,7 @@ class DataToLoDTensorConverter(object):
         if lod_level == 0:
             self.data.append(data)
         else:
-            cur_lod_len = len(data)
-            lod[0].append(lod[0][-1] + cur_lod_len)
+            lod[0].append(len(data))
             for each_data in data:
                 self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
@@ -65,7 +65,7 @@ class DataToLoDTensorConverter(object):
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
-            t.set_lod(self.lod)
+            t.set_recursive_sequence_lengths(self.lod)
         return t
 
 
@@ -150,7 +150,9 @@ class DataFeeder(object):
         elif isinstance(self.place, core.CUDAPlace):
             return core.get_cuda_device_count()
         else:
-            return multiprocessing.cpu_count()
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            return cpu_num
 
     def decorate_reader(self,
                         reader,

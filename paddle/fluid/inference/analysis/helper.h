@@ -18,6 +18,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -111,6 +113,13 @@ class OrderedRegistry {
 template <typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args &&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+template <typename T>
+T &GetFromScope(const framework::Scope &scope, const std::string &name) {
+  framework::Variable *var = scope.FindVar(name);
+  PADDLE_ENFORCE(var != nullptr);
+  return *var->GetMutable<T>();
 }
 
 }  // namespace analysis

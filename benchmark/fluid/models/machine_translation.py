@@ -173,21 +173,6 @@ def seq_to_seq_net(embedding_dim, encoder_size, decoder_size, source_dict_dim,
         return avg_cost, feeding_list
 
 
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    lod_t = core.LoDTensor()
-    lod_t.set(flattened_data, place)
-    lod_t.set_lod([lod])
-    return lod_t, lod[-1]
-
-
 def lodtensor_to_ndarray(lod_tensor):
     dims = lod_tensor.get_dims()
     ndarray = np.zeros(shape=dims).astype('float32')
@@ -197,6 +182,8 @@ def lodtensor_to_ndarray(lod_tensor):
 
 
 def get_model(args):
+    if args.use_reader_op:
+        raise Exception("machine_translation do not support reader op for now.")
     embedding_dim = 512
     encoder_size = 512
     decoder_size = 512
@@ -221,7 +208,7 @@ def get_model(args):
     train_batch_generator = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
-        batch_size=args.batch_size)
+        batch_size=args.batch_size * args.gpus)
 
     test_batch_generator = paddle.batch(
         paddle.reader.shuffle(

@@ -132,7 +132,8 @@ EOF
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_ANAKIN=ON
 }
 
 function abort(){
@@ -181,6 +182,7 @@ function build() {
     ============================================
 EOF
     make clean
+    make -j `nproc`
     make install -j `nproc`
 }
 
@@ -447,7 +449,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && easy_install -U pip && \
+        apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
