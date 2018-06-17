@@ -184,19 +184,17 @@ Long-Short Term Memory (LSTM) Operator.
 The defalut implementation is diagonal/peephole connection
 (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
 
-$$
-i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) \\
+$$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) $$
 
-f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f) \\
+$$ f_t = \\sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f) $$
 
-\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c) \\
+$$ \\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c) $$
 
-o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o) \\
+$$ o_t = \\sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o) $$
 
-c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
+$$ c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t} $$
 
-h_t = o_t \odot act_h(c_t)
-$$
+$$ h_t = o_t \\odot act_h(c_t) $$
 
 - W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
   of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
