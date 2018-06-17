@@ -36,10 +36,13 @@ class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "(Tensor), The input tensor.");
-    AddOutput("Out", "(Tensor), The shape of input tensor.");
+    AddOutput("Out",
+              "(Tensor), The shape of input tensor, the data type of the shape"
+              " is int64_t, will be on the same device with the input Tensor.");
     AddComment(R"DOC(
-Shape Operator. 
-Get the shape of input tensor.
+Shape Operator
+
+Get the shape of input tensor. Only support CPU input Tensor now.
 )DOC");
   }
 };
