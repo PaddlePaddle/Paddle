@@ -774,26 +774,26 @@ class RMSPropOptimizer(Optimizer):
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
 
         w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
 
     The first equation calculates moving average of the squared gradient for
-    each weight. Then dividing the gradient by :math: `sqrt{v(w,t)}`.
+    each weight. Then dividing the gradient by :math:`sqrt{v(w,t)}`.
 
     In some cases, adding a momentum term :math: `\\beta` is beneficial.
     In our implementation, Nesterov momentum is used:
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
 
         v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) +
             \\epsilon}} \\nabla Q_{i}(w)
 
         w & = w - v(w, t)
 
-    where, :math: `\\rho` is a hyperparameter and typical values are 0.9, 0.95
+    where, :math:`\\rho` is a hyperparameter and typical values are 0.9, 0.95
     and so on. :math: `beta` is the momentum term. :math: `\\epsilon` is a
     smoothing term to avoid division by zero, usually set somewhere in range
     from 1e-4 to 1e-8.
@@ -801,10 +801,10 @@ class RMSPropOptimizer(Optimizer):
 
     Args:
         learning_rate(float): global leraning rate.
-        rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
-        epsilon(float): :math: `\\epsilon` in equation is smoothing term to
+        rho(float): rho is :math:`\\rho` in equation, set 0.95 by default.
+        epsilon(float): :math:`\\epsilon` in equation is smoothing term to
             avoid division by zero, set 1e-6 by default.
-        momentum(float): :math: `\\beta` in equation is the momentum term,
+        momentum(float): :math:`\\beta` in equation is the momentum term,
             set 0.0 by default.
 
     Raises:
