@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
-#include "paddle/fluid/memory/memcpy.h"
 
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
@@ -56,10 +56,11 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto sum_func = [](T a, T b) -> T { return a + b; };
 
       TransformFunctor<decltype(sum_func), T,
-        paddle::platform::CPUDeviceContext, T> functor(
-            x, y, z,
-            ctx.template device_context<paddle::platform::CPUDeviceContext>(),
-            sum_func);
+                       paddle::platform::CPUDeviceContext, T>
+          functor(
+              x, y, z,
+              ctx.template device_context<paddle::platform::CPUDeviceContext>(),
+              sum_func);
 
       axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
       PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
@@ -80,10 +81,10 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       z->set_format(x->format());
     } else {
       PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                     x->format() != memory::format::format_undef,
+                         x->format() != memory::format::format_undef,
                      "Wrong layout/format set for X tensor");
       PADDLE_ENFORCE(y->layout() == DataLayout::kMKLDNN &&
-                     y->format() != memory::format::format_undef,
+                         y->format() != memory::format::format_undef,
                      "Wrong layout/format set for X tensor");
 
       std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
@@ -95,23 +96,21 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       std::vector<float> scales = {1.0f, 1.0f};
 
       auto src_x_pd = memory::primitive_desc(
-            { {src_x_tz}, memory::data_type::f32, x->format()},
-            mkldnn_engine);
+          {{src_x_tz}, memory::data_type::f32, x->format()}, mkldnn_engine);
       auto src_y_pd = memory::primitive_desc(
-            { {src_y_tz}, memory::data_type::f32, y->format()},
-            mkldnn_engine);
-      auto src_x_memory = memory(src_x_pd,
-        paddle::platform::to_void_cast(x_data));
-      auto src_y_memory = memory(src_y_pd,
-        paddle::platform::to_void_cast(y_data));
+          {{src_y_tz}, memory::data_type::f32, y->format()}, mkldnn_engine);
+      auto src_x_memory =
+          memory(src_x_pd, paddle::platform::to_void_cast(x_data));
+      auto src_y_memory =
+          memory(src_y_pd, paddle::platform::to_void_cast(y_data));
 
       srcs_pd.push_back(src_x_pd);
       srcs_pd.push_back(src_y_pd);
       srcs.push_back(src_x_memory);
       srcs.push_back(src_y_memory);
 
-      auto dst_md = memory::desc(
-             {dst_tz}, memory::data_type::f32, memory::format::any);
+      auto dst_md =
+          memory::desc({dst_tz}, memory::data_type::f32, memory::format::any);
 
       // create primitive descriptor for sum
       auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_pd);
@@ -131,8 +130,8 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       stream(stream::kind::eager).submit(pipeline).wait();
 
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format((memory::format)
-                    dst_memory.get_primitive_desc().desc().data.format);
+      z->set_format(
+          (memory::format)dst_memory.get_primitive_desc().desc().data.format);
     }
   }
 };
@@ -164,11 +163,10 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
       }
     } else {
       // Execute default kernel when broadcast is needed
-      ElemwiseGradCompute<
-        paddle::platform::CPUDeviceContext, T,
-        IdentityGrad<T>,
-        IdentityGrad<T>>(ctx, *x, *y, *out, *dout, axis, dx, dy,
-                         IdentityGrad<T>(), IdentityGrad<T>());
+      ElemwiseGradCompute<paddle::platform::CPUDeviceContext, T,
+                          IdentityGrad<T>, IdentityGrad<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
+          IdentityGrad<T>());
     }
 
     dx->set_layout(DataLayout::kMKLDNN);
@@ -183,10 +181,8 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(elementwise_add, MKLDNN,
-                   ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(elementwise_add, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::EltwiseAddMKLDNNKernel<float>)
 
-REGISTER_OP_KERNEL(elementwise_add_grad, MKLDNN,
-                   ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(elementwise_add_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::EltwiseAddMKLDNNGradKernel<float>)
