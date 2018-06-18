@@ -320,7 +320,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {
-    b = new RequestCheckpoin
+    b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }
