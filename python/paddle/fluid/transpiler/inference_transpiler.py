@@ -79,7 +79,7 @@ class InferenceTranspiler:
         self.block = program.block(0)
 
         i = 0
-        while i < len(self.block.ops):
+        while i < len(self.block.ops) - 1:
             current_op = self.block.ops[i]
             if current_op.type in ['batch_norm']:
                 next_op = self.block.ops[i + 1]
@@ -147,7 +147,7 @@ class InferenceTranspiler:
         self.input_map = {}  # store the input names should be adjusted
 
         i = 0
-        while i < len(self.block.ops):
+        while i < len(self.block.ops) - 2:
             current_op = self.block.ops[i]
             # TODO(luotao1): consider only conv2d now. fc would be delt later.
             if current_op.type in ['conv2d']:
