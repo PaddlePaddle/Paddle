@@ -233,12 +233,20 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
                                        const std::string& dir,
                                        int64_t time_out) {
   const auto ch = GetChannel(ep);
+
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
   s->Prepare(time_out);
+  s->response_call_back_ = nullptr;
 
-  sendrecv::CheckpointMessage req;
-  req.set_notify_type(CHECKPOINT_SAVE_MESSAGE);
-  req.set_checkpoint_dir(dir);
+  sendrecv::VariableMessage req;
+  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
+  req.out_varname(dir);
+
+  auto call = s->stub_g_.PrepareUnaryCall(
+      s->context_.get(), "/sendrecv.SendRecvService/CheckpointNotify", req,
+      &cq_);
+  call->StartCall();
+  call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
