@@ -255,9 +255,9 @@ void AsyncGRPCServer::StartServer() {
 
     reqs.reserve(kRequestBufSize);
 
-    LOG(INFO) << "TryToRegisterNewOne on RPC NAME: " << rpc_name << " I: " << i;
-
     for (int i = 0; i < kRequestBufSize; i++) {
+      LOG(INFO) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
+                << " I: " << i;
       TryToRegisterNewOne(rpc_name, i);
     }
 
@@ -313,9 +313,6 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
   LOG(INFO) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
             << " REQ ID: " << req_id;
 
-  // VLOG(4) << "register send rpc_name:" << rpc_name
-  //         << ", handler:" << rpc_call_map_[kRequestSend];
-
   auto& reqs = rpc_reqs_[rpc_name];
   auto& handler = rpc_call_map_[rpc_name];
   auto& cq = rpc_cq_[rpc_name];
@@ -328,7 +325,6 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {
-    LOG(INFO) << "TryToRegisterNewOne on RPC kRequestCheckpoint";
     b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
