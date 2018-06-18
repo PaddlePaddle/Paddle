@@ -34,13 +34,13 @@ class ArgsortOp : public framework::OperatorWithKernel {
 
     auto num_dims = in_dims.size();
     PADDLE_ENFORCE(axis < num_dims,
-                   "Attr(axis) %d of ArgsortOp is out of bounds for Input(X) "
-                   "dimension %d.",
+                   "Attr(axis) %d of ArgsortOp is out of bounds for Input(X)'s "
+                   "rank %d.",
                    axis, num_dims);
-    PADDLE_ENFORCE(in_dims.size() + axis >= 0,
-                   "Attr(axis) %d of ArgsortOp plus the rank %d of Input(X) "
-                   "must be nonnegative.",
-                   axis, in_dims.size());
+    PADDLE_ENFORCE(axis >= -num_dims,
+                   "Attr(axis) %d of ArgsortOp must be not less than "
+                   "-rank(Input(X)) (%d).",
+                   axis, num_dims);
 
     ctx->SetOutputDim("Out", in_dims);
     ctx->SetOutputDim("Indices", in_dims);
