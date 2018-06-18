@@ -36,11 +36,12 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
   void Apply() override {
     AddAttr<float>("mean",
                    "(float, default 0.0) "
-                   "mean of random tensor.")
+                   "The mean (or center) of the gaussian distribution.")
         .SetDefault(.0f);
     AddAttr<float>("std",
                    "(float, default 1.0) "
-                   "std of random tensor.")
+                   "The standard deviation (std, or spread) of the "
+                   "gaussian distribution.")
         .SetDefault(1.0f);
     AddAttr<int>("seed",
                  "(int, default 0) "
@@ -55,9 +56,11 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
         .SetDefault(framework::proto::VarType::FP32);
 
     AddComment(R"DOC(
-GaussianRandom Operator.
 
 Used to initialize tensors with gaussian random generator.
+The defalut mean of the distribution is 0. and defalut standard
+deviation (std) of the distribution is 1.. Uers can set mean and std
+by input arguments.
 )DOC");
   }
 };
