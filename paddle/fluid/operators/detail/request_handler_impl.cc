@@ -126,11 +126,10 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Variable** outvar,
                                       const std::string& out_var_name) {
 
-  auto lt_varname = string::Sprintf("%s.path", varname);
-  auto *lt_var = scope->FindVar(lt_varname)->GetMutable<std::string>();
+  auto *lt_var = scope->FindVar("loopup_table_path")->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update " << lt_varname << " to: " << out_var_name;
+  VLOG(4) << "RequestCheckpointHandler update loopup_table_path to: " << out_var_name;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
 }

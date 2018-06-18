@@ -838,7 +838,7 @@ class DistributeTranspiler:
         """
         import os
 
-        pserver_program.global_block().create_var(name="%s.path"%self.table_name, persistable=True, type=core.VarDesc.VarType.RAW)
+        pserver_program.global_block().create_var(name="loopup_table_path", persistable=True, type=core.VarDesc.VarType.RAW)
 
         checkpoint_save_block = pserver_program.create_block(pre_block_idx)
         checkpoint_save_block.append_op(
