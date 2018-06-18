@@ -31,4 +31,3 @@ inference_analysis_test(test_dfg_graphviz_draw_pass SRCS dfg_graphviz_draw_pass_
 inference_analysis_test(test_tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass_tester.cc)
 inference_analysis_test(test_pass_manager SRCS pass_manager_tester.cc)
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc)
-

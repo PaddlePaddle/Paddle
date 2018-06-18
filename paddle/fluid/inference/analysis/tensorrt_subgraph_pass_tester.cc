@@ -26,7 +26,8 @@ namespace analysis {
 DEFINE_string(dot_dir, "./", "");
 
 TEST_F(DFG_Tester, tensorrt_single_pass) {
-  std::unordered_set<std::string> teller_set({"elementwise_add", "mul", "sigmoid"});
+  std::unordered_set<std::string> teller_set(
+      {"elementwise_add", "mul", "sigmoid"});
   SubGraphSplitter::NodeInsideSubgraphTeller teller = [&](const Node* node) {
     if (node->type() != Node::Type::kFunction) return false;
     const auto* func = static_cast<const Function*>(node);
@@ -57,7 +58,7 @@ TEST_F(DFG_Tester, tensorrt_single_pass) {
   dfg_pass1.Run(argument.main_dfg.get());
 
   // Check the TRT op's block desc
-  for (auto &node : argument.main_dfg->nodes.nodes()) {
+  for (auto& node : argument.main_dfg->nodes.nodes()) {
     if (node->IsFunctionBlock()) {
       LOG(INFO) << "get function block";
     }

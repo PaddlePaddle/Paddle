@@ -56,9 +56,10 @@ void DataFlowGraph::Build() {
 
 void DataFlowGraph::Clean() {
   for (auto &node : nodes.nodes()) {
-    std::unordered_set<Node*> inlinks_set(node->inlinks.begin(), node->inlinks.end());
-    std::unordered_set<Node*> outlinks_set(node->outlinks.begin(),
-                                    node->outlinks.end());
+    std::unordered_set<Node *> inlinks_set(node->inlinks.begin(),
+                                           node->inlinks.end());
+    std::unordered_set<Node *> outlinks_set(node->outlinks.begin(),
+                                            node->outlinks.end());
     if (inlinks_set.size() < node->inlinks.size()) {
       LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
       node->inlinks.assign(inlinks_set.begin(), inlinks_set.end());
