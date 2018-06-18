@@ -364,5 +364,22 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 134)
 
 
+class TestMSRAInitializer(unittest.TestCase):
+    def test_bilinear_initializer(self):
+        """Test the bilinear initializer with supplied arguments
+        """
+        program = framework.Program()
+        block = program.global_block()
+        block.create_parameter(
+            dtype="float32",
+            shape=[8, 1, 3, 3],
+            lod_level=0,
+            name="param",
+            initializer=initializer.BilinearInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'assign_value')
+
+
 if __name__ == '__main__':
     unittest.main()

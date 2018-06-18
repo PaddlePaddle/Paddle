@@ -55,7 +55,7 @@ class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {
             'Input': (np.random.random((31, 28)).astype("float32"),
-                      [[0, 9, 23, 31]])
+                      [[9, 14, 8]])
         }
         self.attrs = {
             'value': 3.5,
