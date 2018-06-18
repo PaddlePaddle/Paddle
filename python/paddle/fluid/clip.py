@@ -208,6 +208,44 @@ class GradientClipByNorm(BaseGradientClipAttr):
 
 
 class GradientClipByGlobalNorm(BaseGradientClipAttr):
+    """
+    Clips values of multiple tensors by the ratio of the sum of their norms.
+
+    Given a list of tensors t_list, and a clipping ratio clip_norm, this
+    operation returns a list of clipped tensors list_clipped and the global
+    norm (global_norm) of all tensors in t_list.
+
+    To perform the clipping, the values :math:`t\_list[i]` are set to:
+
+    .. math::
+
+        t\_list[i] = t\_list[i] * \\frac{clip\_norm}{\max(global\_norm, clip\_norm)}
+
+    where:
+
+    .. math::
+
+        global\_norm = \sqrt{\sum_{i=0}^{N-1}(l2norm(t\_list[i]))^2}
+
+    If :math:`clip\_norm > global\_norm` then the entries in t_list remain as they are,
+    otherwise they're all shrunk by the global ratio.
+
+    Args:
+        clip_norm (float): The maximum norm value
+        group_name (str, optional): The group name for this clip.
+
+    Examples:
+        .. code-block:: python
+
+            p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
+
+            with fluid.program_guard(main_program=prog_clip):
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
+                p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
+
+    """
+
     def __init__(self, clip_norm, group_name="default_group"):
         if not isinstance(group_name, basestring):
             raise TypeError("'group_name' must be a basestring.")
