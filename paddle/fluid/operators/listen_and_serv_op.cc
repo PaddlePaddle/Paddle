@@ -99,7 +99,8 @@ static int64_t GetTimestamp() {
 void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
     framework::Scope *recv_scope,
-    const std::vector<int> &prefetch_block_id_list) const {
+    const std::vector<int> &prefetch_block_id_list,
+    const int checkpoint_point_block_id) const {
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
@@ -107,7 +108,8 @@ void ListenAndServOp::RunSyncLoop(
   std::vector<int> optimize_block_id_list;
   for (int blkid = 1; blkid < num_blocks; ++blkid) {
     if (std::find(prefetch_block_id_list.begin(), prefetch_block_id_list.end(),
-                  blkid) == prefetch_block_id_list.end()) {
+                  blkid) == prefetch_block_id_list.end() &&
+        blkid != checkpoint_point_block_id) {
       optimize_block_id_list.push_back(blkid);
     }
   }
