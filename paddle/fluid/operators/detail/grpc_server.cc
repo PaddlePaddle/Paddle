@@ -208,10 +208,13 @@ class RequestCheckpointNotify final : public RequestBase {
     auto scope = request_->GetMutableLocalScope();
 
     std::string checkpoint_notify = request_->Varname();
-    std::string checkpoint_dir = request_->Varname();
+    std::string checkpoint_dir = request_->OutVarname();
 
     framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
+
+    VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
+            << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, invar, &outvar,
                              checkpoint_dir);

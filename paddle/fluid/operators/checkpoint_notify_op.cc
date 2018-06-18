@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/send_recv_util.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
@@ -36,12 +37,14 @@ class CheckpointNotifyOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::string dir = Attr<std::string>("dir");
+    std::string lookup_table_name = Attr<std::string>("lookup_table");
 
     detail::RPCClient* rpc_client =
         detail::RPCClient::GetInstance<RPCCLIENT_T>();
     for (size_t i = 0; i < epmap.size(); i++) {
-      VLOG(3) << "sending to " << epmap[i] << " to checkpoint notify ... ";
-      rpc_client->AsyncCheckpointNotify(epmap[i], dir);
+      VLOG(3) << "sending " << dir <<" to " << epmap[i] << " to checkpoint notify ... ";
+      auto serial_looku_table = string::Sprintf("%s/%s.%d", dir, lookup_table_name, i);
+      rpc_client->AsyncCheckpointNotify(epmap[i], serial_looku_table);
     }
     rpc_client->Wait();
   }
@@ -57,6 +60,8 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({"127.0.0.1:6164"});
     AddAttr<std::string>(
         "dir", "(string, default '') indicate the folder checkpoint will use");
+    AddAttr<std::string>(
+        "lookup_table", "(string, default '') the lookup table name");
     AddComment(R"DOC(
 Prefetch operator
 
