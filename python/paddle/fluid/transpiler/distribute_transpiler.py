@@ -838,13 +838,15 @@ class DistributeTranspiler:
         """
         import os
 
+        pserver_program.global_block().create_var(name="%s.path"%self.table_name, persistable=True, type=core.VarDesc.VarType.RAW)
+
         checkpoint_save_block = pserver_program.create_block(pre_block_idx)
         checkpoint_save_block.append_op(
             type='save',
             inputs={'X': [self.table_name]},
             outputs={},
             attrs={
-                'file_path': os.path.join("/tmp/pserver_ckpt/", self.table_name)
+                'file_path': self.table_name)
             })
 
         return checkpoint_save_block.idx

@@ -87,7 +87,7 @@ class SaveOp : public framework::OperatorBase {
     if (var->IsType<framework::LoDTensor>()) {
       SaveLodTensor(filename, place, var);
     } else if (var->IsType<framework::SelectedRows>()) {
-      SaveSelectedRows(filename, place, var);
+      SaveSelectedRows(scope, place, var);
     } else {
       PADDLE_ENFORCE(
           false,
@@ -128,9 +128,17 @@ class SaveOp : public framework::OperatorBase {
     fout.close();
   }
 
-  void SaveSelectedRows(const std::string &filename,
+  void SaveSelectedRows(const framework::Scope &scope,
                         const platform::Place &place,
                         framework::Variable *var) const {
+
+    auto lt_varname = string::Sprintf("%s.path", Input("X"));
+    auto *lt_var = scope.FindVar(lt_varname)->GetMutable<std::string>();
+    PADDLE_ENFORCE(lt_var != nullptr, "Cannot find variable %s for SaveSelectedRows",
+                   lt_varname);
+    std::string filename = lt_var->data();
+    VLOG(4) << "SaveSelectedRows get File name: " << filename;
+
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool
