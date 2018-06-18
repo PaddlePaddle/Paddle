@@ -21,7 +21,8 @@ from core import VarDesc
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'force_init_on_cpu',
     'init_on_cpu', 'ConstantInitializer', 'UniformInitializer',
-    'NormalInitializer', 'XavierInitializer', 'BilinearInitializer'
+    'NormalInitializer', 'XavierInitializer', 'BilinearInitializer',
+    'MSRAInitializer'
 ]
 
 _force_init_on_cpu_ = False
@@ -246,39 +247,49 @@ class NormalInitializer(Initializer):
 
 
 class XavierInitializer(Initializer):
-    """Implements the Xavier initializer
-
+    """
     This class implements the Xavier weight initializer from the paper
-    Understanding the difficulty of training deep feedforward neural
-    networks[1] by Xavier Glorot and Yoshua Bengio.
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio.
 
     This initializer is designed to keep the scale of the gradients
     approximately same in all the layers. In case of Uniform distribution,
-    the range is [-x, x], where x = sqrt(6 / (fan_in + fan_out)).
-    In case of Normal distribution, the mean is 0 and the standard deviation
-    is sqrt(2/ (fan_in + fan_out)).
+    the range is [-x, x], where
 
-    References:
-        [1] Understanding the difficulty of training deep feedforward neural
-            networks. International conference on artificial intelligence and
-            statistics.
-            (http://proceedings.mlr.press/v9/glorot10a.html)
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+
+    In case of Normal distribution, the mean is 0 and the standard deviation
+    is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+
+
+    Args:
+        uniform (bool): whether to use uniform or normal distribution
+        fan_in (float): fan_in for Xavier initialization. If None, it is
+                inferred from the variable.
+        fan_out (float): fan_out for Xavier initialization. If None, it is
+                 inferred from the variable.
+        seed (int): random seed
+
+    Note:
+        It is recommended to set fan_in and fan_out to None for most cases.
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(
+                input=queries, size=10,
+                param_attr=fluid.initializer.Xavier(uniform=False))
+
     """
 
     def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
-        """Constructor for XavierInitializer
-
-        Args:
-            uniform: whether to use uniform or normal distribution
-            fan_in: fan_in for Xavier initialization. If None, it is
-                    inferred from the variable.
-            fan_out: fan_out for Xavier initialization. If None, it is
-                     inferred from the variable.
-            seed: random seed
-
-        Note: It is recommended to set fan_in and fan_out to None for
-              most cases.
-        """
         assert uniform is not None
         assert seed is not None
         super(XavierInitializer, self).__init__()
