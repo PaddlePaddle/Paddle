@@ -150,9 +150,6 @@ class Node {
   Type type_{Type::kNone};
   // Mark this node is deleted by some pass.
   bool deleted_{false};
-
-  // void *extra_info_;
-
   mutable std::unordered_map<std::string, Attr> attrs_;
 };
 

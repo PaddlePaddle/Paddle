@@ -35,7 +35,7 @@ namespace analysis {
 class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
  public:
   FluidToDataFlowGraphPass() = default;
-  // bool Initialize(const framework::proto::ProgramDesc &desc) override;
+
   bool Initialize(Argument *argument) override;
   bool Finalize() override;
 

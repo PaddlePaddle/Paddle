@@ -41,8 +41,9 @@ struct Argument {
   std::unique_ptr<framework::proto::ProgramDesc> origin_program_desc;
 };
 
+#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #define ANALYSIS_ARGUMENT_CHECK_FIELD(field__)               \
-  if (!(field__)) {                                          \
+  if (UNLIKELY(field__)) {                                   \
     LOG(ERROR) << "field " << #field__ << " should be set."; \
     return false;                                            \
   }

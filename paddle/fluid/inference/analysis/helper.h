@@ -110,11 +110,6 @@ class OrderedRegistry {
   std::vector<std::unique_ptr<T>> data_;
 };
 
-template <typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args &&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
 template <typename T>
 T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
