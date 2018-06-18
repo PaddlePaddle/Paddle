@@ -20,10 +20,15 @@ namespace analysis {
 
 void DFG_GraphvizDrawPass::Run(DataFlowGraph *graph) {
   auto content = Draw(graph);
-  std::ofstream file(GenDotPath());
+  auto dot_path = GenDotPath();
+  std::ofstream file(dot_path);
   file.write(content.c_str(), content.size());
   file.close();
-  LOG(INFO) << "draw dot to " << GenDotPath();
+
+  auto png_path = dot_path.substr(0, dot_path.size() - 4) + ".png";
+  std::string message;
+  LOG(INFO) << "draw " << dot_path << " to " << png_path;
+  ExecShellCommand("dot -Tpng " + dot_path + " -o " + png_path, &message);
 }
 
 std::string DFG_GraphvizDrawPass::Draw(DataFlowGraph *graph) {
@@ -41,9 +46,7 @@ std::string DFG_GraphvizDrawPass::Draw(DataFlowGraph *graph) {
     if (!config_.display_deleted_node && node.deleted()) continue;
     for (auto &in : node.inlinks) {
       if (!config_.display_deleted_node && in->deleted()) continue;
-      for (auto &in : node.inlinks) {
-        dot.AddEdge(in->repr(), node.repr(), {});
-      }
+      dot.AddEdge(in->repr(), node.repr(), {});
     }
   }
   return dot.Build();

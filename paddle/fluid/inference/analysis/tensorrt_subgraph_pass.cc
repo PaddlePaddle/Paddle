@@ -24,7 +24,7 @@ TensorRTSubGraphPass::TensorRTSubGraphPass(
     : node_inside_subgraph_teller_(teller) {}
 
 void TensorRTSubGraphPass::Run(DataFlowGraph *graph) {
-  SubGraphFuse(graph, node_inside_subgraph_teller_);
+  SubGraphFuse(graph, node_inside_subgraph_teller_)();
 }
 
 }  // analysis

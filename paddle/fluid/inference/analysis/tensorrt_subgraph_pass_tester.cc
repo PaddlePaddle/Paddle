@@ -23,45 +23,46 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-DEFINE_string(model_dir, "", "inference test model dir");
+DEFINE_string(dot_dir, "./", "");
 
 TEST_F(DFG_Tester, tensorrt_single_pass) {
-  SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
+  std::unordered_set<std::string> teller_set({"elementwise_add", "mul", "sigmoid"});
+  SubGraphSplitter::NodeInsideSubgraphTeller teller = [&](const Node* node) {
     if (node->type() != Node::Type::kFunction) return false;
     const auto* func = static_cast<const Function*>(node);
-    if (func->func_type() == "elementwise_add" || func->func_type() == "relu" ||
-        func->func_type() == "conv2d" || func->func_type() == "mul" ||
-        func->func_type() == "sigmoid" || func->func_type() == "softmax") {
-      LOG(INFO) << "sub-graph marked " << node->repr();
-      return true;
-    }
+    if (teller_set.count(func->func_type())) return true;
     return false;
   };
 
-  DFG_GraphvizDrawPass::Config config{"./", "test"};
+  LOG(INFO) << "init";
+  DFG_GraphvizDrawPass::Config config{FLAGS_dot_dir, "origin"};
+  DFG_GraphvizDrawPass::Config config1{FLAGS_dot_dir, "fusion"};
+
   DFG_GraphvizDrawPass dfg_pass(config);
-  dfg_pass.Initialize(&argument);
-
-  DFG_GraphvizDrawPass dfg_pass1(config);
-  dfg_pass1.Initialize(&argument);
-
-  dfg_pass.Run(argument.main_dfg.get());
-
+  DFG_GraphvizDrawPass dfg_pass1(config1);
+  FluidToDataFlowGraphPass pass0;
   TensorRTSubGraphPass trt_pass(std::move(teller));
+
+  LOG(INFO) << "Initialize";
+  dfg_pass.Initialize(&argument);
+  dfg_pass1.Initialize(&argument);
+  pass0.Initialize(&argument);
   trt_pass.Initialize(&argument);
 
+  LOG(INFO) << "Run";
+  argument.main_dfg.reset(new DataFlowGraph);
+  pass0.Run(argument.main_dfg.get());
+  dfg_pass.Run(argument.main_dfg.get());
   trt_pass.Run(argument.main_dfg.get());
-
   dfg_pass1.Run(argument.main_dfg.get());
 
   // Check the TRT op's block desc
-  for (auto node : argument.main_dfg->nodes.nodes()) {
+  for (auto &node : argument.main_dfg->nodes.nodes()) {
     if (node->IsFunctionBlock()) {
+      LOG(INFO) << "get function block";
     }
   }
 }
-
-TEST(TensorRTSubGraph, pass_manager) {}
 
 }  // namespace analysis
 }  // namespace inference

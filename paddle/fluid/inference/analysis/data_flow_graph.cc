@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-// It is a better idea that the inputs and outputs of this graph is set manully
+// It is a better idea that the inputs and outputs of this graph is set manually
 // before, but there must be a Pass that helps to prune the unnecessary ops that
 // do not contribute to the given targets, so in this pass, analysis and get the
 // inputs and outputs is OK.
@@ -48,6 +48,24 @@ void DataFlowGraph::Build() {
   for (auto *out : outs) {
     if (!outs.count(out)) {
       outputs.push_back(out);
+    }
+  }
+
+  Clean();
+}
+
+void DataFlowGraph::Clean() {
+  for (auto &node : nodes.nodes()) {
+    std::unordered_set<Node*> inlinks_set(node->inlinks.begin(), node->inlinks.end());
+    std::unordered_set<Node*> outlinks_set(node->outlinks.begin(),
+                                    node->outlinks.end());
+    if (inlinks_set.size() < node->inlinks.size()) {
+      LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
+      node->inlinks.assign(inlinks_set.begin(), inlinks_set.end());
+    }
+    if (outlinks_set.size() < node->outlinks.size()) {
+      LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
+      node->outlinks.assign(outlinks_set.begin(), outlinks_set.end());
     }
   }
 }

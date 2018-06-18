@@ -43,7 +43,7 @@ struct Argument {
 
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #define ANALYSIS_ARGUMENT_CHECK_FIELD(field__)               \
-  if (UNLIKELY(field__)) {                                   \
+  if (!UNLIKELY(field__)) {                                   \
     LOG(ERROR) << "field " << #field__ << " should be set."; \
     return false;                                            \
   }

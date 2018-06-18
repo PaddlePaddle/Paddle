@@ -64,6 +64,7 @@ TEST_F(DFG_Tester, DFG_pass_manager) {
   manager.Register("graphviz", new DFG_GraphvizDrawPass(config));
   manager.Register("dfg-to-fluid", new DataFlowGraphToFluidPass);
 
+  ASSERT_TRUE(&argument);
   ASSERT_TRUE(manager.Initialize(&argument));
   manager.RunAll();
 }
