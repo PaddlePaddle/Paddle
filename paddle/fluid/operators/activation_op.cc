@@ -126,7 +126,7 @@ $out = e^x$
 __attribute__((unused)) constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
-$out = \max(x, 0)$
+$out = \\max(x, 0)$
 
 )DOC";
 
