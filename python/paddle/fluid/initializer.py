@@ -105,14 +105,18 @@ class Initializer(object):
 
 class ConstantInitializer(Initializer):
     """Implements the constant initializer
+
+    Args:
+        value (float): constant value to initialize the variable
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Constant(value=2.0))
     """
 
     def __init__(self, value=0.0, force_cpu=False):
-        """Constructor for ConstantInitializer
-
-        Args:
-            value: constant value to initialize the variable
-        """
         assert value is not None
         super(ConstantInitializer, self).__init__()
         self._value = value
@@ -147,16 +151,20 @@ class ConstantInitializer(Initializer):
 
 class UniformInitializer(Initializer):
     """Implements the random uniform distribution initializer
+
+    Args:
+        low (float): lower boundary of the uniform distribution
+        high (float): upper boundary of the uniform distribution
+        seed (int): random seed
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
     def __init__(self, low=-1.0, high=1.0, seed=0):
-        """Constructor for UniformInitializer
-
-        Args:
-            low: lower boundary of the uniform distribution
-            high: upper boundary of the uniform distribution
-            seed: random seed
-        """
         assert low is not None
         assert high is not None
         assert high >= low
@@ -197,17 +205,21 @@ class UniformInitializer(Initializer):
 
 
 class NormalInitializer(Initializer):
-    """Implements the  random Normal(Gaussian) distribution initializer
+    """Implements the Random Normal(Gaussian) distribution initializer
+
+    Args:
+        loc (float): mean of the normal distribution
+        scale (float): standard deviation of the normal distribution
+        seed (int): random seed
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
     """
 
     def __init__(self, loc=0.0, scale=1.0, seed=0):
-        """Constructor for NormalInitializer
-
-        Args:
-            loc: mean of the normal distribution
-            scale: standard deviation of the normal distribution
-            seed: random seed
-        """
         assert loc is not None
         assert scale is not None
         assert seed is not None
