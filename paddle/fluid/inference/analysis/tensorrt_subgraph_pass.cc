@@ -12,26 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
-
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
+#include "paddle/fluid/inference/analysis/subgraph_splitter.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, Init) {
-  FluidToDataFlowGraphPass pass;
-  pass.Initialize(&argument);
-  DataFlowGraph graph;
-  pass.Run(&graph);
-  // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(graph.nodes.size(), 37);
-  pass.Finalize();
-  LOG(INFO) << '\n' << graph.DotString();
+TensorRTSubGraphPass::TensorRTSubGraphPass(
+    const TensorRTSubGraphPass::NodeInsideSubgraphTeller &teller)
+    : node_inside_subgraph_teller_(teller) {}
+
+void TensorRTSubGraphPass::Run(DataFlowGraph *graph) {
+  SubGraphFuse(graph, node_inside_subgraph_teller_);
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // analysis
+}  // inference
+
+}  // paddle
