@@ -247,6 +247,9 @@ void AsyncGRPCServer::StartServer() {
       std::bind(&AsyncGRPCServer::TryToRegisterNewOne, this,
                 std::placeholders::_1, std::placeholders::_2);
 
+  LOG(INFO) << "Server StartServer on "
+            << "TryToRegisterNewOne bind finished";
+
   for (auto& t : rpc_call_map_) {
     auto& rpc_name = t.first;
     auto& cq = rpc_cq_[rpc_name];
@@ -254,6 +257,8 @@ void AsyncGRPCServer::StartServer() {
     auto& reqs = rpc_reqs_[rpc_name];
 
     reqs.reserve(kRequestBufSize);
+
+    LOG(INFO) << "TryToRegisterNewOne on RPC NAME: " << rpc_name << "I: " << i;
 
     for (int i = 0; i < kRequestBufSize; i++) {
       TryToRegisterNewOne(rpc_name, i);
