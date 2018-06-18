@@ -19,22 +19,23 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
+  if (node->type() != Node::Type::kFunction) return false;
+  const auto* func = static_cast<const Function*>(node);
+  if (func->func_type() == "elementwise_add" || func->func_type() == "relu" ||
+      func->func_type() == "conv2d" || func->func_type() == "mul" ||
+      func->func_type() == "sigmoid" || func->func_type() == "softmax") {
+    LOG(INFO) << "sub-graph marked " << node->repr();
+    return true;
+  }
+  return false;
+};
+
 TEST_F(DFG_Tester, Split) {
   auto desc = LoadProgramDesc();
   auto dfg = ProgramDescToDFG(desc);
   LOG(INFO) << "spliter\n" << dfg.DotString();
 
-  SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
-    if (node->type() != Node::Type::kFunction) return false;
-    const auto* func = static_cast<const Function*>(node);
-    if (func->func_type() == "elementwise_add" || func->func_type() == "relu" ||
-        func->func_type() == "conv2d" || func->func_type() == "mul" ||
-        func->func_type() == "sigmoid" || func->func_type() == "softmax") {
-      LOG(INFO) << "sub-graph marked " << node->repr();
-      return true;
-    }
-    return false;
-  };
   ASSERT_GT(dfg.nodes.size(), 5UL);
 
   auto subgraphs = SubGraphSplitter(&dfg, teller)();
@@ -60,6 +61,28 @@ TEST_F(DFG_Tester, Split) {
   ASSERT_EQ(subgraphs.size(), 1UL);
   // The last sub-graph has 5 Functions.
   ASSERT_EQ(subgraphs.back().size(), 6UL);
+}
+
+TEST_F(DFG_Tester, Fuse) {
+  auto desc = LoadProgramDesc();
+  auto dfg = ProgramDescToDFG(desc);
+
+  size_t count0 = dfg.nodes.size();
+
+  SubGraphFuse fuse(&dfg, teller);
+  fuse();
+
+  int count1 = 0;
+  for (auto& node : dfg.nodes.nodes()) {
+    if (node->deleted()) {
+      LOG(INFO) << "deleted " << node->repr();
+    }
+    count1 += node->deleted();
+  }
+
+  // At least one nodes should be deleted.
+  ASSERT_EQ(dfg.nodes.size(), count0 + 1);  // added a new FunctionBlock
+  ASSERT_EQ(6UL, count1);
 }
 
 }  // namespace analysis
