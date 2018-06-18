@@ -233,7 +233,7 @@ class NodeMap {
 
   void Delete(size_t id);
 
-  const std::vector<std::unique_ptr<Node>> &nodes() { return nodes_; }
+  const std::vector<std::unique_ptr<Node>> &nodes() const { return nodes_; }
 
   size_t size() const { return nodes_.size(); }
 

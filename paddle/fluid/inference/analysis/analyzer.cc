@@ -17,6 +17,7 @@
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
+#include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -27,6 +28,13 @@ class DfgPassManagerImpl final : public DfgPassManager {
   DfgPassManagerImpl() {
     // TODO(Superjomn) set the key with pass reprs.
     Register("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
+    if (FLAGS_inference_analysis_enable_tensorrt_subgraph_engine) {
+      Register("tensorrt-subgraph",
+               new TensorRTSubGraphPass([](const Node* node) {
+                 if (!node->IsFunction()) return false;
+                 return static_cast<const Function*>(node)->func_type() == "mul";
+               }));
+    }
     Register("data-flow-graph-to-fluid", new DataFlowGraphToFluidPass);
   }
   std::string repr() const override { return "dfg-pass-manager"; }

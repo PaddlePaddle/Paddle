@@ -38,12 +38,18 @@ limitations under the License. */
  * inference service.
  */
 
+#include <gflags/gflags.h>
 #include "paddle/fluid/inference/analysis/pass.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+// TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
+// flag if not available.
+DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
+            "Enable subgraph to TensorRT engine for acceleration");
 
 class Analyzer : public OrderedRegistry<PassManager> {
  public:

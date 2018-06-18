@@ -22,10 +22,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+template <typename T>
+void SetAttr(framework::proto::OpDesc *op, const std::string &name,
+             const T &data);
 
 template <typename Vec>
 int AccuDims(Vec &&vec, int size) {
