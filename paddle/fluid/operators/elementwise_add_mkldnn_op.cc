@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/memory/memcpy.h"
 
+#include "paddle/fluid/platform/mkldnn_helper.h"
+
 namespace paddle {
 namespace operators {
 
@@ -26,11 +28,6 @@ using mkldnn::reorder;
 using mkldnn::primitive;
 using mkldnn::stream;
 using mkldnn::sum;
-
-template <typename T>
-inline void *cast_const_to_void(const T *t) {
-  return static_cast<void *>(const_cast<T *>(t));
-}
 
 template <typename T>
 class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
@@ -53,11 +50,16 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     auto z_dims = z->dims();
 
+    // Execute default elementwise_add operator when
+    // broadcast operations need to performed
     if (x_dims.size() != y_dims.size()) {
-      auto func = [](T a, T b) -> T { return a + b; };
+      auto sum_func = [](T a, T b) -> T { return a + b; };
 
-      TransformFunctor<decltype(func), T, paddle::platform::CPUDeviceContext, T> functor(
-        x, y, z, ctx.template device_context<paddle::platform::CPUDeviceContext>(), func);
+      TransformFunctor<decltype(sum_func), T,
+        paddle::platform::CPUDeviceContext, T> functor(
+            x, y, z,
+            ctx.template device_context<paddle::platform::CPUDeviceContext>(),
+            sum_func);
 
       axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
       PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
@@ -98,8 +100,10 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto src_y_pd = memory::primitive_desc(
             { {src_y_tz}, memory::data_type::f32, y->format()},
             mkldnn_engine);
-      auto src_x_memory = memory(src_x_pd, cast_const_to_void(x_data));
-      auto src_y_memory = memory(src_y_pd, cast_const_to_void(y_data));
+      auto src_x_memory = memory(src_x_pd,
+        paddle::platform::to_void_cast(x_data));
+      auto src_y_memory = memory(src_y_pd,
+        paddle::platform::to_void_cast(y_data));
 
       srcs_pd.push_back(src_x_pd);
       srcs_pd.push_back(src_y_pd);
@@ -136,40 +140,42 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
 template <typename T>
 class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
  public:
-    void Compute(const framework::ExecutionContext& ctx) const override {
-        using Tensor = framework::Tensor;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
 
-        auto* x = ctx.Input<Tensor>("X");
-        auto* y = ctx.Input<Tensor>("Y");
-        auto* out = ctx.Input<Tensor>("Out");
-        auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-        auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-        auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-        int axis = ctx.Attr<int>("axis");
-     if (platform::is_cpu_place(ctx.GetPlace()) && (x->dims() == y->dims())) {
-          auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    int axis = ctx.Attr<int>("axis");
 
-          if (dx) {
-              blas.VCOPY(dout->numel(), dout->data<T>(),
-                         dx->mutable_data<T>(ctx.GetPlace()));
-          }
-
-          if (dy) {
-              blas.VCOPY(dout->numel(), dout->data<T>(),
-                         dy->mutable_data<T>(ctx.GetPlace()));
-          }
-      } else {
-          ElemwiseGradCompute<paddle::platform::CPUDeviceContext, T, IdentityGrad<T>,
-                  IdentityGrad<T>>(
-                  ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
-                  IdentityGrad<T>());
+    if (x->dims() == y->dims()) {
+      auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
+      if (dx) {
+        blas.VCOPY(dout->numel(), dout->data<T>(),
+                   dx->mutable_data<T>(ctx.GetPlace()));
       }
 
-      dx->set_layout(DataLayout::kMKLDNN);
-      dx->set_format(dout->format());
-      dy->set_layout(DataLayout::kMKLDNN);
-      dy->set_format(dout->format());
+      if (dy) {
+        blas.VCOPY(dout->numel(), dout->data<T>(),
+                   dy->mutable_data<T>(ctx.GetPlace()));
+      }
+    } else {
+      // Execute default kernel when broadcast is needed
+      ElemwiseGradCompute<
+        paddle::platform::CPUDeviceContext, T,
+        IdentityGrad<T>,
+        IdentityGrad<T>>(ctx, *x, *y, *out, *dout, axis, dx, dy,
+                         IdentityGrad<T>(), IdentityGrad<T>());
     }
+
+    dx->set_layout(DataLayout::kMKLDNN);
+    dx->set_format(dout->format());
+    dy->set_layout(DataLayout::kMKLDNN);
+    dy->set_format(dout->format());
+  }
 };
 
 }  // namespace operators
