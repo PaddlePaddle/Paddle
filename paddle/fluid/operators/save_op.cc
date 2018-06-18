@@ -87,7 +87,7 @@ class SaveOp : public framework::OperatorBase {
     if (var->IsType<framework::LoDTensor>()) {
       SaveLodTensor(filename, place, var);
     } else if (var->IsType<framework::SelectedRows>()) {
-      SaveSelectedRows(filename, place, var);
+      SaveSelectedRows(scope, place, var);
     } else {
       PADDLE_ENFORCE(
           false,
@@ -128,9 +128,17 @@ class SaveOp : public framework::OperatorBase {
     fout.close();
   }
 
-  void SaveSelectedRows(const std::string &filename,
+  void SaveSelectedRows(const framework::Scope &scope,
                         const platform::Place &place,
                         framework::Variable *var) const {
+
+    auto lt_varname = string::Sprintf("%s.path", Input("X"));
+    auto *lt_var = scope.FindVar(lt_varname)->GetMutable<std::string>();
+    PADDLE_ENFORCE(lt_var != nullptr, "Cannot find variable %s for SaveSelectedRows",
+                   lt_varname);
+    std::string filename = lt_var->data();
+    VLOG(4) << "SaveSelectedRows get File name: " << filename;
+
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool
@@ -174,9 +182,32 @@ This operator will serialize and write a tensor/selected rows variable to file o
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+class SaveOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto out_var_name = op_desc.Output("loopup_table_path").front();
+    auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
+    auto var_type = framework::proto::VarType::RAW;
+    out_var.SetType(var_type);
+  }
+};
+
+class SaveOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
+};
+}
+}
+
+// namespace operators
+// namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker);
+REGISTER_OPERATOR(save, ops::SaveOp,
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::SaveOpProtoMaker,
+                  ops::SaveOpVarTypeInference,
+                  ops::SaveOpShapeInference);
+

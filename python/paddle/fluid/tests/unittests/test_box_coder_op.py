@@ -81,15 +81,19 @@ def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
     n = target_box.shape[0]
     m = prior_box.shape[0]
     output_box = np.zeros((n, m, 4), dtype=np.float32)
-    for i in range(len(lod) - 1):
+    cur_offset = 0
+    for i in range(len(lod)):
         if (code_type == "EncodeCenterSize"):
-            box_coder(target_box[lod[i]:lod[i + 1], :], prior_box,
-                      prior_box_var, output_box[lod[i]:lod[i + 1], :, :],
+            box_coder(target_box[cur_offset:(cur_offset + lod[i]), :],
+                      prior_box, prior_box_var,
+                      output_box[cur_offset:(cur_offset + lod[i]), :, :],
                       code_type, box_normalized)
         elif (code_type == "DecodeCenterSize"):
-            box_coder(target_box[lod[i]:lod[i + 1], :, :], prior_box,
-                      prior_box_var, output_box[lod[i]:lod[i + 1], :, :],
+            box_coder(target_box[cur_offset:(cur_offset + lod[i]), :, :],
+                      prior_box, prior_box_var,
+                      output_box[cur_offset:(cur_offset + lod[i]), :, :],
                       code_type, box_normalized)
+        cur_offset += lod[i]
     return output_box
 
 
@@ -99,7 +103,7 @@ class TestBoxCoderOp(OpTest):
 
     def setUp(self):
         self.op_type = "box_coder"
-        lod = [[0, 1, 2, 3, 4, 5]]
+        lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((10, 4)).astype('float32')
         prior_box_var = np.random.random((10, 4)).astype('float32')
         target_box = np.random.random((5, 10, 4)).astype('float32')
@@ -152,7 +156,7 @@ class TestBoxCoderOpWithLoD(OpTest):
 
     def setUp(self):
         self.op_type = "box_coder"
-        lod = [[0, 4, 12, 20]]
+        lod = [[4, 8, 8]]
         prior_box = np.random.random((10, 4)).astype('float32')
         prior_box_var = np.random.random((10, 4)).astype('float32')
         target_box = np.random.random((20, 4)).astype('float32')
