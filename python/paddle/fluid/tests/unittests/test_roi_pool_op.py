@@ -107,7 +107,7 @@ class TestROIPoolOp(OpTest):
         rois = []
         self.rois_lod = [[]]
         for bno in range(self.batch_size):
-            self.rois_lod[0].append(len(rois))
+            self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
                 x1 = np.random.random_integers(
                     0, self.width / self.spatial_scale - self.pooled_width)
@@ -121,7 +121,6 @@ class TestROIPoolOp(OpTest):
 
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
-        self.rois_lod[0].append(len(rois))
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype("int64")
 

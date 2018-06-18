@@ -84,15 +84,17 @@ def lstm(
         h = g_o * act_cell(c)
         return h, c
 
-    def _reverse(x, lod):
+    def _reverse(x, offset):
         y = np.zeros_like(x)
-        for i in range(len(lod) - 1):
-            b, e = lod[i], lod[i + 1]
+        for i in range(len(offset) - 1):
+            b, e = offset[i], offset[i + 1]
             y[b:e, :] = np.flip(x[b:e, :], 0)
         return y
 
-    offset = lod[0]
-    batch_size = len(offset) - 1
+    offset = [0]
+    for l in lod[0]:
+        offset.append(offset[-1] + l)
+    batch_size = len(lod[0])
     hidden = []
     cell = []
     input = _reverse(input, offset) if is_reverse else input
@@ -100,7 +102,7 @@ def lstm(
         input = input + np.tile(w_b, (offset[-1], 1))
     for i in range(batch_size):
         # compute one sequence
-        seq_len = offset[i + 1] - offset[i]
+        seq_len = lod[0][i]
         x = input[offset[i]:offset[i + 1], :]
         h_pre = h0[i]  # 1 x D
         c_pre = c0[i]  # 1 x D
@@ -124,7 +126,7 @@ def lstm(
 
 class TestLstmOp(OpTest):
     def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
+        self.lod = [[2, 3, 2]]
         self.D = 16
 
         self.act_gate = 'sigmoid'
@@ -139,8 +141,8 @@ class TestLstmOp(OpTest):
         self.set_argument()
         self.op_type = 'lstm'
 
-        T = self.lod[0][-1]
-        N = len(self.lod[0]) - 1
+        T = sum(self.lod[0])
+        N = len(self.lod[0])
 
         x = np.random.normal(size=(T, 4 * self.D)).astype('float64')
         if self.has_initial_state:
@@ -186,7 +188,7 @@ class TestLstmOp(OpTest):
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
-        N = len(self.lod[0]) - 1
+        N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
@@ -196,7 +198,7 @@ class TestLstmOp(OpTest):
 
 # class TestLstmOpHasInitial(TestLstmOp):
 #     def set_argument(self):
-#         self.lod = [[0, 2, 5, 7]]
+#         self.lod = [[2, 3, 2]]
 #         self.D = 16
 
 #         self.act_gate = 'sigmoid'
@@ -209,7 +211,7 @@ class TestLstmOp(OpTest):
 
 #     def test_check_grad(self):
 #         # TODO(qingqing) remove folowing lines after the check_grad is refined.
-#         N = len(self.lod[0]) - 1
+#         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
 #             (N, self.D)).astype('float64')
@@ -218,7 +220,7 @@ class TestLstmOp(OpTest):
 #             max_relative_error=5e-4)
 
 #     def test_check_grad_ingore_bias(self):
-#         N = len(self.lod[0]) - 1
+#         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
 #             (N, self.D)).astype('float64')
@@ -228,7 +230,7 @@ class TestLstmOp(OpTest):
 #             no_grad_set=set('Bias'))
 
 #     def test_check_grad_ingore_weight(self):
-#         N = len(self.lod[0]) - 1
+#         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
 #             (N, self.D)).astype('float64')
@@ -238,7 +240,7 @@ class TestLstmOp(OpTest):
 #             no_grad_set=set('Weight'))
 
 #     def test_check_grad_ingore_input(self):
-#         N = len(self.lod[0]) - 1
+#         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
 #             (N, self.D)).astype('float64')
@@ -248,7 +250,7 @@ class TestLstmOp(OpTest):
 #             no_grad_set=set('Input'))
 
 #     def test_check_grad_ingore_h0(self):
-#         N = len(self.lod[0]) - 1
+#         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
 #             (N, self.D)).astype('float64')
@@ -258,7 +260,7 @@ class TestLstmOp(OpTest):
 #             no_grad_set=set('H0'))
 
 #     def test_check_grad_ingore_c0(self):
-#         N = len(self.lod[0]) - 1
+#         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
 #             (N, self.D)).astype('float64')
@@ -269,7 +271,7 @@ class TestLstmOp(OpTest):
 
 # class TestLstmOpRerverse(TestLstmOp):
 #     def set_argument(self):
-#         self.lod = [[0, 2, 5, 7]]
+#         self.lod = [[2, 3, 2]]
 #         self.D = 16
 
 #         self.act_gate = 'sigmoid'
@@ -282,7 +284,7 @@ class TestLstmOp(OpTest):
 
 # class TestLstmOpNotUsePeepholes(TestLstmOp):
 #     def set_argument(self):
-#         self.lod = [[0, 2, 5, 7]]
+#         self.lod = [[2, 3, 2]]
 #         self.D = 16
 
 #         self.act_gate = 'sigmoid'

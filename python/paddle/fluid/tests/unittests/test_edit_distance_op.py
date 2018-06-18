@@ -52,23 +52,29 @@ class TestEditDistanceOp(OpTest):
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = False
-        x1 = np.array([[0, 12, 3, 5, 8, 2]]).astype("int64")
-        x2 = np.array([[0, 12, 4, 7, 8]]).astype("int64")
+        x1 = np.array([[12, 3, 5, 8, 2]]).astype("int64")
+        x2 = np.array([[12, 4, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
-        x1_lod = [0, 1, 5]
-        x2_lod = [0, 3, 4]
+        x1_lod = [1, 4]
+        x2_lod = [3, 1]
 
-        num_strs = len(x1_lod) - 1
+        num_strs = len(x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
         sequence_num = np.array(2).astype("int64")
+
+        x1_offset = 0
+        x2_offset = 0
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
-                hyp=x1[x1_lod[i]:x1_lod[i + 1]],
-                ref=x2[x2_lod[i]:x2_lod[i + 1]])
+                hyp=x1[x1_offset:(x1_offset + x1_lod[i])],
+                ref=x2[x2_offset:(x2_offset + x2_lod[i])])
+            x1_offset += x1_lod[i]
+            x2_offset += x2_lod[i]
             if normalized is True:
-                len_ref = x2_lod[i + 1] - x2_lod[i]
+                len_ref = x2_lod[i]
                 distance[i] = distance[i] / len_ref
+
         self.attrs = {'normalized': normalized}
         self.inputs = {'Hyps': (x1, [x1_lod]), 'Refs': (x2, [x2_lod])}
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
@@ -81,23 +87,29 @@ class TestEditDistanceOpNormalized(OpTest):
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = True
-        x1 = np.array([[0, 10, 3, 6, 5, 8, 2]]).astype("int64")
-        x2 = np.array([[0, 10, 4, 6, 7, 8]]).astype("int64")
+        x1 = np.array([[10, 3, 6, 5, 8, 2]]).astype("int64")
+        x2 = np.array([[10, 4, 6, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
-        x1_lod = [0, 1, 3, 6]
-        x2_lod = [0, 2, 3, 5]
+        x1_lod = [1, 2, 3]
+        x2_lod = [2, 1, 2]
 
-        num_strs = len(x1_lod) - 1
+        num_strs = len(x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
         sequence_num = np.array(3).astype("int64")
+
+        x1_offset = 0
+        x2_offset = 0
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
-                hyp=x1[x1_lod[i]:x1_lod[i + 1]],
-                ref=x2[x2_lod[i]:x2_lod[i + 1]])
+                hyp=x1[x1_offset:(x1_offset + x1_lod[i])],
+                ref=x2[x2_offset:(x2_offset + x2_lod[i])])
+            x1_offset += x1_lod[i]
+            x2_offset += x2_lod[i]
             if normalized is True:
-                len_ref = x2_lod[i + 1] - x2_lod[i]
+                len_ref = x2_lod[i]
                 distance[i] = distance[i] / len_ref
+
         self.attrs = {'normalized': normalized}
         self.inputs = {'Hyps': (x1, [x1_lod]), 'Refs': (x2, [x2_lod])}
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
