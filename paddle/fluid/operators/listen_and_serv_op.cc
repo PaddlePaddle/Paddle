@@ -329,7 +329,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // Write to a file of server selected port for python use.
   SavePort();
   if (sync_mode) {
-    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list);
+    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list,
+                checkpoint_point_block_id);
   } else {
     RunAsyncLoop(&executor, program);
   }
