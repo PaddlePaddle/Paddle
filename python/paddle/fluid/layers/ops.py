@@ -17,7 +17,6 @@ __activations__ = [
     'sigmoid',
     'logsigmoid',
     'exp',
-    'relu',
     'tanh',
     'tanh_shrink',
     'softshrink',
@@ -29,7 +28,6 @@ __activations__ = [
     'sin',
     'round',
     'reciprocal',
-    'log',
     'square',
     'softplus',
     'softsign',
@@ -40,8 +38,6 @@ __activations__ = [
     'relu6',
     'pow',
     'stanh',
-    'hard_shrink',
-    'thresholded_relu',
     'hard_sigmoid',
     'swish',
 ]
@@ -64,18 +60,102 @@ __all__ = [
     'logical_or',
     'logical_xor',
     'logical_not',
-    'uniform_random',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
-    'cumsum',
     'scatter',
     'sum',
     'slice',
     'polygon_box_transform',
     'shape',
+    'iou_similarity',
     'maxout',
 ] + __activations__
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+__all__ += ["uniform_random"]
+
+_uniform_random_ = generate_layer_fn('uniform_random')
+
+
+def uniform_random(shape, dtype=None, min=None, max=None, seed=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+    return _uniform_random_(**kwargs)
+
+
+uniform_random.__doc__ = _uniform_random_.__doc__ + """
+Examples:
+
+    >>> result = fluid.layers.uniform_random(shape=[32, 784])
+"""
+
+__all__ += ['hard_shrink']
+
+_hard_shrink_ = generate_layer_fn('hard_shrink')
+
+
+def hard_shrink(x, threshold=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+    return _hard_shrink_(**kwargs)
+
+
+hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
+Examples:
+
+    >>> data = fluid.layers.data(name="input", shape=[784])
+    >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
+"""
+
+__all__ += ['cumsum']
+
+_cum_sum_ = generate_layer_fn('cumsum')
+
+
+def cumsum(x, axis=None, exclusive=None, reverse=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+
+    return _cum_sum_(**kwargs)
+
+
+cumsum.__doc__ = _cum_sum_.__doc__ + """
+Examples:
+
+    >>> data = fluid.layers.data(name="input", shape=[32, 784])
+    >>> result = fluid.layers.cumsum(data, axis=0)
+"""
+
+__all__ += ['thresholded_relu']
+
+_thresholded_relu_ = generate_layer_fn('thresholded_relu')
+
+
+def thresholded_relu(x, threshold=None):
+    kwargs = dict()
+    for name in locals():
+        val = locals()[name]
+        if val is not None:
+            kwargs[name] = val
+
+    _thresholded_relu_(**kwargs)
+
+
+thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
+Examples:
+
+    >>> data = fluid.layers.data(name="input", shape=[1])
+    >>> result = fluid.layers.thresholded_relu(data, threshold=0.4)
+"""
