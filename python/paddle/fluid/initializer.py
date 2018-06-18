@@ -29,17 +29,29 @@ _force_init_on_cpu_ = False
 
 
 def force_init_on_cpu():
+    """
+    The flag of whether force to init variables on CPU.
+
+    Examples:
+        .. code-block:: python
+
+            if force_init_on_cpu():
+                pass
+
+    """
     return _force_init_on_cpu_
 
 
 @contextlib.contextmanager
 def init_on_cpu():
     """
-    Switch program with `with` statement
+    Force the variable to be inited on CPU.
 
     Examples:
-        >>> with init_on_cpu():
-        >>>   step = layers.create_global_var()
+        .. code-block:: python
+
+            with init_on_cpu():
+                step = layers.create_global_var()
 
     """
     global _force_init_on_cpu_
