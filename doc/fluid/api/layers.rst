@@ -1105,6 +1105,12 @@ argmax
 ..  autofunction:: paddle.fluid.layers.argmax
     :noindex:
 
+argsort
+------
+
+..  autofunction:: paddle.fluid.layers.argsort
+    :noindex:
+
 ones
 ----
 
