@@ -127,7 +127,6 @@ void SubGraphFuse::ReplaceNodesWithSubGraphs() {
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
     block_node->inlinks = std::move(io.first);
     block_node->outlinks = std::move(io.second);
-    LOG(INFO) << "subgraph.output size " << block_node->outlinks.size();
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
       // pass.

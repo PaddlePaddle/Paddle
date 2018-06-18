@@ -70,6 +70,9 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node* node) {
   // auto* main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   // auto* op = main_block->add_ops();
   // TODO(Superjomn) Here need to expose some arguments for default setting.
+  PADDLE_ENFORCE(node->IsFunctionBlock());
+  auto* block_node = static_cast<FunctionBlock*>(node);
+  LOG(INFO) << block_node;
 }
 
 }  // namespace analysis

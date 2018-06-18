@@ -35,6 +35,44 @@ namespace analysis {
 
 class NodeMap;
 
+// A helper class to maintain the status from Pass.
+struct NodeAttr {
+  // NOTE T should be a primary type or a struct combined by several primary
+  // types.
+  // NOTE the STL containers should not use here.
+  // Some usages
+  //   Attr attr;
+  //   attr.Bool() = true;
+
+  bool &Bool() { return As<bool>(); }
+  float &Float() { return As<float>(); }
+  int32_t &Int32() { return As<int32_t>(); }
+  int64_t &Int64() { return As<int64_t>(); }
+  void *&Pointer() { return As<void *>(); }
+  std::string &String();
+
+ private:
+  template <typename T>
+  T &As() {
+    // init storage in the first usage.
+    if (data_.empty()) {
+      VLOG(4) << "resize data to " << sizeof(T);
+      type_hash_ = typeid(T).hash_code();
+      data_.resize(sizeof(T));
+    }
+    PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(),
+                   "type not matched, origin is %s, want %s",
+                   DataTypeNamer::Global().repr(type_hash_),
+                   DataTypeNamer::Global().repr<T>());
+    PADDLE_ENFORCE_EQ(data_.size(), sizeof(T), "Node attr type recast error");
+    return *reinterpret_cast<T *>(&data_[0]);
+  }
+
+ private:
+  std::string data_;
+  size_t type_hash_{std::numeric_limits<size_t>::max()};
+};
+
 /*
  * Node Representation.
  *
@@ -49,8 +87,6 @@ class Node {
   enum class Type { kNone = -1, kFunction, kValue, kFunctionBlock };
 
   Node() = default;
-
-  struct Attr;
 
   // Cast to a subclass type, Function for example.
   template <typename Subclass>
@@ -71,7 +107,7 @@ class Node {
 
   // Get an additional attribute and convert it to T data type. NOTE this will
   // silently create a new attribute if not exists.
-  Attr &attr(const std::string &name) const { return attrs_[name]; }
+  NodeAttr &attr(const std::string &name) const { return attrs_[name]; }
 
   int id() const { return id_; }
 
@@ -79,6 +115,9 @@ class Node {
   // from a specific kind of Protobuf message.
   void SetPbDesc(void *pb) { attr("pb_desc").Pointer() = pb; }
   void *pb_desc() const { return attr("pb_desc").Pointer(); }
+
+  void SetPbMsg(const std::string &s) { attr("pb_msg").String() = s; }
+  const std::string &pb_msg() const { return attr("pb_desc").String(); }
 
   void SetDeleted() { deleted_ = true; }
   bool deleted() const { return deleted_; }
@@ -93,43 +132,6 @@ class Node {
   std::vector<Node *> inlinks;
   // Output links.
   std::vector<Node *> outlinks;
-
-  // A helper class to maintain the status from Pass.
-  struct Attr {
-    // NOTE T should be a primary type or a struct combined by several primary
-    // types.
-    // NOTE the STL containers should not use here.
-    // Some usages
-    //   Attr attr;
-    //   attr.Bool() = true;
-
-    bool &Bool() { return As<bool>(); }
-    float &Float() { return As<float>(); }
-    int32_t &Int32() { return As<int32_t>(); }
-    int64_t &Int64() { return As<int64_t>(); }
-    void *&Pointer() { return As<void *>(); }
-
-   private:
-    template <typename T>
-    T &As() {
-      // init storage in the first usage.
-      if (data_.empty()) {
-        VLOG(4) << "resize data to " << sizeof(T);
-        type_hash_ = typeid(T).hash_code();
-        data_.resize(sizeof(T));
-      }
-      PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(),
-                     "type not matched, origin is %s, want %s",
-                     DataTypeNamer::Global().repr(type_hash_),
-                     DataTypeNamer::Global().repr<T>());
-      PADDLE_ENFORCE_EQ(data_.size(), sizeof(T), "Node attr type recast error");
-      return *reinterpret_cast<T *>(&data_[0]);
-    }
-
-   private:
-    std::string data_;
-    size_t type_hash_{std::numeric_limits<size_t>::max()};
-  };
 
   // Type checks.
   bool IsFunction() const { return type_ == Node::Type::kFunction; }
@@ -150,7 +152,7 @@ class Node {
   Type type_{Type::kNone};
   // Mark this node is deleted by some pass.
   bool deleted_{false};
-  mutable std::unordered_map<std::string, Attr> attrs_;
+  mutable std::unordered_map<std::string, NodeAttr> attrs_;
 };
 
 class Function;
@@ -213,6 +215,10 @@ class Function : public Node {
 struct FunctionBlock : public Node {
   std::string repr() const override { return "block-" + std::to_string(id()); }
   std::vector<Node *> subgraph;
+
+ protected:
+  FunctionBlock() { SetType(Node::Type::kFunctionBlock); }
+  friend class NodeMap;
 };
 
 class NodeMap {
