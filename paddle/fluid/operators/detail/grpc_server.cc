@@ -203,7 +203,7 @@ class RequestCheckpointNotify final : public RequestBase {
 
   virtual ~RequestCheckpointNotify() {}
 
-  std::string GetReqName() override { return request_->Varname(); }
+  std::string GetReqName() override { return "checkpoint_notify"; }
 
   void Process() override {
     auto scope = request_->GetMutableLocalScope();
@@ -214,6 +214,11 @@ class RequestCheckpointNotify final : public RequestBase {
     request_handler_->Handle(nullptr_str, scope, invar, &outvar, nullptr_str);
     Finish(reply_, &responder_);
   }
+
+ protected:
+  sendrecv::CheckpointMessage request_;
+  sendrecv::VoidMessage reply_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 }
 
 void AsyncGRPCServer::WaitServerReady() {
