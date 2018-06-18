@@ -25,72 +25,21 @@ import utils
 import random
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
-    'mean_iou',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
+    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
+    'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance', 'l2_normalize',
+    'matmul', 'topk', 'warpctc', 'sequence_reshape', 'transpose', 'im2sequence',
+    'nce', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
+    'mean_iou', 'relu', 'log'
 ]
 
 
@@ -106,14 +55,15 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    The fully connected layer can take multiple tensors as its inputs. It
-    creates a variable called weights for each input tensor, which represents
-    a fully connected weight matrix from each input unit to each output unit.
-    The fully connected layer multiplies each input tensor with its coresponding
-    weight to produce an output Tensor. If multiple input tensors are given,
-    the results of multiple multiplications will be sumed up. If bias_attr is
-    not None, a bias variable will be created and added to the output. Finally,
-    if activation is not None, it will be applied to the output as well.
+    This function creates a fully connected layer in the network. It can take 
+    multiple tensors as its inputs. It creates a variable called weights for 
+    each input tensor, which represents a fully connected weight matrix from 
+    each input unit to each output unit. The fully connected layer multiplies 
+    each input tensor with its coresponding weight to produce an output Tensor. 
+    If multiple input tensors are given, the results of multiple multiplications 
+    will be sumed up. If bias_attr is not None, a bias variable will be created 
+    and added to the output. Finally, if activation is not None, it will be applied 
+    to the output as well.
 
     This process can be formulated as follows:
 
@@ -154,7 +104,7 @@ def fc(input,
         name (str, default None): The name of this layer.
 
     Returns:
-        A tensor variable storing the transformation result.
+        Variable: The transformation result.
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
@@ -162,8 +112,7 @@ def fc(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name="data", shape=[32, 32], dtype="float32")
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
 
@@ -911,7 +860,7 @@ def cos_sim(X, Y):
     Args:
         X (Variable): The input X.
         Y (Variable): The input Y.
-    
+
     Returns:
         Variable: the output of cosine(X, Y).
     """
@@ -1117,7 +1066,7 @@ def chunk_eval(input,
         chunk_scheme (str): ${chunk_scheme_comment}
         num_chunk_types (int): ${num_chunk_types_comment}
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
-    
+
     Returns:
         tuple: tuple containing: (precision, recall, f1_score,
                num_infer_chunks, num_label_chunks,
@@ -1177,7 +1126,7 @@ def sequence_conv(input,
         bias_attr (ParamAttr|None): attributes for bias
         param_attr (ParamAttr|None): attributes for parameter
         act (str): the activation type
-    
+
     Returns:
         Variable: output of sequence_conv
     """
@@ -1373,10 +1322,8 @@ def conv2d(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(
-              input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     num_channels = input.shape[1]
@@ -1478,8 +1425,7 @@ def conv3d(input,
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
@@ -1541,10 +1487,8 @@ def conv3d(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 12, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv3d(
-              input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     l_type = 'conv3d'
@@ -1745,6 +1689,7 @@ def sequence_last_step(input):
     return sequence_pool(input=input, pool_type="last")
 
 
+@templatedoc()
 def pool2d(input,
            pool_size=-1,
            pool_type="max",
@@ -1756,24 +1701,45 @@ def pool2d(input,
            use_mkldnn=False,
            name=None):
     """
-    This function adds the operator for pooling in 2 dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
-        input (Variable): ${input_comment}
-        pool_size (int): ${ksize_comment}
-        pool_type (str): ${pooling_type_comment}
+        input (Variable): The input tensor of pooling operator. The format of 
+                          input tensor is NCHW, where N is batch size, C is 
+                          the number of channels, H is the height of the 
+                          feature, and W is the width of the feature.
+        pool_size (int): The side length of pooling windows. All pooling 
+                         windows are squares with pool_size on a side.
+        pool_type: ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
-        global_pooling (bool): ${global_pooling_comment}
-        use_cudnn (bool): ${use_cudnn_comment}
-        ceil_mode (bool): ${ceil_mode_comment}
-        use_mkldnn (bool): ${use_mkldnn_comment}
-        name (str): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-    
+        global_pooling: ${global_pooling_comment}
+        use_cudnn: ${use_cudnn_comment}
+        ceil_mode: ${ceil_mode_comment}
+        use_mkldnn: ${use_mkldnn_comment}
+        name (str|None): A name for this layer(optional). If set None, the 
+                        layer will be named automatically.
+
     Returns:
-        Variable: output of pool2d layer.
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: If 'pool_type' is not "max" nor "avg"
+        ValueError: If 'global_pooling' is False and 'pool_size' is -1
+        ValueError: If 'use_cudnn' is not a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.pool2d(
+                            input=data, 
+                            pool_size=2, 
+                            pool_type='max', 
+                            pool_stride=1, 
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -2108,7 +2074,7 @@ def beam_search_decode(ids, scores, name=None):
         ids (Variable): ${ids_comment}
         scores (Variable): ${scores_comment}
         name (str): The name of this layer. It is optional.
-    
+
     Returns:
         tuple: a tuple of two output variable: sentence_ids, sentence_scores
     """
@@ -2152,32 +2118,36 @@ def conv2d_transpose(input,
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
     `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    If bias attribution and activation type are provided, bias is added to
+    the output of the convolution, and the corresponding activation function
+    is applied to the final result.
 
     For each input :math:`X`, the equation is:
 
     .. math::
 
-        Out = W \\ast X
+        Out = \sigma (W \\ast X + b)
 
-    In the above equation:
+    Where:
 
     * :math:`X`: Input value, a tensor with NCHW format.
     * :math:`W`: Filter value, a tensor with MCHW format.
-    * :math:`\\ast` : Convolution transpose operation.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
         - Input:
 
-          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{in}, C_{out}, H_f, W_f)$
+          Filter shape: :math:`(C_{in}, C_{out}, H_f, W_f)`
 
         - Output:
 
-          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
 
         Where
 
@@ -2231,10 +2201,8 @@ def conv2d_transpose(input,
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(
-              input=data, num_filters=2, filter_size=3)
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
     helper = LayerHelper("conv2d_transpose", **locals())
     if not isinstance(input, Variable):
@@ -2314,32 +2282,36 @@ def conv3d_transpose(input,
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
     explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    If bias attribution and activation type are provided, bias is added to
+    the output of the convolution, and the corresponding activation function
+    is applied to the final result.
 
     For each input :math:`X`, the equation is:
 
     .. math::
 
-        Out = W \\ast X
+        Out = \sigma (W \\ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
-    * :math:`\\ast` : Convolution transpose operation.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
-                   different.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
         - Input:
 
-          Input shape: $(N, C_{in}, D_{in}, H_{in}, W_{in})$
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
 
-          Filter shape: $(C_{in}, C_{out}, D_f, H_f, W_f)$
+          Filter shape: :math:`(C_{in}, C_{out}, D_f, H_f, W_f)`
 
         - Output:
 
-          Output shape: $(N, C_{out}, D_{out}, H_{out}, W_{out})$
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 
         Where
 
@@ -2394,10 +2366,8 @@ def conv3d_transpose(input,
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 12, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv3d_transpose(
-              input=data, num_filters=2, filter_size=3)
+          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
@@ -2538,7 +2508,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         beam_size (int): ${beam_size_comment}
         end_id (int): ${end_id_comment}
         level (int): ${level_comment}
-    
+
     Returns:
         tuple: a tuple of beam_search output variables: selected_ids, selected_scores
     '''
@@ -3196,25 +3166,51 @@ def topk(input, k, name=None):
     This operator is used to find values and indices of the k largest entries
     for the last dimension.
 
-    If the input is a vector (rank=1), finds the k largest entries in the vector
+    If the input is a vector (1-D Tensor), finds the k largest entries in the vector
     and outputs their values and indices as vectors. Thus values[j] is the j-th
     largest entry in input, and its index is indices[j].
 
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
 
+    For example:
+
+    .. code-block:: text
+
+        If:
+            input = [[5, 4, 2, 3],
+                     [9, 7, 10, 25],
+                     [6, 2, 10, 1]]
+            k = 2
+
+        Then:
+            The first output:
+            values = [[5, 4],
+                      [10, 25],
+                      [6, 10]]
+
+            The second output:
+            indices = [[0, 1],
+                       [2, 3],
+                       [0, 2]]
+
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
-        k(int): An integer value to specify the top k largest elements.
+        k(int):  The number of top elements to look for along the last dimension 
+                 of input.
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+                       will be named automatically. 
+                       Default: None
 
     Returns:
-        values(Variable): The k largest elements along each last dimensional
-            slice.
-        indices(Variable): The indices of values within the last dimension of
-            input.
+        Tuple[Variable]: A tuple with two elements. Each element is a Variable. 
+        The first one is k largest elements along each last 
+        dimensional slice. The second one is indices of values 
+        within the last dimension of input.
+
+    Raises:
+        ValueError: If k < 1 or k is not less than the last dimension of input
 
     Examples:
         .. code-block:: python
@@ -3222,7 +3218,7 @@ def topk(input, k, name=None):
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     shape = input.shape
-    if k < 1 and k >= shape[-1]:
+    if k < 1 or k >= shape[-1]:
         raise ValueError("k must be greater than 0 and less than %d." %
                          (shape[-1]))
 
@@ -3524,7 +3520,7 @@ def nce(input,
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
-    
+
     Returns:
         Variable: The output nce loss.
 
@@ -4737,6 +4733,62 @@ def random_crop(x, shape, seed=None):
     return out
 
 
+def log(x):
+    """
+    Calculates the natural log of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\ln(x)
+
+    Args:
+        x (Variable): Input tensor. 
+
+    Returns:
+        Variable: The natural log of the input tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.log(x)
+    """
+    helper = LayerHelper('log', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(type="log", inputs={"X": input}, outputs={"Out": out})
+    return out
+
+
+def relu(x):
+    """
+    Relu takes one input data (Tensor) and produces one output data (Tensor)
+    where the rectified linear function, y = max(0, x), is applied to
+    the tensor elementwise.
+
+    .. math::
+
+        Out = \\max(0, x)
+
+    Args:
+        x (Variable): The input tensor. 
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.relu(x)
+    """
+    helper = LayerHelper('relu', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(type="relu", inputs={"X": input}, outputs={"Out": out})
+    return out
+
+
 def mean_iou(input, label, num_classes):
     """
     Mean Intersection-Over-Union is a common evaluation metric for
@@ -4745,8 +4797,8 @@ def mean_iou(input, label, num_classes):
     IOU is defined as follows: 
     
     .. math::
-        
-        IOU = true_positive / (true_positive + false_positive + false_negative). 
+
+        IOU = \\frac{true\_positiv}{(true\_positive + false\_positive + false\_negative)}.
 
     The predictions are accumulated in a confusion matrix and mean-IOU 
     is then calculated from it.
@@ -4754,19 +4806,19 @@ def mean_iou(input, label, num_classes):
 
     Args:
         input (Variable): A Tensor of prediction results for semantic labels with type int32 or int64.
-        label (Variable):  A Tensor of ground truth labels with type int32 or int64. 
+        label (Variable): A Tensor of ground truth labels with type int32 or int64.
                            Its shape should be the same as input.
+        num_classes (int): The possible number of labels.
 
     Returns:
         mean_iou (Variable): A Tensor representing the mean intersection-over-union with shape [1].
         out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
         out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class. 
 
-
     Examples:
 
         .. code-block:: python
-
+            
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())

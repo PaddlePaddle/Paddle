@@ -62,6 +62,7 @@ struct DataTypeNamer {
     SET_TYPE(int);
     SET_TYPE(bool);
     SET_TYPE(float);
+    SET_TYPE(void *);
   }
 
   std::unordered_map<decltype(typeid(int).hash_code()),  // NOLINT
@@ -108,6 +109,11 @@ class OrderedRegistry {
   std::unordered_map<std::string, int> dic_;
   std::vector<std::unique_ptr<T>> data_;
 };
+
+template <typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args &&... args) {
+  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
 template <typename T>
 T &GetFromScope(const framework::Scope &scope, const std::string &name) {

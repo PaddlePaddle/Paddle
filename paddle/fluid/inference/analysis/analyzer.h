@@ -39,15 +39,20 @@ limitations under the License. */
  */
 
 #include "paddle/fluid/inference/analysis/pass.h"
+#include "paddle/fluid/inference/analysis/pass_manager.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class Analyzer final {
+class Analyzer : public OrderedRegistry<PassManager> {
  public:
+  // Register all the pass-managers.
+  Analyzer();
 
+  void Run(Argument* argument);
 
+  DISABLE_COPY_AND_ASSIGN(Analyzer);
 };
 
 }  // namespace analysis
