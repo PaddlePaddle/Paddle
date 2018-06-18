@@ -48,7 +48,8 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
-                   const std::vector<int>& prefetch_block_id_list) const;
+                   const std::vector<int>& prefetch_block_id_list,
+                   const int checkpoint_point_block_id) const;
 
   void RunAsyncLoop(framework::Executor* executor,
                     framework::ProgramDesc* program) const;
