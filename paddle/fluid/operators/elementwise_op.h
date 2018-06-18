@@ -14,13 +14,12 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-
 
 namespace paddle {
 namespace operators {
@@ -47,9 +46,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
-      framework::ToDataType(ctx.Input<Tensor>("X")->type());
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -88,8 +87,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false). Used by MKLDNN.")
+    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
         .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 Limited Elementwise %s Operator
@@ -166,9 +164,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
-      framework::ToDataType(ctx.Input<Tensor>("X")->type());
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
