@@ -216,10 +216,10 @@ class RequestCheckpointNotify final : public RequestBase {
   }
 
  protected:
-  sendrecv::CheckpointMessage request_;
+  std::shared_ptr<VariableResponse> request_;
   sendrecv::VoidMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-}
+};
 
 void AsyncGRPCServer::WaitServerReady() {
   VLOG(3) << "AsyncGRPCServer is wait server ready";
