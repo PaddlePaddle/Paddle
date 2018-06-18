@@ -83,7 +83,7 @@ enum class GrpcMethod {
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kPrefetchVariable) + 1;
+    static_cast<int>(GrpcMethod::kCheckpointNotify) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
