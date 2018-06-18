@@ -3,7 +3,7 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   data_flow_graph_to_fluid_pass.cc
   tensorrt_subgraph_pass.cc
   dfg_graphviz_draw_pass.cc
-  #analyzer.cc
+  analyzer.cc
   DEPS framework_proto)
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
@@ -30,5 +30,5 @@ inference_analysis_test(test_subgraph_splitter SRCS subgraph_splitter_tester.cc)
 inference_analysis_test(test_dfg_graphviz_draw_pass SRCS dfg_graphviz_draw_pass_tester.cc)
 inference_analysis_test(test_tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass_tester.cc)
 inference_analysis_test(test_pass_manager SRCS pass_manager_tester.cc)
-#inference_analysis_test(test_analyzer SRCS analyzer_tester.cc)
+inference_analysis_test(test_analyzer SRCS analyzer_tester.cc)
 

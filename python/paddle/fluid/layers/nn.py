@@ -25,21 +25,74 @@ import utils
 import random
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
-    'sequence_expand', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
-    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
-    'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance', 'l2_normalize',
-    'matmul', 'topk', 'warpctc', 'sequence_reshape', 'transpose', 'im2sequence',
-    'nce', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
-    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
-    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
-    'mean_iou', 'relu', 'log'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'log',
 ]
 
 
@@ -214,6 +267,7 @@ def embedding(input,
     return tmp
 
 
+@templatedoc(op_type="lstm")
 def dynamic_lstm(input,
                  size,
                  h_0=None,
@@ -228,56 +282,11 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
-    **Dynamic LSTM Layer**
-
-    The defalut implementation is diagonal/peephole connection
-    (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
-
-    .. math::
-
-        i_t & = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i)
-
-        f_t & = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f)
-
-        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
-
-        o_t & = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o)
-
-        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-        h_t & = o_t \odot act_h(c_t)
-
-    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is
-    the matrix of weights from the input gate to the input), :math:`W_{ic}, \
-    W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In
-    our implementation, we use vectors to reprenset these diagonal weight
-    matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input
-    gate bias vector), :math:`\sigma` is the non-linear activations, such as
-    logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input
-    gate, forget gate, output gate, and cell activation vectors, respectively,
-    all of which have the same size as the cell output activation vector :math:`h`.
-
-    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
-    and :math:`act_h` are the cell input and cell output activation functions
-    and `tanh` is usually used for them. :math:`\\tilde{c_t}` is also called
-    candidate hidden state, which is computed based on the current input and
-    the previous hidden state.
-
-    Set `use_peepholes` to `False` to disable peephole connection. The formula
-    is omitted here, please refer to the paper
-    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-
-    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
-    operations on the input :math:`x_{t}` are NOT included in this operator.
-    Users can choose to use fully-connect layer before LSTM layer.
+    ${comment}
 
     Args:
-        input(Variable): The input of dynamic_lstm layer, which supports
-                         variable-time length input sequence. The underlying
-                         tensor in this Variable is a matrix with shape
-                         (T X 4D), where T is the total time steps in this
-                         mini-batch, D is the hidden size.
-        size(int): 4 * hidden size.
+        input (Variable): ${input_comment}
+        size (int): 4 * hidden size.
         h_0(Variable): The initial hidden state is an optional input, default is zero.
                        This is a tensor with shape (N x D), where N is the
                        batch size and D is the hidden size.
@@ -292,32 +301,26 @@ def dynamic_lstm(input,
                                                 W_{fh}, W_{oh}`}
                                - The shape is (D x 4D), where D is the hidden
                                  size.
-        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
 
                               1. `use_peepholes = False`
-                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                - The shape is (1 x 4D).
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is (1 x 4D).
                               2. `use_peepholes = True`
-                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
-                                - The shape is (1 x 7D).
-        use_peepholes(bool): Whether to enable diagonal/peephole connections,
-                             default `True`.
-        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
-        gate_activation(str): The activation for input gate, forget gate and
-                              output gate. Choices = ["sigmoid", "tanh", "relu",
-                              "identity"], default "sigmoid".
-        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
-                              "tanh", "relu", "identity"], default "tanh".
-        candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
-        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                                 - The shape is (1 x 7D).
+        use_peepholes (bool): ${use_peepholes_comment}
+        is_reverse (bool): ${is_reverse_comment}
+        gate_activation (str): ${gate_activation_comment}
+        cell_activation (str): ${cell_activation_comment}
+        candidate_activation (str): ${candidate_activation_comment}
+        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -794,11 +797,14 @@ def linear_chain_crf(input, label, param_attr=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
+        input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
-        ${log_likelihood_comment}
+        output(${emission_exps_type}): ${emission_exps_comment} \n
+        output(${transition_exps_type}): ${transition_exps_comment} \n
+        output(${log_likelihood_type}): ${log_likelihood_comment}
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -833,11 +839,19 @@ def crf_decoding(input, param_attr, label=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
+
         param_attr(ParamAttr): The parameter attribute for training.
+
         label(${label_type}): ${label_comment}
 
     Returns:
-        ${viterbi_path_comment}
+        Variable: ${viterbi_path_comment}
+    
+    Examples:
+        .. code-block:: python
+
+           crf_decode = layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
@@ -852,14 +866,14 @@ def crf_decoding(input, param_attr, label=None):
     return viterbi_path
 
 
+@templatedoc()
 def cos_sim(X, Y):
     """
-    This function performs the cosine similarity between two tensors
-    X and Y and returns that as the output.
+    ${comment}
 
     Args:
-        X (Variable): The input X.
-        Y (Variable): The input Y.
+        X (Variable): ${x_comment}.
+        Y (Variable): ${y_comment}.
 
     Returns:
         Variable: the output of cosine(X, Y).
@@ -1057,8 +1071,69 @@ def chunk_eval(input,
                num_chunk_types,
                excluded_chunk_types=None):
     """
+    **Chunk Evaluator**
+
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
+
+    For some basics of chunking, please refer to
+    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+
+    ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
+    and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
+    Here is a NER example of labeling for these tagging schemes:
+
+    .. code-block:: python
+    
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+              Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+       IO     I-PER  I-PER   O      O   I-ORG          I-ORG  I-ORG I-ORG  O   I-LOC
+       IOB    B-PER  I-PER   O      O   B-ORG          I-ORG  I-ORG I-ORG  O   B-LOC
+       IOE    I-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   E-LOC
+       IOBES  B-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   S-LOC
+       ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
+
+    There are three chunk types(named entity types) including PER(person), ORG(organization)
+    and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
+
+    Since the calculations actually use label ids rather than labels, extra attention
+    should be paid when mapping labels to ids to make CheckEvalOp work. The key point
+    is that the listed equations are satisfied by ids.
+
+    .. code-block:: python
+
+       tag_type = label % num_tag_type
+       chunk_type = label / num_tag_type
+
+    where `num_tag_type` is the num of tag types in the tagging scheme, `num_chunk_type`
+    is the num of chunk types, and `tag_type` get its value from the following table.
+
+    .. code-block:: python
+    
+       Scheme Begin Inside End   Single
+        plain   0     -      -     -
+        IOB     0     1      -     -
+        IOE     -     0      1     -
+        IOBES   0     1      2     3
+
+    Still use NER as example, assuming the tagging scheme is IOB while chunk types are ORG,
+    PER and LOC. To satisfy the above equations, the label map can be like this:
+
+    .. code-block:: python
+
+       B-ORG  0
+       I-ORG  1
+       B-PER  2
+       I-PER  3
+       B-LOC  4
+       I-LOC  5
+       O      6
+
+    It's not hard to verify the equations noting that the num of chunk types
+    is 3 and the num of tag types in IOB scheme is 2. For example, the label
+    id of I-LOC is 5, the tag type id of I-LOC is 1, and the chunk type id of
+    I-LOC is 2, which consistent with the results from the equations.
 
     Args:
         input (Variable): prediction output of the network.
@@ -1068,9 +1143,22 @@ def chunk_eval(input,
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
 
     Returns:
-        tuple: tuple containing: (precision, recall, f1_score,
-               num_infer_chunks, num_label_chunks,
-               num_correct_chunks)
+        tuple: tuple containing: precision, recall, f1_score,
+        num_infer_chunks, num_label_chunks,
+        num_correct_chunks
+    
+    Examples:
+        .. code-block:: python
+
+            crf = fluid.layers.linear_chain_crf(
+                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+            crf_decode = fluid.layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
+            fluid.layers.chunk_eval(
+                input=crf_decode,
+                label=label,
+                chunk_scheme="IOB",
+                num_chunk_types=(label_dict_len - 1) / 2)
     """
     helper = LayerHelper("chunk_eval", **locals())
 
@@ -1130,10 +1218,6 @@ def sequence_conv(input,
     Returns:
         Variable: output of sequence_conv
     """
-
-    # FIXME(dzh) : want to unify the argument of python layer
-    # function. So we ignore some unecessary attributes.
-    # such as, padding_trainable, context_start.
 
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
@@ -1206,6 +1290,45 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
+    """
+    The input of the softmax layer is a 2-D tensor with shape N x K (N is the
+    batch_size, K is the dimension of input feature). The output tensor has the
+    same shape as the input tensor.
+
+    For each row of the input tensor, the softmax operator squashes the
+    K-dimensional vector of arbitrary real values to a K-dimensional vector of real
+    values in the range [0, 1] that add up to 1.
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in Input(X), we have:
+
+    .. math::
+
+        Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
+
+    Args:
+        input (Variable): The input variable.
+        bias_attr (ParamAttr): attributes for bias
+        param_attr (ParamAttr): attributes for parameter
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        library is installed.
+
+    Returns:
+        Variable: output of softmax
+
+    Examples:
+
+        .. code-block:: python
+
+             fc = fluid.layers.fc(input=x, size=10)
+             softmax = fluid.layers.softmax(input=fc)
+
+    """
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_tmp_variable(dtype)
@@ -1867,27 +1990,57 @@ def batch_norm(input,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False):
     """
-    This function helps create an operator to implement
-    the BatchNorm layer using the configurations from the input parameters.
+    **Batch Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
     Args:
-        input (Variable): the input variable.
-        act (str): activation type
-        is_test (bool): whether to run batch_norm as test mode.
-        momentum (float): momentum
-        epsilon (float): epsilon, default 1e-05
-        param_attr (ParamAttr|None): attributes for parameter
-        bias_attr (ParamAttr|None): attributes for bias
-        data_layout (str): data layout, default NCHW
-        in_place (bool): if True, do not create tmp variable
-        use_mkldnn (bool): ${use_mkldnn_comment}
-        name (str): The name of this layer. It is optional.
-        moving_mean_name (str): The name of moving mean variable name, optional.
-        moving_variance_name (str): The name of moving variance name, optional.
-        do_model_average_for_mean_and_var (bool):
+        input(variable): The input variable which is a LoDTensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test(bool, Default False): Used for training or training.
+        momentum(float, Default 0.9):
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
 
     Returns:
-        Variable: output of batch_norm layer.
+        Variable: A tensor variable which is the result after applying batch normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
@@ -2068,15 +2221,37 @@ def layer_norm(input,
 
 def beam_search_decode(ids, scores, name=None):
     """
-    ${beam_search_decode}
+    Beam Search Decode
+
+    This layers is to pack the output of beam search layer into sentences and
+    associated scores. It is usually called after the beam search layer.
+    Typically, the output of beam search layer is a tensor of selected ids, with
+    a tensor of the score of each id. Beam search layer's output ids, however, 
+    are generated directly during the tree search, and they are stacked by each 
+    level of the search tree. Thus we need to reorganize them into sentences, 
+    based on the score of each id. This layer takes the output of beam search
+    layer as input and repack them into sentences.
 
     Args:
-        ids (Variable): ${ids_comment}
-        scores (Variable): ${scores_comment}
+        ids (Variable): The selected ids, output of beam search layer. 
+        scores (Variable): The associated scores of the ids, out put of beam
+            search layer.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        tuple: a tuple of two output variable: sentence_ids, sentence_scores
+        tuple(Variable): a tuple of two output tensors: sentence_ids, sentence_scores.
+        sentence_ids is a tensor with shape [size, length], where size is the
+        beam size of beam search, and length is the length of each sentence. 
+        Note that the length of sentences may vary.
+        sentence_scores is a tensor with the same shape as sentence_ids.
+
+    Examples:
+        .. code-block:: python
+
+            ids, scores = fluid.layers.beam_search(
+                pre_ids, ids, scores, beam_size, end_id)
+            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
+                ids, scores)
     """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
@@ -2957,7 +3132,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                        will be named automatically.
 
     Returns:
-        List: The list of segmented tensor variables.
+        list(Variable): The list of segmented tensor variables.
 
     Examples:
         .. code-block:: python
@@ -3236,8 +3411,7 @@ def topk(input, k, name=None):
     return values, indices
 
 
-def edit_distance(input, label, normalized=True, ignored_tokens=None,
-                  name=None):
+def edit_distance(input, label, normalized=True, ignored_tokens=None):
     """
     EditDistance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
@@ -3251,21 +3425,21 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 
     "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with
+    The input is a LoDTensor consisting of all the hypothesis strings with
     the total number denoted by `batch_size`, and the separation is specified
     by the LoD information. And the `batch_size` reference strings are arranged
-    in order in the same way in the LoDTensor Input(Refs).
+    in order in the same way in the input LoDTensor.
 
-    Output(Out) contains the `batch_size` results and each stands for the edit
+    The output contains the `batch_size` results and each stands for the edit
     distance for a pair of strings respectively. If Attr(normalized) is true,
     the edit distance will be divided by the length of reference string.
 
     Args:
         input(Variable): The indices for hypothesis strings.
         label(Variable): The indices for reference strings.
-        normalized(bool): Indicated whether to normalize the edit distance by
+        normalized(bool, default True): Indicated whether to normalize the edit distance by
                           the length of reference string.
-        ignored_tokens(list of int): Tokens that should be removed before
+        ignored_tokens(list<int>, default None): Tokens that should be removed before
                                      calculating edit distance.
         name (str): The name of this layer. It is optional.
 
@@ -3277,7 +3451,6 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             y = fluid.layers.data(name='y', shape=[7], dtype='float32')
-
             cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -3318,6 +3491,7 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None,
 def ctc_greedy_decoder(input, blank, name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
+
     1. Get the indexes of max value for each row in input. a.k.a.
        numpy.argmax(input, axis=0).
     2. For each sequence in result of step1, merge repeated tokens between two
@@ -3397,35 +3571,33 @@ def warpctc(input, label, blank=0, norm_by_times=False):
     input tensor.
 
     Args:
-        input(Variable): (LodTensor, default: LoDTensor<float>),
-            the unscaled probabilities of variable-length sequences,
-            which is a 2-D Tensor with LoD information.
-            It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
-            sequences' length and num_classes is the true number of classes.
-            (not including the blank label).
-        label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
-            of variable-length sequence, which is a 2-D Tensor with LoD
-            information. It is of the shape [Lg, 1], where Lg is th sum of
-            all labels' length.
-        blank (int): default 0, the blank label index of Connectionist
-            Temporal Classification (CTC) loss, which is in the
-            half-opened interval [0, num_classes + 1).
-        norm_by_times (bool): default false, whether to normalize
-            the gradients by the number of time-step, which is also the
-            sequence's length. There is no need to normalize the gradients
-            if warpctc layer was follewed by a mean_op.
+       input (Variable): The unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information.
+         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         sequences' length and num_classes is the true number of classes.
+         (not including the blank label).
+       label (Variable): The ground truth of variable-length sequence, 
+         which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
+         where Lg is th sum of all labels' length.
+       blank (int, default 0): The blank label index of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval [0, num_classes + 1).
+       norm_by_times(bool, default false): Whether to normalize the gradients 
+         by the number of time-step, which is also the sequence's length. 
+         There is no need to normalize the gradients if warpctc layer was 
+         follewed by a mean_op.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor of the shape [batch_size, 1].
 
     Examples:
+
         .. code-block:: python
-            y = layers.data(
-                name='y', shape=[11, 8], dtype='float32', lod_level=1)
-            y_predict = layers.data(
-                name='y_predict', shape=[11, 1], dtype='float32')
-            cost = layers.warpctc(input=y_predict, label=y)
+
+            label = fluid.layers.data(shape=[11, 8], dtype='float32', lod_level=1)
+            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
+            cost = fluid.layers.warpctc(input=predict, label=label)
 
     """
     helper = LayerHelper('warpctc', **locals())
@@ -3454,17 +3626,21 @@ def sequence_reshape(input, new_dim):
     .. code-block:: text
 
         x is a LoDTensor:
-            x.lod  = [[2, 4]]
-            x.data = [[1, 2], [3, 4],
-                      [5, 6], [7, 8], [9, 10], [11, 12]]
+            x.lod  = [[0, 2, 6]]
+            x.data = [[1,  2], [3,  4],
+                      [5,  6], [7,  8],
+                      [9, 10], [11, 12]]
             x.dims = [6, 2]
 
         set new_dim = 4
 
         then out is a LoDTensor:
-            out.lod  = [[1, 2]]
-            out.data = [[1, 2, 3, 4],
-                        [5, 6, 7, 8], [9, 10, 11, 12]]
+
+            out.lod  = [[0, 1, 3]]
+
+            out.data = [[1,  2,  3,  4],
+                        [5,  6,  7,  8],
+                        [9, 10, 11, 12]]
             out.dims = [3, 4]
 
     Currently, only 1-level LoDTensor is supported and please make sure
@@ -3472,19 +3648,19 @@ def sequence_reshape(input, new_dim):
     no remainder for each sequence.
 
     Args:
-        input (Variable): (LodTensor, default: LoDTensor<float>), a 2-D LoDTensor
-            with shape being [N, M] where M for dimension.
-        new_dim (int): New dimension which the input LoDTensor is reshaped to.
+
+       input (Variable): A 2-D LoDTensor with shape being [N, M] where M for dimension.
+       new_dim (int): New dimension that the input LoDTensor is reshaped to.
 
     Returns:
+
         Variable: Reshaped LoDTensor according to new dimension.
 
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[5, 20],
-                              dtype='float32', lod_level=1)
-            x_reshaped = layers.sequence_reshape(input=x, new_dim=10)
+            x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
+            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
     helper = LayerHelper('sequence_reshape', **locals())
     out = helper.create_tmp_variable(helper.input_dtype())
@@ -3599,8 +3775,6 @@ def nce(input,
 
 def transpose(x, perm, name=None):
     """
-    **transpose Layer**
-
     Permute the dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
@@ -3690,8 +3864,6 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
     Examples:
 
-    As an example:
-
         .. code-block:: text
 
             Given:
@@ -3735,7 +3907,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
             output.lod = [[4, 4]]
 
-        The simple usage is:
+     Examples:
 
         .. code-block:: python
 
@@ -3987,8 +4159,9 @@ def one_hot(input, depth):
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """
-    NOTE: The counter will be automatically increased by 1 every mini-batch
-    Return the run counter of the main program, which is started with 1.
+    Create an auto-increase variable
+    which will be automatically increased by 1 every mini-batch
+    Return the run counter of the main program, default is started from 1.
 
     Args:
         counter_name(str): The counter name, default is '@STEP_COUNTER@'.
@@ -3997,6 +4170,12 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
 
     Returns:
         Variable: The global run counter.
+
+    Examples:
+        .. code-block:: python
+
+           global_step = fluid.layers.autoincreased_step_counter(
+               counter_name='@LR_DECAY_COUNTER@', begin=begin, step=1)
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
@@ -4220,9 +4399,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-        Output(i, x, y) = Input(i, x, y) / \left(
-        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
-        (Input(j, x, y))^2 \right)^{\beta}
+      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C, c + n/2)}_{j = \\max(0, c - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 
@@ -4406,34 +4583,20 @@ def label_smooth(label,
     return smooth_label
 
 
+@templatedoc()
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    Region of interest pooling (also known as RoI pooling) is to perform
-        is to perform max pooling on inputs of nonuniform sizes to obtain
-        fixed-size feature maps (e.g. 7*7).
-    The operator has three steps:
-        1. Dividing each region proposal into equal-sized sections with
-           the pooled_width and pooled_height
-        2. Finding the largest value in each section
-        3. Copying these max values to the output buffer
+    ${comment}
 
     Args:
-        input (Variable): The input for ROI pooling.
-        rois (Variable): ROIs (Regions of Interest) to pool over. It should
-                         be a 2-D one level LoTensor of shape [num_rois, 4].
-                         The layout is [x1, y1, x2, y2], where (x1, y1)
-                         is the top left coordinates, and (x2, y2) is the
-                         bottom right coordinates. The num_rois is the
-                         total number of ROIs in this batch data.
-        pooled_height (integer): The pooled output height. Default: 1
-        pooled_width (integer): The pooled output width. Default: 1
-        spatial_scale (float): Multiplicative spatial scale factor. To
-                               translate ROI coords from their input scale
-                               to the scale used when pooling. Default: 1.0
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
 
     Returns:
-        pool_out (Variable): The output is a 4-D tensor of the shape
-                             (num_rois, channels, pooled_h, pooled_w).
+        Variable: ${out_comment}.
 
     Examples:
         .. code-block:: python
@@ -4505,12 +4668,13 @@ def image_resize(input,
                  name=None,
                  resample='BILINEAR'):
     """
-    Resize a batch of images.
+    **Resize a Batch of Images**
 
     The input must be a tensor of the shape (num_batches, channels, in_h, in_w), 
     and the resizing only applies on the last two dimensions(hight and width).
 
     Supporting resample methods:
+
         'BILINEAR' : Bilinear interpolation
 
     Args:
@@ -4530,8 +4694,8 @@ def image_resize(input,
                        Default: 'BILINEAR'
 
     Returns:
-        out (Variable): The output is a 4-D tensor of the shape
-                        (num_batches, channls, out_h, out_w).
+        Variable: The output is a 4-D tensor of the shape
+        (num_batches, channls, out_h, out_w).
 
     Examples:
         .. code-block:: python
@@ -4615,8 +4779,8 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
         resample (str): resample method, default: BILINEAR.
 
     Returns:
-        out (Variable): The output is a 4-D tensor of the shape
-                        (num_batches, channls, out_h, out_w).
+        Variable: The output is a 4-D tensor of the shape
+        (num_batches, channls, out_h, out_w).
     """
     in_shape = input.shape
     if len(in_shape) != 4:
@@ -4635,6 +4799,8 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
 
 def gather(input, index):
     """
+    **Gather Layer**
+
     Output is obtained by gathering entries of the outer-most dimension 
     of X indexed by `index` and concatenate them together.
 
