@@ -19,10 +19,10 @@ from framework import convert_np_dtype_to_dtype_
 from core import VarDesc
 
 __all__ = [
-    'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'force_init_on_cpu',
-    'init_on_cpu', 'ConstantInitializer', 'UniformInitializer',
-    'NormalInitializer', 'XavierInitializer', 'BilinearInitializer',
-    'MSRAInitializer'
+    'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
+    'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
+    'UniformInitializer', 'NormalInitializer', 'XavierInitializer',
+    'BilinearInitializer', 'MSRAInitializer'
 ]
 
 _force_init_on_cpu_ = False
@@ -353,30 +353,42 @@ class MSRAInitializer(Initializer):
     """Implements the MSRA initializer a.k.a. Kaiming Initializer
 
     This class implements the weight initialization from the paper
-    Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-    ImageNet Classification[1] by Kaiming He, Xiangyu Zhang, Shaoqing Ren
-    and Jian Sun. This is a robust initialization method that particularly
-    considers the rectifier nonlinearities. In case of Uniform distribution,
-    the range is [-x, x], where x = sqrt(6 / fan_in). In case of Normal
-    distribution, the mean is 0 and the standard deviation
-    is sqrt(2/ fan_in).
+    `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+    ImageNet Classification <https://arxiv.org/abs/1502.01852>`_
+    by Kaiming He, Xiangyu Zhang, Shaoqing Ren and Jian Sun. This is a
+    robust initialization method that particularly considers the rectifier
+    nonlinearities. In case of Uniform distribution, the range is [-x, x], where
 
-    References:
-        [1] Delving Deep into Rectifiers: Surpassing Human-Level Performance
-            on ImageNet Classification
-            (https://arxiv.org/abs/1502.01852)
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in}}
+
+    In case of Normal distribution, the mean is 0 and the standard deviation
+    is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in}}
+
+    Args:
+        uniform (bool): whether to use uniform or normal distribution
+        fan_in (float): fan_in for MSRAInitializer. If None, it is\
+        inferred from the variable.
+        seed (int): random seed
+
+    Note:
+        It is recommended to set fan_in to None for most cases.
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(
+                input=queries, size=10,
+                param_attr=fluid.initializer.MSRA(uniform=False))
     """
 
     def __init__(self, uniform=True, fan_in=None, seed=0):
         """Constructor for MSRAInitializer
-
-        Args:
-            uniform: whether to use uniform or normal distribution
-            fan_in: fan_in for MSRAInitializer. If None, it is
-                    inferred from the variable.
-            seed: random seed
-
-        Note: It is recommended to set fan_in to None for most cases.
         """
         assert uniform is not None
         assert seed is not None
@@ -436,34 +448,37 @@ class MSRAInitializer(Initializer):
 
 
 class BilinearInitializer(Initializer):
-    """Implements the bilinear initializer.
-
+    """
     This initializer can be used in transposed convolution operator to
     act as upsampling. Users can upsample a feature map with shape of
     (B, C, H, W) by any integer factor. The usage is:
-  
-    >>>  factor = 2
-    >>>  w_attr = ParamAttr(learning_rate=0., regularizer=L2Decay(0.),
-    >>>                     initializer=Bilinear())
-    >>>  conv_up = fluid.layers.conv2d_transpose(
-    >>>      input,
-    >>>      num_filters=C,
-    >>>      output_size=None,
-    >>>      filter_size=2 * factor - factor % 2,
-    >>>      padding=ceil((factor - 1) / 2.),
-    >>>      stride=factor,
-    >>>      groups=C,
-    >>>      param_attr=w_attr,
-    >>>      bias_attr=False)
 
+    Examples:
 
-    Where, `num_filters=C` and `groups=C` means this is channel-wise tranposed
+        .. code-block:: python
+
+            factor = 2
+            w_attr = ParamAttr(learning_rate=0., regularizer=L2Decay(0.),
+                               initializer=Bilinear())
+            conv_up = fluid.layers.conv2d_transpose(
+                input,
+                num_filters=C,
+                output_size=None,
+                filter_size=2 * factor - factor % 2,
+                padding=ceil((factor - 1) / 2.),
+                stride=factor,
+                groups=C,
+                param_attr=w_attr,
+                bias_attr=False)
+
+    Where, `num_filters=C` and `groups=C` means this is channel-wise transposed
     convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
     This initializer will set a (K, K) interpolation kernel for every channel
     of the filter identically. The resulting shape of the output feature map
     will be (B, C, factor * H, factor * W). Note that the learning rate and the
     weight decay are set to 0 in order to keep coefficient values of bilinear
-    interpolation unchanged during training. 
+    interpolation unchanged during training.
+
     """
 
     def __init__(self):
@@ -480,7 +495,7 @@ class BilinearInitializer(Initializer):
                            be added.
 
         Returns:
-            the initialization op
+            Operator: the initialization op
 
         Raises:
             ValueError: If type of `var` and `block` is not right.
