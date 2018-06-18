@@ -201,15 +201,19 @@ class RequestCheckpointNotify final : public RequestBase {
 
   virtual ~RequestCheckpointNotify() {}
 
-  std::string GetReqName() override { return "checkpoint_notify"; }
+  std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
     auto scope = request_->GetMutableLocalScope();
-    std::string nullptr_str = nullptr;
+
+    std::string checkpoint_notify = request_->Varname();
+    std::string checkpoint_dir = request_->Varname();
+
     framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(nullptr_str, scope, invar, &outvar, nullptr_str);
+    request_handler_->Handle(checkpoint_notify, scope, invar, &outvar,
+                             checkpoint_dir);
     Finish(reply_, &responder_);
   }
 
