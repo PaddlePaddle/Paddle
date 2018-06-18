@@ -190,12 +190,10 @@ class RequestCheckpointNotify final : public RequestBase {
   explicit RequestCheckpointNotify(GrpcService::AsyncService* service,
                                    ::grpc::ServerCompletionQueue* cq,
                                    RequestHandler* request_handler, int req_id)
-      : RequestBase(service, cq, request_handler, req_id),
-        responder_(&ctx_),
-        local_scope_(nullptr) {
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new VariableResponse(request_handler->scope(),
                                         request_handler->dev_ctx(), true));
-    int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
+    int method_id = static_cast<int>(detail::GrpcMethod::kCheckpointNotify);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
