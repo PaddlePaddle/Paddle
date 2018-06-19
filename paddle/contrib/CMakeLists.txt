@@ -14,4 +14,3 @@
 #
 
 add_subdirectory(inference)
-
