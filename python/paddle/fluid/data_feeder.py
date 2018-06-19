@@ -70,6 +70,62 @@ class DataToLoDTensorConverter(object):
 
 
 class DataFeeder(object):
+    """
+    DataFeeder converts the data that returned by paddle.reader into a
+    data structure of Arguments which is defined in the API. The paddle.reader
+    usually returns a list of mini-batch data entries. Each data entry in
+    the list is one sample. Each sample is a list or a tuple with one feature
+    or multiple features. DataFeeder converts this mini-batch data entries
+    into Arguments in order to feed it to C++ interface.
+
+    The simple usage shows below:
+
+    ..  code-block:: python
+
+        place = fluid.CPUPlace()
+        data = fluid.layers.data(
+            name='data', shape=[1], dtype='int64', lod_level=2)
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        feeder = fluid.DataFeeder([data, label], place)
+
+        result = feeder.feed(
+            [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])])
+
+
+    If you want to feed data into GPU side separately in advance when you
+    use multi-GPU to train a model, you can use `decorate_reader` function.
+
+    ..  code-block:: python
+
+        place=fluid.CUDAPlace(0)
+        feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
+        reader = feeder.decorate_reader(
+            paddle.batch(flowers.train(), batch_size=16))
+
+    Args:
+        feed_list(list): The Variables or Variables'name that will
+            feed into model.
+        place(Place): fluid.CPUPlace() or fluid.CUDAPlace(i).
+        program(Program): The Program that will feed data into, if program
+            is None, it will use default_main_program(). Default None.
+
+    Raises:
+        ValueError: If the some Variable is not in the Program.
+
+    Examples:
+        .. code-block:: python
+
+            # ...
+            place = fluid.CPUPlace()
+            feed_list = [
+                main_program.global_block().var(var_name) for var_name in feed_vars_name
+            ]
+            feeder = fluid.DataFeeder(feed_list, place)
+            for data in reader():
+                outs = exe.run(program=main_program,
+                               feed=feeder.feed(data))
+    """
+
     def __init__(self, feed_list, place, program=None):
         self.feed_dtypes = []
         self.feed_names = []
@@ -99,6 +155,16 @@ class DataFeeder(object):
         self.place = place
 
     def feed(self, iterable):
+        """
+        According to feed_list and iterable converter the input data
+        into a dictionary that can feed into Executor or ParallelExecutor.
+
+        Args:
+            iterable(list|tuple): the input data.
+
+        Returns:
+            dict: the result of conversion.
+        """
         converter = []
         for lod_level, shape, dtype in six.zip(
                 self.feed_lod_level, self.feed_shapes, self.feed_dtypes):
@@ -121,6 +187,20 @@ class DataFeeder(object):
         return ret_dict
 
     def feed_parallel(self, iterable, num_places=None):
+        """
+        Takes multiple mini-batches. Each mini-batch will be feed on each
+        device.
+
+        Args:
+            iterable(list|tuple): the input data.
+            num_places(int): the number of places. Default None.
+
+        Returns:
+            dict: the result of conversion.
+
+        Notes:
+            The number of devices and number of mini-batches must be same.
+        """
         if isinstance(self.place, core.CUDAPlace):
             places = [
                 core.CUDAPlace(i)
@@ -159,6 +239,24 @@ class DataFeeder(object):
                         multi_devices,
                         num_places=None,
                         drop_last=True):
+        """
+        Converter the input data into a data that returned by reader into
+        multiple mini-batches. Each mini-batch will be feed on each device.
+
+        Args:
+            reader(fun): the input data.
+            multi_devices(bool): the number of places. Default None.
+            num_places(int): the number of places. Default None.
+            drop_last(bool): the number of places. Default None.
+
+        Returns:
+            dict: the result of conversion.
+
+        Raises:
+            ValueError: If drop_last is False and the data batch which cannot
+            fit for devices.
+        """
+
         def __reader_creator__():
             if not multi_devices:
                 for item in reader():
