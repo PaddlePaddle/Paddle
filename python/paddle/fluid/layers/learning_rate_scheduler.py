@@ -71,21 +71,40 @@ def noam_decay(d_model, warmup_steps):
 
 
 def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
-    """Applies exponential decay to the learning rate.
+    """
+    Applies exponential decay to the learning rate. 
 
-    ```python
-    decayed_learning_rate = learning_rate *
-            decay_rate ^ (global_step / decay_steps)
-    ```
+    When training a model, it is often recommended to lower the learning rate as the 
+    training progresses. By using this function, the learning rate will be decayed by 
+    'decay_rate' every 'decay_steps' steps.
+
+    >>> if staircase == True:
+    >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
+    >>> else:
+    >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
+
     Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        decay_steps: A Python `int32` number.
-        decay_rate: A Python `float` number.
-        staircase: Boolean. If set true, decay the learning rate every decay_steps.
+        learning_rate(Variable|float): The initial learning rate.
+        decay_steps(int): See the decay computation above.
+        decay_rate(float): The decay rate. See the decay computation above.
+        staircase(Boolean): If True, decay the learning rate at discrete intervals.
+                            Default: False
 
     Returns:
-        The decayed learning rate
+        Variable: The decayed learning rate
+
+    Examples:
+        .. code-block:: python
+
+          base_lr = 0.1
+          sgd_optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.exponential_decay(
+                    learning_rate=base_lr,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+          sgd_optimizer.minimize(avg_cost)
+
     """
     global_step = _decay_step_counter()
 
@@ -129,22 +148,39 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
 
 def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
-    """Applies inverse time decay to the initial learning rate.
+    """
+    Applies inverse time decay to the initial learning rate.
 
-    >>> if staircase:
+    When training a model, it is often recommended to lower the learning rate as the 
+    training progresses. By using this function, an inverse decay function will be 
+    applied to the initial learning rate.
+
+    >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
     >>> else:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
 
     Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training.
-        decay_steps: A Python `int32` number.
-        decay_rate: A Python `float` number.
-        staircase: Boolean. If set true, decay the learning rate every decay_steps.
+        learning_rate(Variable|float): The initial learning rate.
+        decay_steps(int): See the decay computation above.
+        decay_rate(float): The decay rate. See the decay computation above.
+        staircase(Boolean): If True, decay the learning rate at discrete intervals.
+                            Default: False
 
     Returns:
-        The decayed learning rate
+        Variable: The decayed learning rate
+
+    Examples:
+        .. code-block:: python
+
+          base_lr = 0.1
+          sgd_optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.inverse_time_decay(
+                    learning_rate=base_lr,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+          sgd_optimizer.minimize(avg_cost)
     """
     global_step = _decay_step_counter()
 
@@ -163,25 +199,28 @@ def polynomial_decay(learning_rate,
                      end_learning_rate=0.0001,
                      power=1.0,
                      cycle=False):
-    """Applies polynomial decay to the initial learning rate.
+    """
+    Applies polynomial decay to the initial learning rate.
 
-    >>> if cycle:
-    >>>     decay_steps = decay_steps * ceil(global_step / decay_steps)
-    >>> else:
-    >>>     global_step = min(global_step, decay_steps)
-    >>> decayed_learning_rate = (learning_rate - end_learning_rate) *
-    >>>                   (1 - global_step / decay_steps) ^ power +
-    >>>                   end_learning_rate
+    .. code-block:: python
+
+     if cycle:
+       decay_steps = decay_steps * ceil(global_step / decay_steps)
+     else:
+       global_step = min(global_step, decay_steps)
+       decayed_learning_rate = (learning_rate - end_learning_rate) *
+            (1 - global_step / decay_steps) ^ power + end_learning_rate
+
     Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        decay_steps: A Python `int32` number.
-        end_learning_rate: A Python `float` number.
-        power: A Python `float` number
-        cycle: Boolean. If set true, decay the learning rate every decay_steps.
+        learning_rate(Variable|float32): A scalar float32 value or a Variable. This
+          will be the initial learning rate during training.
+        decay_steps(int32): A Python `int32` number.
+        end_learning_rate(float): A Python `float` number.
+        power(float): A Python `float` number.
+        cycle(bool): If set true, decay the learning rate every decay_steps.
 
     Returns:
-        The decayed learning rate
+        Variable: The decayed learning rate
     """
     global_step = _decay_step_counter()
 

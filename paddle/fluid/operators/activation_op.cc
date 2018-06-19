@@ -19,18 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)             \
-  class OP_NAME##OpMaker                                              \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {          \
-   public:                                                            \
-    void Make() override {                                            \
-      AddInput("X", "Input of " #OP_NAME " operator");                \
-      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X"); \
-      AddAttr<bool>("use_mkldnn",                                     \
-                    "(default false) Only used in mkldnn kernel")     \
-          .SetDefault(false);                                         \
-      AddComment(OP_COMMENT);                                         \
-    }                                                                 \
+using paddle::framework::Tensor;
+
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
+  class OP_NAME##OpMaker                                                \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
+   public:                                                              \
+    void Make() override {                                              \
+      AddInput("X", "Input of " #OP_NAME " operator");                  \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
+      AddAttr<bool>("use_mkldnn",                                       \
+                    "(bool, default false) Only used in mkldnn kernel") \
+          .SetDefault(false);                                           \
+      AddComment(#OP_COMMENT);                                          \
+    }                                                                   \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -58,7 +60,6 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
-
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
@@ -82,6 +83,7 @@ class ActivationOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
+ protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
@@ -96,6 +98,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
   }
 
+ protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "Out");
@@ -133,7 +136,7 @@ $out = \max(x, 0)$
 __attribute__((unused)) constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
-$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
@@ -443,7 +446,7 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \frac{x}{1 + e^{- \beta x}}$$
+$$out = \\frac{x}{1 + e^{- \beta x}}$$
 
 )DOC");
   }
