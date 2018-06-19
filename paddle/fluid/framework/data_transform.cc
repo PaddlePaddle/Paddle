@@ -47,9 +47,16 @@ void DataTransform(const OpKernelType& expected_kernel_type,
 #ifdef PADDLE_WITH_MKLDNN
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
+
+        mkldnn::memory::format out_format =
+            in.dims().size() == 1
+                ? mkldnn::memory::format::x
+                : in.dims().size() == 2 ? mkldnn::memory::format::nc
+                                        : ToMKLDNNFormat(lin);
+
         out.ShareDataWith(input_tensor);
         out.set_layout(DataLayout::kMKLDNN);
-        out.set_format(ToMKLDNNFormat(lin));
+        out.set_format(out_format);
 #endif
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel

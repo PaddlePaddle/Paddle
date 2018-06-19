@@ -51,8 +51,8 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto z_dims = z->dims();
 
     // Execute default elementwise_add operator when
-    // broadcast operations need to performed
-    if (x_dims.size() != y_dims.size()) {
+    // broadcast operations need to performed.
+    if (x_dims != y_dims) {
       auto sum_func = [](T a, T b) -> T { return a + b; };
 
       TransformFunctor<decltype(sum_func), T,
@@ -155,11 +155,15 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
       if (dx) {
         blas.VCOPY(dout->numel(), dout->data<T>(),
                    dx->mutable_data<T>(ctx.GetPlace()));
+        dx->set_layout(DataLayout::kMKLDNN);
+        dx->set_format(dout->format());
       }
 
       if (dy) {
         blas.VCOPY(dout->numel(), dout->data<T>(),
                    dy->mutable_data<T>(ctx.GetPlace()));
+        dy->set_layout(DataLayout::kMKLDNN);
+        dy->set_format(dout->format());
       }
     } else {
       // Execute default kernel when broadcast is needed
@@ -167,12 +171,16 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
                           IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
           IdentityGrad<T>());
-    }
+      if (dx) {
+        dx->set_layout(DataLayout::kMKLDNN);
+        dx->set_format(dout->format());
+      }
 
-    dx->set_layout(DataLayout::kMKLDNN);
-    dx->set_format(dout->format());
-    dy->set_layout(DataLayout::kMKLDNN);
-    dy->set_format(dout->format());
+      if (dy) {
+        dy->set_layout(DataLayout::kMKLDNN);
+        dy->set_format(dout->format());
+      }
+    }
   }
 };
 
