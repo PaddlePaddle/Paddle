@@ -1209,6 +1209,11 @@ class ConditionalBlock(object):
     ConditionalBlock is an operator that bind a block to a specific condition,
     if the condition matches, the corresponding block will be executed.
 
+    Args:
+        inputs (Variable): bool conditions.
+        is_scalar_condition (bool): whether the branch is controled by a scalar.
+        name(str): name of this ConditionalBlock.
+
     Examples:
         .. code-block:: python
 
