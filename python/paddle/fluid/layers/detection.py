@@ -16,7 +16,7 @@ All layers just related to the detection neural network.
 """
 
 from layer_function_generator import generate_layer_fn
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 import tensor
 import nn
@@ -155,7 +155,7 @@ def detection_output(loc,
     return nmsed_outs
 
 
-@autodoc()
+@templatedoc()
 def detection_map(detect_res,
                   label,
                   class_num,
@@ -166,6 +166,47 @@ def detection_map(detect_res,
                   input_states=None,
                   out_states=None,
                   ap_version='integral'):
+    """
+    ${comment}
+
+    Args:
+        detect_res: ${detect_res_comment}
+        label:  ${label_comment}
+        class_num: ${class_num_comment}
+        background_label: ${background_label_comment}
+        overlap_threshold: ${overlap_threshold_comment}
+        evaluate_difficult: ${evaluate_difficult_comment}
+        has_state: ${has_state_comment}
+        input_states: If not None, It contains 3 elements:
+            1. pos_count ${pos_count_comment}.
+            2. true_pos ${true_pos_comment}.
+            3. false_pos ${false_pos_comment}.
+        out_states: If not None, it contains 3 elements.
+            1. accum_pos_count ${accum_pos_count_comment}.
+            2. accum_true_pos ${accum_true_pos_comment}.
+            3. accum_false_pos ${accum_false_pos_comment}.
+        ap_version: ${ap_type_comment}
+
+    Returns:
+        ${map_comment}
+
+
+    Examples:
+          .. code-block:: python
+
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+
+            map_out = fluid.layers.detection_map(detect_res, label, 21)
+    """
     helper = LayerHelper("detection_map", **locals())
 
     def __create_var(type):
