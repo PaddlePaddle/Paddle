@@ -42,6 +42,9 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     counters/options for profiling by `config` argument. The default config
     is ['gpustarttimestamp', 'gpustarttimestamp', 'gridsize3d',
     'threadblocksize', 'streamid', 'enableonstart 0', 'conckerneltrace'].
+    Then users can use NVIDIA Visual Profiler
+    (https://developer.nvidia.com/nvidia-visual-profiler) tools to load this
+    this output file to visualize results.
 
     Args:
         output_file (string) : The output file name, the result will be
@@ -50,6 +53,33 @@ def cuda_profiler(output_file, output_mode=None, config=None):
             Comma separated values format. It should be 'kvp' or 'csv'.
         config (list of string) : The profiler options and counters can refer
             to "Compute Command Line Profiler User Guide".
+
+    Raises:
+        ValueError: If `output_mode` is not in ['kvp', 'csv'].
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.profiler as profiler
+
+            epoc = 8
+            dshape = [4, 3, 28, 28]
+            data = fluid.layers.data(name='data', shape=[3, 28, 28], dtype='float32')
+            conv = fluid.layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            output_file = 'cuda_profiler.txt'
+            with profiler.cuda_profiler(output_file, 'csv') as nvprof:
+                for i in range(epoc):
+                    input = np.random.random(dshape).astype('float32')
+                    exe.run(fluid.default_main_program(), feed={'data': input})
+            # then use  NVIDIA Visual Profiler (nvvp) to load this output file
+            # to visualize results.
     """
     if output_mode is None:
         output_mode = 'csv'
@@ -69,19 +99,52 @@ def cuda_profiler(output_file, output_mode=None, config=None):
 
 
 def reset_profiler():
-    """The profiler clear interface.
-    reset_profiler will clear the previous time record.
+    """
+    Clear the previous time record. This interface does not work for
+    `fluid.profiler.cuda_profiler`, it only works for
+    `fluid.profiler.start_profiler`, `fluid.profiler.stop_profiler`,
+    and `fluid.profiler.profiler`.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid.profiler as profiler
+            with profiler.profiler(state, 'total', '/tmp/profile'):
+                for iter in range(10):
+                    if iter == 2:
+                        profiler.reset_profiler()
+                    # ...
     """
     core.reset_profiler()
 
 
 def start_profiler(state):
-    """Enable the profiler.
+    """
+    Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
+    `fluid.profiler.stop_profiler` to insert the code, except the usage of
+    `fluid.profiler.profiler` interface.
 
     Args:
         state (string) : The profiling state, which should be 'CPU', 'GPU'
             or 'All'. 'CPU' means only profile CPU. 'GPU' means profiling
             GPU as well. 'All' also generates timeline.
+
+    Raises:
+        ValueError: If `state` is not in ['CPU', 'GPU', 'All'].
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid.profiler as profiler
+
+            profiler.start_profiler('GPU')
+            for iter in range(10):
+                if iter == 2:
+                    profiler.reset_profiler()
+                # except each iteration
+            profiler.stop_profiler('total', '/tmp/profile')
     """
     if core.is_profiler_enabled():
         return
@@ -97,7 +160,10 @@ def start_profiler(state):
 
 
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
-    """Stop the profiler.
+    """
+    Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
+    `fluid.profiler.stop_profiler` to insert the code, except the usage of
+    `fluid.profiler.profiler` interface.
 
     Args:
         sorted_key (string) : If None, the profiling results will be printed
@@ -111,6 +177,23 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
             The `ave` means sorting by the average execution time.
         profile_path (string) : If state == 'All', it will write a profile
             proto output file.
+
+    Raises:
+        ValueError: If `sorted_key` is not in
+            ['calls', 'total', 'max', 'min', 'ave'].
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid.profiler as profiler
+
+            profiler.start_profiler('GPU')
+            for iter in range(10):
+                if iter == 2:
+                    profiler.reset_profiler()
+                # except each iteration
+            profiler.stop_profiler('total', '/tmp/profile')
     """
     if not core.is_profiler_enabled():
         return
@@ -137,7 +220,12 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     Different from cuda_profiler, this profiler can be used to profile both CPU
     and GPU program. By defalut, it records the CPU and GPU operator kernels,
     if you want to profile other program, you can refer the profiling tutorial
-    to add more records.
+    to add more records in C++ code.
+
+    If the state == 'All', a profile proto file will be written to
+    `profile_path`. This file records timeline information during the execution.
+    Then users can visualize this file to see the timeline, please refer 
+    https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/howto/optimization/timeline.md
 
     Args:
         state (string) : The profiling state, which should be 'CPU' or 'GPU',
@@ -156,6 +244,25 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
             The `ave` means sorting by the average execution time.
         profile_path (string) : If state == 'All', it will write a profile
             proto output file.
+
+    Raises:
+        ValueError: If `state` is not in ['CPU', 'GPU', 'All']. If `sorted_key` is
+            not in ['calls', 'total', 'max', 'min', 'ave'].
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid.profiler as profiler
+
+            with profiler.profiler('All', 'total', '/tmp/profile') as prof:
+                for pass_id in range(pass_num):
+                    for batch_id, data in enumerate(train_reader()):
+                        exe.run(fluid.default_main_program(),
+                                feed=feeder.feed(data),
+                                fetch_list=[],
+                                use_program_cache=True)
+                        # ...
     """
     start_profiler(state)
     yield
