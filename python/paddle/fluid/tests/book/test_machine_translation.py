@@ -201,7 +201,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
         train_loop(framework.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))

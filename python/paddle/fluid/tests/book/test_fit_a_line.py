@@ -70,7 +70,7 @@ def train(use_cuda, save_dirname, is_local):
         train_loop(fluid.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
