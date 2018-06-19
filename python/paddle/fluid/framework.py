@@ -120,37 +120,55 @@ def _debug_string_(proto, throw_on_error=True):
 
 class Variable(object):
     """
-    Python variable. Every input and output of an operator is a variable. Every
-    variable belongs to a block. The variable has a name and two variables in
-    different blocks could have the same name.
+    In Fluid, every input and output of an operator is a variable. In most 
+    cases, variables are used for holding different kinds of data or training 
+    labels. A variable belongs to a block. All variable has its own name and 
+    two variables in different blocks could have the same name.
 
-    There are many kinds of variables. Please reference the framework.proto for
-    details.
+    There are many kinds of variables. Each kind of them has its own attributes 
+    and usages. Please reference the framework.proto for details. 
+
+    Most of a Variable's member variables can be setted to be None. It mean 
+    it is not avaiable or will be specified later.
 
     Notes: The constructor of Variable should not be invoked directly. Please
     use `Block.create_var` to create a variable.
 
-    >>> cur_program = Program()
-    >>> cur_block = cur_program.current_block()
-    >>> new_variable = cur_block.create_var(
-    >>>                    name="X", shape=[-1, 23, 48], dtype='float32')
+    .. code-block:: python
+        cur_program = Program()
+        cur_block = cur_program.current_block()
+        new_variable = cur_block.create_var(
+                           name="X", shape=[-1, 23, 48], dtype='float32')
 
-    Args:
-        block(Block): The associated block. It will be passed by
-            `Block.create_var` automatically.
+    Member variables:
+        block(Block): The block that the variable belongs to.
         type(core.VarDesc.VarType): Variable type. Please reference the
             framework.proto for details.
-        shape(tuple|list|None): The shape of variable. -1 means the batch size.
+        name(str|None): The name of the variable. If setted None, it will be 
+            generated automatically.
+            Default: None
+        shape(tuple|list|None): The shape of the variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
-        dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
-        lod_level(int): The level of lod tensor. 0 means it is not a time
+            Default: None
+        dtype(np.dtype|core.VarDesc.VarType|str|None): The data type of variable.
+            Default: None
+        lod_level(int|None): The level of lod tensor. 0 means it is not a time
             series data.
-        capacity(int): The capacity of Channel variable. Ignored
+            Default: None
+        capacity(int|None): The capacity of Channel variable. Ignored
             for other types.
-        persistable(bool): True if the variable should be saved as check point.
-            Defaults to False.
-        stop_gradient(bool): True if the variable will stop to calculate
-            gradients when backward. Defaults to False.
+            Default: None
+        persistable(bool|None): True if the variable is persistable. A persistable 
+            variable will not be deleted after an iteration ending.
+            Defaults: None.
+        error_clip(BaseErrorClipAttr|None): The error clip attributes of the 
+            corresponding gradient variable.
+            Default: None
+        stop_gradient(bool): True if the variable will stop to calculate its
+            gradients when backward.
+            Default: False.
+        is_data(bool): True is the variable is an input data.
+            Default: False
     """
 
     def __init__(self,
@@ -1270,6 +1288,30 @@ class Program(object):
 
 
 class Parameter(Variable):
+    """
+    Parameter is derived from Variable. A parameter is a persistable 
+    Variable, and will be updated by optimizers after each iteration.
+    The training of a neural network is essentially the updating of 
+    its parameters.
+
+    Relative to a general Vriable, a Parameter has several its own 
+    member variables:
+
+    trainable(bool): True if the parameter need to be updated after 
+        iterations.
+    optimize_attr(map): Parameter attributes related with optimizing.
+        Currently, it only contains 'learning_rate'.
+        Default: {'learning_rate': 1.0}
+    regularizer(WeightDecayRegularizer): The Regularizer which will 
+        be applied on the parameter.
+        Default: None
+    gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+        which will be applied on the parameter.
+        Default: None
+    do_model_average(bool): True if the model average strategy will 
+        be applied on this parameter.
+    """
+
     def __init__(self, block, shape, dtype, **kwargs):
         if shape is None or dtype is None:
             raise ValueError("Parameter must set shape and dtype")
