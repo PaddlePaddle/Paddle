@@ -1082,6 +1082,7 @@ class ConditionalBlock(object):
              with false_cond.block():
                  ...
     '''
+
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
