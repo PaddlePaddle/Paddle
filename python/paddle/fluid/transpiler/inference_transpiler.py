@@ -38,7 +38,11 @@ class InferenceTranspiler:
 
     def transpile(self, program, place, scope=None):
         '''
+<<<<<<< d8f58e8d7c4ac4696b34e20bf504c04aef6da5ea
         Run the transpiler.
+=======
+        Transpile the inference program.
+>>>>>>> description fix
 
         Args:
             program (Program): program to transpile
