@@ -66,7 +66,7 @@ def main():
         paddle.init(
             use_gpu=use_gpu,
             trainer_count=int(os.getenv("PADDLE_INIT_TRAINER_COUNT", "1")),
-            port=int(os.getenv("PADDLE_PSERVER_PORT", "7164")),
+            port=int(os.getenv("PADDLE_INIT_PORT", "7164")),
             ports_num=int(os.getenv("PADDLE_INIT_PORTS_NUM", "1")),
             ports_num_for_sparse=int(
                 os.getenv("PADDLE_INIT_PORTS_NUM_FOR_SPARSE", "1")),

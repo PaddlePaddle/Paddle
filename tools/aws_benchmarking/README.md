@@ -54,7 +54,7 @@ Training nodes will run your `ENTRYPOINT` script with the following environment 
  - `TRAINERS`: trainer count
  - `SERVER_ENDPOINT`: current server end point if the node role is a pserver
  - `TRAINER_INDEX`: an integer to identify the index of current trainer if the node role is a trainer.
- - `PADDLE_TRAINER_ID`: same as above
+ - `PADDLE_INIT_TRAINER_ID`: same as above
 
  Now we have a working distributed training script which takes advantage of node environment variables and docker file to generate the training image. Run the following command:
 
