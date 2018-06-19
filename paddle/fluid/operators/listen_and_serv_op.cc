@@ -332,7 +332,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list,
-                checkpoint_point_block_id);
+                checkpoint_notify_id);
   } else {
     RunAsyncLoop(&executor, program);
   }
