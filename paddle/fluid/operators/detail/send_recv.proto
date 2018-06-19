@@ -81,9 +81,3 @@ message VariableMessage {
 }
 
 message VoidMessage {}
-
-message CheckpointMessage {
-  string varname = 1;
-  string notify_type = 2;
-  string checkpoint_dir = 3;
-}

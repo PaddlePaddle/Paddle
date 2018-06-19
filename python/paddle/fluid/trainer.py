@@ -74,8 +74,8 @@ class CheckpointConfig(object):
         self.epoch_id = 0
         self.step_id = 0
         self.load_serial = None
-        self.is_pserver = False
-        self.has_lookup_table = False
+        self.pserver_id = -1,
+        self.lookup_table_name = None
 
 
 def check_and_get_place(place):
@@ -174,7 +174,7 @@ class Trainer(object):
                                    self.checkpoint_cfg.load_serial,
                                    self.startup_program)
 
-                if not self.checkpoint_cfg.is_pserver:
+                if self.checkpoint_cfg.pserver_id != -1:
                     epoch_id, step_id = io.load_trainer_args(
                         self.checkpoint_cfg.checkpoint_dir,
                         self.checkpoint_cfg.load_serial, self.trainer_id,
@@ -182,10 +182,12 @@ class Trainer(object):
                     self.checkpoint_cfg.epoch_id = int(epoch_id)
                     self.checkpoint_cfg.step_id = int(step_id)
                 else:
-                    if self.checkpoint_cfg.has_lookup_table:
+                    if self.checkpoint_cfg.lookup_table_name:
                         io.load_lookup_table_vars(
-                            exe, self.checkpoint_cfg.checkpoint_dir, 0,
-                            "table_name")
+                            exe, self.checkpoint_cfg.checkpoint_dir,
+                            self.startup_program,
+                            self.checkpoint_cfg.pserver_id,
+                            self.checkpoint_cfg.lookup_table_name)
 
         if param_path and os.path.isdir(param_path):
             # load params from param_path into scope
@@ -255,7 +257,10 @@ class Trainer(object):
                 self.trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if training_role == "PSERVER":
                 if self.checkpoint_cfg:
-                    self.is_pserver = True
+                    pserver_id = eplist.index(current_endpoint)
+                    self.checkpoint_cfg.pserver_id = pserver_id
+                    if t.has_distributed_lookup_table:
+                        self.checkpoint_cfg.lookup_table_name = t.table_name
 
                 self.train_program = t.get_pserver_program(current_endpoint)
                 self.startup_program = t.get_startup_program(current_endpoint,
