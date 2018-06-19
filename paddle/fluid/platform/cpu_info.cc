@@ -57,12 +57,18 @@ inline size_t CpuTotalPhysicalMemory() {
 }
 
 size_t CpuMaxAllocSize() {
+// The MKLDNN version of the code must have all space of memory to use.
+// This solution gives ability to obtain the better performance.
+#ifdef PADDLE_WITH_MKLDNN
+  return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
+#else
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
   return std::min(
       static_cast<size_t>(FLAGS_fraction_of_cpu_memory_to_use *
                           CpuTotalPhysicalMemory()),
       static_cast<size_t>(FLAGS_initial_cpu_memory_in_mb * 1 << 20));
+#endif
 }
 
 size_t CpuMinChunkSize() {
