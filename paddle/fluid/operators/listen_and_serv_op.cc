@@ -269,15 +269,15 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(detail::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
 
+  auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
+  auto *program = optimize_block->Program();
+  framework::Executor executor(dev_place);
+
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
   if (checkpoint_notify_id != -1) {
     auto ctx = executor.Prepare(*program, checkpoint_notify_id);
     ckpt_pre_context = std::move(ctx);
   }
-
-  auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto *program = optimize_block->Program();
-  framework::Executor executor(dev_place);
 
   // prepare for prefetch
   std::vector<int> prefetch_block_id_list;
