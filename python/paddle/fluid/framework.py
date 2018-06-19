@@ -1014,6 +1014,9 @@ class Block(object):
         if var.type == core.VarDesc.VarType.STEP_SCOPES:
             ret_var = self.create_var(
                 name=var.name, persistable=var.persistable, type=var.type)
+        elif var.type == core.VarDesc.VarType.RAW:
+            ret_var = self.create_var(
+                name=var.name, persistable=var.persistable, type=var.type)      
         elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
             ret_var = self.create_var(
                 name=var.name,
