@@ -94,7 +94,7 @@ def train(nn_type,
 
     test_program = fluid.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = fluid.optimizer.Adam(learning_rate=0.001, LARS_weight_decay=0.3)
     optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

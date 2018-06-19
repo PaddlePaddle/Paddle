@@ -26,6 +26,8 @@ def create_tensor(scope, name, np_data):
 
 
 class BeamSearchOpTester(unittest.TestCase):
+    """unittest of beam_search_op"""
+
     def setUp(self):
         self.scope = core.Scope()
         self._create_ids()
