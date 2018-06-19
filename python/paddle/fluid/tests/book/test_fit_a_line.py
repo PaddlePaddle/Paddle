@@ -69,7 +69,7 @@ def train(use_cuda, save_dirname, is_local):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
@@ -77,8 +77,8 @@ def train(use_cuda, save_dirname, is_local):
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
