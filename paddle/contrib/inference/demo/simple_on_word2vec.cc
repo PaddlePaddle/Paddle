@@ -96,12 +96,12 @@ void MainThreads(int num_threads, bool use_gpu) {
         ASSERT_EQ(outputs.size(), 1UL);
         LOG(INFO) << "TID: " << tid << ", "
                   << "output buffer size: " << outputs.front().data.length();
-        const size_t num_elements = outputs.front().data.length() / sizeof(float);
+        const size_t num_elements =
+            outputs.front().data.length() / sizeof(float);
         // The outputs' buffers are in CPU memory.
         for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
           LOG(INFO) << static_cast<float*>(outputs.front().data.data())[i];
         }
-        free(outputs[0].data.data());
       }
     });
   }
