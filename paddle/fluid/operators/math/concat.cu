@@ -23,42 +23,23 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__device__ T upper_bound(const T* first, T count, T val) {
-  const T* orig = first;
-  const T* it = nullptr;
-  T step = 0;
-  while (count > 0) {
-    it = first;
-    step = count / 2;
-    it += step;
-    if (!(val < *it)) {
-      first = ++it;
-      count -= step + 1;
-    } else {
-      count = step;
-    }
-  }
-  return first - orig;
-}
-
-template <typename T>
 __global__ void KernelConcat(T** inputs, const int* input_cols, int col_size,
                              const int output_rows, const int output_cols,
                              T* output) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int segment = upper_bound<int>(input_cols, col_size, tid_x) - 1;
-
-  int curr_offset = input_cols[segment];
-  int curr_segment = segment;
+  int curr_segment = 0;
+  int curr_offset = input_cols[0];
   for (; tid_x < output_cols; tid_x += blockDim.x * gridDim.x) {
-    T curr_col_offset;
-    while ((curr_col_offset = input_cols[curr_segment + 1]) <= tid_x) {
+    int curr_col_offset = input_cols[curr_segment + 1];
+    while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
+      curr_col_offset = input_cols[curr_segment + 1];
     }
 
     int local_col = tid_x - curr_offset;
     int segment_width = curr_col_offset - curr_offset;
+
     T* input_ptr = inputs[curr_segment];
     int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y)
@@ -89,14 +70,14 @@ __global__ void KernelConcatGrad(const T* input_data, const int in_row,
                                  const int in_col, const int* out_cols,
                                  int out_cols_size, T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int segment = upper_bound<int>(out_cols, out_cols_size, tid_x) - 1;
-  int curr_offset = out_cols[segment];
-  int curr_segment = segment;
+  int curr_segment = 0;
+  int curr_offset = out_cols[0];
   for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
-    T curr_col_offset;
-    while ((curr_col_offset = out_cols[curr_segment + 1]) <= tid_x) {
+    int curr_col_offset = out_cols[curr_segment + 1];
+    while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
+      curr_col_offset = out_cols[curr_segment + 1];
     }
 
     int local_col = tid_x - curr_offset;
