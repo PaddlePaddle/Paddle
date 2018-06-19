@@ -132,11 +132,8 @@ class SaveOp : public framework::OperatorBase {
   void SaveSelectedRows(const framework::Scope &scope,
                         const platform::Place &place,
                         framework::Variable *var) const {
-
-    auto lt_varname = string::Sprintf("%s.path", Input("X"));
-    auto *lt_var = scope.FindVar(lt_varname)->GetMutable<std::string>();
-    PADDLE_ENFORCE(lt_var != nullptr, "Cannot find variable %s for SaveSelectedRows",
-                   lt_varname);
+    auto *lt_var = scope.FindVar("loopup_table_path")->GetMutable<std::string>();
+    PADDLE_ENFORCE(lt_var != nullptr, "Cannot find variable loopup_table_path for SaveSelectedRows");
     std::string filename = lt_var->data();
     VLOG(4) << "SaveSelectedRows get File name: " << filename;
 
