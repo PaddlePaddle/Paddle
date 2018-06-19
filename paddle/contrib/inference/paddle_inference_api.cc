@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/contrib/inference/paddle_inference_api.h"
-#include <glog/logging.h>
 
 namespace paddle {
 
@@ -29,8 +28,8 @@ PaddleBuf::PaddleBuf(PaddleBuf&& other)
 PaddleBuf::PaddleBuf(const PaddleBuf& other) { *this = other; }
 
 PaddleBuf& PaddleBuf::operator=(const PaddleBuf& other) {
-  CHECK(!other.memory_owned_)
-      << "only the buffer with external memory can be copied";
+  // only the buffer with external memory can be copied
+  assert(!other.memory_owned_);
   data_ = other.data_;
   length_ = other.length_;
   memory_owned_ = other.memory_owned_;
