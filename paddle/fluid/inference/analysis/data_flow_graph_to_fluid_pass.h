@@ -13,13 +13,11 @@
    limitations under the License. */
 
 /*
- * This file implements the transformation from data flow graph to fluid
- * ProgramDesc.
+ * This file implements the transformation from fluid ProgramDesc to data flow
+ * graph.
  */
 
 #pragma once
-
-#include <string>
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
@@ -28,31 +26,34 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-
-/*
- * Transform a FluidDesc to a data flow graph.
- */
-class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
+class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
  public:
-  FluidToDataFlowGraphPass() = default;
+  DataFlowGraphToFluidPass() = default;
 
   bool Initialize(Argument *argument) override;
   bool Finalize() override;
 
   void Run(DataFlowGraph *graph) override;
 
-  std::string repr() const override { return "fluid-to-data-flow-graph"; }
+  std::string repr() const override { return "DFG to fluid"; }
   std::string description() const override {
-    return "transform a fluid ProgramDesc to a data flow graph.";
+    return "Transform a DFG to a Fluid ProgramDesc";
   }
 
   Pass *CreatePrinterPass(std::ostream &os,
-                          const std::string &banner) const override;
+                          const std::string &banner) const override {
+    return nullptr;
+  }
+
+ protected:
+  // Add a Fluid Op into the ProgramDesc.
+  void AddFluidOp(Node *node);
+  // Add a EngineOp into the ProgramDesc.
+  void AddEngineOp(Node *node);
 
  private:
-  framework::proto::ProgramDesc const *desc_;
+  framework::proto::ProgramDesc *desc_;
 };
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

@@ -240,7 +240,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 }
 
 // Test with a larger FC layer.
-TEST(TensorRTEngineOp, fc) { Execute(40, 256, 256); }
+TEST(TensorRTEngineOp, fc) { Execute(40, 28, 28); }
 
 }  // namespace operators
 }  // namespace paddle
