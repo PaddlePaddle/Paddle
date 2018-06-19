@@ -43,7 +43,8 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
 def grad_var_name(var_name):
     """
-    return gradient name for a certain var name
+    Returns:
+        str: gradient name for a certain var name
     """
     return var_name + GRAD_VAR_SUFFIX
 
@@ -51,10 +52,12 @@ def grad_var_name(var_name):
 def convert_np_dtype_to_dtype_(np_dtype):
     """
     Convert the data type in numpy to the data type in Paddle
-    Args:
-        np_dtype(np.dtype): the data type in numpy
 
-    Returns(core.VarDesc.VarType): the data type in Paddle
+    Args:
+        np_dtype(np.dtype): the data type in numpy.
+
+    Returns:
+        core.VarDesc.VarType: the data type in Paddle.
 
     """
     dtype = np.dtype(np_dtype)
@@ -129,46 +132,44 @@ class Variable(object):
     and usages. Please reference the framework.proto for details. 
 
     Most of a Variable's member variables can be setted to be None. It mean 
-    it is not avaiable or will be specified later.
+    it is not available or will be specified later.
 
-    Notes: The constructor of Variable should not be invoked directly. Please
-    use `Block.create_var` to create a variable.
-
-    .. code-block:: python
-        cur_program = Program()
-        cur_block = cur_program.current_block()
-        new_variable = cur_block.create_var(
-                           name="X", shape=[-1, 23, 48], dtype='float32')
-
-    Member variables:
+    Args:
         block(Block): The block that the variable belongs to.
         type(core.VarDesc.VarType): Variable type. Please reference the
             framework.proto for details.
-        name(str|None): The name of the variable. If setted None, it will be 
-            generated automatically.
-            Default: None
+        name(str|None): The name of the variable. If setted None, it will be
+            generated automatically. Default: None
         shape(tuple|list|None): The shape of the variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
             Default: None
         dtype(np.dtype|core.VarDesc.VarType|str|None): The data type of variable.
             Default: None
-        lod_level(int|None): The level of lod tensor. 0 means it is not a time
+        lod_level (int|None): The level of lod tensor. 0 means it is not a time
             series data.
             Default: None
-        capacity(int|None): The capacity of Channel variable. Ignored
-            for other types.
-            Default: None
-        persistable(bool|None): True if the variable is persistable. A persistable 
-            variable will not be deleted after an iteration ending.
-            Defaults: None.
-        error_clip(BaseErrorClipAttr|None): The error clip attributes of the 
-            corresponding gradient variable.
-            Default: None
-        stop_gradient(bool): True if the variable will stop to calculate its
-            gradients when backward.
-            Default: False.
-        is_data(bool): True is the variable is an input data.
-            Default: False
+        capacity (int|None): The capacity of Channel variable. Ignored for other
+            types. Default: None
+        persistable (bool|None): True if the variable is persistable. A persistable
+            variable will not be deleted after an iteration ending. Defaults: None.
+        error_clip (BaseErrorClipAttr|None): The error clip attributes of the
+            corresponding gradient variable. Default: None
+        stop_gradient (bool): True if the variable will stop to calculate its
+            gradients when backward. Default: False.
+        is_data (bool): True if the variable is an input data. Default: False
+
+    Notes:
+        The constructor of Variable should not be invoked directly. Please
+        use `Block.create_var` to create a variable.
+
+    Examples:
+        .. code-block:: python
+
+            cur_program = Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
     """
 
     def __init__(self,
@@ -271,13 +272,14 @@ class Variable(object):
         Get debug string.
 
         Args:
-            throw_on_error(bool): True if raise an exception when self is not
-                intialized.
+            throw_on_error(bool): True if raise an exception when self is
+                not initialized.
             with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+                (e.g. trainable, optimize_attr, ...) will be printed when
+                with_details is True. Default False;
 
-        Returns(str): The debug string.
-
+        Returns:
+            str: The debug string.
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -294,6 +296,15 @@ class Variable(object):
     __repr__ = __str__
 
     def set_desc(self, input):
+        """
+        Set the variable description.
+
+        Args:
+            input(core.VarDesc): The new VarDesc.
+
+        Returns:
+            None
+        """
         self.desc = input
 
     @property
@@ -330,6 +341,15 @@ class Variable(object):
         return self.desc.type()
 
     def set_error_clip(self, error_clip):
+        """
+        Set the error_clip.
+
+        Args:
+            error_clip(BaseErrorClipAttr) : The new error_clip.
+
+        Returns:
+            None
+        """
         self.error_clip = error_clip
 
 
@@ -337,8 +357,8 @@ def get_all_op_protos():
     """
     Get all registered op proto from PaddlePaddle C++ end.
 
-    Returns(list): list of OpProto
-
+    Returns:
+       list: list of OpProto.
     """
     protostrs = core.get_all_op_protos()
     ret_values = []
@@ -391,9 +411,45 @@ class OpProtoHolder(object):
 
 class Operator(object):
     """
-    Python Operator class. The operator represents the build in instructions in a
-    Block. Users can use the build in instructions to describe their neural
-    network.
+    In Fluid, all the operation are represented by Operator, and Operator
+    is regarded as a build in an instruction of a Block. Users can use the
+    build in instructions to describe their neural network.
+
+    Args:
+        block(Block): The block has the current operator.
+        desc(core.OpDesc): The protobuf description of Operator.
+        type(str): The type of operator.
+        inputs(dict): The input of this Operator. it is a dictionary, for every
+            element, key is the input parameter name, and value is a list of
+            variables. Default None.
+        outputs(dict): The output of this Operator. it is a dictionary, for
+            every element, key is the input parameter name, and value is a list
+            of variables. Default None.
+        attrs(dict): The attributes of this Operator. it is a dictionary, for
+            every element, key is attribute name, and value is the attribute value.
+            The attribute type should be as same as the type registered in C++ side.
+            Default None.
+
+    Returns:
+        Operator: The initialized Operator.
+
+    Raises:
+        ValueError: If the passed input, output and attrs doesn't match the
+            initializing Operator's that registered in C++ side.
+
+    Notes:
+        The constructor of operator should not be invoked directly. Use
+        Block.append_op or Block.prepend_op instead.
+
+    Examples:
+        .. code-block:: python
+
+            cur_program = Program()
+            cur_block = cur_program.current_block()
+            # var1 += var2 + var3
+            cur_block.append_op(type="sum",
+                                inputs={"X": [var1, var2, var3]},
+                                outputs={"Out": [var1]})
     """
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
@@ -403,38 +459,9 @@ class Operator(object):
         'channel_recv', 'select', 'gen_nccl_id'
     }
 
-    def __init__(self,
-                 block,
-                 desc,
-                 type=None,
-                 inputs=None,
-                 outputs=None,
+    def __init__(self, block, desc, type, inputs=None, outputs=None,
                  attrs=None):
-        """
-        Constructor.
 
-        Notes: The constructor of operator should not be invoked directly. Use
-        Block.append_op or Block.prepend_op instead.
-
-        >>> cur_program = Program()
-        >>> cur_block = cur_program.current_block()
-        >>> # var1 += var2 + var3
-        >>> cur_block.append_op(type="sum",
-        >>>                     inputs={"X": [var1, var2, var3]},
-        >>>                     outputs={"Out": [var1]})
-
-        Args:
-            block(Block): The block has the current operator.
-            desc(core.OpDesc): The protobuf description.
-            type(str): The type of operator.
-            inputs(dict): The input dictionary. Key is the input parameter name.
-                Value is a list of variables.
-            outputs(dict): The output dictionary which has the same format with
-                           inputs.
-            attrs(dict): The attributes dictionary. Key is attribute name. Value
-                is the attribute value. The attribute type should be as same as
-                the type registered in C++
-        """
         self.block = block
         self.desc = desc
         self.attrs = attrs
@@ -457,9 +484,7 @@ class Operator(object):
 
         if len(self.desc.type()) != 0:
             return
-        if type is None:
-            raise ValueError(
-                "`type` to initilized an Operator can not be None.")
+
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 
@@ -547,12 +572,14 @@ class Operator(object):
 
     def to_string(self, throw_on_error):
         """
-        To debug string.
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
+        Get debug string.
 
-        Returns(str): The debug string.
+        Args:
+            throw_on_error(bool): Whether to raise exception if self is not
+                initialized.
+
+        Returns:
+            str: The debug string.
 
         """
         protostr = self.desc.serialize_to_string()
@@ -570,29 +597,45 @@ class Operator(object):
 
     def input(self, name):
         """
-        Get input arguments by the input parameter name
+        Get the input arguments according to the input parameter name.
+
         Args:
-            name(str): The input parameter name
+            name(str): The input parameter name.
 
-        Returns(list): return the list of argument names associated with the
-            specific parameter name.
-
+        Returns:
+            list: return the list of argument names that associated with \
+                the specific parameter name.
         """
         return self.desc.input(name)
 
     def rename_input(self, old_name, new_name):
+        """
+        Rename the `old_name` to `new_name`.
+
+        Args:
+            old_name(str): The old name of the Operator's input.
+            new_name(str): The new name of the Operator's input.
+
+        Returns:
+            None
+        """
         self.desc.rename_input(old_name, new_name)
 
     def rename_output(self, old_name, new_name):
+        """
+        Rename the `old_name` to `new_name`.
+
+        Args:
+            old_name(str): The old name of the Operator's output.
+            new_name(str): The new name of the Operator's output.
+
+        Returns:
+            None
+        """
         self.desc.rename_output(old_name, new_name)
 
     @property
     def input_names(self):
-        """
-        Get all input parameter names
-        Returns(list): return a list of input parameter names
-
-        """
         return self.desc.input_names()
 
     @property
@@ -605,33 +648,23 @@ class Operator(object):
 
     def output(self, name):
         """
-        Get output arguments by the output parameter name
+        Get output arguments by the output parameter name.
+
         Args:
-            name(str): The output parameter name
+            name(str): The output parameter name.
 
-        Returns(list): return the list of argument names associated with the
-            specific parameter name.
-
+        Returns:
+            list: return the list of argument names associated with \
+                the specific parameter name.
         """
         return self.desc.output(name)
 
     @property
     def output_names(self):
-        """
-        Get all output parameter names
-        Returns(list): return a list of output parameter names
-
-        """
         return self.desc.output_names()
 
     @property
     def idx(self):
-        """
-        Return the array index of current operator.
-        Returns(int): The array index in block.ops array
-        Raises:
-            ValueError: when the operator is not found.
-        """
         for i, op in enumerate(self.block.ops):
             if op == self:
                 return i
@@ -640,66 +673,78 @@ class Operator(object):
 
     def has_attr(self, name):
         """
-        operator has the attribute with name or not.
-        Args:
-            name(str): the attribute name
+        Whether this Operator has the attribute with name or not.
 
-        Returns(bool): True if has this attribute.
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
 
         """
         return self.desc.has_attr(name)
 
     def attr_type(self, name):
         """
-        Get the type of attribute by attribute name
+        Get the type of attribute by attribute's name.
+
         Args:
-            name(str): the attribute name
+            name(str): the attribute name.
 
-        Returns(core.AttrType): the attribute type
-
+        Returns:
+            core.AttrType: the attribute type.
         """
         return self.desc.attr_type(name)
 
     def set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+
+        Raises:
+            ValueError: If the type of value doesn't match with desc.attr_type(name).
+        """
         self.attrs[name] = val
         self.desc.set_attr(name, val)
 
     @property
     def attr_names(self):
-        """
-        Get all attribute names
-        Returns(list): The list of attribute name
-
-        """
         return self.desc.attr_names()
 
     def attr(self, name):
         """
-        Get attribute by name
+        Get the attribute by name.
+
         Args:
-            name(str): the attribute name
+            name(str): the attribute name.
 
-        Returns(bool|int|str|float|list): The attribute value. The return value
+        Returns:
+            bool|int|str|float|list: The attribute value. The return value
             can be any valid attribute type.
-
         """
         return self.desc.attr(name)
 
     def block_attr(self, name):
         """
-        Get the block attribute by name
+        Get the block attribute by name.
+
         Args:
-            name(str): the attribute name
+            name(str): the attribute name.
 
-        Returns(int): the block index
-
+        Returns:
+            int: the block index.
         """
         return self.desc.block_attr(name)
 
     def all_attrs(self):
         """
-        Get the attribute dict
-        Returns(dict): The Operator's attribute dict
+        Get the attribute dict.
+
+        Returns:
+            dict: The Operator's attribute dict.
         """
         attr_names = self.attr_names
         attr_map = {}
@@ -712,6 +757,35 @@ class Operator(object):
 
 
 class Block(object):
+    """
+    In Fluid, a Program is consistence of multi-Block, and Block stores
+    VarDesc and OpDesc. In a specific Block, a VarDesc have a unique name.
+    One block could have some child blocks, and child block's name scopes
+    should inherit the parent's so that OpDesc in child block can reference
+    a VarDesc that is stored in the parent block.
+    Please reference the framework.proto for details.
+
+    Args:
+        program(Program): The Program that the Block belongs to.
+        idx(int): The block's id in the Program.
+
+    Notes:
+        The constructor of Block should not be invoked directly. Please
+        use `Program.create_block()` to create a block.
+
+    Examples:
+        .. code-block:: python
+
+            cur_program = Program()
+            cur_block = cur_program.current_block()
+            var = cur_block.create_var(name="X",
+                                       shape=[-1, 23, 48],
+                                       dtype='float32')
+            cur_block.append_op(type="abs",
+                                inputs={"X": [var]},
+                                outputs={"Out": [var]})
+    """
+
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
@@ -724,15 +798,17 @@ class Block(object):
 
     def to_string(self, throw_on_error, with_details=False):
         """
-        To debug string.
+        Get debug string.
+
         Args:
             throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
+                when throw_on_error is True.
             with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+                (e.g. trainable, optimize_attr, ...) will be printed when
+                with_details is True. Default False.
 
-        Returns(str): The debug string.
-
+        Returns:
+            str: The debug string.
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -764,6 +840,15 @@ class Block(object):
         return self.desc.get_forward_block_idx()
 
     def set_forward_block_idx(self, idx):
+        """
+        Set the forward block Idx.
+
+        Args:
+            idx(int): the block index.
+
+        Returns:
+            None
+        """
         self.desc.set_forward_block_idx(idx)
 
     @property
@@ -771,6 +856,19 @@ class Block(object):
         return self.desc.id
 
     def var(self, name):
+        """
+        Get a Variable by name from this block.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: The If input's type is not str, or this block
+                doesn't have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
         if not isinstance(name, basestring):
             raise TypeError(
                 "var require string as parameter, but get %s instead." %
@@ -781,6 +879,19 @@ class Block(object):
         return v
 
     def var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
         frontier = list()
         visited = set()
 
@@ -827,6 +938,18 @@ class Block(object):
     def rename_var(self, name, new_name):
         """
         Rename variable in vars and ops' inputs and outputs
+
+        Args:
+            name(str): the name that need to be renamed.
+            new_name(str): the name that need to rename to.
+
+        Raises:
+            ValueError: If this block doesn't have this the giving name,
+                or the type of the var with the giving name is not Parameter
+                or Variable.
+
+        Returns:
+            Variable: the Variable with the giving name.
         """
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
@@ -890,12 +1013,27 @@ class Block(object):
         return param
 
     def append_op(self, *args, **kwargs):
+        """
+        Appends a new Operator according to the giving arguments.
+
+        Returns:
+            Operator: the append Operator.
+        """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
 
     def insert_op(self, index, *args, **kwargs):
+        """
+        Insert a Operator according to the giving arguments.
+
+        Args:
+            index(int): the place that the operator to insert.
+
+        Returns:
+            Operator: the insert Operator.
+        """
         self.sync_with_cpp()
         op_desc = self.desc.insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
@@ -903,11 +1041,30 @@ class Block(object):
         return op
 
     def remove_op(self, index):
+        """
+        Remove the specific position operator.
+
+        Args:
+            index(int): the position that the operator to insert.
+
+        Returns:
+            None
+        """
         self.sync_with_cpp()
         self.desc.remove_op(index, index + 1)
         del self.ops[index]
 
     def slice_ops(self, start, end):
+        """
+        Return the Operator between start and end.
+
+        Args:
+            start(int): the start position.
+            end(int): the end position.
+
+        Returns:
+            list: the Operators between start and end.
+        """
         return self.ops[start:end]
 
     def prepend_op(self, *args, **kwargs):
@@ -918,9 +1075,8 @@ class Block(object):
 
     def sync_with_cpp(self):
         """
-        Sync from the desc on the c++ end.
-
-        This method is used to synchronize the c++ desc instance generated by backward.
+        Sync from the desc on the c++ end. This method is used to synchronize
+        the c++ desc instance generated by backward.
         """
         # sync variables from cpp
         for var in self.desc.all_vars():
@@ -985,9 +1141,14 @@ class Block(object):
 
     def copy_param_info_from(self, other):
         """
-        Copy the information of parameters from the other block
+        Copy the information of parameters from the other block.
+
         Args:
-            other(Block): the other block
+            other(Block): the other block.
+
+        Raises:
+            ValueError: If type of input is not Block, or the `other` and this
+                block is not in the same topology.
 
         Returns:
             None
@@ -1019,11 +1180,12 @@ class Block(object):
     def clone_variable(self, var):
         """
         Clone a variable into current block.
+
         Args:
             var: the variable to be cloned.
 
         Returns:
-            The new  variable cloned from 'var' in current block.
+            Variable: the new  variable cloned from 'var' in current block.
         """
         assert isinstance(var, Variable)
         ret_var = None
@@ -1330,22 +1492,21 @@ class Parameter(Variable):
     The training of a neural network is essentially the updating of 
     its parameters.
 
-    Relative to a general Vriable, a Parameter has several its own 
+    Relative to a general Variable, a Parameter has several its own
     member variables:
 
-    trainable(bool): True if the parameter need to be updated after 
-        iterations.
-    optimize_attr(map): Parameter attributes related with optimizing.
-        Currently, it only contains 'learning_rate'.
-        Default: {'learning_rate': 1.0}
-    regularizer(WeightDecayRegularizer): The Regularizer which will 
-        be applied on the parameter.
-        Default: None
-    gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
-        which will be applied on the parameter.
-        Default: None
-    do_model_average(bool): True if the model average strategy will 
-        be applied on this parameter.
+    Args:
+        trainable(bool): True if the parameter need to be updated after
+            iterations.
+        optimize_attr(map): Parameter attributes related with optimizing.
+            Currently, it only contains 'learning_rate'.
+            Default: {'learning_rate': 1.0}
+        regularizer(WeightDecayRegularizer): The Regularizer which will
+            be applied on the parameter. Default: None
+        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+            which will be applied on the parameter. Default: None
+        do_model_average(bool): True if the model average strategy will
+            be applied on this parameter.
     """
 
     def __init__(self, block, shape, dtype, **kwargs):
