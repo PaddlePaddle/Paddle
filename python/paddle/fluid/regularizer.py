@@ -43,7 +43,7 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
-        with param.block.program.optimization_guard(param):
+        with param.block.program.optimized_guard(param):
             # If no gradient then we don't need to do anything
             if grad is None:
                 params_and_grads.append((param, grad))

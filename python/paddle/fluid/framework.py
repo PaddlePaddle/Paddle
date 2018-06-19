@@ -1103,7 +1103,7 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimization_guard(self, var):
+    def optimized_guard(self, var):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
@@ -1116,7 +1116,7 @@ class Program(object):
         Examples:
 
             >>> p, g = backward(...)
-            >>> with program.optimization_guard(p):
+            >>> with program.optimized_guard(p):
             >>>     p = p - 0.001 * g
         """
         OpRole = core.op_proto_and_checker_maker.OpRole
