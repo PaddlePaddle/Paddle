@@ -71,25 +71,21 @@ class DataToLoDTensorConverter(object):
 
 class DataFeeder(object):
     """
-    DataFeeder converts the data that returned by paddle.reader into a
-    data structure of Arguments which is defined in the API. The paddle.reader
+    DataFeeder converts the data that returned by a reader into a data
+    structure that can feed into Executor and ParallelExecutor. The reader
     usually returns a list of mini-batch data entries. Each data entry in
-    the list is one sample. Each sample is a list or a tuple with one feature
-    or multiple features. DataFeeder converts this mini-batch data entries
-    into Arguments in order to feed it to C++ interface.
+    the list is one sample. Each sample is a list or a tuple with one
+    feature or multiple features.
 
     The simple usage shows below:
 
     ..  code-block:: python
 
         place = fluid.CPUPlace()
-        data = fluid.layers.data(
-            name='data', shape=[1], dtype='int64', lod_level=2)
+        img = fluid.layers.data(name='image', shape=[1, 28, 28])
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        feeder = fluid.DataFeeder([data, label], place)
-
-        result = feeder.feed(
-            [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])])
+        feeder = fluid.DataFeeder([img, label], fluid.CPUPlace())
+        result = feeder.feed([([0] * 784, [9]), ([1] * 784, [1])])
 
 
     If you want to feed data into GPU side separately in advance when you
@@ -105,12 +101,15 @@ class DataFeeder(object):
     Args:
         feed_list(list): The Variables or Variables'name that will
             feed into model.
-        place(Place): fluid.CPUPlace() or fluid.CUDAPlace(i).
+        place(Place): place indicates feed data into CPU or GPU, if you want to
+            feed data into GPU, please using `fluid.CUDAPlace(i)` (`i` represents
+            the GPU id), or if you want to feed data into CPU, please using
+            `fluid.CPUPlace()`.
         program(Program): The Program that will feed data into, if program
             is None, it will use default_main_program(). Default None.
 
     Raises:
-        ValueError: If the some Variable is not in the Program.
+        ValueError: If some Variable is not in this Program.
 
     Examples:
         .. code-block:: python
@@ -119,7 +118,7 @@ class DataFeeder(object):
             place = fluid.CPUPlace()
             feed_list = [
                 main_program.global_block().var(var_name) for var_name in feed_vars_name
-            ]
+            ] # feed_vars_name is a list of variables' name.
             feeder = fluid.DataFeeder(feed_list, place)
             for data in reader():
                 outs = exe.run(program=main_program,
@@ -156,8 +155,8 @@ class DataFeeder(object):
 
     def feed(self, iterable):
         """
-        According to feed_list and iterable converter the input data
-        into a dictionary that can feed into Executor or ParallelExecutor.
+        According to feed_list and iterable, converters the input into
+        a data structure that can feed into Executor and ParallelExecutor.
 
         Args:
             iterable(list|tuple): the input data.
@@ -189,11 +188,11 @@ class DataFeeder(object):
     def feed_parallel(self, iterable, num_places=None):
         """
         Takes multiple mini-batches. Each mini-batch will be feed on each
-        device.
+        device in advance.
 
         Args:
             iterable(list|tuple): the input data.
-            num_places(int): the number of places. Default None.
+            num_places(int): the number of devices. Default None.
 
         Returns:
             dict: the result of conversion.

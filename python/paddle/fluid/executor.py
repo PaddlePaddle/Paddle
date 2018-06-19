@@ -135,14 +135,18 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
 
 def fetch_var(name, scope=None, return_numpy=True):
     """
-    Fetch the value of the variable with the given name from the given scope
+    Fetch the value of the variable with the given name from the
+    given scope.
+
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
         scope(core.Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
-            If None, global_scope() will be used.
-        return_numpy(bool): whether convert the tensor to numpy.ndarray
+            If None, global_scope() will be used. Default None.
+        return_numpy(bool): whether convert the tensor to numpy.ndarray.
+            Default True.
+
     Returns:
        LodTensor|numpy.ndarray
     """
