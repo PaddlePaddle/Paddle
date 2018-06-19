@@ -407,7 +407,7 @@ def load_vars(executor,
 def load_params(executor, dirname, main_program=None, filename=None):
     """
     This function filters out all parameters from the give `main_program`
-    and then try to load these parameters from the folder `dirname` or
+    and then trys to load these parameters from the folder `dirname` or
     the file `filename`.
 
     Use the `dirname` to specify the folder where parameters were saved. If 
@@ -586,6 +586,7 @@ def save_inference_model(dirname,
 
     Examples:
         .. code-block:: python
+
             exe = fluid.Executor(fluid.CPUPlace())
             path = "./infer_model"
             fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
@@ -693,7 +694,7 @@ def load_inference_model(dirname,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-            # In this exsample, the inference program is saved in the 
+            # In this exsample, the inference program was saved in the 
             # "./infer_model/__model__" and parameters were saved in 
             # separate files in ""./infer_model". 
             # After getting inference program, feed target names and 
@@ -804,20 +805,20 @@ def save_checkpoint(executor,
                     trainer_args=None,
                     main_program=None,
                     max_num_checkpoints=3):
-    """"
+    """
     This function filters out all checkpoint variables from the give
-    main_program and then saves these variables to the 'checkpoint_dir' 
+    main_program and then saves these variables to the `checkpoint_dir` 
     directory.
 
     In the training precess, we generally save a checkpoint in each
     iteration. So there might be a lot of checkpoints in the 
-    'checkpoint_dir'. To avoid them taking too much disk space, the 
+    `checkpoint_dir`. To avoid them taking too much disk space, the 
     `max_num_checkpoints` are introduced to limit the total number of 
     checkpoints. If the number of existing checkpints is greater than 
-    the `max_num_checkpoints`, the oldest ones will be scroll deleted.
+    the `max_num_checkpoints`, oldest ones will be scroll deleted.
 
-    A variable is a checkpoint variable and will be loaded if it meets
-    all the following conditions:
+    A variable is a checkpoint variable and will be saved if it meets
+    all following conditions:
         1. It's persistable.
         2. It's type is not FEED_MINIBATCH nor FETCH_LIST nor RAW.
         3. It's name contains no "@GRAD" nor ".trainer_" nor ".block".
@@ -882,16 +883,16 @@ def load_checkpoint(executor, checkpoint_dir, serial, main_program):
     """
     This function filters out all checkpoint variables from the give
     main_program and then try to load these variables from the
-    'checkpoint_dir' directory.
+    `checkpoint_dir` directory.
 
     In the training precess, we generally save a checkpoint in each
     iteration. So there are more than one checkpoint in the
-    'checkpoint_dir'(each checkpoint has its own sub folder), use
-    'serial' to specify which serial of checkpoint you would like to
+    `checkpoint_dir`(each checkpoint has its own sub folder), use
+    `serial` to specify which serial of checkpoint you would like to
     load.
 
     A variable is a checkpoint variable and will be loaded if it meets
-    all the following conditions:
+    all following conditions:
         1. It's persistable.
         2. It's type is not FEED_MINIBATCH nor FETCH_LIST nor RAW.
         3. It's name contains no "@GRAD" nor ".trainer_" nor ".block".
@@ -962,9 +963,9 @@ def load_persist_vars_without_grad(executor,
                                    has_model_dir=False):
     """
     This function filters out all checkpoint variables from the give
-    program and then try to load these variables from the given directory.
+    program and then trys to load these variables from the given directory.
 
-    A variable is a checkpoint variable if it meets all the following
+    A variable is a checkpoint variable if it meets all following
     conditions:
         1. It's persistable.
         2. It's type is not FEED_MINIBATCH nor FETCH_LIST nor RAW.
@@ -1014,7 +1015,7 @@ def save_persist_vars_without_grad(executor, dirname, program):
     program and then save these variables to a sub-folder '__model__' of 
     the given directory.
 
-    A variable is a checkpoint variable if it meets all the following
+    A variable is a checkpoint variable if it meets all following
     conditions:
         1. It's persistable.
         2. It's type is not FEED_MINIBATCH nor FETCH_LIST nor RAW.
