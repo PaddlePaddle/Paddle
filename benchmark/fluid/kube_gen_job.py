@@ -108,7 +108,7 @@ def gen_job():
     tn_container["ports"][0]["containerPort"] = spreadport
 
     envs.append({"name": "PADDLE_JOB_NAME", "value": args.jobname})
-    envs.append({"name": "TRAINERS", "value": str(args.trainers)})
+    envs.append({"name": "PADDLE_TRAINERS", "value": str(args.trainers)})
     envs.append({"name": "PSERVERS", "value": str(args.pservers)})
     envs.append({"name": "ENTRY", "value": args.entry})
     envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
