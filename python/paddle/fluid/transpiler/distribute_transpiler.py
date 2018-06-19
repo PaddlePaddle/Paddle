@@ -479,15 +479,16 @@ class DistributeTranspiler:
                     return varname
             return ""
 
-        def __clone_sub_block__(op, program):
+        def __clone_lr_op_sub_block__(op, program, new_block):
             if not op.has_attr('sub_block'):
                 return
 
             origin_block_desc = op.attr('sub_block')
             origin_block = self.origin_program.block(origin_block_desc.id)
             assert isinstance(origin_block, Block)
-            print("origin_block's parent_idx: ", origin_block.parent_idx)
-            new_sub_block = program.create_block(origin_block.parent_idx)
+            # we put the new sub block to new block to follow the block
+            # hierarchy of the original blocks
+            new_sub_block = program.create_block(new_block.idx)
 
             # clone vars
             for var in origin_block.vars:
@@ -495,10 +496,9 @@ class DistributeTranspiler:
 
             # clone ops
             for op in origin_block.ops:
-                self._clone_op(pserver_program, new_sub_block, op)
-                #  self._append_pserver_non_opt_ops(new_sub_block, op)
+                self._clone_lr_op(program, new_sub_block, op)
                 # clone sub_block of op
-                __clone_sub_block__(op, program)
+                __clone_lr_op_sub_block__(op, program, new_sub_block)
 
             # reset the block of op
             op.set_attr('sub_block', new_sub_block)
@@ -511,7 +511,7 @@ class DistributeTranspiler:
             for _, op in enumerate(lr_ops):
                 self._append_pserver_non_opt_ops(lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
-                __clone_sub_block__(op, pserver_program)
+                __clone_lr_op_sub_block__(op, pserver_program, lr_decay_block)
 
         # append op to the current block
         grad_to_block_id = []
@@ -1142,7 +1142,7 @@ class DistributeTranspiler:
                     break
         return grad_block
 
-    def _clone_op(self, program, block, op):
+    def _clone_lr_op(self, program, block, op):
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, op)
         for key, varlist in inputs.iteritems():
@@ -1150,9 +1150,6 @@ class DistributeTranspiler:
                 varlist = [varlist]
             for var in varlist:
                 if var not in program.global_block().vars:
-                    print("Find not in var:\n")
-                    print(var)
-                    print(block.vars)
                     block.clone_variable(var)
 
         outputs = self._get_output_map_from_op(
@@ -1162,12 +1159,9 @@ class DistributeTranspiler:
                 varlist = [varlist]
             for var in varlist:
                 if var not in program.global_block().vars:
-                    print("Find not in var:\n")
-                    print(var)
-                    print(block.vars)
                     block.clone_variable(var)
 
-        program.global_block().append_op(
+        block.append_op(
             type=op.type, inputs=inputs, outputs=outputs, attrs=op.attrs)
 
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
