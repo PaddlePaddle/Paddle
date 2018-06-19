@@ -66,8 +66,8 @@ class CheckpointConfig(object):
         assert epoch_interval >= 1
         assert step_interval >= 1
 
-        self.checkpoint_dir = checkpoint_dir if checkpoint_dir is not None else os.getcwd(
-        )
+        self.checkpoint_dir = checkpoint_dir \
+            if checkpoint_dir is not None else os.getcwd()
         self.max_num_checkpoints = max_num_checkpoints
         self.epoch_interval = epoch_interval
         self.step_interval = step_interval
