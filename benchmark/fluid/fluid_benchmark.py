@@ -264,8 +264,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                     break
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
-            if args.update_method == "pserver":
-                exe.bcast_params()
             if args.use_reader_op:
                 num_samples += args.batch_size * args.gpus
             else:

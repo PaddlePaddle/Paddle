@@ -47,6 +47,7 @@ class ParallelExecutor(object):
                 if not provided, then default_main_program will be used.
             share_vars_from(ParallelExecutor, default None): If provied,
                 it will share variables from the specified ParallelExecutor.
+            exec_strategy(ExecutionStrategy): The exeuction strategy for ParallelExecutor.
             num_trainers(int, default 1): If greater than 1, NCCL will be
                 initialized with multpile rank of nodes, each node should have
                 same number of GPUs. Distributed training will be enabled then.
@@ -131,6 +132,11 @@ class ParallelExecutor(object):
         main = main_program
         main = main if main else framework.default_main_program()
         scope = executor.global_scope()
+        # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
+        # train program, call self.bcast_param() at the end of each mini-batch.
+        self.is_dist = True if "recv" in [
+            op.type for op in main.global_block().ops
+        ] else False
 
         if share_vars_from and not isinstance(share_vars_from,
                                               ParallelExecutor):
@@ -189,10 +195,11 @@ class ParallelExecutor(object):
                 tensors in that dict will be splitted into each devices. If
                 the feed is a list, each element of the list will be copied
                 to each device.
-            feed_dict: Alias for feed parameter, for backward compatibility.
+            feed_dict(list|dict|None): Alias for feed parameter, for backward compatibility.
                 This parameter is deprecated.
 
-        Returns: fetched result list.
+        Returns:
+            The fetched result list.
 
         """
         if feed is None and feed_dict is not None:
@@ -238,6 +245,10 @@ class ParallelExecutor(object):
         fetch_var_name = '@FETCHED_VAR_NAME@'
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
+
+        if self.is_dist:
+            self.bcast_params()
+
         return [arr[i] for i in range(len(arr))]
 
     def bcast_params(self):
