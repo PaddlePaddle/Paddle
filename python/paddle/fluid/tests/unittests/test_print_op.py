@@ -28,7 +28,7 @@ class TestPrintOpCPU(unittest.TestCase):
         self.x_tensor = core.LoDTensor()
         tensor_np = np.random.random(size=(2, 3)).astype('float32')
         self.x_tensor.set(tensor_np, self.place)
-        self.x_tensor.set_lod([[0, 1, 1]])
+        self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
     def build_network(self, only_forward, **kargs):
         x = layers.data('x', shape=[3], dtype='float32', lod_level=1)
@@ -62,7 +62,7 @@ class TestPrintOpGPU(TestPrintOpCPU):
         self.x_tensor = core.LoDTensor()
         tensor_np = np.random.random(size=(2, 3)).astype('float32')
         self.x_tensor.set(tensor_np, self.place)
-        self.x_tensor.set_lod([[0, 1, 1]])
+        self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
 
 if __name__ == '__main__':

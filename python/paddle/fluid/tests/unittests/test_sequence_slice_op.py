@@ -29,20 +29,20 @@ class TestSequenceSliceOp(OpTest):
 
         self.inputs = {'X': (x, lod), 'Offset': offset, 'Length': length}
         outs = []  #np.zeros((100, 3, 2)).astype('float32')
-        out_lod = [[0]]
-        out_lod_offset = 0
+        out_lod = [[]]
+        lod_offset = 0
         for i in range(len(offset)):
-            sub_x = x[lod[0][i] + offset[i, 0]:lod[0][i] + offset[i, 0] +
+            sub_x = x[lod_offset + offset[i, 0]:lod_offset + offset[i, 0] +
                       length[i, 0], :]
-            out_lod_offset = out_lod_offset + len(sub_x)
             outs.append(sub_x)
-            out_lod[0].append(out_lod_offset)
+            out_lod[0].append(len(sub_x))
+            lod_offset += lod[0][i]
         outs = np.concatenate(outs, axis=0)
         self.outputs = {'Out': (outs, out_lod)}
 
     def init_test_case(self):
         self.x_dim = (100, 3, 2)
-        self.x_lod = [[0, 20, 40, 60, 80, 100]]
+        self.x_lod = [[20, 20, 20, 20, 20]]
         self.offset = [[1], [2], [3], [4], [5]]
         self.length = [[10], [8], [6], [4], [2]]
 

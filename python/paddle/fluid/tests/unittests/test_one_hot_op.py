@@ -27,9 +27,9 @@ class TestOneHotOp(OpTest):
         self.op_type = 'one_hot'
         depth = 10
         dimension = 12
-        x_lod = [[0, 4, 5, 8, 11]]
-        x = [np.random.randint(0, depth - 1) for i in xrange(x_lod[0][-1])]
-        x = np.array(x).astype('int').reshape([x_lod[0][-1], 1])
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in xrange(sum(x_lod[0]))]
+        x = np.array(x).astype('int').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
                               depth)).astype('float32')
@@ -50,9 +50,9 @@ class TestOneHotOp_default_dtype(OpTest):
         self.op_type = 'one_hot'
         depth = 10
         dimension = 12
-        x_lod = [[0, 4, 5, 8, 11]]
-        x = [np.random.randint(0, depth - 1) for i in xrange(x_lod[0][-1])]
-        x = np.array(x).astype('int').reshape([x_lod[0][-1], 1])
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in xrange(sum(x_lod[0]))]
+        x = np.array(x).astype('int').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
                               depth)).astype('float32')
@@ -75,11 +75,11 @@ class TestOneHotOp_exception(OpTest):
         self.place = core.CPUPlace()
         self.dimension = 12
         self.x = core.LoDTensor()
-        x_lod = [[0, 4, 5, 8, 11]]
-        data = [np.random.randint(11, 20) for i in xrange(x_lod[0][-1])]
-        data = np.array(data).astype('int').reshape([x_lod[0][-1], 1])
+        x_lod = [[4, 1, 3, 3]]
+        data = [np.random.randint(11, 20) for i in xrange(sum(x_lod[0]))]
+        data = np.array(data).astype('int').reshape([sum(x_lod[0]), 1])
         self.x.set(data, self.place)
-        self.x.set_lod(x_lod)
+        self.x.set_recursive_sequence_lengths(x_lod)
 
     def test_check_output(self):
         program = Program()

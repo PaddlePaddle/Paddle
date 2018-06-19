@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda.h>
-
 #include "paddle/contrib/inference/paddle_inference_api_anakin_engine.h"
+#include <cuda.h>
 
 namespace paddle {
 
