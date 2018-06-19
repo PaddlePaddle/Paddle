@@ -247,7 +247,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
-  int checkpoint_point_block_id = Attr<int>(kCheckpointBlockId);
+  int checkpoint_notify_id = Attr<int>(kCheckpointBlockId);
 
   LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
             << ", end_point:" << endpoint
@@ -271,7 +271,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
   if (checkpoint_notify_id != -1) {
-    auto ctx = executor.Prepare(*program, checkpoint_point_block_id);
+    auto ctx = executor.Prepare(*program, checkpoint_notify_id);
     ckpt_pre_context = std::move(ctx);
   }
 
