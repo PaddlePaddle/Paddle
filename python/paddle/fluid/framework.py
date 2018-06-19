@@ -644,7 +644,13 @@ class Operator(object):
 
     def set_attr(self, name, val):
         self.attrs[name] = val
-        self.desc.set_attr(name, val)
+        if isinstance(val, Block):
+            self.desc.set_block_attr(name, val.desc)
+        elif isinstance(val, core.BlockDesc) or \
+                isinstance(val, core.ProgramDesc):
+            self.desc.set_serialized_attr(name, val.serialize_to_string())
+        else:
+            self.desc.set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -1034,6 +1040,37 @@ class Block(object):
 
 
 class Program(object):
+    """
+    Python Program. Beneath it is a ProgramDesc, which is used for
+    create c++ Program. A program is a self-contained programing
+    language like container. It has at least one Block, when the
+    control flow op like conditional_block, while_op is included,
+    it will contains nested block.
+    Please reference the framework.proto for details.
+
+    Notes: we have default_startup_program and default_main_program
+    by default, a pair of them will shared the parameters.
+    The default_startup_program only run once to initialize parameters,
+    default_main_program run in every minibatch and adjust the weights.
+
+    Args:
+        None
+
+    Returns:
+        Python Program
+
+    Examples:
+       .. code-block:: python
+
+         main_program = Program()
+         startup_program = Program()
+         with fluid.program_guard(main_program=main_program, startup_program=startup_program):
+            fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
+            fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
+            fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
+
+    """
+
     def __init__(self):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
@@ -1099,6 +1136,8 @@ class Program(object):
 
     def clone(self, for_test=False):
         """Clone the Program object
+        Args:
+           for_test(bool): indicate whether clone for test.
 
         Set for_test to False when we want to clone the program for training.
         Set for_test to True when we want to clone the program for testing.
@@ -1109,8 +1148,9 @@ class Program(object):
                 the is_test attributes in these operators will be set to True for
                 testing purposes, otherwise, they remain unchanged.
 
-        Returns(Program):
-            The cloned Program object.
+        Returns:
+            Program: The cloned Program object.
+
         """
         if for_test:
             p = self.inference_optimize()
@@ -1228,6 +1268,7 @@ class Program(object):
     def copy_param_info_from(self, other):
         """
         Copy the information of parameters from other program.
+
         Args:
             other(Program): Other program
 
@@ -1246,6 +1287,7 @@ class Program(object):
     def copy_data_info_from(self, other):
         """
         Copy the information of data variables from other program.
+
         Args:
             other(Program): Other program
 
@@ -1299,6 +1341,7 @@ class Parameter(Variable):
     def to_string(self, throw_on_error, with_details=False):
         """
         To debug string.
+
         Args:
             throw_on_error(bool): raise exception when self is not initialized
                 when throw_on_error is True

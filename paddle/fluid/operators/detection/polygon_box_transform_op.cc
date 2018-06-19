@@ -83,11 +83,13 @@ class PolygonBoxTransformOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 PolygonBoxTransform Operator.
+
+PolygonBoxTransform Operator is used to transform the coordinate shift to the real coordinate.
+
 The input is the final geometry output in detection network.
 We use 2*n numbers to denote the coordinate shift from n corner vertices of
 the polygon_box to the pixel location. As each distance offset contains two numbers (xi, yi),
 the geometry output contains 2*n channels.
-PolygonBoxTransform Operator is used to transform the coordinate shift to the real coordinate.
 )DOC");
   }
 };
