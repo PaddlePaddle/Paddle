@@ -48,10 +48,10 @@ def get_api_args(module):
         #tuple (args, varargs, keywords, defaults) is returned
         tup = inspect.getargspec(value)
         args_dict[name] = {
-            "args": tup[0],  #args is a list of the parameter names.  
+            "args": tup[0],  #args is a list of the parameter names.
             "varargs": tup[1],  #varargs are the names of the * parameters
             "keywords": tup[2],  #keywords are the names of the ** parameters
-            "defaults": str(tup[3])  #default values   
+            "defaults": str(deal_dynamic_value(tup[3]))  #default values
         }
     # get class method's args
     cls = inspect.getmembers(module, inspect.isclass)
@@ -72,9 +72,24 @@ def get_api_args(module):
                 "args": tup[0],
                 "varargs": tup[1],
                 "keywords": tup[2],
-                "defaults": str(tup[3])
+                "defaults": str(deal_dynamic_value(tup[3]))
             }
     return args_dict
+
+
+def deal_dynamic_value(tup):
+    ''' repalce dynamic function obj with function name,
+       which is like <function round_robin at 0x7f33b1eb4aa0>
+       each time the function addr has changed. '''
+    values = []
+    if not tup:
+        return
+    for i in tup:
+        if inspect.isfunction(i):
+            values.append(i.__name__)
+        else:
+            values.append(i)
+    return tuple(values)
 
 
 def get_all_files(base_dir):
@@ -83,6 +98,9 @@ def get_all_files(base_dir):
     file_list = []
     for fpathe, dirs, fs in os.walk(base_dir):
         for f in fs:
+            # exclude hidden file
+            if f.startswith('.'):
+                continue
             file_list.append(os.path.join(fpathe, f))
     return file_list
 
