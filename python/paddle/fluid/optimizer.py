@@ -323,11 +323,11 @@ class MomentumOptimizer(Optimizer):
 
         & if (use\_nesterov):
 
-        &   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
+        &\quad   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
 
         & else:
 
-        &   param = param - learning\_rate * velocity
+        &\quad   param = param - learning\_rate * velocity
 
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
