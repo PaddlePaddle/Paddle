@@ -116,7 +116,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-        if var_proto.HasField('reuse'):
+        if 'reuse' in [v[0].name for v in var_proto.ListFields()]:
             return block.var(str(var_proto.reuse))
         else:
             return block.create_var(

@@ -198,24 +198,14 @@ class OpTest(unittest.TestCase):
     def _get_io_vars(self, block, numpy_inputs, is_input):
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         proto_list = op_proto.inputs if is_input else op_proto.outputs
-        proto_dict = {}
-        for var_proto in proto_list:
-            proto_dict[var_proto.name] = var_proto
+        proto_dict = {var_proto.name: var_proto for var_proto in proto_list}
 
         inputs = {}
         for name, value in numpy_inputs.iteritems():
             if isinstance(value, list):
-                #var_list = [
-                #    block.var(sub_name) for sub_name, sub_value in value
-                #]
-                var_list = []
-                for sub_name, sub_value in value:
-                    if proto_dict[sub_name].HasField('reuse'):
-                        resue_name = str(proto_dict[sub_name].reuse)
-                        var_list.append(block.var(reuse_name))
-                    else:
-                        var_list.append(block.var(sub_name))
-
+                var_list = [
+                    block.var(sub_name) for sub_name, sub_value in value
+                ]
                 inputs[name] = var_list
             else:
                 if proto_dict[name].HasField('reuse'):
@@ -282,9 +272,7 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         proto_list = op_proto.outputs
-        proto_dict = {}
-        for var_proto in proto_list:
-            proto_dict[var_proto.name] = var_proto
+        proto_dict = {var_proto.name: var_proto for var_proto in proto_list}
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
