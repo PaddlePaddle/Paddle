@@ -53,7 +53,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "It must use CPUPlace.");
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
-
     auto in_vars = ctx.MultiInputVar("X");
 
     const int N = in_vars.size();
