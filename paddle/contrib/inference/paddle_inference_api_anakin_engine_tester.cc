@@ -37,7 +37,7 @@ TEST(inference, anakin) {
 
   float data[1 * 3 * 224 * 224] = {1.0f};
 
-  PaddleBuf buf{.data = data, .length = sizeof(data)};
+  PaddleBuf buf{data, sizeof(data)};
   PaddleTensor tensor{.name = "input_0",
                       .shape = std::vector<int>({1, 3, 224, 224}),
                       .data = buf,
@@ -48,7 +48,7 @@ TEST(inference, anakin) {
 
   float data_out[1000];
 
-  PaddleBuf buf_out{.data = data_out, .length = sizeof(data)};
+  PaddleBuf buf_out;
   PaddleTensor tensor_out{.name = "prob_out",
                           .shape = std::vector<int>({1000, 1}),
                           .data = buf_out,

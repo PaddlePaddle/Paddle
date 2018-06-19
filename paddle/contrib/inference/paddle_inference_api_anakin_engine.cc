@@ -65,8 +65,11 @@ bool PaddleInferenceAnakinPredictor::Run(
   for (auto &output : *output_data) {
     auto *tensor = executor_.get_out(output.name);
     output.shape = tensor->shape();
+    if (output.data.length() < tensor->valid_size() * sizeof(float)) {
+      output.data.Resize(tensor->valid_size() * sizeof(float));
+    }
     // Copy data from GPU -> CPU
-    if (cudaMemcpy(output.data.data,
+    if (cudaMemcpy(output.data.data(),
                    tensor->mutable_data(),
                    tensor->valid_size() * sizeof(float),
                    cudaMemcpyDeviceToHost) != 0) {

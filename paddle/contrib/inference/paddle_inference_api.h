@@ -21,6 +21,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -32,12 +33,68 @@ enum PaddleDType {
   INT64,
 };
 
-struct PaddleBuf {
-  void* data;     // pointer to the data memory.
-  size_t length;  // number of memory bytes.
+class PaddleBuf {
+ public:
+  PaddleBuf() = default;
+  PaddleBuf(PaddleBuf&& other)
+      : data_(other.data_),
+        length_(other.length_),
+        memory_owned_(other.memory_owned_) {
+    other.memory_owned_ = false;
+    other.data_ = nullptr;
+    other.length_ = 0;
+  }
+  // Do not own the memory.
+  PaddleBuf(void* data, size_t length)
+      : data_(data), length_(length), memory_owned_{false} {}
+  // Own memory.
+  PaddleBuf(size_t length)
+      : data_(new char[length]), length_(length), memory_owned_(true) {}
+
+  // Resize to `length` bytes.
+  void Resize(size_t length) {
+    // Only the owned memory can be reset, the external memory can't be changed.
+    assert(memory_owned_);
+    Free();
+    data_ = new char[length];
+    length_ = length;
+    memory_owned_ = true;
+  }
+
+  // Reset to external memory.
+  void Reset(void* data, size_t length) {
+    Free();
+    memory_owned_ = false;
+    data_ = data;
+    length_ = length;
+  }
+
+  bool empty() const { return length_ == 0; }
+  void* data() const { return data_; }
+  size_t length() const { return length_; }
+
+  PaddleBuf(const PaddleBuf&) = delete;
+  PaddleBuf& operator=(const PaddleBuf&) = delete;
+
+  ~PaddleBuf() { Free(); }
+
+ private:
+  void Free() {
+    if (memory_owned_ && data_) {
+      assert(length_ > 0);
+      delete static_cast<char*>(data_);
+      data_ = nullptr;
+      length_ = 0;
+    }
+  }
+
+  void* data_{nullptr};  // pointer to the data memory.
+  size_t length_{0};     // number of memory bytes.
+  bool memory_owned_{true};
 };
 
 struct PaddleTensor {
+  PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
   // TODO(Superjomn) for LoD support, add a vector<vector<int>> field if needed.
@@ -67,8 +124,9 @@ class PaddlePredictor {
 
   // Predict an record.
   // The caller should be responsible for allocating and releasing the memory of
-  // `inputs`. `inputs` should be alive until Run returns. caller should be
-  // responsible for releasing the memory of `output_data`.
+  // `inputs`. `inputs` should be available until Run returns. Caller should be
+  // responsible for the output tensor's buffer, either allocated or passed from
+  // outside.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data) = 0;
 
