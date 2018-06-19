@@ -182,12 +182,14 @@ def Print(input,
     Returns:
         Variable: Output tensor, same data with input tensor.
 
+
     Examples:
+
         .. code-block:: python
 
-             value = some_layer(...)
-             Print(value, summarize=10,
-                 message="The content of some_layer: ")
+           value = some_layer(...)
+           Print(value, summarize=10,
+               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
