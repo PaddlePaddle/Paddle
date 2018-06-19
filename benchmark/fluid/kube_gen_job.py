@@ -112,7 +112,6 @@ def gen_job():
     envs.append({"name": "PADDLE_TRAINERS", "value": str(args.trainers)})
     envs.append({"name": "PADDLE_PSERVERS", "value": str(args.pservers)})
     envs.append({"name": "ENTRY", "value": args.entry})
-    #envs.append({"name": "PADDLE_INIT_PORT", "value": str(args.port)})
     envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
     # NOTE: these directories below are cluster specific, please modify
     # this settings before you run on your own cluster.
