@@ -42,8 +42,9 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     detail::RPCClient* rpc_client =
         detail::RPCClient::GetInstance<RPCCLIENT_T>();
     for (size_t i = 0; i < epmap.size(); i++) {
-      VLOG(3) << "sending " << dir <<" to " << epmap[i] << " to checkpoint notify ... ";
-      auto serial_looku_table = string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
+      VLOG(3) << "checkpoint notify sending " << dir << " to " << epmap[i];
+      auto serial_looku_table =
+          string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
       rpc_client->AsyncCheckpointNotify(epmap[i], serial_looku_table);
     }
     rpc_client->Wait();
@@ -60,8 +61,8 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({"127.0.0.1:6164"});
     AddAttr<std::string>(
         "dir", "(string, default '') indicate the folder checkpoint will use");
-    AddAttr<std::string>(
-        "lookup_table", "(string, default '') the lookup table name");
+    AddAttr<std::string>("lookup_table",
+                         "(string, default '') the lookup table name");
     AddComment(R"DOC(
 Prefetch operator
 
