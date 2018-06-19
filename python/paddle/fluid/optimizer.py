@@ -26,10 +26,10 @@ from clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'Adadelta', 'ModelAverage', 'Optimizer'
+    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'Optimizer'
 ]
 
 
@@ -628,7 +628,7 @@ class AdadeltaOptimizer(Optimizer):
         E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\\_rate)^2
 
     Args:
-        learning_rate(float): global leraning rate
+        learning_rate(float): global learning rate
         rho(float): rho in equation
         epsilon(float): epsilon in equation
 
@@ -729,7 +729,7 @@ class RMSPropOptimizer(Optimizer):
 
 
     Args:
-        learning_rate(float): global leraning rate.
+        learning_rate(float): global learning rate.
         rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, set 1e-6 by default.
@@ -810,6 +810,113 @@ class RMSPropOptimizer(Optimizer):
         return rmsprop_op
 
 
+class FtrlOptimizer(Optimizer):
+    """
+    FTRL (Follow The Regularized Leader) Optimizer.
+
+    The paper that proposed Follow The Regularized Leader (FTRL):
+    (https://www.eecs.tufts.edu/~dsculley/papers/ad-click-prediction.pdf)
+
+    ..  math::
+
+        &new\_accum = squared\_accum + grad^2
+
+        &if (lr\_power == -0.5):
+
+        &\quad  linear\_accum += grad - \\frac{\\sqrt{new\_accum} - \\sqrt{squared\_accum}}{learning\_rate * param}
+
+        &else:
+
+        &\quad   linear\_accum += grad - \\frac{new\_accum^{-lr\_power} - accum^{-lr\_power}}{learning\_rate * param}
+
+
+        &x = l1 * sign(linear\_accum) - linear\_accum
+
+        &if (lr\_power == -0.5):
+
+        &\quad   y = \\frac{\\sqrt{new\_accum}}{learning\_rate} + (2 * l2)
+
+        &\quad   pre\_shrink = \\frac{x}{y}
+
+        &\quad   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0)
+
+        &else:
+
+        &\quad   y = \\frac{new\_accum^{-lr\_power}}{learning\_rate} + (2 * l2)
+
+        &\quad   pre\_shrink = \\frac{x}{y}
+
+        &\quad   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0)
+
+        &squared\_accum += grad^2
+
+    Args:
+        learning_rate (float|Variable): global learning rate.
+        l1 (float):
+        l2 (float):
+        lr_power (float):
+
+    Raises:
+        ValueError: If learning_rate, rho, epsilon, momentum are None.
+
+    Examples:
+          .. code-block:: python
+
+              optimizer = fluid.optimizer.Ftrl(0.0001)
+              _, params_grads = optimizer.minimize(cost)
+    """
+
+    _squared_acc_str = "squared"
+    _linear_acc_str = "linear"
+
+    def __init__(self, learning_rate, l1=0.0, l2=0.0, lr_power=-0.5, **kwargs):
+        super(FtrlOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        if learning_rate is None:
+            raise ValueError("learning_rate is not set.")
+
+        self.type = "ftrl"
+        self._l1 = l1
+        self._l2 = l2
+        self._lr_power = lr_power
+
+    def _create_accumulators(self, block, parameters):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        for p in parameters:
+            self._add_accumulator(self._squared_acc_str, p)
+            self._add_accumulator(self._linear_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        squared_acc = self._get_accumulator(self._squared_acc_str,
+                                            param_and_grad[0])
+        linear_acc = self._get_accumulator(self._linear_acc_str,
+                                           param_and_grad[0])
+        ftrl_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "SquaredAccumulator": squared_acc,
+                "LinearAccumulator": linear_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "SquaredAccumOut": squared_acc,
+                "LinearAccumOut": linear_acc
+            },
+            attrs={"l1": self._l1,
+                   "l2": self._l1,
+                   "lr_power": self._lr_power})
+
+        return ftrl_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -826,6 +933,7 @@ Adamax = AdamaxOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
 Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
+Ftrl = FtrlOptimizer
 
 
 class ModelAverage(Optimizer):
