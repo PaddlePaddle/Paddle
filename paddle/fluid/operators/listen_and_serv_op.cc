@@ -247,9 +247,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
+  int checkpoint_point_block_id = Attr<int>(kCheckpointBlockId);
 
   LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
-            << ", end_point:" << endpoint;
+            << ", end_point:" << endpoint
+            << ", CheckpointNotify Id: " << checkpoint_notify_id;
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
@@ -258,7 +260,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_prefetch_handler_.reset(
       new detail::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(
-      new detail::RequestCheckpointHandler(sync_mode));
+      new detail::RequestCheckpointHandler(sync_mode, checkpoint_notify_id));
 
   rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
@@ -266,6 +268,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_prefetch_handler_.get());
   rpc_service_->RegisterRPC(detail::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
+
+  std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
+  if (checkpoint_notify_id != -1) {
+    auto ctx = executor.Prepare(*program, checkpoint_point_block_id);
+    ckpt_pre_context = std::move(ctx);
+  }
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
   auto *program = optimize_block->Program();
@@ -300,12 +308,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
   }
-
-  int checkpoint_point_block_id = Attr<int>(kCheckpointBlockId);
-  auto ctx = executor.Prepare(*program, checkpoint_point_block_id);
-
-  std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context =
-      std::move(ctx);
 
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,

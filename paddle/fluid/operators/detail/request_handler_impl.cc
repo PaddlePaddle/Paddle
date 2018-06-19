@@ -125,11 +125,15 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       framework::Variable* invar,
                                       framework::Variable** outvar,
                                       const std::string& out_var_name) {
+  PADDLE_ENFORCE(
+      checkpoint_notify_id != -1,
+      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
-  auto *lt_var = scope->FindVar("loopup_table_path")->GetMutable<std::string>();
+  auto* lt_var = scope->FindVar("loopup_table_path")->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update loopup_table_path to: " << out_var_name;
+  VLOG(4) << "RequestCheckpointHandler update loopup_table_path to: "
+          << out_var_name;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
 }
