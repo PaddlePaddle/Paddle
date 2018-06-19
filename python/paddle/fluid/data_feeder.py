@@ -29,7 +29,6 @@ class DataToLoDTensorConverter(object):
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        self.dynamic_shape = False
         negtive_count = 0
         for s in self.shape:
             if s < 0:
