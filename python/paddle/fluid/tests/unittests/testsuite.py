@@ -22,7 +22,7 @@ def as_lodtensor(np_array, lod, place):
     tensor = core.LoDTensor()
     tensor.set(np_value, place)
     if lod is not None:
-        tensor.set_lod(lod)
+        tensor.set_recursive_sequence_lengths(lod)
     return tensor
 
 
@@ -73,7 +73,7 @@ def set_input(scope, op, inputs, place):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
             if isinstance(var, tuple):
-                tensor.set_lod(var[1])
+                tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor.set_dims(var.shape)
             tensor.set(var, place)

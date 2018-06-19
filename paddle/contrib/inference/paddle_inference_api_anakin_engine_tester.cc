@@ -12,17 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "gflags/gflags.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
+
+DEFINE_string(model, "", "Directory of the inference model.");
 
 namespace paddle {
 
 AnakinConfig GetConfig() {
   AnakinConfig config;
-  config.model_file = "./mobilenet_v2.anakin.bin";
+  config.model_file = FLAGS_model;
   config.device = 0;
   config.max_batch_size = 1;
   return config;
