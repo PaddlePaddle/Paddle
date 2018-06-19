@@ -2674,7 +2674,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     '''
-    ${beam_search}
+    **beam search**
 
     This function implements the beam search algorithm.
 
@@ -2685,12 +2685,12 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     for more details.
 
     Args:
-        pre_ids (Variable): ${pre_ids_comment}
-        ids (Variable): ${ids_comment}
-        scores (Variable): ${scores_comment}
-        beam_size (int): ${beam_size_comment}
-        end_id (int): ${end_id_comment}
-        level (int): ${level_comment}
+        pre_ids (Variable): ids in previous step.
+        ids (Variable): a LoDTensor of shape of [None,k]
+        scores (Variable): a LoDTensor that has the same shape and LoD with `ids`
+        beam_size (int): beam size for beam search
+        end_id (int): the token id which indicates the end of a sequence
+        level (int): the level of LoDTensor
 
     Returns:
         tuple: a tuple of beam_search output variables: `selected_ids`, `selected_scores`
