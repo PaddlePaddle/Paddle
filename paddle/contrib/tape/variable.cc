@@ -14,8 +14,21 @@
 
 #include "paddle/contrib/tape/variable.h"
 
+#include "paddle/contrib/tape/tape.h"
+
 namespace paddle {
 namespace tape {
+
+std::ostream& operator<<(std::ostream& os, const Variable& var) {
+  LOG(INFO) << "Printing " << var.Name();
+  framework::proto::VarType::Type var_type = var.Desc().GetType();
+  if (var_type == framework::proto::VarType::LOD_TENSOR) {
+    os << var.Var().Get<framework::LoDTensor>();
+  } else {
+    PADDLE_THROW("Variable type is not LOD_TENSOR");
+  }
+  return os;
+};
 
 void Variable::InitializeVariable() {
   LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();
@@ -28,6 +41,11 @@ void Variable::InitializeVariable() {
     PADDLE_THROW("Variable type %d is not in [LOD_TENSOR, SELECTED_ROWS]",
                  var_type);
   }
+}
+
+const Variable& Variable::value() {
+  get_global_tape().Forward();
+  return *this;
 }
 }
 }

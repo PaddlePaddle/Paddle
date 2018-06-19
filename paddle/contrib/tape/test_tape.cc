@@ -39,6 +39,7 @@ TEST(Tape, TestMLP) {
     filler(input);
 
     auto loss = mean(linear2(linear1(input)));
+    LOG(INFO) << loss->value();
 
     get_global_tape().Backward(loss);
 

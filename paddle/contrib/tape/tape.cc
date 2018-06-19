@@ -137,14 +137,14 @@ class ScopeWrapper : public framework::Scope {
     for (auto &v : in_vars) {
       for (auto &vv : v.second) {
         if (!vars_.count(vv->Name())) {
-          vars_[vv->Name()].reset(vv->Var());
+          vars_[vv->Name()].reset(vv->MutableVar());
         }
       }
     }
     for (auto &v : out_vars) {
       for (auto &vv : v.second) {
         if (!vars_.count(vv->Name())) {
-          vars_[vv->Name()].reset(vv->Var());
+          vars_[vv->Name()].reset(vv->MutableVar());
         }
       }
     }

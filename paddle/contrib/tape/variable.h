@@ -25,6 +25,8 @@ namespace tape {
 class Variable;
 using VariableHandle = std::shared_ptr<Variable>;
 
+std::ostream& operator<<(std::ostream&, const Variable&);
+
 /*
  * Combination of
  *     framework::VarDesc desc_;
@@ -60,7 +62,8 @@ class Variable {
   //  void init(const std::string& initializer,
   //            const framework::AttributeMap& attrs);
 
-  // void value() {};
+  // Evaluate a variable by running Forward() on the global tape
+  const Variable& value();
 
   const framework::VarDesc& Desc() const { return desc_; }
   framework::VarDesc* MutableDesc() { return &desc_; }
@@ -68,7 +71,8 @@ class Variable {
   // TODO(tonyyang-svail): No need to expose name
   std::string Name() const { return desc_.Name(); }
 
-  framework::Variable* Var() { return &var_; }
+  const framework::Variable& Var() const { return var_; };
+  framework::Variable* MutableVar() { return &var_; }
 
  private:
   int count() {
