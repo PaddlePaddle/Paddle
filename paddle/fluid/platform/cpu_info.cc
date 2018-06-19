@@ -30,7 +30,9 @@ DEFINE_double(fraction_of_cpu_memory_to_use, 1,
 
 DEFINE_uint64(initial_cpu_memory_in_mb,
 #ifdef PADDLE_WITH_MKLDNN
-              1000,
+              /* Aligned with mozga-intel, MKLDNN need at least 5000 MB
+               * to obtain the best performance*/
+              5000,
 #else
               500,
 #endif
