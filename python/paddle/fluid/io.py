@@ -462,7 +462,6 @@ CHECKPOINT_PREFIX = "checkpoint"
 MODEL_DIR = "__model__"
 LOOKUP_TABLE_DIR = "__lookup_table__"
 TRAINER_PREFIX = "trainer"
-PSERVER_PREFIX = "pserver"
 CHECKPOINT_SEPARATOR = "_"
 
 
@@ -577,8 +576,7 @@ def load_persist_vars_without_grad(executor,
 
 def load_lookup_table_vars(executor, dirname, pserver_id, table_name):
     lookup_table_dir = os.path.join(dirname, LOOKUP_TABLE_DIR)
-    table_file = table_name + CHECKPOINT_SEPARATOR + PSERVER_PREFIX + CHECKPOINT_SEPARATOR + str(
-        pserver_id)
+    table_file = table_name + CHECKPOINT_SEPARATOR   + str(pserver_id)
 
     load_vars(executor, lookup_table_dir, vars=table_name, filename=table_file)
 

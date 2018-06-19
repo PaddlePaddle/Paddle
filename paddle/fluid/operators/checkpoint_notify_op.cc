@@ -43,7 +43,7 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         detail::RPCClient::GetInstance<RPCCLIENT_T>();
     for (size_t i = 0; i < epmap.size(); i++) {
       VLOG(3) << "sending " << dir <<" to " << epmap[i] << " to checkpoint notify ... ";
-      auto serial_looku_table = string::Sprintf("%s/%s.%d", dir, lookup_table_name, i);
+      auto serial_looku_table = string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
       rpc_client->AsyncCheckpointNotify(epmap[i], serial_looku_table);
     }
     rpc_client->Wait();
