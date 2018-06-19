@@ -37,6 +37,9 @@ class PaddleBuf {
  public:
   PaddleBuf() = default;
   PaddleBuf(PaddleBuf&& other);
+  // Copy only available when memory is managed externally.
+  explicit PaddleBuf(const PaddleBuf&);
+  PaddleBuf& operator=(const PaddleBuf&);
   // Do not own the memory.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
@@ -52,8 +55,6 @@ class PaddleBuf {
   size_t length() const { return length_; }
 
   ~PaddleBuf() { Free(); }
-  PaddleBuf(const PaddleBuf&) = delete;
-  PaddleBuf& operator=(const PaddleBuf&) = delete;
 
  private:
   void Free();
