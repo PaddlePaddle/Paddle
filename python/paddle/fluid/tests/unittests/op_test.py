@@ -195,23 +195,41 @@ class OpTest(unittest.TestCase):
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
 
-    def _get_io_vars(self, block, numpy_inputs):
+    def _get_io_vars(self, block, numpy_inputs, is_input):
+        op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+        proto_list = op_proto.inputs if is_input else op_proto.outputs
+        proto_dict = {}
+        for var_proto in proto_list:
+            proto_dict[var_proto.name] = var_proto
+
         inputs = {}
         for name, value in numpy_inputs.iteritems():
             if isinstance(value, list):
-                var_list = [
-                    block.var(sub_name) for sub_name, sub_value in value
-                ]
+                #var_list = [
+                #    block.var(sub_name) for sub_name, sub_value in value
+                #]
+                var_list = []
+                for sub_name, sub_value in value:
+                    if proto_dict[sub_name].HasField('reuse'):
+                        resue_name = str(proto_dict[sub_name].reuse)
+                        var_list.append(block.var(reuse_name))
+                    else:
+                        var_list.append(block.var(sub_name))
+
                 inputs[name] = var_list
             else:
-                inputs[name] = block.var(name)
+                if proto_dict[name].HasField('reuse'):
+                    inputs[name] = block.var(str(proto_dict[name].reuse))
+                else:
+                    inputs[name] = block.var(name)
+
         return inputs
 
     def _get_inputs(self, block):
-        return self._get_io_vars(block, self.inputs)
+        return self._get_io_vars(block, self.inputs, True)
 
     def _get_outputs(self, block):
-        return self._get_io_vars(block, self.outputs)
+        return self._get_io_vars(block, self.outputs, False)
 
     def calc_output(self, place):
         outs, _ = self._calc_output(place)
@@ -261,6 +279,13 @@ class OpTest(unittest.TestCase):
 
     def check_output_with_place(self, place, atol):
         outs, fetch_list = self._calc_output(place)
+
+        op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+        proto_list = op_proto.outputs
+        proto_dict = {}
+        for var_proto in proto_list:
+            proto_dict[var_proto.name] = var_proto
+
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -298,7 +323,12 @@ class OpTest(unittest.TestCase):
                             "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
             else:
-                idx = find_actual(out_name, fetch_list)
+                if proto_dict[out_name].HasField('reuse'):
+                    act_out_name = str(proto_dict[out_name].reuse)
+                else:
+                    act_out_name = out_name
+
+                idx = find_actual(act_out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
                 expect = self.outputs[out_name]

@@ -65,7 +65,6 @@ class BatchNormOp : public framework::OperatorWithKernel {
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
 
-    LOG(ERROR) << "xdims size " << x_dims.size();
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "Input X must have 2 to 5 dimensions.");
 
