@@ -27,13 +27,12 @@ namespace inference {
 namespace analysis {
 
 TEST_F(DFG_Tester, Test) {
-  framework::proto::ProgramDesc new_desc;
   DataFlowGraph graph;
 
   FluidToDataFlowGraphPass pass0;
   DataFlowGraphToFluidPass pass1;
-  pass0.Initialize(desc);
-  pass1.Initialize(&new_desc);
+  ASSERT_TRUE(pass0.Initialize(&argument));
+  ASSERT_TRUE(pass1.Initialize(&argument));
 
   pass0.Run(&graph);
   pass1.Run(&graph);
