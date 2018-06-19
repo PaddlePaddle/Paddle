@@ -72,7 +72,7 @@ def main():
                 os.getenv("PADDLE_INIT_PORTS_NUM_FOR_SPARSE", "1")),
             num_gradient_servers=int(
                 os.getenv("PADDLE_INIT_NUM_GRADIENT_SERVERS", "1")),
-            trainer_id=int(os.getenv("PADDLE_TRAINER_ID", "0")),
+            trainer_id=int(os.getenv("PADDLE_INIT_TRAINER_ID", "0")),
             pservers=os.getenv("PADDLE_INIT_PSERVERS", "127.0.0.1"))
     fn = open("thirdparty/wuyi_train_thdpty/word_dict.pickle", "r")
     word_dict = pickle.load(fn)
