@@ -93,6 +93,7 @@ __all__ = [
     'mean_iou',
     'relu',
     'log',
+    'crop',
 ]
 
 
@@ -5003,3 +5004,101 @@ def mean_iou(input, label, num_classes):
         },
         attrs={"num_classes": num_classes})
     return out_mean_iou, out_wrong, out_correct
+
+
+def crop(x, shape=None, offsets=None, name=None):
+    """
+    Crop input into output, as specified by offsets and shape.
+
+    .. code-block:: text
+
+        * Case 1:
+            Given
+                X = [[0, 1, 2, 0, 0]
+                     [0, 3, 4, 0, 0]
+                     [0, 0, 0, 0, 0]],
+            and
+                shape = [2, 2],
+                offsets = [0, 1],
+            output is:
+                Out = [[1, 2],
+                       [3, 4]].
+        * Case 2:
+            Given
+                X = [[0, 1, 2, 5, 0]
+                     [0, 3, 4, 6, 0]
+                     [0, 0, 0, 0, 0]],
+            and shape is tensor
+                shape = [[0, 0, 0]
+                         [0, 0, 0]]
+            and
+                offsets = [0, 1],
+
+            output is:
+                Out = [[1, 2, 5],
+                       [3, 4, 6]].
+
+    Args:
+        x (Variable): The input tensor variable.
+        shape (Variable|list/tuple of integer): The output shape is specified
+            by `shape`, which can a Variable or a list/tupe of integer.
+            If a tensor Variable, it's rank must be the same as `x`. This way
+            is suitable for the case that the output shape may be changed each
+            iteration. If a list/tupe of integer, it's length must be the same
+            as the rank of `x`
+        offsets (Variable|list/tuple of integer|None): Specifies the copping
+            offsets at each dimension. It can be a Variable or or a list/tupe
+            of integer. If a tensor Variable, it's rank must be the same as `x`.
+            This way is suitable for the case that the offsets may be changed
+            each iteration. If a list/tupe of integer, it's length must be the
+            same as the rank of `x`. If None, the offsets are 0 at each
+            dimension.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The cropped tensor variable.
+
+    Raises:
+        ValueError: If shape is not a list, tuple or Variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
+            y = fluid.layers.data(name="y", shape=[2, 3], dtype="float32")
+            crop = fluid.layers.crop(x, shape=y)
+
+            # or
+            z = fluid.layers.data(name="z", shape=[3, 5], dtype="float32")
+            crop = fluid.layers.crop(z, shape=[2, 3])
+
+    """
+    helper = LayerHelper('crop', **locals())
+
+    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
+        isinstance(shape, Variable)):
+        raise ValueError("The shape should be a list, tuple or Variable.")
+
+    if offsets is None:
+        offsets = [0] * len(x.shape)
+
+    out = helper.create_tmp_variable(x.dtype)
+    ipts = {'X': x}
+    attrs = {}
+    if isinstance(shape, Variable):
+        ipts['Y'] = shape
+    else:
+        attrs['shape'] = shape
+    if isinstance(offsets, Variable):
+        ipts['Offsets'] = offsets
+    else:
+        attrs['offsets'] = offsets
+
+    helper.append_op(
+        type='crop',
+        inputs=ipts,
+        outputs={'Out': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out

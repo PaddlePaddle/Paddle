@@ -644,7 +644,13 @@ class Operator(object):
 
     def set_attr(self, name, val):
         self.attrs[name] = val
-        self.desc.set_attr(name, val)
+        if isinstance(val, Block):
+            self.desc.set_block_attr(name, val.desc)
+        elif isinstance(val, core.BlockDesc) or \
+                isinstance(val, core.ProgramDesc):
+            self.desc.set_serialized_attr(name, val.serialize_to_string())
+        else:
+            self.desc.set_attr(name, val)
 
     @property
     def attr_names(self):
