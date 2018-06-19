@@ -53,7 +53,7 @@ class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
 
  private:
   framework::proto::ProgramDesc *desc_;
-  Argument* argument_;
+  Argument *argument_;
 };
 }  // namespace analysis
 }  // namespace inference

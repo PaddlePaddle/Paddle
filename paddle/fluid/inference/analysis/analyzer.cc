@@ -29,11 +29,11 @@ class DfgPassManagerImpl final : public DfgPassManager {
     // TODO(Superjomn) set the key with pass reprs.
     Register("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
     if (FLAGS_inference_analysis_enable_tensorrt_subgraph_engine) {
-      Register("tensorrt-subgraph",
-               new TensorRTSubGraphPass([](const Node* node) {
-                 if (!node->IsFunction()) return false;
-                 return static_cast<const Function*>(node)->func_type() == "mul";
-               }));
+      Register(
+          "tensorrt-subgraph", new TensorRTSubGraphPass([](const Node* node) {
+            if (!node->IsFunction()) return false;
+            return static_cast<const Function*>(node)->func_type() == "mul";
+          }));
     }
     Register("data-flow-graph-to-fluid", new DataFlowGraphToFluidPass);
   }
