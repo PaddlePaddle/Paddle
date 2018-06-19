@@ -27,9 +27,9 @@ __global__ void KernelConcat(T** inputs, const int* input_cols, int col_size,
                              const int output_rows, const int output_cols,
                              T* output) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+  int curr_segment = 0;
+  int curr_offset = input_cols[0];
   for (; tid_x < output_cols; tid_x += blockDim.x * gridDim.x) {
-    int curr_segment = 0;
-    int curr_offset = input_cols[0];
     int curr_col_offset = input_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
@@ -70,9 +70,9 @@ __global__ void KernelConcatGrad(const T* input_data, const int in_row,
                                  const int in_col, const int* out_cols,
                                  int out_cols_size, T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+  int curr_segment = 0;
+  int curr_offset = out_cols[0];
   for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
-    int curr_segment = 0;
-    int curr_offset = out_cols[0];
     int curr_col_offset = out_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
