@@ -21,13 +21,22 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+using framework::proto::ProgramDesc;
+
 std::vector<std::string> ExtractParameters(
     const std::vector<std::unique_ptr<Node>>& nodes);
 
 bool DataFlowGraphToFluidPass::Initialize(Argument* argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument)
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc)
-  desc_ = argument->origin_program_desc.get();
+  PADDLE_ENFORCE(!argument->transformed_program_desc);
+  // The transformed_program_desc should inherit all the VarDesc and BlockDesc
+  // from the original program desc. The operators of the main block(the first
+  // block) should rewritten by data flow graph.
+  argument->transformed_program_desc.reset(
+      new ProgramDesc(*argument->origin_program_desc));
+  argument->transformed_program_desc->mutable_blocks(0)->clear_ops();
+  desc_ = argument->transformed_program_desc.get();
   // Here some logic from program_desc.cc and will not add new interfaces into
   // framework::ProgramDesc class, use some UT to assure the correctness.
   auto* block = desc_->mutable_blocks()->Add();

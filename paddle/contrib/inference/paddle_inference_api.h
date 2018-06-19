@@ -103,6 +103,11 @@ struct AnakinConfig : public PaddlePredictor::Config {
   int max_batch_size{-1};
 };
 
+struct TensorRTConfig : public NativeConfig {
+  // Determine whether a subgraph will be executed by TRT.
+  int min_subgraph_size{1};
+};
+
 // A factory to help create different predictors.
 //
 // FOR EXTENSION DEVELOPER:

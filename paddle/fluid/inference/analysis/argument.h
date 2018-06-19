@@ -39,6 +39,9 @@ struct Argument {
 
   // The original program desc.
   std::unique_ptr<framework::proto::ProgramDesc> origin_program_desc;
+
+  // The processed program desc.
+  std::unique_ptr<framework::proto::ProgramDesc> transformed_program_desc;
 };
 
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
