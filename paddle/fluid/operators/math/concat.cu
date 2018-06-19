@@ -209,7 +209,7 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
 
     outputs_cols[0] = 0;
     for (int i = 0; i < o_num; ++i) {
-      int t_col = outputs->at(i)->numel() / out_row;
+      int t_col = ref_inputs.at(i)->numel() / out_row;
       if (sameShape) {
         if (t_col != out0_col) sameShape = false;
       }
