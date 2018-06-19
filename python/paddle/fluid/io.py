@@ -503,7 +503,7 @@ def save_checkpoint(executor,
 
     if trainer_id == 0:
         save_persist_vars_without_grad(executor, cur_dir, main_program)
-        save_pserver_vars_by_notify(executor, cur_dir, ps_endpoint_list, lookup_table)
+        save_pserver_vars_by_notify(executor, cur_dir, lookup_table, ps_endpoint_list)
 
     _scroll_delete(checkpoint_dir, max_num_checkpoints)
 
