@@ -36,58 +36,27 @@ enum PaddleDType {
 class PaddleBuf {
  public:
   PaddleBuf() = default;
-  PaddleBuf(PaddleBuf&& other)
-      : data_(other.data_),
-        length_(other.length_),
-        memory_owned_(other.memory_owned_) {
-    other.memory_owned_ = false;
-    other.data_ = nullptr;
-    other.length_ = 0;
-  }
+  PaddleBuf(PaddleBuf&& other);
   // Do not own the memory.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
   PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
-
   // Resize to `length` bytes.
-  void Resize(size_t length) {
-    // Only the owned memory can be reset, the external memory can't be changed.
-    assert(memory_owned_);
-    Free();
-    data_ = new char[length];
-    length_ = length;
-    memory_owned_ = true;
-  }
-
+  void Resize(size_t length);
   // Reset to external memory.
-  void Reset(void* data, size_t length) {
-    Free();
-    memory_owned_ = false;
-    data_ = data;
-    length_ = length;
-  }
-
+  void Reset(void* data, size_t length);
   bool empty() const { return length_ == 0; }
   void* data() const { return data_; }
   size_t length() const { return length_; }
 
+  ~PaddleBuf() { Free(); }
   PaddleBuf(const PaddleBuf&) = delete;
   PaddleBuf& operator=(const PaddleBuf&) = delete;
 
-  ~PaddleBuf() { Free(); }
-
  private:
-  void Free() {
-    if (memory_owned_ && data_) {
-      assert(length_ > 0);
-      delete static_cast<char*>(data_);
-      data_ = nullptr;
-      length_ = 0;
-    }
-  }
-
+  void Free();
   void* data_{nullptr};  // pointer to the data memory.
   size_t length_{0};     // number of memory bytes.
   bool memory_owned_{true};

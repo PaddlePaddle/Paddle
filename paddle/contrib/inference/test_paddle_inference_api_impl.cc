@@ -29,10 +29,10 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   PaddleTensor pt;
 
   if (t->type() == typeid(int64_t)) {
-    pt.data.Reset(t->data<void>(), t->numel()*sizeof(int64_t));
+    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int64_t));
     pt.dtype = PaddleDType::INT64;
   } else if (t->type() == typeid(float)) {
-    pt.data.Reset(t->data<void>(), t->numel()*sizeof(float));
+    pt.data.Reset(t->data<void>(), t->numel() * sizeof(float));
     pt.dtype = PaddleDType::FLOAT32;
   } else {
     LOG(FATAL) << "unsupported type.";
