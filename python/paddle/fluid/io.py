@@ -886,8 +886,8 @@ def load_checkpoint(executor, checkpoint_dir, serial, main_program):
     `checkpoint_dir` directory.
 
     In the training precess, we generally save a checkpoint in each
-    iteration. So there are more than one checkpoint in the
-    `checkpoint_dir`(each checkpoint has its own sub folder), use
+    iteration. So there are more than one checkpoint in the 
+    `checkpoint_dir` (each checkpoint has its own sub folder), use 
     `serial` to specify which serial of checkpoint you would like to
     load.
 
