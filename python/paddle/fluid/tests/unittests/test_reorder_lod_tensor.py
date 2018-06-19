@@ -70,11 +70,10 @@ class TestReorderLoDTensor(unittest.TestCase):
                 lod_level_i = numpy.random.randint(
                     low=1,
                     high=5,
-                    size=self.num_seq if i == 0 else lod_level_i[-1])
-                lod_level_i = [0] + numpy.cumsum(lod_level_i).tolist()
+                    size=self.num_seq if i == 0 else sum(lod_level_i)).tolist()
                 data_lod.append(lod_level_i)
             data_value = numpy.random.random(
-                size=[data_lod[-1][-1] if data_lod else self.num_seq
+                size=[sum(data_lod[-1]) if data_lod else self.num_seq
                       ] + data_shape).astype('float32')
             self.data[data_name] = (data_value, data_lod)
 
@@ -84,29 +83,36 @@ class TestReorderLoDTensor(unittest.TestCase):
             tensor = fluid.Tensor()
             tensor.set(self.data[desc[0]][0], place)
             if self.data[desc[0]][1]:
-                tensor.set_lod(self.data[desc[0]][1])
+                tensor.set_recursive_sequence_lengths(self.data[desc[0]][1])
             self.inputs[desc[0]] = tensor
 
     def reorder(self):
-        level = 0
+        def convert_to_offset(lod):
+            offset_lod = [[0] for i in lod]
+            for i, level in enumerate(lod):
+                for seq_len in level:
+                    offset_lod[i].append(offset_lod[i][-1] + seq_len)
+            return offset_lod
 
+        level = 0
         # compute the rank_table according to ref_lod
         ref_lod = self.data[self.data_desc[1][0]][1][level]
         rank_table = []  # list of (index, length)
-        for i in range(len(ref_lod) - 1):
-            rank_table.append((i, ref_lod[i + 1] - ref_lod[i]))
+        for i in range(len(ref_lod)):
+            rank_table.append((i, ref_lod[i]))
         rank_table = sorted(rank_table, lambda x, y: y[1] - x[1])
 
         # compute the input sequence info according to input_lod
         input_value, input_lod = self.data[self.data_desc[0][0]]
+        offset_lod = convert_to_offset(input_lod)
 
         input_table = []  # list of (offset, length, sub_lod)
-        if input_lod:
-            for i in range(len(input_lod[level]) - 1):
+        if offset_lod:
+            for i in range(len(offset_lod[level]) - 1):
                 start_idx = i
                 end_idx = i + 1
                 sub_lod = []
-                for lod_level_i in input_lod[level:]:
+                for lod_level_i in offset_lod[level:]:
                     sub_lod_i = []
                     for idx in range(start_idx, end_idx):
                         sub_lod_i.append(lod_level_i[idx + 1] - lod_level_i[
@@ -132,10 +138,9 @@ class TestReorderLoDTensor(unittest.TestCase):
 
             input_seq_sub_lod = input_table[index][2]
             if len(output_lod) == 0:
-                output_lod = [[0] for i in input_seq_sub_lod]
-            for i, sub_lod_i in enumerate(input_seq_sub_lod):
-                for idx_sub in sub_lod_i:
-                    output_lod[i].append(output_lod[i][-1] + idx_sub)
+                output_lod = [[] for i in input_seq_sub_lod]
+            for i, level in enumerate(input_seq_sub_lod):
+                output_lod[i].extend(level)
         return output_value, output_lod
 
     def test_reorder_lod_tensor(self):
@@ -148,7 +153,8 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_output), expect_output, atol=0.001))
-            self.assertEqual(expect_output_lod, actual_output.lod())
+            self.assertEqual(expect_output_lod,
+                             actual_output.recursive_sequence_lengths())
         # check gradient
         expect_grad = numpy.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
@@ -156,7 +162,8 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_grad), expect_grad, atol=0.001))
-            self.assertEqual(expect_grad_lod, actual_grad.lod())
+            self.assertEqual(expect_grad_lod,
+                             actual_grad.recursive_sequence_lengths())
 
     def test_reorder_tensor(self):
         self.data_desc[0][-1] = 0  # input is tensor
@@ -168,7 +175,8 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_output), expect_output, atol=0.001))
-            self.assertEqual(expect_output_lod, actual_output.lod())
+            self.assertEqual(expect_output_lod,
+                             actual_output.recursive_sequence_lengths())
         # check gradient
         expect_grad = numpy.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
@@ -176,14 +184,14 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.assertTrue(
                 numpy.allclose(
                     numpy.array(actual_grad), expect_grad, atol=0.001))
-            self.assertEqual(expect_grad_lod, actual_grad.lod())
+            self.assertEqual(expect_grad_lod,
+                             actual_grad.recursive_sequence_lengths())
 
         # compare outputs between LodTensors with explicit and implicit lod
         # use the same data but set the input lod explicitly
-        input_lod = [[
-            i for i in range(len(self.data[self.data_desc[0][0]][0]) + 1)
-        ]]
-        self.inputs[self.data_desc[0][0]].set_lod(input_lod)
+        input_lod = [[1] * len(self.data[self.data_desc[0][0]][0])]
+        self.inputs[self.data_desc[0][0]].set_recursive_sequence_lengths(
+            input_lod)
         # preserve the output of LodTensor with implicit lod to compare
         expect_output = [
             numpy.array(actual_output) for actual_output in self.actual_outputs
