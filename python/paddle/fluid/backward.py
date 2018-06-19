@@ -489,10 +489,10 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     Examples:
         .. code-block:: python
 
-        # network configuration code
-        # ...
-        avg_loss = fluid.layers.mean(loss)
-        param_grad_list = fluid.backward.append_backward(loss=avg_loss)
+            # network configuration code
+            # ...
+            avg_loss = fluid.layers.mean(loss)
+            param_grad_list = fluid.backward.append_backward(loss=avg_loss)
     """
     assert isinstance(loss, framework.Variable)
 
