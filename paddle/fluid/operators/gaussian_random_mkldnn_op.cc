@@ -15,26 +15,8 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/mean_op.h"
 
-#include "mkldnn.hpp"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
-
-#include "paddle/fluid/framework/eigen.h"
 namespace paddle {
 namespace operators {
-
-using paddle::framework::Tensor;
-using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::MKLDNNMemDesc;
-using paddle::platform::CPUDeviceContext;
-
-using mkldnn::memory;  // Note: paddle has also "memory" namespace
-using mkldnn::primitive;
-using mkldnn::softmax_forward;
-using mkldnn::prop_kind;
-using mkldnn::stream;
 
 using framework::DataLayout;
 template <typename T>
@@ -61,7 +43,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     // The format of output is set as the mkldnn's format
     // TODO(@mozga-intel) The format of matrix sets inside the another layers.
     tensor->set_layout(DataLayout::kMKLDNN);
-    tensor->set_format(mkldnn::memory::format::Ohwi16o);
+    tensor->set_format(mkldnn::memory::format::oihw);
   }
 };
 }  // namespace operators
