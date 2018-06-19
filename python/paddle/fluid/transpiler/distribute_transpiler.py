@@ -846,7 +846,7 @@ class DistributeTranspiler:
             inputs={'X': [self.table_name]},
             outputs={},
             attrs={
-                'file_path': self.table_name)
+                'file_path': self.table_name
             })
 
         return checkpoint_save_block.idx
