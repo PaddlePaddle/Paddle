@@ -71,12 +71,17 @@ class Node {
 
   // Get an additional attribute and convert it to T data type. NOTE this will
   // silently create a new attribute if not exists.
-  Attr &attr(const std::string &name) { return attrs_[name]; }
+  Attr &attr(const std::string &name) const { return attrs_[name]; }
 
   int id() const { return id_; }
 
-  bool deleted() const { return deleted_; }
+  // The Protobuf description is set/get with a void* to decouple Node interface
+  // from a specific kind of Protobuf message.
+  void SetPbDesc(void *pb) { attr("pb_desc").Pointer() = pb; }
+  void *pb_desc() const { return attr("pb_desc").Pointer(); }
+
   void SetDeleted() { deleted_ = true; }
+  bool deleted() const { return deleted_; }
 
   void SetName(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
@@ -84,29 +89,25 @@ class Node {
   void SetType(Type type) { type_ = type; }
   Type type() const { return type_; }
 
-  void *extra_info() const { return extra_info_; }
-  void SetExtraInfo(void *extra_info) { extra_info_ = extra_info; }
-
   // Input links.
   std::vector<Node *> inlinks;
   // Output links.
   std::vector<Node *> outlinks;
 
   // A helper class to maintain the status from Pass.
-  // TODO(superjomn) add a checker here to ensure the T is primary.
   struct Attr {
     // NOTE T should be a primary type or a struct combined by several primary
     // types.
     // NOTE the STL containers should not use here.
     // Some usages
-    // Attr attr;
-    // T data;
-    // attr.data.assign((char*)data, sizeof(data));
+    //   Attr attr;
+    //   attr.Bool() = true;
 
     bool &Bool() { return As<bool>(); }
     float &Float() { return As<float>(); }
     int32_t &Int32() { return As<int32_t>(); }
     int64_t &Int64() { return As<int64_t>(); }
+    void *&Pointer() { return As<void *>(); }
 
    private:
     template <typename T>
@@ -130,6 +131,7 @@ class Node {
     size_t type_hash_{std::numeric_limits<size_t>::max()};
   };
 
+  // Type checks.
   bool IsFunction() const { return type_ == Node::Type::kFunction; }
   bool IsValue() const { return type_ == Node::Type::kValue; }
   bool IsFunctionBlock() const { return type_ == Node::Type::kFunctionBlock; }
@@ -148,9 +150,6 @@ class Node {
   Type type_{Type::kNone};
   // Mark this node is deleted by some pass.
   bool deleted_{false};
-
-  void *extra_info_;
-
   mutable std::unordered_map<std::string, Attr> attrs_;
 };
 
