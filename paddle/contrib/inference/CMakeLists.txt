@@ -17,10 +17,6 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
-
-set(inference_deps paddle_inference_api paddle_fluid)
-message(STATUS "inference_deps:" ${inference_deps})
-
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
         set(options "")
@@ -29,7 +25,6 @@ function(inference_api_test TARGET_NAME)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
         set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-        message(STATUS "inference_deps 2:" ${inference_deps})
         cc_test(${TARGET_NAME}
                 SRCS ${TARGET_NAME}.cc
                 DEPS "${inference_deps}"
