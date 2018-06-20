@@ -18,7 +18,8 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api)
+set(inference_deps paddle_inference_api paddle_fluid)
+message(STATUS "inference_deps:" ${inference_deps})
 
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
@@ -28,6 +29,7 @@ function(inference_api_test TARGET_NAME)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
         set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
+        message(STATUS "inference_deps 2:" ${inference_deps})
         cc_test(${TARGET_NAME}
                 SRCS ${TARGET_NAME}.cc
                 DEPS "${inference_deps}"
@@ -45,7 +47,7 @@ cc_library(paddle_inference_api
 
 cc_test(test_paddle_inference_api
         SRCS test_paddle_inference_api.cc
-        DEPS paddle_inference_api)
+        DEPS paddle_fluid)
 
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
