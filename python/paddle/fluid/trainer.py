@@ -83,7 +83,7 @@ class EndStepEvent(object):
         epoch_id(int): The current epoch ID.
         step_id(int): The current step ID.
         metrics(list): A list of fetched tensor. The order of this list is same
-        as the :code:`train_func` returns.
+            as the :code:`train_func` returns.
     """
 
     def __init__(self, epoch_id, step_id, metrics):
@@ -99,7 +99,7 @@ class CheckpointConfig(object):
 
     Args:
         checkpoint_dir(str): Directory path to save check point. Default is the
-        current directory.
+            current directory.
 
         max_num_checkpoints(int): The max number of local check points.
         epoch_interval(int): Every number of epoch to save check point.
@@ -389,11 +389,11 @@ class Trainer(object):
         Start the train loop to train the model.
 
         Args:
-            num_epochs: The number of epoch. An epoch will process all data in reader
-            event_handler: The event handler. A function with type (ev:Event)->void
-            reader: A reader creator object. See also
+            num_epochs(int): The number of epoch. An epoch will process all data in reader
+            event_handler(callable): The event handler. A function with type (ev:Event)->void
+            reader(callable): A reader creator object. See also
                 :ref:`api_guide_python_reader` .
-            feed_order: Feeding order of reader. None will following the defining
+            feed_order(list): Feeding order of reader. None will following the defining
                 order in program
 
         Returns:
@@ -427,9 +427,10 @@ class Trainer(object):
 
     def save_params(self, param_path):
         """
-        Save all parameters into :code:`param_path`
+        Save all parameters into :code:`param_path`.
+
         Args:
-            param_path(str): The path to save parameters
+            param_path(str): The path to save parameters.
 
         Returns:
             None
