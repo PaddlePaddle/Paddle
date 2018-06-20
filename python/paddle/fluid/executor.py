@@ -279,7 +279,7 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=True):
         """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
 
         Python executor takes a program, add feed operators and fetch operators to this program according
