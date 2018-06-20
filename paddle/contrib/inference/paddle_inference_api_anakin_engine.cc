@@ -48,7 +48,7 @@ bool PaddleInferenceAnakinPredictor::Run(
     auto d_tensor_in_p = executor_.get_in(input.name);
     float *d_data_p = d_tensor_in_p->mutable_data();
     if (cudaMemcpy(d_data_p,
-                   static_cast<float *>(input.data.data),
+                   static_cast<float *>(input.data.data()),
                    d_tensor_in_p->valid_size() * sizeof(float),
                    cudaMemcpyHostToDevice) != 0) {
       LOG(ERROR) << "copy data from CPU to GPU error";
@@ -65,8 +65,11 @@ bool PaddleInferenceAnakinPredictor::Run(
   for (auto &output : *output_data) {
     auto *tensor = executor_.get_out(output.name);
     output.shape = tensor->shape();
+    if (output.data.length() < tensor->valid_size() * sizeof(float)) {
+      output.data.Resize(tensor->valid_size() * sizeof(float));
+    }
     // Copy data from GPU -> CPU
-    if (cudaMemcpy(output.data.data,
+    if (cudaMemcpy(output.data.data(),
                    tensor->mutable_data(),
                    tensor->valid_size() * sizeof(float),
                    cudaMemcpyDeviceToHost) != 0) {

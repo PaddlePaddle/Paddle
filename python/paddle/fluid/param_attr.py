@@ -22,6 +22,35 @@ __all__ = [
 
 
 class ParamAttr(object):
+    """
+    Parameter attributes object. To fine-tuning network training process, user
+    can set parameter's attributes to control training details. Such as learning rate,
+    regularization, trainable, do_model_average and the method to initialize param.
+
+
+    Args:
+        name(str): The parameter's name. Default None.
+        initializer(Initializer): The method to initial this parameter. Default None.
+        learning_rate(float): The parameter's learning rate. The learning rate when
+            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
+            Default 1.0.
+        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
+        trainable(bool): Whether this parameter is trainable. Default True.
+        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
+            gradient. Default None.
+        do_model_average(bool): Whether this parameter should do model average.
+            Default False.
+
+    Examples:
+        .. code-block:: python
+
+            w_param_attrs = fluid.ParamAttr(name="fc_weight",
+                                            learning_rate=0.5,
+                                            regularizer=fluid.L2Decay(1.0),
+                                            trainable=True)
+            y_predict = fluid.layers.fc(input=x, size=10, param_attr=w_param_attrs)
+    """
+
     def __init__(self,
                  name=None,
                  initializer=None,
@@ -29,7 +58,7 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  gradient_clip=None,
-                 do_model_average=None):
+                 do_model_average=False):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
@@ -39,6 +68,16 @@ class ParamAttr(object):
         self.model_average = do_model_average
 
     def set_default_initializer(self, initializer):
+        """
+        Set the default initializer, the initializer should be Constant,
+        Uniform, Normal, Xavier, MSRA.
+
+        Args:
+            initializer(Initializer): the initializer to set.
+
+        Returns:
+            None
+        """
         if initializer is None:
             if self.initializer is None:
                 raise ValueError("ParamAttr.initializer is not set")
@@ -50,13 +89,45 @@ class ParamAttr(object):
         self.initializer = initializer
 
     def set_default_param_initializer(self):
+        """
+        Set the default initializer for the parameter with Xavier.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
         self.set_default_initializer(Xavier())
 
     def set_default_bias_initializer(self):
+        """
+        Set the default initializer for the bias with Constant(0.0).
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
         self.set_default_initializer(Constant(0.0))
 
     @staticmethod
     def to_attr(arg):
+        """
+        Create ParamAttr[s].
+
+        Args:
+            arg: Arguments to initialize ParamAttr[s]. arg's type can be
+                str, Initializer, float, WeightDecayRegularizer, BaseGradientClipAttr,
+                bool, ParamAttr, or a list of above type.
+
+        Returns:
+            ParamAttr[s]: ParamAttr[s] initialized with arg.
+
+        Raises:
+            arg can not initialize a ParamAttr.
+        """
         if arg is None:
             return ParamAttr()
         elif isinstance(arg, list) or isinstance(arg, tuple):
@@ -75,6 +146,15 @@ class ParamAttr(object):
             raise TypeError("{0} cast to ParamAttr".format(type(arg)))
 
     def to_kwargs(self, with_initializer=False):
+        """
+        Returns the attributes of this parameter.
+
+        Args:
+            with_initializer(bool): Whether to add initializer attr.
+
+        Returns:
+            Parameter attributes(map): The attributes of this parameter.
+        """
         kwargs = {
             'name': self.name,
             'optimize_attr': {
@@ -92,9 +172,27 @@ class ParamAttr(object):
 
 class WeightNormParamAttr(ParamAttr):
     """
-    Used for weight normalization. Any field in ParamAttr can also be set here.
-    Besides, an extra field dim can be set to indicate the dimension except
-    which to normalize.
+    Used for weight Norm. Weight Norm is a reparameterization of the weight vectors
+    in a neural network that decouples the length of those weight vectors from
+    their direction. Weight Norm has been implemented as discussed in this
+    paper: `Weight Normalization: A Simple Reparameterization to Accelerate
+    Training of Deep Neural Networks
+    <https://arxiv.org/pdf/1602.07868.pdf>`_.
+
+    Args:
+        dim(list): The parameter's name. Default None.
+        kwargs: Any field in ParamAttr. Default None.
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
+            fc = fluid.layers.fc(input=data,
+                                 size=1000,
+                                 param_attr=WeightNormParamAttr(
+                                      dim=None,
+                                      name='weight_norm_param'))
+
     """
     # List to record the parameters reparameterized by weight normalization.
     # If these parameters are treated as Variable rather than Parameter,

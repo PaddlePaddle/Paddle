@@ -27,13 +27,30 @@ __all__ = ['Inferencer', ]
 
 
 class Inferencer(object):
+    """
+    Inferencer High Level API.
+
+    Args:
+        infer_func (Python func): Infer function that will return predict Variable
+        param_path (str): The path where the inference model is saved by fluid.io.save_params
+        place (Place): place to do the inference
+        parallel (bool): use parallel_executor to run the inference, it will use multi CPU/GPU.
+
+    Examples:
+        .. code-block:: python
+
+            def inference_program():
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                return y_predict
+
+            place = fluid.CPUPlace()
+            inferencer = fluid.Inferencer(
+                infer_func=inference_program, param_path="/tmp/model", place=place)
+
+    """
+
     def __init__(self, infer_func, param_path, place=None, parallel=False):
-        """
-        :param infer_func: a function that will return predict Variable
-        :param param_path: the path where the inference model is saved by fluid.io.save_params
-        :param place: place to do the inference
-        :param parallel: use parallel_executor to run the inference, it will use multi CPU/GPU.
-        """
         self.param_path = param_path
         self.scope = core.Scope()
         self.parallel = parallel
@@ -60,9 +77,20 @@ class Inferencer(object):
 
     def infer(self, inputs, return_numpy=True):
         """
-        :param inputs: a map of {"input_name": input_var} that will be feed into the inference program
-        to get the predict value
-        :return: the predict value of the inference model
+        Do Inference for Inputs
+
+        Args:
+            inputs (map): a map of {"input_name": input_var} that will be feed into the inference program
+            return_numpy (bool): transform return value into numpy or not
+
+        Returns:
+            Tensor or Numpy: the predict value of the inference model for the inputs
+
+        Examples:
+            .. code-block:: python
+
+                tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
+                results = inferencer.infer({'x': tensor_x})
         """
         if not isinstance(inputs, dict):
             raise ValueError(
