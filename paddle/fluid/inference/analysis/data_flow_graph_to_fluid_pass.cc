@@ -16,6 +16,8 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/inference/analysis/analyzer.h"
+#include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -59,7 +61,8 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
         AddFluidOp(&(*it));
       } break;
       case Node::Type::kFunctionBlock: {
-        LOG(INFO) << "add engine op " << it->repr();
+        LOG(INFO) << "add engine op " << it->repr() << " , "
+                  << static_cast<FunctionBlock*>(&(*it))->subgraph.size();
         AddEngineOp(&(*it));
       } break;
       default:
@@ -83,9 +86,9 @@ void DataFlowGraphToFluidPass::AddFluidOp(Node* node) {
 void CreateTrtEngineOp(Node* node, const DataFlowGraph& graph,
                        const framework::proto::BlockDesc& block) {
   static int counter{0};
-  PADDLE_ENFORCE(node->IsFunction());
+  PADDLE_ENFORCE(node->IsFunctionBlock());
   framework::OpDesc desc;
-  auto* func = static_cast<Function*>(node);
+  auto* func = static_cast<FunctionBlock*>(node);
 
   // collect inputs
   std::vector<std::string> io;
@@ -116,6 +119,8 @@ std::vector<std::string> ExtractParameters(
     const std::vector<std::unique_ptr<Node>>& nodes) {
   std::vector<std::string> parameters;
   for (const auto& node : nodes) {
+    if (!node->IsValue()) continue;
+    PADDLE_ENFORCE(!node->pb_msg().empty(), "pb_msg should be set first");
     framework::proto::VarDesc var;
     var.ParseFromString(node->pb_msg());
     if (var.persistable()) {
@@ -126,10 +131,6 @@ std::vector<std::string> ExtractParameters(
 }
 
 void DataFlowGraphToFluidPass::AddEngineOp(Node* node) {
-  // auto* ori_op =
-  // static_cast<framework::proto::OpDesc*>(node->extra_info());
-  // auto* main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
-  // auto* op = main_block->add_ops();
   // TODO(Superjomn) Here need to expose some arguments for default setting.
   PADDLE_ENFORCE(node->IsFunctionBlock());
   auto* block_node = static_cast<FunctionBlock*>(node);
@@ -142,6 +143,24 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node* node) {
     op->Proto()->ParseFromString(node->pb_msg());
   }
   CreateTrtEngineOp(node, *argument_->main_dfg, *block_desc.Proto());
+}
+
+namespace {
+class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
+ public:
+  using Config = DFG_GraphvizDrawPass::Config;
+  DFG_DebuggerPass(const Config& config) : DFG_GraphvizDrawPass(config) {}
+
+  std::string repr() const override { return "dfg-to-fluid-debuger-pass"; }
+
+  bool Finalize() override { return true; }
+};
+}
+
+Pass* DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
+  return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
+      FLAGS_inference_analysis_graphviz_log_root,
+      "data_flow_graph_to_fluid_graphviz_debugger"));
 }
 
 }  // namespace analysis

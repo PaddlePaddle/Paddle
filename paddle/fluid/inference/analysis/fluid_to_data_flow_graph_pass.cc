@@ -15,6 +15,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "analyzer.h"
+#include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 
 namespace paddle {
@@ -82,9 +84,19 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
   graph->Build();
 }
 
-Pass *FluidToDataFlowGraphPass::CreatePrinterPass(
-    std::ostream &os, const std::string &banner) const {
-  return nullptr;
+namespace {
+class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
+ public:
+  using Config = DFG_GraphvizDrawPass::Config;
+  DFG_DebuggerPass(const Config &config) : DFG_GraphvizDrawPass(config) {}
+  std::string repr() const override { return "fluid-to-dfg-debuger-pass"; }
+  bool Finalize() override { return true; }
+};
+}
+
+Pass *FluidToDataFlowGraphPass::CreateGraphvizDebugerPass() const {
+  return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
+      FLAGS_inference_analysis_graphviz_log_root, "fluid-to-dfg-debuger"));
 }
 
 }  // namespace analysis

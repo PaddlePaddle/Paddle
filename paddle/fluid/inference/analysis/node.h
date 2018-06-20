@@ -117,7 +117,7 @@ class Node {
   void *pb_desc() const { return attr("pb_desc").Pointer(); }
 
   void SetPbMsg(const std::string &s) { attr("pb_msg").String() = s; }
-  const std::string &pb_msg() const { return attr("pb_desc").String(); }
+  const std::string &pb_msg() const { return attr("pb_msg").String(); }
 
   void SetDeleted() { deleted_ = true; }
   bool deleted() const { return deleted_; }

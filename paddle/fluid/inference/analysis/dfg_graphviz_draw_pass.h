@@ -57,13 +57,18 @@ class DFG_GraphvizDrawPass : public DataFlowGraphPass {
     return "Debug a DFG by draw with graphviz";
   }
 
- private:
+ protected:
+  // A counter to add a number prefix to the debugger image output so that they
+  // will sort in the triggered order.
+  static int counter_;
+
   // Path of the dot file to output.
   std::string GenDotPath() const {
-    return config_.dir + "/" + "graph_" + config_.id + ".dot";
+    return config_.dir + "/" + std::to_string(counter_++) + "-graph_" +
+           config_.id + ".dot";
   }
 
-  std::string Draw(DataFlowGraph *graph);
+  virtual std::string Draw(DataFlowGraph *graph);
 
   Config config_;
 };

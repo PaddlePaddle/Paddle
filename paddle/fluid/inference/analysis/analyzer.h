@@ -48,8 +48,8 @@ namespace analysis {
 
 // TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
 // flag if not available.
-DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
-            "Enable subgraph to TensorRT engine for acceleration");
+DECLARE_bool(inference_analysis_enable_tensorrt_subgraph_engine);
+DECLARE_string(inference_analysis_graphviz_log_root);
 
 class Analyzer : public OrderedRegistry<PassManager> {
  public:

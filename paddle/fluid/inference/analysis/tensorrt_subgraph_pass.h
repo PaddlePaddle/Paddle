@@ -38,6 +38,8 @@ class TensorRTSubGraphPass : public DataFlowGraphPass {
   // sub-graph into TensorRT.
   void Run(DataFlowGraph* graph) override;
 
+  bool Finalize() override { return true; }
+
   std::string repr() const { return "tensorrt-sub-graph"; }
   std::string description() const { return "tensorrt sub graph pass"; }
 

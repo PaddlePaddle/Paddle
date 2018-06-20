@@ -99,7 +99,7 @@ template <typename T>
 class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
-    PADDLE_ENFORCE(!dic_.count(name));
+    PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
     dic_[name] = data_.size();
     data_.emplace_back(std::unique_ptr<T>(x));
     return data_.back().get();

@@ -18,6 +18,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+int DFG_GraphvizDrawPass::counter_{0};
+
 void DFG_GraphvizDrawPass::Run(DataFlowGraph *graph) {
   auto content = Draw(graph);
   auto dot_path = GenDotPath();
@@ -27,7 +29,7 @@ void DFG_GraphvizDrawPass::Run(DataFlowGraph *graph) {
 
   auto png_path = dot_path.substr(0, dot_path.size() - 4) + ".png";
   std::string message;
-  LOG(INFO) << "draw " << dot_path << " to " << png_path;
+  LOG(INFO) << "draw to " << png_path;
   ExecShellCommand("dot -Tpng " + dot_path + " -o " + png_path, &message);
 }
 

@@ -123,7 +123,8 @@ void SubGraphFuse::ReplaceNodesWithSubGraphs() {
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
-    auto *block_node = graph_->nodes.Create(Node::Type::kFunctionBlock);
+    auto *block_node = static_cast<FunctionBlock *>(
+        graph_->nodes.Create(Node::Type::kFunctionBlock));
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
     block_node->inlinks = std::move(io.first);
     block_node->outlinks = std::move(io.second);
@@ -131,6 +132,7 @@ void SubGraphFuse::ReplaceNodesWithSubGraphs() {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
       // pass.
       node->SetDeleted();
+      block_node->subgraph.push_back(node);
     }
 
     // Change all the sub-graph's inputs and outputs corresponding inlink and

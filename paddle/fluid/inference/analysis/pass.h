@@ -60,6 +60,9 @@ class Pass {
     return nullptr;
   }
 
+  // Create a debugger Pass that draw the DFG by graphviz toolkit.
+  virtual Pass *CreateGraphvizDebugerPass() const { return nullptr; }
+
   // Run on a single Node.
   virtual void Run(Node *x) { LOG(FATAL) << "not valid"; }
   // Run on a single Function.
