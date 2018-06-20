@@ -97,7 +97,7 @@ def dist_transpile(trainer_id, args):
         return train_program, fluid.default_startup_program()
     else:
         raise ValueError(
-            'TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
+            'PADDLE_TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
         )
 
 
