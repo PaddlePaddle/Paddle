@@ -259,7 +259,9 @@ def monkey_patch_reader_methods(reader):
     return reader
 
 
-def _copy_reader_var_(block, var):
+def _copy_reader_var_(block, var, newname=None):
+    if newname == None:
+        newname = var.name
     new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
@@ -691,68 +693,80 @@ def load(out, file_path, load_as_fp16=None):
     helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)
 
 
-def get_test_program(filelist, test_program=None, startup_program=None):
-    """
-    Transpile current program to read test dataset if the program
-    is using reader ops like "open_files_op".
+def _is_reader_op(op, block):
+    if "Out" in op.output_names:
+        reader_out = block.vars[op.output("Out")[0]]
+        if reader_out.type == core.VarDesc.VarType.READER:
+            return True
+    return False
 
-    Args:
-        filelist (list): list of test file paths.
-        test_program (Program|None): program to run test/evaluation.
-            default use fluid.default_main_program()
-        startup_program (Program|None): startup program to change,
-            default use fluid.default_startup_program()
-    
-    Returns:
-        Program: program for test
+
+def get_test_program(filelist, program=None, startup_program=None):
     """
-    if test_program == None:
+    Transpile current train program to a program to read test dataset
+    if the program is using reader ops like "open_files_op".
+    """
+    if program == None:
         program = default_main_program()
     if startup_program == None:
         startup_program = default_startup_program()
 
     # 1. find out the orignal reader var name
-    open_files_var = None
-    train_open_files_op = None
+    # open_files_var = None
+    # train_open_files_op = None
+    startup_reader_op_list = []
+
     for op in startup_program.global_block().ops:
-        if op.type == "open_files":
-            train_open_files_op = op
-            open_files_var_name = op.output("Out")[0]
-            open_files_var = startup_program.global_block().vars[
-                open_files_var_name]
+        if _is_reader_op(op, startup_program.global_block()):
+            startup_reader_op_list.append(op)
 
-    # 2. add operator to startup to read open and read test data files
-    test_startup_var = startup_program.global_block().create_var(
-        name=open_files_var.name + "_test")
+    if len(startup_reader_op_list) == 0:
+        return program
 
-    print("creating openfiles for test reader: ", train_open_files_op.attrs)
-    startup_program.global_block().append_op(
-        type='open_files',
-        outputs={'Out': [test_startup_var]},
-        attrs={
-            'shape_concat': train_open_files_op.attrs["shape_concat"],
-            'lod_levels': train_open_files_op.attrs["lod_levels"],
-            'ranks': train_open_files_op.attrs["ranks"],
-            'file_names': filelist,
-            'thread_num': train_open_files_op.attrs["thread_num"],
-            'buffer_size': train_open_files_op.attrs["buffer_size"]
-        })
-    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in ["float32", "int64"]]
-    test_startup_var.desc.set_dtypes(dtypes)
-    test_startup_var.persistable = True
-    _copy_reader_var_(default_main_program().global_block(), test_startup_var)
+    root_reader_op = startup_reader_op_list[0]
+
+    # 2. add operators to startup to read open and read test data files
+    for op in startup_reader_op_list:
+        orig_var_name = op.output("Out")[0]
+        orig_var = startup_program.global_block().vars[orig_var_name]
+        new_test_var = _copy_reader_var_(
+            startup_program.global_block(),
+            orig_var,
+            newname=orig_var_name + "_test")
+
+        # for open_files like operators have no input.
+        inputs = None
+        if "UnderlyingReader" in op.input_names:
+            orig_input_var_name = op.input("UnderlyingReader")[0]
+            orig_input_var = startup_program.global_block().vars[
+                orig_input_var_name]
+            new_input_var = _copy_reader_var_(
+                startup_program.global_block(),
+                orig_input_var,
+                newname=orig_input_var_name + "_test")
+            inputs = {"UnderlyingReader": new_input_var}
+        test_op = startup_program.global_block().append_op(
+            type=op.type,
+            inputs=inputs,
+            outputs={'Out': [new_test_var]},
+            attrs=op.attrs)
+        # root reader op's filelist attr for read test files
+        if op.type == root_reader_op.type:
+            test_op.set_attr("file_names", filelist)
+        if op.type == "create_multi_pass_reader":
+            test_op.set_attr("pass_num", 1)
 
     # 3. rename reader vars in inference program to different name
     #    to avoid read from train data.
-    program.global_block().rename_var(open_files_var.name,
-                                      test_startup_var.name)
+    origname = root_reader_op.output("Out")[0]
+    newname = origname + "_test"
+    program.global_block().rename_var(str(origname), str(newname))
     for op in program.global_block().ops:
-        if "Out" in op.output_names:
-            op_out_var_name = op.output("Out")[0]
-            op_out_var = program.global_block().vars[op_out_var_name]
-            if op_out_var.type == core.VarDesc.VarType.READER:
-                newname = op_out_var.name + "_test"
-                program.global_block().rename_var(op_out_var.name, newname)
+        if _is_reader_op(op, program.global_block()):
+            origname = op.output("Out")[0]
+            newname = origname + "_test"
+            program.global_block().rename_var(str(origname), str(newname))
+
         if op.type == "create_multi_pass_reader":
             op.set_attr("pass_num", 1)
 
