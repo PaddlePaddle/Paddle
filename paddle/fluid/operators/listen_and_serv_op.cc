@@ -101,13 +101,16 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list) const {
   size_t num_blocks = program->Size();
+  auto skip_sub_blks = Attr<std::vector<int>>("skip_sub_blks");
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
   std::vector<int> optimize_block_id_list;
   for (int blkid = 1; blkid < num_blocks; ++blkid) {
     if (std::find(prefetch_block_id_list.begin(), prefetch_block_id_list.end(),
-                  blkid) == prefetch_block_id_list.end()) {
+                  blkid) == prefetch_block_id_list.end() &&
+        std::find(skip_sub_blks.begin(), skip_sub_blks.end(), blkid) ==
+            skip_sub_blks.end()) {
       optimize_block_id_list.push_back(blkid);
     }
   }
@@ -344,6 +347,11 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
+    AddAttr<std::vector<int>>("skip_sub_blks",
+                              "do not parallel execute the specify sub blocks, "
+                              "it's used for the op which has"
+                              "condition blocks")
+        .SetDefault({});
   }
 };
 
