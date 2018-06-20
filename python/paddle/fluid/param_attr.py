@@ -71,6 +71,12 @@ class ParamAttr(object):
         """
         Set the default initializer, the initializer should be Constant,
         Uniform, Normal, Xavier, MSRA.
+
+        Args:
+            initializer(Initializer): the initializer to set.
+
+        Returns:
+            None
         """
         if initializer is None:
             if self.initializer is None:
@@ -85,12 +91,24 @@ class ParamAttr(object):
     def set_default_param_initializer(self):
         """
         Set the default initializer for the parameter with Xavier.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         self.set_default_initializer(Xavier())
 
     def set_default_bias_initializer(self):
         """
         Set the default initializer for the bias with Constant(0.0).
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         self.set_default_initializer(Constant(0.0))
 
