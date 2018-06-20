@@ -78,7 +78,12 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
+  // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
+  if (nullptr == dso_handle) {
+    dso_handle =
+        dlopen(join("/usr/local/lib/", dso_path).c_str(), dynload_flags);
+  }
 
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
 // bring System Integrity Projection (SIP), if dso_handle
@@ -99,6 +104,10 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   }
 #endif
 
+  if (nullptr == dso_handle) {
+    LOG(WARNING) << "Can not find library: " << dso_path
+                 << ". Please try to set add the lib path to LD_LIBRARY_PATH.";
+  }
   return dso_handle;
 }
 
