@@ -97,6 +97,15 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 }
 
+static bool InplaceConvWeights(const std::string& name,
+                               const OperatorWithKernel& op) {
+#ifdef PADDLE_WITH_MKLDNN
+  return name.find("conv2d") == 0 && name.find("GRAD") == std::string::npos &&
+         op.Attr<bool>("is_test");
+#endif
+  return false;
+}
+
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(10) << "- " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
@@ -353,6 +362,12 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
   return var == nullptr ? nullptr
                         : GetTensorFromVar(const_cast<Variable*>(var));
+}
+
+template <>
+Tensor* ExecutionContext::MutableInput<Tensor>(const std::string& name) const {
+  auto* var = MutableInputVar(name);
+  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
 }
 
 template <>
@@ -721,7 +736,8 @@ Scope* OperatorWithKernel::TryTransferData(
 
       auto out_var_names = OutputVars(true);
       if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
+              out_var_names.end() ||
+          InplaceConvWeights(var_name, *this)) {
         transfered_inplace_vars->emplace_back(var_name);
       }
 

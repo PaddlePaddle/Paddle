@@ -228,7 +228,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto* input = ctx.Input<Tensor>("Input");
-    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* filter = ctx.MutableInput<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
@@ -242,6 +242,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+    bool is_test = ctx.Attr<bool>("is_test");
 
     // TODO(pzelazko-intel) add support for group convolution and dilation
     PADDLE_ENFORCE(groups == 1, "group convolution is not implemented yet");
@@ -305,8 +306,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // create reorder primitive if the input format is not the preferred one
     auto src_memory_p =
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
+    auto primitives_num = pipeline.size();
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline);
+    bool are_weights_reordered = pipeline.size() == primitives_num + 1;
     auto dst_memory_p =
         handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
 
@@ -320,6 +323,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
+
+    // Save reorderd weights. Currently only for inference as it lowers
+    // performance for training.
+    if (are_weights_reordered && is_test) {
+      std::memcpy(to_void_cast(filter_data), weights_memory_p->get_data_handle(),
+                  filter->memory_size());
+      filter->set_format(GetMKLDNNFormat(*weights_memory_p));
+    }
   }
 
  private:
