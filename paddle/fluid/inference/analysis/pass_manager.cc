@@ -12,35 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
-
-#include <gtest/gtest.h>
-#include <fstream>
-#include <string>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/analysis/pass_manager.h"
+#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
-  auto dfg = ProgramDescToDFG(*argument.origin_program_desc);
-  DFG_GraphvizDrawPass::Config config("./", "test");
-  DFG_GraphvizDrawPass pass(config);
-  pass.Initialize(&argument);
-  pass.Run(&dfg);
-
-  // test content
-  std::ifstream file("./graph_test.dot");
-  ASSERT_TRUE(file.is_open());
-
-  std::string line;
-  int no{0};
-  while (std::getline(file, line)) {
-    no++;
+void DfgPassManager::RunAll() {
+  PADDLE_ENFORCE(argument_);
+  for (auto& pass : data_) {
+    VLOG(4) << "Running pass [" << pass->repr() << "]";
+    pass->Run(argument_->main_dfg.get());
   }
-  // DFG is sensitive to ProgramDesc, be careful to change the existing models.
-  ASSERT_EQ(no, 112);
+}
+
+void NodePassManager::RunAll() {
+  PADDLE_ENFORCE(argument_);
+  PADDLE_ENFORCE(argument_->main_dfg.get());
+  auto trait =
+      GraphTraits<DataFlowGraph>(argument_->main_dfg.get()).nodes_in_DFS();
+  for (auto& node : trait) {
+    for (auto& pass : data_) {
+      pass->Run(&node);
+    }
+  }
 }
 
 }  // namespace analysis
