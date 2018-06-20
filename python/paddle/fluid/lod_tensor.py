@@ -19,33 +19,41 @@ __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 
 
 def create_lod_tensor(data, lod, place):
-    """Create a lod tensor from a numpy array, a list, or an existing lod tensor.
+    """
+    Create a lod tensor from a numpy array, a list, or an existing lod tensor.
 
     Create a lod tensor by doing the following:
+
     1. Check that the length-based input lod is valid.
+
     2. Convert the length-based lod to a offset-based LoD.
-    3. Copy the data from a numpy array, a list or a existing lod tensor to 
+
+    3. Copy the data from a numpy array, a list or a existing lod tensor to
        CPU or GPU device (based on input place).
+
     4. Set the level of detail (LoD) using the offset-based LoD.
     
-    Use example:
-    Suppose we want LoDTensor to hold data for sequences of word, where each word is
-    represented by an integer. If we want to create a LoDTensor to represent two 
-    sentences, one of 2 words, and one of 3 words. 
+    Examples:
 
-    Then 'data' can be a numpy array of integers with shape (5, 1).
-    'lod' will be [[2, 3]], indicating the length(# of words) in each sentence.
-    This length-based input lod [[2, 3]] will be converted to offset-based lod [[0, 2, 5]]
-    inside the function call.
+        Suppose we want LoDTensor to hold data for sequences of word, where each
+        word is represented by an integer. If we want to create a LoDTensor to
+        represent two  sentences, one of 2 words, and one of 3 words.
 
-    Please refer to 
-    github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/lod_tensor.md
-    for more details regarding LoD.
+        Then :code:`data` can be a numpy array of integers with shape (5, 1).
+        :code:`lod` will be [[2, 3]], indicating the length(# of words) in each
+        sentence. This length-based input lod [[2, 3]] will be converted to
+        offset-based lod [[0, 2, 5]] inside the function call.
+
+    Please reference :ref:`api_guide_low_level_lod_tensor` for more details
+    regarding LoD.
 
     Args:
-        data: a numpy array or a LoDTensor or a list holding the data to be copied.
-        lod: a list of lists indicating the length-based LoD info specified by the user. 
-        place: CPU or GPU place indicating where the data in the new LoDTensor will be stored.
+        data(numpy.ndarray|list|LoDTensor): a numpy array or a LoDTensor or a
+            list holding the data to be  copied.
+        lod(list): a list of lists indicating the length-based LoD info
+            specified by the user.
+        place(Place): CPU or GPU place indicating where the data in the new
+            LoDTensor will be stored.
 
     Returns:
         A fluid LoDTensor object with tensor data and lod info.
@@ -77,31 +85,38 @@ def create_lod_tensor(data, lod, place):
 
 
 def create_random_int_lodtensor(lod, base_shape, place, low, high):
-    """Create a LoDTensor containing random integers.
+    """
+    Create a LoDTensor containing random integers.
 
-    This function is frequently used in the book examples. So we revised it based on 
-    the new create_lod_tensor API and put it here in the lod_tensor module to simplify 
-    the code. 
+    This function is frequently used in the book examples. So we revised it
+    based on the new create_lod_tensor API and put it here in the lod_tensor
+    module to simplify the code.
 
     The function does the following:
-    1. Calculate the overall shape of the LoDTensor based on the length-based 'lod' input 
-    and the shape of the basic element in 'base_shape'.
+
+    1. Calculate the overall shape of the LoDTensor based on the length-based
+       :code:`lod` input and the shape of the basic element in
+       :code:`base_shape`.
+
     2. Create a numpy array of this shape.
+
     3. Create the LoDTensor using create_lod_tensor API.
 
-    Suppose we want LoDTensor to hold data for sequences of word, where each word is
-    represented by an integer. If we want to create a LoDTensor to represent two 
-    sentences, one of 2 words, and one of 3 words. Then 'base_shape' is [1], input 
-    length-based 'lod' is [[2, 3]]. Then the overall shape of the LoDTensor would be 
-    [5, 1], holding 5 words for two sentences. 
+    Suppose we want LoDTensor to hold data for sequences of word, where each
+    word is represented by an integer. If we want to create a LoDTensor to
+    represent two sentences, one of 2 words, and one of 3 words. Then
+    'base_shape' is [1], input length-based 'lod' is [[2, 3]]. Then the overall
+    shape of the LoDTensor would be [5, 1], holding 5 words for two sentences.
 
     Args:
-        data: a numpy array or a LoDTensor holding the data to be copied.
-        lod: a list of lists indicating the length-based LoD info specified by the user.
-        base_shape: the shape of the basic element to be held by the LoDTensor. 
-        place: CPU or GPU place indicating where the data in the new LoDTensor will be stored.
-        low: the lower bound of the random integers.
-        high: the upper bound of the random integers.
+        lod(list): a list of lists indicating the length-based LoD info
+            specified by the user.
+        base_shape(list): the shape of the basic element to be held by the
+            LoDTensor.
+        place(Place): CPU or GPU place indicating where the data in the new
+            LoDTensor will be stored.
+        low(int): the lower bound of the random integers.
+        high(int): the upper bound of the random integers.
 
     Returns:
         A fluid LoDTensor object with tensor data and lod info. 
