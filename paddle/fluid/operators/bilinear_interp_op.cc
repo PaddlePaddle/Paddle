@@ -113,5 +113,4 @@ REGISTER_OPERATOR(bilinear_interp_grad, ops::BilinearInterpOpGrad);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::BilinearInterpKernel<float>,
                        ops::BilinearInterpKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(bilinear_interp_grad,
-                       ops::BilinearInterpGradKernel<float>,
-                       ops::BilinearInterpGradKernel<uint8_t>);
+                       ops::BilinearInterpGradKernel<float>);
