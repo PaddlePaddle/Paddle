@@ -18,7 +18,7 @@ from framework import Program, default_main_program, Variable
 from . import core
 
 __all__ = [
-    'Executor', 'global_scope', 'scope_guard', 'switch_scope', 'fetch_var'
+    'Executor', 'global_scope', 'scope_guard', '_switch_scope', 'fetch_var'
 ]
 
 g_scope = core.Scope()
@@ -35,7 +35,7 @@ def global_scope():
     return g_scope
 
 
-def switch_scope(scope):
+def _switch_scope(scope):
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -57,12 +57,27 @@ def scope_guard(scope):
     Args:
         scope: The new global/default scope.
     """
-    ex = switch_scope(scope)
+    ex = _switch_scope(scope)
     yield
-    switch_scope(ex)
+    _switch_scope(ex)
 
 
 def as_numpy(tensor):
+    """
+    Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
+    For higher dimensional sequence data, please use LoDTensor directly.
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> outs = executor.run(...)
+        >>> np_outs = map(lambda x: as_numpy(x), outs)
+        >>>     ...
+
+    Args:
+       tensor(Variable): a instance of Tensor
+
+    Returns:
+        numpy.ndarray
+    """
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
@@ -186,7 +201,7 @@ def fetch_var(name, scope=None, return_numpy=True):
     return tensor
 
 
-def get_program_cache_key(feed, fetch_list):
+def _get_program_cache_key(feed, fetch_list):
     feed_var_names = feed.keys()
 
     def to_name_str(var):
@@ -232,6 +247,23 @@ class Executor(object):
         self.program_caches = dict()
 
     def as_lodtensor(self, data):
+        """
+        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
+        For higher dimensional sequence data, please use LoDTensor directly.
+
+        Examples:
+            >>> import paddle.fluid as fluid
+            >>> exe = fluid.executor(fluid.CPUPlace())
+            >>> data = np.array(size=(100, 200, 300))
+            >>> np_outs = map(lambda x: exec.as_lodtensor(x), data)
+            >>>     ...
+
+        Args:
+            data(numpy.ndarray): a instance of array
+
+        Returns:
+            LoDTensor
+        """
         if isinstance(data, list):
             raise RuntimeError("Some of your feed data hold LoD information. \
                 They can not be completely cast from a list of Python \
@@ -385,7 +417,7 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        cache_key = get_program_cache_key(feed, fetch_list)
+        cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
             cached_program = self._get_program_cache(cache_key)
             if cached_program is None:
