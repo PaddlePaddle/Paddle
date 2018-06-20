@@ -26,7 +26,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 char* EncodeVarint32(char* dst, uint32_t v) {
   // Operate on characters as unsigneds
@@ -144,6 +144,6 @@ class ProtoEncodeHelper {
   char* limit_;  // Just for CHECKs
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

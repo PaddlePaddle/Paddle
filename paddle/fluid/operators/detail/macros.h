@@ -15,13 +15,13 @@
 #pragma once
 
 #ifdef PADDLE_WITH_GRPC
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#define RPCSERVER_T detail::AsyncGRPCServer
-#define RPCCLIENT_T detail::GRPCClient
+#include "paddle/fluid/operators/distributed/grpc_client.h"
+#include "paddle/fluid/operators/distributed/grpc_server.h"
+#define RPCSERVER_T distributed::AsyncGRPCServer
+#define RPCCLIENT_T distributed::GRPCClient
 #else
-#include "paddle/fluid/operators/detail/brpc_client.h"
-#include "paddle/fluid/operators/detail/brpc_server.h"
-#define RPCSERVER_T detail::AsyncBRPCServer
-#define RPCCLIENT_T detail::BRPCClient
+#include "paddle/fluid/operators/distributed/brpc_client.h"
+#include "paddle/fluid/operators/distributed/brpc_server.h"
+#define RPCSERVER_T distributed::AsyncBRPCServer
+#define RPCCLIENT_T distributed::BRPCClient
 #endif

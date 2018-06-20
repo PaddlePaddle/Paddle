@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/distributed/variable_response.h"
 
 #include <string>
 #include <utility>
@@ -22,12 +22,12 @@
 #endif
 #include "paddle/fluid/platform/profiler.h"
 
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 enum WireType {
   WIRETYPE_VARINT = 0,
@@ -158,13 +158,13 @@ bool VariableResponse::CopySelectRowsTensorData(
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
-  PADDLE_ENFORCE_EQ(
-      static_cast<size_t>(tensor->numel()),
-      length / framework::SizeOfType(
-                   paddle::operators::detail::ToTypeIndex(meta_.data_type())));
+  PADDLE_ENFORCE_EQ(static_cast<size_t>(tensor->numel()),
+                    length / framework::SizeOfType(
+                                 paddle::operators::distributed::ToTypeIndex(
+                                     meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
-      paddle::operators::detail::ToTypeIndex(meta_.data_type()));
+      paddle::operators::distributed::ToTypeIndex(meta_.data_type()));
 
   if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
     return false;
@@ -480,6 +480,6 @@ int VariableResponse::Parse(Source* source) {
   return 0;
 }
 
-};  // namespace detail
+};  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

@@ -17,11 +17,11 @@ limitations under the License. */
 //       file and did some modifications so that we can send gRPC
 //       requests without too much copying of the tensor data.
 
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
+#include "paddle/fluid/operators/distributed/bytebuffer_stream.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 GrpcByteBufferSource::GrpcByteBufferSource() {}
 
@@ -83,6 +83,6 @@ google::protobuf::int64 GrpcByteBufferSource::ByteCount() const {
   return byte_count_;
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

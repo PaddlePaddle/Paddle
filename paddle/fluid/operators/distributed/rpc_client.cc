@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/detail/rpc_client.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 std::once_flag RPCClient::init_flag_;
 std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

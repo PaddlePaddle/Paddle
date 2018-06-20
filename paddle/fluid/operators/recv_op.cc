@@ -43,8 +43,8 @@ class RecvOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<RPCCLIENT_T>();
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];

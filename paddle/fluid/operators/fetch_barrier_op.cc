@@ -42,8 +42,8 @@ class FetchBarrierOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<RPCCLIENT_T>();
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
     rpc_client->Wait();
 

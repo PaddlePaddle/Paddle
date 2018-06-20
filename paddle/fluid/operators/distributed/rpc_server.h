@@ -19,11 +19,11 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class RPCServer {
  public:
@@ -86,6 +86,6 @@ class RPCServer {
   friend class RequestHandler;
 };
 
-};  // namespace detail
+};  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

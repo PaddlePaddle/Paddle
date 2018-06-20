@@ -28,11 +28,11 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class RequestSendHandler final : public RequestHandler {
  public:
@@ -66,6 +66,6 @@ class RequestPrefetchHandler final : public RequestHandler {
               const std::string& out_var_name = "") override;
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
