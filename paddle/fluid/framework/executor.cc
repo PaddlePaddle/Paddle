@@ -295,13 +295,14 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id) {
-  auto* ctx = new ExecutorPrepareContext(program, block_id);
+  std::unique_ptr<ExecutorPrepareContext> ctx(
+      new ExecutorPrepareContext(program, block_id));
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return std::unique_ptr<ExecutorPrepareContext>(ctx);
+  return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
@@ -406,6 +407,9 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
+#else
+  LOG(WARNING)
+      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
 #endif
 }
 

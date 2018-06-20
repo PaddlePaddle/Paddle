@@ -12,22 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/contrib/tape/variable.h"
-
-namespace paddle {
-namespace tape {
-
-void Variable::InitializeVariable() {
-  LOG(INFO) << "Initialzing " << desc_.Name() << " as " << desc_.GetType();
-  framework::proto::VarType::Type var_type = desc_.GetType();
-  if (var_type == framework::proto::VarType::LOD_TENSOR) {
-    var_.GetMutable<framework::LoDTensor>();
-  } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
-    var_.GetMutable<framework::SelectedRows>();
-  } else {
-    PADDLE_THROW("Variable type %d is not in [LOD_TENSOR, SELECTED_ROWS]",
-                 var_type);
-  }
-}
-}
-}
+#include "paddle/fluid/inference/analysis/argument.h"

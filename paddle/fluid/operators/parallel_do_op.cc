@@ -295,7 +295,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
-            framework::AttributeMap{});
+            framework::AttributeMap{{"use_mkldnn", {false}}});
         VLOG(10) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);

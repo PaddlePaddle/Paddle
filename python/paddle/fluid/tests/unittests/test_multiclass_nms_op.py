@@ -135,12 +135,12 @@ def batched_multiclass_nms(boxes, scores, background, score_threshold,
     batch_size = scores.shape[0]
 
     det_outs = []
-    lod = [0]
+    lod = []
     for n in range(batch_size):
         nmsed_outs, nmsed_num = multiclass_nms(boxes[n], scores[n], background,
                                                score_threshold, nms_threshold,
                                                nms_top_k, keep_top_k)
-        lod.append(lod[-1] + nmsed_num)
+        lod.append(nmsed_num)
         if nmsed_num == 0: continue
 
         for c, indices in nmsed_outs.iteritems():
