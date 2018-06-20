@@ -55,12 +55,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
-    } else {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace());
     }
-#else
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
 #endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -173,12 +170,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
-    } else {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace());
     }
-#else
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
 #endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 }  // namespace operators
