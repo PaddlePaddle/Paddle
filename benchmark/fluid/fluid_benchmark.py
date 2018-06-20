@@ -301,9 +301,18 @@ def print_train_time(start_time, end_time, num_samples):
           (num_samples, train_elapsed, examples_per_sec))
 
 
+def print_paddle_envs():
+    print('----------- Configuration envs -----------')
+    for k in os.environ:
+        if "PADDLE_" in k:
+            print "ENV %s:%s" % (k, os.environ[k])
+    print('------------------------------------------------')
+
+
 def main():
     args = parse_args()
     print_arguments(args)
+    print_paddle_envs()
 
     # the unique trainer id, starting from 0, needed by trainer
     # only
