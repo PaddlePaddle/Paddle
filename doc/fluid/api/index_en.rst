@@ -1,10 +1,11 @@
-======================
-Fluid
-======================
+=============
+API Reference
+=============
 
 ..  toctree::
     :maxdepth: 1
 
+    fluid.rst
     layers.rst
     data_feeder.rst
     executor.rst
@@ -18,3 +19,8 @@ Fluid
     regularizer.rst
     io.rst
     data.rst
+    transpiler.rst
+    recordio_writer.rst
+    backward.rst
+    average.rst
+    profiler.rst
