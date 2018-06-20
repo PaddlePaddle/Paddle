@@ -398,7 +398,7 @@ class DistributeTranspiler(object):
 
         def __clone_lr_op_sub_block__(op, program, new_block, skip_sub_blks):
             if not op.has_attr('sub_block'):
-                return -1
+                return
 
             origin_block_desc = op.attr('sub_block')
             origin_block = self.origin_program.block(origin_block_desc.id)
