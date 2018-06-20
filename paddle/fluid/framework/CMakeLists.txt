@@ -83,11 +83,15 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 
+set(DISTRIBUTE_DEPS "")
 if(WITH_DISTRIBUTE)
   if(WITH_GRPC)
+    set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
     cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_grpc cares grpc++_unsecure grpc_unsecure gpr)
   else(WITH_GRPC)
-    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method sendrecvop_brpc cares)
+    # FIXME(gongwb): duplicated variable.
+    set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib)
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method ${DISTRIBUTE_DEPS})
   endif()
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -115,4 +119,4 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
         channel_send_op channel_recv_op sum_op select_op elementwise_add_op compare_op
-        conditional_block_op while_op assign_op print_op executor proto_desc)
+        conditional_block_op while_op assign_op print_op executor proto_desc ${DISTRIBUTE_DEPS})
