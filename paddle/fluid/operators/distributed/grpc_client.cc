@@ -12,19 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/distributed/grpc_client.h"
 
 #include <sys/time.h>
 
 #include <limits>
 
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 void GRPCClient::InitImpl() { InitEventLoop(); }
 
@@ -276,6 +276,6 @@ std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
   return ch;
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

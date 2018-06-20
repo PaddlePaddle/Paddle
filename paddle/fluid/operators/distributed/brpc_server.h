@@ -19,12 +19,12 @@ limitations under the License. */
 #include <string>
 
 #include "brpc/server.h"
-#include "paddle/fluid/operators/detail/rpc_server.h"
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class AsyncBRPCServer final : public RPCServer {
  public:
@@ -48,6 +48,6 @@ class AsyncBRPCServer final : public RPCServer {
   int ready_;
 };
 
-};  // namespace detail
+};  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

@@ -23,7 +23,7 @@
 #include <grpc++/impl/codegen/stub_options.h>
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/distributed/variable_response.h"
 
 #include "paddle/fluid/platform/profiler.h"
 
@@ -42,24 +42,25 @@ class ServerContext;
 // Support parsing/unparsing of tensorflow::VariableResponse.
 // Wire-format is identical to RecvVariableResponse.
 template <>
-class SerializationTraits<paddle::operators::detail::VariableResponse> {
+class SerializationTraits<paddle::operators::distributed::VariableResponse> {
  public:
   static Status Serialize(
-      const paddle::operators::detail::VariableResponse& msg,
+      const paddle::operators::distributed::VariableResponse& msg,
       grpc_byte_buffer** bp, bool* own_buffer) {
     PADDLE_ENFORCE(false, "SerializationTraits::Serialize not implemented!");
     return Status();
   }
-  static Status Deserialize(grpc_byte_buffer* buffer,
-                            paddle::operators::detail::VariableResponse* msg,
-                            int max_message_size = INT_MAX) {
+  static Status Deserialize(
+      grpc_byte_buffer* buffer,
+      paddle::operators::distributed::VariableResponse* msg,
+      int max_message_size = INT_MAX) {
     if (buffer == nullptr) {
       return Status(StatusCode::INTERNAL, "No payload");
     }
 
     Status result = g_core_codegen_interface->ok();
     if (result.ok()) {
-      paddle::operators::detail::GrpcByteSource source(buffer);
+      paddle::operators::distributed::GrpcByteSource source(buffer);
       int ret = msg->Parse(&source);
       if (ret != 0) {
         result = Status(StatusCode::INTERNAL, "VariableResponse parse error");
@@ -73,7 +74,7 @@ class SerializationTraits<paddle::operators::detail::VariableResponse> {
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 enum class GrpcMethod {
   kSendVariable,
@@ -118,6 +119,6 @@ class GrpcService final {
   };
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/detail/brpc_client.h"
+#include "paddle/fluid/operators/distributed/brpc_client.h"
 #include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 DEFINE_int32(brpc_channel_num, 24,
              "Number of channels to send requests connected to one server");
@@ -175,6 +175,6 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   return q;
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
