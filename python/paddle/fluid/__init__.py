@@ -117,7 +117,7 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'use_mkldnn'
+        'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += [
