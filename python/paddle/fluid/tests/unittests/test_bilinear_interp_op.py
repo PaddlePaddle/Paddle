@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
 
 
 def bilinear_interp_np(input, out_h, out_w, out_size):
@@ -138,7 +139,7 @@ class TestBilinearInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(atol=1)
+        self.check_output_with_place(place=core.CPUPlace(), atol=1)
 
     def init_test_case(self):
         self.input_shape = [1, 3, 9, 6]
