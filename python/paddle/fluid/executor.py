@@ -205,6 +205,25 @@ def get_program_cache_key(feed, fetch_list):
 
 
 class Executor(object):
+    """
+    An Executor in Python, only support the single-GPU running. For multi-cards, please refer to
+    ParallelExecutor.
+    Python executor takes a program, add feed operators and fetch operators to this program according
+    to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+    the variables(or names) that user want to get after program run. Note: the executor will run all
+    operators in the program but not only the operators dependent by the fetch_list.
+    It store the global variables into the global scope, and create a local scope for the temporary 
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished. 
+    But the global scope variables will be persistent through different runs.
+    All of ops in program will be running in sequence.
+
+    Args:
+        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
+
+    Note: For debugging complicated network in parallel-GPUs, you can test it on the executor.
+    They has the exactly same arguments, and expected the same results.
+    """
+
     def __init__(self, place):
         self.place = place
         p = core.Place()
@@ -304,23 +323,48 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False):
-        """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-
+        """
+        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
         to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run. Note: the executor will run all
+        the variables(or names) that user want to get after program run.
+
+        Note: the executor will run all
         operators in the program but not only the operators dependent by the fetch_list
 
-        :param program: the program that need to run, if not provied, then default_main_program will be used.
-        :param feed: feed variable map, e.g. {"image": ImageData, "label": LableData}
-        :param fetch_list: a list of variable or variable names that user want to get, run will return them according
+        Args:
+            program(Program): the program that need to run, if not provied, then default_main_program will be used.
+            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
+            fetch_list(list): a list of variable or variable names that user want to get, run will return them according
         to this list.
-        :param feed_var_name: the name for the input variable of feed Operator.
-        :param fetch_var_name: the name for the output variable of feed Operator.
-        :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
-        :param return_numpy: if convert the fetched tensor to numpy
-        :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
-        :return: result according to fetch_list.
+            feed_var_name(str): the name for the input variable of feed Operator.
+            fetch_var_name(str): the name for the output variable of fetch Operator.
+            scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
+            return_numpy(bool): if convert the fetched tensor to numpy
+            use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
+
+        Returns:
+
+            list(numpy.array): fetch result according to fetch_list.
+
+
+        Examples:
+            .. code-block:: python
+                data = layers.data(name='X', shape=[1], dtype='float32')
+                hidden = layers.fc(input=data, size=10)
+                layers.assign(hidden, out)
+                loss = layers.mean(out)
+                adam = fluid.optimizer.Adam()
+                adam.minimize(loss)
+
+                cpu = core.CPUPlace()
+                exe = Executor(cpu)
+                exe.run(default_startup_program())
+
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                outs = exe.run(
+                    feed={'X': x},
+                    fetch_list=[loss.name])
         """
         if feed is None:
             feed = {}
