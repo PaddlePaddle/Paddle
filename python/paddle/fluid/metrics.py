@@ -23,6 +23,8 @@ import warnings
 __all__ = [
     'MetricBase',
     'CompositeMetric',
+    'Precision',
+    'Recall',
     'Accuracy',
     'ChunkEvaluator',
     'EditDistance',
@@ -350,7 +352,10 @@ class ChunkEvaluator(MetricBase):
     """
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
-    numbers. ChunkEvalEvaluator computes the precision, recall, and F1-score of chunk detection,
+    numbers.
+    For some basics of chunking, please refer to
+    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+    ChunkEvalEvaluator computes the precision, recall, and F1-score of chunk detection,
     and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
 
     Examples:
