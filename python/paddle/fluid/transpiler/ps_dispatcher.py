@@ -33,8 +33,10 @@ class PSDispatcher(object):
 
     def dispatch(self, varlist):
         """
-        :param varlist: a list of Variables
-        :return: a map of pserver endpoint -> varname 
+        Args:
+            varlist(list): a list of Variables
+        Returns:
+            a map of pserver endpoint -> varname
         """
         AssertionError("Interface has not been implemented.")
 
