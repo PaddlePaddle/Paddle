@@ -396,9 +396,9 @@ class DistributeTranspiler(object):
                     return varname
             return ""
 
-        def __clone_lr_op_sub_block__(op, program, new_block):
+        def __clone_lr_op_sub_block__(op, program, new_block, skip_sub_blks):
             if not op.has_attr('sub_block'):
-                return
+                return -1
 
             origin_block_desc = op.attr('sub_block')
             origin_block = self.origin_program.block(origin_block_desc.id)
@@ -406,6 +406,7 @@ class DistributeTranspiler(object):
             # we put the new sub block to new block to follow the block
             # hierarchy of the original blocks
             new_sub_block = program.create_block(new_block.idx)
+            skip_sub_blks(new_sub_block.idx)
 
             # clone vars
             for var in origin_block.vars:
@@ -415,20 +416,24 @@ class DistributeTranspiler(object):
             for op in origin_block.ops:
                 self._clone_lr_op(program, new_sub_block, op)
                 # clone sub_block of op
-                __clone_lr_op_sub_block__(op, program, new_sub_block)
+                __clone_lr_op_sub_block__(op, program, new_sub_block,
+                                          skip_sub_blks)
 
             # reset the block of op
             op.set_attr('sub_block', new_sub_block)
+            return new_sub_block.idx
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
+        skip_sub_blks = []
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
             for _, op in enumerate(lr_ops):
                 self._append_pserver_non_opt_ops(lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
-                __clone_lr_op_sub_block__(op, pserver_program, lr_decay_block)
+                __clone_lr_op_sub_block__(op, pserver_program, lr_decay_block,
+                                          skip_sub_blks)
 
         # append op to the current block
         grad_to_block_id = []
@@ -478,7 +483,8 @@ class DistributeTranspiler(object):
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
-            "grad_to_block_id": grad_to_block_id
+            "grad_to_block_id": grad_to_block_id,
+            "skip_sub_blks": skip_sub_blks
         }
         if len(prefetch_var_name_to_block_id) > 0:
             attrs['prefetch_var_name_to_block_id'] \
