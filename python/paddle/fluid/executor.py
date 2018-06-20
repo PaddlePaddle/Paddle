@@ -25,6 +25,13 @@ g_scope = core.Scope()
 
 
 def global_scope():
+    """
+    Get the global/default scope instance. There are a lot of APIs use
+    :code:`global_scope` as its default value, e.g., :code:`Executor.run`
+
+    Returns:
+        Scope: The global/default scope instance.
+    """
     return g_scope
 
 
@@ -37,6 +44,19 @@ def switch_scope(scope):
 
 @contextlib.contextmanager
 def scope_guard(scope):
+    """
+    Change the global/default scope instance by Python `with` statement. All
+    variable in runtime will assigned to the new scope.
+
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> new_scope = fluid.Scope()
+        >>> with fluid.scope_guard(new_scope):
+        >>>     ...
+
+    Args:
+        scope: The new global/default scope.
+    """
     ex = switch_scope(scope)
     yield
     switch_scope(ex)
@@ -135,14 +155,18 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
 
 def fetch_var(name, scope=None, return_numpy=True):
     """
-    Fetch the value of the variable with the given name from the given scope
+    Fetch the value of the variable with the given name from the
+    given scope.
+
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
         scope(core.Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
-            If None, global_scope() will be used.
-        return_numpy(bool): whether convert the tensor to numpy.ndarray
+            If None, global_scope() will be used. Default None.
+        return_numpy(bool): whether convert the tensor to numpy.ndarray.
+            Default True.
+
     Returns:
        LodTensor|numpy.ndarray
     """

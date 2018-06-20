@@ -2678,18 +2678,35 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     '''
+    **beam search**
+
     This function implements the beam search algorithm.
 
+    Beam search is a classical algorithm for selecting candidate words
+    in a machine translation task.
+
+    Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
+    for more details.
+
     Args:
-        pre_ids (Variable): ${pre_ids_comment}
-        ids (Variable): ${ids_comment}
-        scores (Variable): ${scores_comment}
-        beam_size (int): ${beam_size_comment}
-        end_id (int): ${end_id_comment}
-        level (int): ${level_comment}
+        pre_ids (Variable): ids in previous step.
+        ids (Variable): a LoDTensor of shape of [None,k]
+        scores (Variable): a LoDTensor that has the same shape and LoD with `ids`
+        beam_size (int): beam size for beam search
+        end_id (int): the token id which indicates the end of a sequence
+        level (int): the level of LoDTensor
 
     Returns:
-        tuple: a tuple of beam_search output variables: selected_ids, selected_scores
+        tuple: a tuple of beam_search output variables: `selected_ids`, `selected_scores`
+
+    Examples:
+        .. code-block:: python
+
+             # current_score is a Tensor of shape (num_batch_size, embed_size), which
+             # consists score of each candidate word.
+             topk_scores, topk_indices = pd.topk(current_score, k=50)
+             selected_ids, selected_scores = pd.beam_search(
+                 pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
     '''
     helper = LayerHelper('beam_search', **locals())
     score_type = scores.dtype
