@@ -489,7 +489,7 @@ class DistributeTranspiler:
             # we put the new sub block to new block to follow the block
             # hierarchy of the original blocks
             new_sub_block = program.create_block(new_block.idx)
-            skip_sub_blks(new_sub_block.idx)
+            skip_sub_blks.append(new_sub_block.idx)
 
             # clone vars
             for var in origin_block.vars:
@@ -504,7 +504,6 @@ class DistributeTranspiler:
 
             # reset the block of op
             op.set_attr('sub_block', new_sub_block)
-            return new_sub_block.idx
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
