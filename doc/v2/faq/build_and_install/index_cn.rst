@@ -213,3 +213,9 @@ virtualenv本身也是Python的一个包，可以用pip进行安装：
 保存并关闭文件。
 
 这样，每次打开终端时就会自动启动名为‘paddle’的Python环境了。
+
+10. 通过pip安装的PaddlePaddle在`import paddle.fluid`报找不到libmkldnn.so.0
+------------------------------------------------------------------------------------------
+出现这个问题的原因是在导入`paddle.fluid`时需要加载libmkldnn.so，但是系统没有找到该文件。一般通过pip
+安装PaddlePaddle时会将libmkldnn.so.0拷贝到`/usr/local/lib`路径下，所以解决办法是将该路径加到
+`LD_LIBRARY_PATH`环境变量下，即：`LD_LIBRARY_PATH=(ibmklml_intel.so.0所在的路径):$LD_LIBRARY_PATH`。
