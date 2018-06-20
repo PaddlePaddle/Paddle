@@ -418,7 +418,7 @@ class Operator(object):
     Args:
         block(Block): The block has the current operator.
         desc(core.OpDesc): The protobuf description of Operator.
-        type(str): The type of operator.
+        type(str): The type of operator. Default None.
         inputs(dict): The input of this Operator. it is a dictionary, for every
             element, key is the input parameter name, and value is a list of
             variables. Default None.
@@ -459,7 +459,12 @@ class Operator(object):
         'channel_recv', 'select', 'gen_nccl_id'
     }
 
-    def __init__(self, block, desc, type, inputs=None, outputs=None,
+    def __init__(self,
+                 block,
+                 desc,
+                 type=None,
+                 inputs=None,
+                 outputs=None,
                  attrs=None):
 
         self.block = block
@@ -484,7 +489,9 @@ class Operator(object):
 
         if len(self.desc.type()) != 0:
             return
-
+        if type is None:
+            raise ValueError(
+                "`type` to initilized an Operator can not be None.")
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 
