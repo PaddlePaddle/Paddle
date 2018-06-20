@@ -52,7 +52,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   } else {
     res = ctx.Attr<std::vector<int>>("offsets");
     PADDLE_ENFORCE_EQ(
-        rank, res.size(),
+        rank, static_cast<int>(res.size()),
         "Offsets size should be equal to dimension size of input tensor.");
   }
   return res;
