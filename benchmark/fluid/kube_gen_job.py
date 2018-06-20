@@ -108,10 +108,10 @@ def gen_job():
     tn_container["ports"][0]["containerPort"] = spreadport
 
     envs.append({"name": "PADDLE_JOB_NAME", "value": args.jobname})
-    envs.append({"name": "TRAINERS", "value": str(args.trainers)})
+    envs.append({"name": "PADDLE_TRAINERS", "value": str(args.trainers)})
     envs.append({"name": "PSERVERS", "value": str(args.pservers)})
     envs.append({"name": "ENTRY", "value": args.entry})
-    envs.append({"name": "PADDLE_INIT_PORT", "value": str(args.port)})
+    envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
     envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
     # NOTE: these directories below are cluster specific, please modify
     # this settings before you run on your own cluster.
@@ -167,16 +167,22 @@ def gen_job():
     tn_container["volumeMounts"] = volumeMounts
 
     ps_container["env"] = envs
-    ps_container["env"].append({"name": "TRAINING_ROLE", "value": "PSERVER"})
+    ps_container["env"].append({
+        "name": "PADDLE_TRAINING_ROLE",
+        "value": "PSERVER"
+    })
     tn_container["env"] = envs
     if args.disttype == "pserver":
         tn_container["env"].append({
-            "name": "TRAINING_ROLE",
+            "name": "PADDLE_TRAINING_ROLE",
             "value": "TRAINER"
         })
     elif args.disttype == "nccl2" or args.disttype == "local":
         # NCCL2 have no training role, set to plain WORKER
-        tn_container["env"].append({"name": "TRAINING_ROLE", "value": "WORKER"})
+        tn_container["env"].append({
+            "name": "PADDLE_TRAINING_ROLE",
+            "value": "WORKER"
+        })
 
     os.mkdir(args.jobname)
     if args.disttype == "pserver":
