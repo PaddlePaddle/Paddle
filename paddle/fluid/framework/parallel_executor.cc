@@ -133,10 +133,22 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
-  auto *main_scope = member_->local_scopes_[0];
+  // the the initialize bcast, all vars would be bcast from device(0), otherwise
+  // bcast from the specified device.
+  bool initialize = builder_.get() == nullptr ? true : false;
 
   for (auto &var : vars) {
-    auto *main_var = main_scope->FindVar(var);
+    int var_dev_id =
+        builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
+    if (!initialize && var_dev_id == -1) continue;
+
+    framework::Variable *main_var = nullptr;
+    if (initialize) {
+      main_var = member_->local_scopes_[0]->FindVar(var);
+    } else {
+      main_var = member_->local_scopes_[var_dev_id]->FindVar(var);
+    }
+
     if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
@@ -145,13 +157,14 @@ void ParallelExecutor::BCastParamsToGPUs(
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
+      std::vector<void *> buffers;
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
-      platform::NCCLGroupGuard guard;
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
-        if (i == 0) {
+
+        if (initialize && i == 0 || !initialize && i == var_dev_id) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
@@ -159,18 +172,21 @@ void ParallelExecutor::BCastParamsToGPUs(
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.type());
         }
-        auto &nccl_ctx = member_->nccl_ctxs_->at(place);
+        buffers.push_back(buffer);
+      }
 
-        if (builder_.get() != nullptr && builder_->GetVarDeviceID(var) != -1) {
-          int place_id = builder_->GetVarDeviceID(var);
-          platform::dynload::ncclBcast(buffer, numel, data_type, place_id,
-                                       nccl_ctx.comm_, nccl_ctx.stream());
-        } else {
-          platform::dynload::ncclBcast(buffer, numel, data_type, 0,
+      PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
+                        "variables' buffer size to bcast NOT equal to places");
+      {
+        platform::NCCLGroupGuard guard;
+        for (size_t i = 0; i < member_->places_.size(); ++i) {
+          auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
+          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
                                        nccl_ctx.comm_, nccl_ctx.stream());
         }
+        member_->nccl_ctxs_->WaitAll();
       }
-      member_->nccl_ctxs_->WaitAll();
+
 #else
       PADDLE_THROW("Not compiled with CUDA");
 #endif

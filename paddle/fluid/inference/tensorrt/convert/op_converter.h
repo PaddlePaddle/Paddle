@@ -64,7 +64,8 @@ class OpConverter {
     (*it)(op, scope, test_mode);
   }
 
-  // convert fluid block to tensorrt network
+  // Convert a fluid block to tensorrt network, NOTE it just convert operators,
+  // the INetwork's inputs and outputs should specified in some other modules.
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope, TensorRTEngine* engine) {

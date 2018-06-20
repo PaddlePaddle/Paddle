@@ -19,8 +19,10 @@ from op_test import OpTest
 
 def row_conv_forward(x, lod, wt):
     out = np.zeros_like(x)
-    seq_info = lod[0]
-    num_sequences = len(seq_info) - 1
+    num_sequences = len(lod[0])
+    seq_info = [0]
+    for seq_len in lod[0]:
+        seq_info.append(seq_info[-1] + seq_len)
     context_length = wt.shape[0]
 
     for i in range(num_sequences):  # loop over number of sequences
@@ -32,7 +34,6 @@ def row_conv_forward(x, lod, wt):
         cur_timesteps = end - start
         for j in range(cur_timesteps):  # loop over different timesteps
             for k in range(context_length):
-
                 if j + k >= cur_timesteps:
                     continue
                 curoutput[j, :] += curinput[j + k, :] * wt[k, :]
@@ -44,8 +45,8 @@ class TestRowConvOp1(OpTest):
     def setUp(self):
 
         self.op_type = "row_conv"
-        lod = [[0, 2, 5, 7]]
-        T = lod[0][-1]
+        lod = [[2, 3, 2]]
+        T = sum(lod[0])
         D = 16
         context_length = 2
 
@@ -75,8 +76,8 @@ class TestRowConvOp2(OpTest):
     def setUp(self):
 
         self.op_type = "row_conv"
-        lod = [[0, 20, 50, 100]]
-        T = lod[0][-1]
+        lod = [[20, 30, 50]]
+        T = sum(lod[0])
         D = 35
         context_length = 35
 
