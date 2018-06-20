@@ -49,6 +49,8 @@ DEFINE_string(
     tensorrt_dir, "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
+DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -203,6 +205,14 @@ void* GetTensorRtDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
+#endif
+}
+
+void* GetMKLMLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
 }
 
