@@ -417,9 +417,9 @@ class Trainer(object):
         Test the model on given test data
 
         Args:
-            reader: The reader that yields test data.
-            feed_order: Feeding order of reader. None will following the defining
-                order in program
+            reader(callable): The reader that yields test data.
+            feed_order(list): Feeding order of reader. None will following the
+                defining order in program
         """
 
         return self._test_by_executor(reader, feed_order,
