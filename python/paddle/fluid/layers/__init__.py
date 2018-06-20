@@ -41,5 +41,5 @@ __all__ += control_flow.__all__
 __all__ += ops.__all__
 __all__ += device.__all__
 __all__ += detection.__all__
-__all__ += metric.__all__
+__all__ += metric_op.__all__
 __all__ += learning_rate_scheduler.__all__

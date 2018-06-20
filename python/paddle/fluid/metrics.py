@@ -94,11 +94,12 @@ class MetricBase(object):
         """
         Get the metric and current states.
         The states are the members who do not has "_" prefix.
+
         Args:
             None
 
         Returns:
-            numpy.array: a dict of metric and states
+            dict: a dict of metric and states
         """
         states = {
             attr: value
@@ -126,8 +127,6 @@ class MetricBase(object):
     def eval(self):
         """
         Evalute the current metrics based the accumulated states.
-        Args:
-            None
 
         Returns:
             float|list(float)|numpy.array: the metrics via Python.
@@ -160,8 +159,8 @@ class CompositeMetric(MetricBase):
             numpy_acc, numpy_recall = comp.eval()
     """
 
-    def __init__(self, name=None, **kwargs):
-        super(CompositeMetric, self).__init__(name, kwargs)
+    def __init__(self, name=None):
+        super(CompositeMetric, self).__init__(name)
         self._metrics = []
 
     def add_metric(self, metric):
@@ -178,6 +177,11 @@ class CompositeMetric(MetricBase):
     def update(self, preds, labels):
         """
         Update every metrics in sequence.
+
+        Args:
+            preds(numpy.array): the predictions of current minibatch
+            labels(numpy.array): the labels of current minibatch, if the label is one-hot
+                               or soft-label, should custom the corresponding update rule.
         """
         for m in self._metrics:
             ans.append(m.update(preds, labels))
@@ -185,6 +189,7 @@ class CompositeMetric(MetricBase):
     def eval(self):
         """
         Evaluate every metrics in sequence.
+
         Returns:
             list(float|numpy.array): a list of metrics value in Python.
         """
@@ -299,18 +304,18 @@ class Accuracy(MetricBase):
     Examples:
         .. code-block:: python
 
-        labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
-        data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
-        pred = fluid.layers.fc(input=data, size=1000, act="tanh")
-        minibatch_accuracy = fluid.layers.accuracy(pred, label)
-        accuracy_evaluator = fluid.metrics.Accuracy()
-        for pass in range(PASSES):
-            accuracy_evaluator.reset()
-            for data in train_reader():
-                batch_size = data[0]
-                loss = exe.run(fetch_list=[cost, minibatch_accuracy])
-            accuracy_evaluator.update(value=minibatch_accuracy, weight=batch_size)
-            numpy_acc = accuracy_evaluator.eval()
+            labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            minibatch_accuracy = fluid.layers.accuracy(pred, label)
+            accuracy_evaluator = fluid.metrics.Accuracy()
+            for pass in range(PASSES):
+                accuracy_evaluator.reset()
+                for data in train_reader():
+                    batch_size = data[0]
+                    loss = exe.run(fetch_list=[cost, minibatch_accuracy])
+                accuracy_evaluator.update(value=minibatch_accuracy, weight=batch_size)
+                numpy_acc = accuracy_evaluator.eval()
     """
 
     def __init__(self, name=None):
@@ -345,24 +350,23 @@ class ChunkEvaluator(MetricBase):
     """
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
-    numbers.
-
-    It packages the binary classifier's metrics precision/recall/f1 together.
+    numbers. ChunkEvalEvaluator computes the precision, recall, and F1-score of chunk detection,
+    and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
 
     Examples:
         .. code-block:: python
 
-        labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
-        data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
-        pred = fluid.layers.fc(input=data, size=1000, act="tanh")
-        precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
-            input=pred,
-            label=label)
-        metric = fluid.metrics.ChunkEvaluator()
-        for data in train_reader():
-            loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-            metric.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
-            numpy_precision, numpy_recall, numpy_f1 = metric.eval()
+            labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
+                input=pred,
+                label=label)
+            metric = fluid.metrics.ChunkEvaluator()
+            for data in train_reader():
+                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
+                numpy_precision, numpy_recall, numpy_f1 = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -372,9 +376,17 @@ class ChunkEvaluator(MetricBase):
         self.num_correct_chunks = 0
 
     def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
+        """
+        Update the states based on the layers.chunk_eval() ouputs.
+        Args:
+            num_infer_chunks(int|numpy.array): The number of chunks in Inference on the given minibatch.
+            num_label_chunks(int|numpy.array): The number of chunks in Label on the given mini-batch.
+            num_correct_chunks(int|float|numpy.array): The number of chunks both in Inference and Label on the
+                                                  given mini-batch.
+        """
         if not _is_number_or_matrix_(num_infer_chunks):
             raise ValueError(
-                "The 'num_infer_chunks' must be a number(int, float) or a numpy ndarray."
+                "The 'num_infer_chunks' must be a number(int) or a numpy ndarray."
             )
         if not _is_number_or_matrix_(num_label_chunks):
             raise ValueError(
@@ -412,15 +424,17 @@ class EditDistance(MetricBase):
     Args:
         name: the metrics name
 
-    Example:
-        distances, seq_num = fluid.layers.edit_distance(input, label)
-        distance_evaluator = fluid.metrics.EditDistance()
-        for epoch in PASS_NUM:
-            distance_evaluator.reset()
-            for data in batches:
-                loss = exe.run(fetch_list=[cost] + list(edit_distance_metrics))
-            distance_evaluator.update(distances, seq_num)
-            distance, instance_error = distance_evaluator.eval()
+    Examples:
+        .. code-block:: python
+
+            distances, seq_num = fluid.layers.edit_distance(input, label)
+            distance_evaluator = fluid.metrics.EditDistance()
+            for epoch in PASS_NUM:
+                distance_evaluator.reset()
+                for data in batches:
+                    loss = exe.run(fetch_list=[cost] + list(edit_distance_metrics))
+                distance_evaluator.update(distances, seq_num)
+                distance, instance_error = distance_evaluator.eval()
 
         In the above example:
         'distance' is the average of the edit distance in a pass.
@@ -458,34 +472,38 @@ class EditDistance(MetricBase):
 class DetectionMAP(MetricBase):
     """
     Calculate the detection mean average precision (mAP).
-    This should only be used in computer vision.
+    mAP is the metric to measure the accuracy of object detectors
+    like Faster R-CNN, SSD, etc.
+    It is the average of the maximum precisions at different recall values.
     Please get more information from the following articles:
       https://sanchom.wordpress.com/tag/average-precision/
+
       https://arxiv.org/abs/1512.02325
 
     The general steps are as follows:
-    1. calculate the true positive and false positive according to the input
-        of detection and labels.
-    2. calculate mAP value, support two versions: '11 point' and 'integral'.
+
+        1. calculate the true positive and false positive according to the input
+            of detection and labels.
+        2. calculate mAP value, support two versions: '11 point' and 'integral'.
 
     Examples:
         .. code-block:: python
 
-        pred = fluid.layers.fc(input=data, size=1000, act="tanh")
-        batch_map = layers.detection_map(
-            input,
-            label,
-            class_num,
-            background_label,
-            overlap_threshold=overlap_threshold,
-            evaluate_difficult=evaluate_difficult,
-            ap_version=ap_version)
-        metric = fluid.metrics.DetectionMAP()
-        for data in train_reader():
-            loss, preds, labels = exe.run(fetch_list=[cost, batch_map])
-            batch_size = data[0]
-            metric.update(value=batch_map, weight=batch_size)
-            numpy_map = metric.eval()
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            batch_map = layers.detection_map(
+                input,
+                label,
+                class_num,
+                background_label,
+                overlap_threshold=overlap_threshold,
+                evaluate_difficult=evaluate_difficult,
+                ap_version=ap_version)
+            metric = fluid.metrics.DetectionMAP()
+            for data in train_reader():
+                loss, preds, labels = exe.run(fetch_list=[cost, batch_map])
+                batch_size = data[0]
+                metric.update(value=batch_map, weight=batch_size)
+                numpy_map = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -514,18 +532,18 @@ class DetectionMAP(MetricBase):
 
 class Auc(MetricBase):
     """
-    Auc Metrics which adapts to binary classification.
+    Auc metric adapts to the binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve
-    Need to note that auc metrics compute the value via Python natively.
+    Need to note that auc metric compute the value via Python natively.
     If you concern the speed, please use the fluid.layers.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
-      `true_negatives`, `false_positives` and `false_negatives` that are used to
-      compute the AUC. To discretize the AUC curve, a linearly spaced set of
-      thresholds is used to compute pairs of recall and precision values. The area
-      under the ROC-curve is therefore computed using the height of the recall
-      values by the false positive rate, while the area under the PR-curve is the
-      computed using the height of the precision values by the recall.
+    `true_negatives`, `false_positives` and `false_negatives` that are used to
+    compute the AUC. To discretize the AUC curve, a linearly spaced set of
+    thresholds is used to compute pairs of recall and precision values. The area
+    under the ROC-curve is therefore computed using the height of the recall
+    values by the false positive rate, while the area under the PR-curve is the
+    computed using the height of the precision values by the recall.
 
     Args:
         name: metric name
@@ -539,12 +557,12 @@ class Auc(MetricBase):
     Examples:
         .. code-block:: python
 
-        pred = fluid.layers.fc(input=data, size=1000, act="tanh")
-        metric = fluid.metrics.Auc()
-        for data in train_reader():
-            loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-            metric.update(preds, labels)
-            numpy_auc = metric.eval()
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            metric = fluid.metrics.Auc()
+            for data in train_reader():
+                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(preds, labels)
+                numpy_auc = metric.eval()
     """
 
     def __init__(self, name, curve='ROC', num_thresholds=200):
