@@ -38,11 +38,7 @@ class InferenceTranspiler:
 
     def transpile(self, program, place, scope=None):
         '''
-<<<<<<< d8f58e8d7c4ac4696b34e20bf504c04aef6da5ea
         Run the transpiler.
-=======
-        Transpile the inference program.
->>>>>>> description fix
 
         Args:
             program (Program): program to transpile
@@ -58,10 +54,9 @@ class InferenceTranspiler:
             scope = global_scope()
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
+        self.fuse_batch_norm(program, place, scope)
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
-        if not use_mkldnn:
-            self.fuse_batch_norm(program, place, scope)
-        else:
+        if use_mkldnn:
             self.fuse_relu(program)
 
     def fuse_relu(self, program):
