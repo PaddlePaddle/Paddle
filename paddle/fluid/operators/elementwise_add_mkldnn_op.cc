@@ -150,23 +150,16 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
-    auto set_mkldnn_format = [dout](Tensor* d) {
-      d->set_layout(DataLayout::kMKLDNN);
-      d->set_format(dout->format());
-    };
-
     if (x->dims() == y->dims()) {
       auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
       if (dx) {
         blas.VCOPY(dout->numel(), dout->data<T>(),
                    dx->mutable_data<T>(ctx.GetPlace()));
-        set_mkldnn_format(dx);
       }
 
       if (dy) {
         blas.VCOPY(dout->numel(), dout->data<T>(),
                    dy->mutable_data<T>(ctx.GetPlace()));
-        set_mkldnn_format(dy);
       }
     } else {
       // Execute default kernel when broadcast is needed
@@ -174,13 +167,6 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
                           IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
           IdentityGrad<T>());
-      if (dx) {
-        set_mkldnn_format(dx);
-      }
-
-      if (dy) {
-        set_mkldnn_format(dy);
-      }
     }
   }
 };
