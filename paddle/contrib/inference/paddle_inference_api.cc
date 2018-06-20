@@ -38,6 +38,7 @@ PaddleBuf& PaddleBuf::operator=(const PaddleBuf& other) {
 
 void PaddleBuf::Resize(size_t length) {
   // Only the owned memory can be reset, the external memory can't be changed.
+  if (length_ == length) return;
   assert(memory_owned_);
   Free();
   data_ = new char[length];
