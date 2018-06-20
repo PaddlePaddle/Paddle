@@ -164,7 +164,7 @@ void ParallelExecutor::BCastParamsToGPUs(
         auto place = member_->places_[i];
         void *buffer;
 
-        if (initialize && i == 0 || !initialize && i == var_dev_id) {
+        if ((initialize && i == 0) || (!initialize && i == var_dev_id)) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
