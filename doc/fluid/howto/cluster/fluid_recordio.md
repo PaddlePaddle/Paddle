@@ -114,8 +114,8 @@ def gen_train_list(file_pattern, trainers, trainer_id):
            ret_list.append(f)
    return ret_list
 
-trainers = int(os.getenv("TRAINERS"))
-trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+trainers = int(os.getenv("PADDLE_TRAINERS"))
+trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
 data_file = fluid.layers.io.open_files(
     filenames=gen_train_list("./mnist-[0-9]*.recordio", 2, 0),
     thread_num=1,

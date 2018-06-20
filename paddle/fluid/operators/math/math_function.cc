@@ -30,6 +30,7 @@ template struct SetConstant<platform::CPUDeviceContext, double>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
+template struct SetConstant<platform::CPUDeviceContext, uint8_t>;
 
 #define DEFINE_CPU_TRANS(RANK)                                             \
   template struct Transpose<platform::CPUDeviceContext, platform::float16, \
