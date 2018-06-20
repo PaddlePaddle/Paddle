@@ -255,7 +255,7 @@ class Executor(object):
             >>> import paddle.fluid as fluid
             >>> exe = fluid.executor(fluid.CPUPlace())
             >>> data = np.array(size=(100, 200, 300))
-            >>> np_outs = map(lambda x: exec.as_lodtensor(x), data)
+            >>> np_outs = map(lambda x: exe.as_lodtensor(x), data)
             >>>     ...
 
         Args:
@@ -367,8 +367,7 @@ class Executor(object):
         Args:
             program(Program): the program that need to run, if not provied, then default_main_program will be used.
             feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
-            fetch_list(list): a list of variable or variable names that user want to get, run will return them according
-        to this list.
+            fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
             feed_var_name(str): the name for the input variable of feed Operator.
             fetch_var_name(str): the name for the output variable of fetch Operator.
             scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
@@ -382,6 +381,7 @@ class Executor(object):
 
         Examples:
             .. code-block:: python
+
                 data = layers.data(name='X', shape=[1], dtype='float32')
                 hidden = layers.fc(input=data, size=10)
                 layers.assign(hidden, out)
