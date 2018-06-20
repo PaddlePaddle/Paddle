@@ -25,12 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 
-#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 typedef void (*DestroyCallback)(void*);
 
@@ -61,6 +61,6 @@ inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   }
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

@@ -21,14 +21,14 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/macros.h"
 
-#include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::RPCServer> service) {
+void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
@@ -121,12 +121,12 @@ void ListenAndServOp::RunSyncLoop(
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    rpc_service_->SetCond(detail::kRequestSend);
-    rpc_service_->WaitBarrier(detail::kRequestSend);
+    rpc_service_->SetCond(distributed::kRequestSend);
+    rpc_service_->WaitBarrier(distributed::kRequestSend);
 
     if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      rpc_service_->SetCond(detail::kRequestGet);
+      rpc_service_->SetCond(distributed::kRequestGet);
       break;
     }
 
@@ -154,11 +154,11 @@ void ListenAndServOp::RunSyncLoop(
                           recv_scope);
     VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
-    rpc_service_->SetCond(detail::kRequestGet);
-    rpc_service_->WaitBarrier(detail::kRequestGet);
+    rpc_service_->SetCond(distributed::kRequestGet);
+    rpc_service_->WaitBarrier(distributed::kRequestGet);
     rpc_service_->ResetBarrierCounter();
     // reset received sparse vars to avoid reuse it in the next mini-batch
-    dynamic_cast<detail::RequestSendHandler *>(request_send_handler_.get())
+    dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
         ->ResetSparseVarRecorder();
   }  // while(true)
 }
@@ -215,13 +215,13 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 }
 
 static void FillRequestCtx(
-    detail::RequestHandler *h, framework::Scope *scope,
+    distributed::RequestHandler *h, framework::Scope *scope,
     platform::DeviceContext *dev_ctx, framework::Executor *executor,
     framework::ProgramDesc *program,
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ExecutorPrepareContext>>
         *prefetch_ctx,
-    detail::RPCServer *rpc_server) {
+    distributed::RPCServer *rpc_server) {
   h->SetScope(scope);
   h->SetDevCtx(dev_ctx);
   h->SetExecutor(executor);
@@ -249,14 +249,16 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
-  request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
+  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
+  request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(
-      new detail::RequestPrefetchHandler(sync_mode));
+      new distributed::RequestPrefetchHandler(sync_mode));
 
-  rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
-  rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
-  rpc_service_->RegisterRPC(detail::kRequestPrefetch,
+  rpc_service_->RegisterRPC(distributed::kRequestSend,
+                            request_send_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestGet,
+                            request_get_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);

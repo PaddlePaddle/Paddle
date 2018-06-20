@@ -1,8 +1,3 @@
-if(NOT WITH_DISTRIBUTE)
-    return()
-endif()
-
-
 if(WITH_GRPC)
   grpc_library(sendrecvop_grpc SRCS bytebuffer_stream.cc sendrecvop_utils.cc grpc_client.cc
       request_handler_impl.cc rpc_client.cc rpc_server.cc grpc_server.cc variable_response.cc PROTO send_recv.proto DEPS lod_tensor
