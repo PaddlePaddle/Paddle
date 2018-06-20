@@ -380,23 +380,22 @@ class Executor(object):
 
 
         Examples:
-            .. code-block:: python
 
-                data = layers.data(name='X', shape=[1], dtype='float32')
-                hidden = layers.fc(input=data, size=10)
-                layers.assign(hidden, out)
-                loss = layers.mean(out)
-                adam = fluid.optimizer.Adam()
-                adam.minimize(loss)
+            >>> data = layers.data(name='X', shape=[1], dtype='float32')
+            >>> hidden = layers.fc(input=data, size=10)
+            >>> layers.assign(hidden, out)
+            >>> loss = layers.mean(out)
+            >>> adam = fluid.optimizer.Adam()
+            >>> adam.minimize(loss)
 
-                cpu = core.CPUPlace()
-                exe = Executor(cpu)
-                exe.run(default_startup_program())
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> exe.run(default_startup_program())
 
-                x = numpy.random.random(size=(10, 1)).astype('float32')
-                outs = exe.run(
-                    feed={'X': x},
-                    fetch_list=[loss.name])
+            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+            >>> outs = exe.run(
+            >>>     feed={'X': x},
+            >>>     fetch_list=[loss.name])
         """
         if feed is None:
             feed = {}
