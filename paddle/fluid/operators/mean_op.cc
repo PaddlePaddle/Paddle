@@ -33,12 +33,10 @@ class MeanOp : public framework::OperatorWithKernel {
 class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input of mean op");
-    AddOutput("Out", "The output of mean op").Reuse("X");
+    AddInput("X", "(Tensor) The input of mean op");
+    AddOutput("Out", "(Tensor) The output of mean op").Reuse("X");
     AddComment(R"DOC(
-Mean Operator.
-
-Out is a scalar which is the mean of all elements in X. 
+Mean Operator calculates the mean of all elements in X.
 
 )DOC");
   }
