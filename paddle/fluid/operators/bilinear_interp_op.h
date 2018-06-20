@@ -72,10 +72,10 @@ class BilinearInterpKernel : public framework::OpKernel<T> {
 
             for (int c = 0; c < channels; ++c) {  // loop for channels
               // bilinear interpolation
-              out_pos[0] =
+              out_pos[0] = static_cast<T>(
                   h2lambda * (w2lambda * in_pos[0] + w1lambda * in_pos[wid]) +
                   h1lambda * (w2lambda * in_pos[hid * in_w] +
-                              w1lambda * in_pos[hid * in_w + wid]);
+                              w1lambda * in_pos[hid * in_w + wid]));
               in_pos += in_hw;
               out_pos += out_hw;
             }
@@ -143,10 +143,12 @@ class BilinearInterpGradKernel : public framework::OpKernel<T> {
             const T* out_pos = &d_output[k * out_chw + i * out_w + j];
 
             for (int c = 0; c < channels; ++c) {  // loop for channels
-              in_pos[0] += h2lambda * w2lambda * out_pos[0];
-              in_pos[wid] += h2lambda * w1lambda * out_pos[0];
-              in_pos[hid * in_w] += h1lambda * w2lambda * out_pos[0];
-              in_pos[hid * in_w + wid] += h1lambda * w1lambda * out_pos[0];
+              in_pos[0] += static_cast<T>(h2lambda * w2lambda * out_pos[0]);
+              in_pos[wid] += static_cast<T>(h2lambda * w1lambda * out_pos[0]);
+              in_pos[hid * in_w] +=
+                  static_cast<T>(h1lambda * w2lambda * out_pos[0]);
+              in_pos[hid * in_w + wid] +=
+                  static_cast<T>(h1lambda * w1lambda * out_pos[0]);
               in_pos += in_hw;
               out_pos += out_hw;
             }
