@@ -185,8 +185,8 @@ else()
 endif()
 
 add_subdirectory(detail)
+set(DISTRIBUTE_DEPS "")
 if(WITH_DISTRIBUTE)
-    set(DISTRIBUTE_DEPS "")
     if(WITH_GRPC)
         set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
     else()
@@ -302,6 +302,7 @@ foreach(src ${DETECTION_LIBRARY})
 endforeach()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+set(GLOB_DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} CACHE INTERNAL "distributed dependency")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)

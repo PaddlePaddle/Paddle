@@ -12,7 +12,8 @@ if(WITH_CONTRIB)
 endif()
 
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
+# If WITH_DISTRIBUTE=OFF, DISTRIBUTE_DEPS is "". So don't worry about it.
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api ${GLOB_DISTRIBUTE_DEPS})
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc

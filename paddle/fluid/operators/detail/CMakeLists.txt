@@ -33,14 +33,6 @@ brpc_library(sendrecvop_brpc SRCS brpc_client.cc brpc_server.cc rpc_server.cc rp
   PROTO send_recv.proto
   DEPS lod_tensor selected_rows memory)
 
-find_library(OPENSSL_CRYPTO_LIBRARY_STATIC NAMES libcrypto.so)
-ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY_STATIC})
-
-find_library(OPENSSL_SSL_LIBRARY_STATIC NAMES libssl.so)
-ADD_LIBRARY(ssl SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY_STATIC})
-
 set(brpc_test_depends sendrecvop_brpc brpc protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy ssl crypto)
 
 cc_test(brpc_server_test SRCS rpc_server_test.cc 
