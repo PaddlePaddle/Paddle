@@ -69,12 +69,10 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
 }
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node* node) {
-  LOG(INFO) << "processing func " << node->name();
   auto* ori_op = static_cast<framework::proto::OpDesc*>(node->pb_desc());
   // currently only the main block is analyzed.
   auto* main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto* op = main_block->add_ops();
-  LOG(INFO) << "to copy the op";
   *op = *ori_op;  // copy the attributes, by default, these will not be changed
                   // by analysis phrase.
   // The inputs and outputs of the existing ops are not changed by tensorrt
