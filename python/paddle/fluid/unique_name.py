@@ -16,7 +16,7 @@ import collections
 import contextlib
 import sys
 
-__all__ = ['generate', 'switch', 'guard', 'UniqueNameGenerator']
+__all__ = ['generate', 'switch', 'guard']
 
 
 class UniqueNameGenerator(object):
