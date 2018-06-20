@@ -12,3 +12,7 @@ if (CUPTI_FOUND)
 endif(CUPTI_FOUND)
 nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
 cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
+if (WITH_MKLML)
+    cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
+endif()
+# TODO(TJ): add iomp, mkldnn?
