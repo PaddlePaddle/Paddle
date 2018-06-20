@@ -29,6 +29,13 @@ class DataToLoDTensorConverter(object):
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
+        negtive_count = 0
+        for s in self.shape:
+            if s < 0:
+                negtive_count += 1
+            if negtive_count > 1:
+                self.shape = None
+                break
         if dtype == core.VarDesc.VarType.FP32:
             self.dtype = 'float32'
         elif dtype == core.VarDesc.VarType.INT64:
@@ -61,7 +68,9 @@ class DataToLoDTensorConverter(object):
                 self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
     def done(self):
-        arr = numpy.array(self.data, dtype=self.dtype).reshape(self.shape)
+        arr = numpy.array(self.data, dtype=self.dtype)
+        if self.shape:
+            arr = arr.reshape(self.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
