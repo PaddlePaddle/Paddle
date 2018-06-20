@@ -159,6 +159,11 @@ PYBIND11_PLUGIN(core) {
              new (&instance) LoDTensor(new_offset_lod);
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
+      // We implement offset based LOD in C++ while we use length based with
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // avoid misuse.
+      // The discussion is here:
+      // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
              // the input lod is offset-based level-of-detail info
@@ -199,6 +204,7 @@ PYBIND11_PLUGIN(core) {
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              return new_lod;
            })
+      // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
