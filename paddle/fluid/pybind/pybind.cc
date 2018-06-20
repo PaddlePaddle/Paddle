@@ -160,9 +160,8 @@ PYBIND11_PLUGIN(core) {
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
-      // Python
-      // API. So we changed set_lod to set_recursive_sequence_lengths to avoid
-      // misuse.
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // avoid misuse.
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
