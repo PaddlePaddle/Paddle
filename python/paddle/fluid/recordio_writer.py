@@ -103,6 +103,10 @@ def convert_reader_to_recordio_files(
     This API is basically same as :code:`convert_reader_to_recordio_file`,
     instead of it will create many recordio files. Each file contains at
     most :code:`batch_per_file` records.
+
+    Please reference
+    :ref:`api_fluid_recordio_writer_convert_reader_to_recordio_file` for more
+    details.
     """
     if feed_order is None:
         feed_order = feeder.feed_names
