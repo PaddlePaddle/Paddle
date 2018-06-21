@@ -9,16 +9,6 @@ We provide the `PaddleTensor` data structure is to give a general tensor interfa
 The definition is 
 
 ```c++
-enum PaddleDType {
-  FLOAT32,
-  INT64,
-};
-
-struct PaddleBuf {// row major.
-  void* data;     // pointer to the data memory.
-  size_t length;  // number of memory bytes.
-};
-
 struct PaddleTensor {
   std::string name;  // variable name.
   std::vector<int> shape;
@@ -37,9 +27,8 @@ The inference APIs has two different underlying implementation, currently there 
 - the native engine, which is consists of the native operators and framework,
 - the Anakin engine, which is a Anakin library embeded.
 
-The native engine takes a native Paddle model as input, and supports any model that trained by Paddle.
-
-The Anakin engine can only take the Anakin model as input(user need to manully transform the format first) and currently not all Paddle models are supported.
+The native engine takes a native Paddle model as input, and supports any model that trained by Paddle, 
+but the Anakin engine can only take the Anakin model as input(user need to manully transform the format first) and currently not all Paddle models are supported.
 
 ```c++
 enum class PaddleEngineKind {
@@ -62,7 +51,7 @@ template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 ```
 
-By specify the engine kind and config, one can get an specific implementation.
+By specifying the engine kind and config, one can get an specific implementation.
 
 ## Reference
 
