@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
@@ -50,7 +50,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (int i = 0; i < 564; ++i) rows->push_back(i);
 
   ::grpc::ByteBuffer msg;
-  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  operators::distributed::SerializeToByteBuffer("myvar", &var, ctx, &msg);
   EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
@@ -81,10 +81,10 @@ void RunSerdeTestSelectedRows(platform::Place place) {
 
   // deserialize zero-copy
   // framework::Variable var2;
-  // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
+  // operators::distributed::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(&scope, &ctx);
+  operators::distributed::VariableResponse resp(&scope, &ctx);
   EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
@@ -128,7 +128,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   math::set_constant(ctx, tensor, 31.9);
 
   ::grpc::ByteBuffer msg;
-  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  operators::distributed::SerializeToByteBuffer("myvar", &var, ctx, &msg);
   EXPECT_GT(msg.Length(), static_cast<size_t>(0));
 
   // deserialize
@@ -171,7 +171,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::VariableResponse resp(&scope, &ctx);
+  operators::distributed::VariableResponse resp(&scope, &ctx);
   if (from_type == 0) {
     EXPECT_EQ(resp.Parse(msg), 0);
   } else {

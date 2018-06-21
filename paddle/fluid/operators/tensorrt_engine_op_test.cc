@@ -179,7 +179,6 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
                         const std::string& z_name, bool x_created,
                         const shape_t& x_shape, const shape_t& y_shape,
                         const shape_t& z_shape) {
-
     LOG(INFO) << "create fc op";
     auto* fc = block_desc.AppendOp();
     fc->SetType("mul");

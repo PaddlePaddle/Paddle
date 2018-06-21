@@ -44,8 +44,8 @@ class SendBarrierOp : public framework::OperatorBase {
     // For profiling
     platform::RecordEvent record_event(Type(), &ctx);
 
-    detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<RPCCLIENT_T>();
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
     VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
 
