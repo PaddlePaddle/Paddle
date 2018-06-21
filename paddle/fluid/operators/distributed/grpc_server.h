@@ -29,17 +29,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/grpc_service.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
-#include "paddle/fluid/operators/detail/rpc_server.h"
-#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/grpc_service.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class RequestBase;
 
@@ -84,6 +84,6 @@ class AsyncGRPCServer final : public RPCServer {
   std::map<std::string, std::vector<RequestBase*>> rpc_reqs_;
 };
 
-};  // namespace detail
+};  // namespace distributed
 };  // namespace operators
 };  // namespace paddle
