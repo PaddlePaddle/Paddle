@@ -145,8 +145,14 @@ class TripletLossKernel : public framework::OpKernel<T> {
       }
 
       // get gradient of logits
-      auto d_x_t_2_sum = d_distances_t.sum(DIM1({1})) +
-                         d_distances_t.sum(DIM1({0})).shuffle(DIM2({1, 0}));
+      d_distances_t = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
+
+      d_distances_t.sum(DIM1{1}).broadcast(DIM2({1, feature_len})) *
+          x_t* T(2.0)
+
+              auto d_x_t_2_sum =
+          d_distances_t.sum(DIM1({1})) +
+          d_distances_t.sum(DIM1({0})).shuffle(DIM2({1, 0}));
       auto d_x_t_2 = d_x_t_2_sum.broadcast(DIM2({1, feature_len}));
       d_x_t.device(place) = (x_t * d_x_t_2 + x_t) * T(2.0);
     }
