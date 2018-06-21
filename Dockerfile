@@ -76,7 +76,7 @@ RUN easy_install -U pip && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip install pre-commit 'ipython==5.3.0' && \
-    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
 
 #For docstring checker
