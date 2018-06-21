@@ -425,10 +425,12 @@ class DistributeTranspiler(object):
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
-        skip_sub_blks = []
+        # record optimize blocks and we can run them on pserver parallel
+        optimize_blocks = []
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
+            optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
                 self._append_pserver_non_opt_ops(lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
@@ -440,6 +442,7 @@ class DistributeTranspiler(object):
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):
             per_opt_block = pserver_program.create_block(pre_block_idx)
+            optimize_blocks.append(per_opt_block)
             # append grad merging ops before clip and weight decay
             for _, op in enumerate(self.optimize_ops):
                 # find the origin @GRAD var before clipping
@@ -458,6 +461,7 @@ class DistributeTranspiler(object):
         if global_ops:
             opt_state_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
+            optimize_blocks.append(opt_state_block)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
                                        grad_to_block_id, None)
@@ -479,12 +483,11 @@ class DistributeTranspiler(object):
             assert len(prefetch_var_name_to_block_id) == 0
 
         attrs = {
-            "OptimizeBlock": pserver_program.block(1),
+            "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
-            "skip_sub_blks": skip_sub_blks
         }
         if len(prefetch_var_name_to_block_id) > 0:
             attrs['prefetch_var_name_to_block_id'] \
