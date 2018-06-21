@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
@@ -23,14 +23,14 @@ limitations under the License. */
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
-#include "paddle/fluid/operators/detail/proto_encoder_helper.h"
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/distributed/bytebuffer_stream.h"
+#include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
+#include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
 
@@ -222,11 +222,11 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
                                framework::Variable** var) {
-  operators::detail::VariableResponse resp(scope, &ctx);
+  operators::distributed::VariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
