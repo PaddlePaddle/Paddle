@@ -20,6 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
+DEFINE_bool(init_alloced_mem, false,
+            "In some op's implementation, they mistake that the values "
+            "of the memory allocated by BuddyAllocator are always zero. "
+            "So we use init_alloced_mem to indicate that initializing the "
+            "allocated data with a small value during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
@@ -41,6 +46,9 @@ template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
+  if (FLAGS_init_alloced_mem) {
+    memset(p, 0xEF, size);
+  }
   VLOG(10) << "  pointer=" << p;
   return p;
 }
@@ -104,6 +112,9 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
     platform::SetDeviceId(cur_dev);
   }
+  if (FLAGS_init_alloced_mem) {
+    cudaMemset(ptr, 0xEF, size);
+  }
   return ptr;
 }
 
@@ -136,6 +147,9 @@ void* Alloc<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place,
   if (ptr == nullptr) {
     LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
+  }
+  if (FLAGS_init_alloced_mem) {
+    memset(ptr, 0xEF, size);
   }
   return ptr;
 }
