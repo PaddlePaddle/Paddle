@@ -4,7 +4,7 @@ set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
 # If WITH_DISTRIBUTE=OFF, DISTRIBUTE_DEPS is "". So don't worry about it.
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_DISTRIBUTE_DEPS})
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} zlib)
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
@@ -12,8 +12,12 @@ if(WITH_CONTRIB)
   set(fluid_modules "${fluid_modules}" paddle_inference_api)
 endif()
 
+message(STATUS "fluid_modules:" ${fluid_modules})
+message(STATUS "GLOB_OP_LIB:" ${GLOB_OP_LIB})
+message(STATUS "FLUID_CORE_MODULES:" ${FLUID_CORE_MODULES})
+
 # Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
+cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api ${GLOB_DISTRIBUTE_DEPS})
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc

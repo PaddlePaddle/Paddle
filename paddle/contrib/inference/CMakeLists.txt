@@ -17,6 +17,8 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
+set(inference_deps paddle_inference_api paddle_fluid)
+
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
         set(options "")
@@ -27,7 +29,7 @@ function(inference_api_test TARGET_NAME)
         set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
         cc_test(${TARGET_NAME}
                 SRCS ${TARGET_NAME}.cc
-                DEPS "${inference_deps}"
+                DEPS "${inference_deps}" ${GLOB_DISTRIBUTE_DEPS}
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
         if(inference_test_ARGS)
             set_tests_properties(${TARGET_NAME}
@@ -42,7 +44,7 @@ cc_library(paddle_inference_api
 
 cc_test(test_paddle_inference_api
         SRCS test_paddle_inference_api.cc
-        DEPS paddle_fluid)
+        DEPS paddle_inference_api paddle_fluid ${GLOB_DISTRIBUTE_DEPS})
 
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)

@@ -22,4 +22,4 @@ cc_library(tape SRCS tape.cc DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} tape_vari
 
 cc_test(test_tape
         SRCS test_tape.cc
-        DEPS tape tape_variable paddle_fluid)
+        DEPS tape tape_variable paddle_fluid ${GLOB_DISTRIBUTE_DEPS})
