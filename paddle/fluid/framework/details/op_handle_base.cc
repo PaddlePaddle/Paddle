@@ -139,6 +139,29 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #endif
 }
 
+void OpHandleBase::RunAndRecordEventNoMutex(
+    const std::function<void()> &callback) {
+#ifdef PADDLE_WITH_CUDA
+  if (!events_.empty()) {  // Use event
+    std::function<void()> method = callback;
+
+    for (auto &p : dev_ctxes_) {
+      method = [method, p, this]() {
+        static_cast<platform::CUDADeviceContext *>(p.second)
+            ->RecordEventNoMutex(
+                events_.at(boost::get<platform::CUDAPlace>(p.first).device),
+                method);
+      };
+    }
+    method();
+  } else {
+#endif
+    callback();
+#ifdef PADDLE_WITH_CUDA
+  }
+#endif
+}
+
 void OpHandleBase::RunAndRecordEvent(platform::Place p,
                                      const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_CUDA
