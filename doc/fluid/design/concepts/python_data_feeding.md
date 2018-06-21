@@ -51,8 +51,8 @@ class PyArrayFeedQueueHolder {
   // `init_once` can only called once, otherwise an exception would raise
   void init_once(size_t capacity, const std::vector<framework::DDim>& dims, const Place& place);
   
-  PyArrayFeedQueue* feeder() { return feeder_.get(); }
-  const PyArrayFeederQueue* feeder() const { return feeder_.get(); }
+  std::shared_ptr<PyArrayFeedQueue> feeder() { return feeder_; }
+  const std::shared_ptr<PyArrayFeederQueue>& feeder() const { return feeder_; }
  private:
   std::shared_ptr<PyArrayFeedQueue> feeder_;
 };
