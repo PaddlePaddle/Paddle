@@ -121,7 +121,6 @@ class Evaluator(object):
         return state
 
 
-@templatedoc()
 class ChunkEvaluator(Evaluator):
     """
     Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator 
@@ -136,9 +135,9 @@ class ChunkEvaluator(Evaluator):
     Args:
         input (Variable): prediction output of the network.
         label (Variable): label of the test data set.
-        chunk_scheme (str): ${chunk_scheme_comment}
-        num_chunk_types (int): ${num_chunk_types_comment}
-        excluded_chunk_types (list): ${excluded_chunk_types_comment}
+        chunk_scheme (str): can be IOB/IOE/IOBES and IO. See the chunk_eval op for details.
+        num_chunk_types (int): the number of chunk type.
+        excluded_chunk_types (list): A list including chunk type ids, indicating chunk types that are not counted.
 
     Returns:
         tuple: tuple containing: precision, recall, f1_score
