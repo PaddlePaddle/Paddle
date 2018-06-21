@@ -21,8 +21,6 @@ namespace operators {
 
 using batch_norm_bwd = mkldnn::batch_normalization_backward;
 using batch_norm_fwd = mkldnn::batch_normalization_forward;
-using framework::DataLayout;
-using framework::Tensor;
 using mkldnn::memory;
 using mkldnn::primitive;
 using mkldnn::reorder;
@@ -30,18 +28,6 @@ using mkldnn::stream;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
-
-template <typename T>
-using EigenArrayMap =
-    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using ConstEigenArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
-template <typename T>
-using ConstEigenVectorArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 namespace {
 template <typename T>

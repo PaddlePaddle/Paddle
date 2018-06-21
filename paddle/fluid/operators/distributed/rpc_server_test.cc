@@ -22,18 +22,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/operators/detail/macros.h"
-#include "paddle/fluid/operators/detail/request_handler_impl.h"
-#include "paddle/fluid/operators/detail/rpc_client.h"
-#include "paddle/fluid/operators/detail/rpc_server.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace detail = paddle::operators::detail;
+namespace distributed = paddle::operators::distributed;
 
 USE_OP(lookup_table);
 
-std::unique_ptr<detail::RPCServer> g_rpc_service;
-std::unique_ptr<detail::RequestHandler> g_req_handler;
+std::unique_ptr<distributed::RPCServer> g_rpc_service;
+std::unique_ptr<distributed::RequestHandler> g_req_handler;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -113,19 +113,21 @@ void StartServer() {
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);
 
-  g_rpc_service->RegisterRPC(detail::kRequestPrefetch, g_req_handler.get());
+  g_rpc_service->RegisterRPC(distributed::kRequestPrefetch,
+                             g_req_handler.get());
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
-      std::bind(&detail::RPCServer::StartServer, g_rpc_service.get()));
+      std::bind(&distributed::RPCServer::StartServer, g_rpc_service.get()));
 
   server_thread.join();
 }
 
 TEST(PREFETCH, CPU) {
-  g_req_handler.reset(new detail::RequestPrefetchHandler(true));
+  g_req_handler.reset(new distributed::RequestPrefetchHandler(true));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
-  detail::RPCClient* client = detail::RPCClient::GetInstance<RPCCLIENT_T>();
+  distributed::RPCClient* client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
   std::thread server_thread(StartServer);
   g_rpc_service->WaitServerReady();

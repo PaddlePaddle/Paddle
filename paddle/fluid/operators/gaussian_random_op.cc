@@ -15,6 +15,10 @@ limitations under the License. */
 #include <random>
 #include "paddle/fluid/framework/op_registry.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -62,9 +66,20 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
     return framework::OpKernelType(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context());
+        ctx.device_context(), layout, library);
   }
 };
 
@@ -95,7 +110,9 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default 5(FP32)) "
                  "Output data type.")
         .SetDefault(framework::proto::VarType::FP32);
-
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 GaussianRandom Operator.
 
