@@ -35,7 +35,7 @@ class BRPCServiceImpl : public SendRecvService {
       request_send_h_ = it->second;
     }
 
-    it = rpc_call_map.find(detail::kRequestSend);
+    it = rpc_call_map.find(detail::kRequestGet);
     if (it != rpc_call_map.end()) {
       request_get_h_ = it->second;
     }
