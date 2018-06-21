@@ -23,6 +23,7 @@ from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
 import random
+from .. import unique_name
 
 __all__ = [
     'fc',
@@ -846,7 +847,7 @@ def crf_decoding(input, param_attr, label=None):
 
     Returns:
         Variable: ${viterbi_path_comment}
-    
+
     Examples:
         .. code-block:: python
 
@@ -1084,7 +1085,7 @@ def chunk_eval(input,
     Here is a NER example of labeling for these tagging schemes:
 
     .. code-block:: python
-    
+
        ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
               Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
        ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
@@ -1110,7 +1111,7 @@ def chunk_eval(input,
     is the num of chunk types, and `tag_type` get its value from the following table.
 
     .. code-block:: python
-    
+
        Scheme Begin Inside End   Single
         plain   0     -      -     -
         IOB     0     1      -     -
@@ -1146,7 +1147,7 @@ def chunk_eval(input,
         tuple: tuple containing: precision, recall, f1_score,
         num_infer_chunks, num_label_chunks,
         num_correct_chunks
-    
+
     Examples:
         .. code-block:: python
 
@@ -1266,7 +1267,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
         param_attr (ParamAttr|None): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
         library is installed. Default: True
-    
+
     Returns:
         Variable: output of sequence_softmax
 
@@ -4143,7 +4144,7 @@ def one_hot(input, depth):
 
     Examples:
         .. code-block:: python
-        
+
             label = layers.data(name="label", shape=[1], dtype="float32")
             one_hot_label = layers.one_hot(input=label, depth=10)
     """
@@ -4862,40 +4863,32 @@ def random_crop(x, shape, seed=None):
 
     Returns:
         ${out_comment}
-    
+
     Examples:
         >>> img = fluid.layers.data("img", [3, 256, 256])
         >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
     helper = LayerHelper("random_crop", **locals())
-    dtype = helper.input_dtype()
+    dtype = x.dtype
     out = helper.create_tmp_variable(dtype)
     if seed is None:
         seed = random.randint(-65536, 65535)
-
+    op_attrs = {"shape": shape}
     if isinstance(seed, int):
-        seed_value = seed
-        seed = helper.create_tmp_variable(dtype="int64")
-        helper.append_op(
-            type="fill_constant",
-            inputs={},
-            outputs={"Out": seed},
-            attrs={
-                "dtype": seed.dtype,
-                "shape": [1],
-                "value": float(seed_value),
-                "force_cpu": True
-            })
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("random_crop_seed"),
+            dtype="int64",
+            persistable=True)
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
-    seed_out = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="random_crop",
         inputs={"X": x,
                 "Seed": seed},
         outputs={"Out": out,
-                 "SeedOut": seed_out},
-        attrs={"shape": shape})
+                 "SeedOut": seed},
+        attrs=op_attrs)
     return out
 
 
@@ -4961,7 +4954,7 @@ def mean_iou(input, label, num_classes):
     semantic image segmentation, which first computes the IOU for each 
     semantic class and then computes the average over classes. 
     IOU is defined as follows: 
-    
+
     .. math::
 
         IOU = \\frac{true\_positiv}{(true\_positive + false\_positive + false\_negative)}.
@@ -4984,7 +4977,7 @@ def mean_iou(input, label, num_classes):
     Examples:
 
         .. code-block:: python
-            
+
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
