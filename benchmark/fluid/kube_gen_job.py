@@ -17,6 +17,7 @@ import copy
 import argparse
 import random
 import os
+import copy
 from kube_templates import pserver, trainer, envs
 
 
@@ -109,9 +110,8 @@ def gen_job():
 
     envs.append({"name": "PADDLE_JOB_NAME", "value": args.jobname})
     envs.append({"name": "PADDLE_TRAINERS", "value": str(args.trainers)})
-    envs.append({"name": "PSERVERS", "value": str(args.pservers)})
+    envs.append({"name": "PADDLE_PSERVERS", "value": str(args.pservers)})
     envs.append({"name": "ENTRY", "value": args.entry})
-    envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
     envs.append({"name": "PADDLE_PSERVER_PORT", "value": str(args.port)})
     # NOTE: these directories below are cluster specific, please modify
     # this settings before you run on your own cluster.
@@ -166,7 +166,7 @@ def gen_job():
     tn["spec"]["template"]["spec"]["volumes"] = volumes
     tn_container["volumeMounts"] = volumeMounts
 
-    ps_container["env"] = envs
+    ps_container["env"] = copy.deepcopy(envs)
     ps_container["env"].append({
         "name": "PADDLE_TRAINING_ROLE",
         "value": "PSERVER"

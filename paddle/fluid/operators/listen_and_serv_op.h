@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
-#include "paddle/fluid/operators/detail/rpc_server.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +34,7 @@ constexpr char kOptimizeBlock[] = "OptimizeBlock";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 constexpr char kCheckpointBlockId[] = "checkpint_block_id";
 
-void RunServer(std::shared_ptr<detail::RPCServer> service);
+void RunServer(std::shared_ptr<distributed::RPCServer> service);
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
@@ -64,11 +64,13 @@ class ListenAndServOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override;
 
  protected:
-  mutable std::shared_ptr<detail::RPCServer> rpc_service_;
-  mutable std::shared_ptr<detail::RequestHandler> request_send_handler_;
-  mutable std::shared_ptr<detail::RequestHandler> request_get_handler_;
-  mutable std::shared_ptr<detail::RequestHandler> request_prefetch_handler_;
-  mutable std::shared_ptr<detail::RequestHandler> request_checkpoint_handler_;
+  mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
+  mutable std::shared_ptr<distributed::RequestHandler> request_send_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler> request_get_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_prefetch_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_checkpoint_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
 };

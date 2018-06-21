@@ -31,7 +31,7 @@
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
@@ -135,6 +135,6 @@ class RequestHandler {
   RPCServer* rpc_server_;
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
