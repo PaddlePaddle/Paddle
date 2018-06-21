@@ -35,7 +35,7 @@ ExternalProject_Add(
     INSTALL_DIR ${OPENSSL_INSTALL_DIR}
     CONFIGURE_COMMAND ./config -fPIC no-shared --prefix=${OPENSSL_INSTALL_DIR}
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND $(MAKE) -j8
+    BUILD_COMMAND $(MAKE) -j 12
     INSTALL_COMMAND $(MAKE) install
 )
 

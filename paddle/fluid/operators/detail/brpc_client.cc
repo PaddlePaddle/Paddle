@@ -98,13 +98,17 @@ void HandleFetchBarrierResponse(brpc::Controller* cntl,
 
   // this channel can be used other now.
   ch_ptr->Push(ch_ctx);
+  cls->DecreaseReqCount();
 
   if (cntl->Failed()) {
-    LOG(WARNING) << "Fail to send SendVar: " << var_h.name
+    LOG(WARNING) << "Fail to get HandleFetchBarrierResponse: " << var_h.name
                  << ", error text: " << cntl->ErrorText();
-    cls->DecreaseReqCount();
     return;
   }
+
+  VLOG(4) << "Received HandleFetchBarrierResponse from: " << cntl->remote_side()
+          << ", varname: " << var_h.name << ", latency: " << cntl->latency_us()
+          << "us";
   VLOG(4) << "Finish HandleFetchBarrierResponse";
 }
 void HandleGetResponse(brpc::Controller* cntl,
