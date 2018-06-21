@@ -77,6 +77,7 @@ RUN easy_install -U pip && \
 
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip install opencv-python
 
 #For docstring checker
 RUN pip install pylint pytest astroid isort
