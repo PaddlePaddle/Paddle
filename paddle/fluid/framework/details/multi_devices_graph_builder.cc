@@ -281,7 +281,7 @@ bool MultiDevSSAGraphBuilder::IsSparseGradient(
 void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
                                                 const std::string &p_name,
                                                 size_t src_dev_id) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   auto *op_handle = new BroadcastOpHandle(local_scopes_, places_, nccl_ctxs_);
 #else
   auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
@@ -314,7 +314,7 @@ void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
     SSAGraph *result, const std::string &og) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   result->ops_.emplace_back(
       new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
   auto *op_handle = result->ops_.back().get();
@@ -370,7 +370,7 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
   for (size_t i = 0; i < places_.size(); ++i) {
 // Insert ScaleCost OpHandle
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     auto *communication_dev_ctx = nccl_ctxs_->DevCtx(places_[i]);
 #else
     auto *communication_dev_ctx =
@@ -407,7 +407,7 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
 VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
                                                    const std::string &og,
                                                    int dst_dev_id) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   result->ops_.emplace_back(
       new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
 #else
@@ -417,7 +417,7 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &vars = result->vars_[i][og];
-#ifndef PADDLE_WITH_CUDA
+#if (!defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP))
     auto &p = places_[i];
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));

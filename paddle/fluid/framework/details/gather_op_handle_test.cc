@@ -43,7 +43,7 @@ struct TestGatherOpHandle {
 
   void InitCtxOnGpu(bool use_gpu) {
     if (use_gpu) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -178,7 +178,7 @@ TEST(GatherTester, TestCPUGatherTestSelectedRows) {
   test_op.TestGatherSelectedRows(input_scope_idx);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 
 TEST(GatherTester, TestGPUGatherTestSelectedRows) {
   TestGatherOpHandle test_op;

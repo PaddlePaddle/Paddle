@@ -36,7 +36,7 @@ struct TestBroadcastOpHandle {
   std::vector<std::unique_ptr<VarHandleBase>> vars_;
   std::vector<p::Place> gpu_list_;
   bool use_gpu_;
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -44,7 +44,7 @@ struct TestBroadcastOpHandle {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -54,7 +54,7 @@ struct TestBroadcastOpHandle {
   void InitCtxOnGpu(bool use_gpu) {
     use_gpu_ = use_gpu;
     if (use_gpu_) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -78,7 +78,7 @@ struct TestBroadcastOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -97,14 +97,14 @@ struct TestBroadcastOpHandle {
     param_scopes_[input_scope_idx]->Var("input");
 
     if (use_gpu_) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       op_handle_.reset(
           new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       op_handle_.reset(
           new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
@@ -241,7 +241,7 @@ TEST(BroadcastTester, TestCPUBroadcastTestSelectedRows) {
   test_op.TestBroadcastSelectedRows(input_scope_idx);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 TEST(BroadcastTester, TestGPUBroadcastTestLodTensor) {
   TestBroadcastOpHandle test_op;
   size_t input_scope_idx = 0;

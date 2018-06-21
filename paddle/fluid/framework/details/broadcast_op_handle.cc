@@ -68,7 +68,7 @@ void BroadcastOpHandle::RunImpl() {
       });
     }
   } else {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     VarHandle *out_handle = nullptr;
     int root_id = boost::get<platform::CUDAPlace>(in_tensor.place()).device;
     std::vector<std::function<void()>> broadcast_calls;
@@ -96,9 +96,15 @@ void BroadcastOpHandle::RunImpl() {
       size_t numel = static_cast<size_t>(in_tensor.numel());
       broadcast_calls.emplace_back(
           [send_recv_buffer, numel, type, root_id, &nccl_ctx] {
+#ifdef PADDLE_WITH_HIP
+            PADDLE_ENFORCE(platform::dynload::rcclBcast(
+                send_recv_buffer, numel, static_cast<rcclDataType_t>(type),
+                root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+#else
             PADDLE_ENFORCE(platform::dynload::ncclBcast(
                 send_recv_buffer, numel, static_cast<ncclDataType_t>(type),
                 root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+#endif
           });
     }
 

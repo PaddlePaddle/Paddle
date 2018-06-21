@@ -26,6 +26,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/rccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -35,7 +38,7 @@ struct ReduceOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
