@@ -106,13 +106,8 @@ void ListenAndServOp::RunSyncLoop(
                     "server program should have at least 2 blocks");
 
   std::vector<int> optimize_block_id_list;
-  for (int blkid = 1; blkid < num_blocks; ++blkid) {
-    if (std::find(prefetch_block_id_list.begin(), prefetch_block_id_list.end(),
-                  blkid) == prefetch_block_id_list.end() &&
-        std::find(skip_sub_blks.begin(), skip_sub_blks.end(), blkid) ==
-            skip_sub_blks.end()) {
-      optimize_block_id_list.push_back(blkid);
-    }
+  for (auto *block : optimize_blocks) {
+    optimize_block_id_list.push_back(block->ID());
   }
   auto optimize_prepared = executor->Prepare(*program, optimize_block_id_list);
   // Insert placeholder for block0 which holds current op itself.
@@ -137,9 +132,9 @@ void ListenAndServOp::RunSyncLoop(
     // and this will still work.
     // The optimize blocks which have the same parent ID would run parallel
     // TODO(Yancey1989): need to use ParallelExecutor for future
-    int32_t last_parent_blkid = program->Block(1).Parent();
+    int32_t last_parent_blkid = optimize_blocks[0]->Parent();
     std::vector<size_t> parallel_blkids;
-    parallel_blkids.push_back(1);
+    parallel_blkids.push_back(optimize_blocks[0]->ID());
     double ts = GetTimestamp();
     for (size_t i = 1; i < optimize_block_id_list.size(); ++i) {
       // skip the first optimize block because it is already in the
@@ -262,8 +257,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(detail::kRequestPrefetch,
                             request_prefetch_handler_.get());
 
-  auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto *program = optimize_block->Program();
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
+  PADDLE_ENFORCE(optimize_blocks.size() > 1,
+                 "optimize blocks should be 1 at least on the pserver side.");
+  auto *program = optimize_block[0]->Program();
   framework::Executor executor(dev_place);
 
   // prepare for prefetch
@@ -340,18 +338,13 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
-    AddAttr<framework::BlockDesc *>(kOptimizeBlock,
-                                    "BlockID to run on server side.");
+    AddAttr<framework::BlockDesc *>(kOptimizeBlocks,
+                                    "Optimize blocks to run on server side.");
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch blocks to run on server side.")
         .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
-    AddAttr<std::vector<int>>("skip_sub_blks",
-                              "do not parallel execute the specify sub blocks, "
-                              "it's used for the op which has"
-                              "condition blocks")
-        .SetDefault({});
   }
 };
 

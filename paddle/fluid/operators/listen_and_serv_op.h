@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr char kOptimizeBlock[] = "OptimizeBlock";
+constexpr char kOptimizeBlocks[] = "optimize_blocks";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 
 void RunServer(std::shared_ptr<detail::RPCServer> service);
