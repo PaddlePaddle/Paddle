@@ -20,7 +20,8 @@ from op_test import OpTest
 
 def triplet_loss(predict, label, eps):
     def relu(x):
-        return (0 + eps) if x < 0 else (x + eps)
+        return x
+        return 0 if (x + eps) < 0 else (x + eps)
 
     print "label: %s" % label
     batch_size = predict.shape[0]
@@ -30,10 +31,11 @@ def triplet_loss(predict, label, eps):
     _, counts = np.unique(label.flatten(), return_counts=True)
     for n in counts:
         offsets.append(offsets[-1] + n)
-    print "offsets: %s" % offsets
-    distance = np.square(predict).sum(axis=1) + np.square(predict).sum(
-        axis=1).T - 2 * np.dot(predict, predict.T)
-    loss = np.zeros([batch_size])
+    distance = np.square(predict).sum(
+        axis=1, keepdims=True) + np.square(predict).sum(
+            axis=1, keepdims=True).T - 2 * np.dot(predict, predict.T)
+    print "distance: %s" % distance
+    loss = np.zeros([batch_size]).astype("float32")
     for i in range(len(offsets) - 1):
         begin = offsets[i]
         end = offsets[i + 1]
@@ -43,31 +45,33 @@ def triplet_loss(predict, label, eps):
 
             n_p_sub = n_dis[np.newaxis, :] - p_dis[np.newaxis, :].T
             p_p_sub = p_dis[np.newaxis, :] - p_dis[np.newaxis, :].T
-            loss[j] = np.array(map(relu, n_p_sub.flatten())).sum() + np.array(
+            loss[j] = np.array(map(relu, n_p_sub.flatten())).sum() - np.array(
                 map(relu, p_p_sub.flatten())).sum()
-    return loss
+
+    print "python loss: %s" % loss
+    return loss.reshape([batch_size, 1])
 
 
 class TestTripletOp(OpTest):
     def setUp(self):
         self.op_type = "triplet_loss"
-        self.batch_size = 8
+        self.batch_size = 4
         self.feature_len = 16
         self.class_num = 2
         self.eps = 0.5
 
         logits = np.random.uniform(
-            0.1, 1.0, [self.batch_size, self.feature_len]).astype("float64")
+            0.1, 1.0, [self.batch_size, self.feature_len]).astype("float32")
+        self.logits_grad = np.zeros(
+            [self.batch_size, self.feature_len]).astype("float32")
+
         labels = np.sort(
             np.random.randint(
                 0, self.class_num, [self.batch_size], dtype="int64")).reshape(
                     [self.batch_size, 1])
 
         self.inputs = {"Logits": logits, "Label": labels}
-        self.outputs = {
-            "Loss": triplet_loss(logits, labels, self.eps),
-            "LogitsGrad": logits
-        }
+        self.outputs = {"Loss": triplet_loss(logits, labels, self.eps), }
         self.attrs = {"epsilon": self.eps}
 
     def test_check_output(self):
@@ -75,6 +79,7 @@ class TestTripletOp(OpTest):
 
 
 #    def test_check_grad(self):
+#        self.outputs["LogitsGrad"] = self.logits_grad
 #        self.check_grad(["Logits"], "Loss")
 
 if __name__ == "__main__":

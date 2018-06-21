@@ -24,6 +24,7 @@ std::vector<int> GetOffsets<platform::CUDADeviceContext>(const Tensor* t) {
   framework::Tensor t_cpu;
   framework::TensorCopy(*t, platform::CPUPlace(), &t_cpu);
   std::vector<int> offsets;
+  offsets.push_back(0);
   int64_t* data = t_cpu.data<int64_t>();
   int64_t currrent_value = data[0];
   for (int i = 1; i < t->numel(); ++i) {

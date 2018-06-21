@@ -19,6 +19,7 @@ namespace operators {
 template <>
 std::vector<int> GetOffsets<platform::CPUDeviceContext>(const Tensor* t) {
   std::vector<int> offsets;
+  offsets.push_back(0);
   const int64_t* data = t->data<int64_t>();
   int64_t currrent_value = data[0];
   for (int i = 1; i < t->numel(); ++i) {
@@ -63,7 +64,6 @@ class TripletLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    LOG(ERROR) << "TripletLossOp::InferShape!";
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
                    "Input(Logits) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
@@ -93,12 +93,11 @@ class TripletLossOp : public framework::OperatorWithKernel {
   }
 };
 
-class TripletLossOpGrad : public framework::OperatorWithKernel {
+class TripletLossGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    LOG(ERROR) << "TripletLossGradOp::InferShape!";
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
                    "Input(Loss@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
@@ -133,7 +132,10 @@ class TripletLossOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(triplet_loss, ops::TripletLossOp, ops::TripletLossOpMaker);
+REGISTER_OPERATOR(triplet_loss, ops::TripletLossOp, ops::TripletLossOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+
+REGISTER_OPERATOR(triplet_loss_grad, ops::TripletLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     triplet_loss,
