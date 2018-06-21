@@ -39,8 +39,8 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     std::string dir = Attr<std::string>("dir");
     std::string lookup_table_name = Attr<std::string>("lookup_table");
 
-    detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<RPCCLIENT_T>();
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
     for (size_t i = 0; i < epmap.size(); i++) {
       VLOG(3) << "checkpoint notify sending " << dir << " to " << epmap[i];
       auto serial_looku_table =

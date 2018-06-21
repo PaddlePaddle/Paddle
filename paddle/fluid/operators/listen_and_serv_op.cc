@@ -268,7 +268,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_get_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get());
-  rpc_service_->RegisterRPC(detail::kRequestCheckpoint,
+  rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
 
   auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
