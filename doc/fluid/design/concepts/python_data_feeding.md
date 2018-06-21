@@ -2,9 +2,9 @@
 
 In the former implementation of Paddle Fluid, there are two ways to feed data:
 
-- Use `reader_op` in backend C++ side. This method only supports data feeding from recordio files and random data generators, but supports many kinds of `decorated_readers`. For examples, `double_buffer_reader` uses two threads to achieve better performance: one for time-consuming I/O operations, and the other for `Executor.Run()`. See [C++ Data Feeding](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/cpp_data_feeding.md) for details.
+- Use `reader_op` in backend C++ side. This method only supports data feeding from recordio files and random data generators, but supports many kinds of `decorated_readers`. For examples, `double_buffer_reader` uses two threads to achieve better performance: one for time-consuming I/O operations, and the other for `Executor::Run()`. See [C++ Data Feeding](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/cpp_data_feeding.md) for details.
 
-- Feed data directly using `DataFeeder.feed()` in Python codes. It is more flexible than the first way. Many kinds of preprocessing steps can be performed before feeding using Python or any other languages, instead of adding many uncommon `operators` in C++ side. But this method is less efficient: the program cannot read the next mini-batch data before `Executor.Run()` ends. Moreover, `decorated_readers` such as `double_buffer_reader` cannot be used for better performance.
+- Feed data directly using `DataFeeder.feed()` in Python codes. It is more flexible than the first way. Many kinds of preprocessing steps can be performed before feeding using Python or any other languages, instead of adding many uncommon `operators` in C++ side. But this method is less efficient: the program cannot read the next mini-batch data before `Executor::Run()` ends. Moreover, `decorated_readers` such as `double_buffer_reader` cannot be used for better performance.
 
 In this document, we design a Python Data Feeding process combining the efficiency of the first way and the flexibility of the second way. A data queue `PyArrayFeedQueue` is designed to be shared by the Python and C++ side, while Python array is pushed into the queue and `reader_op` in C++ side reads out the data from the queue.
 
@@ -16,8 +16,16 @@ class PyArrayFeedQueueHolder;
 class PyArrayFeedQueue {
   friend class PyArrayFeedQueueHolder;
  private:
-  PyArrayFeedQueue(size_t capacity, const std::vector<framework::DDim>& dims, const Place& place);
+  // PyArrayFeedQueue can only be constructed by PyArrayFeedQueueHolder
+  PyArrayFeedQueue(size_t capacity, const std::vector<framework::DDim>& dims, const platform::Place& place);
+ 
  public:
+  // Not copyable and not moveable
+  PyArrayFeedQueue(const PyArrayFeedQueue&) = delete;
+  PyArrayFeedQueue(PyArrayFeedQueue&&) = delete;
+  PyArrayFeedQueue& operator = (const PyArrayFeedQueue&) = delete;
+  PyArrayFeedQueue& operator = (PyArrayFeedQueue&&) = delete;
+
   size_t size() const; // Get the current size of the queue
   size_t capacity() const; // Get the capacity of the queue
   bool is_full() const;
@@ -32,7 +40,12 @@ class PyArrayFeedQueue {
   // Use pybind11::gil_scoped_release to release GIL of Python
   std::vector<framework::LoDTensor> pop();
  private:
-  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  // CircularQueue is a class like `boost::circular_buffer`
+  framework::CircularQueue<std::vector<framework::LoDTensor>> queue_;
+  std::vector<framework::DDim> dims_;
+  platform::Place place_;
+  mutable std::mutex mutex_;
+  mutable std::condition_variable cv_;
 };
 
 class PyArrayFeedQueueHolder {
@@ -40,19 +53,19 @@ class PyArrayFeedQueueHolder {
   PyArrayFeedQueueHolder() {}
   
   // Calls the constructor of PyArrayFeedQueue to create feeder_
-  // For each instance of PyArrayFeedQueueHolder, this function can only called once
+  // `init_once` can only called once, otherwise an exception would raise
   void init_once(size_t capacity, const std::vector<framework::DDim>& dims, const Place& place);
   
-  PyArrayFeedQueue& feeder(); // Get feeder_
-  const PyArrayFeederQueue& feeder() const; // Get feeder_
+  PyArrayFeedQueue* feeder(); // feeder_.get()
+  const PyArrayFeederQueue* feeder() const; // feeder_.get()
  private:
-  std::unique_ptr<PyArrayFeedQueue> feeder_;
+  std::shared_ptr<PyArrayFeedQueue> feeder_;
 };
 ```
 
 There are some major things that must be concerned:
 - `PyArrayFeedQueueHolder` should be a `Variable` in global scope, so that `reader_op` can find it when reading data. Since `PyArrayFeedQueue` does not have a default constructor, it cannot be constructed by `Scope::Var()::GetMutable<T>()`. To solve this problem, `PyArrayFeedQueueHolder` is designed to defer construction of `PyArrayFeedQueue`.
-- A `Variable` of `PyArrayFeedQueueHolder` but not `VarDesc` must be created in Python code before `Executor.Run()` so that `Executor.Run()` can get the feeding data when it is called.
+- A `Variable` of `PyArrayFeedQueueHolder` but not `VarDesc` must be created in Python code before `Executor::Run()` so that `Executor::Run()` can get the feeding data when it is called.
 - `Create_reader_op` should accept the name or address of `PyArrayFeedQueueHolder` as an input or attribute.
 
 
@@ -61,15 +74,18 @@ There are some major things that must be concerned:
 ```C++
 class PyArrayReader : public ReaderBase {
  public:
-  explicit PyArrayReader(PyArrayFeedQueue* queue);
+  explicit PyArrayReader(const std::shared_ptr<PyArrayFeedQueue>& queue);
   
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
   
   void ReInit() override {
     PADDLE_THROW("PyArrayReader does not support ReInit()");
   }
+
+  PyArrayFeedQueue* feeder();
+  const PyArrayFeederQueue* feeder() const;
  private:
-  PyArrayFeedQueue* queue_;
+  std::shared_ptr<PyArrayFeedQueue> queue_;
 };
 ```
 
