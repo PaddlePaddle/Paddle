@@ -96,6 +96,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
+      std::lock_guard<std::mutex> l(exception_mu_);
       if (exception_) {
         auto exp = *exception_;
         exception_.reset();
@@ -199,6 +200,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
+      std::lock_guard<std::mutex> l(exception_mu_);
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
