@@ -106,7 +106,7 @@ class GrpcBufferReader final
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 // Source provides a way for a particular RPC implementation to provide
 // received data to ParseFrom.
 class Source {
@@ -183,6 +183,6 @@ class GrpcByteSource : public Source {
   char space_[sizeof(Reader)];
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

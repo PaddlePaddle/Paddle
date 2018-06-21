@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/detail/brpc_server.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/distributed/brpc_server.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace sendrecv {
 
 typedef std::unordered_map<std::string,
-                           paddle::operators::detail::RequestHandler*>
+                           paddle::operators::distributed::RequestHandler*>
     HandlerMap;
 
 class BRPCServiceImpl : public SendRecvService {
@@ -27,17 +27,17 @@ class BRPCServiceImpl : public SendRecvService {
       : request_send_h_(nullptr),
         request_get_h_(nullptr),
         request_prefetch_h_(nullptr) {
-    auto it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
+    auto it = rpc_call_map.find(paddle::operators::distributed::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_send_h_ = it->second;
     }
 
-    it = rpc_call_map.find(paddle::operators::detail::kRequestSend);
+    it = rpc_call_map.find(paddle::operators::distributed::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_get_h_ = it->second;
     }
 
-    it = rpc_call_map.find(paddle::operators::detail::kRequestPrefetch);
+    it = rpc_call_map.find(paddle::operators::distributed::kRequestPrefetch);
     if (it != rpc_call_map.end()) {
       request_prefetch_h_ = it->second;
     }
@@ -88,15 +88,15 @@ class BRPCServiceImpl : public SendRecvService {
   }
 
  private:
-  paddle::operators::detail::RequestHandler* request_send_h_;
-  paddle::operators::detail::RequestHandler* request_get_h_;
-  paddle::operators::detail::RequestHandler* request_prefetch_h_;
+  paddle::operators::distributed::RequestHandler* request_send_h_;
+  paddle::operators::distributed::RequestHandler* request_get_h_;
+  paddle::operators::distributed::RequestHandler* request_prefetch_h_;
 };
 }  // namespace sendrecv
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 void AsyncBRPCServer::StartServer() {
   // Instance of your service.
@@ -139,6 +139,6 @@ void AsyncBRPCServer::WaitServerReady() {
   VLOG(3) << "AsyncGRPCServer WaitSeverReady";
 }
 
-};  // namespace detail
+};  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

@@ -33,23 +33,59 @@ __all__ = [
 
 
 class BeginEpochEvent(object):
+    """
+    The begin of a training epoch.
+
+    Args:
+        epoch_id(int): The current epoch ID.
+    """
+
     def __init__(self, epoch_id):
         self.epoch = epoch_id
 
 
 class EndEpochEvent(object):
+    """
+    The end of a training epoch.
+
+    Args:
+        epoch_id(int): The current epoch ID.
+    """
+
     def __init__(self, epoch_id):
         self.epoch = epoch_id
 
 
 class BeginStepEvent(object):
+    """
+    The begin of a training epoch.
+
+    Args:
+        epoch_id(int): The current epoch ID.
+        step_id(int): The current step ID.
+    """
+
     def __init__(self, epoch_id, step_id):
         self.epoch = epoch_id
         self.step = step_id
         self.fetch_metrics = True
+        """
+        If fetch_metrics is true, the metrics will be fetched at the 
+        EndStepEvent. Default is True.
+        """
 
 
 class EndStepEvent(object):
+    """
+    The end of a training step.
+
+    Args:
+        epoch_id(int): The current epoch ID.
+        step_id(int): The current step ID.
+        metrics(list): A list of fetched tensor. The order of this list is same
+            as the :code:`train_func` returns.
+    """
+
     def __init__(self, epoch_id, step_id, metrics):
         self.epoch = epoch_id
         self.step = step_id
@@ -57,6 +93,27 @@ class EndStepEvent(object):
 
 
 class CheckpointConfig(object):
+    """
+    Parameter object for :code:`fluid.io.save_checkpoint` and
+    :code:`fluid.Trainer`. Used to configuration how to save checkpoint.
+
+    Args:
+        checkpoint_dir(str): Directory path to save check point. Default is the
+            current directory.
+
+        max_num_checkpoints(int): The max number of local check points.
+        epoch_interval(int): Every number of epoch to save check point.
+        step_interval(int): Every number of step to save check point.
+
+    Examples:
+        >>> config = fluid.CheckpointConfig("./checkpoints")
+        >>> trainer = fluid.Trainer(train_func=train_program,
+        >>>                         place=place,
+        >>>                         optimizer_func=optimizer_func,
+        >>>                         checkpoint_config=config)
+        >>> trainer.train(...)
+    """
+
     def __init__(self,
                  checkpoint_dir=None,
                  max_num_checkpoints=3,
@@ -113,11 +170,62 @@ def check_and_get_place(place):
 
 class Trainer(object):
     """
+    A trainer wraps MultiGPU/MultiNode training loops and can be used to train a
+    simple neural network easily.
+
+    This API takes a :code:`train_func`. A :code:`train_func` is a function that
+    return loss as it first return value. The reset value can be fetched by
+    EndStepEvent.metrics
+
+    This API also takes a :code:`optimizer_func` that will return an optimizer
+    instance.
+
+    For example, to train a MLP for MNIST dataset, the sample program is
+
+    >>> import paddle.fluid as fluid
+    >>>
+    >>> def mlp(image, layer_sizes=[200, 100], activation="relu", num_classes=10):
+    >>>     hidden = image
+    >>>     for layer_size in layer_sizes:
+    >>>         hidden = fluid.layers.fc(input=hidden, size=layer_size, act=activation)
+    >>>     return fluid.layers.fc(input=hidden, size=num_classes, act="softmax")
+    >>>
+    >>> def train_mnist_mlp():
+    >>>     img = fluid.layers.data(name='image', shape=[784])
+    >>>     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    >>>     prediction = mlp(img)
+    >>>     return fluid.layers.mean(fluid.layers.cross_entropy(prediction, label))
+    >>>
+    >>> def optimizer():
+    >>>     return fluid.optimizer.Adam()
+    >>>
+    >>> trainer = Trainer(train_func=train_mnist_mlp,
+    >>>                   optimizer_func=optimizer,
+    >>>                   place=fluid.CUDAPlace(0),
+    >>>                   parallel=True)
+    >>>
+    >>> def train_callback(event):
+    >>>     if isinstance(event, fluid.EndStepEvent):
+    >>>         print "Epoch ID", event.epoch, "Step ID",\
+    >>>             event.step, "AvgLoss", event.metrics[0]
+    >>>     elif isinstance(event, fluid.EndEpochEvent):
+    >>>         trainer.save_params("./model_{0}".format(event.epoch))
+    >>>
+    >>> trainer.train(num_epochs=100, event_handler=train_callback)
+
+    For more example, please see :ref:`api_guide_high_level_api`.
+
 
     Args:
-        train_func(callable): A function which will return loss. The loss must be a scalar.
+        train_func(callable): A function which will return loss. The loss must be
+            a scalar tensor.
         optimizer_func(callable): A function that returns an Optimizer object.
-        place: The device place of this trainer.
+        place(CUDAPlace|CPUPlace): The device place of this trainer. If
+            :code:`parallel=True,` all CUDA Places will be used if :code:`place`
+            is a :code:`CUDAPlace`.
+        parallel(bool): True if use multiple devices.
+        checkpoint_config(CheckpointConfig): Configuration about how to save
+            checkpoints.
     """
 
     def __init__(self,
@@ -129,9 +237,6 @@ class Trainer(object):
                  checkpoint_config=None):
         self.__stop = False
         self.parallel = parallel
-        # 1. we need to generate a framework.Program by calling
-        # program_func. Reference: fluid.program_guard in
-        # test_word2vec.py
 
         # config for checkpoint
         # only chief worker will save variables
@@ -144,6 +249,10 @@ class Trainer(object):
             self.checkpoint_cfg.load_serial = serial if serial >= 0 else None
 
         self.scope = core.Scope()
+
+        # 1. we need to generate a framework.Program by calling
+        # program_func. Reference: fluid.program_guard in
+        # test_word2vec.py
 
         self.startup_program = framework.Program()
         self.train_program = framework.Program()
@@ -277,17 +386,18 @@ class Trainer(object):
 
     def train(self, num_epochs, event_handler, reader=None, feed_order=None):
         """
-        Train the model.
+        Start the train loop to train the model.
 
         Args:
-            num_epochs: The number of epoch. An epoch will process all data in reader
-            event_handler: The event handler. A function with type (ev:Event)->void
-            reader:
-            feed_order: Feeding order of reader. None will following the defining
+            num_epochs(int): The number of epoch. An epoch will process all data in reader
+            event_handler(callable): The event handler. A function with type (ev:Event)->void
+            reader(callable): A reader creator object. See also
+                :ref:`api_guide_python_reader` .
+            feed_order(list): Feeding order of reader. None will following the defining
                 order in program
 
         Returns:
-
+            None
         """
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "")
         if training_role == "PSERVER":
@@ -307,16 +417,24 @@ class Trainer(object):
         Test the model on given test data
 
         Args:
-            reader: The reader that yields test data.
-            feed_order: Feeding order of reader. None will following the defining
-                order in program
+            reader(callable): The reader that yields test data.
+            feed_order(list): Feeding order of reader. None will following the
+                defining order in program
         """
 
         return self._test_by_executor(reader, feed_order,
                                       self.train_func_outputs)
 
     def save_params(self, param_path):
-        # reference: save_persistables in io.py
+        """
+        Save all parameters into :code:`param_path`.
+
+        Args:
+            param_path(str): The path to save parameters.
+
+        Returns:
+            None
+        """
         with self._prog_and_scope_guard():
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)

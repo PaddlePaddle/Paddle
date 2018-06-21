@@ -30,8 +30,6 @@ __all__ = [
     'default_startup_program',
     'default_main_program',
     'program_guard',
-    'switch_startup_program',
-    'switch_main_program',
     'get_var',
 ]
 
@@ -43,7 +41,8 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
 def grad_var_name(var_name):
     """
-    return gradient name for a certain var name
+    Returns:
+        str: gradient name for a certain var name
     """
     return var_name + GRAD_VAR_SUFFIX
 
@@ -51,10 +50,12 @@ def grad_var_name(var_name):
 def convert_np_dtype_to_dtype_(np_dtype):
     """
     Convert the data type in numpy to the data type in Paddle
-    Args:
-        np_dtype(np.dtype): the data type in numpy
 
-    Returns(core.VarDesc.VarType): the data type in Paddle
+    Args:
+        np_dtype(np.dtype): the data type in numpy.
+
+    Returns:
+        core.VarDesc.VarType: the data type in Paddle.
 
     """
     dtype = np.dtype(np_dtype)
@@ -120,37 +121,53 @@ def _debug_string_(proto, throw_on_error=True):
 
 class Variable(object):
     """
-    Python variable. Every input and output of an operator is a variable. Every
-    variable belongs to a block. The variable has a name and two variables in
-    different blocks could have the same name.
+    In Fluid, every input and output of an operator is a variable. In most 
+    cases, variables are used for holding different kinds of data or training 
+    labels. A variable belongs to a block. All variable has its own name and 
+    two variables in different blocks could have the same name.
 
-    There are many kinds of variables. Please reference the framework.proto for
-    details.
+    There are many kinds of variables. Each kind of them has its own attributes 
+    and usages. Please reference the framework.proto for details. 
 
-    Notes: The constructor of Variable should not be invoked directly. Please
-    use `Block.create_var` to create a variable.
-
-    >>> cur_program = Program()
-    >>> cur_block = cur_program.current_block()
-    >>> new_variable = cur_block.create_var(
-    >>>                    name="X", shape=[-1, 23, 48], dtype='float32')
+    Most of a Variable's member variables can be setted to be None. It mean 
+    it is not available or will be specified later.
 
     Args:
-        block(Block): The associated block. It will be passed by
-            `Block.create_var` automatically.
+        block(Block): The block that the variable belongs to.
         type(core.VarDesc.VarType): Variable type. Please reference the
             framework.proto for details.
-        shape(tuple|list|None): The shape of variable. -1 means the batch size.
+        name(str|None): The name of the variable. If setted None, it will be
+            generated automatically. Default: None
+        shape(tuple|list|None): The shape of the variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
-        dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
-        lod_level(int): The level of lod tensor. 0 means it is not a time
+            Default: None
+        dtype(np.dtype|core.VarDesc.VarType|str|None): The data type of variable.
+            Default: None
+        lod_level (int|None): The level of lod tensor. 0 means it is not a time
             series data.
-        capacity(int): The capacity of Channel variable. Ignored
-            for other types.
-        persistable(bool): True if the variable should be saved as check point.
-            Defaults to False.
-        stop_gradient(bool): True if the variable will stop to calculate
-            gradients when backward. Defaults to False.
+            Default: None
+        capacity (int|None): The capacity of Channel variable. Ignored for other
+            types. Default: None
+        persistable (bool|None): True if the variable is persistable. A persistable
+            variable will not be deleted after an iteration ending. Defaults: None.
+        error_clip (BaseErrorClipAttr|None): The error clip attributes of the
+            corresponding gradient variable. Default: None
+        stop_gradient (bool): True if the variable will stop to calculate its
+            gradients when backward. Default: False.
+        is_data (bool): True if the variable is an input data. Default: False
+
+    Notes:
+        The constructor of Variable should not be invoked directly. Please
+        use `Block.create_var` to create a variable.
+
+    Examples:
+        .. code-block:: python
+
+            cur_program = Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
     """
 
     def __init__(self,
@@ -253,13 +270,14 @@ class Variable(object):
         Get debug string.
 
         Args:
-            throw_on_error(bool): True if raise an exception when self is not
-                intialized.
+            throw_on_error(bool): True if raise an exception when self is
+                not initialized.
             with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+                (e.g. trainable, optimize_attr, ...) will be printed when
+                with_details is True. Default False;
 
-        Returns(str): The debug string.
-
+        Returns:
+            str: The debug string.
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -276,6 +294,15 @@ class Variable(object):
     __repr__ = __str__
 
     def set_desc(self, input):
+        """
+        Set the variable description.
+
+        Args:
+            input(core.VarDesc): The new VarDesc.
+
+        Returns:
+            None
+        """
         self.desc = input
 
     @property
@@ -312,6 +339,15 @@ class Variable(object):
         return self.desc.type()
 
     def set_error_clip(self, error_clip):
+        """
+        Set the error_clip.
+
+        Args:
+            error_clip(BaseErrorClipAttr) : The new error_clip.
+
+        Returns:
+            None
+        """
         self.error_clip = error_clip
 
 
@@ -319,8 +355,8 @@ def get_all_op_protos():
     """
     Get all registered op proto from PaddlePaddle C++ end.
 
-    Returns(list): list of OpProto
-
+    Returns:
+       list: list of OpProto.
     """
     protostrs = core.get_all_op_protos()
     ret_values = []
@@ -373,9 +409,45 @@ class OpProtoHolder(object):
 
 class Operator(object):
     """
-    Python Operator class. The operator represents the build in instructions in a
-    Block. Users can use the build in instructions to describe their neural
-    network.
+    In Fluid, all the operation are represented by Operator, and Operator
+    is regarded as a build in an instruction of a Block. Users can use the
+    build in instructions to describe their neural network.
+
+    Args:
+        block(Block): The block has the current operator.
+        desc(core.OpDesc): The protobuf description of Operator.
+        type(str): The type of operator. Default None.
+        inputs(dict): The input of this Operator. it is a dictionary, for every
+            element, key is the input parameter name, and value is a list of
+            variables. Default None.
+        outputs(dict): The output of this Operator. it is a dictionary, for
+            every element, key is the input parameter name, and value is a list
+            of variables. Default None.
+        attrs(dict): The attributes of this Operator. it is a dictionary, for
+            every element, key is attribute name, and value is the attribute value.
+            The attribute type should be as same as the type registered in C++ side.
+            Default None.
+
+    Returns:
+        Operator: The initialized Operator.
+
+    Raises:
+        ValueError: If the passed input, output and attrs doesn't match the
+            initializing Operator's that registered in C++ side.
+
+    Notes:
+        The constructor of operator should not be invoked directly. Use
+        Block.append_op or Block.prepend_op instead.
+
+    Examples:
+        .. code-block:: python
+
+            cur_program = Program()
+            cur_block = cur_program.current_block()
+            # var1 += var2 + var3
+            cur_block.append_op(type="sum",
+                                inputs={"X": [var1, var2, var3]},
+                                outputs={"Out": [var1]})
     """
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
@@ -392,31 +464,7 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        """
-        Constructor.
 
-        Notes: The constructor of operator should not be invoked directly. Use
-        Block.append_op or Block.prepend_op instead.
-
-        >>> cur_program = Program()
-        >>> cur_block = cur_program.current_block()
-        >>> # var1 += var2 + var3
-        >>> cur_block.append_op(type="sum",
-        >>>                     inputs={"X": [var1, var2, var3]},
-        >>>                     outputs={"Out": [var1]})
-
-        Args:
-            block(Block): The block has the current operator.
-            desc(core.OpDesc): The protobuf description.
-            type(str): The type of operator.
-            inputs(dict): The input dictionary. Key is the input parameter name.
-                Value is a list of variables.
-            outputs(dict): The output dictionary which has the same format with
-                           inputs.
-            attrs(dict): The attributes dictionary. Key is attribute name. Value
-                is the attribute value. The attribute type should be as same as
-                the type registered in C++
-        """
         self.block = block
         self.desc = desc
         self.attrs = attrs
@@ -529,12 +577,14 @@ class Operator(object):
 
     def to_string(self, throw_on_error):
         """
-        To debug string.
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
+        Get debug string.
 
-        Returns(str): The debug string.
+        Args:
+            throw_on_error(bool): Whether to raise exception if self is not
+                initialized.
+
+        Returns:
+            str: The debug string.
 
         """
         protostr = self.desc.serialize_to_string()
@@ -552,29 +602,45 @@ class Operator(object):
 
     def input(self, name):
         """
-        Get input arguments by the input parameter name
+        Get the input arguments according to the input parameter name.
+
         Args:
-            name(str): The input parameter name
+            name(str): The input parameter name.
 
-        Returns(list): return the list of argument names associated with the
-            specific parameter name.
-
+        Returns:
+            list: return the list of argument names that associated with \
+                the specific parameter name.
         """
         return self.desc.input(name)
 
     def rename_input(self, old_name, new_name):
+        """
+        Rename the `old_name` to `new_name`.
+
+        Args:
+            old_name(str): The old name of the Operator's input.
+            new_name(str): The new name of the Operator's input.
+
+        Returns:
+            None
+        """
         self.desc.rename_input(old_name, new_name)
 
     def rename_output(self, old_name, new_name):
+        """
+        Rename the `old_name` to `new_name`.
+
+        Args:
+            old_name(str): The old name of the Operator's output.
+            new_name(str): The new name of the Operator's output.
+
+        Returns:
+            None
+        """
         self.desc.rename_output(old_name, new_name)
 
     @property
     def input_names(self):
-        """
-        Get all input parameter names
-        Returns(list): return a list of input parameter names
-
-        """
         return self.desc.input_names()
 
     @property
@@ -587,33 +653,23 @@ class Operator(object):
 
     def output(self, name):
         """
-        Get output arguments by the output parameter name
+        Get output arguments by the output parameter name.
+
         Args:
-            name(str): The output parameter name
+            name(str): The output parameter name.
 
-        Returns(list): return the list of argument names associated with the
-            specific parameter name.
-
+        Returns:
+            list: return the list of argument names associated with \
+                the specific parameter name.
         """
         return self.desc.output(name)
 
     @property
     def output_names(self):
-        """
-        Get all output parameter names
-        Returns(list): return a list of output parameter names
-
-        """
         return self.desc.output_names()
 
     @property
     def idx(self):
-        """
-        Return the array index of current operator.
-        Returns(int): The array index in block.ops array
-        Raises:
-            ValueError: when the operator is not found.
-        """
         for i, op in enumerate(self.block.ops):
             if op == self:
                 return i
@@ -622,27 +678,40 @@ class Operator(object):
 
     def has_attr(self, name):
         """
-        operator has the attribute with name or not.
-        Args:
-            name(str): the attribute name
+        Whether this Operator has the attribute with name or not.
 
-        Returns(bool): True if has this attribute.
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
 
         """
         return self.desc.has_attr(name)
 
     def attr_type(self, name):
         """
-        Get the type of attribute by attribute name
+        Get the type of attribute by attribute's name.
+
         Args:
-            name(str): the attribute name
+            name(str): the attribute name.
 
-        Returns(core.AttrType): the attribute type
-
+        Returns:
+            core.AttrType: the attribute type.
         """
         return self.desc.attr_type(name)
 
     def set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+
+        Raises:
+            ValueError: If the type of value doesn't match with desc.attr_type(name).
+        """
         self.attrs[name] = val
         if isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
@@ -654,40 +723,39 @@ class Operator(object):
 
     @property
     def attr_names(self):
-        """
-        Get all attribute names
-        Returns(list): The list of attribute name
-
-        """
         return self.desc.attr_names()
 
     def attr(self, name):
         """
-        Get attribute by name
+        Get the attribute by name.
+
         Args:
-            name(str): the attribute name
+            name(str): the attribute name.
 
-        Returns(bool|int|str|float|list): The attribute value. The return value
+        Returns:
+            bool|int|str|float|list: The attribute value. The return value
             can be any valid attribute type.
-
         """
         return self.desc.attr(name)
 
     def block_attr(self, name):
         """
-        Get the block attribute by name
+        Get the block attribute by name.
+
         Args:
-            name(str): the attribute name
+            name(str): the attribute name.
 
-        Returns(int): the block index
-
+        Returns:
+            int: the block index.
         """
         return self.desc.block_attr(name)
 
     def all_attrs(self):
         """
-        Get the attribute dict
-        Returns(dict): The Operator's attribute dict
+        Get the attribute dict.
+
+        Returns:
+            dict: The Operator's attribute dict.
         """
         attr_names = self.attr_names
         attr_map = {}
@@ -700,6 +768,35 @@ class Operator(object):
 
 
 class Block(object):
+    """
+    In Fluid, a Program is consistence of multi-Block, and Block stores
+    VarDesc and OpDesc. In a specific Block, a VarDesc have a unique name.
+    One block could have some child blocks, and child block's name scopes
+    should inherit the parent's so that OpDesc in child block can reference
+    a VarDesc that is stored in the parent block.
+    Please reference the framework.proto for details.
+
+    Args:
+        program(Program): The Program that the Block belongs to.
+        idx(int): The block's id in the Program.
+
+    Notes:
+        The constructor of Block should not be invoked directly. Please
+        use `Program.create_block()` to create a block.
+
+    Examples:
+        .. code-block:: python
+
+            cur_program = Program()
+            cur_block = cur_program.current_block()
+            var = cur_block.create_var(name="X",
+                                       shape=[-1, 23, 48],
+                                       dtype='float32')
+            cur_block.append_op(type="abs",
+                                inputs={"X": [var]},
+                                outputs={"Out": [var]})
+    """
+
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
         self.vars = collections.OrderedDict()  # var_name --> var
@@ -712,15 +809,17 @@ class Block(object):
 
     def to_string(self, throw_on_error, with_details=False):
         """
-        To debug string.
+        Get debug string.
+
         Args:
             throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
+                when throw_on_error is True.
             with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+                (e.g. trainable, optimize_attr, ...) will be printed when
+                with_details is True. Default False.
 
-        Returns(str): The debug string.
-
+        Returns:
+            str: The debug string.
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -752,6 +851,15 @@ class Block(object):
         return self.desc.get_forward_block_idx()
 
     def set_forward_block_idx(self, idx):
+        """
+        Set the forward block Idx.
+
+        Args:
+            idx(int): the block index.
+
+        Returns:
+            None
+        """
         self.desc.set_forward_block_idx(idx)
 
     @property
@@ -759,6 +867,19 @@ class Block(object):
         return self.desc.id
 
     def var(self, name):
+        """
+        Get a Variable by name from this block.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: The If input's type is not str, or this block
+                doesn't have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
         if not isinstance(name, basestring):
             raise TypeError(
                 "var require string as parameter, but get %s instead." %
@@ -769,6 +890,19 @@ class Block(object):
         return v
 
     def var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
         frontier = list()
         visited = set()
 
@@ -815,6 +949,18 @@ class Block(object):
     def rename_var(self, name, new_name):
         """
         Rename variable in vars and ops' inputs and outputs
+
+        Args:
+            name(str): the name that need to be renamed.
+            new_name(str): the name that need to rename to.
+
+        Raises:
+            ValueError: If this block doesn't have this the giving name,
+                or the type of the var with the giving name is not Parameter
+                or Variable.
+
+        Returns:
+            Variable: the Variable with the giving name.
         """
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
@@ -878,12 +1024,27 @@ class Block(object):
         return param
 
     def append_op(self, *args, **kwargs):
+        """
+        Appends a new Operator according to the giving arguments.
+
+        Returns:
+            Operator: the append Operator.
+        """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
 
     def insert_op(self, index, *args, **kwargs):
+        """
+        Insert a Operator according to the giving arguments.
+
+        Args:
+            index(int): the place that the operator to insert.
+
+        Returns:
+            Operator: the insert Operator.
+        """
         self.sync_with_cpp()
         op_desc = self.desc.insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
@@ -891,11 +1052,30 @@ class Block(object):
         return op
 
     def remove_op(self, index):
+        """
+        Remove the specific position operator.
+
+        Args:
+            index(int): the position that the operator to insert.
+
+        Returns:
+            None
+        """
         self.sync_with_cpp()
         self.desc.remove_op(index, index + 1)
         del self.ops[index]
 
     def slice_ops(self, start, end):
+        """
+        Return the Operator between start and end.
+
+        Args:
+            start(int): the start position.
+            end(int): the end position.
+
+        Returns:
+            list: the Operators between start and end.
+        """
         return self.ops[start:end]
 
     def prepend_op(self, *args, **kwargs):
@@ -906,9 +1086,8 @@ class Block(object):
 
     def sync_with_cpp(self):
         """
-        Sync from the desc on the c++ end.
-
-        This method is used to synchronize the c++ desc instance generated by backward.
+        Sync from the desc on the c++ end. This method is used to synchronize
+        the c++ desc instance generated by backward.
         """
         # sync variables from cpp
         for var in self.desc.all_vars():
@@ -973,9 +1152,14 @@ class Block(object):
 
     def copy_param_info_from(self, other):
         """
-        Copy the information of parameters from the other block
+        Copy the information of parameters from the other block.
+
         Args:
-            other(Block): the other block
+            other(Block): the other block.
+
+        Raises:
+            ValueError: If type of input is not Block, or the `other` and this
+                block is not in the same topology.
 
         Returns:
             None
@@ -1007,11 +1191,12 @@ class Block(object):
     def clone_variable(self, var):
         """
         Clone a variable into current block.
+
         Args:
             var: the variable to be cloned.
 
         Returns:
-            The new  variable cloned from 'var' in current block.
+            Variable: the new  variable cloned from 'var' in current block.
         """
         assert isinstance(var, Variable)
         ret_var = None
@@ -1051,23 +1236,18 @@ class Program(object):
     Notes: we have default_startup_program and default_main_program
     by default, a pair of them will shared the parameters.
     The default_startup_program only run once to initialize parameters,
-    default_main_program run in every minibatch and adjust the weights.
-
-    Args:
-        None
+    default_main_program run in every mini batch and adjust the weights.
 
     Returns:
-        Python Program
+        A empty program.
 
     Examples:
-       .. code-block:: python
-
-         main_program = Program()
-         startup_program = Program()
-         with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-            fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-            fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-            fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
+        >>> main_program = fluid.Program()
+        >>> startup_program = fluid.Program()
+        >>> with fluid.program_guard(main_program=main_program, startup_program=startup_program):
+        >>>     fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
+        >>>     fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
+        >>>     fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
 
     """
 
@@ -1081,6 +1261,19 @@ class Program(object):
 
     @property
     def op_role(self):
+        """
+        The operator role. In a enum {Forward, Backward, Optimize}.
+
+        Notes: this is a low level API. It is used only for ParallelExecutor to
+        duplicate or schedule operator to devices.
+
+        For example, the forward operator should be executed on every device.
+        The backward operator should be executed on every device and the
+        parameter gradient of backward (use :code:`op_role_var` to get this
+        variable) operator should be merged to one device. The optimization
+        operators should be executed on only one device and broadcast the
+        optimization result, i.e., the new parameter, to every other device.
+        """
         return self._current_role
 
     @op_role.setter
@@ -1089,6 +1282,13 @@ class Program(object):
 
     @property
     def op_role_var(self):
+        """
+        The auxiliary variables for :code:`op_role` property.
+
+        See Also: :code:`Program.op_role`'s documentation for details.
+
+        Notes: This is a very low-level API. Users should not use it directly.
+        """
         return self._op_role_var
 
     @op_role_var.setter
@@ -1097,6 +1297,21 @@ class Program(object):
 
     @contextlib.contextmanager
     def optimized_guard(self, var):
+        """
+        A with guard to set :code:`Optimization` :code:`OpRole` and
+        :code:`OpRoleVar` automatically.
+
+        Notes: This is a very low level API. Users should not use it directly.
+
+        Args:
+            var(Variable|str): The variable (name) to be optimized.
+
+        Examples:
+
+            >>> p, g = backward(...)
+            >>> with program.optimized_guard(p):
+            >>>     p = p - 0.001 * g
+        """
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
         self._op_role_var = [var.name if isinstance(var, Variable) else var]
@@ -1105,18 +1320,35 @@ class Program(object):
         self._current_role = OpRole.Forward
 
     def __str__(self):
+        """
+        Get the protobuf debug string of this Program.
+
+        Returns:
+            (str): The protobuf debug string.
+
+        Raises:
+            ValueError: If any of required fields is not set.
+        """
         return self.to_string(True)
 
     def to_string(self, throw_on_error, with_details=False):
         """
         To debug string.
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
-            with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
-        Returns(str): The debug string.
+        Args:
+            throw_on_error(bool): raise Value error when any of required fields
+                is not set.
+
+            with_details(bool): True if more details about variables and
+                parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
+                to print.
+
+        Returns
+            (str): The debug string.
+
+        Raises:
+            ValueError: If any of required fields is not set and throw_on_error is
+                True.
 
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
@@ -1132,25 +1364,89 @@ class Program(object):
         return res_str
 
     def get_desc(self):
+        """
+        Get the C++ side of `ProgramDesc` object pointer. The C++ object is
+        exposed by :code:`pybind`.
+
+        Notes: This is a very low level API. Users should not use this API
+        directly.
+        """
         return self.desc
 
     def clone(self, for_test=False):
-        """Clone the Program object
-        Args:
-           for_test(bool): indicate whether clone for test.
+        """
+        Create a new, duplicated program.
 
-        Set for_test to False when we want to clone the program for training.
-        Set for_test to True when we want to clone the program for testing.
+
+        Some operators, e.g., :code:`batch_norm`, behave differently between
+        training and testing. They have an attribute, :code:`is_test`, to
+        control this behaviour. This method will change the :code:`is_test`
+        attribute of them to :code:`True` when :code:`for_test=True`.
+
+        * Set for_test to False when we want to clone the program for training.
+        * Set for_test to True when we want to clone the program for testing.
+
+        Notes: This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please.
 
         Args:
-            for_test(bool): Some operators, such as batch_norm and drop_out ops,
-                behave differently in training and testing. If for_test is True,
-                the is_test attributes in these operators will be set to True for
-                testing purposes, otherwise, they remain unchanged.
+            for_test(bool): True if change the :code:`is_test` attribute of
+                operators to :code:`True`.
 
         Returns:
-            Program: The cloned Program object.
+            Program: The new, duplicated Program object.
 
+        Examples:
+
+            1. To clone a test program, the sample code is:
+
+            >>> import paddle.fluid as fluid
+            >>> train_program = fluid.Program()
+            >>> startup_program = fluid.Program()
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     img = fluid.layers.data(name='image', shape=[784])
+            >>>     hidden = fluid.layers.fc(input=img, size=200, act='relu')
+            >>>     hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
+            >>>     loss = fluid.layers.cross_entropy(
+            >>>                 input=fluid.layers.fc(hidden, size=10, act='softmax'),
+            >>>                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+            >>>
+            >>> test_program = train_program.clone(for_test=True)
+            >>>
+            >>> sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     sgd.minimize(loss)
+
+            2. The :code:`clone` method can be avoid if you create program for
+            training and program for testing individually.
+
+            >>> import paddle.fluid as fluid
+            >>>
+            >>> def network(is_test):
+            >>>     img = fluid.layers.data(name='image', shape=[784])
+            >>>     hidden = fluid.layers.fc(input=img, size=200, act='relu')
+            >>>     hidden = fluid.layers.dropout(hidden, dropout_prob=0.5, is_test=is_test)
+            >>>     loss = fluid.layers.cross_entropy(
+            >>>                 input=fluid.layers.fc(hidden, size=10, act='softmax'),
+            >>>                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+            >>>     return loss
+            >>>
+            >>> train_program = fluid.Program()
+            >>> startup_program = fluid.Program()
+            >>> test_program = fluid.Program()
+            >>>
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     with fluid.unique_name.guard():
+            >>>         loss = network(is_test=False)
+            >>>         sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            >>>         sgd.minimize(loss)
+            >>>
+            >>> # the test startup program is not used.
+            >>> with fluid.program_guard(test_program, fluid.Program()):
+            >>>     with fluid.unique_name.guard():
+            >>>         loss = network(is_test=True)
+
+            The two code snippets above will generate same programs.
         """
         if for_test:
             p = self.inference_optimize()
@@ -1165,6 +1461,21 @@ class Program(object):
         return p
 
     def prune(self, targets):
+        """
+        Prune operators and variables which are not needed to generate
+        :code:`targets`.
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. This API is in flux and not stable.
+
+        Args:
+            targets(list|Variable|Operator): A list of variables or operators
+                need to be pruned
+
+        Returns:
+            Program:  A new, pruned program.
+
+        """
         if not isinstance(targets, list):
             targets = [targets]
         targets_idx = []
@@ -1199,6 +1510,17 @@ class Program(object):
         return res
 
     def inference_optimize(self):
+        """
+        This method will create a new program and change the :code:`is_test`
+        attribute of operators to :code:`True`. All the :code:`Parameter`
+        information will be lost.
+
+        Notes: This API is a very low level API. Use
+        :code:`Program.clone(for_test=True)` instead.
+
+        Returns:
+            Program: The new program.
+        """
         # this is an alternative implement before
         # core.inference_optimize being fixed.
         res = Program()
@@ -1215,6 +1537,18 @@ class Program(object):
 
     @staticmethod
     def parse_from_string(binary_str):
+        """
+        Deserialize a program desc from protobuf binary string.
+
+        Notes: All information about parameters will be lost after serialization
+        and deserialization.
+
+        Args:
+            binary_str(str): The binary prootbuf string.
+
+        Returns:
+            Program: A deserialized program desc.
+        """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
         p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
@@ -1223,10 +1557,19 @@ class Program(object):
 
     @property
     def random_seed(self):
+        """
+        The default random seed for random operators in Program. Zero means get
+        the random seed from random device.
+
+        Notes: It must be set before the operators have been added.
+        """
         return self._seed
 
     @property
     def num_blocks(self):
+        """
+        The number of blocks in this program.
+        """
         return self.desc.num_blocks()
 
     @random_seed.setter
@@ -1239,15 +1582,40 @@ class Program(object):
         return str(self)
 
     def global_block(self):
+        """
+        Get the first block of this program.
+        """
         return self.blocks[0]
 
     def block(self, index):
+        """
+        Get the :code:`index` block of this program
+        Args:
+            index(int): The index of block to get
+
+        Returns:
+            Block: The :code:`index` block
+        """
         return self.blocks[index]
 
     def current_block(self):
+        """
+        Get the current block. The :code:`current` block is the block to append
+        operators.
+        """
         return self.blocks[self.current_block_idx]
 
     def create_block(self, parent_idx=None):
+        """
+        Create a new block with the :code:`parent_idx` and change the current block
+        to new block.
+
+        Args:
+            parent_idx(int): The parent block index.
+
+        Returns:
+            Block: The new block.
+        """
         new_block_idx = len(self.blocks)
         parent = self.current_block() if parent_idx is None else self.block(
             parent_idx)
@@ -1257,9 +1625,24 @@ class Program(object):
         return self.current_block()
 
     def rollback(self):
+        """
+        Exit a code block, i.e., roll back to the parent block.
+        Returns:
+            None
+        """
         self.current_block_idx = self.current_block().parent_idx
 
     def sync_with_cpp(self):
+        """
+        Synchronize Python instance to its binding C++ object instance.
+        If the program is modified in C++ space, this method should be invoked.
+
+        Notes: This is a very low level API. Users should not invoke it
+        directly.
+
+        Returns:
+            None
+        """
         for block_idx in range(len(self.blocks), self.desc.num_blocks()):
             self.blocks.append(Block(self, block_idx))
         for block in self.blocks:
@@ -1268,6 +1651,9 @@ class Program(object):
     def copy_param_info_from(self, other):
         """
         Copy the information of parameters from other program.
+
+        Notes: This is a very low level API. Users should not invoke it
+        directly.
 
         Args:
             other(Program): Other program
@@ -1288,6 +1674,9 @@ class Program(object):
         """
         Copy the information of data variables from other program.
 
+        Notes: This is a very low level API. Users should not invoke it
+        directly.
+
         Args:
             other(Program): Other program
 
@@ -1306,12 +1695,41 @@ class Program(object):
                 self.global_block().var(var.name).is_data = True
 
     def list_vars(self):
+        """
+        Get all variables from this Program. A iterable object is returned.
+
+        Returns:
+            iterable: The generator will yield every variable in this program.
+        """
         for each_block in self.blocks:
             for each_var in each_block.vars.itervalues():
                 yield each_var
 
 
 class Parameter(Variable):
+    """
+    Parameter is derived from Variable. A parameter is a persistable 
+    Variable, and will be updated by optimizers after each iteration.
+    The training of a neural network is essentially the updating of 
+    its parameters.
+
+    Relative to a general Variable, a Parameter has several its own
+    member variables:
+
+    Args:
+        trainable(bool): True if the parameter need to be updated after
+            iterations.
+        optimize_attr(map): Parameter attributes related with optimizing.
+            Currently, it only contains 'learning_rate'.
+            Default: {'learning_rate': 1.0}
+        regularizer(WeightDecayRegularizer): The Regularizer which will
+            be applied on the parameter. Default: None
+        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+            which will be applied on the parameter. Default: None
+        do_model_average(bool): True if the model average strategy will
+            be applied on this parameter.
+    """
+
     def __init__(self, block, shape, dtype, **kwargs):
         if shape is None or dtype is None:
             raise ValueError("Parameter must set shape and dtype")
@@ -1374,8 +1792,15 @@ _startup_program_ = Program()
 
 def default_startup_program():
     """
-    Get default startup program. In startup program, Paddle will initialize
-    parameters, initialize nccl handle, etc.
+    Get default/global startup program.
+
+    The layer function in :code:`fluid.layers` will create parameters, readers,
+    NCCL handles as global variables. The :code:`startup_program` will
+    initialize them by the operators in startup program. The layer function will
+    append these initialization operators into startup program.
+
+    This method will return the :code:`default` or the :code:`current` startup
+    program. Users can use :code:`fluid.program_guard` to switch program.
 
     Returns:
         Program: startup program
@@ -1385,7 +1810,15 @@ def default_startup_program():
 
 def default_main_program():
     """
-    Get default main program. The main program is used for training or testing.
+    Get default/global main program. The main program is used for training or
+    testing.
+
+    All layer function in :code:`fluid.layers` will append operators and
+    variables to the :code:`default_main_program`.
+
+    The :code:`default_main_program` is the default program in a lot of APIs.
+    For example, the :code:`Executor.run()` will execute the
+    :code:`default_main_program` when the program is not specified.
 
     Returns:
         Program: main program
@@ -1427,20 +1860,34 @@ def switch_startup_program(program):
 @contextlib.contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Switch program with `with` statement
+    Change the global main program and startup program with `with` statement.
+    Layer functions in the Python `with` block will append operators and
+    variables to the new main programs.
 
     Examples:
-        >>> with program_guard(Program()):
-        >>>   data = fluid.layers.data(...)
-        >>>   hidden = fluid.layers.fc(...)
+
+        >>> import paddle.fluid as fluid
+        >>> main_program = fluid.Program()
+        >>> startup_program = fluid.Program()
+        >>> with fluid.program_guard(main_program, startup_program):
+        >>>     data = fluid.layers.data(...)
+        >>>     hidden = fluid.layers.fc(...)
+
+    Notes: The temporary :code:`Program` can be used if the user does not need
+    to construct either of startup program or main program.
+
+    Examples:
+
+        >>> import paddle.fluid as fluid
+        >>> main_program = fluid.Program()
+        >>> # does not care about startup program. Just pass a temporary value.
+        >>> with fluid.program_guard(main_program, fluid.Program()):
+        >>>     data = ...
 
     Args:
-        main_program(Program): New main program inside `with` statement
+        main_program(Program): New main program inside `with` statement.
         startup_program(Program): New startup program inside `with` statement.
             None means do not change startup program.
-
-    Returns:
-        None
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")
@@ -1457,7 +1904,8 @@ def program_guard(main_program, startup_program=None):
 
 def get_var(name, program=None):
     """
-    Get a variable by name from the global block of a program
+    Get a variable by name from the global block of a program.
+    
     Args:
         name(str): name of the variable
         program(Program|None): program object.
