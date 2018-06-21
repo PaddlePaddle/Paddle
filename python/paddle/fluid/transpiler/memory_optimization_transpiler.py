@@ -383,6 +383,16 @@ def memory_optimize(input_program, skip_opt_set=None, print_log=False, level=0):
 
 
 def release_memory(input_program, skip_opt_set=None):
+    """
+    Modify the input program and insert :code:`delete_op` to early drop not used
+    variables. The modification will be performed inplace.
+
+    Notes: This is an experimental API and could be removed in next few
+    releases. Users should not use this API.
+
+    Args:
+        input_program(Program): The program will be inserted :code:`delete_op`.
+    """
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.release_memory(skip_opt_set=skip_opt_set)
