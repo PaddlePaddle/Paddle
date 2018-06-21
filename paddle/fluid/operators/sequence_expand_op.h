@@ -184,13 +184,20 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
-    g_x->mutable_data<T>(context.GetPlace());
+    framework::LoDTensor printed_tensor;
+    printed_tensor.set_lod(x->lod());
+    printed_tensor.Resize(x->dims());
+    printed_tensor.mutable_data<T>(context.GetPlace());
+
+//    g_x->mutable_data<T>(context.GetPlace());
+    g_x->ShareDataWith(printed_tensor);
     g_x->set_lod(x->lod());
 
     auto& y_lod = y->lod();
     if (ref_level == -1) ref_level = y_lod.size() - 1;
     // just copy the gradient
     if (y_lod[ref_level].size() <= 1) {
+	  //printf("Copied\n");
       framework::TensorCopy(*g_out, context.GetPlace(), g_x);
       return;
     }
@@ -204,9 +211,11 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       ref_x_lod.resize(x->dims()[0] + 1);
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
+//	printf("In functor\n");
     SequenceExpandGradFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
             ref_lod, g_x);
+//	printf("Out functor\n");
   }
 };
 
