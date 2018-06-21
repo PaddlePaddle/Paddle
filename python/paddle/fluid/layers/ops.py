@@ -31,6 +31,7 @@ __activations__ = [
     'square',
     'softplus',
     'softsign',
+    'relu',
     'brelu',
     'leaky_relu',
     'soft_relu',
