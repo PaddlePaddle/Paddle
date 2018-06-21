@@ -80,7 +80,9 @@ void ReduceOpHandle::RunImpl() {
   }
 
   if (pre_in_var->IsType<framework::SelectedRows>()) {
-    this->RunAndRecordEvent([&] {
+    // FIXME(zcd): A temporary fix for some language model that has sparse
+    // parameter.
+    this->RunAndRecordEventNoMutex([&] {
       std::vector<const SelectedRows *> in_selected_rows =
           GetInputValues<SelectedRows>(in_var_handles, var_scopes);
       GatherSelectedRows(in_selected_rows, in_places, dev_ctxes_, t_out_p,

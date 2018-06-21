@@ -103,23 +103,50 @@ void BroadcastOpHandle::RunImpl() {
           });
     }
 
-    this->RunAndRecordEvent([&] {
-      {
-        platform::NCCLGroupGuard guard;
-        for (auto &call : broadcast_calls) {
-          call();
+    // FIXME(zcd): a temporary fix for some language model that has sparse
+    // parameter.
+    bool use_mutex = true;
+    if (in_var->IsType<paddle::framework::SelectedRows>()) {
+      use_mutex = false;
+    }
+    if (use_mutex) {
+      this->RunAndRecordEvent([&] {
+        {
+          platform::NCCLGroupGuard guard;
+          for (auto &call : broadcast_calls) {
+            call();
+          }
         }
-      }
 
-      if (!out_handle->IsTheSameVar(*in_var_handle)) {
-        auto out_var = var_scopes.at(in_var_handle->scope_idx_)
-                           ->FindVar(out_var_handles[0]->name_);
-        paddle::framework::TensorCopy(
-            in_tensor, in_var_handle->place_,
-            *(dev_ctxes_.at(in_var_handle->place_)),
-            &VariableVisitor::GetMutableTensor(out_var));
-      }
-    });
+        if (!out_handle->IsTheSameVar(*in_var_handle)) {
+          auto out_var = var_scopes.at(in_var_handle->scope_idx_)
+                             ->FindVar(out_var_handles[0]->name_);
+          paddle::framework::TensorCopy(
+              in_tensor, in_var_handle->place_,
+              *(dev_ctxes_.at(in_var_handle->place_)),
+              &VariableVisitor::GetMutableTensor(out_var));
+        }
+      });
+    } else {
+      this->RunAndRecordEventNoMutex([&] {
+        {
+          platform::NCCLGroupGuard guard;
+          for (auto &call : broadcast_calls) {
+            call();
+          }
+        }
+
+        if (!out_handle->IsTheSameVar(*in_var_handle)) {
+          auto out_var = var_scopes.at(in_var_handle->scope_idx_)
+                             ->FindVar(out_var_handles[0]->name_);
+          paddle::framework::TensorCopy(
+              in_tensor, in_var_handle->place_,
+              *(dev_ctxes_.at(in_var_handle->place_)),
+              &VariableVisitor::GetMutableTensor(out_var));
+        }
+      });
+    }
+
 #else
     PADDLE_THROW("CUDA is not enabled.");
 #endif
