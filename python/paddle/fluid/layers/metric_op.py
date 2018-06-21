@@ -126,7 +126,7 @@ def auc(input, label, curve='ROC', num_thresholds=200):
     topk_out, topk_indices = nn.topk(input, k=k)
     auc_out = helper.create_tmp_variable(dtype="float32")
     helper.append_op(
-        type="accuracy",
+        type="auc",
         inputs={
             "Out": [topk_out],
             "Indices": [topk_indices],
