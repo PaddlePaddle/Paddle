@@ -101,6 +101,12 @@ class BRPCClient : public RPCClient {
                                 VarHandle var_h, ChannelQueuePtr ch_ptr,
                                 ChannelContextPtr ch_ctx, BRPCClient* cls);
 
+  friend void HandleFetchBarrierResponse(brpc::Controller* cntl,
+                                         sendrecv::VariableMessage* response,
+                                         VarHandle var_h,
+                                         ChannelQueuePtr ch_ptr,
+                                         ChannelContextPtr ch_ctx,
+                                         BRPCClient* cls);
   void DecreaseReqCount() {
     req_count_--;
     if (req_count_.load() <= 0) {

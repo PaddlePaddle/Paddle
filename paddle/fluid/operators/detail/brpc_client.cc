@@ -88,16 +88,29 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
 
   return true;
 }
+void HandleFetchBarrierResponse(brpc::Controller* cntl,
+                                sendrecv::VariableMessage* response,
+                                VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                ChannelContextPtr ch_ctx, BRPCClient* cls) {
+  // std::unique_ptr makes sure cntl/response will be deleted before returning.
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<sendrecv::VariableMessage> response_guard(response);
 
-void HandleFetchBarrierResponse(brpc::controller* cntl,
-                                sendrecv::variablemessage* response,
-                                varhandle var_h, channelqueueptr ch_ptr,
-                                channelcontextptr ch_ctx, brpcclient* cls) {}
+  // this channel can be used other now.
+  ch_ptr->Push(ch_ctx);
 
-void HandleGetResponse(brpc::controller* cntl,
-                       sendrecv::variablemessage* response, varhandle var_h,
-                       channelqueueptr ch_ptr, channelcontextptr ch_ctx,
-                       brpcclient* cls) {
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send SendVar: " << var_h.name
+                 << ", error text: " << cntl->ErrorText();
+    cls->DecreaseReqCount();
+    return;
+  }
+  VLOG(4) << "Finish HandleFetchBarrierResponse";
+}
+void HandleGetResponse(brpc::Controller* cntl,
+                       sendrecv::VariableMessage* response, VarHandle var_h,
+                       ChannelQueuePtr ch_ptr, ChannelContextPtr ch_ctx,
+                       BRPCClient* cls) {
   // std::unique_ptr makes sure cntl/response will be deleted before returning.
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   std::unique_ptr<sendrecv::VariableMessage> response_guard(response);
@@ -216,20 +229,22 @@ void BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   auto ch_ctx = ch_ptr->Pop();
 
   brpc::Controller* cntl = new brpc::Controller();
-  sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
+  sendrecv::VariableMessage* response = new sendrecv::VariableMessage();
   cntl->set_timeout_ms(time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
 
-  // varhandle
+  // var handle
   VarHandle var_h;
+  var_h.ep = ep;
   var_h.name = FETCH_BARRIER_MESSAGE;
 
   google::protobuf::Closure* done = brpc::NewCallback(
       &HandleFetchBarrierResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
   ch_ctx->stub->GetVariable(cntl, &req, response, done);
+
   req_count_++;
 }
 
