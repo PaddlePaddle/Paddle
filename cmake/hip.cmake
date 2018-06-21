@@ -3,6 +3,8 @@ if(NOT WITH_AMD_GPU)
 endif()
 
 include_directories("/opt/rocm/include")
+include_directories("/opt/rocm/hip/include")
+include_directories("/opt/rocm/miopen/include")
 include_directories("/opt/rocm/hipblas/include")
 include_directories("/opt/rocm/hiprand/include")
 include_directories("/opt/rocm/rocrand/include")
