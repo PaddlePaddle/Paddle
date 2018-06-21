@@ -70,7 +70,7 @@ class TestMineHardExamplesOp(OpTest):
 
         self.updated_match_indices = self.match_indices
 
-        self.neg_indices_lod = [[0, 1, 2]]
+        self.neg_indices_lod = [[1, 1]]
         self.neg_indices = np.array([[1], [0]]).astype('int32')
 
 
@@ -92,7 +92,7 @@ class TestMineHardExamplesOpHardExample(TestMineHardExamplesOp):
         self.updated_match_indices = np.array([[0, -1, -1],
                                                [-1, -1, -1]]).astype('int32')
 
-        self.neg_indices_lod = [[0, 1, 3]]
+        self.neg_indices_lod = [[1, 2]]
         self.neg_indices = np.array([[2], [0], [2]]).astype('int32')
 
 

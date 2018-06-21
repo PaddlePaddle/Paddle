@@ -132,7 +132,8 @@ EOF
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_ANAKIN=ON
 }
 
 function abort(){

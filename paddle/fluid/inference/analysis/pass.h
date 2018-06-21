@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/node.h"
@@ -30,19 +31,24 @@ namespace analysis {
 class Pass {
  public:
   Pass() = default;
-  virtual ~Pass() {}
+  virtual ~Pass() = default;
   // Virtual method overridden by subclasses to do only necessary initialization
   // before any pass is run.
-  virtual bool Initialize() { return false; }
+  // virtual bool Initialize() { return false; }
   // There is some passes such as FlowToDataFlowGraphPass that needs a
   // ProgramDesc. Here use the native ProgramDesc ProtoBuf message, so that it
   // only couple with the proto file.
-  virtual bool Initialize(const framework::proto::ProgramDesc &desc) {
-    return false;
-  }
+  // virtual bool Initialize(const framework::proto::ProgramDesc &desc) { return
+  // false; }
   // There are some Passes such as DataFlowGraphToFluidPass that will output a
   // ProgramDesc.
-  virtual bool Initialize(framework::proto::ProgramDesc *desc) { return false; }
+  // virtual bool Initialize(framework::proto::ProgramDesc *desc) { return
+  // false; }
+
+  // Mutable Pass.
+  virtual bool Initialize(Argument *argument) { return false; }
+  // Readonly Pass.
+  virtual bool Initialize(const Argument &argument) { return false; }
 
   // Virtual method overriden by subclasses to do any necessary clean up after
   // all passes have run.
@@ -50,7 +56,9 @@ class Pass {
 
   // Get a Pass appropriate to print the Node this pass operates on.
   virtual Pass *CreatePrinterPass(std::ostream &os,
-                                  const std::string &banner) const = 0;
+                                  const std::string &banner) const {
+    return nullptr;
+  }
 
   // Run on a single Node.
   virtual void Run(Node *x) { LOG(FATAL) << "not valid"; }
@@ -60,6 +68,11 @@ class Pass {
   virtual void Run(FunctionBlock *x) { LOG(FATAL) << "not valid"; }
   // Run on a single DataFlowGraph.
   virtual void Run(DataFlowGraph *x) { LOG(FATAL) << "not valid"; }
+
+  // Human-readable short representation.
+  virtual std::string repr() const = 0;
+  // Human-readable long description.
+  virtual std::string description() const = 0;
 };
 
 // NodePass process on any Node types.

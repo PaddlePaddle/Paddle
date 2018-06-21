@@ -34,7 +34,8 @@ static constexpr size_t kChannelSize = 1;  // kCacheSize - 2
 class DoubleBufferReader : public framework::DecoratedReader {
  public:
   explicit DoubleBufferReader(
-      ReaderBase* reader, platform::Place target_place = platform::CPUPlace())
+      const std::shared_ptr<ReaderBase>& reader,
+      platform::Place target_place = platform::CPUPlace())
       : DecoratedReader(reader), place_(target_place) {
     cpu_tensor_cache_.resize(kCacheSize);
     gpu_tensor_cache_.resize(kCacheSize);

@@ -228,6 +228,38 @@ TEST(LoD, CheckAbsLoD) {
   ASSERT_FALSE(CheckAbsLoD(abs_lod0));
 }
 
+TEST(LoD, ConvertToLengthBasedLoD) {
+  LoD offset_lod;
+  offset_lod.push_back(std::vector<size_t>({0, 2}));
+  offset_lod.push_back(std::vector<size_t>({0, 1, 3}));
+  offset_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
+
+  LoD length_lod = ConvertToLengthBasedLoD(offset_lod);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({2}));
+  expected.push_back(std::vector<size_t>({1, 2}));
+  expected.push_back(std::vector<size_t>({2, 2, 1}));
+
+  EXPECT_EQ(length_lod, expected);
+}
+
+TEST(LoD, ConvertToOffsetBasedLoD) {
+  LoD length_lod;
+  length_lod.push_back(std::vector<size_t>({2}));
+  length_lod.push_back(std::vector<size_t>({1, 2}));
+  length_lod.push_back(std::vector<size_t>({2, 2, 1}));
+
+  LoD offset_lod = ConvertToOffsetBasedLoD(length_lod);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({0, 2}));
+  expected.push_back(std::vector<size_t>({0, 1, 3}));
+  expected.push_back(std::vector<size_t>({0, 2, 4, 5}));
+
+  EXPECT_EQ(offset_lod, expected);
+}
+
 template <typename T>
 static void TestRecordIO() {
   LoDTensor tensor;

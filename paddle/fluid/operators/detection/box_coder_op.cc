@@ -106,23 +106,36 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
               "and M represents the number of deocded boxes.");
 
     AddComment(R"DOC(
-Bounding Box Coder Operator.
+
+Bounding Box Coder.
+
 Encode/Decode the target bounding box with the priorbox information.
+
 The Encoding schema described below:
-ox = (tx - px) / pw / pxv
-oy = (ty - py) / ph / pyv
-ow = log(abs(tw / pw)) / pwv 
-oh = log(abs(th / ph)) / phv 
+
+    ox = (tx - px) / pw / pxv
+
+    oy = (ty - py) / ph / pyv
+
+    ow = log(abs(tw / pw)) / pwv 
+
+    oh = log(abs(th / ph)) / phv 
+
 The Decoding schema described below:
-ox = (pw * pxv * tx * + px) - tw / 2
-oy = (ph * pyv * ty * + py) - th / 2
-ow = exp(pwv * tw) * pw + tw / 2
-oh = exp(phv * th) * ph + th / 2
-where tx, ty, tw, th denote the target box's center coordinates, width and
-height respectively. Similarly, px, py, pw, ph denote the priorbox's(anchor)
-center coordinates, width and height. pxv, pyv, pwv, phv denote the variance
-of the priorbox and ox, oy, ow, oh denote the encoded/decoded coordinates,
-width and height.
+
+    ox = (pw * pxv * tx * + px) - tw / 2
+
+    oy = (ph * pyv * ty * + py) - th / 2
+
+    ow = exp(pwv * tw) * pw + tw / 2
+
+    oh = exp(phv * th) * ph + th / 2
+
+where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
+and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
+priorbox's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
+`phv` denote the variance of the priorbox and `ox`, `oy`, `ow`, `oh` denote the
+encoded/decoded coordinates, width and height.
 )DOC");
   }
 };
