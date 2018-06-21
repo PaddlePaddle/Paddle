@@ -4938,9 +4938,9 @@ def log(x):
             output = fluid.layers.log(x)
     """
     helper = LayerHelper('log', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_tmp_variable(dtype)
-    helper.append_op(type="log", inputs={"X": input}, outputs={"Out": out})
+    helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
     return out
 
 
@@ -4967,9 +4967,9 @@ def relu(x):
             output = fluid.layers.relu(x)
     """
     helper = LayerHelper('relu', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_tmp_variable(dtype)
-    helper.append_op(type="relu", inputs={"X": input}, outputs={"Out": out})
+    helper.append_op(type="relu", inputs={"X": x}, outputs={"Out": out})
     return out
 
 
