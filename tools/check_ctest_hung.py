@@ -23,6 +23,16 @@ def escape(input):
 
 
 def main():
+    usage = """Usage:
+1. Download the Paddle_PR_CI_*.log from TeamCity
+2. run: python check_ctest_hung.py Paddle_PR_CI_*.log
+3. If there is hung ctest, the result likes:
+Diff:  set(['test_parallel_executor_crf'])
+    """
+    if len(sys.argv) < 2:
+        print(usage)
+        exit(0)
+
     logfile = sys.argv[1]
     started = set()
     passed = set()
