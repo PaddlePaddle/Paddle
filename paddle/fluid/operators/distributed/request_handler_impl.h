@@ -28,11 +28,11 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/request_handler.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class RequestSendHandler final : public RequestHandler {
  public:
@@ -81,6 +81,6 @@ class RequestCheckpointHandler final : public RequestHandler {
   int checkpoint_notify_id;
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

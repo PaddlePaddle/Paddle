@@ -20,13 +20,13 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/detail/request_handler_impl.h"
-#include "paddle/fluid/operators/detail/rpc_server.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
@@ -138,6 +138,6 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
   return true;
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
