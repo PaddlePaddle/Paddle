@@ -153,6 +153,9 @@ class RandomCropKernel : public framework::OpKernel<T> {
       framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
       seed = *cpu_seed.data<int64_t>();
     }
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
     auto shape = ctx.Attr<std::vector<int>>("shape");
     auto& x = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
     auto& out = detail::Ref(ctx.Output<framework::LoDTensor>("Out"));
