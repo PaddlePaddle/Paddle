@@ -99,11 +99,5 @@ inline mkldnn::memory::format GetMKLDNNFormat(const mkldnn::memory memory) {
       memory.get_primitive_desc().desc().data.format);
 }
 
-inline mkldnn::memory::format GetMKLDNNFormat(
-    const mkldnn::sum::primitive_desc& memory) {
-  return static_cast<mkldnn::memory::format>(
-      memory.dst_primitive_desc().desc().data.format);
-}
-
 }  // namespace platform
 }  // namespace paddle
