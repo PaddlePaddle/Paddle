@@ -18,7 +18,7 @@ from framework import Program, default_main_program, Variable
 from . import core
 
 __all__ = [
-    'Executor', 'global_scope', 'scope_guard', 'switch_scope', 'fetch_var'
+    'Executor', 'global_scope', 'scope_guard', '_switch_scope', 'fetch_var'
 ]
 
 g_scope = core.Scope()
@@ -35,7 +35,7 @@ def global_scope():
     return g_scope
 
 
-def switch_scope(scope):
+def _switch_scope(scope):
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -57,12 +57,27 @@ def scope_guard(scope):
     Args:
         scope: The new global/default scope.
     """
-    ex = switch_scope(scope)
+    ex = _switch_scope(scope)
     yield
-    switch_scope(ex)
+    _switch_scope(ex)
 
 
 def as_numpy(tensor):
+    """
+    Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
+    For higher dimensional sequence data, please use LoDTensor directly.
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> outs = executor.run(...)
+        >>> np_outs = map(lambda x: as_numpy(x), outs)
+        >>>     ...
+
+    Args:
+       tensor(Variable): a instance of Tensor
+
+    Returns:
+        numpy.ndarray
+    """
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
@@ -186,7 +201,7 @@ def fetch_var(name, scope=None, return_numpy=True):
     return tensor
 
 
-def get_program_cache_key(feed, fetch_list):
+def _get_program_cache_key(feed, fetch_list):
     feed_var_names = feed.keys()
 
     def to_name_str(var):
@@ -205,6 +220,25 @@ def get_program_cache_key(feed, fetch_list):
 
 
 class Executor(object):
+    """
+    An Executor in Python, only support the single-GPU running. For multi-cards, please refer to
+    ParallelExecutor.
+    Python executor takes a program, add feed operators and fetch operators to this program according
+    to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+    the variables(or names) that user want to get after program run. Note: the executor will run all
+    operators in the program but not only the operators dependent by the fetch_list.
+    It store the global variables into the global scope, and create a local scope for the temporary 
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished. 
+    But the global scope variables will be persistent through different runs.
+    All of ops in program will be running in sequence.
+
+    Args:
+        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
+
+    Note: For debugging complicated network in parallel-GPUs, you can test it on the executor.
+    They has the exactly same arguments, and expected the same results.
+    """
+
     def __init__(self, place):
         self.place = place
         p = core.Place()
@@ -213,6 +247,23 @@ class Executor(object):
         self.program_caches = dict()
 
     def as_lodtensor(self, data):
+        """
+        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
+        For higher dimensional sequence data, please use LoDTensor directly.
+
+        Examples:
+            >>> import paddle.fluid as fluid
+            >>> exe = fluid.executor(fluid.CPUPlace())
+            >>> data = np.array(size=(100, 200, 300))
+            >>> np_outs = map(lambda x: exe.as_lodtensor(x), data)
+            >>>     ...
+
+        Args:
+            data(numpy.ndarray): a instance of array
+
+        Returns:
+            LoDTensor
+        """
         if isinstance(data, list):
             raise RuntimeError("Some of your feed data hold LoD information. \
                 They can not be completely cast from a list of Python \
@@ -304,23 +355,47 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False):
-        """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-
+        """
+        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
         to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run. Note: the executor will run all
+        the variables(or names) that user want to get after program run.
+
+        Note: the executor will run all
         operators in the program but not only the operators dependent by the fetch_list
 
-        :param program: the program that need to run, if not provied, then default_main_program will be used.
-        :param feed: feed variable map, e.g. {"image": ImageData, "label": LableData}
-        :param fetch_list: a list of variable or variable names that user want to get, run will return them according
-        to this list.
-        :param feed_var_name: the name for the input variable of feed Operator.
-        :param fetch_var_name: the name for the output variable of feed Operator.
-        :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
-        :param return_numpy: if convert the fetched tensor to numpy
-        :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
-        :return: result according to fetch_list.
+        Args:
+            program(Program): the program that need to run, if not provied, then default_main_program will be used.
+            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
+            fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
+            feed_var_name(str): the name for the input variable of feed Operator.
+            fetch_var_name(str): the name for the output variable of fetch Operator.
+            scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
+            return_numpy(bool): if convert the fetched tensor to numpy
+            use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
+
+        Returns:
+
+            list(numpy.array): fetch result according to fetch_list.
+
+
+        Examples:
+
+            >>> data = layers.data(name='X', shape=[1], dtype='float32')
+            >>> hidden = layers.fc(input=data, size=10)
+            >>> layers.assign(hidden, out)
+            >>> loss = layers.mean(out)
+            >>> adam = fluid.optimizer.Adam()
+            >>> adam.minimize(loss)
+
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> exe.run(default_startup_program())
+
+            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+            >>> outs = exe.run(
+            >>>     feed={'X': x},
+            >>>     fetch_list=[loss.name])
         """
         if feed is None:
             feed = {}
@@ -341,7 +416,7 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        cache_key = get_program_cache_key(feed, fetch_list)
+        cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
             cached_program = self._get_program_cache(cache_key)
             if cached_program is None:
