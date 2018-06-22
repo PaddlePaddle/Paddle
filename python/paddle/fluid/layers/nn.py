@@ -4920,16 +4920,16 @@ def random_crop(x, shape, seed=None):
     return out
 
 
-def log(x):
+def log(input):
     """
     Calculates the natural log of the given input tensor, element-wise.
 
     .. math::
 
-        Out = \\ln(x)
+        Out = \\ln(input)
 
     Args:
-        x (Variable): Input tensor.
+        input (Variable): Input tensor.
 
     Returns:
         Variable: The natural log of the input tensor computed element-wise.
@@ -4938,7 +4938,7 @@ def log(x):
 
         .. code-block:: python
 
-            output = fluid.layers.log(x)
+            output = fluid.layers.log(input)
     """
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -4947,18 +4947,18 @@ def log(x):
     return out
 
 
-def relu(x):
+def relu(input):
     """
     Relu takes one input data (Tensor) and produces one output data (Tensor)
-    where the rectified linear function, y = max(0, x), is applied to
+    where the rectified linear function, y = max(0, input), is applied to
     the tensor elementwise.
 
     .. math::
 
-        Out = \\max(0, x)
+        Out = \\max(0, input)
 
     Args:
-        x (Variable): The input tensor.
+        input (Variable): The input tensor.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -4967,7 +4967,7 @@ def relu(x):
 
         .. code-block:: python
 
-            output = fluid.layers.relu(x)
+            output = fluid.layers.relu(input)
     """
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
