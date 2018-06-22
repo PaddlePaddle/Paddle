@@ -561,6 +561,10 @@ class Operator(object):
                 if isinstance(self.attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name,
                                              self.attrs[attr_name].desc)
+                elif isinstance(self.attrs[attr_name], list) and \
+                      all(isinstance(v, Block) for v in self.attrs[attr_name]):
+                    self.desc.set_blocks_attr(
+                        attr_name, [v.desc for v in self.attrs[attr_name]])
                 elif isinstance(self.attrs[attr_name], core.BlockDesc) or \
                         isinstance(self.attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
@@ -715,6 +719,8 @@ class Operator(object):
         self.attrs[name] = val
         if isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
+        elif isinstance(val, list) and all(isinstance(v, Block) for v in val):
+            self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())

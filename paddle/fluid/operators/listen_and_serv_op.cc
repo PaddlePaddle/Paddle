@@ -101,14 +101,11 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list) const {
   size_t num_blocks = program->Size();
-  auto skip_sub_blks = Attr<std::vector<int>>("skip_sub_blks");
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  std::vector<int> optimize_block_id_list;
-  for (auto *block : optimize_blocks) {
-    optimize_block_id_list.push_back(block->ID());
-  }
   auto optimize_prepared = executor->Prepare(*program, optimize_block_id_list);
   // Insert placeholder for block0 which holds current op itself.
   optimize_prepared.insert(
@@ -136,10 +133,10 @@ void ListenAndServOp::RunSyncLoop(
     std::vector<size_t> parallel_blkids;
     parallel_blkids.push_back(optimize_blocks[0]->ID());
     double ts = GetTimestamp();
-    for (size_t i = 1; i < optimize_block_id_list.size(); ++i) {
+    for (size_t i = 1; i < optimize_blocks.size(); ++i) {
       // skip the first optimize block because it is already in the
       // parallel_blkids.
-      int blkid = optimize_block_id_list[i];
+      int blkid = optimize_blocks[i]->ID();
       if (program->Block(blkid).Parent() != last_parent_blkid) {
         ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
                               program, recv_scope);
@@ -263,7 +260,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE(optimize_blocks.size() > 1,
                  "optimize blocks should be 1 at least on the pserver side.");
-  auto *program = optimize_block[0]->Program();
+  auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
   // prepare for prefetch
@@ -340,8 +337,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
-    AddAttr<framework::BlockDesc *>(kOptimizeBlocks,
-                                    "Optimize blocks to run on server side.");
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        kOptimizeBlocks, "Optimize blocks to run on server side.");
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch blocks to run on server side.")
         .SetDefault({});
