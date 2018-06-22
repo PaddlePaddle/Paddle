@@ -41,11 +41,13 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/fluid/platform/dynload/curand.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
-#endif
+#  include "paddle/fluid/platform/dynload/cublas.h"
+#  include "paddle/fluid/platform/dynload/cudnn.h"
+#  include "paddle/fluid/platform/dynload/curand.h"
+#  ifndef __APPLE__
+#    include "paddle/fluid/platform/dynload/nccl.h"
+#  endif  // __APPLE__
+#endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
 namespace platform {
@@ -174,6 +176,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   throw std::runtime_error(err + string::Sprintf(args...));
 }
 
+#ifndef __APPLE__
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     ncclResult_t stat, const Args&... args) {
@@ -184,7 +187,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
                              string::Sprintf(args...));
   }
 }
-
+#endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
 template <typename T>
