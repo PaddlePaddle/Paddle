@@ -150,7 +150,7 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
-    auto set_mkldnn_format = [](Tensor* in, Tensor* out) {
+    auto set_mkldnn_format = [](Tensor* in, const Tensor* out) {
       in->set_layout(DataLayout::kMKLDNN);
       in->set_format(out->format());
     };
