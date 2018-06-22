@@ -72,6 +72,7 @@ class BaseProcessor {
   virtual void Prepare(const VarHandle& var_info, int64_t time_out) {
     context_.reset(new grpc::ClientContext());
     var_h_ = var_info;
+    context_->set_wait_for_ready(true);
 
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
@@ -81,6 +82,7 @@ class BaseProcessor {
 
   virtual void Prepare(int64_t time_out) {
     context_.reset(new grpc::ClientContext());
+    context_->set_wait_for_ready(true);
 
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);

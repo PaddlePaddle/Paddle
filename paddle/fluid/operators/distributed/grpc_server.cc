@@ -337,7 +337,7 @@ void AsyncGRPCServer::HandleRequest(
       continue;
     }
 
-    VLOG(3) << "queue id:" << rpc_name << ", req_id:" << req_id
+    VLOG(4) << "queue id:" << rpc_name << ", req_id:" << req_id
             << ", status:" << base->Status();
 
     switch (base->Status()) {
