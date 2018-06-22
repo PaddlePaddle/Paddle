@@ -1387,7 +1387,11 @@ class Program(object):
         * Set for_test to True when we want to clone the program for testing.
 
         Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please.
+        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+
+            >>> test_program = fluid.default_main_program().clone(for_test=True)
+            >>> optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            >>> optimizer.minimize()
 
         Args:
             for_test(bool): True if change the :code:`is_test` attribute of
