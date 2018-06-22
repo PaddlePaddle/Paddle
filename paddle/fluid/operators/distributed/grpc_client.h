@@ -174,26 +174,24 @@ class GRPCClient : public RPCClient {
 
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
                     const framework::Scope& scope, const std::string& var_name,
-                    int64_t time_out = RPCClient::rpc_time_out) override;
+                    int64_t time_out = FLAGS_grpc_deadline) override;
 
   bool AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
                    const framework::Scope& scope, const std::string& var_name,
-                   int64_t time_out = RPCClient::rpc_time_out) override;
+                   int64_t time_out = FLAGS_grpc_deadline) override;
 
   bool AsyncPrefetchVar(const std::string& ep,
                         const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& in_var_name,
                         const std::string& out_var_name,
-                        int64_t time_out = RPCClient::rpc_time_out) override;
+                        int64_t time_out = FLAGS_grpc_deadline) override;
 
-  void AsyncSendBatchBarrier(
-      const std::string& ep,
-      int64_t time_out = RPCClient::rpc_time_out) override;
+  void AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = FLAGS_grpc_deadline) override;
 
-  void AsyncSendFetchBarrier(
-      const std::string& ep,
-      int64_t time_out = RPCClient::rpc_time_out) override;
+  void AsyncSendFetchBarrier(const std::string& ep,
+                             int64_t time_out = FLAGS_grpc_deadline) override;
 
   void Wait() override;
 
@@ -209,7 +207,7 @@ class GRPCClient : public RPCClient {
   void Proceed();
 
   void AsyncSendComplete(const std::string& ep,
-                         int64_t time_out = RPCClient::rpc_time_out);
+                         int64_t time_out = FLAGS_grpc_deadline);
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 

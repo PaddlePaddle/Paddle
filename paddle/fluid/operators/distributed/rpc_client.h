@@ -14,15 +14,14 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <string>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 
-// default to 3min to avoid temprary network failures.
-DEFINE_int32(grpc_deadline, 180000, "deadline timeouts for grpc");
+DECLARE_int32(grpc_deadline);
 
 namespace paddle {
 namespace operators {
