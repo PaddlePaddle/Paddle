@@ -55,10 +55,9 @@ class CheckpointNotifyOp : public framework::OperatorBase {
 class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddAttr<std::vector<std::string>>(
-        "epmap",
-        "(string vector, default  127.0.0.1:6164)"
-        "Server endpoints in the order of input variables for mapping")
+    AddAttr<std::vector<std::string>>("epmap",
+                                      "(string vector, default  127.0.0.1:6164)"
+                                      "Parameter Server endpoints in the order")
         .SetDefault({"127.0.0.1:6164"});
     AddAttr<std::string>(
         "dir", "(string, default '') indicate the folder checkpoint will use");
