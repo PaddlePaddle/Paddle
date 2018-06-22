@@ -106,7 +106,11 @@ void ListenAndServOp::RunSyncLoop(
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  auto optimize_prepared = executor->Prepare(*program, optimize_block_id_list);
+  std::vector<int> optimize_blocks_idx;
+  for (auto blk : optimize_blocks) {
+    optimize_blocks_idx.push_back(blk->ID());
+  }
+  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_idx);
   // Insert placeholder for block0 which holds current op itself.
   optimize_prepared.insert(
       optimize_prepared.begin(),
