@@ -43,6 +43,12 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "(LoDTensor, LoDTensor<int64_t>). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment.");
+    AddAttr<std::string>("chunk_scheme",
+        "The labeling scheme indicating "
+        "how to decode the chunks. Must be IOB, IOE, IOBES or "
+        "plain. See the description"
+        "for details.")
+    .SetDefault("");
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
 feature weights learned by the linear_chain_crf operator. It implements the

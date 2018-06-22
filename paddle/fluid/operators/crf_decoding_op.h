@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 #include <limits>
+#include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +35,11 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto* transition_weights = ctx.Input<Tensor>("Transition");
     auto* label = ctx.Input<LoDTensor>("Label");
     auto* decoded_path = ctx.Output<Tensor>("ViterbiPath");
-
+    std::string decode_choice = ctx.Attr<std::string>("chunk_scheme");
+    Tensor trans_copy;
+    framework::TensorCopy(*transition_weights, platform::CPUPlace(),
+        &(trans_copy));
+    remove_illegal_edge(decode_choice, (&trans_copy));
     PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
                       "The Input(Emission) should be a sequence.");
     auto lod = emission_weights->lod();
@@ -48,7 +54,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
       Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
-      Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
+      Decode(emission_weights->Slice(start_pos, end_pos), trans_copy,
              &decoded_path_one_seq);
     }
 
@@ -64,6 +70,62 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
   }
 
  private:
+  void remove_illegal_edge(const std::string& decode_choice,
+     Tensor* trans_weights) const {
+    T* w = trans_weights->mutable_data<T>(platform::CPUPlace());
+    auto trans_dims = trans_weights->dims();
+    const size_t tag_num = trans_dims[1];
+    const size_t state_trans_base_idx = 2;
+    if (decode_choice == "IOB") {
+      for (int i = 0; i < tag_num; i++) {
+        if (i % 2 == 1) {
+          w[i] = -std::numeric_limits<T>::max();
+        }
+        for (int j = 0; j < tag_num; j++) {
+          if (j % 2 == 1 && j != i + 1 && j != i) {
+            w[(i + state_trans_base_idx) * tag_num + j] =
+                -std::numeric_limits<T>::max();
+          }
+        }
+      }
+    } else if (decode_choice == "IOE") {
+      for (int i = 0; i < tag_num; i++) {
+        if (i % 2 == 0 && i != tag_num - 1) {
+          w[tag_num + i] = -std::numeric_limits<T>::max();
+        }
+        if (i % 2 == 1 || i == tag_num - 1) {
+          continue;
+        }
+        for (int j = 0; j < tag_num; j++) {
+          if (j != i + 1 && j != i) {
+            w[(i + state_trans_base_idx) * tag_num + j] =
+                -std::numeric_limits<T>::max();
+          }
+        }
+      }
+    } else if (decode_choice == "IOBES") {
+      for (int i = 0; i < tag_num; i++) {
+        if (i % 4 == 1 || (i % 4 == 0 && i != tag_num - 1)) {
+          w[tag_num + i] = -std::numeric_limits<T>::max();
+        }
+        if (i % 4 == 1 || i % 4 == 2) {
+          w[i] = -std::numeric_limits<T>::max();
+        }
+        for (int j = 0; j < tag_num; j++) {
+          if ((i % 4 == 0 && i != tag_num - 1 && j != i + 1 && j != i + 2) ||
+              (i % 4 == 1 && j != i && j != i + 1) ||
+              ((i % 4 == 2 || i % 4 == 3 || i == tag_num - 1)
+                  && (j % 4 == 1 || j % 4 == 2))) {
+            w[(i + state_trans_base_idx) * tag_num + j] =
+                -std::numeric_limits<T>::max();
+          }
+        }
+      }
+    } else {
+      return;
+    }
+  }
+
   void Decode(const Tensor& emission_weights, const Tensor& transition_weights,
               Tensor* decoded_path) const {
     auto emission_dims = emission_weights.dims();
