@@ -186,7 +186,6 @@ class ListenAndServ(object):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
-        empty_block = Program().global_block()
 
         parent_block.append_op(
             type='listen_and_serv',
@@ -195,8 +194,9 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'OptimizeBlock': current_block,
-                'PrefetchBlock': empty_block,
+                'optimize_blocks': [
+                    current_block
+                ],  # did not support multiple optimize blocks in layers
                 'sync_mode': True,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
