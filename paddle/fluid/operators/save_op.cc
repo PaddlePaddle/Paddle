@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -131,11 +132,10 @@ class SaveOp : public framework::OperatorBase {
   void SaveSelectedRows(const framework::Scope &scope,
                         const platform::Place &place,
                         framework::Variable *var) const {
-    auto *lt_var =
-        scope.FindVar("loopup_table_path")->GetMutable<std::string>();
+    auto *lt_var = scope.FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
     PADDLE_ENFORCE(
         lt_var != nullptr,
-        "Can not find variable loopup_table_path for SaveSelectedRows");
+        "Can not find variable lookup_table_path for SaveSelectedRows");
     std::string filename = lt_var->data();
     VLOG(4) << "SaveSelectedRows get File name: " << filename;
 
@@ -162,7 +162,7 @@ class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Save operator
 
-This operator will serialize and write a tensor/selected rows variable to file on disk.
+This operator will serialize and write LoDTensor / SelectedRows variable to file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"
@@ -186,7 +186,7 @@ class SaveOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
-    auto out_var_name = op_desc.Output("loopup_table_path").front();
+    auto out_var_name = op_desc.Output(LOOKUP_TABLE_PATH).front();
     auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
     auto var_type = framework::proto::VarType::RAW;
     out_var.SetType(var_type);

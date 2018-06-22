@@ -25,3 +25,7 @@
 #define RPCSERVER_T distributed::AsyncBRPCServer
 #define RPCCLIENT_T distributed::BRPCClient
 #endif
+
+// define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
+// to directory specified.
+constexpr char LOOKUP_TABLE_PATH[] = "lookup_table_path";

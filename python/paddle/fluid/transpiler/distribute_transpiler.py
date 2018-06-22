@@ -914,7 +914,7 @@ class DistributeTranspiler(object):
         import os
 
         pserver_program.global_block().create_var(
-            name="loopup_table_path",
+            name="lookup_table_path",
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
@@ -923,7 +923,10 @@ class DistributeTranspiler(object):
             type='save',
             inputs={'X': [self.table_name]},
             outputs={},
-            attrs={'file_path': self.table_name})
+            attrs={
+                'file_path':
+                "this 'file_path' do not be used in save lookup table variable"
+            })
 
         return checkpoint_save_block.idx
 

@@ -1042,6 +1042,7 @@ def load_lookup_table_vars(executor, dirname, program, pserver_id, table_name):
         main_program(Program): Find the variable named table_name in main_program
         pserver_id(int): the serial number in pserver_endpoints list
         table_name(str): lookup table name
+
     Returns:
         None
 
@@ -1188,7 +1189,7 @@ def save_trainer_args(dirname, trainer_id, trainer_args):
 
 def load_trainer_args(checkpoint_dir, serial, trainer_id, trainer_args):
     """
-    trainer will load some args from it's  independent directory, 
+    trainer will load some args from it's independent directory, 
     such as epoch_id and step_id.
 
     Args:

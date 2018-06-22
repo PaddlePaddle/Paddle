@@ -247,11 +247,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
-  int checkpoint_notify_id = Attr<int>(kCheckpointBlockId);
+  int checkpoint_notify_block_id = Attr<int>(kCheckpointBlockId);
 
   LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
             << ", end_point:" << endpoint
-            << ", CheckpointNotify Id: " << checkpoint_notify_id;
+            << ", CheckpointNotify Id: " << checkpoint_notify_block_id;
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
@@ -260,7 +260,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
-      sync_mode, checkpoint_notify_id));
+      sync_mode, checkpoint_notify_block_id));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get());
@@ -276,8 +276,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Executor executor(dev_place);
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
-  if (checkpoint_notify_id != -1) {
-    auto ctx = executor.Prepare(*program, checkpoint_notify_id);
+  if (checkpoint_notify_block_id != -1) {
+    auto ctx = executor.Prepare(*program, checkpoint_notify_block_id);
     ckpt_pre_context = std::move(ctx);
   }
 
@@ -334,7 +334,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   SavePort();
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list,
-                checkpoint_notify_id);
+                checkpoint_notify_block_id);
   } else {
     RunAsyncLoop(&executor, program);
   }
