@@ -131,7 +131,7 @@ class CheckpointConfig(object):
         self.epoch_id = 0
         self.step_id = 0
         self.load_serial = None
-        self.pserver_id = -1,
+        self.pserver_id = None
         self.lookup_table_name = None
 
 
@@ -283,7 +283,7 @@ class Trainer(object):
                                    self.checkpoint_cfg.load_serial,
                                    self.startup_program)
 
-                if self.checkpoint_cfg.pserver_id != -1:
+                if not self.checkpoint_cfg.pserver_id:
                     epoch_id, step_id = io.load_trainer_args(
                         self.checkpoint_cfg.checkpoint_dir,
                         self.checkpoint_cfg.load_serial, self.trainer_id,
