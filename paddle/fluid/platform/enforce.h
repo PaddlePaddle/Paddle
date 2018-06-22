@@ -41,12 +41,12 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
-#  include "paddle/fluid/platform/dynload/cublas.h"
-#  include "paddle/fluid/platform/dynload/cudnn.h"
-#  include "paddle/fluid/platform/dynload/curand.h"
-#  ifndef __APPLE__
-#    include "paddle/fluid/platform/dynload/nccl.h"
-#  endif  // __APPLE__
+#include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/dynload/curand.h"
+#ifndef __APPLE__
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
