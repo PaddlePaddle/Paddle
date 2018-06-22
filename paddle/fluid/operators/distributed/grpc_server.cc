@@ -194,7 +194,7 @@ class RequestCheckpointNotify final : public RequestBase {
                                    RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new VariableResponse(request_handler->scope(),
-                                        request_handler->dev_ctx(), true));
+                                        request_handler->dev_ctx()));
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kCheckpointNotify);
     service_->RequestAsyncUnary(
@@ -212,13 +212,10 @@ class RequestCheckpointNotify final : public RequestBase {
     std::string checkpoint_notify = request_->Varname();
     std::string checkpoint_dir = request_->OutVarname();
 
-    framework::Variable* invar = nullptr;
-    framework::Variable* outvar = nullptr;
-
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
-    request_handler_->Handle(checkpoint_notify, scope, invar, &outvar,
+    request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
                              checkpoint_dir);
     Finish(reply_, &responder_);
   }
@@ -320,8 +317,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     return;
   }
 
-  LOG(INFO) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
-            << " REQ ID: " << req_id;
+  VLOG(4) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
+          << " REQ ID: " << req_id;
 
   auto& reqs = rpc_reqs_[rpc_name];
   auto& handler = rpc_call_map_[rpc_name];

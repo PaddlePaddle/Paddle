@@ -42,10 +42,11 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
     for (size_t i = 0; i < epmap.size(); i++) {
-      VLOG(3) << "checkpoint notify sending " << dir << " to " << epmap[i];
-      auto serial_looku_table =
+      auto lookup_table_save_dir =
           string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
-      rpc_client->AsyncCheckpointNotify(epmap[i], serial_looku_table);
+      rpc_client->AsyncCheckpointNotify(epmap[i], lookup_table_save_dir);
+      VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
+              << " and dir:" << dir << " to " << epmap[i];
     }
     rpc_client->Wait();
   }
@@ -64,10 +65,10 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("lookup_table",
                          "(string, default '') the lookup table name");
     AddComment(R"DOC(
-Prefetch operator
+CheckpointNotify operator
 
-This operator will send Ids variables to listen_and_serve op at
-the parameter server and fetch result back.
+This operator will send lookup table and it's checkpoint direcoty to listen_and_serve op at
+the parameter server.
 )DOC");
   }
 };

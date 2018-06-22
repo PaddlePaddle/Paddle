@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/printf.h"
@@ -129,10 +130,10 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
-  auto* lt_var = scope->FindVar("loopup_table_path")->GetMutable<std::string>();
+  auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update loopup_table_path to: "
+  VLOG(4) << "RequestCheckpointHandler update var lookup_table_path to: "
           << out_var_name;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;

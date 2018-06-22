@@ -101,7 +101,7 @@ class LoadOp : public framework::OperatorBase {
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "The tensor need to be loaded");
+    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
         "If true, the tensor will be first loaded and then "
@@ -112,7 +112,9 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddComment("Load operator will load a tensor variable from disk file.");
+    AddComment(
+        "Load operator will load a LoDTensor / SelectedRows variable from disk "
+        "file.");
   }
 };
 }  // namespace operators
