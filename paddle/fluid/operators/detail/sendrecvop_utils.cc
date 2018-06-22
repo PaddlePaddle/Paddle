@@ -192,6 +192,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 #endif
 
+//Todo: need RCCL multi-node support
 #if 0
   if (var->IsType<rcclUniqueId>()) {
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
