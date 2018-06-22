@@ -23,7 +23,10 @@ class InferenceTranspiler:
     '''
     Convert the fluid program to optimized inference program.
 
-    There are several optimizations.
+    There are several optimizations:
+
+      - fuse convolution and batch normalization
+      - fuse batch normalization and relu (MKLDNN only)
 
     Examples:
 
@@ -55,26 +58,32 @@ class InferenceTranspiler:
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
         self.fuse_batch_norm(program, place, scope)
-        use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
-        if use_mkldnn:
-            self.fuse_relu(program)
+        self.fuse_relu_mkldnn(program)
 
-    def fuse_relu(self, program):
+    def fuse_relu_mkldnn(self, program):
         '''
         Transpile the program by fused relu activation for MKLDNN program.
 
         Relu activation following batch norm OP can be fused by adding
-        'fuse_with_relu' attribute to batch norm OP.
+        :math:`fuse_with_relu` attribute to batch norm OP.
 
         The result of fuse is:
-            - before:
-                - batch_norm->relu->any_other_op
-            - after:
-                - batch_norm->any_other_op
+
+        - before:
+
+          - batch_norm->relu->any_other_op
+
+        - after:
+
+          - batch_norm->any_other_op
 
         :param program: program to transpile
         :type program: Program
         '''
+        use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
+        if not use_mkldnn:
+            return
+
         self.block = program.block(0)
 
         i = 0
@@ -89,6 +98,7 @@ class InferenceTranspiler:
                     self.block.remove_op(i + 1)
             i = i + 1
 
+        self._remove_unused_var()
         # TODO(luotao): use clone() method to flush the program.desc in force,
         # since some large program.desc will not be flushed immediately.
         # And a better solution will be considered later.
