@@ -19,7 +19,7 @@ namespace paddle {
 namespace platform {
 
 #define CUDA_ATOMIC_WRAPPER(op, T) \
-  __device__ __forceinline__ T CudaAtomic##op(T* address, const T val)
+  __device__ __inline__ T CudaAtomic##op(T* address, const T val)
 
 #define USE_CUDA_ATOMIC(op, T) \
   CUDA_ATOMIC_WRAPPER(op, T) { return atomic##op(address, val); }
