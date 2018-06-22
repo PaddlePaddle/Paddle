@@ -260,7 +260,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
-  PADDLE_ENFORCE(optimize_blocks.size() > 1,
+  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
                  "optimize blocks should be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
