@@ -24,11 +24,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
+
+// define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
+// to directory specified.
+constexpr char LOOKUP_TABLE_PATH[] = "lookup_table_path";
 
 // TODO(yuyang18): If the functions below are needed by other files, move them
 // to paddle::filesystem namespace.
