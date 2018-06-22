@@ -47,12 +47,12 @@ DeviceContextPool::DeviceContextPool(
           p, PtrType(new MKLDNNDeviceContext(boost::get<CPUPlace>(p))));
 #else
       device_contexts_.emplace(
-          p, PtrType(new CPUDeviceContext(boost::get<CPUPlace>(p))));
+          p, PtrType(new CPUDeviceContext(dynamic_cast<const CPUPlace&>(p))));
 #endif
     } else if (platform::is_gpu_place(p)) {
 #ifdef PADDLE_WITH_CUDA
       device_contexts_.emplace(
-          p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
+          p, PtrType(new CUDADeviceContext(dynamic_cast<const CUDAPlace&>(p))));
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
@@ -60,9 +60,9 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
-      device_contexts_.emplace(
-          p,
-          PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
+      device_contexts_.emplace(p,
+                               PtrType(new CUDAPinnedDeviceContext(
+                                   dynamic_cast<const CUDAPinnedPlace&>(p))));
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
