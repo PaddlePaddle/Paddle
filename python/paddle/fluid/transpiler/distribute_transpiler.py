@@ -396,7 +396,7 @@ class DistributeTranspiler(object):
                     return varname
             return ""
 
-        def __clone_lr_op_sub_block__(op, program, new_block, skip_sub_blks):
+        def __clone_lr_op_sub_block__(op, program, new_block):
             if not op.has_attr('sub_block'):
                 return -1
 
@@ -406,7 +406,6 @@ class DistributeTranspiler(object):
             # we put the new sub block to new block to follow the block
             # hierarchy of the original blocks
             new_sub_block = program.create_block(new_block.idx)
-            skip_sub_blks.append(new_sub_block.idx)
 
             # clone vars
             for var in origin_block.vars:
@@ -416,8 +415,7 @@ class DistributeTranspiler(object):
             for op in origin_block.ops:
                 self._clone_lr_op(program, new_sub_block, op)
                 # clone sub_block of op
-                __clone_lr_op_sub_block__(op, program, new_sub_block,
-                                          skip_sub_blks)
+                __clone_lr_op_sub_block__(op, program, new_sub_block)
 
             # reset the block of op
             op.set_attr('sub_block', new_sub_block)
@@ -433,8 +431,7 @@ class DistributeTranspiler(object):
             for _, op in enumerate(lr_ops):
                 self._append_pserver_non_opt_ops(lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
-                __clone_lr_op_sub_block__(op, pserver_program, lr_decay_block,
-                                          skip_sub_blks)
+                __clone_lr_op_sub_block__(op, pserver_program, lr_decay_block)
 
         # append op to the current block
         grad_to_block_id = []

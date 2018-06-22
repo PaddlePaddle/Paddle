@@ -46,6 +46,7 @@ message OpDesc {
     repeated bool bools = 11;
     optional int32 block_idx = 12;
     optional int64 l = 13;
+    repeated int32 blocks_idx = 14;
   };
 
   message Var {
