@@ -342,7 +342,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
     AddAttr<std::vector<framework::BlockDesc *>>(
-        kOptimizeBlocks, "Optimize blocks to run on server side.");
+        kOptimizeBlocks, "Optimize blocks to run on server side.")
+        .SetDefault({});
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch blocks to run on server side.")
         .SetDefault({});
