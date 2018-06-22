@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import unittest
 import numpy as np
 import paddle
+import os
 
 
 def Lenet(data, class_dim):
@@ -35,7 +36,7 @@ def Lenet(data, class_dim):
 
 
 class TestFetchOp(unittest.TestCase):
-    def parallel_exe(self, train_inputs, seed):
+    def parallel_exe(self, train_inputs, seed, use_cuda):
         main = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = seed
@@ -59,13 +60,13 @@ class TestFetchOp(unittest.TestCase):
             # conv2d_1.b_0@GRAD. Those variables should not be pruned.
             # fluid.memory_optimize(main)
 
-            place = fluid.CUDAPlace(0)
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(startup)
 
             feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
             pe = fluid.ParallelExecutor(
-                use_cuda=True, loss_name=loss.name, main_program=main)
+                use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
             fetch_list = []
             all_vars = main.global_block().vars
@@ -88,14 +89,16 @@ class TestFetchOp(unittest.TestCase):
         for i in range(iters):
             train_inputs.append(tst_reader_iter.next())
 
-        self.parallel_exe(train_inputs, seed=1)
+        os.environ['CPU_NUM'] = str(4)
+        self.parallel_exe(train_inputs, seed=1, use_cuda=True)
+        self.parallel_exe(train_inputs, seed=1, use_cuda=False)
 
 
 class TestFeedParallel(unittest.TestCase):
-    def test_main(self):
+    def parallel_exe(self, use_cuda, seed):
         main = fluid.Program()
         startup = fluid.Program()
-        startup.random_seed = 1
+        startup.random_seed = seed
         with fluid.scope_guard(fluid.core.Scope()):
             with fluid.program_guard(main, startup):
                 data = fluid.layers.data(
@@ -111,21 +114,29 @@ class TestFeedParallel(unittest.TestCase):
                     regularization=fluid.regularizer.L2Decay(1e-4))
 
                 opt.minimize(loss)
-        place = fluid.CUDAPlace(0)
+
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
         reader = feeder.decorate_reader(
             paddle.batch(
                 flowers.train(), batch_size=16), multi_devices=True)
+
         exe = fluid.Executor(place)
         exe.run(startup)
+
         pe = fluid.ParallelExecutor(
-            use_cuda=True, loss_name=loss.name, main_program=main)
+            use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
         for batch_id, data in enumerate(reader()):
             loss_np = np.array(pe.run(feed=data, fetch_list=[loss.name])[0])
             print batch_id, loss_np
             if batch_id == 2:
                 break
+
+    def test_feed_op(self):
+        os.environ['CPU_NUM'] = str(4)
+        self.parallel_exe(use_cuda=True, seed=1)
+        self.parallel_exe(use_cuda=False, seed=1)
 
 
 if __name__ == '__main__':

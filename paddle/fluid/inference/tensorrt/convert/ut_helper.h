@@ -64,7 +64,8 @@ class TRTConvertValidation {
 
   TRTConvertValidation(int batch_size,
                        const std::unordered_set<std::string>& parameters,
-                       framework::Scope& scope, int workspace_size = 1 << 10)
+                       framework::Scope& scope,  // NOLINT
+                       int workspace_size = 1 << 10)
       : parameters_(parameters), scope_(scope) {
     // create engine.
     engine_.reset(new TensorRTEngine(10, 1 << 10, &stream_));

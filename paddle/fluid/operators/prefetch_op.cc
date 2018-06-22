@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/send_recv_util.h"
 
 namespace paddle {
@@ -41,8 +41,8 @@ class PrefetchOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    detail::RPCClient* rpc_client =
-        detail::RPCClient::GetInstance<detail::GRPCClient>();
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {

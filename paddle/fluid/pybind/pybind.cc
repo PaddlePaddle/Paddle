@@ -144,28 +144,75 @@ PYBIND11_PLUGIN(core) {
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
-      .def(
-          "__init__",
-          [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-            LoD new_lod;
-            new_lod.reserve(lod.size());
-            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-            new (&instance) LoDTensor(new_lod);
-          })
+      .def("__init__",
+           [](LoDTensor &instance, const std::vector<std::vector<size_t>>
+                                       &recursive_sequence_lengths) {
+             LoD new_lod;
+             new_lod.reserve(recursive_sequence_lengths.size());
+             std::copy(recursive_sequence_lengths.begin(),
+                       recursive_sequence_lengths.end(),
+                       std::back_inserter(new_lod));
+             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+             PADDLE_ENFORCE(
+                 CheckLoD(new_offset_lod, -1),
+                 "the provided recursive_sequence_lengths info is invalid");
+             new (&instance) LoDTensor(new_offset_lod);
+           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
+      // We implement offset based LOD in C++ while we use length based with
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // avoid misuse.
+      // The discussion is here:
+      // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+             // the input lod is offset-based level-of-detail info
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             PADDLE_ENFORCE(CheckLoD(new_lod, vectorize(self.dims()).front()),
+                            "the provided lod info is invalid");
              self.set_lod(new_lod);
            })
-      .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-        auto lod = self.lod();
-        std::vector<std::vector<size_t>> new_lod;
-        new_lod.reserve(lod.size());
-        std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-        return new_lod;
+      .def("set_recursive_sequence_lengths",
+           [](LoDTensor &self, const std::vector<std::vector<size_t>>
+                                   &recursive_sequence_lengths) {
+             // the input recursive_sequence_lengths is length-based
+             // level-of-detail info
+             LoD new_lod;
+             new_lod.reserve(recursive_sequence_lengths.size());
+             std::copy(recursive_sequence_lengths.begin(),
+                       recursive_sequence_lengths.end(),
+                       std::back_inserter(new_lod));
+             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+             PADDLE_ENFORCE(
+                 CheckLoD(new_offset_lod, vectorize(self.dims()).front()),
+                 "the provided recursive_sequence_lengths info is invalid");
+             self.set_lod(new_offset_lod);
+           })
+      .def("lod",
+           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+             // output the offset-based lod info
+             LoD lod = self.lod();
+             std::vector<std::vector<size_t>> new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return new_lod;
+           })
+      // Set above comments of set_lod.
+      .def("recursive_sequence_lengths",
+           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+             // output the length-based lod info
+             LoD lod = ConvertToLengthBasedLoD(self.lod());
+             std::vector<std::vector<size_t>> new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return new_lod;
+           })
+      .def("has_valid_recursive_sequence_lengths", [](LoDTensor &self) -> bool {
+        // Check that the lod info is valid and match the outermost
+        // dimension of the LoDTensor data
+        return CheckLoD(self.lod(), vectorize(self.dims()).front());
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -413,6 +460,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
+#ifdef PADDLE_WITH_DISTRIBUTE
+      .def("complete", &Executor::Complete)
+#endif
       .def("run",
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
                Executor::Run);
@@ -509,10 +559,10 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_threads_ = num_threads;
           })
       .def_property(
-          "use_event",
-          [](const ExecutionStrategy &self) { return self.use_event_; },
-          [](ExecutionStrategy &self, bool use_event) {
-            self.use_event_ = use_event;
+          "use_cuda",
+          [](const ExecutionStrategy &self) { return self.use_cuda_; },
+          [](ExecutionStrategy &self, bool use_cuda) {
+            self.use_cuda_ = use_cuda;
           })
       .def_property(
           "allow_op_delay",

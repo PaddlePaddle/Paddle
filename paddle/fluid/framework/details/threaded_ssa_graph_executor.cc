@@ -96,6 +96,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
+      std::lock_guard<std::mutex> l(exception_mu_);
       if (exception_) {
         auto exp = *exception_;
         exception_.reset();
@@ -185,6 +186,7 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
     ready_vars->Push(var);
   }
 }
+
 void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
@@ -192,12 +194,13 @@ void ThreadedSSAGraphExecutor::RunOp(
       if (VLOG_IS_ON(10)) {
         VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       }
-      op->Run(strategy_.use_event_);
+      op->Run(strategy_.use_cuda_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
+      std::lock_guard<std::mutex> l(exception_mu_);
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 
@@ -54,10 +55,10 @@ class TestDistTranspiler(TranspilerTest):
 
         delete_ops(trainer.global_block(), optimize_ops)
         ops = [op.type for op in trainer.global_block().ops] + [
-            "split_byref", "send_vars", "send_barrier", "recv", "recv",
+            "split_byref", "send", "send_barrier", "recv", "recv",
             "fetch_barrier", "concat"
         ]
-        ops.insert(ops.index("elementwise_add_grad") + 1, "send_vars")
+        ops.insert(ops.index("elementwise_add_grad") + 1, "send")
         return ops
 
 

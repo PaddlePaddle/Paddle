@@ -156,7 +156,7 @@ Parameters(strides, paddings) are two elements. These two elements represent hei
 and width, respectively.
 The input(X) size and output(Out) size may be different.
 
-Example:
+For an example:
   Input:
        Input shape: $(N, C_{in}, H_{in}, W_{in})$
        Filter shape: $(C_{in}, C_{out}, H_f, W_f)$

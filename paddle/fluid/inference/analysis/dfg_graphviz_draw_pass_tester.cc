@@ -24,9 +24,10 @@ namespace inference {
 namespace analysis {
 
 TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
-  auto dfg = ProgramDescToDFG(desc);
-  DFG_GraphvizDrawPass pass("./", "test");
-  pass.Initialize();
+  auto dfg = ProgramDescToDFG(*argument.origin_program_desc);
+  DFG_GraphvizDrawPass::Config config("./", "test");
+  DFG_GraphvizDrawPass pass(config);
+  pass.Initialize(&argument);
   pass.Run(&dfg);
 
   // test content
@@ -38,7 +39,8 @@ TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
   while (std::getline(file, line)) {
     no++;
   }
-  ASSERT_EQ(no, 82);
+  // DFG is sensitive to ProgramDesc, be careful to change the existing models.
+  ASSERT_EQ(no, 112);
 }
 
 }  // namespace analysis
