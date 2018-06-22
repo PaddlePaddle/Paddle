@@ -268,7 +268,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
-      .value("BLOCK", pd::proto::AttrType::BLOCK);
+      .value("BLOCK", pd::proto::AttrType::BLOCK)
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
