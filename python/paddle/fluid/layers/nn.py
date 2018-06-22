@@ -4302,14 +4302,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape", **locals())
-    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    reshaped = x
+    if not inplace:
+        reshaped = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs={"X": x,
                 "Shape": actual_shape}
         if isinstance(actual_shape, Variable) else {"X": x},
-        attrs={"shape": shape,
-               "inplace": inplace},
+        attrs={"shape": shape},
         outputs={"Out": reshaped})
 
     return helper.append_activation(reshaped)
