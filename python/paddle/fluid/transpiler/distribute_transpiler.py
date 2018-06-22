@@ -225,6 +225,7 @@ class DistributeTranspiler(object):
                 inputs={"X": splited_vars},
                 outputs={},
                 attrs={
+                    "sync_mode": self.sync_mode,  # convert to int
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
@@ -265,6 +266,7 @@ class DistributeTranspiler(object):
                 inputs={},
                 outputs={"Out": splited_var},
                 attrs={
+                    "sync_mode": self.sync_mode,  # convert to int
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
