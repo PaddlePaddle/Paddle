@@ -32,8 +32,6 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
             framework::proto::VarType::LOD_TENSOR_ARRAY) {
       return;  // skip runtime infershape when is tensor array;
     }
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

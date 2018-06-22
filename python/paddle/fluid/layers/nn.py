@@ -94,6 +94,7 @@ __all__ = [
     'relu',
     'log',
     'crop',
+    'fill_zeros_like',
 ]
 
 
@@ -5121,4 +5122,41 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def fill_zeros_like(x):
+    """
+    This layer takes an input and outputs a variable that has the same structure as
+    the input and with all the element values as zero. The variable can be a Tensor
+    or TensorArray.
+
+    .. code-block:: text
+
+
+       Given
+          X = [[0, 1, 2, 0],
+               [0, 3, 4, 0],
+               [0, 0, 0, 0]],
+       output is:
+          Out = [[0, 0, 0, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]].
+
+    Args:
+        x (Variable): The input variable, which could be a tensor or tensor array
+
+    Returns:
+        Variable: The zero-filled variable, which has the same type and shape as
+                  the input variable.
+
+    Examples:
+
+        .. code-block:: python
+            y = fluid.layers.fill_zeros_like(x)
+    """
+    helper = LayerHelper('fill_zeros_like', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
     return out
