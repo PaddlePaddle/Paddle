@@ -160,7 +160,30 @@ void BuddyAllocator::Free(void* p) {
   CleanIdleNormalAlloc();
 }
 
-size_t BuddyAllocator::Used() { return total_used_; }
+size_t BuddyAllocator::Used() const { return total_used_; }
+
+void BuddyAllocator::Fractions() {
+  size_t fraction_in_block = 0ul;   // sums fraction in every blocks
+  size_t fraction_out_block = 0ul;  // sums fractions out of blocks
+  unsigned index = 0;
+  for (auto& address : pool_) {
+    if (std::get<0>(address) != index) {
+      LOG(WARNING) << "Should not exist different kind memory at same time.";
+      index = std::get<0>(address);
+    }
+    auto block = static_cast<MemoryBlock*>(std::get<2>(address));
+    if (block->type(cache_) == MemoryBlock::FREE_CHUNK ||
+        block->type(cache_) == MemoryBlock::HUGE_CHUNK) {
+      fraction_out_block += block->total_size(cache_);
+    } else if (block->type(cache_) == MemoryBlock::ARENA_CHUNK) {
+      fraction_in_block += (block->total_size(cache_) - block->size(cache_));
+    }
+  }
+  VLOG(10) << "Fraction in blocks (" << fraction_in_block / 1024.0 / 1024.0
+           << ")MB";
+  VLOG(10) << "Fraction out blocks (" << fraction_out_block / 1024.0 / 1024.0
+           << ")MB";
+}
 
 void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;

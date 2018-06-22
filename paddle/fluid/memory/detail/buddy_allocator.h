@@ -40,7 +40,8 @@ class BuddyAllocator {
  public:
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
-  size_t Used();
+  size_t Used() const;
+  void Fractions();
 
  public:
   // Disable copy and assignment

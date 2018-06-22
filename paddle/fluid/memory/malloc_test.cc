@@ -195,4 +195,18 @@ TEST(BuddyAllocator, CUDAPinnedMultAllocator) {
     EXPECT_EQ(total_size, paddle::memory::Used(cpu));
   }
 }
+
+TEST(BuddyAllocator, Fractions) {
+  using paddle::platform;
+  using paddle::memory;
+  CPUPlace cpu;
+  std::unordered_map<void *, size_t> store;
+  int fractions = 128;
+
+  for (auto size : {4096, 16384, 65536, 262144, 1048576, 4194304}) {
+    store[paddle::memory::Alloc(cpu, size - fractions)] = size;
+  }
+  VLOG(0) << Used(cpu);
+  Fractions(cpu);
+}
 #endif

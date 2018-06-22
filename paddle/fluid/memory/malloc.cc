@@ -56,6 +56,11 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
+template <>
+void Fractions<platform::CPUPlace>(platform::CPUPlace place) {
+  GetCPUBuddyAllocator()->Fractions();
+}
+
 #ifdef PADDLE_WITH_CUDA
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
@@ -85,6 +90,11 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 template <>
 size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
+}
+
+template <>
+void Fractions<platform::CUDAPlace>(platform::CUDAPlace place) {
+  GetGPUBuddyAllocator(place.device)->Fractions();
 }
 
 template <>
