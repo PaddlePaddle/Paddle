@@ -50,5 +50,4 @@ py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=$
 py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
-# (DONE) tests that need to be done in fixed timeout
 set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
