@@ -41,9 +41,7 @@ template <typename T>
 class ReluFunctor {
  public:
   explicit ReluFunctor(T eps) : eps_(eps) {}
-
   HOSTDEVICE T operator()(const T& x) const {
-    return x;
     if ((x + eps_) > 0)
       return x + eps_;
     else
@@ -57,10 +55,7 @@ class ReluFunctor {
 template <typename T>
 class ReluGradFunctor {
  public:
-  HOSTDEVICE T operator()(const T& x) const {
-    return T(1);
-    return x < 0 ? T(0) : T(1);
-  }
+  HOSTDEVICE T operator()(const T& x) const { return x < 0 ? T(0) : T(1); }
 };
 
 template <typename DeviceContext, typename T>
@@ -76,6 +71,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
     Tensor* d_logits = context.Output<Tensor>("LogitsGrad");
     loss->mutable_data<T>(context.GetPlace());
     d_logits->mutable_data<T>(context.GetPlace());
+    logits->data<T>();
     auto x_dims = logits->dims();
     int batch_size = x_dims[0];
     int feature_len = x_dims[1];
@@ -85,31 +81,30 @@ class TripletLossKernel : public framework::OpKernel<T> {
     distances.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
     Tensor d_distances;
     d_distances.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
+    Tensor tmp;
+    tmp.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, &d_distances, static_cast<T>(0));
 
-    auto x_t = EigenMatrix<T>::From(*logits);
-    auto d_x_t = EigenMatrix<T>::From(*d_logits);
+    auto logits_t = EigenMatrix<T>::From(*logits);
+    auto d_logits_t = EigenMatrix<T>::From(*d_logits);
     auto loss_t = EigenMatrix<T>::From(*loss);
     auto distances_t = EigenMatrix<T>::From(distances);
     auto d_distances_t = EigenMatrix<T>::From(d_distances);
+    auto tmp_t = EigenMatrix<T>::From(tmp);
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto x_mat = math::CreateMatrixDescriptor(x_dims, 0, false);
     auto x_mat_trans = math::CreateMatrixDescriptor(x_dims, 0, true);
     blas.MatMul(*logits, x_mat, *logits, x_mat_trans, T(1), &distances, T(0));
+    auto a = logits_t.square()
+                 .sum(DIM1({1}))
+                 .reshape(DIM2({batch_size, 1}))
+                 .broadcast(DIM2({1, batch_size}));
+    auto b = a.shuffle(DIM2({1, 0}));
+    distances_t.device(place) = a + b - distances_t * T(2.0);
 
-    distances_t.device(place) = x_t.square()
-                                    .sum(DIM1({1}))
-                                    .reshape(DIM2({batch_size, 1}))
-                                    .broadcast(DIM2({1, batch_size})) +
-                                x_t.square()
-                                    .sum(DIM1({1}))
-                                    .reshape(DIM2({batch_size, 1}))
-                                    .shuffle(DIM2({1, 0}))
-                                    .broadcast(DIM2({batch_size, 1})) -
-                                distances_t * T(2.0);
     // step 2: get loss in each line of distance matrix
     ReluGradFunctor<T> relu_grad;
     ReluFunctor<T> relu(eps);
@@ -118,15 +113,14 @@ class TripletLossKernel : public framework::OpKernel<T> {
       int begin = offsets[i];
       int end = offsets[i + 1];
       int pos_num = end - begin;
-      //      int neg_num = batch_size - pos_num;
       for (int j = begin; j < end; ++j) {
         // get loss in current line
-        auto p_dis = distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}));
-        auto n_dis = distances_t.slice(DIM2({j, 0}), DIM2({1, batch_size}))
-                         .reshape(DIM2({batch_size, 1}));
+        auto p_dis = distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}))
+                         .reshape(DIM2{1, pos_num});
+        auto n_dis = distances_t.chip(j, 0).reshape(DIM2({1, batch_size}));
         auto n_p_sub =
             n_dis.broadcast(DIM2({pos_num, 1})) -
-            p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, batch_size}));
+            p_dis.reshape(DIM2{pos_num, 1}).broadcast(DIM2({1, batch_size}));
         auto p_p_sub =
             p_dis.broadcast(DIM2({pos_num, 1})) -
             p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, pos_num}));
@@ -134,28 +128,31 @@ class TripletLossKernel : public framework::OpKernel<T> {
         loss_t.chip(j, 0).device(place) =
             n_p_sub.unaryExpr(relu).sum() - p_p_sub.unaryExpr(relu).sum();
         // get gradient of distance matric in current line
+        d_distances_t.chip(j, 0).device(place) =
+            n_p_sub.unaryExpr(relu_grad).sum(DIM1({0})).reshape(
+                DIM2({1, batch_size}));
+
         d_distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}))
             .device(place) =
-            p_p_sub.unaryExpr(relu_grad).sum(DIM1({0})) -
-            p_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).shuffle(DIM2({1, 0})) -
-            n_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).shuffle(DIM2({1, 0}));
-        d_distances_t.slice(DIM2({j, 0}), DIM2({1, batch_size})).device(place) =
-            d_distances_t.slice(DIM2({j, 0}), DIM2({1, batch_size})) +
-            n_p_sub.unaryExpr(relu_grad).sum(DIM1({0}));
+            p_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).reshape(
+                DIM2({1, pos_num})) -
+            n_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).reshape(
+                DIM2({1, pos_num}));
       }
-
-      // get gradient of logits
-      d_distances_t = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
-
-      d_distances_t.sum(DIM1{1}).broadcast(DIM2({1, feature_len})) *
-          x_t* T(2.0)
-
-              auto d_x_t_2_sum =
-          d_distances_t.sum(DIM1({1})) +
-          d_distances_t.sum(DIM1({0})).shuffle(DIM2({1, 0}));
-      auto d_x_t_2 = d_x_t_2_sum.broadcast(DIM2({1, feature_len}));
-      d_x_t.device(place) = (x_t * d_x_t_2 + x_t) * T(2.0);
     }
+
+    // get gradient of logits
+    tmp_t = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
+    auto dis_mat =
+        math::CreateMatrixDescriptor({batch_size, batch_size}, 0, false);
+    blas.MatMul(tmp, dis_mat, *logits, x_mat, T(-2), d_logits, T(0));
+
+    auto sub_grad = tmp_t.sum(DIM1{1})
+                        .reshape(DIM2({batch_size, 1}))
+                        .broadcast(DIM2({1, feature_len})) *
+                    logits_t * T(2.0);
+    auto result = d_logits_t + sub_grad;
+    d_logits_t.device(place) = result;
   }
 };
 
@@ -167,6 +164,7 @@ class TripletLossGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     const Tensor* d_loss =
         context.Input<Tensor>(framework::GradVarName("Loss"));
+    d_loss->data<T>();
     const Tensor* d_logits = context.Input<Tensor>("LogitsGrad");
     Tensor* d_in = context.Output<Tensor>(framework::GradVarName("Logits"));
     d_in->mutable_data<T>(context.GetPlace());
@@ -176,20 +174,8 @@ class TripletLossGradKernel : public framework::OpKernel<T> {
     auto d_logits_t = EigenMatrix<T>::From(*d_logits);
     auto d_loss_t = EigenMatrix<T>::From(*d_loss, {batch_size, 1});
     auto d_in_t = EigenMatrix<T>::From(*d_in);
-    LOG(ERROR) << "step0";
-    // d_in = d_logis * d_loss
     d_in_t.device(place) =
         d_logits_t * d_loss_t.broadcast(DIM2({1, feature_len}));
-    /*
-    for (int i = 0; i < batch_size; ++i) {
-      LOG(ERROR) << "step1";
-      d_in_t.slice(DIM2({i, 0}), DIM2({1, feature_len})).device(place) =
-          d_logits_t.slice(DIM2({i, 0}), DIM2({1, feature_len}));
-      LOG(ERROR) << "step2";
-      d_in_t.slice(DIM2({i, 0}), DIM2({1, feature_len})).device(place) =
-    d_in_t.slice(DIM2({i, 0}), DIM2({1, feature_len})) * d_loss_t(i, 0);
-    }
-    */
   }
 };
 
