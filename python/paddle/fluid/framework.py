@@ -558,15 +558,20 @@ class Operator(object):
                 if (attr_name not in self.attrs) or (
                         self.attrs[attr_name] is None):
                     continue
-                if isinstance(self.attrs[attr_name], Block):
+                attr_val = self.attrs[attr_name]
+                if isinstance(attr_val, Block):
                     self.desc.set_block_attr(attr_name,
                                              self.attrs[attr_name].desc)
-                elif isinstance(self.attrs[attr_name], core.BlockDesc) or \
-                        isinstance(self.attrs[attr_name], core.ProgramDesc):
+                elif isinstance(attr_val, list) and attr_val and \
+                      all(isinstance(v, Block) for v in attr_val):
+                    self.desc.set_blocks_attr(attr_name,
+                                              [v.desc for v in attr_val])
+                elif isinstance(attr_val, core.BlockDesc) or \
+                        isinstance(attr_val, core.ProgramDesc):
                     self.desc.set_serialized_attr(
-                        attr_name, self.attrs[attr_name].serialize_to_string())
+                        attr_name, attr_val.serialize_to_string())
                 else:
-                    self.desc.set_attr(attr_name, self.attrs[attr_name])
+                    self.desc.set_attr(attr_name, attr_val)
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
@@ -715,6 +720,9 @@ class Operator(object):
         self.attrs[name] = val
         if isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
+        elif isinstance(val, list) and val and all(
+                isinstance(v, Block) for v in val):
+            self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
