@@ -15,12 +15,13 @@ limitations under the License. */
 /*
  * This file contains the definition of a simple Inference API for Paddle.
  *
- * ATTENTION: It requires some C++ features, for lower version C++ or C, we
+ * ATTENTION: It requires some C++11 features, for lower version C++ or C, we
  * might release another API.
  */
 
 #pragma once
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,6 +32,9 @@ enum PaddleDType {
   FLOAT32,
   INT64,
 };
+
+// Get number of bytes of a data type.
+int PaddleDtypeSize(PaddleDType dtype);
 
 struct PaddleBuf {
   void* data;     // pointer to the data memory.
@@ -113,4 +117,5 @@ struct AnakinConfig : public PaddlePredictor::Config {
 // Similarly, each engine kind should map to a unique predictor implementation.
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+
 }  // namespace paddle

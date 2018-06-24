@@ -20,9 +20,10 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <gtest/gtest.h>
+#include <fstream>
 #include <iostream>
+#include "paddle/contrib/inference/demo/utils.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
-#include "paddle/utils/StringUtil.h"
 
 namespace paddle {
 namespace demo {
@@ -42,45 +43,52 @@ struct Record {
 void split(const std::string& str, char sep, std::vector<std::string>* pieces);
 
 Record ProcessALine(const std::string& line) {
+  LOG(INFO) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
   CHECK_EQ(columns.size(), 2UL)
       << "data format error, should be <data>\t<shape>";
 
   Record record;
-
   std::vector<std::string> data_strs;
-  split(line, ' ', &data_strs);
+  split(columns[0], ' ', &data_strs);
   for (auto& d : data_strs) {
     record.data.push_back(std::stof(d));
   }
 
   std::vector<std::string> shape_strs;
-  split(line, ' ', &shape_strs);
+  split(columns[1], ' ', &shape_strs);
   for (auto& s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
+  LOG(INFO) << "data size " << record.data.size();
+  LOG(INFO) << "data shape " << record.shape.size();
   return record;
 }
-
 
 /*
  * Use the native fluid engine to inference the mobilenet.
  */
 void Main(bool use_gpu) {
   NativeConfig config;
-  config.model_dir = FLAGS_modeldir;
+  // config.model_dir = FLAGS_modeldir;
+  config.param_file = FLAGS_modeldir + "/__params__";
+  config.prog_file = FLAGS_modeldir + "/__model__";
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
 
+  LOG(INFO) << "init predictor";
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
+  LOG(INFO) << "begin to process data";
   // Just a single batch of data.
   std::string line;
-  std::getline(std::cin, line);
+  std::ifstream file(FLAGS_data);
+  std::getline(file, line);
   auto record = ProcessALine(line);
+  file.close();
 
   // Inference.
   PaddleBuf buf{.data = record.data.data(),
@@ -90,28 +98,16 @@ void Main(bool use_gpu) {
                      .data = buf,
                      .dtype = PaddleDType::FLOAT32};
 
+  LOG(INFO) << "run executor";
   std::vector<PaddleTensor> output;
   predictor->Run({input}, &output);
+
+  LOG(INFO) << "output.size " << output.size();
+  auto& tensor = output.front();
+  LOG(INFO) << "output: " << SummaryTensor(tensor);
 }
 
 TEST(demo, mobilenet) { Main(false /*use_gpu*/); }
-
-void split(const std::string& str, char sep, std::vector<std::string>* pieces) {
-  pieces->clear();
-  if (str.empty()) {
-    return;
-  }
-  size_t pos = 0;
-  size_t next = str.find(sep, pos);
-  while (next != std::string::npos) {
-    pieces->push_back(str.substr(pos, next - pos));
-    pos = next + 1;
-    next = str.find(sep, pos);
-  }
-  if (!str.substr(pos).empty()) {
-    pieces->push_back(str.substr(pos));
-  }
-}
 
 }  // namespace demo
 }  // namespace paddle

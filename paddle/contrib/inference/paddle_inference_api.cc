@@ -13,3 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/contrib/inference/paddle_inference_api.h"
+
+namespace paddle {
+
+int PaddleDtypeSize(PaddleDType dtype) {
+  switch (dtype) {
+    case PaddleDType::FLOAT32:
+      return sizeof(float);
+    case PaddleDType::INT64:
+      return sizeof(int64_t);
+    default:
+      //
+      assert(false);
+      return -1;
+  }
+}
+
+}  // namespace paddle
