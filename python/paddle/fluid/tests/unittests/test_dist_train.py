@@ -16,6 +16,7 @@ import os
 import time
 import unittest
 from multiprocessing import Process
+import signal
 
 import numpy
 
@@ -24,9 +25,6 @@ import paddle.fluid.layers as layers
 
 
 class TestSendOp(unittest.TestCase):
-    @unittest.skip(
-        "This test is buggy. We cannot use time.sleep to sync processes, the connection may fail in unittest."
-    )
     def test_send(self):
         # Run init_serv in a thread
         place = fluid.CPUPlace()
@@ -35,7 +33,9 @@ class TestSendOp(unittest.TestCase):
         p.daemon = True
         p.start()
 
-        time.sleep(10)
+        self.ps_timeout = 5
+        self._wait_ps_ready(p.pid)
+
         with open("/tmp/paddle.%d.port" % p.pid, "r") as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
@@ -44,8 +44,22 @@ class TestSendOp(unittest.TestCase):
         self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
 
         # FIXME(typhoonzero): find a way to gracefully shutdown the server.
-        os.system("kill -9 %d" % p.pid)
+        os.kill(p.pid, signal.SIGKILL)
         p.join()
+
+    def _wait_ps_ready(self, pid):
+        start_left_time = self.ps_timeout
+        sleep_time = 0.5
+        while True:
+            assert start_left_time >= 0, "wait ps ready failed"
+            time.sleep(sleep_time)
+            try:
+                # the listen_and_serv_op would touch a file which contains the listen port
+                # on the /tmp directory until it was ready to process all the RPC call.
+                os.stat("/tmp/paddle.%d.port" % pid)
+                return
+            except os.error:
+                start_left_time -= sleep_time
 
     def init_serv(self, place):
         main = fluid.Program()
@@ -84,7 +98,10 @@ class TestSendOp(unittest.TestCase):
                 dtype="float32",
                 persistable=False,
                 shape=[32, 32])
-            o = layers.Send("127.0.0.1:%d" % port, [x], [get_var])
+            fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
+            layers.Send("127.0.0.1:%d" % port, [x])
+            o = layers.Recv("127.0.0.1:%d" % port, [get_var])
+
         exe = fluid.Executor(place)
         self.dist_out = exe.run(main, fetch_list=o)  # o is a list
 

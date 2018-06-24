@@ -97,7 +97,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
   auto buffer_info =
       details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
-                                  platform::float16>()(tensor);
+                                  uint8_t, platform::float16>()(tensor);
   return buffer_info;
 }
 
