@@ -77,6 +77,8 @@ class OpDesc {
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
 
+  void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
+
   Attribute GetAttr(const std::string &name) const;
 
   Attribute GetNullableAttr(const std::string &name) const;
