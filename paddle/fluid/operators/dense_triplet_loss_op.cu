@@ -14,7 +14,7 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
-#include "paddle/fluid/operators/triplet_loss_op.h"
+#include "paddle/fluid/operators/dense_triplet_loss_op.h"
 
 namespace paddle {
 namespace operators {
@@ -42,10 +42,11 @@ std::vector<int> GetOffsets<platform::CUDADeviceContext>(const Tensor* t) {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    triplet_loss,
-    ops::TripletLossKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TripletLossKernel<paddle::platform::CUDADeviceContext, double>);
+    dense_triplet_loss,
+    ops::DenseTripletLossKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DenseTripletLossKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
-    triplet_loss_grad,
-    ops::TripletLossGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TripletLossGradKernel<paddle::platform::CUDADeviceContext, double>);
+    dense_triplet_loss_grad,
+    ops::DenseTripletLossGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DenseTripletLossGradKernel<paddle::platform::CUDADeviceContext,
+                                    double>);

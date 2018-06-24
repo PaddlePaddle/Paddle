@@ -40,16 +40,16 @@ std::vector<int> GetOffsets(const Tensor* t);
 template <typename T>
 class ReluFunctor {
  public:
-  explicit ReluFunctor(T eps) : eps_(eps) {}
+  explicit ReluFunctor(T margin) : margin_(margin) {}
   HOSTDEVICE T operator()(const T& x) const {
-    if ((x + eps_) > 0)
-      return x + eps_;
+    if ((x + margin_) > 0)
+      return x + margin_;
     else
       return 0;
   }
 
  private:
-  T eps_;
+  T margin_;
 };
 
 template <typename T>
@@ -66,7 +66,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
-    T eps = static_cast<T>(context.Attr<float>("epsilon"));
+    T margin = static_cast<T>(context.Attr<float>("margin"));
     Tensor* loss = context.Output<Tensor>("Loss");
     Tensor* d_logits = context.Output<Tensor>("LogitsGrad");
     loss->mutable_data<T>(context.GetPlace());
@@ -107,7 +107,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
 
     // step 2: get loss in each line of distance matrix
     ReluGradFunctor<T> relu_grad;
-    ReluFunctor<T> relu(eps);
+    ReluFunctor<T> relu(margin);
     auto offsets = GetOffsets<DeviceContext>(labels);
     for (size_t i = 0; i < offsets.size() - 1; ++i) {
       int begin = offsets[i];

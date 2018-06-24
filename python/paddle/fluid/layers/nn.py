@@ -25,68 +25,21 @@ import utils
 import random
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'batch_norm',
+    'beam_search_decode', 'conv2d_transpose', 'sequence_expand', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
+    'dense_triplet_loss'
 ]
 
 
@@ -4277,3 +4230,38 @@ def random_crop(x, shape, seed=None):
                  "SeedOut": seed_out},
         attrs={"shape": shape})
     return out
+
+
+def dense_triplet_loss(input, label, margin=0.01):
+    """
+
+    Args:
+        input(Variable): (LodTensor, default: LoDTensor<float>),
+                         A 2-D tensor with shape [N x K]. N is the batch_size,
+                         and K is the feature length in each sample.
+        label(Variable): (LodTensor, default: LoDTensor<int64>), 
+                         The ground truth which is a tensor with shape [N x 1].
+        margin(float): (floatm default: 0.01), 
+
+    Returns:
+        Variable: A 2-D tensor. The dense triplet loss with shape [batch_size x 1].
+
+    Examples:
+        .. code-block:: python
+
+            label = fluid.layers.data(shape=[11, 8], dtype='float32')
+            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
+            cost = fluid.layers.dense_triplet_loss(input=predict, label=label)
+
+    """
+    helper = LayerHelper('dense_triplet_loss', **locals())
+    loss_out = helper.create_tmp_variable(dtype=input.dtype)
+    grad_out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='dense_triplet_loss',
+        inputs={'Logits': [input],
+                'Label': [label]},
+        outputs={'LogitsGrad': [grad_out],
+                 'Loss': [loss_out]},
+        attrs={'margin': margin})
+    return loss_out

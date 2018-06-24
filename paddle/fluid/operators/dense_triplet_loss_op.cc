@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/triplet_loss_op.h"
+#include "paddle/fluid/operators/dense_triplet_loss_op.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ std::vector<int> GetOffsets<platform::CPUDeviceContext>(const Tensor* t) {
   return offsets;
 }
 
-class TripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
+class DenseTripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Logits",
@@ -59,7 +59,7 @@ class TripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class TripletLossOp : public framework::OperatorWithKernel {
+class DenseTripletLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -72,8 +72,9 @@ class TripletLossOp : public framework::OperatorWithKernel {
                    "Output(LogitsGrad) should be not null.");
     auto labels_dims = ctx->GetInputDim("Label");
     auto logits_dims = ctx->GetInputDim("Logits");
-    PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
-                      "The input of triplet_loss should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(
+        logits_dims.size(), 2UL,
+        "The input of dense_triplet_loss should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The labels should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
@@ -93,7 +94,7 @@ class TripletLossOp : public framework::OperatorWithKernel {
   }
 };
 
-class TripletLossGradOp : public framework::OperatorWithKernel {
+class DenseTripletLossGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -132,16 +133,18 @@ class TripletLossGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(triplet_loss, ops::TripletLossOp, ops::TripletLossOpMaker,
+REGISTER_OPERATOR(dense_triplet_loss, ops::DenseTripletLossOp,
+                  ops::DenseTripletLossOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OPERATOR(triplet_loss_grad, ops::TripletLossGradOp);
+REGISTER_OPERATOR(dense_triplet_loss_grad, ops::DenseTripletLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    triplet_loss,
-    ops::TripletLossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TripletLossKernel<paddle::platform::CPUDeviceContext, double>);
+    dense_triplet_loss,
+    ops::DenseTripletLossKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::DenseTripletLossKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    triplet_loss_grad,
-    ops::TripletLossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TripletLossGradKernel<paddle::platform::CPUDeviceContext, double>);
+    dense_triplet_loss_grad,
+    ops::DenseTripletLossGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::DenseTripletLossGradKernel<paddle::platform::CPUDeviceContext,
+                                    double>);

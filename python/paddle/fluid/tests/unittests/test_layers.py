@@ -401,6 +401,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_dense_triplet_loss(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[8, 4], dtype="float32")
+            label = layers.data(name='x', shape=[8, 1], dtype="int64")
+            output = layers.dense_triplet_loss(data, label)
+            self.assertIsNotNone(output)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
