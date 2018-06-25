@@ -34,6 +34,9 @@ DEFINE_string(
     "",
     "path of data; each line is a record, format is "
     "'<space splitted floats as data>\t<space splitted ints as shape'");
+#ifdef PADDLE_WITH_CUDA
+DECLARE_double(fraction_of_gpu_memory_to_use);
+#endif
 
 struct Record {
   std::vector<float> data;
@@ -75,7 +78,11 @@ void Main(bool use_gpu) {
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
   config.use_gpu = use_gpu;
-  config.fraction_of_gpu_memory = 0.15;
+#ifdef PADDLE_WITH_CUDA
+  config.fraction_of_gpu_memory = FLAGS_fraction_of_gpu_memory_to_use;
+#else
+  config.fraction_of_gpu_memory = 0.1;
+#endif
   config.device = 0;
 
   LOG(INFO) << "init predictor";

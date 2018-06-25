@@ -15,9 +15,8 @@
 
 inference_api_test(simple_on_word2vec ARGS test_word2vec)
 
-set(mobilenet_url "xxx")
 set(DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo")
-
+set(mobilenet_url http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fmobilenet.tar.gz)
 
 function(inference_download_test_demo TARGET)
     if (NOT WITH_TESTING)
@@ -41,11 +40,9 @@ function(inference_download_test_demo TARGET)
     cc_test(${TARGET} SRCS "${tests_SRCS}"
         DEPS paddle_inference_api paddle_fluid
         ARGS --data=${test_dir}/data.txt
-             --modeldir=${test_dir}/model
-             --fraction_of_gpu_memory_to_use=0.5)
+             --modeldir=${test_dir}/model)
 endfunction()
 
-
-inference_download_test_demo (mobilenet_inference_demo
+inference_download_test_demo(mobilenet_inference_demo
     SRCS mobilenet.cc
-    URL http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fmobilenet.tar.gz)
+    URL ${mobilenet_url})
