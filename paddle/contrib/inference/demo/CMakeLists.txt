@@ -14,3 +14,35 @@
 #
 
 inference_api_test(simple_on_word2vec ARGS test_word2vec)
+
+set(DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo")
+set(mobilenet_url http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fmobilenet.tar.gz)
+
+function(inference_download_test_demo TARGET)
+    if (NOT WITH_TESTING)
+        return()
+    endif()
+    set(options "")
+    set(oneValueArgs URL)
+    set(multiValueArgs SRCS)
+    cmake_parse_arguments(tests "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(test_dir "${DEMO_INSTALL_DIR}/${TARGET}")
+    message(STATUS "inference demo ${test_dir}")
+
+    if(NOT EXISTS "${test_dir}")
+        message(STATUS "Download ${TARGET} model from ${tests_URL}")
+        execute_process(COMMAND bash -c "mkdir -p ${test_dir}")
+        execute_process(COMMAND bash -c "cd ${test_dir}; wget -q ${tests_URL}")
+        execute_process(COMMAND bash -c "cd ${test_dir}; tar xzf *.tar.gz")
+    endif()
+
+    cc_test(${TARGET} SRCS "${tests_SRCS}"
+        DEPS paddle_inference_api paddle_fluid
+        ARGS --data=${test_dir}/data.txt
+             --modeldir=${test_dir}/model)
+endfunction()
+
+inference_download_test_demo(mobilenet_inference_demo
+    SRCS mobilenet.cc
+    URL ${mobilenet_url})
