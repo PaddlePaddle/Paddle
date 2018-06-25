@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
 
 
 def bilinear_interp_np(input, out_h, out_w, out_size):
@@ -45,9 +46,9 @@ def bilinear_interp_np(input, out_h, out_w, out_size):
 
             out[:, :, i, j] = h2lambda*(w2lambda*input[:, :, h, w] +
                                         w1lambda*input[:, :, h, w+wid]) + \
-                              h1lambda*(w2lambda*input[:, :, h+hid, w] +
-                                        w1lambda*input[:, :, h+hid, w+wid])
-    return out.astype("float32")
+                h1lambda*(w2lambda*input[:, :, h+hid, w] +
+                          w1lambda*input[:, :, h+hid, w+wid])
+    return out.astype(input.dtype)
 
 
 class TestBilinearInterpOp(OpTest):
@@ -120,6 +121,45 @@ class TestCase6(TestBilinearInterpOp):
         self.out_h = 64
         self.out_w = 128
         self.out_size = np.array([65, 129]).astype("int32")
+
+
+class TestBilinearInterpOpUint8(OpTest):
+    def setUp(self):
+        self.out_size = None
+        self.init_test_case()
+        self.op_type = "bilinear_interp"
+        input_np = np.random.randint(
+            low=0, high=256, size=self.input_shape).astype("uint8")
+        output_np = bilinear_interp_np(input_np, self.out_h, self.out_w,
+                                       self.out_size)
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        self.attrs = {'out_h': self.out_h, 'out_w': self.out_w}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+
+    def init_test_case(self):
+        self.input_shape = [1, 3, 9, 6]
+        self.out_h = 10
+        self.out_w = 9
+
+
+class TestCase1Uint8(TestBilinearInterpOpUint8):
+    def init_test_case(self):
+        self.input_shape = [2, 3, 128, 64]
+        self.out_h = 120
+        self.out_w = 50
+
+
+class TestCase2Uint8(TestBilinearInterpOpUint8):
+    def init_test_case(self):
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 5
+        self.out_w = 13
+        self.out_size = np.array([6, 15]).astype("int32")
 
 
 if __name__ == "__main__":

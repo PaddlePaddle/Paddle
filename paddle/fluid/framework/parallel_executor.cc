@@ -110,7 +110,6 @@ ParallelExecutor::ParallelExecutor(
 
   // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
-
   details::SSAGraphBuilderFactory builder_factory(
       member_->places_, loss_var_name, params, member_->local_scopes_,
       build_strategy);
@@ -122,9 +121,10 @@ ParallelExecutor::ParallelExecutor(
 #endif
   }
 
+  builder_ = builder_factory.Create();
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places,
-      builder_factory.Create()->Build(main_program)));
+      builder_->Build(main_program)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
@@ -133,10 +133,22 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
-  auto *main_scope = member_->local_scopes_[0];
+  // the the initialize bcast, all vars would be bcast from device(0), otherwise
+  // bcast from the specified device.
+  bool initialize = builder_.get() == nullptr ? true : false;
 
   for (auto &var : vars) {
-    auto *main_var = main_scope->FindVar(var);
+    int var_dev_id =
+        builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
+    if (!initialize && var_dev_id == -1) continue;
+
+    framework::Variable *main_var = nullptr;
+    if (initialize) {
+      main_var = member_->local_scopes_[0]->FindVar(var);
+    } else {
+      main_var = member_->local_scopes_[var_dev_id]->FindVar(var);
+    }
+
     if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
@@ -151,7 +163,8 @@ void ParallelExecutor::BCastParamsToGPUs(
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
-        if (i == 0) {
+
+        if ((initialize && i == 0) || (!initialize && i == var_dev_id)) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
