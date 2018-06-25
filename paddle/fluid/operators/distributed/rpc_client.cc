@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/detail/rpc_client.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "gflags/gflags.h"
+
+// default to 3min to avoid temprary network failures.
+DEFINE_int32(grpc_deadline, 180000, "deadline timeouts for grpc");
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 std::once_flag RPCClient::init_flag_;
 std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

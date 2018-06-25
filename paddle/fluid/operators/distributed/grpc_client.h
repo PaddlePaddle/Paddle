@@ -38,23 +38,27 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/detail/rpc_client.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 struct VarHandle {
+  // RPC endpoint.
   std::string ep;
   const platform::DeviceContext* ctx;
   const framework::Scope* scope;
+  // Variable name.
   std::string name;
+  // RPC method name.
+  std::string method;
 
   std::string String() const {
     std::ostringstream s;
-    s << "name:[" << name << "] ep:[" << ep << "]";
+    s << method << " name:[" << name << "], ep:[" << ep << "]";
     return s.str();
   }
 };
@@ -72,6 +76,7 @@ class BaseProcessor {
   virtual void Prepare(const VarHandle& var_info, int64_t time_out) {
     context_.reset(new grpc::ClientContext());
     var_h_ = var_info;
+    context_->set_wait_for_ready(true);
 
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
@@ -81,6 +86,7 @@ class BaseProcessor {
 
   virtual void Prepare(int64_t time_out) {
     context_.reset(new grpc::ClientContext());
+    context_->set_wait_for_ready(true);
 
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
@@ -172,26 +178,24 @@ class GRPCClient : public RPCClient {
 
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
                     const framework::Scope& scope, const std::string& var_name,
-                    int64_t time_out = RPCClient::rpc_time_out) override;
+                    int64_t time_out = FLAGS_grpc_deadline) override;
 
   bool AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
                    const framework::Scope& scope, const std::string& var_name,
-                   int64_t time_out = RPCClient::rpc_time_out) override;
+                   int64_t time_out = FLAGS_grpc_deadline) override;
 
   bool AsyncPrefetchVar(const std::string& ep,
                         const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& in_var_name,
                         const std::string& out_var_name,
-                        int64_t time_out = RPCClient::rpc_time_out) override;
+                        int64_t time_out = FLAGS_grpc_deadline) override;
 
-  void AsyncSendBatchBarrier(
-      const std::string& ep,
-      int64_t time_out = RPCClient::rpc_time_out) override;
+  void AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = FLAGS_grpc_deadline) override;
 
-  void AsyncSendFetchBarrier(
-      const std::string& ep,
-      int64_t time_out = RPCClient::rpc_time_out) override;
+  void AsyncSendFetchBarrier(const std::string& ep,
+                             int64_t time_out = FLAGS_grpc_deadline) override;
 
   void Wait() override;
 
@@ -207,7 +211,7 @@ class GRPCClient : public RPCClient {
   void Proceed();
 
   void AsyncSendComplete(const std::string& ep,
-                         int64_t time_out = RPCClient::rpc_time_out);
+                         int64_t time_out = FLAGS_grpc_deadline);
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
@@ -226,6 +230,6 @@ class GRPCClient : public RPCClient {
   DISABLE_COPY_AND_ASSIGN(GRPCClient);
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

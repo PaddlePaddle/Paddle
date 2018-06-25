@@ -15,13 +15,13 @@ limitations under the License. */
 #include <limits>
 #include <string>
 
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/distributed/grpc_server.h"
 
 using ::grpc::ServerAsyncResponseWriter;
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -40,6 +40,19 @@ class RequestBase {
   }
   virtual ~RequestBase() {}
   virtual void Process() = 0;
+
+  std::string Status2String(const std::string& method) {
+    std::string status = "Process";
+    if (status_ == FINISH) {
+      status = "Finish";
+    }
+
+    std::ostringstream s;
+    s << method << " name:[" << GetReqName() << "]"
+      << ", ep:[" << ctx_.peer() << "]"
+      << " " << status << " using req_id:" << req_id_;
+    return s.str();
+  }
 
   CallStatus Status() const {
     std::lock_guard<std::mutex> l(status_mu_);
@@ -74,7 +87,7 @@ class RequestSend final : public RequestBase {
     request_.reset(new VariableResponse(request_handler->scope(),
                                         request_handler->dev_ctx(),
                                         !request_handler->sync_mode()));
-    int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
+    int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
@@ -84,7 +97,7 @@ class RequestSend final : public RequestBase {
 
   void Process() override {
     std::string varname = GetReqName();
-    VLOG(3) << "RequestSend var_name:" << varname;
+    VLOG(4) << "RequestSend var_name:" << varname;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
@@ -106,7 +119,7 @@ class RequestGet final : public RequestBase {
                       ::grpc::ServerCompletionQueue* cq,
                       RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
+    auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, &request_, &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
@@ -119,7 +132,7 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
-    VLOG(3) << "RequestGet " << varname;
+    VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
@@ -150,7 +163,8 @@ class RequestPrefetch final : public RequestBase {
         local_scope_(nullptr) {
     request_.reset(new VariableResponse(request_handler->scope(),
                                         request_handler->dev_ctx(), true));
-    int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
+    int method_id =
+        static_cast<int>(distributed::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
@@ -164,7 +178,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
-    VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
+    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
@@ -187,10 +201,10 @@ class RequestPrefetch final : public RequestBase {
 };
 
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(3) << "AsyncGRPCServer is wait server ready";
+  VLOG(4) << "AsyncGRPCServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(3) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
 
 void AsyncGRPCServer::StartServer() {
@@ -229,7 +243,7 @@ void AsyncGRPCServer::StartServer() {
     for (int i = 0; i < threadnum; i++) {
       rpc_threads_[rpc_name].emplace_back(new std::thread(std::bind(
           &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_name, f)));
-      VLOG(3) << t.first << " creates threads!";
+      VLOG(4) << t.first << " creates threads!";
     }
   }
 
@@ -246,7 +260,7 @@ void AsyncGRPCServer::StartServer() {
     auto& threads = t.second;
     for (size_t i = 0; i < threads.size(); ++i) {
       threads[i]->join();
-      VLOG(3) << t.first << " threads ends!";
+      VLOG(4) << t.first << " threads ends!";
     }
   }
 }
@@ -254,7 +268,7 @@ void AsyncGRPCServer::StartServer() {
 void AsyncGRPCServer::ShutdownQueue() {
   for (auto& t : rpc_cq_) {
     t.second->Shutdown();
-    VLOG(3) << t.first << " shutdown!";
+    VLOG(4) << t.first << " queue shutdown!";
   }
 }
 
@@ -263,7 +277,7 @@ void AsyncGRPCServer::ShutDownImpl() {
   is_shut_down_ = true;
   ShutdownQueue();
 
-  VLOG(3) << "server_ shutdown!";
+  VLOG(4) << "server_ shutdown!";
   server_->Shutdown();
 }
 
@@ -271,7 +285,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
                                           int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
-    VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
+    VLOG(4) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
 
@@ -305,14 +319,14 @@ void AsyncGRPCServer::HandleRequest(
   bool ok = false;
 
   while (true) {
-    VLOG(3) << "HandleRequest " << rpc_name << " wait next";
+    VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
     int req_id = static_cast<int>(reinterpret_cast<intptr_t>(tag));
-    VLOG(3) << "HandleRequest " << rpc_name << ", req_id:" << req_id
+    VLOG(4) << "HandleRequest " << rpc_name << ", req_id:" << req_id
             << " get next";
 
     auto& reqs = rpc_reqs_[rpc_name];
@@ -323,21 +337,20 @@ void AsyncGRPCServer::HandleRequest(
       base = reqs[req_id];
     }
 
+    VLOG(3) << base->Status2String(rpc_name);
+
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
       LOG(WARNING) << "completion queue:" << rpc_name
-                   << " recv no regular event:argument name["
-                   << base->GetReqName() << "]";
+                   << " recv no regular event"
+                   << " context:" << base->Status2String(rpc_name);
       TryToRegisterNewOne(rpc_name, req_id);
       delete base;
       continue;
     }
-
-    VLOG(3) << "queue id:" << rpc_name << ", req_id:" << req_id
-            << ", status:" << base->Status();
 
     switch (base->Status()) {
       case PROCESS: {
@@ -354,6 +367,6 @@ void AsyncGRPCServer::HandleRequest(
   }
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

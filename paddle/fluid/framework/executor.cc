@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/distributed/grpc_client.h"
 #endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -49,8 +49,8 @@ Executor::Executor(const platform::Place& place) : place_(place) {}
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 void Executor::Complete() {
-  ::paddle::operators::detail::RPCClient::GetInstance<
-      ::paddle::operators::detail::GRPCClient>()
+  ::paddle::operators::distributed::RPCClient::GetInstance<
+      ::paddle::operators::distributed::GRPCClient>()
       ->SendComplete();
 }
 #endif

@@ -94,7 +94,7 @@ class TestListenAndServOp(OpTest):
         self._wait_ps_ready(p1.pid)
 
         # raise SIGTERM to pserver
-        os.kill(p1.pid, signal.SIGKILL)
+        os.kill(p1.pid, signal.SIGINT)
         p1.join()
 
         # run pserver on CPU in async mode
@@ -102,7 +102,7 @@ class TestListenAndServOp(OpTest):
         self._wait_ps_ready(p2.pid)
 
         # raise SIGTERM to pserver
-        os.kill(p2.pid, signal.SIGKILL)
+        os.kill(p2.pid, signal.SIGTERM)
         p2.join()
 
 

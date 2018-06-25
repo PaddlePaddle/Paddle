@@ -15,14 +15,17 @@
 #pragma once
 
 #include <string>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 
+DECLARE_int32(grpc_deadline);
+
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class RPCClient {
  public:
@@ -32,26 +35,26 @@ class RPCClient {
                             const platform::DeviceContext& ctx,
                             const framework::Scope& scope,
                             const std::string& var_name,
-                            int64_t time_out = rpc_time_out) = 0;
+                            int64_t time_out = FLAGS_grpc_deadline) = 0;
 
   virtual bool AsyncGetVar(const std::string& ep,
                            const platform::DeviceContext& ctx,
                            const framework::Scope& scope,
                            const std::string& var_name,
-                           int64_t time_out = rpc_time_out) = 0;
+                           int64_t time_out = FLAGS_grpc_deadline) = 0;
 
   virtual bool AsyncPrefetchVar(const std::string& ep,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope& scope,
                                 const std::string& in_var_name,
                                 const std::string& out_var_name,
-                                int64_t time_out = rpc_time_out) = 0;
+                                int64_t time_out = FLAGS_grpc_deadline) = 0;
 
-  virtual void AsyncSendBatchBarrier(const std::string& ep,
-                                     int64_t time_out = rpc_time_out) = 0;
+  virtual void AsyncSendBatchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_grpc_deadline) = 0;
 
-  virtual void AsyncSendFetchBarrier(const std::string& ep,
-                                     int64_t time_out = rpc_time_out) = 0;
+  virtual void AsyncSendFetchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_grpc_deadline) = 0;
 
   // SendComplete tells all the server that current trainer have no more data
   // to train, so that the pserver can reduce it's barrier count, and continue
@@ -59,8 +62,6 @@ class RPCClient {
   virtual void SendComplete() = 0;
 
   virtual void Wait() = 0;
-
-  static constexpr int64_t rpc_time_out = 120 * 1000;
 
   template <typename T>
   static RPCClient* GetInstance() {
@@ -84,6 +85,6 @@ class RPCClient {
   static std::once_flag init_flag_;
   static std::unique_ptr<RPCClient> rpc_client_;
 };
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
