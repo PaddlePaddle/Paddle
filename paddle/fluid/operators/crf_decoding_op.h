@@ -38,7 +38,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     std::string decode_choice = ctx.Attr<std::string>("chunk_scheme");
     Tensor trans_copy;
     framework::TensorCopy(*transition_weights, platform::CPUPlace(),
-        &(trans_copy));
+                          &(trans_copy));
     remove_illegal_edge(decode_choice, (&trans_copy));
     PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
                       "The Input(Emission) should be a sequence.");
@@ -71,7 +71,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 
  private:
   void remove_illegal_edge(const std::string& decode_choice,
-     Tensor* trans_weights) const {
+                           Tensor* trans_weights) const {
     T* w = trans_weights->mutable_data<T>(platform::CPUPlace());
     auto trans_dims = trans_weights->dims();
     const size_t tag_num = trans_dims[1];
@@ -114,8 +114,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         for (int j = 0; j < tag_num; j++) {
           if ((i % 4 == 0 && i != tag_num - 1 && j != i + 1 && j != i + 2) ||
               (i % 4 == 1 && j != i && j != i + 1) ||
-              ((i % 4 == 2 || i % 4 == 3 || i == tag_num - 1)
-                  && (j % 4 == 1 || j % 4 == 2))) {
+              ((i % 4 == 2 || i % 4 == 3 || i == tag_num - 1) &&
+               (j % 4 == 1 || j % 4 == 2))) {
             w[(i + state_trans_base_idx) * tag_num + j] =
                 -std::numeric_limits<T>::max();
           }
