@@ -51,7 +51,7 @@ class DenseTripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
               "computed with loss together in one call. It is a 2-D Tensor of "
               "the shape [batch_size, feature_len].")
         .AsIntermediate();
-    AddAttr<float>("epsilon", "(float), The min margin between two sample.");
+    AddAttr<float>("margin", "(float), The min margin between two sample.");
 
     AddComment(R"DOC(
 

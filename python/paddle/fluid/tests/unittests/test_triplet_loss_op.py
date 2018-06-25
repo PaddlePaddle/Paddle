@@ -47,7 +47,7 @@ def triplet_loss(predict, label, eps):
 
 class TestTripletOp(OpTest):
     def setUp(self):
-        self.op_type = "triplet_loss"
+        self.op_type = "dense_triplet_loss"
         self.batch_size = 9
         self.feature_len = 3
         self.class_num = 4
@@ -62,7 +62,7 @@ class TestTripletOp(OpTest):
                     [self.batch_size, 1])
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {"Loss": triplet_loss(logits, labels, self.eps), }
-        self.attrs = {"epsilon": self.eps}
+        self.attrs = {"margin": self.eps}
 
     def test_check_output(self):
         self.check_output()

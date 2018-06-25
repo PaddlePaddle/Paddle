@@ -59,7 +59,7 @@ class ReluGradFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class TripletLossKernel : public framework::OpKernel<T> {
+class DenseTripletLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto& place =
@@ -142,7 +142,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
     }
 
     // get gradient of logits
-    tmp_t = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
+    tmp_t.device(place) = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
     auto dis_mat =
         math::CreateMatrixDescriptor({batch_size, batch_size}, 0, false);
     blas.MatMul(tmp, dis_mat, *logits, x_mat, T(-2), d_logits, T(0));
@@ -157,7 +157,7 @@ class TripletLossKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class TripletLossGradKernel : public framework::OpKernel<T> {
+class DenseTripletLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto& place =
