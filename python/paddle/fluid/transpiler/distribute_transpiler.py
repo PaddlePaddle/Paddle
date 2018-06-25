@@ -225,6 +225,9 @@ class DistributeTranspiler(object):
                 inputs={"X": splited_vars},
                 outputs={},
                 attrs={
+                    # TODO(wuyi): re-enable full async once we have resolved
+                    #             all the issues.
+                    "sync_mode": self.sync_mode,  # convert to int
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
@@ -265,6 +268,8 @@ class DistributeTranspiler(object):
                 inputs={},
                 outputs={"Out": splited_var},
                 attrs={
+                    # TODO(wuyi): re-enable full async later.
+                    "sync_mode": self.sync_mode,  # convert to int
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
