@@ -17,11 +17,11 @@
 #include <limits>
 #include <string>
 
-#include "paddle/fluid/operators/detail/rpc_server.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 void RPCServer::ShutDown() {
   LOG(INFO) << "RPCServer ShutDown ";
@@ -112,6 +112,6 @@ void RPCServer::WaitCond(const std::string& rpc_name) {
       lock, [=] { return (cur_cond_.load() == cond || exit_flag_.load()); });
 }
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

@@ -401,6 +401,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_maxout(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5], dtype="float32")
+            y = layers.data(name='y', shape=[2, 3], dtype="float32")
+            output = layers.crop(x, shape=y)
+            self.assertIsNotNone(output)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -31,13 +31,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/detail/rpc_client.h"
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 struct ChannelContext {
   brpc::Channel channel;
@@ -95,6 +95,6 @@ class BRPCClient : public RPCClient {
   DISABLE_COPY_AND_ASSIGN(BRPCClient);
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

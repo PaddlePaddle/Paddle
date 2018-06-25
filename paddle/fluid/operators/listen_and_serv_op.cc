@@ -21,14 +21,14 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/macros.h"
 
-#include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::RPCServer> service) {
+void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
@@ -101,17 +101,16 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list) const {
   size_t num_blocks = program->Size();
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  std::vector<int> optimize_block_id_list;
-  for (int blkid = 1; blkid < num_blocks; ++blkid) {
-    if (std::find(prefetch_block_id_list.begin(), prefetch_block_id_list.end(),
-                  blkid) == prefetch_block_id_list.end()) {
-      optimize_block_id_list.push_back(blkid);
-    }
+  std::vector<int> optimize_blocks_idx;
+  for (auto blk : optimize_blocks) {
+    optimize_blocks_idx.push_back(blk->ID());
   }
-  auto optimize_prepared = executor->Prepare(*program, optimize_block_id_list);
+  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_idx);
   // Insert placeholder for block0 which holds current op itself.
   optimize_prepared.insert(
       optimize_prepared.begin(),
@@ -121,12 +120,12 @@ void ListenAndServOp::RunSyncLoop(
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    rpc_service_->SetCond(detail::kRequestSend);
-    rpc_service_->WaitBarrier(detail::kRequestSend);
+    rpc_service_->SetCond(distributed::kRequestSend);
+    rpc_service_->WaitBarrier(distributed::kRequestSend);
 
     if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      rpc_service_->SetCond(detail::kRequestGet);
+      rpc_service_->SetCond(distributed::kRequestGet);
       break;
     }
 
@@ -134,14 +133,14 @@ void ListenAndServOp::RunSyncLoop(
     // and this will still work.
     // The optimize blocks which have the same parent ID would run parallel
     // TODO(Yancey1989): need to use ParallelExecutor for future
-    int32_t last_parent_blkid = program->Block(1).Parent();
+    int32_t last_parent_blkid = optimize_blocks[0]->Parent();
     std::vector<size_t> parallel_blkids;
-    parallel_blkids.push_back(1);
+    parallel_blkids.push_back(optimize_blocks[0]->ID());
     double ts = GetTimestamp();
-    for (size_t i = 1; i < optimize_block_id_list.size(); ++i) {
+    for (size_t i = 1; i < optimize_blocks.size(); ++i) {
       // skip the first optimize block because it is already in the
       // parallel_blkids.
-      int blkid = optimize_block_id_list[i];
+      int blkid = optimize_blocks[i]->ID();
       if (program->Block(blkid).Parent() != last_parent_blkid) {
         ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
                               program, recv_scope);
@@ -154,11 +153,11 @@ void ListenAndServOp::RunSyncLoop(
                           recv_scope);
     VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
-    rpc_service_->SetCond(detail::kRequestGet);
-    rpc_service_->WaitBarrier(detail::kRequestGet);
+    rpc_service_->SetCond(distributed::kRequestGet);
+    rpc_service_->WaitBarrier(distributed::kRequestGet);
     rpc_service_->ResetBarrierCounter();
     // reset received sparse vars to avoid reuse it in the next mini-batch
-    dynamic_cast<detail::RequestSendHandler *>(request_send_handler_.get())
+    dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
         ->ResetSparseVarRecorder();
   }  // while(true)
 }
@@ -215,13 +214,13 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 }
 
 static void FillRequestCtx(
-    detail::RequestHandler *h, framework::Scope *scope,
+    distributed::RequestHandler *h, framework::Scope *scope,
     platform::DeviceContext *dev_ctx, framework::Executor *executor,
     framework::ProgramDesc *program,
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ExecutorPrepareContext>>
         *prefetch_ctx,
-    detail::RPCServer *rpc_server) {
+    distributed::RPCServer *rpc_server) {
   h->SetScope(scope);
   h->SetDevCtx(dev_ctx);
   h->SetExecutor(executor);
@@ -249,18 +248,23 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(new detail::RequestSendHandler(sync_mode));
-  request_get_handler_.reset(new detail::RequestGetHandler(sync_mode));
+  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
+  request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(
-      new detail::RequestPrefetchHandler(sync_mode));
+      new distributed::RequestPrefetchHandler(sync_mode));
 
-  rpc_service_->RegisterRPC(detail::kRequestSend, request_send_handler_.get());
-  rpc_service_->RegisterRPC(detail::kRequestGet, request_get_handler_.get());
-  rpc_service_->RegisterRPC(detail::kRequestPrefetch,
+  rpc_service_->RegisterRPC(distributed::kRequestSend,
+                            request_send_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestGet,
+                            request_get_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get());
 
-  auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto *program = optimize_block->Program();
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
+  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
+                 "optimize blocks should be 1 at least on the pserver side.");
+  auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
   // prepare for prefetch
@@ -337,8 +341,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
-    AddAttr<framework::BlockDesc *>(kOptimizeBlock,
-                                    "BlockID to run on server side.");
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        kOptimizeBlocks, "Optimize blocks to run on server side.")
+        .SetDefault({});
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch blocks to run on server side.")
         .SetDefault({});

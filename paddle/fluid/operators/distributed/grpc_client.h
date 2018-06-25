@@ -38,23 +38,27 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/detail/rpc_client.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 struct VarHandle {
+  // RPC endpoint.
   std::string ep;
   const platform::DeviceContext* ctx;
   const framework::Scope* scope;
+  // Variable name.
   std::string name;
+  // RPC method name.
+  std::string method;
 
   std::string String() const {
     std::ostringstream s;
-    s << "name:[" << name << "] ep:[" << ep << "]";
+    s << method << " name:[" << name << "], ep:[" << ep << "]";
     return s.str();
   }
 };
@@ -226,6 +230,6 @@ class GRPCClient : public RPCClient {
   DISABLE_COPY_AND_ASSIGN(GRPCClient);
 };
 
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
