@@ -38,8 +38,6 @@ class BlockingQueue {
         "The capacity of a reader::BlockingQueue must be greater than 0.");
   }
 
-  ~BlockingQueue() { Close(); }
-
   bool Send(const T& elem) {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
