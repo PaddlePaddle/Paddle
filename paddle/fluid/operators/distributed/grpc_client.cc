@@ -258,14 +258,15 @@ void GRPCClient::Proceed() {
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
-  // TODO(Yancey1989): make grpc client completely thread-safe
   std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;
   }
 
+  // Channel configurations:
   grpc::ChannelArguments args;
+  args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 2000);
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
