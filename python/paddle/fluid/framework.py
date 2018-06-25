@@ -707,7 +707,7 @@ class Operator(object):
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
         self.attrs[name] = val
-        self._update_desc_attr(val)
+        self._update_desc_attr(name, val)
 
     def _update_desc_attr(self, name, val):
         """
