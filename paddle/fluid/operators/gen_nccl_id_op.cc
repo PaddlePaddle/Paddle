@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/macros.h"
-#include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {

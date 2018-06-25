@@ -184,7 +184,7 @@ else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
 endif()
 
-add_subdirectory(detail)
+add_subdirectory(distrbuted)
 set(DISTRIBUTE_DEPS "")
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
