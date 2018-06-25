@@ -930,7 +930,7 @@ class DistributeTranspiler(object):
             type='save',
             inputs={'X': [self.table_name]},
             outputs={},
-            attrs={'file_path': ""})
+            attrs={'file_path': "none"})
 
         return checkpoint_save_block.idx
 
