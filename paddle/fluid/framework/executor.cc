@@ -47,7 +47,7 @@ Executor::Executor(const platform::Place& place) : place_(place) {}
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 void Executor::Complete() {
-  ::paddle::operators::detail::RPCClient::GetInstance<RPCCLIENT_T>()
+  ::paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>()
       ->SendComplete();
 }
 #endif

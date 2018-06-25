@@ -19,7 +19,7 @@
 
 namespace sendrecv {
 
-namespace detail = paddle::operators::detail;
+namespace distributed = paddle::operators::distributed;
 
 typedef std::unordered_map<std::string, distributed::RequestHandler*>
     HandlerMap;

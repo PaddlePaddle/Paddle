@@ -28,7 +28,7 @@ limitations under the License. */
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace detail = paddle::operators::detail;
+namespace distributed = paddle::operators::distributed;
 
 USE_OP(lookup_table);
 
