@@ -47,14 +47,18 @@ namespace operators {
 namespace distributed {
 
 struct VarHandle {
+  // RPC endpoint.
   std::string ep;
   const platform::DeviceContext* ctx;
   const framework::Scope* scope;
+  // Variable name.
   std::string name;
+  // RPC method name.
+  std::string method;
 
   std::string String() const {
     std::ostringstream s;
-    s << "name:[" << name << "] ep:[" << ep << "]";
+    s << method << " name:[" << name << "], ep:[" << ep << "]";
     return s.str();
   }
 };

@@ -51,8 +51,6 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
-
   if (!platform::is_cpu_place(t.place())) {
     LoDTensor tt;
     framework::TensorCopy(t, platform::CPUPlace(), &tt);
@@ -70,7 +68,13 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   // only print first ten elements
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
-    os << t.data<float>()[i] << " ";
+    if (t.type().hash_code() == typeid(float).hash_code()) {
+      os << t.data<float>()[i] << " ";
+    } else if (t.type().hash_code() == typeid(int64_t).hash_code()) {
+      os << t.data<int64_t>()[i] << " ";
+    } else {
+      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
+    }
   }
 
   return os;
