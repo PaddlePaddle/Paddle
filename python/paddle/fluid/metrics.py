@@ -580,10 +580,10 @@ class Auc(MetricBase):
         self.tn_list = np.zeros((num_thresholds, ))
         self.fp_list = np.zeros((num_thresholds, ))
 
-    def update(self, preds, labels):
+    def update(self, predictions, labels):
         if not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray.")
-        if not _is_numpy_(preds):
+        if not _is_numpy_(predictions):
             raise ValueError("The 'predictions' must be a numpy ndarray.")
 
         kepsilon = 1e-7  # to account for floating point imprecisions
