@@ -920,19 +920,17 @@ class DistributeTranspiler(object):
         import os
 
         pserver_program.global_block().create_var(
-            name="lookup_table_path",
+            name="kLookupTablePath",
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
         checkpoint_save_block = pserver_program.create_block(pre_block_idx)
+        # this 'file_path' do not be used in save lookup table variable
         checkpoint_save_block.append_op(
             type='save',
             inputs={'X': [self.table_name]},
             outputs={},
-            attrs={
-                'file_path':
-                "this 'file_path' do not be used in save lookup table variable"
-            })
+            attrs={'file_path': ""})
 
         return checkpoint_save_block.idx
 

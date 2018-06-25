@@ -30,7 +30,7 @@ namespace distributed {
 
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
-constexpr char LOOKUP_TABLE_PATH[] = "lookup_table_path";
+constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
 bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
@@ -136,7 +136,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
   auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update var lookup_table_path to: "
+  VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
           << out_var_name;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
