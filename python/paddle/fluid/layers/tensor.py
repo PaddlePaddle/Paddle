@@ -230,11 +230,11 @@ def sums(input, out=None):
     helper = LayerHelper('sum', **locals())
     if out is None:
         out = helper.create_tmp_variable(dtype=helper.input_dtype())
-        helper.append_op(
-            type='sum',
-            inputs={'X': input},
-            outputs={'Out': out},
-            attrs={'use_mkldnn': False})
+    helper.append_op(
+        type='sum',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'use_mkldnn': False})
     return out
 
 
