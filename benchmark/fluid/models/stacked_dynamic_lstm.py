@@ -44,7 +44,7 @@ def crop_sentence(reader, crop_size):
 
 
 def get_model(args):
-    if args.use_reader_op:
+    if args.use_reader_op or args.use_py_reader_op:
         raise Exception(
             "stacked_dynamic_lstm do not support reader op for now.")
     lstm_size = 512

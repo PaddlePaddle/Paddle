@@ -163,6 +163,16 @@ def get_model(args):
             fluid.layers.batch(
                 data_file, batch_size=args.batch_size))
         input, label = fluid.layers.read_file(data_file)
+    elif args.use_py_reader_op:
+        data_file, feed_queue = fluid.layers.py_array_reader(
+            capacity=args.feed_queue_capacity,
+            shapes=[[-1] + dshape, [-1, 1]],
+            lod_levels=[0, 0],
+            dtypes=['float32', 'int64'])
+        data_file = fluid.layers.double_buffer(
+            fluid.layers.batch(
+                data_file, batch_size=args.batch_size))
+        input, label = fluid.layers.read_file(data_file)
     else:
         input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -204,5 +214,11 @@ def get_model(args):
     batched_test_reader = paddle.batch(
         train_reader, batch_size=args.batch_size, drop_last=True)
 
-    return avg_cost, inference_program, optimizer, batched_train_reader,\
-                   batched_test_reader, batch_acc
+    if not args.use_reader_op and args.use_py_reader_op:
+        return avg_cost, inference_program, optimizer, batched_train_reader,\
+                      batched_test_reader, batch_acc, \
+                      feed_queue, train_reader, test_reader, \
+                      (dshape, [1])
+    else:
+        return avg_cost, inference_program, optimizer, batched_train_reader,\
+                      batched_test_reader, batch_acc

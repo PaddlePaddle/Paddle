@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/reader/py_array_feed_queue.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -297,6 +298,42 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ReInit);
 
+  using PyArrayFeedQueue = ::paddle::operators::reader::PyArrayFeedQueue;
+  using PyArrayFeedQueueHolder =
+      ::paddle::operators::reader::PyArrayFeedQueueHolder;
+  using PyArray = ::paddle::operators::reader::PyArray;
+  py::class_<PyArrayFeedQueue>(m, "PyArrayFeedQueue", "")
+      .def(
+          "enqueue",
+          [](PyArrayFeedQueue &self, const std::vector<PyArray> &py_array_vec) {
+            return self.Enqueue(py_array_vec);
+          })
+      .def("enqueue",
+           [](PyArrayFeedQueue &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             return self.Enqueue(lod_tensor_vec);
+           })
+      .def("size", [](const PyArrayFeedQueue &self) { return self.Size(); })
+      .def("capacity", [](const PyArrayFeedQueue &self) { return self.Cap(); })
+      .def("close", [](PyArrayFeedQueue &self) { return self.Close(); })
+      .def("is_closed",
+           [](const PyArrayFeedQueue &self) { return self.IsClosed(); });
+
+  m.def("init_py_array_feed_queue",
+        [](Variable &var, size_t capacity,
+           const std::vector<std::vector<int64_t>> &shapes,
+           const ::paddle::platform::Place &place) -> PyArrayFeedQueue * {
+          std::vector<DDim> dims(shapes.size());
+          std::transform(shapes.begin(), shapes.end(), dims.begin(),
+                         [](const std::vector<int64_t> &shape) {
+                           return make_ddim(shape);
+                         });
+          auto *holder = var.GetMutable<PyArrayFeedQueueHolder>();
+          holder->InitOnce(capacity, dims, place);
+          return holder->GetFeeder().get();
+        },
+        py::return_value_policy::reference);
+
   py::class_<Scope>(m, "Scope", "")
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
@@ -463,10 +500,11 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_DISTRIBUTE
       .def("complete", &Executor::Complete)
 #endif
-      .def("run",
-           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
-               Executor::Run);
-
+      .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
+                     int block_id, bool create_local_scope, bool create_vars) {
+        pybind11::gil_scoped_release release;
+        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+      });
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices",
