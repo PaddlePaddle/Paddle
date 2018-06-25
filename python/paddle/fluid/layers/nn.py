@@ -4266,13 +4266,17 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                                 say :attr:`actual_shape` has a higher priority
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to output variable.
-        inplace(bool): If this flag is set true, a new output tensor is created
-                       whose data is copied from input x, otherwise the output
-                       shares data with input without copying.
+        inplace(bool): If this flag is set true, the output
+                       shares data with input without copying, otherwise
+                       a new output tensor is created
+                       whose data is copied from input x.
         name (str): The name of this layer. It is optional.
 
     Returns:
         Variable: The output tensor.
+
+    Raises:
+        TypeError: if actual_shape is neither Variable nor None.
 
     Examples:
         .. code-block:: python
@@ -4285,6 +4289,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python lsit or tuple.")
+    inputs = {"X": x}
+    if isinstance(actual_shape, Variable):
+        inputs["Shape"] = actual_shape
+    elif actual_shape is not None:
+        raise TypeError("actual_shape should either be Variable or None")
 
     # Validate the shape
     unk_dim_idx = -1
@@ -4305,9 +4314,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     reshaped = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
-        inputs={"X": x,
-                "Shape": actual_shape}
-        if isinstance(actual_shape, Variable) else {"X": x},
+        inputs=inputs,
         attrs={"shape": shape,
                "inplace": inplace},
         outputs={"Out": reshaped})
