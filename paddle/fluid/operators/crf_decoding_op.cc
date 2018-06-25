@@ -48,7 +48,7 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "how to decode the chunks. Must be IOB, IOE, IOBES or "
         "plain. See the description"
         "for details.")
-    .SetDefault("");
+        .SetDefault("");
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
 feature weights learned by the linear_chain_crf operator. It implements the
