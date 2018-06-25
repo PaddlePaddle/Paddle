@@ -40,8 +40,8 @@ function(inference_download_test_demo TARGET)
 
     cc_test(${TARGET} SRCS "${tests_SRCS}"
         DEPS paddle_inference_api paddle_fluid
-        ARGS --data="${test_dir}/data.txt"
-             --modeldir="${test_dir}/model"
+        ARGS --data=${test_dir}/data.txt
+             --modeldir=${test_dir}/model
              --fraction_of_gpu_memory_to_use=0.5)
 endfunction()
 
