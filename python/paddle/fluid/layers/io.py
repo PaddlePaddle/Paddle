@@ -449,7 +449,6 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-# UNCHECK(zengjinle)
 def py_array_reader(capacity,
                     shapes,
                     lod_levels,
