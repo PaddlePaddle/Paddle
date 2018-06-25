@@ -264,6 +264,10 @@ class ParallelExecutor(object):
             self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
+        for fetch_var in fetch_list:
+            if not fetch_var.persistable:
+                raise Exception("%s in fetch_list are not persistable" %
+                                fetch_var)
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 

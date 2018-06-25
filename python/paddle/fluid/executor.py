@@ -191,10 +191,10 @@ def fetch_var(name, scope=None, return_numpy=True):
     assert isinstance(scope, core.Scope)
 
     var = scope.find_var(name)
-    assert var is not None, (
-        "Cannot find " + name + " in scope. Perhaps you need to make the"
-        " variable persistable by using var.persistable = True in your"
-        " program.")
+    if not var:
+        raise Exception("Cannot find %s in scope. Perhaps you need to make the \
+         variable persistable by using var.persistable = True in your \
+         program." % name)
     tensor = var.get_tensor()
     if return_numpy:
         tensor = as_numpy(tensor)
@@ -438,6 +438,10 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
+        for fetch_var in fetch_list:
+            if not fetch_var.persistable:
+                raise Exception("%s in fetch_list are not persistable" %
+                                fetch_var)
         self.executor.run(program.desc, scope, 0, True, True)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
