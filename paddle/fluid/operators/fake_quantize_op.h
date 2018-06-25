@@ -17,9 +17,9 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/transform.h"
-#include "paddle/fluid/operators/clip_op.h"
 
 namespace paddle {
 namespace operators {
