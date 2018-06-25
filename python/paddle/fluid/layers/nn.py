@@ -4920,7 +4920,7 @@ def random_crop(x, shape, seed=None):
     return out
 
 
-def log(input):
+def log(x):
     """
     Calculates the natural log of the given input tensor, element-wise.
 
@@ -4947,7 +4947,7 @@ def log(input):
     return out
 
 
-def relu(input):
+def relu(x):
     """
     Relu takes one input data (Tensor) and produces one output data (Tensor)
     where the rectified linear function, y = max(0, input), is applied to
