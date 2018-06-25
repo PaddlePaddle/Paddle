@@ -53,7 +53,7 @@ class IOBufWriter {
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
     // TODO(gongwb): use append_zero to avoid copy
     // iobuf->append(v, vlen);
-    iobuf->append_zerocopy(v, vlen, FreeMemory);
+    iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);
   }
 };
 
