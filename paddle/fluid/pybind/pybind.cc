@@ -303,19 +303,16 @@ All parameter, weight, gradient are variables in Paddle.
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
   py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
-      .def("enqueue",
+      .def("push",
            [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
              pybind11::gil_scoped_release release;
-             return self.Enqueue(lod_tensor_vec);
+             return self.Push(lod_tensor_vec);
            })
-      .def("size",
-           [](const LoDTensorBlockingQueue &self) { return self.Size(); })
-      .def("capacity",
-           [](const LoDTensorBlockingQueue &self) { return self.Cap(); })
-      .def("close", [](LoDTensorBlockingQueue &self) { return self.Close(); })
-      .def("is_closed",
-           [](const LoDTensorBlockingQueue &self) { return self.IsClosed(); });
+      .def("size", &LoDTensorBlockingQueue::Size)
+      .def("capacity", &LoDTensorBlockingQueue::Cap)
+      .def("close", &LoDTensorBlockingQueue::Close)
+      .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,

@@ -34,36 +34,33 @@ class LoDTensorBlockingQueue {
  private:
   LoDTensorBlockingQueue(size_t capacity,
                          const std::vector<framework::DDim>& dims)
-      : dims_(dims) {
-    queue_.reset(
-        new BlockingQueue<std::vector<framework::LoDTensor>>(capacity));
-  }
+      : queue_(capacity), dims_(dims) {}
 
  public:
-  bool Enqueue(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
     CheckDims(lod_tensor_vec);
-    return queue_->Send(lod_tensor_vec);
+    return queue_.Send(lod_tensor_vec);
   }
 
-  bool Enqueue(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
     CheckDims(lod_tensor_vec);
-    return queue_->Send(std::move(lod_tensor_vec));
+    return queue_.Send(std::move(lod_tensor_vec));
   }
 
-  std::vector<framework::LoDTensor> Dequeue(bool* ok = nullptr) {
+  std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
     std::vector<framework::LoDTensor> lod_tensor_vec;
-    bool success = queue_->Receive(&lod_tensor_vec);
+    bool success = queue_.Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
   }
 
-  inline size_t Cap() const { return queue_->Cap(); }
+  inline size_t Cap() const { return queue_.Cap(); }
 
-  inline size_t Size() const { return queue_->Size(); }
+  inline size_t Size() const { return queue_.Size(); }
 
-  inline void Close() { return queue_->Close(); }
+  inline void Close() { return queue_.Close(); }
 
-  inline bool IsClosed() const { return queue_->IsClosed(); }
+  inline bool IsClosed() const { return queue_.IsClosed(); }
 
  private:
   void CheckDims(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
@@ -71,15 +68,16 @@ class LoDTensorBlockingQueue {
                    "Expect input size is %d but found %s", dims_.size(),
                    lod_tensor_vec.size());
     for (size_t i = 0; i < dims_.size(); ++i) {
-      const auto& in_dims = lod_tensor_vec[i].dims();
+      const auto& in_dims = framework::slice_ddim(
+          lod_tensor_vec[i].dims(), 1, lod_tensor_vec[i].dims().size());
       const auto& expect_dims =
           framework::slice_ddim(dims_[i], 1, dims_[i].size());
       PADDLE_ENFORCE(in_dims == expect_dims,
-                     "Dims of the %d-th input tensor does not match", i);
+                     "Dims of the %d-th input tensor do not match", i);
     }
   }
 
-  std::unique_ptr<BlockingQueue<std::vector<framework::LoDTensor>>> queue_;
+  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
   std::vector<framework::DDim> dims_;
 };
 
@@ -91,8 +89,6 @@ class LoDTensorBlockingQueueHolder {
         "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
     queue_.reset(new LoDTensorBlockingQueue(capacity, dims));
   }
-
-  inline std::shared_ptr<LoDTensorBlockingQueue> GetQueue() { return queue_; }
 
   inline const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue() const {
     return queue_;

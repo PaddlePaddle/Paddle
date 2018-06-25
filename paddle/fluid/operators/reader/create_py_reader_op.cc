@@ -28,7 +28,7 @@ class PyReader : public framework::ReaderBase {
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
-    *out = queue_->Dequeue(&success);
+    *out = queue_->Pop(&success);
     if (!success) out->clear();
   }
 
@@ -45,6 +45,10 @@ class CreatePyReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    auto* out = scope.FindVar(Output("Out"))
+                    ->template GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) return;
+
     const std::string& queue_name = Input("blocking_queue");
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE(
@@ -53,8 +57,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
         queue_name);
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
-    auto* out = scope.FindVar(Output("Out"))
-                    ->template GetMutable<framework::ReaderHolder>();
+
     out->Reset(new PyReader(queue_holder->GetQueue()));
   }
 };
