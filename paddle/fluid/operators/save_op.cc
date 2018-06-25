@@ -31,7 +31,7 @@ namespace operators {
 
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
-constexpr char LOOKUP_TABLE_PATH[] = "lookup_table_path";
+constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
 // TODO(yuyang18): If the functions below are needed by other files, move them
 // to paddle::filesystem namespace.
@@ -138,7 +138,7 @@ class SaveOp : public framework::OperatorBase {
     auto *lt_var = scope.FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
     PADDLE_ENFORCE(
         lt_var != nullptr,
-        "Can not find variable lookup_table_path for SaveSelectedRows");
+        "Can not find variable kLookupTablePath for SaveSelectedRows");
     std::string filename = lt_var->data();
     VLOG(4) << "SaveSelectedRows get File name: " << filename;
 
