@@ -28,8 +28,10 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 ExternalProject_Add(
     extern_brpc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
-    GIT_TAG         "cd6d163cbce9260869b5f931df278fd137d47139"
+    #GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
+    #GIT_TAG         "cd6d163cbce9260869b5f931df278fd137d47139"
+    GIT_REPOSITORY  "https://github.com/Tuvie/brpc"
+    GIT_TAG         "5385f8c3da55b78c3d21873601b7662d3033aaf7"
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -42,6 +44,7 @@ ExternalProject_Add(
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     -DCMAKE_PREFIX_PATH=${prefix_path}
                     -DBRPC_WITH_GLOG=ON
+                    -DIOBUF_WITH_HUGE_BLOCK=ON
                     ${EXTERNAL_OPTIONAL_ARGS}
     LIST_SEPARATOR |
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${BRPC_INSTALL_DIR}

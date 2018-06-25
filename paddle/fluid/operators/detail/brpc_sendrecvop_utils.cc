@@ -30,11 +30,30 @@ namespace detail {
 
 class IOBufWriter {
  public:
+  static void FreeMemory(void* p) {
+#ifdef PADDLE_WITH_CUDA
+    // GPU data is copied to CPU buffer when sending,
+    // free the buffer when possible.
+    platform::CUDAPinnedPlace cuda_pinned;
+    memory::Free(cuda_pinned, p);
+#endif
+  }
+
   static void Append(butil::IOBuf* iobuf, int k, const char* v, int64_t vlen) {
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
     // TODO(gongwb): use append_zero to avoid copy
+    // iobuf->append(v, vlen);
     iobuf->append(v, vlen);
+  }
+
+  static void AppendZeroCopy(butil::IOBuf* iobuf, int k, const char* v,
+                             int64_t vlen) {
+    iobuf->append(reinterpret_cast<char*>(&k), 4);
+    iobuf->append(reinterpret_cast<char*>(&vlen), 8);
+    // TODO(gongwb): use append_zero to avoid copy
+    // iobuf->append(v, vlen);
+    iobuf->append_zerocopy(v, vlen, FreeMemory);
   }
 };
 
@@ -81,9 +100,9 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   }
 
   // TODO(gongwb): use append_zero to avoid data copy.
-  IOBufWriter::Append(iobuf,
-                      ::sendrecv::VariableMessage::kSerializedFieldNumber,
-                      static_cast<char*>(payload), payload_size);
+  IOBufWriter::AppendZeroCopy(
+      iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
+      static_cast<char*>(payload), payload_size);
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
