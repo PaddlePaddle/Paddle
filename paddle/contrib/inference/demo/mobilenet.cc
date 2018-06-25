@@ -91,12 +91,11 @@ void Main(bool use_gpu) {
   file.close();
 
   // Inference.
-  PaddleBuf buf{.data = record.data.data(),
-                .length = record.data.size() * sizeof(float)};
-  PaddleTensor input{.name = "xx",
-                     .shape = record.shape,
-                     .data = buf,
-                     .dtype = PaddleDType::FLOAT32};
+  PaddleTensor input{
+      .name = "xx",
+      .shape = record.shape,
+      .data = PaddleBuf(record.data.data(), record.data.size() * sizeof(float)),
+      .dtype = PaddleDType::FLOAT32};
 
   LOG(INFO) << "run executor";
   std::vector<PaddleTensor> output;
