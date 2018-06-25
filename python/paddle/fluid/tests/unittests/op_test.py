@@ -195,10 +195,18 @@ class OpTest(unittest.TestCase):
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
 
-    def _get_io_vars(self, block, numpy_inputs, is_input):
+    def _set_input_output_vars_proto(self):
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-        proto_list = op_proto.inputs if is_input else op_proto.outputs
-        proto_dict = {var_proto.name: var_proto for var_proto in proto_list}
+        self.in_vars_proto = {v.name: v for v in op_proto.inputs}
+        self.out_vars_proto = {v.name: v for v in op_proto.outputs}
+
+        self.out_vars_reuse = {}
+        for name, var_proto in self.out_vars_proto.iteritems():
+            if var_proto.HasField('reuse'):
+                self.out_vars_reuse[name] = str(var_proto.reuse)
+
+    def _get_io_vars(self, block, numpy_inputs, is_input):
+        vars_proto = self.in_vars_proto if is_input else self.out_vars_proto
 
         inputs = {}
         for name, value in numpy_inputs.iteritems():
@@ -208,8 +216,8 @@ class OpTest(unittest.TestCase):
                 ]
                 inputs[name] = var_list
             else:
-                if proto_dict[name].HasField('reuse'):
-                    inputs[name] = block.var(str(proto_dict[name].reuse))
+                if name in self.out_vars_reuse:
+                    inputs[name] = block.var(self.out_vars_reuse[name])
                 else:
                     inputs[name] = block.var(name)
 
@@ -268,12 +276,8 @@ class OpTest(unittest.TestCase):
         return outs, fetch_list
 
     def check_output_with_place(self, place, atol):
+        self._set_input_output_vars_proto()
         outs, fetch_list = self._calc_output(place)
-
-        op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-        proto_list = op_proto.outputs
-        proto_dict = {var_proto.name: var_proto for var_proto in proto_list}
-
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -311,8 +315,8 @@ class OpTest(unittest.TestCase):
                             "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
             else:
-                if proto_dict[out_name].HasField('reuse'):
-                    act_out_name = str(proto_dict[out_name].reuse)
+                if out_name in self.out_vars_reuse:
+                    act_out_name = self.out_vars_reuse[out_name]
                 else:
                     act_out_name = out_name
 
@@ -392,6 +396,7 @@ class OpTest(unittest.TestCase):
                               in_place=False,
                               max_relative_error=0.005,
                               user_defined_grads=None):
+        self._set_input_output_vars_proto()
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -405,6 +410,9 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
+        output_var_names = [self.out_vars_reuse[name] if name in \
+            self.out_vars_reuse else name for name in output_names]
+
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
                 place,
@@ -412,12 +420,12 @@ class OpTest(unittest.TestCase):
                 self.op,
                 self.inputs,
                 input_to_check,
-                output_names,
+                output_var_names,
                 delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
-                                            output_names, no_grad_set)
+                                            output_var_names, no_grad_set)
 
         self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                                max_relative_error,
@@ -462,6 +470,7 @@ class OpTest(unittest.TestCase):
         prog = Program()
         block = prog.global_block()
         self._append_ops(block)
+
         loss = append_loss_ops(block, output_names)
         param_grad_list = append_backward(
             loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
