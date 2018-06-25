@@ -29,9 +29,7 @@ class PyArrayReader : public framework::ReaderBase {
     *out = queue_->Dequeue();
   }
 
-  void ReInit() override {
-    // PADDLE_THROW("PyArrayReader does not support ReInit()");
-  }
+  void ReInit() override {}
 
  private:
   std::shared_ptr<PyArrayFeedQueue> queue_;
