@@ -13,7 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/im2sequence_op.h"
+#include <string>
 #include <vector>
+#include "paddle/fluid/framework/data_layout.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -28,19 +33,18 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
                    "Input(X) of Im2SequenceOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of Im2SequenceOp op should not be null.");
-
     auto in_dim = ctx->GetInputDim("X");
+
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
                       "Input(X) format must be 4D tensor, eg., NCHW.");
-
-    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
-    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
+
+    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
+    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
     int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
                                          paddings[2], strides[0]);
@@ -49,6 +53,31 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
                               img_channels * kernels[0] * kernels[1]});
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    auto bn_param_type = framework::proto::VarType::FP32;
+    if (input_data_type == framework::proto::VarType::FP64) {
+      bn_param_type = framework::proto::VarType::FP64;
+    }
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+                      "");
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library_);
   }
 };
 
@@ -61,6 +90,7 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
              "C: channels"
              "H: height"
              "W: width");
+    AddInput("Y", "image real size.").AsDispensable();
     AddOutput("Out", "(LodTensor) The output data of im2sequence op,");
     AddAttr<std::vector<int>>("kernels",
                               "(vector<int>), the "
@@ -73,6 +103,12 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int> default:{0, 0, 0, 0}), the "
                               "paddings(up_pad, left_pad, down_pad, right_pad)")
         .SetDefault({0, 0, 0, 0});
+    // TODO(fuhailong): add out_stride, use this to calculate
+    // the real image size after cnn
+    AddAttr<std::vector<int>>("out_stride",
+                              "(vector<int> dedault:{1,1}),the out_stride"
+                              " (out_stride_height, out_stride_width)")
+        .SetDefault({1, 1});
     AddComment(R"DOC(
 This op uses kernels to scan images and converts these images to sequences.
 After expanding, The number of time steps are output_height * output_width
@@ -123,7 +159,7 @@ output.data = [[ 6.  2.  8.  3.  2.  4.  6.  3.]
                [ 7.  1.  7.  9.  2.  1.  3.  5.]
                [ 5.  7.  2.  4.  1.  3.  9.  0.]
                [ 7.  9.  4.  8.  3.  5.  0.  8.]]
-output.dims = {8, 9}
+output.dims = {8, 8}
 output.lod = [[0, 4, 8]]
 
 )DOC");
