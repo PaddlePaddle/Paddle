@@ -122,15 +122,5 @@ def parse_args():
         type=str,
         default="",
         help='Directory that contains all the training recordio files.')
-    parser.add_argument(
-        '--use_py_reader_op',
-        action='store_true',
-        help='Whether to use Python reader op, omitted when use_reader_op is true'
-    )
-    parser.add_argument(
-        '--feed_queue_capacity',
-        type=int,
-        default=64,
-        help='Capacity of feed queue when use_py_reader_op is true')
     args = parser.parse_args()
     return args
