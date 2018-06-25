@@ -26,6 +26,20 @@
 namespace paddle {
 namespace framework {
 
+TEST(LoD, PrintLoDTensor) {
+  LoDTensor tensor1;
+  tensor1.mutable_data<float>(platform::CPUPlace());
+  tensor1.data<float>()[0] = 0.2;
+  tensor1.data<float>()[1] = 0.5;
+  LOG(INFO) << tensor1;
+
+  LoDTensor tensor2;
+  tensor2.mutable_data<int64_t>(platform::CPUPlace());
+  tensor2.data<int64_t>()[0] = 1;
+  tensor2.data<int64_t>()[1] = 2;
+  LOG(INFO) << tensor2;
+}
+
 TEST(LoD, data) {
   LoD lod{{0, 1, 2}};
   lod.push_back({0, 2, 4, 5});
@@ -37,7 +51,7 @@ TEST(LoD, data) {
   }
 }
 
-TEST(LodExpand, test) {
+TEST(LoD, ExpandLoD) {
   LoD lod{{0, 2}};
   LoDTensor tensor;
   tensor.set_lod(lod);
