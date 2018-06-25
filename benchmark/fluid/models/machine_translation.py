@@ -182,7 +182,7 @@ def lodtensor_to_ndarray(lod_tensor):
 
 
 def get_model(args):
-    if args.use_reader_op:
+    if args.use_reader_op or args.use_py_reader_op:
         raise Exception("machine_translation do not support reader op for now.")
     embedding_dim = 512
     encoder_size = 512
