@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include <limits>
 
+#include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -75,6 +76,9 @@ bool GRPCClient::AsyncSendVar(const std::string& ep,
     var_h.scope = p_scope;
     var_h.name = var_name_val;
     var_h.ctx = p_ctx;
+    var_h.method = "Send";
+
+    VLOG(3) << var_h.String() << " begin";
 
     // stub context
     SendProcessor* s = new SendProcessor(ch);
@@ -129,6 +133,9 @@ bool GRPCClient::AsyncGetVar(const std::string& ep,
     var_h.scope = p_scope;
     var_h.name = var_name_val;
     var_h.ctx = p_ctx;
+    var_h.method = "Get";
+
+    VLOG(3) << var_h.String() << " begin";
 
     // stub context
     GetProcessor* s = new GetProcessor(ch);
@@ -172,6 +179,9 @@ bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
     var_h.scope = p_scope;
     var_h.name = out_var_name_val;
     var_h.ctx = p_ctx;
+    var_h.method = "Prefetch";
+
+    VLOG(3) << var_h.String() << " begin";
 
     // stub context
     GetProcessor* s = new GetProcessor(ch);
@@ -243,10 +253,11 @@ void GRPCClient::Proceed() {
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
     if (c->status_.ok()) {
+      VLOG(3) << c->var_h_.String() << " process";
       c->Process();
     } else {
-      LOG(FATAL) << "var: " << c->var_h_.String()
-                 << " grpc error:" << c->status_.error_message();
+      LOG(FATAL) << c->var_h_.String()
+                 << " meets grpc error:" << c->status_.error_message();
     }
     delete c;
     {
