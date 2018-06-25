@@ -47,11 +47,12 @@ void RPCServer::WaitBarrier(const std::string& rpc_name) {
     return (barrier_counter_[rpc_name] >= client_num_ || exit_flag_.load());
   });
 
-  VLOG(3) << "batch_barrier_:" << barrier_counter_[rpc_name];
+  VLOG(3) << "batch_barrier_: " << rpc_name << " "
+          << barrier_counter_[rpc_name];
 }
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
-  VLOG(3) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
+  VLOG(4) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);
   b = ++barrier_counter_[rpc_name];
@@ -100,7 +101,7 @@ void RPCServer::SetCond(const std::string& rpc_name) {
 }
 
 void RPCServer::WaitCond(const std::string& rpc_name) {
-  VLOG(3) << "RPCServer WaitCond " << rpc_name;
+  VLOG(4) << "RPCServer WaitCond " << rpc_name;
   int cond = 0;
   {
     std::unique_lock<std::mutex> lock(mutex_);
