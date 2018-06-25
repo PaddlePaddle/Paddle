@@ -28,8 +28,8 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 ExternalProject_Add(
     extern_brpc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/brpc/brpc"
-    GIT_TAG         "6d153dd7ff00f960ae6895c9c5fff0ce9f07aff2"
+    GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
+    GIT_TAG         "cd6d163cbce9260869b5f931df278fd137d47139"
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

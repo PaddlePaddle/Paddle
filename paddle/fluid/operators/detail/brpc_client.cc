@@ -39,8 +39,8 @@ void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
   cls->DecreaseReqCount();
 
   if (cntl->Failed()) {
-    LOG(WARNING) << "Fail to send SendVar: " << var_h.name
-                 << ", error text: " << cntl->ErrorText();
+    LOG(FATAL) << "Fail to send SendVar: " << var_h.name
+               << ", error text: " << cntl->ErrorText();
     return;
   }
 
@@ -101,8 +101,8 @@ void HandleFetchBarrierResponse(brpc::Controller* cntl,
   cls->DecreaseReqCount();
 
   if (cntl->Failed()) {
-    LOG(WARNING) << "Fail to get HandleFetchBarrierResponse: " << var_h.name
-                 << ", error text: " << cntl->ErrorText();
+    LOG(FATAL) << "Fail to get HandleFetchBarrierResponse: " << var_h.name
+               << ", error text: " << cntl->ErrorText();
     return;
   }
 
@@ -123,8 +123,8 @@ void HandleGetResponse(brpc::Controller* cntl,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(WARNING) << "Fail to send SendVar: " << var_h.name
-                 << ", error text: " << cntl->ErrorText();
+    LOG(FATAL) << "Fail to send SendVar: " << var_h.name
+               << ", error text: " << cntl->ErrorText();
     cls->DecreaseReqCount();
     return;
   }
@@ -274,10 +274,12 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   options.connect_timeout_ms = 100;
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
+  VLOG(3) << "create " << FLAGS_brpc_channel_num
+          << " brpc channels to pserver:" << ep;
   for (int i = 0; i < FLAGS_brpc_channel_num; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());
     if (c->channel.Init(ep.c_str(), &options) != 0) {
-      LOG(ERROR) << "Fail to initialize channel";
+      LOG(FATAL) << "Fail to initialize channel";
       return nullptr;
     }
 
