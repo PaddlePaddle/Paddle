@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/reader/py_array_feed_queue.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -298,40 +298,38 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ReInit);
 
-  using PyArrayFeedQueue = ::paddle::operators::reader::PyArrayFeedQueue;
-  using PyArrayFeedQueueHolder =
-      ::paddle::operators::reader::PyArrayFeedQueueHolder;
-  using PyArray = ::paddle::operators::reader::PyArray;
-  py::class_<PyArrayFeedQueue>(m, "PyArrayFeedQueue", "")
-      .def(
-          "enqueue",
-          [](PyArrayFeedQueue &self, const std::vector<PyArray> &py_array_vec) {
-            return self.Enqueue(py_array_vec);
-          })
+  using LoDTensorBlockingQueue =
+      ::paddle::operators::reader::LoDTensorBlockingQueue;
+  using LoDTensorBlockingQueueHolder =
+      ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
       .def("enqueue",
-           [](PyArrayFeedQueue &self,
+           [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             pybind11::gil_scoped_release release;
              return self.Enqueue(lod_tensor_vec);
            })
-      .def("size", [](const PyArrayFeedQueue &self) { return self.Size(); })
-      .def("capacity", [](const PyArrayFeedQueue &self) { return self.Cap(); })
-      .def("close", [](PyArrayFeedQueue &self) { return self.Close(); })
+      .def("size",
+           [](const LoDTensorBlockingQueue &self) { return self.Size(); })
+      .def("capacity",
+           [](const LoDTensorBlockingQueue &self) { return self.Cap(); })
+      .def("close", [](LoDTensorBlockingQueue &self) { return self.Close(); })
       .def("is_closed",
-           [](const PyArrayFeedQueue &self) { return self.IsClosed(); });
+           [](const LoDTensorBlockingQueue &self) { return self.IsClosed(); });
 
-  m.def("init_py_array_feed_queue",
+  m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,
-           const std::vector<std::vector<int64_t>> &shapes,
-           const ::paddle::platform::Place &place) -> PyArrayFeedQueue * {
-          std::vector<DDim> dims(shapes.size());
-          std::transform(shapes.begin(), shapes.end(), dims.begin(),
-                         [](const std::vector<int64_t> &shape) {
-                           return make_ddim(shape);
-                         });
-          auto *holder = var.GetMutable<PyArrayFeedQueueHolder>();
-          holder->InitOnce(capacity, dims, place);
-          return holder->GetFeeder().get();
-        },
+           const std::vector<std::vector<int64_t>> &shapes)
+            -> LoDTensorBlockingQueue * {
+              std::vector<DDim> dims(shapes.size());
+              std::transform(shapes.begin(), shapes.end(), dims.begin(),
+                             [](const std::vector<int64_t> &shape) {
+                               return make_ddim(shape);
+                             });
+              auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
+              holder->InitOnce(capacity, dims);
+              return holder->GetQueue().get();
+            },
         py::return_value_policy::reference);
 
   py::class_<Scope>(m, "Scope", "")
@@ -505,6 +503,7 @@ All parameter, weight, gradient are variables in Paddle.
         pybind11::gil_scoped_release release;
         self.Run(prog, scope, block_id, create_local_scope, create_vars);
       });
+
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices",
@@ -669,7 +668,12 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
-      .def("run", &ParallelExecutor::Run);
+      .def("run", [](ParallelExecutor &self,
+                     const std::vector<std::string> &fetch_tensors,
+                     const std::string &fetched_var_name) {
+        pybind11::gil_scoped_release release;
+        self.Run(fetch_tensors, fetched_var_name);
+      });
 
   BindRecordIOWriter(&m);
   return m.ptr();
