@@ -24,7 +24,8 @@ from layer_function_generator import generate_layer_fn, templatedoc
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
     'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'Preprocessor', 'load'
+    'double_buffer', 'random_data_generator', 'py_array_reader', 'Preprocessor',
+    'load'
 ]
 
 
@@ -446,6 +447,60 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
         main_prog_var = parallel(reader=main_prog_var)
 
     return monkey_patch_reader_methods(main_prog_var)
+
+
+def py_array_reader(capacity,
+                    shapes,
+                    lod_levels,
+                    dtypes,
+                    place=None,
+                    for_parallel=True):
+
+    if place is None:
+        place = core.CPUPlace()
+
+    if not isinstance(place, core.Place):
+        new_place = core.Place()
+        new_place.set_place(place)
+        place = new_place
+
+    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    feeder_name = unique_name('py_array_feed_queue')
+    var = global_scope().var(feeder_name)
+
+    #feed_shapes = [shape[1:] for shape in shapes]
+    feed_queue = core.init_py_array_feed_queue(var, capacity, shapes, place)
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(
+        name=unique_name('create_py_array_reader'))
+    startup_blk.append_op(
+        type='create_py_array_reader',
+        outputs={'Out': [startup_var]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks,
+            'feeder_name': feeder_name
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+
+    if for_parallel:
+        main_prog_var = parallel(reader=main_prog_var)
+
+    return monkey_patch_reader_methods(main_prog_var), feed_queue
 
 
 def open_files(filenames,
