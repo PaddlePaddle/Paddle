@@ -231,7 +231,11 @@ def sums(input, out=None):
     helper = LayerHelper('sum', **locals())
     if out is None:
         out = helper.create_tmp_variable(dtype=helper.input_dtype())
-    helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
+    helper.append_op(
+        type='sum',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'use_mkldnn': False})
     return out
 
 
@@ -381,7 +385,7 @@ def argmin(x, axis=0):
     """
     **argmin**
 
-    This function computes the indices of the min elements 
+    This function computes the indices of the min elements
     of the input tensor's element along the provided axis.
 
     Args:
@@ -396,7 +400,7 @@ def argmin(x, axis=0):
         .. code-block:: python
 
           out = fluid.layers.argmin(x=in, axis=0)
-          out = fluid.layers.argmin(x=in, axis=-1)  
+          out = fluid.layers.argmin(x=in, axis=-1)
     """
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_tmp_variable(VarDesc.VarType.INT64)
@@ -412,7 +416,7 @@ def argmax(x, axis=0):
     """
     **argmax**
 
-    This function computes the indices of the max elements 
+    This function computes the indices of the max elements
     of the input tensor's element along the provided axis.
 
     Args:
@@ -427,7 +431,7 @@ def argmax(x, axis=0):
         .. code-block:: python
 
           out = fluid.layers.argmax(x=in, axis=0)
-          out = fluid.layers.argmax(x=in, axis=-1)  
+          out = fluid.layers.argmax(x=in, axis=-1)
     """
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_tmp_variable(VarDesc.VarType.INT64)
@@ -546,9 +550,9 @@ def reverse(x, axis):
 
     Args:
         x(Vairbale): the input to be reversed.
-        axis(int|tuple|list): Axis that along which order of elements 
-                    is reversed. If it is a tuple or a list, reversing 
-                    will be apply on each axis in the tuple or list.  
+        axis(int|tuple|list): Axis that along which order of elements
+                    is reversed. If it is a tuple or a list, reversing
+                    will be apply on each axis in the tuple or list.
 
     Returns:
         Variable: The reversed tensor.
@@ -579,9 +583,9 @@ def save(x, file_path, overwrite=True):
     Args:
         x(variable): The Tensor/LoDTensor to be saved.
         file_path(str): The file path where the variable will be saved.
-        overwrite(bool): Whether or not cover the given file when it has already 
-            existed. If it's set 'False' and the file is existed, a runtime 
-            error will be thrown. 
+        overwrite(bool): Whether or not cover the given file when it has already
+            existed. If it's set 'False' and the file is existed, a runtime
+            error will be thrown.
     """
     helper = LayerHelper("save", **locals())
     helper.append_op(
@@ -601,8 +605,8 @@ def save_combine(x, file_path, overwrite=True):
                  a single file.
         file_path(str): The file path where variables will be saved.
         overwrite(bool): Whether or not cover the given file when it has already
-            existed. If it's set 'False' and the file is existed, a runtime 
-            error will be thrown. 
+            existed. If it's set 'False' and the file is existed, a runtime
+            error will be thrown.
 
     Returns:
         There is no return value.

@@ -291,6 +291,8 @@ class DocstringChecker(BaseChecker):
             True if successful otherwise False.
         """
 
+        if node.name.startswith("__") or node.name.startswith("_"):
+            return True
         find = False
         for t in node.body:
             if not isinstance(t, astroid.Return):
@@ -316,6 +318,8 @@ class DocstringChecker(BaseChecker):
         Returns:
             True if successful otherwise False.
         """
+        if node.name.startswith("__") or node.name.startswith("_"):
+            return True
         args = []
         for arg in node.args.get_children():
             if (not isinstance(arg, astroid.AssignName)) \
