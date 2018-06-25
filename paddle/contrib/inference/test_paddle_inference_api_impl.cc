@@ -27,13 +27,12 @@ namespace paddle {
 
 PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   PaddleTensor pt;
-  pt.data.data = t->data<void>();
 
   if (t->type() == typeid(int64_t)) {
-    pt.data.length = t->numel() * sizeof(int64_t);
+    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int64_t));
     pt.dtype = PaddleDType::INT64;
   } else if (t->type() == typeid(float)) {
-    pt.data.length = t->numel() * sizeof(float);
+    pt.data.Reset(t->data<void>(), t->numel() * sizeof(float));
     pt.dtype = PaddleDType::FLOAT32;
   } else {
     LOG(FATAL) << "unsupported type.";
@@ -79,8 +78,8 @@ void MainWord2Vec(bool use_gpu) {
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
   ASSERT_EQ(outputs.size(), 1UL);
-  size_t len = outputs[0].data.length;
-  float* data = static_cast<float*>(outputs[0].data.data);
+  size_t len = outputs[0].data.length();
+  float* data = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     ASSERT_LT(data[j], 1.0);
     ASSERT_GT(data[j], -1.0);
@@ -103,8 +102,6 @@ void MainWord2Vec(bool use_gpu) {
     EXPECT_LT(lod_data[i] - data[i], 1e-3);
     EXPECT_GT(lod_data[i] - data[i], -1e-3);
   }
-
-  free(outputs[0].data.data);
 }
 
 void MainImageClassification(bool use_gpu) {
@@ -143,13 +140,12 @@ void MainImageClassification(bool use_gpu) {
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
   ASSERT_EQ(outputs.size(), 1UL);
-  size_t len = outputs[0].data.length;
-  float* data = static_cast<float*>(outputs[0].data.data);
+  size_t len = outputs[0].data.length();
+  float* data = static_cast<float*>(outputs[0].data.data());
   float* lod_data = output1.data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     EXPECT_NEAR(lod_data[j], data[j], 1e-3);
   }
-  free(data);
 }
 
 void MainThreadsWord2Vec(bool use_gpu) {
@@ -192,8 +188,8 @@ void MainThreadsWord2Vec(bool use_gpu) {
 
       // check outputs range
       ASSERT_EQ(local_outputs.size(), 1UL);
-      const size_t len = local_outputs[0].data.length;
-      float* data = static_cast<float*>(local_outputs[0].data.data);
+      const size_t len = local_outputs[0].data.length();
+      float* data = static_cast<float*>(local_outputs[0].data.data());
       for (size_t j = 0; j < len / sizeof(float); ++j) {
         ASSERT_LT(data[j], 1.0);
         ASSERT_GT(data[j], -1.0);
@@ -205,7 +201,6 @@ void MainThreadsWord2Vec(bool use_gpu) {
       for (int i = 0; i < refs[tid].numel(); ++i) {
         EXPECT_NEAR(ref_data[i], data[i], 1e-3);
       }
-      free(data);
     });
   }
   for (int i = 0; i < num_jobs; ++i) {
@@ -251,14 +246,13 @@ void MainThreadsImageClassification(bool use_gpu) {
 
       // check outputs correctness
       ASSERT_EQ(local_outputs.size(), 1UL);
-      const size_t len = local_outputs[0].data.length;
-      float* data = static_cast<float*>(local_outputs[0].data.data);
+      const size_t len = local_outputs[0].data.length();
+      float* data = static_cast<float*>(local_outputs[0].data.data());
       float* ref_data = refs[tid].data<float>();
       EXPECT_EQ(refs[tid].numel(), len / sizeof(float));
       for (int i = 0; i < refs[tid].numel(); ++i) {
         EXPECT_NEAR(ref_data[i], data[i], 1e-3);
       }
-      free(data);
     });
   }
   for (int i = 0; i < num_jobs; ++i) {
