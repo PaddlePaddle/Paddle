@@ -97,7 +97,7 @@ class RequestSend final : public RequestBase {
 
   void Process() override {
     std::string varname = GetReqName();
-    VLOG(3) << "RequestSend var_name:" << varname;
+    VLOG(4) << "RequestSend var_name:" << varname;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
@@ -132,7 +132,7 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
-    VLOG(3) << "RequestGet " << varname;
+    VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
@@ -178,7 +178,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
-    VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
+    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
@@ -201,10 +201,10 @@ class RequestPrefetch final : public RequestBase {
 };
 
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(3) << "AsyncGRPCServer is wait server ready";
+  VLOG(4) << "AsyncGRPCServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(3) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
 
 void AsyncGRPCServer::StartServer() {
@@ -243,7 +243,7 @@ void AsyncGRPCServer::StartServer() {
     for (int i = 0; i < threadnum; i++) {
       rpc_threads_[rpc_name].emplace_back(new std::thread(std::bind(
           &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_name, f)));
-      VLOG(3) << t.first << " creates threads!";
+      VLOG(4) << t.first << " creates threads!";
     }
   }
 
@@ -260,7 +260,7 @@ void AsyncGRPCServer::StartServer() {
     auto& threads = t.second;
     for (size_t i = 0; i < threads.size(); ++i) {
       threads[i]->join();
-      VLOG(3) << t.first << " threads ends!";
+      VLOG(4) << t.first << " threads ends!";
     }
   }
 }
@@ -268,7 +268,7 @@ void AsyncGRPCServer::StartServer() {
 void AsyncGRPCServer::ShutdownQueue() {
   for (auto& t : rpc_cq_) {
     t.second->Shutdown();
-    VLOG(3) << t.first << " shutdown!";
+    VLOG(4) << t.first << " queue shutdown!";
   }
 }
 
@@ -277,7 +277,7 @@ void AsyncGRPCServer::ShutDownImpl() {
   is_shut_down_ = true;
   ShutdownQueue();
 
-  VLOG(3) << "server_ shutdown!";
+  VLOG(4) << "server_ shutdown!";
   server_->Shutdown();
 }
 
@@ -285,7 +285,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
                                           int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
-    LOG(WARNING) << "shutdown, do not TryToRegisterNewSendOne";
+    VLOG(4) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
 
