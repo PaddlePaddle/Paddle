@@ -237,10 +237,11 @@ function(cc_test TARGET_NAME)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
-             COMMAND env FLAGS_init_alloced_mem=true ${TARGET_NAME} ${cc_test_ARGS}
+             COMMAND ${TARGET_NAME} ${cc_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (${cc_test_SERIAL})
         set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_alloced_mem=true)
     endif()
   endif()
 endfunction(cc_test)
