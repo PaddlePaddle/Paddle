@@ -263,8 +263,7 @@ void AsyncGRPCServer::StartServer() {
     reqs.reserve(kRequestBufSize);
 
     for (int i = 0; i < kRequestBufSize; i++) {
-      LOG(INFO) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
-                << " I: " << i;
+      VLOG(6) << "TryToRegisterNewOne on RPC NAME: " << rpc_name << " I: " << i;
       TryToRegisterNewOne(rpc_name, i);
     }
 
@@ -351,7 +350,7 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(3) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(INFO) << "CompletionQueue " << rpc_name << " shutdown!";
+      VLOG(3) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
