@@ -58,25 +58,26 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input",
              "(Tensor, default Tensor<float>), "
-             "the input feature data of AnchorGeneratorOp. "
+             "the input feature is a tensor with a rank of 4. "
              "The layout is NCHW.");
     AddOutput("Anchors",
-              "(Tensor, default Tensor<float>), the output anchors of "
-              "AnchorGeneratorOp. The layout is [H, W, num_anchors, 4]. "
+              "(Tensor, default Tensor<float>), the output is a "
+              "tensor with a rank of 4. The layout is [H, W, num_anchors, 4]. "
               "H is the height of input, W is the width of input, num_anchors "
               "is the box count of each position. "
-              "Each anchor is in (x1, y1, x2, y2) format");
+              "Each anchor is in (xmin, ymin, xmax, ymax) format");
     AddOutput("Variances",
-              "(Tensor, default Tensor<float>), the expanded variances of "
-              "AnchorGeneratorOp. The layout is [H, W, num_anchors, 4]. "
+              "(Tensor, default Tensor<float>), the expanded variances for "
+              "normalizing bbox regression targets. The layout is [H, W, "
+              "num_anchors, 4]. "
               "H is the height of input, W is the width of input, num_anchors "
               "is the box count of each position. "
-              "Each variance is in (x, y, w, h) format "
-              "which is unrelated with Anchor's");
+              "Each variance is in (xcenter, ycenter, w, h) format");
 
-    AddAttr<std::vector<float>>("anchor_sizes",
-                                "(vector<float>) List of anchor sizes "
-                                "of generated anchors.")
+    AddAttr<std::vector<float>>(
+        "anchor_sizes",
+        "(vector<float>) List of RPN anchor sizes "
+        " given in absolute pixels e.g. (64, 128, 256, 512)")
         .AddCustomChecker([](const std::vector<float>& anchor_sizes) {
           PADDLE_ENFORCE_GT(anchor_sizes.size(), 0,
                             "Size of anchor_sizes must be at least 1.");
@@ -87,11 +88,11 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<std::vector<float>>(
         "aspect_ratios",
-        "(vector<float>) List of aspect ratios of generated anchors.");
+        "(vector<float>) List of RPN anchor aspect ratios, e.g. (0.5, 1, 2)");
 
     AddAttr<std::vector<float>>("variances",
                                 "(vector<float>) List of variances to be used "
-                                "in box regression deltas.")
+                                "in box regression deltas")
         .AddCustomChecker([](const std::vector<float>& variances) {
           PADDLE_ENFORCE_EQ(variances.size(), 4,
                             "Must and only provide 4 variance.");
@@ -102,7 +103,8 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     AddAttr<std::vector<float>>("stride",
-                                "Anchors stride across width and height.")
+                                "Anchors stride across width and height, "
+                                "with a default of (16, 16)")
         .SetDefault(std::vector<float>(2, 16.0))
         .AddCustomChecker([](const std::vector<float>& stride) {
           PADDLE_ENFORCE_EQ(
@@ -116,13 +118,13 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<float>("offset",
                    "(float) "
-                   "Anchor center offset.")
+                   "Anchor center offset, with a default of 0.5")
         .SetDefault(0.5);
     AddComment(R"DOC(
 AnchorGenerator operator
 Generates anchors for Faster RCNN, FPN etc. algorithm.
-Each position of the input produce N anchors, N is determined by
- the count of anchor_sizes, aspect_ratios.
+Each position of the input produce N anchors, N =
+ size(anchor_sizes) * size(aspect_ratios).
 
 Please get more information from the following papers:
 https://arxiv.org/abs/1506.01497.

@@ -19,6 +19,44 @@ import math
 from op_test import OpTest
 
 
+def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
+                               variances, stride, offset):
+    num_anchors = len(aspect_ratios) * len(anchor_sizes)
+    layer_h = input_feat.shape[2]
+    layer_w = input_feat.shape[3]
+    out_dim = (layer_h, layer_w, num_anchors, 4)
+    out_anchors = np.zeros(out_dim).astype('float32')
+
+    for h_idx in range(layer_h):
+        for w_idx in range(layer_w):
+            x_ctr = (w_idx * stride[0]) + offset * (stride[0] - 1)
+            y_ctr = (h_idx * stride[1]) + offset * (stride[1] - 1)
+            idx = 0
+            for r in range(len(aspect_ratios)):
+                ar = aspect_ratios[r]
+                for s in range(len(anchor_sizes)):
+                    anchor_size = anchor_sizes[s]
+                    area = stride[0] * stride[1]
+                    area_ratios = area / ar
+                    base_w = np.round(np.sqrt(area_ratios))
+                    base_h = np.round(base_w * ar)
+                    scale_w = anchor_size / stride[0]
+                    scale_h = anchor_size / stride[1]
+                    w = scale_w * base_w
+                    h = scale_h * base_h
+                    out_anchors[h_idx, w_idx, idx, :] = [
+                        (x_ctr - 0.5 * (w - 1)), (y_ctr - 0.5 * (h - 1)),
+                        (x_ctr + 0.5 * (w - 1)), (y_ctr + 0.5 * (h - 1))
+                    ]
+                    idx += 1
+
+    # set the variance.
+    out_var = np.tile(variances, (layer_h, layer_w, num_anchors, 1))
+    out_anchors = out_anchors.astype('float32')
+    out_var = out_var.astype('float32')
+    return out_anchors, out_var
+
+
 class TestAnchorGeneratorOp(OpTest):
     def set_data(self):
         self.init_test_params()
@@ -44,66 +82,28 @@ class TestAnchorGeneratorOp(OpTest):
         self.set_data()
 
     def init_test_params(self):
-        self.layer_w = 2
-        self.layer_h = 2
-
-        self.stride = [16, 16]
-        self.stride = np.array(self.stride).astype('float32').tolist()
-
-        self.input_channels = 2
         self.batch_size = 1
+        self.input_channels = 2
+        self.layer_h = 2
+        self.layer_w = 2
 
-        self.anchor_sizes = [64, 128, 256, 512]
-        self.anchor_sizes = np.array(self.anchor_sizes).astype(
-            'float32').tolist()
-        self.aspect_ratios = [0.5, 1, 2]
-        self.aspect_ratios = np.array(self.aspect_ratios).astype(
-            'float32').tolist()
+        self.anchor_sizes = [64., 128., 256., 512.]
+        self.aspect_ratios = [0.5, 1., 2.]
+        self.stride = [16., 16.]
 
-        self.num_anchors = len(self.aspect_ratios) * len(self.anchor_sizes)
         self.offset = 0.5
 
         self.variances = [0.1, 0.1, 0.2, 0.2]
 
     def init_test_input(self):
         self.input = np.random.random(
-            (self.batch_size, self.input_channels, self.layer_w,
-             self.layer_h)).astype('float32')
+            (self.batch_size, self.input_channels, self.layer_h,
+             self.layer_w)).astype('float32')
 
     def init_test_output(self):
-        out_dim = (self.layer_h, self.layer_w, self.num_anchors, 4)
-        out_anchors = np.zeros(out_dim).astype('float32')
-
-        for h_idx in range(self.layer_h):
-            for w_idx in range(self.layer_w):
-                x_ctr = (w_idx * self.stride[0]) + self.offset * (self.stride[0]
-                                                                  - 1)
-                y_ctr = (h_idx * self.stride[1]) + self.offset * (self.stride[1]
-                                                                  - 1)
-                idx = 0
-                for r in range(len(self.aspect_ratios)):
-                    ar = self.aspect_ratios[r]
-                    for s in range(len(self.anchor_sizes)):
-                        anchor_size = self.anchor_sizes[s]
-                        area = self.stride[0] * self.stride[1]
-                        area_ratios = area / ar
-                        base_w = np.round(np.sqrt(area_ratios))
-                        base_h = np.round(base_w * ar)
-                        scale_w = anchor_size / self.stride[0]
-                        scale_h = anchor_size / self.stride[1]
-                        w = scale_w * base_w
-                        h = scale_h * base_h
-                        out_anchors[h_idx, w_idx, idx, :] = [
-                            (x_ctr - 0.5 * (w - 1)), (y_ctr - 0.5 * (h - 1)),
-                            (x_ctr + 0.5 * (w - 1)), (y_ctr + 0.5 * (h - 1))
-                        ]
-                        idx += 1
-
-        # set the variance.
-        out_var = np.tile(self.variances, (self.layer_h, self.layer_w,
-                                           self.num_anchors, 1))
-        self.out_anchors = out_anchors.astype('float32')
-        self.out_var = out_var.astype('float32')
+        self.out_anchors, self.out_var = anchor_generator_in_python(
+            self.input, self.anchor_sizes, self.aspect_ratios, self.variances,
+            self.stride, self.offset)
 
 
 if __name__ == '__main__':

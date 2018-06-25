@@ -913,10 +913,10 @@ def multi_box_head(inputs,
 
 
 def anchor_generator(input,
-                     anchor_sizes=[64, 128, 256, 512],
-                     aspect_ratios=[0.5, 1.0, 2.0],
+                     anchor_sizes=None,
+                     aspect_ratios=None,
                      variance=[0.1, 0.1, 0.2, 0.2],
-                     stride=[16.0, 16.0],
+                     stride=None,
                      offset=0.5,
                      name=None):
     """
