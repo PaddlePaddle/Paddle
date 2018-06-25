@@ -121,9 +121,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
           }
         }
       }
-    } else {
-      return;
     }
+    return;
   }
 
   void Decode(const Tensor& emission_weights, const Tensor& transition_weights,
