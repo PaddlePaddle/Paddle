@@ -4926,10 +4926,10 @@ def log(x):
 
     .. math::
 
-        Out = \\ln(input)
+        Out = \\ln(x)
 
     Args:
-        input (Variable): Input tensor.
+        x (Variable): Input tensor.
 
     Returns:
         Variable: The natural log of the input tensor computed element-wise.
@@ -4938,7 +4938,7 @@ def log(x):
 
         .. code-block:: python
 
-            output = fluid.layers.log(input)
+            output = fluid.layers.log(x)
     """
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -4950,15 +4950,15 @@ def log(x):
 def relu(x):
     """
     Relu takes one input data (Tensor) and produces one output data (Tensor)
-    where the rectified linear function, y = max(0, input), is applied to
+    where the rectified linear function, y = max(0, x), is applied to
     the tensor elementwise.
 
     .. math::
 
-        Out = \\max(0, input)
+        Out = \\max(0, x)
 
     Args:
-        input (Variable): The input tensor.
+        x (Variable): The input tensor.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -4967,7 +4967,7 @@ def relu(x):
 
         .. code-block:: python
 
-            output = fluid.layers.relu(input)
+            output = fluid.layers.relu(x)
     """
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
