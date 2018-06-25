@@ -23,6 +23,7 @@ from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
 import random
+from .. import unique_name
 
 __all__ = [
     'fc',
@@ -4896,34 +4897,26 @@ def random_crop(x, shape, seed=None):
         >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
     helper = LayerHelper("random_crop", **locals())
-    dtype = helper.input_dtype()
+    dtype = x.dtype
     out = helper.create_tmp_variable(dtype)
     if seed is None:
         seed = random.randint(-65536, 65535)
-
+    op_attrs = {"shape": shape}
     if isinstance(seed, int):
-        seed_value = seed
-        seed = helper.create_tmp_variable(dtype="int64")
-        helper.append_op(
-            type="fill_constant",
-            inputs={},
-            outputs={"Out": seed},
-            attrs={
-                "dtype": seed.dtype,
-                "shape": [1],
-                "value": float(seed_value),
-                "force_cpu": True
-            })
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("random_crop_seed"),
+            dtype="int64",
+            persistable=True)
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
-    seed_out = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="random_crop",
         inputs={"X": x,
                 "Seed": seed},
         outputs={"Out": out,
-                 "SeedOut": seed_out},
-        attrs={"shape": shape})
+                 "SeedOut": seed},
+        attrs=op_attrs)
     return out
 
 
