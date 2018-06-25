@@ -43,6 +43,8 @@ trainers may still trying to send gradients to that non-existing server. So trai
 watch the pserver liveness states and change the retry request target to the new recovered
 server endpoint.
 
+<img src="src/pserver_failover.png">
+
 For sync training, when one of the parameter server recovers, it does not know the barrier
 status when it fails. For example, if it fails when all pservers are in the state of
 receiving "get" calls, then the recovered pserver will start to wait "send" calls, this may
@@ -62,6 +64,8 @@ the timeout reached.
 Trainers will use etcd transactions to fetch training data chunks from "Todo" queue, and put to a
 "Pending" queue.when one chunk is finished the chunk's index will be pushed to the etcd "Complete"
 queue.
+
+<img src="src/trainer_failover.png">
 
 When one trainer fails, the data chunk should be in "Pending" queue, this chunk will timeout
 and be pushed back to "Todo" later on. When the failed trainer is brought up by Kubernetes,
@@ -83,8 +87,18 @@ trainers are possible.
 1. operators to manipulate etcd distributed queue including:
    - etcd_get_chunk: run at the beginning of every mini-batch, to retrieve training data.
    - etcd_enqueue_todo: run at the beginning of every pass, to add data for every pass.
+     we may need a single program or block to push all the data to Todo queue.
    - etcd_enqueue_timeout: run at the end of every mini-batch, enqueue timeout chunk in
      "Pending" to "Todo".
    - etcd_state_watch: write server alive state, and watch corresponding etcd keys.
 1. transpiler: add option to enable full-fault-tolerant, pass etcd endpoints to transpiler,
-   transpiled pserver program and trainer program will use 
+   transpiled pserver program and trainer program will use the etcd cluster to make the job
+   fault-tolerant.
+
+Note that we may want all the trainer to run exactly once when running `etcd_enqueue_todo`
+and `etcd_enqueue_timeout`, so we implement a tool method below to let these operators to
+run only once in the global scope.
+
+```c++
+void distributed_run_once(const std::string& endpoint, std::function<void> callback);
+```
