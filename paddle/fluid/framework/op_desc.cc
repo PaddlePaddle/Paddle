@@ -211,6 +211,12 @@ void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   need_update_ = true;
 }
 
+void OpDesc::SetBlocksAttr(const std::string &name,
+                           std::vector<BlockDesc *> blocks) {
+  this->attrs_[name] = blocks;
+  need_update_ = true;
+}
+
 void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
@@ -304,6 +310,13 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   }
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
+  }
+  void operator()(const std::vector<BlockDesc *> &v) const {
+    std::vector<int> blocks_idx;
+    for (auto blk : v) {
+      blocks_idx.push_back(blk->ID());
+    }
+    VectorToRepeated(blocks_idx, attr_->mutable_blocks_idx());
   }
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(int64_t v) const { attr_->set_l(v); }

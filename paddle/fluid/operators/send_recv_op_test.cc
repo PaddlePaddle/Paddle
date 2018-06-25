@@ -129,7 +129,10 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   // sub program run in listen_and_serv_op, for simple test we use sum
   f::ProgramDesc program;
   const auto &root_block = program.Block(0);
+  std::vector<framework::BlockDesc *> optimize_blocks;
   auto *optimize_block = program.AppendBlock(root_block);
+  optimize_blocks.push_back(optimize_block);
+
   auto *prefetch_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensors, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block,
@@ -139,7 +142,7 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   attrs.insert({"Fanin", 1});
   attrs.insert({"ParamList", std::vector<std::string>({"Out"})});
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
-  attrs.insert({"OptimizeBlock", optimize_block});
+  attrs.insert({"optimize_blocks", optimize_blocks});
   attrs.insert({"PrefetchBlock", prefetch_block});
   attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
   attrs.insert({"sync_mode", true});

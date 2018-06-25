@@ -101,17 +101,16 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list) const {
   size_t num_blocks = program->Size();
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  std::vector<int> optimize_block_id_list;
-  for (int blkid = 1; blkid < num_blocks; ++blkid) {
-    if (std::find(prefetch_block_id_list.begin(), prefetch_block_id_list.end(),
-                  blkid) == prefetch_block_id_list.end()) {
-      optimize_block_id_list.push_back(blkid);
-    }
+  std::vector<int> optimize_blocks_idx;
+  for (auto blk : optimize_blocks) {
+    optimize_blocks_idx.push_back(blk->ID());
   }
-  auto optimize_prepared = executor->Prepare(*program, optimize_block_id_list);
+  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_idx);
   // Insert placeholder for block0 which holds current op itself.
   optimize_prepared.insert(
       optimize_prepared.begin(),
@@ -134,14 +133,14 @@ void ListenAndServOp::RunSyncLoop(
     // and this will still work.
     // The optimize blocks which have the same parent ID would run parallel
     // TODO(Yancey1989): need to use ParallelExecutor for future
-    int32_t last_parent_blkid = program->Block(1).Parent();
+    int32_t last_parent_blkid = optimize_blocks[0]->Parent();
     std::vector<size_t> parallel_blkids;
-    parallel_blkids.push_back(1);
+    parallel_blkids.push_back(optimize_blocks[0]->ID());
     double ts = GetTimestamp();
-    for (size_t i = 1; i < optimize_block_id_list.size(); ++i) {
+    for (size_t i = 1; i < optimize_blocks.size(); ++i) {
       // skip the first optimize block because it is already in the
       // parallel_blkids.
-      int blkid = optimize_block_id_list[i];
+      int blkid = optimize_blocks[i]->ID();
       if (program->Block(blkid).Parent() != last_parent_blkid) {
         ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
                               program, recv_scope);
@@ -165,7 +164,6 @@ void ListenAndServOp::RunSyncLoop(
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program) const {
-  VLOG(3) << "RunAsyncLoop in";
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
@@ -203,7 +201,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
-  VLOG(3) << "RunAsyncLoop into while";
   while (true) {
     if (rpc_service_->IsExit()) {
       LOG(INFO) << "get exit!rpc_processor break!";
@@ -261,8 +258,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get());
 
-  auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto *program = optimize_block->Program();
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
+  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
+                 "optimize blocks should be 1 at least on the pserver side.");
+  auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
   // prepare for prefetch
@@ -339,8 +339,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
-    AddAttr<framework::BlockDesc *>(kOptimizeBlock,
-                                    "BlockID to run on server side.");
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        kOptimizeBlocks, "Optimize blocks to run on server side.")
+        .SetDefault({});
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch blocks to run on server side.")
         .SetDefault({});
