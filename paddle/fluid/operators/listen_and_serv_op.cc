@@ -165,7 +165,6 @@ void ListenAndServOp::RunSyncLoop(
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program) const {
-  VLOG(3) << "RunAsyncLoop in";
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
@@ -203,7 +202,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
-  VLOG(3) << "RunAsyncLoop into while";
   while (true) {
     if (rpc_service_->IsExit()) {
       LOG(INFO) << "get exit!rpc_processor break!";
