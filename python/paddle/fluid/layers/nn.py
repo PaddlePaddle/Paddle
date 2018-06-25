@@ -2745,6 +2745,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     whose lods can be used to restore the path in the beam search tree.
     Please see the following demo for a fully beam search usage example:
         fluid/tests/book/test_machine_translation.py
+
     Args:
         ids(Variable): The LodTensorArray variable containing the selected ids
             of all steps.
@@ -2754,12 +2755,14 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
         end_id(int): The id of end token.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+
     Returns:
         Variable: The LodTensor pair containing the generated id sequences \
             and the corresponding scores. The shapes and lods of the two \
             LodTensor are same. The lod level is 2 and the two levels \
             separately indicate how many hypotheses each source sentence has \
             and how many ids each hypothesis has.
+
     Examples:
         .. code-block:: python
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
