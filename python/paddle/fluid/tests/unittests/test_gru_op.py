@@ -20,8 +20,8 @@ from test_lstm_op import identity, sigmoid, tanh, relu
 
 
 class TestGRUOp(OpTest):
-    lod = [[0, 2, 6, 9]]
-    batch_size = lod[0][-1]
+    lod = [[2, 4, 3]]
+    batch_size = sum(lod[0])
     frame_size = 5
     activate = {
         'identity': identity,
@@ -33,10 +33,10 @@ class TestGRUOp(OpTest):
     @staticmethod
     def seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
-        seq_starts = lod[0]
-        seq_lens = []
-        for i in range(len(seq_starts) - 1):
-            seq_lens.append(seq_starts[i + 1] - seq_starts[i])
+        seq_lens = lod[0]
+        seq_starts = [0]
+        for i in range(len(seq_lens)):
+            seq_starts.append(seq_starts[-1] + seq_lens[i])
         sorted_seqs = sorted(
             range(len(seq_lens)), lambda x, y: seq_lens[y] - seq_lens[x])
         num_batch = seq_lens[sorted_seqs[0]]
