@@ -93,10 +93,10 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
     auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
-    for (size_t k = 0; k < input_rows; ++k) {
+    for (int k = 0; k < input_rows; ++k) {
       const T* src_ptr = input.data<T>() + k * input_cols;
       int col_idx = 0;
-      for (int j = 0; j < num; ++j) {
+      for (size_t j = 0; j < num; ++j) {
         int col_len = output_cols[j];
         auto* out_tensor = outputs->at(j);
         if (out_tensor != nullptr) {

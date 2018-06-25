@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/detail/variable_response.h"
+#include "paddle/fluid/operators/distributed/variable_response.h"
 
 #include <string>
 #include <utility>
@@ -22,12 +22,12 @@
 #endif
 #include "paddle/fluid/platform/profiler.h"
 
-#include "paddle/fluid/operators/detail/send_recv.pb.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 enum WireType {
   WIRETYPE_VARINT = 0,
@@ -76,6 +76,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
       if (total_written + size_to_write > length) {
         size_to_write = length - total_written;
       }
+      // This log is useful to see how long a internal block size is of rpc.
+      VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
@@ -103,6 +105,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
     }
     // TODO(gongwb): can we avoid copy?
     platform::CPUPlace cpu;
+    // This log is useful to see how long a internal block size is of rpc.
+    VLOG(7) << "copy " << size_to_write << " data to CPUPlace";
     memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;
@@ -158,13 +162,13 @@ bool VariableResponse::CopySelectRowsTensorData(
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
-  PADDLE_ENFORCE_EQ(
-      static_cast<size_t>(tensor->numel()),
-      length / framework::SizeOfType(
-                   paddle::operators::detail::ToTypeIndex(meta_.data_type())));
+  PADDLE_ENFORCE_EQ(static_cast<size_t>(tensor->numel()),
+                    length / framework::SizeOfType(
+                                 paddle::operators::distributed::ToTypeIndex(
+                                     meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
-      paddle::operators::detail::ToTypeIndex(meta_.data_type()));
+      paddle::operators::distributed::ToTypeIndex(meta_.data_type()));
 
   if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
     return false;
@@ -480,6 +484,6 @@ int VariableResponse::Parse(Source* source) {
   return 0;
 }
 
-};  // namespace detail
+};  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

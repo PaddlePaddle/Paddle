@@ -178,8 +178,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr),
-                inputs[i].data.data,
-                inputs[i].data.length);
+                inputs[i].data.data(),
+                inputs[i].data.length());
     feeds->push_back(input);
   }
   return true;
@@ -241,10 +241,11 @@ bool NativePaddlePredictor::GetFetch(
     }
 
     outputs->at(i).shape = shape;
-    outputs->at(i).data.length = sizeof(float) * data.size();
-    outputs->at(i).data.data = malloc(outputs->at(i).data.length);
-    std::memcpy(
-        outputs->at(i).data.data, data.data(), outputs->at(i).data.length);
+    auto &buffer = outputs->at(i).data;
+    if (buffer.empty() || buffer.length() < sizeof(float) * data.size()) {
+      buffer.Resize(sizeof(float) * data.size());
+    }
+    std::memcpy(buffer.data(), data.data(), buffer.length());
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }

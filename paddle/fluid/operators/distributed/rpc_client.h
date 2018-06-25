@@ -22,7 +22,7 @@
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace distributed {
 
 class RPCClient {
  public:
@@ -84,6 +84,6 @@ class RPCClient {
   static std::once_flag init_flag_;
   static std::unique_ptr<RPCClient> rpc_client_;
 };
-}  // namespace detail
+}  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
