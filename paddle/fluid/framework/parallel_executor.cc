@@ -133,17 +133,18 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
-  // the the initialize bcast, all vars would be bcast from device(0), otherwise
+  // the the initializing bcast, all vars would be bcast from device(0),
+  // otherwise
   // bcast from the specified device.
-  bool initialize = builder_.get() == nullptr ? true : false;
+  bool initializing = builder_.get() == nullptr ? false : true;
 
   for (auto &var : vars) {
     int var_dev_id =
         builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
-    if (!initialize && var_dev_id == -1) continue;
+    if (!initializing && var_dev_id == -1) continue;
 
     framework::Variable *main_var = nullptr;
-    if (initialize) {
+    if (initializing) {
       main_var = member_->local_scopes_[0]->FindVar(var);
     } else {
       main_var = member_->local_scopes_[var_dev_id]->FindVar(var);
@@ -164,7 +165,8 @@ void ParallelExecutor::BCastParamsToGPUs(
         auto place = member_->places_[i];
         void *buffer;
 
-        if ((initialize && i == 0) || (!initialize && i == var_dev_id)) {
+        if ((initializing && i == 0) ||
+            (!initializing && i == static_cast<size_t>(var_dev_id))) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
