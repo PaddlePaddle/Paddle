@@ -27,6 +27,7 @@ __all__ = [
     'Variable',
     'Program',
     'Operator',
+    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
@@ -1905,7 +1906,7 @@ def program_guard(main_program, startup_program=None):
 def get_var(name, program=None):
     """
     Get a variable by name from the global block of a program.
-    
+
     Args:
         name(str): name of the variable
         program(Program|None): program object.
