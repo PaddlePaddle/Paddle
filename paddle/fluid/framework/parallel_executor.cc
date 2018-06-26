@@ -136,7 +136,7 @@ void ParallelExecutor::BCastParamsToGPUs(
   // the the initializing bcast, all vars would be bcast from device(0),
   // otherwise
   // bcast from the specified device.
-  bool initializing = builder_.get() == nullptr ? false : true;
+  bool initializing = builder_.get() == nullptr ? true : false;
 
   for (auto &var : vars) {
     int var_dev_id =
@@ -153,6 +153,7 @@ void ParallelExecutor::BCastParamsToGPUs(
     if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
+    VLOG(3) << "run broadcast " << var << " " << var_dev_id;
 
     auto &main_tensor = main_var->Get<LoDTensor>();
     auto &dims = main_tensor.dims();
