@@ -36,10 +36,9 @@ void Main(bool use_gpu) {
     //# 2. Prepare input.
     int64_t data[4] = {1, 2, 3, 4};
 
-    PaddleBuf buf{.data = data, .length = sizeof(data)};
     PaddleTensor tensor{.name = "",
                         .shape = std::vector<int>({4, 1}),
-                        .data = buf,
+                        .data = PaddleBuf(data, sizeof(data)),
                         .dtype = PaddleDType::INT64};
 
     // For simplicity, we set all the slots with the same data.
@@ -51,14 +50,12 @@ void Main(bool use_gpu) {
 
     //# 4. Get output.
     ASSERT_EQ(outputs.size(), 1UL);
-    LOG(INFO) << "output buffer size: " << outputs.front().data.length;
-    const size_t num_elements = outputs.front().data.length / sizeof(float);
+    LOG(INFO) << "output buffer size: " << outputs.front().data.length();
+    const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-      LOG(INFO) << static_cast<float*>(outputs.front().data.data)[i];
+      LOG(INFO) << static_cast<float*>(outputs.front().data.data())[i];
     }
-    // TODO(Superjomn): this is should be free automatically
-    free(outputs[0].data.data);
   }
 }
 
