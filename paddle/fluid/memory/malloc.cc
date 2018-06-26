@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 
 DEFINE_bool(init_alloced_mem, false,
-            "It is mistake that the values of the memory allocated by "
+            "It is a mistake that the values of the memory allocated by "
             "BuddyAllocator are always zeroed in some op's implementation. "
             "To find this error in time, we use init_alloced_mem to indicate "
             "that initializing the allocated memory with a small value "
