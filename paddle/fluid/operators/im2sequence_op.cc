@@ -54,31 +54,6 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
                               img_channels * kernels[0] * kernels[1]});
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
-    auto bn_param_type = framework::proto::VarType::FP32;
-    if (input_data_type == framework::proto::VarType::FP64) {
-      bn_param_type = framework::proto::VarType::FP64;
-    }
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-                      "");
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
-    }
-#endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library_);
-  }
 };
 
 class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
