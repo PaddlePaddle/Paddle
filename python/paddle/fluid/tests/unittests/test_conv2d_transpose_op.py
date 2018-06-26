@@ -227,31 +227,33 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv2d_transpose"
 
 
-#class TestCUDNNWithGroups(TestWithGroups):
-#    def init_test_case(self):
-#        self.pad = [1, 1]
-#        self.stride = [1, 1]
-#        self.dilations = [1, 1]
-#        self.groups = 2
-#        self.input_size = [2, 4, 5, 5]  # NCHW
-#        f_c = self.input_size[1]
-#        self.filter_size = [f_c, 3, 3, 3]
-#
-#    def init_op_type(self):
-#        self.use_cudnn = True
-#        self.op_type = "conv2d_transpose"
-#
-#
-#class TestDepthwiseConvTranspose(TestConv2dTransposeOp):
-#    def init_test_case(self):
-#        self.pad = [1, 1]
-#        self.stride = [2, 2]
-#        self.input_size = [2, 8, 16, 16]  # NCHW
-#        self.groups = 8
-#        assert np.mod(self.input_size[1], self.groups) == 0
-#        f_c = self.input_size[1] / self.groups
-#        self.filter_size = [6, f_c, 4, 4]
-#        self.op_type = "depthwise_conv2d_transpose"
+class TestCUDNNWithGroups(TestWithGroups):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.groups = 2
+        self.input_size = [2, 4, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 3, 3, 3]
+
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d_transpose"
+
+
+class TestDepthwiseConvTranspose(TestConv2dTransposeOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.dilations = [1, 1]
+        self.input_size = [2, 8, 16, 16]  # NCHW
+        self.groups = 8
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [self.input_size[1], f_c, 4, 4]
+        self.op_type = "depthwise_conv2d_transpose"
+
 
 # Please Don't remove the following code.
 # Currently, CI use cudnn V5.0 which not support dilation conv.

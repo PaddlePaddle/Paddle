@@ -338,7 +338,7 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(depthwise_conv2d_grad_transpose, ops::ConvTransposeOpGrad);
+REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     depthwise_conv2d_transpose,

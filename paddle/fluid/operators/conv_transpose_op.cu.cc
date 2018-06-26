@@ -34,9 +34,9 @@ REGISTER_OP_CUDA_KERNEL(conv3d_transpose_grad,
                         ops::GemmConvTransposeGradKernel<CUDA, double>);
 
 // depthwise conv2d
-REGISTER_OP_CUDA_KERNEL(depthwise_conv2d_tranpose,
+REGISTER_OP_CUDA_KERNEL(depthwise_conv2d_transpose,
                         ops::DepthwiseConvTransposeKernel<CUDA, float>,
                         ops::DepthwiseConvTransposeKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(depthwise_conv2d_tranpose_grad,
+REGISTER_OP_CUDA_KERNEL(depthwise_conv2d_transpose_grad,
                         ops::DepthwiseConvTransposeGradKernel<CUDA, float>,
                         ops::DepthwiseConvTransposeGradKernel<CUDA, double>);
