@@ -85,10 +85,6 @@ class OpHandleBase {
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
 
-  // FIXME(zcd): A temporary fix for some language model that has sparse
-  // parameter.
-  void RunAndRecordEventNoMutex(const std::function<void()> &callback);
-
   void RunAndRecordEvent(platform::Place p,
                          const std::function<void()> &callback);
 

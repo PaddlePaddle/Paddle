@@ -106,14 +106,6 @@ class CUDADeviceContext : public DeviceContext {
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
 
-  // FIXME(zcd): A temporary fix for some language model that has sparse
-  // parameter.
-  template <typename Callback>
-  void RecordEventNoMutex(cudaEvent_t ev, Callback callback) {
-    callback();
-    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
-  }
-
  private:
   CUDAPlace place_;
 

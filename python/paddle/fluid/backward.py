@@ -132,9 +132,9 @@ def _addup_repetitive_outputs_(op_descs):
     for idx, op_desc in enumerate(op_descs):
         for var_name in op_desc.input_arg_names():
             if len(renamed_vars[var_name]) > 1:
-                pending_sum_ops.append(
-                    (_create_op_desc_("sum", {"X": renamed_vars[var_name]},
-                                      {"Out": [var_name]}, {}), idx))
+                pending_sum_ops.append((_create_op_desc_(
+                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
+                    {"use_mkldnn": False}), idx))
                 renamed_vars[var_name] = [var_name]
         for var_name in op_desc.output_arg_names():
             if var_name == core.empty_var_name(
@@ -161,8 +161,9 @@ def _addup_repetitive_outputs_(op_descs):
                 renamed_vars[var_name].append(new_name)
     for var_name, inputs in renamed_vars.iteritems():
         if len(inputs) > 1:
-            pending_sum_ops.append((_create_op_desc_(
-                "sum", {"X": inputs}, {"Out": [var_name]}, {}), len(op_descs)))
+            pending_sum_ops.append(
+                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
+                                  {"use_mkldnn": False}), len(op_descs)))
     # sum_op descs are sorted according to their insert position
     for p in reversed(pending_sum_ops):
         op_descs.insert(p[1], p[0])
