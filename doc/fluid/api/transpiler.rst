@@ -47,4 +47,3 @@ RoundRobin
 ..  autoclass:: paddle.fluid.transpiler.RoundRobin
     :members:
     :noindex:
-
