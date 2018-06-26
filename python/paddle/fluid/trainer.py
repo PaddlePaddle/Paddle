@@ -119,27 +119,20 @@ class CheckpointConfig(object):
                  max_num_checkpoints=3,
                  epoch_interval=1,
                  step_interval=10):
-        if checkpoint_dir is None:
-            self.checkpoint_dir = os.getcwd()
-        else:
-            self.checkpoint_dir = checkpoint_dir
 
+        assert epoch_interval >= 1
+        assert step_interval >= 1
+
+        self.checkpoint_dir = checkpoint_dir \
+            if checkpoint_dir is not None else os.getcwd()
         self.max_num_checkpoints = max_num_checkpoints
-
-        if epoch_interval < 1:
-            self.epoch_interval = 1
-        else:
-            self.epoch_interval = epoch_interval
-
-        if step_interval < 1:
-            self.step_interval = 10
-        else:
-            self.step_interval = step_interval
-
+        self.epoch_interval = epoch_interval
+        self.step_interval = step_interval
         self.epoch_id = 0
         self.step_id = 0
         self.load_serial = None
-        self.is_pserver = False
+        self.pserver_id = None
+        self.lookup_table_name = None
 
 
 def check_and_get_place(place):
@@ -290,13 +283,20 @@ class Trainer(object):
                                    self.checkpoint_cfg.load_serial,
                                    self.startup_program)
 
-            if not self.checkpoint_cfg.is_pserver:
-                epoch_id, step_id = io.load_trainer_args(
-                    self.checkpoint_cfg.checkpoint_dir,
-                    self.checkpoint_cfg.load_serial, self.trainer_id,
-                    self._get_checkpoint_load_args())
-                self.checkpoint_cfg.epoch_id = int(epoch_id)
-                self.checkpoint_cfg.step_id = int(step_id)
+                if not self.checkpoint_cfg.pserver_id:
+                    epoch_id, step_id = io.load_trainer_args(
+                        self.checkpoint_cfg.checkpoint_dir,
+                        self.checkpoint_cfg.load_serial, self.trainer_id,
+                        self._get_checkpoint_load_args())
+                    self.checkpoint_cfg.epoch_id = int(epoch_id)
+                    self.checkpoint_cfg.step_id = int(step_id)
+                else:
+                    if self.checkpoint_cfg.lookup_table_name:
+                        io.load_lookup_table_vars(
+                            exe, self.checkpoint_cfg.checkpoint_dir,
+                            self.startup_program,
+                            self.checkpoint_cfg.pserver_id,
+                            self.checkpoint_cfg.lookup_table_name)
 
         if param_path and os.path.isdir(param_path):
             # load params from param_path into scope
@@ -366,7 +366,10 @@ class Trainer(object):
                 self.trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if training_role == "PSERVER":
                 if self.checkpoint_cfg:
-                    self.is_pserver = True
+                    pserver_id = eplist.index(current_endpoint)
+                    self.checkpoint_cfg.pserver_id = pserver_id
+                    if t.has_distributed_lookup_table:
+                        self.checkpoint_cfg.lookup_table_name = t.table_name
 
                 self.train_program = t.get_pserver_program(current_endpoint)
                 self.startup_program = t.get_startup_program(current_endpoint,
@@ -566,7 +569,8 @@ class Trainer(object):
     def _save_checkpoint(self, epoch_id, step_id):
         assert self.checkpoint_cfg
 
-        if epoch_id % self.checkpoint_cfg.epoch_interval == 0 and step_id % self.checkpoint_cfg.step_interval == 0:
+        if epoch_id % self.checkpoint_cfg.epoch_interval == 0 \
+            and step_id % self.checkpoint_cfg.step_interval == 0:
             exe = executor.Executor(self.place)
             io.save_checkpoint(
                 executor=exe,
