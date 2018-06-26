@@ -89,6 +89,7 @@ bool NativePaddlePredictor::Init(
     LOG(ERROR) << "fail to load inference model.";
     return false;
   }
+
   ctx_ = executor_->Prepare(*inference_program_, 0);
   executor_->CreateVariables(
       *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
