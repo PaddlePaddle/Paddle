@@ -396,7 +396,7 @@ class DistributeTranspiler(object):
                     return varname
             return ""
 
-        def __clone_lr_op_sub_block__(op, program, new_block):
+        def __clone_lr_op_sub_block__(op, program, lr_block):
             if not op.has_attr('sub_block'):
                 return
 
@@ -405,36 +405,41 @@ class DistributeTranspiler(object):
             assert isinstance(origin_block, Block)
             # we put the new sub block to new block to follow the block
             # hierarchy of the original blocks
-            new_sub_block = program.create_block(new_block.idx)
+            new_sub_block = program.create_block(lr_block.idx)
 
             # clone vars
             for var in origin_block.vars:
                 new_sub_block.clone_variable(var)
 
             # clone ops
-            for op in origin_block.ops:
-                self._clone_lr_op(program, new_sub_block, op)
+            for origin_op in origin_block.ops:
+                cloned_op = self._clone_lr_op(program, new_sub_block, origin_op)
                 # clone sub_block of op
-                __clone_lr_op_sub_block__(op, program, new_sub_block)
+                __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
             # reset the block of op
             op.set_attr('sub_block', new_sub_block)
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
+        # record optimize blocks and we can run them on pserver parallel
+        optimize_blocks = []
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
+            optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
-                self._append_pserver_non_opt_ops(lr_decay_block, op)
+                cloned_op = self._append_pserver_non_opt_ops(lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
-                __clone_lr_op_sub_block__(op, pserver_program, lr_decay_block)
+                __clone_lr_op_sub_block__(cloned_op, pserver_program,
+                                          lr_decay_block)
 
         # append op to the current block
         grad_to_block_id = []
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):
             per_opt_block = pserver_program.create_block(pre_block_idx)
+            optimize_blocks.append(per_opt_block)
             # append grad merging ops before clip and weight decay
             for _, op in enumerate(self.optimize_ops):
                 # find the origin @GRAD var before clipping
@@ -453,6 +458,7 @@ class DistributeTranspiler(object):
         if global_ops:
             opt_state_block = pserver_program.create_block(
                 pserver_program.num_blocks - 1)
+            optimize_blocks.append(opt_state_block)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
                                        grad_to_block_id, None)
@@ -465,6 +471,8 @@ class DistributeTranspiler(object):
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
+            checkpoint_block_id = self._create_checkpoint_save_block(
+                pserver_program, table_opt_block.idx)
 
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
@@ -474,15 +482,16 @@ class DistributeTranspiler(object):
             assert len(prefetch_var_name_to_block_id) == 0
 
         attrs = {
-            "OptimizeBlock": pserver_program.block(1),
+            "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
-            "grad_to_block_id": grad_to_block_id
+            "grad_to_block_id": grad_to_block_id,
         }
         if len(prefetch_var_name_to_block_id) > 0:
             attrs['prefetch_var_name_to_block_id'] \
                 = prefetch_var_name_to_block_id
+            attrs['checkpint_block_id'] = checkpoint_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -904,6 +913,27 @@ class DistributeTranspiler(object):
 
         return table_opt_block
 
+    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
+        """
+        create a new block to handle save checkpoint.
+        """
+        import os
+
+        pserver_program.global_block().create_var(
+            name="kLookupTablePath",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
+        checkpoint_save_block = pserver_program.create_block(pre_block_idx)
+        # this 'file_path' do not be used in save lookup table variable
+        checkpoint_save_block.append_op(
+            type='save',
+            inputs={'X': [self.table_name]},
+            outputs={},
+            attrs={'file_path': "none"})
+
+        return checkpoint_save_block.idx
+
     def _create_vars_from_blocklist(self,
                                     program,
                                     block_list,
@@ -1211,7 +1241,7 @@ class DistributeTranspiler(object):
                 if var not in program.global_block().vars:
                     block.clone_variable(var)
 
-        block.append_op(
+        return block.append_op(
             type=op.type, inputs=inputs, outputs=outputs, attrs=op.attrs)
 
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
@@ -1249,7 +1279,7 @@ class DistributeTranspiler(object):
                 elif not program.global_block().vars.has_key(var.name):
                     program.global_block().clone_variable(var)
 
-        optimize_block.append_op(
+        return optimize_block.append_op(
             type=opt_op.type,
             inputs=inputs,
             outputs=outputs,
@@ -1292,16 +1322,6 @@ class DistributeTranspiler(object):
                 if self._is_op_connected(op1, op2):
                     ufind.union(op1, op2)
         return ufind
-
-    def _is_opt_role_op(self, op):
-        # NOTE: depend on oprole to find out whether this op is for
-        # optimize
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
 
     def _is_optimizer_op(self, op):
         if "Param" in op.input_names and \
@@ -1393,7 +1413,10 @@ class DistributeTranspiler(object):
         params_grads = []
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
-            if self._is_opt_role_op(op):
+            # NOTE(Yancey1989): we can not use op role to distinguish an optimizer op
+            # or not, because all ops in optimizer sub-graph would
+            # sign the optimizer op role
+            if self._is_optimizer_op(op):
                 opt_ops.append(op)
                 # HACK(wuyi): if we find grad vars from input of optimize
                 # ops, we may get the output of clip op. Use syntax "@GRAD"

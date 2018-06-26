@@ -110,7 +110,7 @@ class BlockGuardServ(BlockGuard):
 class ListenAndServ(object):
     """
     **ListenAndServ Layer**
-    
+
     ListenAndServ is used to create a rpc server bind and listen
     on specific TCP port, this server will run the sub-block when
     received variables from clients.
@@ -186,7 +186,6 @@ class ListenAndServ(object):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
-        empty_block = Program().global_block()
 
         parent_block.append_op(
             type='listen_and_serv',
@@ -195,8 +194,9 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'OptimizeBlock': current_block,
-                'PrefetchBlock': empty_block,
+                'optimize_blocks': [
+                    current_block
+                ],  # did not support multiple optimize blocks in layers
                 'sync_mode': True,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
@@ -212,7 +212,7 @@ def Send(endpoints, send_vars, sync=True):
                    of send_vars to send
         send_vars (list): variables to send to server
         sync (bool): whether to wait the request finish
-    
+
     """
     assert (type(send_vars) == list)
 
@@ -469,10 +469,13 @@ def open_files(filenames,
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
        thread_num(int): The maximal concurrent prefetch thread number.
-       buffer_size(int): The size of prefetch buffer.
+       buffer_size(int|None): The size of prefetch buffer. If it is setted None, 
+            buffer size will be thread_num * 3.
+            Default: None
        pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run 
             subsequent operators in parallel.
+            Default: True
 
     Returns:
        Variable: A Reader Variable via which we can get file data.
@@ -492,7 +495,7 @@ def open_files(filenames,
          image, label = fluid.layers.io.read_file(reader)
     """
     if buffer_size is None:
-        buffer_size = thread_num
+        buffer_size = thread_num * 3
     if isinstance(filenames, basestring):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
