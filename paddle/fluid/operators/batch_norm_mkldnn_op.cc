@@ -115,12 +115,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (fuse_with_relu) flags |= mkldnn::fuse_bn_relu;
 
     // create mkldnn memory from input x tensor
-    mkldnn::memory::format input_format = x->format();
-    if (src_tz.size() == 1) {
-      input_format = mkldnn::memory::format::x;
-    } else if (src_tz.size() == 2) {
-      input_format = mkldnn::memory::format::nc;
-    }
+    mkldnn::memory::format input_format =
+        platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     auto src_memory = memory(
         {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
@@ -259,23 +255,16 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // create mkldnn memory from input diff_y tensor
 
-    mkldnn::memory::format dst_format = x->format();
-    if (diff_dst_tz.size() == 1) {
-      dst_format = mkldnn::memory::format::x;
-    } else if (diff_dst_tz.size() == 2) {
-      dst_format = mkldnn::memory::format::nc;
-    }
+    mkldnn::memory::format dst_format =
+        platform::MKLDNNFormatForSize(src_tz.size(), diff_y->format());
+
     auto user_diff_dst_memory = memory(
         {{{diff_dst_tz}, memory::data_type::f32, dst_format}, mkldnn_engine},
         to_void_cast(diff_y_data));
 
     // create mkldnn memory from input x tensor
-    mkldnn::memory::format input_format = x->format();
-    if (src_tz.size() == 1) {
-      input_format = mkldnn::memory::format::x;
-    } else if (src_tz.size() == 2) {
-      input_format = mkldnn::memory::format::nc;
-    }
+    mkldnn::memory::format input_format =
+        platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     auto src_memory = memory(
         {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
