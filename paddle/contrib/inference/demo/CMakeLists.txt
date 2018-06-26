@@ -17,7 +17,8 @@ inference_api_test(simple_on_word2vec ARGS test_word2vec)
 
 set(DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo")
 set(mobilenet_url http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fmobilenet.tar.gz)
-set(se_renext50_url http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fse-renext50.tar.gz)
+set(se_renext50_url
+  http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fse-renext50.tar-0.gz)
 
 function(inference_download_test_demo TARGET)
     if (NOT WITH_TESTING)
