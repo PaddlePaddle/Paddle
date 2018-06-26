@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr char kOptimizeBlock[] = "OptimizeBlock";
+constexpr char kOptimizeBlocks[] = "optimize_blocks";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service);
@@ -50,7 +50,8 @@ class ListenAndServOp : public framework::OperatorBase {
                    const std::vector<int>& prefetch_block_id_list) const;
 
   void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program) const;
+                    framework::ProgramDesc* program,
+                    framework::Scope* recv_scope) const;
 
   void SavePort() const;
 
