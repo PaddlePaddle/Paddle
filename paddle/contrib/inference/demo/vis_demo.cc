@@ -66,8 +66,35 @@ Record ProcessALine(const std::string& line) {
     record.shape.push_back(std::stoi(s));
   }
   LOG(INFO) << "data size " << record.data.size();
-  LOG(INFO) << "data shape " << record.shape.size();
+  LOG(INFO) << "data shape size " << record.shape.size();
   return record;
+}
+
+void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
+  std::string line;
+  std::ifstream file(referfile);
+  std::getline(file, line);
+  auto refer = ProcessALine(line);
+  file.close();
+
+  size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
+  LOG(INFO) << "predictor output numel " << numel;
+  LOG(INFO) << "reference output numel " << refer.data.size();
+  EXPECT_EQ(numel, refer.data.size());
+  switch (output.dtype) {
+    case PaddleDType::INT64: {
+      for (size_t i = 0; i < numel; ++i) {
+        EXPECT_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
+      }
+      break;
+    }
+    case PaddleDType::FLOAT32:
+      for (size_t i = 0; i < numel; ++i) {
+        EXPECT_NEAR(
+            static_cast<float*>(output.data.data())[i], refer.data[i], 1e-3);
+      }
+      break;
+  }
 }
 
 /*
@@ -111,6 +138,9 @@ void Main(bool use_gpu) {
   LOG(INFO) << "output.size " << output.size();
   auto& tensor = output.front();
   LOG(INFO) << "output: " << SummaryTensor(tensor);
+
+  // compare with reference result
+  CheckOutput(FLAGS_refer, tensor);
 }
 
 TEST(demo, vis_demo) { Main(false /*use_gpu*/); }
