@@ -194,7 +194,6 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, &temp_tensor, static_cast<T>(0));
 
     g_x->mutable_data<T>(context.GetPlace());
-    // g_x->ShareDataWith(temp_tensor);
     g_x->set_lod(x->lod());
 
     auto& y_lod = y->lod();
@@ -215,8 +214,6 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
     SequenceExpandGradFunctor<DeviceContext, T> functor;
-//    functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
-//            ref_lod, g_x);
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
             ref_lod, &temp_tensor);
     framework::TensorCopy(temp_tensor, context.GetPlace(), g_x);
