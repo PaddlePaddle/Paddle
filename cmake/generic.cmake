@@ -315,6 +315,7 @@ function(nv_test TARGET_NAME)
     add_test(${TARGET_NAME} ${TARGET_NAME})
     if (nv_test_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_alloced_mem=true)
     endif()
   endif()
 endfunction(nv_test)
@@ -565,6 +566,7 @@ function(py_test TARGET_NAME)
              COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_alloced_mem=true)
   endif()
 endfunction()
 
