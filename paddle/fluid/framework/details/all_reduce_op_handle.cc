@@ -27,20 +27,16 @@ AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs)
     : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
-  use_cuda_ = false;
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
     }
-    use_cuda_ = true;
   }
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
-    : local_scopes_(local_scopes), places_(places) {
-  use_cuda_ = false;
-}
+    : local_scopes_(local_scopes), places_(places) {}
 #endif
 
 void AllReduceOpHandle::RunImpl() {
@@ -117,7 +113,7 @@ void AllReduceOpHandle::RunImpl() {
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
       VisitDataType(ToDataType(lod_tensors[0]->type()), func);
-      bool use_cuda = use_cuda_;
+
       for (size_t i = 1; i < local_scopes_.size(); ++i) {
         auto &scope =
             *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
@@ -125,20 +121,10 @@ void AllReduceOpHandle::RunImpl() {
         auto *var = scope.FindVar(out_var_handles[i]->name_);
         auto *dev_ctx = dev_ctxes_[p];
 
-        RunAndRecordEvent(p, [&trg, var, dev_ctx, p, use_cuda] {
-#ifdef PADDLE_WITH_CUDA
-          if (use_cuda) {
-            auto &tensor_dst = *var->GetMutable<framework::LoDTensor>();
-            auto &tensor_src = trg;
-            TensorCopy(tensor_src, p, *dev_ctx, &tensor_dst);
-          } else {
-            auto &tensor_dst = *var->GetMutable<framework::LoDTensor>();
-            tensor_dst.ShareDataWith(trg);
-          }
-#else
-          auto &tensor_dst = *var->GetMutable<framework::LoDTensor>();
-          tensor_dst.ShareDataWith(trg);
-#endif
+        RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
+          auto &tensor_gpu = *var->GetMutable<framework::LoDTensor>();
+          auto &tensor_cpu = trg;
+          TensorCopy(tensor_cpu, p, *dev_ctx, &tensor_gpu);
         });
       }
     }
