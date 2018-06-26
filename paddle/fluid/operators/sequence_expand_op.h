@@ -184,18 +184,18 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
-    framework::LoDTensor temp_tensor;
-    temp_tensor.set_lod(x->lod());
-    temp_tensor.Resize(x->dims());
-    temp_tensor.mutable_data<T>(context.GetPlace());
-
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, &temp_tensor, static_cast<T>(0));
+    //framework::LoDTensor temp_tensor;
+    //temp_tensor.set_lod(x->lod());
+    //temp_tensor.Resize(x->dims());
+    //temp_tensor.mutable_data<T>(context.GetPlace());
 
     g_x->mutable_data<T>(context.GetPlace());
     // g_x->ShareDataWith(temp_tensor);
     g_x->set_lod(x->lod());
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(dev_ctx, g_x, static_cast<T>(0));
 
     auto& y_lod = y->lod();
     if (ref_level == -1) ref_level = y_lod.size() - 1;
@@ -218,8 +218,8 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
 //    functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
 //            ref_lod, g_x);
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
-            ref_lod, &temp_tensor);
-    framework::TensorCopy(temp_tensor, context.GetPlace(), g_x);
+            ref_lod, g_x);
+    // framework::TensorCopy(temp_tensor, context.GetPlace(), g_x);
   }
 };
 
