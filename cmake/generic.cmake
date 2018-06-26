@@ -241,7 +241,6 @@ function(cc_test TARGET_NAME)
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (${cc_test_SERIAL})
         set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_alloced_mem=true)
     endif()
   endif()
 endfunction(cc_test)
@@ -553,7 +552,7 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS} FLAGS_init_alloced_mem=true
+             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
