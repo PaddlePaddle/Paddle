@@ -211,9 +211,8 @@ class GRPCClient : public RPCClient {
   void AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_grpc_deadline) override;
 
-  void AsyncCheckpointNotify(
-      const std::string& ep, const std::string& dir,
-      int64_t time_out = RPCClient::rpc_time_out) override;
+  void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
+                             int64_t time_out = FLAGS_grpc_deadline) override;
 
   void Wait() override;
 
