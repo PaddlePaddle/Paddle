@@ -151,9 +151,9 @@ class ReshapeKernel : public framework::OpKernel<T> {
           "sequence_reshape op.");
     }
 
-    out->Resize(out_dims);
     out->mutable_data<T>(ctx.GetPlace());
     framework::TensorCopySync(*in, ctx.GetPlace(), out);
+    out->Resize(out_dims);
   }
 };
 
