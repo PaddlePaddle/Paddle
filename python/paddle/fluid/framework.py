@@ -454,7 +454,7 @@ class Operator(object):
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
         'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
         'ncclInit', 'channel_create', 'channel_close', 'channel_send',
-        'channel_recv', 'select', 'gen_nccl_id'
+        'channel_recv', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -559,19 +559,8 @@ class Operator(object):
                         self.attrs[attr_name] is None):
                     continue
                 attr_val = self.attrs[attr_name]
-                if isinstance(attr_val, Block):
-                    self.desc.set_block_attr(attr_name,
-                                             self.attrs[attr_name].desc)
-                elif isinstance(attr_val, list) and attr_val and \
-                      all(isinstance(v, Block) for v in attr_val):
-                    self.desc.set_blocks_attr(attr_name,
-                                              [v.desc for v in attr_val])
-                elif isinstance(attr_val, core.BlockDesc) or \
-                        isinstance(attr_val, core.ProgramDesc):
-                    self.desc.set_serialized_attr(
-                        attr_name, attr_val.serialize_to_string())
-                else:
-                    self.desc.set_attr(attr_name, attr_val)
+                self._update_desc_attr(attr_name, attr_val)
+
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
@@ -718,6 +707,19 @@ class Operator(object):
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
         self.attrs[name] = val
+        self._update_desc_attr(name, val)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+
+        Raises:
+            ValueError: If the type of value doesn't match with desc.attr_type(name).
+        """
         if isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and all(
@@ -1210,6 +1212,9 @@ class Block(object):
         ret_var = None
         # make STEP_SCOPES var can be safely cloned.
         if var.type == core.VarDesc.VarType.STEP_SCOPES:
+            ret_var = self.create_var(
+                name=var.name, persistable=var.persistable, type=var.type)
+        elif var.type == core.VarDesc.VarType.RAW:
             ret_var = self.create_var(
                 name=var.name, persistable=var.persistable, type=var.type)
         elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -1921,7 +1926,7 @@ def get_var(name, program=None):
     Args:
         name(str): name of the variable
         program(Program|None): program object.
-             If None, default_global_program() will be used.
+        If None, default_global_program() will be used.
 
     Returns:
         Variable

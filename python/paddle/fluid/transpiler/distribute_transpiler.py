@@ -471,6 +471,8 @@ class DistributeTranspiler(object):
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
+            checkpoint_block_id = self._create_checkpoint_save_block(
+                pserver_program, table_opt_block.idx)
 
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
@@ -489,6 +491,7 @@ class DistributeTranspiler(object):
         if len(prefetch_var_name_to_block_id) > 0:
             attrs['prefetch_var_name_to_block_id'] \
                 = prefetch_var_name_to_block_id
+            attrs['checkpint_block_id'] = checkpoint_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -910,6 +913,27 @@ class DistributeTranspiler(object):
 
         return table_opt_block
 
+    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
+        """
+        create a new block to handle save checkpoint.
+        """
+        import os
+
+        pserver_program.global_block().create_var(
+            name="kLookupTablePath",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
+        checkpoint_save_block = pserver_program.create_block(pre_block_idx)
+        # this 'file_path' do not be used in save lookup table variable
+        checkpoint_save_block.append_op(
+            type='save',
+            inputs={'X': [self.table_name]},
+            outputs={},
+            attrs={'file_path': "none"})
+
+        return checkpoint_save_block.idx
+
     def _create_vars_from_blocklist(self,
                                     program,
                                     block_list,
@@ -1299,16 +1323,6 @@ class DistributeTranspiler(object):
                     ufind.union(op1, op2)
         return ufind
 
-    def _is_opt_role_op(self, op):
-        # NOTE: depend on oprole to find out whether this op is for
-        # optimize
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
-
     def _is_optimizer_op(self, op):
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
@@ -1399,7 +1413,10 @@ class DistributeTranspiler(object):
         params_grads = []
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
-            if self._is_opt_role_op(op):
+            # NOTE(Yancey1989): we can not use op role to distinguish an optimizer op
+            # or not, because all ops in optimizer sub-graph would
+            # sign the optimizer op role
+            if self._is_optimizer_op(op):
                 opt_ops.append(op)
                 # HACK(wuyi): if we find grad vars from input of optimize
                 # ops, we may get the output of clip op. Use syntax "@GRAD"
