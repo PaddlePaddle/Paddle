@@ -25,7 +25,6 @@
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
-
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {

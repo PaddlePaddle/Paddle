@@ -57,17 +57,18 @@ class TestListenAndServOp(OpTest):
     def setUp(self):
         self.ps_timeout = 5
         self.ip = "127.0.0.1"
-        self.port = "6173"
+        self.port = "0"
         self.trainers = 1
-        self.trainer_id = 1
+        self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode):
         p = Process(
             target=run_pserver,
             args=(use_cuda, sync_mode, self.ip, self.port, self.trainers,
                   self.trainer_id))
+        p.daemon = True
         p.start()
-        return p.pid
+        return p
 
     def _wait_ps_ready(self, pid):
         start_left_time = self.ps_timeout
@@ -89,18 +90,20 @@ class TestListenAndServOp(OpTest):
 
     def test_handle_signal_in_serv_op(self):
         # run pserver on CPU in sync mode
-        pid = self._start_pserver(False, True)
-        self._wait_ps_ready(pid)
+        p1 = self._start_pserver(False, True)
+        self._wait_ps_ready(p1.pid)
 
         # raise SIGTERM to pserver
-        os.kill(pid, signal.SIGTERM)
+        os.kill(p1.pid, signal.SIGINT)
+        p1.join()
 
         # run pserver on CPU in async mode
-        pid = self._start_pserver(False, False)
-        self._wait_ps_ready(pid)
+        p2 = self._start_pserver(False, False)
+        self._wait_ps_ready(p2.pid)
 
         # raise SIGTERM to pserver
-        os.kill(pid, signal.SIGTERM)
+        os.kill(p2.pid, signal.SIGTERM)
+        p2.join()
 
 
 if __name__ == '__main__':

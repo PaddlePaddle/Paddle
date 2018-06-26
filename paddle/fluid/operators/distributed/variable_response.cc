@@ -46,6 +46,8 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
       if (total_written + size_to_write > length) {
         size_to_write = length - total_written;
       }
+      // This log is useful to see how long a internal block size is of rpc.
+      VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
@@ -73,6 +75,8 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     }
     // TODO(gongwb): can we avoid copy?
     platform::CPUPlace cpu;
+    // This log is useful to see how long a internal block size is of rpc.
+    VLOG(7) << "copy " << size_to_write << " data to CPUPlace";
     memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;

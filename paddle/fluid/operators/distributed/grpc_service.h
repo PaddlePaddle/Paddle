@@ -24,7 +24,6 @@
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
-
 #include "paddle/fluid/platform/profiler.h"
 
 // NOTE: This method was originally created by tensorflow
