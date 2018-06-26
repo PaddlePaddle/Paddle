@@ -91,7 +91,7 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
     case PaddleDType::FLOAT32:
       for (size_t i = 0; i < numel; ++i) {
         EXPECT_NEAR(
-            static_cast<float*>(output.data.data())[i], refer.data[i], 1e-3);
+            static_cast<float*>(output.data.data())[i], refer.data[i], 1e-5);
       }
       break;
   }
