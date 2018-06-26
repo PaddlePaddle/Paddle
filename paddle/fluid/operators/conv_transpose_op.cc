@@ -302,6 +302,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 
+// conv2d_transpose
 REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
@@ -317,6 +318,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
 
+// conv3d_transpose
 REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
@@ -328,6 +330,22 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose_grad,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
+                                     double>);
+
+// depthwise conv2d_transpose
+REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
+                  ops::Conv2DTransposeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(depthwise_conv2d_grad_transpose, ops::ConvTransposeOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    depthwise_conv2d_transpose,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    depthwise_conv2d_transpose_grad,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
