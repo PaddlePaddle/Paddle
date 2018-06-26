@@ -31,7 +31,7 @@ TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
   pass.Run(&dfg);
 
   // test content
-  std::ifstream file("./graph_test.dot");
+  std::ifstream file("./0-graph_test.dot");
   ASSERT_TRUE(file.is_open());
 
   std::string line;
