@@ -76,8 +76,6 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     ctx_ = executor_->Prepare(*inference_program_, 0);
 
     VLOG(5) << "to create variables";
-    // executor_->CreateVariables(
-    // analyzed_program, sub_scope_ ? sub_scope_ : scope_.get(), 0);
     executor_->CreateVariables(
         *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
