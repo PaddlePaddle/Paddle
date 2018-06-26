@@ -102,15 +102,13 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
  */
 void Main(bool use_gpu) {
   NativeConfig config;
-  // config.model_dir = FLAGS_modeldir;
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
   config.use_gpu = use_gpu;
-  config.fraction_of_gpu_memory = 0.1;
+  config.device = 0;
 #ifdef PADDLE_WITH_CUDA
   config.fraction_of_gpu_memory = FLAGS_fraction_of_gpu_memory_to_use;
 #endif
-  config.device = 0;
 
   LOG(INFO) << "init predictor";
   auto predictor =
@@ -143,7 +141,9 @@ void Main(bool use_gpu) {
   CheckOutput(FLAGS_refer, tensor);
 }
 
-TEST(demo, vis_demo) { Main(false /*use_gpu*/); }
-
+TEST(demo, vis_demo_cpu) { Main(false /*use_gpu*/); }
+#ifdef PADDLE_WITH_CUDA
+TEST(demo, vis_demo_gpu) { Main(true /*use_gpu*/); }
+#endif
 }  // namespace demo
 }  // namespace paddle

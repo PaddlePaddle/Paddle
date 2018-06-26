@@ -15,7 +15,7 @@
 
 inference_api_test(simple_on_word2vec ARGS test_word2vec)
 
-set(DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo")
+set(DEMO_INSTALL_DIR "${PADDLE_BINARY_DIR}/inference_demo")
 set(URL_ROOT http://paddlemodels.bj.bcebos.com/inference-vis-demos%2F)
 
 function(inference_download_test_demo TARGET)
