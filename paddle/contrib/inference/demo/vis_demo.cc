@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/contrib/inference/demo/utils.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
 
+#ifdef PADDLE_WITH_CUDA
+DECLARE_double(fraction_of_gpu_memory_to_use);
+#endif
+
 namespace paddle {
 namespace demo {
 
@@ -34,10 +38,6 @@ DEFINE_string(
     "",
     "path of data; each line is a record, format is "
     "'<space splitted floats as data>\t<space splitted ints as shape'");
-
-#ifdef PADDLE_WITH_CUDA
-DECLARE_double(fraction_of_gpu_memory_to_use);
-#endif
 
 struct Record {
   std::vector<float> data;
