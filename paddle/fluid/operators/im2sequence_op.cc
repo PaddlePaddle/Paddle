@@ -46,6 +46,11 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
+    // TODO(fuhailong): change img_height to img_height_real , but how to send
+    // real img_height_real into this op . fuhailong
+    // this function is to  calculate  output_height
+    // =  1 + (padding_height + padding_down + img_height
+    // - kernel_height + stride_height - 1) / stride_height;
     int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
                                          paddings[2], strides[0]);
     int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
