@@ -1,4 +1,4 @@
-## 堆内存分析和优化
+# 堆内存分析和优化
 
 计算机程序都可能有内存泄漏的风险。**内存泄漏**一般是由于程序在堆(heap)上分配了内存而没有释放，随着程序的运行占用的内存越来越大，一方面会影响程序的稳定性，可能让运行速度越来越慢，或者造成oom，甚至会影响运行程序的机器的稳定性，造成宕机。
 
@@ -20,11 +20,11 @@ Paddle也提供了基于gperftool的[CPU性能分析教程](https://github.com/P
 
 对于堆内存的分析，主要用到thread-caching malloc和heap-profiling using tcmalloc。
 
-## 使用流程
-#### 环境
+## 环境
+
 本教程基于paddle提供的Docker开发环境paddlepaddle/paddle:latest-dev，基于Ubuntu 16.04.4 LTS环境。
 
-#### 使用流程
+## 使用流程
 
 - 安装google-perftools
 
