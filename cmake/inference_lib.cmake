@@ -157,11 +157,22 @@ copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
 
 if(WITH_CONTRIB)
    set(contrib_dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
-   copy(contrib_inference_lib DEPS paddle_inference_api
-        SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
-        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
-        DSTS ${contrib_dst_dir} ${contrib_dst_dir}
-   )
+   if (NOT WITH_ANAKIN)
+      copy(contrib_inference_lib DEPS paddle_inference_api
+            SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
+            ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
+            DSTS ${contrib_dst_dir} ${contrib_dst_dir}
+      )
+   else()
+      copy(contrib_inference_lib DEPS paddle_inference_api
+            SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
+            ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
+            ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libinference_anakin_api* # compiled anakin api
+            ${PADDLE_BINARY_DIR}/third_party/install/anakin/*.tar.gz # anakin release
+            DSTS ${contrib_dst_dir} ${contrib_dst_dir}
+            ${contrib_dst_dir}/anakin ${contrib_dst_dir}/anakin
+      )
+   endif()
 endif()
 
 set(module "platform")
