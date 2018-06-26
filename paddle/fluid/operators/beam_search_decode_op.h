@@ -151,8 +151,7 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
   const size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
   std::vector<SentenceVector<T>> sentence_vector_list(
       src_num, SentenceVector<T>(beam_size_));
-  std::vector<std::vector<size_t>> prefix_idx_vector_list(
-      src_num, std::vector<size_t>());
+  std::vector<std::vector<size_t>> prefix_idx_vector_list(src_num);
   for (int step_id = step_num - 1; step_id >= 0; --step_id) {
     auto& cur_ids = step_ids.at(step_id);
     auto& cur_scores = step_scores.at(step_id);
