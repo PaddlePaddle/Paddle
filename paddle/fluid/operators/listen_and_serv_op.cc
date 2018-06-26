@@ -163,7 +163,8 @@ void ListenAndServOp::RunSyncLoop(
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
-                                   framework::ProgramDesc *program) const {
+                                   framework::ProgramDesc *program,
+                                   framework::Scope *recv_scope) const {
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
@@ -190,6 +191,10 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
+  // execute global block if needed
+  if (block_list[0] == 1 && id_to_grad.count(1) == 0) {
+    executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
+  }
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       grad_to_prepared_ctx;
@@ -317,7 +322,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   if (sync_mode) {
     RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list);
   } else {
-    RunAsyncLoop(&executor, program);
+    RunAsyncLoop(&executor, program, &recv_scope);
   }
 }
 
