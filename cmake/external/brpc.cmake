@@ -31,7 +31,7 @@ ExternalProject_Add(
     #GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
     #GIT_TAG         "cd6d163cbce9260869b5f931df278fd137d47139"
     GIT_REPOSITORY  "https://github.com/Tuvie/brpc"
-    GIT_TAG         "5385f8c3da55b78c3d21873601b7662d3033aaf7"
+    GIT_TAG         "a77f3de95fb78414d485cdfe111a06248c549a8b"
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
