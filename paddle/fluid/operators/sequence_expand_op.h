@@ -191,7 +191,7 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, temp_tensor, static_cast<T>(0));
+    set_zero(dev_ctx, &temp_tensor, static_cast<T>(0));
 
     g_x->mutable_data<T>(context.GetPlace());
     // g_x->ShareDataWith(temp_tensor);
