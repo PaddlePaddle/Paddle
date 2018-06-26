@@ -187,9 +187,11 @@ class ControlFlowGraph(object):
             if op.type() == "fill_constant" and op.attr("force_cpu") == True:
                 self._skip_opt.update(op.output_arg_names())
 
-    def release_memory(self):
+    def release_memory(self, skip_opt_set=None):
         self._dataflow_analyze()
         self._update_skip_opt_set()
+        if skip_opt_set:
+            self._skip_opt.update(skip_opt_set)
         fwd_id = 0
         bwd_id = 0
         for i in range(self.op_size):
@@ -213,7 +215,7 @@ class ControlFlowGraph(object):
                 else:
                     bwd_id += 1
 
-    def memory_optimize(self, level=0):
+    def memory_optimize(self, skip_opt_set=None, level=0):
         def compare_shape(x_shape, cache_shape, opt_level):
             if opt_level == 0:
                 return x_shape == cache_shape
@@ -235,6 +237,9 @@ class ControlFlowGraph(object):
         #     print(self._live_out[i])
         # exit(0)
         self._update_skip_opt_set()
+        # update skip set to meet users' demand
+        if skip_opt_set:
+            self._skip_opt.update(skip_opt_set)
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
@@ -404,7 +409,7 @@ def _get_cfgs(input_program):
     return cfgs
 
 
-def memory_optimize(input_program, print_log=False, level=0):
+def memory_optimize(input_program, skip_opt_set=None, print_log=False, level=0):
     """Optimize memory by reusing var memory.
 
       Note: it doesn't not support subblock nested in subblock.
@@ -420,41 +425,20 @@ def memory_optimize(input_program, print_log=False, level=0):
     PRINT_LOG = print_log
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.memory_optimize(level)
+        cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
 
 
-def release_memory(input_program):
+def release_memory(input_program, skip_opt_set=None):
+    """
+    Modify the input program and insert :code:`delete_op` to early drop not used
+    variables. The modification will be performed inplace.
+
+    Notes: This is an experimental API and could be removed in next few
+    releases. Users should not use this API.
+
+    Args:
+        input_program(Program): The program will be inserted :code:`delete_op`.
+    """
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.release_memory()
-
-
-def GenProgram2():
-    program = Program()
-    with program_guard(program, startup_program=Program()):
-        data = layers.data(name='X', shape=[1], dtype='float32')
-        data.stop_gradient = False
-        cond = layers.ConditionalBlock(inputs=[data])
-        out = layers.create_tensor(dtype='float32')
-        with cond.block():
-            hidden = layers.fc(input=data, size=10)
-            layers.assign(hidden, out)
-    return program
-
-
-def GenProgram1():
-    program = Program()
-    with program_guard(program, startup_program=Program()):
-        x = layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = layers.fc(input=x, size=1, act=None)
-        y = layers.data(name='y', shape=[1], dtype='float32')
-        cost = layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = layers.mean(cost)
-        opt = optimizer.SGD(learning_rate=0.001)
-        opt = opt.minimize(avg_cost)
-    return program
-
-
-if __name__ == "__main__":
-    program = GenProgram1()
-    memory_optimize(program, print_log=False)
+        cfg.release_memory(skip_opt_set=skip_opt_set)

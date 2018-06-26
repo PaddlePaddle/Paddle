@@ -33,15 +33,21 @@ class PSDispatcher(object):
 
     def dispatch(self, varlist):
         """
-        :param varlist: a list of Variables
-        :return: a map of pserver endpoint -> varname 
+        Args:
+            varlist(list): a list of Variables
+        Returns:
+            a map of pserver endpoint -> varname
         """
         AssertionError("Interface has not been implemented.")
 
 
 class HashName(PSDispatcher):
     """
-      Hash variable names to several endpoints
+    Hash variable names to several endpoints using python
+    "hash()" function.
+
+    Args:
+        pserver_endpoints (list): list of endpoint(ip:port).
     """
 
     def __init__(self, pserver_endpoints):
@@ -61,7 +67,11 @@ class HashName(PSDispatcher):
 
 class RoundRobin(PSDispatcher):
     """
-    Distribute variables to serveral endpoints.
+    Distribute variables to serveral endpoints using
+    RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
+
+    Args:
+        pserver_endpoints (list): list of endpoint(ip:port).
     """
 
     def __init__(self, pserver_endpoints):

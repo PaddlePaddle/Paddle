@@ -70,21 +70,23 @@ template <typename T>
 class ConcatGradFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input, const int axis,
-                  std::vector<framework::Tensor>* outputs) {
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis, std::vector<framework::Tensor*>* outputs) {
     // TODO(zcd): Add input data validity checking
-    int num = outputs->size();
+    size_t num = outputs->size();
 
     int input_rows = 1;
-    auto dim_0 = outputs->at(0).dims();
+    auto dim_0 = ref_inputs[0]->dims();
     for (int i = 0; i < axis; ++i) {
       input_rows *= dim_0[i];
     }
+
     int input_cols = 0;
 
     std::vector<int64_t> output_cols(outputs->size());
-    for (int i = 0; i < num; ++i) {
-      int t_cols = outputs->at(i).numel() / input_rows;
+    for (size_t i = 0; i < num; ++i) {
+      int t_cols = ref_inputs[i]->numel() / input_rows;
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
@@ -94,11 +96,14 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
     for (int k = 0; k < input_rows; ++k) {
       const T* src_ptr = input.data<T>() + k * input_cols;
       int col_idx = 0;
-      for (int j = 0; j < num; ++j) {
+      for (size_t j = 0; j < num; ++j) {
         int col_len = output_cols[j];
-        T* dst_ptr = outputs->at(j).data<T>() + k * col_len;
-        memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
-                     sizeof(T) * col_len);
+        auto* out_tensor = outputs->at(j);
+        if (out_tensor != nullptr) {
+          T* dst_ptr = out_tensor->data<T>() + k * col_len;
+          memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
+                       sizeof(T) * col_len);
+        }
         col_idx += col_len;
       }
     }

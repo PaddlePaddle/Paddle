@@ -105,11 +105,13 @@ class TestLinearChainCrfOp(OpTest):
         MAX_SEQ_LEN = 5
 
         # the linear_chain_crf operator only supports sequence (LoD level = 1)
-        lod = [[0]]
+        lod = [[]]
+        seq_start_pos = [0]
         for i in range(SEQ_NUM):
-            lod[-1].append(lod[-1][-1] + random.randint(1, MAX_SEQ_LEN))
-        emission = np.random.uniform(-1, 1,
-                                     [lod[-1][-1], TAG_NUM]).astype("float64")
+            lod[-1].append(random.randint(1, MAX_SEQ_LEN))
+            seq_start_pos.append(seq_start_pos[-1] + lod[-1][-1])
+        emission = np.random.uniform(
+            -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
         emission_row_max = np.amax(emission, axis=1, keepdims=True)
         emission_exps = np.exp(emission - emission_row_max)
 
@@ -118,14 +120,14 @@ class TestLinearChainCrfOp(OpTest):
         transition_exps = np.exp(transition)
 
         labels = np.random.randint(
-            low=0, high=TAG_NUM, size=(lod[-1][-1], 1), dtype="int64")
+            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
 
         self.inputs = {
             "Emission": (emission, lod),
             "Transition": transition,
             "Label": (labels, lod)
         }
-        crf = LinearChainCrfForward(lod[0], emission, emission_row_max,
+        crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
                                     emission_exps, transition, transition_exps,
                                     labels)
         alpha, log_likelihood = crf.crf_forward_compute()

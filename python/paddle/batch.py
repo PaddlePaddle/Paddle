@@ -15,7 +15,7 @@
 __all__ = ['batch']
 
 
-def batch(reader, batch_size, drop_last=False):
+def batch(reader, batch_size, drop_last=True):
     """
     Create a batched reader.
 
