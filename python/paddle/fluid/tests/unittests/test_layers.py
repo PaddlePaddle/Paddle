@@ -255,8 +255,13 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
+            y = layers.data(name='y', shape=[], dtype='float32')
             output = layers.im2sequence(
-                input=x, stride=[1, 1], filter_size=[2, 2])
+                input=x,
+                inputImgSize=y,
+                stride=[1, 1],
+                filter_size=[2, 2],
+                out_stride=[1, 1])
             self.assertIsNotNone(output)
         print(str(program))
 
