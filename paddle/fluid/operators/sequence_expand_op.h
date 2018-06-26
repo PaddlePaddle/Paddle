@@ -184,11 +184,6 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
-    //framework::LoDTensor temp_tensor;
-    //temp_tensor.set_lod(x->lod());
-    //temp_tensor.Resize(x->dims());
-    //temp_tensor.mutable_data<T>(context.GetPlace());
-
     g_x->mutable_data<T>(context.GetPlace());
     g_x->set_lod(x->lod());
 
@@ -216,7 +211,6 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     SequenceExpandGradFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
             ref_lod, g_x);
-    // framework::TensorCopy(temp_tensor, context.GetPlace(), g_x);
   }
 };
 
