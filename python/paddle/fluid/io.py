@@ -1252,6 +1252,9 @@ def _is_checkpoint_var(var):
 
 
 def _make_chekcpoint_dirs(dirs):
+    """
+    _make_chekcpoint_dirs will makdir local directory directly, when the directory is exist, it will igore it.
+    """
     assert dirs is not None
 
     if os.path.isfile(dirs):
