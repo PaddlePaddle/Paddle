@@ -78,6 +78,8 @@ def as_numpy(tensor):
     Returns:
         numpy.ndarray
     """
+    if isinstance(tensor, core.LoDTensorArray):
+        return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)

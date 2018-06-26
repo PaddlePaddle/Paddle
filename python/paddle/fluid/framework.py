@@ -454,7 +454,7 @@ class Operator(object):
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
         'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
         'ncclInit', 'channel_create', 'channel_close', 'channel_send',
-        'channel_recv', 'select', 'gen_nccl_id'
+        'channel_recv', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -558,15 +558,9 @@ class Operator(object):
                 if (attr_name not in self.attrs) or (
                         self.attrs[attr_name] is None):
                     continue
-                if isinstance(self.attrs[attr_name], Block):
-                    self.desc.set_block_attr(attr_name,
-                                             self.attrs[attr_name].desc)
-                elif isinstance(self.attrs[attr_name], core.BlockDesc) or \
-                        isinstance(self.attrs[attr_name], core.ProgramDesc):
-                    self.desc.set_serialized_attr(
-                        attr_name, self.attrs[attr_name].serialize_to_string())
-                else:
-                    self.desc.set_attr(attr_name, self.attrs[attr_name])
+                attr_val = self.attrs[attr_name]
+                self._update_desc_attr(attr_name, attr_val)
+
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
@@ -713,8 +707,24 @@ class Operator(object):
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
         self.attrs[name] = val
+        self._update_desc_attr(name, val)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+
+        Raises:
+            ValueError: If the type of value doesn't match with desc.attr_type(name).
+        """
         if isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
+        elif isinstance(val, list) and val and all(
+                isinstance(v, Block) for v in val):
+            self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
@@ -1204,6 +1214,9 @@ class Block(object):
         if var.type == core.VarDesc.VarType.STEP_SCOPES:
             ret_var = self.create_var(
                 name=var.name, persistable=var.persistable, type=var.type)
+        elif var.type == core.VarDesc.VarType.RAW:
+            ret_var = self.create_var(
+                name=var.name, persistable=var.persistable, type=var.type)
         elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
             ret_var = self.create_var(
                 name=var.name,
@@ -1387,7 +1400,11 @@ class Program(object):
         * Set for_test to True when we want to clone the program for testing.
 
         Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please.
+        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+
+            >>> test_program = fluid.default_main_program().clone(for_test=True)
+            >>> optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            >>> optimizer.minimize()
 
         Args:
             for_test(bool): True if change the :code:`is_test` attribute of
@@ -1909,7 +1926,7 @@ def get_var(name, program=None):
     Args:
         name(str): name of the variable
         program(Program|None): program object.
-             If None, default_global_program() will be used.
+        If None, default_global_program() will be used.
 
     Returns:
         Variable

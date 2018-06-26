@@ -30,8 +30,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr char kOptimizeBlock[] = "OptimizeBlock";
+constexpr char kOptimizeBlocks[] = "optimize_blocks";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
+constexpr char kCheckpointBlockId[] = "checkpint_block_id";
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service);
 
@@ -47,10 +48,12 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
-                   const std::vector<int>& prefetch_block_id_list) const;
+                   const std::vector<int>& prefetch_block_id_list,
+                   const int checkpoint_point_block_id) const;
 
   void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program) const;
+                    framework::ProgramDesc* program,
+                    framework::Scope* recv_scope) const;
 
   void SavePort() const;
 
@@ -67,6 +70,8 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<distributed::RequestHandler> request_get_handler_;
   mutable std::shared_ptr<distributed::RequestHandler>
       request_prefetch_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_checkpoint_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
 };
