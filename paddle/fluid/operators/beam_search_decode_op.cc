@@ -42,9 +42,11 @@ struct BeamSearchDecodeFunctor {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
         framework::LoDTensor out;
-        dev_ctx->Wait();
-        framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
-        dev_ctx->Wait();
+        if (step_id.numel() > 0) {
+          dev_ctx->Wait();
+          framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
+          dev_ctx->Wait();
+        }
 
         out.set_lod(step_id.lod());
         step_ids_.push_back(out);
@@ -58,9 +60,12 @@ struct BeamSearchDecodeFunctor {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
         framework::LoDTensor out;
-        dev_ctx->Wait();
-        framework::TensorCopy(step_score, platform::CPUPlace(), *dev_ctx, &out);
-        dev_ctx->Wait();
+        if (step_score.numel() > 0) {
+          dev_ctx->Wait();
+          framework::TensorCopy(step_score, platform::CPUPlace(), *dev_ctx,
+                                &out);
+          dev_ctx->Wait();
+        }
 
         out.set_lod(step_score.lod());
         step_scores_.push_back(out);
