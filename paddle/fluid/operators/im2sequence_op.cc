@@ -47,7 +47,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
     // TODO(fuhailong): change img_height to img_height_real , but how to send
-    // real img_height_real into this op . fuhailong
+    // real img_height_real into this op . 
     // this function is to  calculate  output_height
     // =  1 + (padding_height + padding_down + img_height
     // - kernel_height + stride_height - 1) / stride_height;
