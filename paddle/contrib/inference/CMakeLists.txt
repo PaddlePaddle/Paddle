@@ -50,11 +50,13 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
+if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS paddle_inference_api_tensorrt_subgraph_engine.cc
         DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api)
 
 inference_api_test(test_paddle_inference_api_tensorrt_subgraph_engine ARGS test_word2vec)
+endif(WITH_GPU)
 
 if (WITH_ANAKIN AND WITH_TESTING) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
