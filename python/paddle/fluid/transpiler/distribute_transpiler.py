@@ -1299,16 +1299,6 @@ class DistributeTranspiler(object):
                     ufind.union(op1, op2)
         return ufind
 
-    def _is_opt_role_op(self, op):
-        # NOTE: depend on oprole to find out whether this op is for
-        # optimize
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
-
     def _is_optimizer_op(self, op):
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
@@ -1399,7 +1389,10 @@ class DistributeTranspiler(object):
         params_grads = []
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
-            if self._is_opt_role_op(op):
+            # NOTE(Yancey1989): we can not use op role to distinguish an optimizer op
+            # or not, because all ops in optimizer sub-graph would
+            # sign the optimizer op role
+            if self._is_optimizer_op(op):
                 opt_ops.append(op)
                 # HACK(wuyi): if we find grad vars from input of optimize
                 # ops, we may get the output of clip op. Use syntax "@GRAD"
