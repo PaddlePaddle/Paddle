@@ -185,12 +185,14 @@ def Print(input,
     Returns:
         Variable: Output tensor, same data with input tensor.
 
+
     Examples:
+
         .. code-block:: python
 
-        value = some_layer(...)
-        Print(value, summarize=10,
-              message="The content of some_layer: ")
+           value = some_layer(...)
+           Print(value, summarize=10,
+               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -1201,6 +1203,31 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
+    '''
+    **ConditionalBlock**
+
+    ConditionalBlock is an operator that bind a block to a specific condition,
+    if the condition matches, the corresponding block will be executed.
+
+    Args:
+        inputs (Variable): bool conditions.
+        is_scalar_condition (bool): whether the branch is controled by a scalar.
+        name(str): name of this ConditionalBlock.
+
+    Examples:
+        .. code-block:: python
+
+             cond = layers.less_than(x=label, y=limit)
+             true_image, false_image = layers.split_lod_tensor(
+                 input=image, mask=cond)
+             true_cond = layers.ConditionalBlock([true_image])
+
+             with true_cond.block():
+                 ...
+             with false_cond.block():
+                 ...
+    '''
+
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
