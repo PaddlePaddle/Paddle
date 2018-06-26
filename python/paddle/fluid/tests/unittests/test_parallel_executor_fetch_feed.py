@@ -75,7 +75,9 @@ class TestFetchOp(unittest.TestCase):
                     fetch_list.append(k)
 
             for data in train_inputs:
-                ret = pe.run(fetch_list, feed=feeder.feed(data))
+                ret = pe.run(fetch_list,
+                             feed=feeder.feed(data),
+                             return_numpy=True)
                 for i in range(len(fetch_list)):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
