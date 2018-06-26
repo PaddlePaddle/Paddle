@@ -37,13 +37,9 @@ bool DataFlowGraphToFluidPass::Initialize(Argument* argument) {
   // block) should rewritten by data flow graph.
   argument->transformed_program_desc.reset(
       new ProgramDesc(*argument->origin_program_desc));
-  argument->transformed_program_desc->mutable_blocks(0)->clear_ops();
+  argument->transformed_program_desc->mutable_blocks(framework::kRootBlockIndex)
+      ->clear_ops();
   desc_ = argument->transformed_program_desc.get();
-  // Here some logic from program_desc.cc and will not add new interfaces into
-  // framework::ProgramDesc class, use some UT to assure the correctness.
-  auto* block = desc_->mutable_blocks()->Add();
-  block->set_idx(framework::kRootBlockIndex);
-  block->set_parent_idx(framework::kNoneBlockIndex);
   argument_ = argument;
   return true;
 }
@@ -104,6 +100,7 @@ void CreateTrtEngineOp(Node* node, const DataFlowGraph& graph,
   }
   desc.SetOutput("Ys", io);
 
+  desc.SetType("tensorrt_engine");
   // Set attrs
   SetAttr(desc.Proto(), "subgraph", block.SerializeAsString());
   SetAttr(desc.Proto(), "engine_unique_key",
@@ -143,6 +140,10 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node* node) {
     op->Proto()->ParseFromString(node->pb_msg());
   }
   CreateTrtEngineOp(node, *argument_->main_dfg, *block_desc.Proto());
+  auto* main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
+  auto* op = main_block->add_ops();
+  PADDLE_ENFORCE(!node->pb_msg().empty(), "failed to set desc for block");
+  op->ParseFromString(node->pb_msg());
 }
 
 namespace {

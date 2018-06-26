@@ -119,6 +119,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
+    VLOG(4) << "setting " << i << "-th target";
     feed_targets[feed_target_names_[i]] = &feeds[i];
   }
   // get fetch variable
@@ -130,14 +131,16 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
+  VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(
       ctx_.get(),
       sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
       &feed_targets,
       &fetch_targets,
       false /* don't create variable eatch time */);
+  VLOG(4) << "Finish prepared context";
   if (!GetFetch(fetchs, output_data)) {
-    LOG(ERROR) << "fail to get fetchs";
+    LOG(ERROR) << "fail to get fetches";
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
