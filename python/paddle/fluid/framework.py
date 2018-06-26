@@ -454,7 +454,7 @@ class Operator(object):
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
         'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
         'ncclInit', 'channel_create', 'channel_close', 'channel_send',
-        'channel_recv', 'select', 'gen_nccl_id'
+        'channel_recv', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -1214,6 +1214,9 @@ class Block(object):
         if var.type == core.VarDesc.VarType.STEP_SCOPES:
             ret_var = self.create_var(
                 name=var.name, persistable=var.persistable, type=var.type)
+        elif var.type == core.VarDesc.VarType.RAW:
+            ret_var = self.create_var(
+                name=var.name, persistable=var.persistable, type=var.type)
         elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
             ret_var = self.create_var(
                 name=var.name,
@@ -1923,7 +1926,7 @@ def get_var(name, program=None):
     Args:
         name(str): name of the variable
         program(Program|None): program object.
-             If None, default_global_program() will be used.
+        If None, default_global_program() will be used.
 
     Returns:
         Variable

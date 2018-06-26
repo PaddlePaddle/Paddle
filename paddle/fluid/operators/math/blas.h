@@ -18,10 +18,7 @@
 #include "paddle/fluid/framework/tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include <mkl_cblas.h>
-#include <mkl_lapacke.h>
-#include <mkl_service.h>
-#include <mkl_vml_functions.h>
+#include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
@@ -55,7 +52,7 @@ static void SetNumThreads(int num_threads) {
   openblas_set_num_threads(real_num_threads);
 #elif defined(PADDLE_WITH_MKLML)
   int real_num_threads = num_threads > 1 ? num_threads : 1;
-  mkl_set_num_threads(real_num_threads);
+  platform::dynload::MKL_Set_Num_Threads(real_num_threads);
 #else
   PADDLE_ENFORCE(false, "To be implemented.");
 #endif
