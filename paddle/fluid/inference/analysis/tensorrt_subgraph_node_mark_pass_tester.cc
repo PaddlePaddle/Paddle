@@ -37,7 +37,7 @@ TEST_F(DFG_Tester, tensorrt_subgraph_node_mark_pass) {
   ASSERT_TRUE(pass1.Initialize(&argument));
   pass1.Run(argument.main_dfg.get());
 
-  int counter;
+  int counter{0};
   for (auto& node : argument.main_dfg->nodes.nodes()) {
     counter += node->attr(ATTR_supported_by_tensorrt).Bool();
   }
