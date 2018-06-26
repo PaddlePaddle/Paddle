@@ -171,6 +171,20 @@ class FetchBarrierProcessor : public BaseProcessor {
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
+class CheckpointNotifyProcessor : public BaseProcessor {
+ public:
+  explicit CheckpointNotifyProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
+
+  virtual ~CheckpointNotifyProcessor() {}
+
+  virtual void Process() {}
+  sendrecv::VoidMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
+};
+
 class GRPCClient : public RPCClient {
  public:
   GRPCClient() {}
@@ -196,6 +210,9 @@ class GRPCClient : public RPCClient {
 
   void AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
+
+  void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
+                             int64_t time_out = FLAGS_grpc_deadline) override;
 
   void Wait() override;
 
