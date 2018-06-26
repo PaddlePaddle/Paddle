@@ -52,7 +52,8 @@ class ListenAndServOp : public framework::OperatorBase {
                    const int checkpoint_point_block_id) const;
 
   void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program) const;
+                    framework::ProgramDesc* program,
+                    framework::Scope* recv_scope) const;
 
   void SavePort() const;
 
