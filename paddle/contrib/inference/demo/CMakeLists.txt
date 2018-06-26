@@ -16,9 +16,7 @@
 inference_api_test(simple_on_word2vec ARGS test_word2vec)
 
 set(DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo")
-set(mobilenet_url http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fmobilenet.tar.gz)
-set(se_renext50_url
-  http://paddlemodels.bj.bcebos.com/inference-vis-demos%2Fse-renext50.tar-0.gz)
+set(URL_ROOT http://paddlemodels.bj.bcebos.com/inference-vis-demos%2F)
 
 function(inference_download_test_demo TARGET)
     if (NOT WITH_TESTING)
@@ -42,12 +40,16 @@ function(inference_download_test_demo TARGET)
     cc_test(${TARGET} SRCS "${tests_SRCS}"
         DEPS paddle_inference_api paddle_fluid
         ARGS --data=${test_dir}/data.txt
-             --modeldir=${test_dir}/model)
+             --modeldir=${test_dir}/model
+             --refer=${test_dir}/result.txt)
 endfunction()
 
 inference_download_test_demo(mobilenet_inference_demo
-    SRCS mobilenet.cc
-    URL ${mobilenet_url})
-inference_download_test_demo(se_renext50_inference_demo
-    SRCS se_renext50.cc
-    URL ${se_renext50_url})
+    SRCS vis_demo.cc
+    URL ${URL_ROOT}mobilenet.tar.gz)
+inference_download_test_demo(se_resnext50_inference_demo
+    SRCS vis_demo.cc
+    URL ${URL_ROOT}se_resnext50.tar.gz)
+inference_download_test_demo(ocr_inference_demo
+    SRCS vis_demo.cc
+    URL ${URL_ROOT}ocr.tar.gz)

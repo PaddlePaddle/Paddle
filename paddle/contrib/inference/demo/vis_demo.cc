@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /*
- * This file contains a demo for mobilenet.
- * TODO(Superjomn) add some links of the actual models.
+ * This file contains demo for mobilenet, se-resnext50 and ocr.
  */
 
 #include <gflags/gflags.h>
@@ -29,11 +28,13 @@ namespace paddle {
 namespace demo {
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(refer, "", "path to reference result for comparison.");
 DEFINE_string(
     data,
     "",
     "path of data; each line is a record, format is "
     "'<space splitted floats as data>\t<space splitted ints as shape'");
+
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
 #endif
@@ -70,7 +71,7 @@ Record ProcessALine(const std::string& line) {
 }
 
 /*
- * Use the native fluid engine to inference the mobilenet.
+ * Use the native fluid engine to inference the demo.
  */
 void Main(bool use_gpu) {
   NativeConfig config;
@@ -78,10 +79,9 @@ void Main(bool use_gpu) {
   config.param_file = FLAGS_modeldir + "/__params__";
   config.prog_file = FLAGS_modeldir + "/__model__";
   config.use_gpu = use_gpu;
+  config.fraction_of_gpu_memory = 0.1;
 #ifdef PADDLE_WITH_CUDA
   config.fraction_of_gpu_memory = FLAGS_fraction_of_gpu_memory_to_use;
-#else
-  config.fraction_of_gpu_memory = 0.1;
 #endif
   config.device = 0;
 
@@ -113,7 +113,7 @@ void Main(bool use_gpu) {
   LOG(INFO) << "output: " << SummaryTensor(tensor);
 }
 
-TEST(demo, mobilenet) { Main(false /*use_gpu*/); }
+TEST(demo, vis_demo) { Main(false /*use_gpu*/); }
 
 }  // namespace demo
 }  // namespace paddle
