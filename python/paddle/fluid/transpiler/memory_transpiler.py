@@ -19,10 +19,14 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.transpiler import memory_optimize
-from paddle.fluid.framework import Program, default_main_program, Parameter, Variable
+from paddle.fluid.framework import Program, default_main_program, Parameter, Variable, program_guard
 from paddle.fluid.backward import _rename_arg_, append_backward
+
+# from .. import core
+# from .. import layers
+# from .. import optimizer
+# from ..framework import Program, default_main_program, Parameter, Variable, program_guard
+# from ..backward import _rename_arg_, append_backward
 """
 MemoryTranspiler implement the memory reuse strategy.
 It mainly composed by two type optimize **op inplace computation** and **non-lived variable reuse**.
@@ -263,6 +267,13 @@ class MemoryBlock(object):
         return self._compare_attr(rhs, operator.eq) and self.shape == rhs.shape
 
 
+def tostr(objs):
+    ret = list()
+    for o in objs:
+        ret.append("%s, %s" % (o.name, o.shape))
+    return ret
+
+
 class MemoryPlan(object):
     """
     MemoryPlan optimize the memory reuse for each block.
@@ -325,7 +336,7 @@ class MemoryPlan(object):
     def _reuse_cache(self, cache, op, var_name, idx):
         op_descs = [op.desc for op in self._ops]
         _rename_arg_(op_descs, var_name, cache.name, begin_idx=idx)
-        self._block.var(var_name).desc.name = cache.name
+        self._block.var(var_name).name = cache.name
         self._ir.rename(var_name, cache.name, begin_idx=idx)
 
     def _reuse_inplace(self, op, var_name, idx):
@@ -339,6 +350,11 @@ class MemoryPlan(object):
         """
         if ops_dep_var[-1] != op:
             return
+        if self.logging:
+            print(("Hit inplace !!!! inplace op %s"
+                   "var is %s, "
+                   "reused var is %s.") % (op.type, str(var_name),
+                                           str(reuse_var)))
         op_descs = [op.desc for op in self._ops]
         _rename_arg_(op_descs, var_name, reuse_var, begin_idx=idx)
         self._block.var(var_name).desc.name = reuse_var
@@ -372,6 +388,7 @@ class MemoryPlan(object):
             caches = filter(lambda x: self._is_memory_block, caches_candidate)
             for cache in caches:
                 self._memory_pool.append(self._create_memory_block(op, cache))
+            print(tostr(self._memory_pool))
 
 
 class MemoryTranspiler(object):
@@ -399,7 +416,6 @@ class MemoryTranspiler(object):
             if op.has_sub_block():
                 block_id = op.attr("sub_block").id
                 sub_blocks.append(self._program.block(block_id))
-        print(sub_blocks)
         for block in sub_blocks:
             self._plans.append(MemoryPlan(block, self.logging))
 
@@ -438,9 +454,9 @@ def GenProgram2():
 
 
 if __name__ == "__main__":
-    program = GenProgram2()
+    program = GenProgram1()
     # program = GenProgram1()
     # print program
-    MemoryTranspiler(program).transpile()
+    MemoryTranspiler(program, logging=False).transpile()
     # plan = MemoryPlan(program, logging=True)
     # plan.apply()

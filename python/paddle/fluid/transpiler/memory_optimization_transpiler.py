@@ -13,9 +13,16 @@
 # limitations under the License.
 
 from collections import defaultdict
-from .. import core
-from ..framework import Program, default_main_program, Parameter, Variable
-from ..backward import _rename_arg_
+# from .. import core
+# from ..framework import Program, default_main_program, Parameter, Variable
+# from ..backward import _rename_arg_
+
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.optimizer as optimizer
+from paddle.fluid.framework import Program, default_main_program, Parameter, Variable, program_guard
+from paddle.fluid.backward import _rename_arg_, append_backward
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -100,8 +107,31 @@ class ControlFlowGraph(object):
                 return False
         return True
 
+    def _analysis(self):
+        self._build_graph()
+        live_in = defaultdict(set)
+        live_out = defaultdict(set)
+        # print(self._successors)
+        # print(self._presuccessors)
+        w = range(len(self._ops) - 1, -1, -1)
+        # print(w)
+        while w:
+            i = w.pop(0)
+            live_in[i] = set(self._live_in[i])
+            live_out[i] = set(self._live_out[i])
+            for s in self._successors[i]:
+                self._live_out[i] |= self._live_in[s]
+            self._live_in[i] = self._uses[i] | (
+                self._live_out[i] - self._defs[i])
+            if live_in[i] != self._live_in[i]:
+                for d in self._presuccessors[i]:
+                    w.append(d)
+            # print(w)
+
     def _dataflow_analyze(self):
         self._build_graph()
+        # print(self._successors)
+        # print(self._presuccessors)
         live_in = defaultdict(set)
         live_out = defaultdict(set)
         # Repeatedly apply liveness updates until the algorithm stablize
@@ -198,7 +228,12 @@ class ControlFlowGraph(object):
                 raise ValueError("only support opt_level 0 or 1.")
             return False
 
-        self._dataflow_analyze()
+        # self._dataflow_analyze()
+        self._analysis()
+        # for i in range(len(self._ops)):
+        #     print(self._live_in[i])
+        #     print(self._live_out[i])
+        # exit(0)
         self._update_skip_opt_set()
         self.pool = []
         for i in range(self.op_size):
@@ -256,13 +291,19 @@ class ControlFlowGraph(object):
                         break
 
             in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
+            # print(self._live_in[i])
+            # print(self._live_out[i])
+            # print(self._defs[i])
+            # print(in_diff)
             can_optimize = filter(
                 lambda x: self._check_var_validity(block_desc, x, is_forward),
                 in_diff)
+            # print(can_optimize)
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
+            print(self.pool)
 
 
 def _process_sub_block_pair(pdesc, sub_block_pair):
@@ -321,6 +362,10 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
 
+        # print("sub", sub_block_ids)
+        # print("sub_block", grad_sub_block_ids)
+        # print("pair", sub_block_id_pair)
+        # print("dict", sub_op_dict)
         # Process rest fwd_op block ops
         for fwd_id in sub_block_ids:
             sub_block_ops = []
@@ -331,6 +376,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
+    # print(ops_list)
     return ops_list
 
 
@@ -381,3 +427,34 @@ def release_memory(input_program):
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.release_memory()
+
+
+def GenProgram2():
+    program = Program()
+    with program_guard(program, startup_program=Program()):
+        data = layers.data(name='X', shape=[1], dtype='float32')
+        data.stop_gradient = False
+        cond = layers.ConditionalBlock(inputs=[data])
+        out = layers.create_tensor(dtype='float32')
+        with cond.block():
+            hidden = layers.fc(input=data, size=10)
+            layers.assign(hidden, out)
+    return program
+
+
+def GenProgram1():
+    program = Program()
+    with program_guard(program, startup_program=Program()):
+        x = layers.data(name='x', shape=[13], dtype='float32')
+        y_predict = layers.fc(input=x, size=1, act=None)
+        y = layers.data(name='y', shape=[1], dtype='float32')
+        cost = layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = layers.mean(cost)
+        opt = optimizer.SGD(learning_rate=0.001)
+        opt = opt.minimize(avg_cost)
+    return program
+
+
+if __name__ == "__main__":
+    program = GenProgram1()
+    memory_optimize(program, print_log=False)
