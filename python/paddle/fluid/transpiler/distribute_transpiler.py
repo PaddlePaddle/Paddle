@@ -301,6 +301,7 @@ class DistributeTranspiler(object):
             Program: trainer side program.
         """
         # remove optimize ops and add a send op to main_program
+        # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
         return self.origin_program
@@ -537,7 +538,6 @@ class DistributeTranspiler(object):
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
-            new_inputs = dict()
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
