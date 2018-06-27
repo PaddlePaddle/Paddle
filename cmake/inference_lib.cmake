@@ -176,7 +176,6 @@ copy(inference_lib DEPS ${inference_deps}
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
-
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h
