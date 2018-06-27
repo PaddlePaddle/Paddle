@@ -1110,6 +1110,8 @@ class ModelAverage(Optimizer):
 
     The size of average window is determined by average_window_rate,
     min_average_window, max_average_window and current update times.
+    the effective average window should be larger than min_average_window and
+    larger than min(average_window_rate * num_updates, max_average_window).
 
     Args:
         average_window_rate: The rate of average window.
