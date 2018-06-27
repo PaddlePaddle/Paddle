@@ -63,6 +63,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
       LOG(ERROR) << "fail to load inference model.";
       return false;
     }
+
     // Analyze inference_program
     Argument argument;
     argument.origin_program_desc.reset(
@@ -83,15 +84,6 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     feed_target_names_ = inference_program_->GetFeedTargetNames();
     fetch_target_names_ = inference_program_->GetFetchTargetNames();
     return true;
-  }
-
-  framework::proto::ProgramDesc ProcessProgramDesc(
-      const framework::proto::ProgramDesc& desc) {
-    Argument argument;
-    argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
-    Singleton<Analyzer>::Global().Run(&argument);
-    PADDLE_ENFORCE(argument.transformed_program_desc.get());
-    return *argument.transformed_program_desc;
   }
 
  private:
