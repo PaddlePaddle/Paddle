@@ -81,7 +81,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       std::vector<int> row_indices(row, -1);
 
       int64_t idx = 0;
-      for (uint64_t k = 0; k < row * col; ++k) {
+      for (int64_t k = 0; k < row * col; ++k) {
         int64_t i = std::get<0>(match_pair[k]);
         int64_t j = std::get<1>(match_pair[k]);
         T dist = std::get<2>(match_pair[k]);
