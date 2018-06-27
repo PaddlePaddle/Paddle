@@ -59,9 +59,9 @@ class TestSimpleDistTranspiler(TranspilerTest):
 
         delete_ops(trainer.global_block(), optimize_ops)
         ops = [op.type for op in trainer.global_block().ops] + [
-            "send_vars", "send_barrier", "recv", "recv", "fetch_barrier"
+            "send", "send_barrier", "recv", "recv", "fetch_barrier"
         ]
-        ops.insert(ops.index("elementwise_add_grad") + 1, "send_vars")
+        ops.insert(ops.index("elementwise_add_grad") + 1, "send")
         return ops
 
     def _transpiler_instance(self):

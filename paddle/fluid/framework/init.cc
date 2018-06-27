@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
@@ -113,6 +114,9 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
+#ifndef PADDLE_WITH_MKLDNN
+  operators::math::SetNumThreads(1);
+#endif
 }
 
 void InitGLOG(const std::string &prog_name) {

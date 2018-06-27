@@ -21,11 +21,15 @@ class TestLodResetOpByAttr(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
-        target_lod_0 = [0, 7, 10]
+        lod = [[3, 2, 5]]
+        # target_offset_lod and target_lod are the same lod info represented
+        # in offset-based format and length-based format, respectively.
+        target_offset_lod = [0, 7, 10]
+        target_lod = [7, 3]
         self.inputs = {'X': (x, lod)}
-        self.attrs = {'target_lod': target_lod_0}
-        self.outputs = {'Out': (x, [target_lod_0])}
+        # The `target_lod` attribute is still based on offset
+        self.attrs = {'target_lod': target_offset_lod}
+        self.outputs = {'Out': (x, [target_lod])}
 
     def test_check_output(self):
         self.check_output()
@@ -38,13 +42,16 @@ class TestLodResetOpByInput(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
-        target_lod_0 = [0, 4, 7, 10]
+        lod = [[3, 2, 5]]
+        # target_offset_lod and target_lod are the same lod info represented
+        # in offset-based format and length-based format, respectively.
+        target_offset_lod = [0, 4, 7, 10]
+        target_lod = [4, 3, 3]
         self.inputs = {
             'X': (x, lod),
-            'Y': np.array([target_lod_0]).astype('int32')
+            'Y': np.array([target_offset_lod]).astype('int32')
         }
-        self.outputs = {'Out': (x, [target_lod_0])}
+        self.outputs = {'Out': (x, [target_lod])}
 
     def test_check_output(self):
         self.check_output()
@@ -57,15 +64,16 @@ class TestLodResetOpBoth(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
-        target_lod_0_attr = [0, 7, 10]
-        target_lod_0_in = [0, 4, 7, 10]
+        lod = [[3, 2, 5]]
+        target_offset_lod_attr = [0, 7, 10]
+        target_offset_lod_in = [0, 4, 7, 10]
+        target_lod_in = [4, 3, 3]
         self.inputs = {
             'X': (x, lod),
-            'Y': np.array(target_lod_0_in).astype('int32')
+            'Y': np.array(target_offset_lod_in).astype('int32')
         }
-        self.attrs = {'target_lod': target_lod_0_attr}
-        self.outputs = {'Out': (x, [target_lod_0_in])}
+        self.attrs = {'target_lod': target_offset_lod_attr}
+        self.outputs = {'Out': (x, [target_lod_in])}
 
     def test_check_output(self):
         self.check_output()
@@ -78,11 +86,11 @@ class TestLodResetOpYIsLoDTensor(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
-        lod = [[0, 3, 5, 10]]
+        lod = [[3, 2, 5]]
         y = np.random.random((10, 10)).astype("float32")
-        target_lod_0 = [[0, 4, 7, 10]]
-        self.inputs = {'X': (x, lod), 'Y': (y, target_lod_0)}
-        self.outputs = {'Out': (x, target_lod_0)}
+        target_lod = [[4, 3, 3]]
+        self.inputs = {'X': (x, lod), 'Y': (y, target_lod)}
+        self.outputs = {'Out': (x, target_lod)}
 
     def test_check_output(self):
         self.check_output()
