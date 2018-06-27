@@ -2334,10 +2334,17 @@ def conv2d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
-    helper = LayerHelper("conv2d_transpose", **locals())
+
+    input_channel = input.shape[1]
+
+    op_type = 'conv2d_transpose'
+    if (input_channel == groups and num_filters == input_channel and
+            not use_cudnn):
+        op_type = 'depthwise_conv2d_transpose'
+
+    helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv2d_transpose must be Variable")
-    input_channel = input.shape[1]
 
     padding = utils.convert_to_list(padding, 2, 'padding')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -2371,7 +2378,7 @@ def conv2d_transpose(input,
 
     pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type='conv2d_transpose',
+        type=op_type,
         inputs={'Input': [input],
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
