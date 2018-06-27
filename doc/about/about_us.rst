@@ -34,8 +34,9 @@ AI市场：提供标准化的AI 能力、产品的交易机制，帮助企业快
 你对PaddlePaddle有任何的问题都可以通过以下方式联系到我们
 -----------------------------------------------------------
 
-学习/使用问题：可以在PaddlePaddle开源社区（https://github.com/PaddlePaddle/Paddle/issues），以及PaddlePaddle中文社区（http://ai.baidu.com/forum/topic/list/168）向我们反馈
-对PaddlePaddle框架发展的建议：可发送邮件至Paddle-better@baidu.com
+* 学习/使用问题：可以在 `PaddlePaddle开源社区 <https://github.com/PaddlePaddle/Paddle/issues>`_，以及 `PaddlePaddle中文社区 <http://ai.baidu.com/forum/topic/list/168>`_ 向我们反馈
+
+* 对PaddlePaddle框架发展的建议：可发送邮件至Paddle-better@baidu.com
 
 我们期待与你一起打造世界顶级深度学习框架，共同推动AI技术的进步
 
