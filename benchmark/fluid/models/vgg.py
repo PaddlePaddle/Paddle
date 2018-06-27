@@ -54,29 +54,42 @@ def vgg16_bn_drop(input):
 
 def get_model(args):
     if args.data_set == "cifar10":
+        underlying_train_reader = paddle.dataset.cifar.train10()
+        underlying_test_reader = paddle.dataset.cifar.test10()
         classdim = 10
         if args.data_format == 'NCHW':
             data_shape = [3, 32, 32]
         else:
             data_shape = [32, 32, 3]
     else:
+        underlying_train_reader = paddle.dataset.flowers.train()
+        underlying_test_reader = paddle.dataset.flowers.test()
         classdim = 102
         if args.data_format == 'NCHW':
             data_shape = [3, 224, 224]
         else:
             data_shape = [224, 224, 3]
 
-    if args.use_reader_op:
-        filelist = [
-            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
-        ]
-        data_file = fluid.layers.open_files(
-            filenames=filelist,
-            shapes=[[-1] + data_shape, (-1, 1)],
-            lod_levels=[0, 0],
-            dtypes=["float32", "int64"],
-            thread_num=args.gpus,
-            pass_num=args.pass_num)
+    if args.use_reader_op or args.use_py_reader_op:
+        if args.use_reader_op:
+            filelist = [
+                os.path.join(args.data_path, f)
+                for f in os.listdir(args.data_path)
+            ]
+            data_file = fluid.layers.open_files(
+                filenames=filelist,
+                shapes=[[-1] + data_shape, (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"],
+                thread_num=args.gpus,
+                pass_num=args.pass_num)
+        else:
+            data_file, feed_queue = fluid.layers.py_reader(
+                capacity=args.feed_queue_capacity,
+                shapes=[[-1] + data_shape, [-1, 1]],
+                lod_levels=[0, 0],
+                dtypes=['float32', 'int64'])
+
         data_file = fluid.layers.double_buffer(
             fluid.layers.batch(
                 data_file, batch_size=args.batch_size))
@@ -109,13 +122,13 @@ def get_model(args):
     # data reader
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.cifar.train10()
-            if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
-            buf_size=5120),
+            underlying_train_reader, buf_size=5120),
         batch_size=args.batch_size * args.gpus)
     test_reader = paddle.batch(
-        paddle.dataset.cifar.test10()
-        if args.data_set == 'cifar10' else paddle.dataset.flowers.test(),
-        batch_size=args.batch_size)
+        underlying_test_reader, batch_size=args.batch_size)
 
-    return avg_cost, inference_program, optimizer, train_reader, test_reader, batch_acc
+    if args.use_reader_op or not args.use_py_reader_op:
+        return avg_cost, inference_program, optimizer, train_reader, test_reader, batch_acc
+    else:
+        return avg_cost, inference_program, optimizer, train_reader, test_reader, batch_acc,\
+                feed_queue, underlying_train_reader, underlying_test_reader, (data_shape, [1])

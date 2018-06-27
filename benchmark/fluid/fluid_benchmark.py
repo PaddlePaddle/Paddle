@@ -25,6 +25,53 @@ import paddle.fluid.profiler as profiler
 import paddle.fluid.transpiler.distribute_transpiler as distribute_transpiler
 
 from args import *
+from threading import Thread
+
+feed_queue = None
+
+
+def close_feed_queue():
+    global feed_queue
+
+    if feed_queue is not None:
+        feed_queue.close()
+
+
+def feed_data(train_reader, test_reader, dshapes, args):
+    global feed_queue
+    train_cnt = 0
+    test_cnt = 0
+    print_per_train_batch = 1
+    train_data_generator = train_reader()
+    start = time.time()
+    while True:
+        next_data = next(train_data_generator, None)
+        if next_data is None:
+            break
+
+        feed_lod_tensor_array = fluid.LoDTensorArray()
+
+        for data, dshape in zip(next_data, dshapes):
+            if not isinstance(data, np.ndarray):
+                data = np.array(data)
+            tensor = fluid.LoDTensor()
+            tensor.set(data.reshape([-1] + dshape), fluid.CPUPlace())
+            feed_lod_tensor_array.append(tensor)
+
+        if not feed_queue.push(feed_lod_tensor_array):
+            break
+
+        train_cnt += 1
+        '''
+        # This part is used to print the queue status
+        if train_cnt % print_per_train_batch == 0:
+            end = time.time()
+            print('Feed queue size: %d, capacity: %d, speed: %.5fsec/batch'
+                % (feed_queue.size(), feed_queue.capacity(), (end-start)/print_per_train_batch))
+            start = end
+        '''
+
+    close_feed_queue()
 
 
 def append_nccl2_prepare(trainer_id):
@@ -131,7 +178,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     exe = fluid.Executor(place)
     exe.run(startup_prog)
 
-    if not args.use_reader_op:
+    if not args.use_reader_op and not args.use_py_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
             if var.is_data
@@ -141,12 +188,12 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         train_losses = []
-        if not args.use_reader_op:
+        if not args.use_reader_op and not args.use_py_reader_op:
             reader_generator = train_reader()
         batch_id = 0
         data = None
         while True:
-            if not args.use_reader_op:
+            if not args.use_reader_op and not args.use_py_reader_op:
                 data = next(reader_generator, None)
                 if data == None:
                     break
@@ -156,7 +203,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
                 start_time = time.time()
                 num_samples = 0
 
-            if args.use_reader_op:
+            if args.use_reader_op or args.use_py_reader_op:
                 try:
                     loss = exe.run(train_prog, fetch_list=[avg_loss])
                 except fluid.core.EnforceNotMet as ex:
@@ -170,7 +217,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
             # FIXME(wuyi): For use_reader_op, if the current
             # pass is not the last, the last batch of this pass
             # is also equal to args.batch_size.
-            if args.use_reader_op:
+            if args.use_reader_op or args.use_py_reader_op:
                 num_samples += args.batch_size * args.gpus
             else:
                 num_samples += len(data)
@@ -180,12 +227,13 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         print_train_time(start_time, time.time(), num_samples)
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
-        if not args.no_test and batch_acc:
+        if not args.no_test and batch_acc and not args.use_reader_op and not args.use_py_reader_op:
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
         print("\n")
         # TODO(wuyi): add warmup passes to get better perf data.
+        close_feed_queue()
         exit(0)
 
 
@@ -195,7 +243,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                    batch_acc, args, train_prog, startup_prog, nccl_id_var,
                    num_trainers, trainer_id):
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
-    if not args.use_reader_op:
+    if not args.use_reader_op and not args.use_py_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
             if var.is_data
@@ -238,12 +286,12 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
         num_samples = 0
         iters = 0
         start_time = time.time()
-        if not args.use_reader_op:
+        if not args.use_reader_op and not args.use_py_reader_op:
             reader_generator = train_reader()
         batch_id = 0
         data = None
         while True:
-            if not args.use_reader_op:
+            if not args.use_reader_op and not args.use_py_reader_op:
                 data = next(reader_generator, None)
                 if data == None:
                     break
@@ -257,16 +305,14 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
-            if args.use_fake_data or args.use_reader_op:
+            if args.use_fake_data or args.use_reader_op or args.use_py_reader_op:
                 try:
                     loss, = exe.run([avg_loss.name])
                 except fluid.core.EnforceNotMet as ex:
                     break
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
-            if args.update_method == "pserver":
-                exe.bcast_params()
-            if args.use_reader_op:
+            if args.use_reader_op or args.use_py_reader_op:
                 num_samples += args.batch_size * args.gpus
             else:
                 num_samples += len(data)
@@ -277,7 +323,9 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             batch_id += 1
 
         print_train_time(start_time, time.time(), num_samples)
-        if not args.no_test and batch_acc:
+        if not args.no_test and batch_acc and not args.use_reader_op and not args.use_py_reader_op:
+            # we have not implement record io for test
+            # skip test when use args.use_reader_op
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
@@ -301,6 +349,7 @@ def print_train_time(start_time, end_time, num_samples):
 
 
 def main():
+    global feed_queue
     args = parse_args()
     print_arguments(args)
 
@@ -313,8 +362,21 @@ def main():
         pr = cProfile.Profile()
         pr.enable()
     model_def = __import__("models.%s" % args.model, fromlist=["models"])
-    train_args = list(model_def.get_model(args))
+    model = model_def.get_model(args)
+
+    if not args.use_reader_op and args.use_py_reader_op:
+        feed_queue = model[-4]
+        train_reader = model[-3]
+        test_reader = model[-2]
+        dshapes = model[-1]
+        feed_thread = Thread(
+            target=feed_data, args=(train_reader, test_reader, dshapes, args))
+        feed_thread.start()
+        model = model[:-4]
+
+    train_args = list(model)
     train_args.append(args)
+
     # Run optimizer.minimize(avg_loss)
     train_args[2].minimize(train_args[0])
     if args.memory_optimize:
@@ -330,6 +392,7 @@ def main():
             train_args.extend([nccl_id_var, num_trainers, trainer_id])
             train_parallel(*train_args)
         train(*train_args)
+        close_feed_queue()
         exit(0)
 
     # for other update methods, use default programs
@@ -354,3 +417,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    close_feed_queue()

@@ -66,23 +66,33 @@ def cnn_model(data):
 
 
 def get_model(args):
-    if args.use_reader_op:
-        filelist = [
-            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
-        ]
-        data_file = fluid.layers.open_files(
-            filenames=filelist,
-            shapes=[[-1, 1, 28, 28], (-1, 1)],
-            lod_levels=[0, 0],
-            dtypes=["float32", "int64"],
-            thread_num=args.gpus,
-            pass_num=args.pass_num)
+    dshape = [1, 28, 28]
+    if args.use_reader_op or args.use_py_reader_op:
+        if args.use_reader_op:
+            filelist = [
+                os.path.join(args.data_path, f)
+                for f in os.listdir(args.data_path)
+            ]
+            data_file = fluid.layers.open_files(
+                filenames=filelist,
+                shapes=[[-1] + dshape, (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"],
+                thread_num=args.gpus,
+                pass_num=args.pass_num)
+        else:
+            data_file, feed_queue = fluid.layers.py_reader(
+                capacity=args.feed_queue_capacity,
+                shapes=[[-1] + dshape, [-1, 1]],
+                lod_levels=[0, 0],
+                dtypes=['float32', 'int64'])
+
         data_file = fluid.layers.double_buffer(
             fluid.layers.batch(
                 data_file, batch_size=args.batch_size))
         images, label = fluid.layers.read_file(data_file)
     else:
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+        images = fluid.layers.data(name='pixel', shape=dshape, dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
     if args.device == 'CPU' and args.cpus > 1:
@@ -118,8 +128,15 @@ def get_model(args):
         learning_rate=0.001, beta1=0.9, beta2=0.999)
 
     # Reader
+    underlying_train_reader = paddle.dataset.mnist.train()
+    underlying_test_reader = paddle.dataset.mnist.test()
     train_reader = paddle.batch(
-        paddle.dataset.mnist.train(), batch_size=args.batch_size * args.gpus)
+        underlying_train_reader, batch_size=args.batch_size * args.gpus)
     test_reader = paddle.batch(
-        paddle.dataset.mnist.test(), batch_size=args.batch_size)
-    return avg_cost, inference_program, opt, train_reader, test_reader, batch_acc
+        underlying_test_reader, batch_size=args.batch_size)
+
+    if args.use_reader_op or not args.use_py_reader_op:
+        return avg_cost, inference_program, opt, train_reader, test_reader, batch_acc
+    else:
+        return avg_cost, inference_program, opt, train_reader, test_reader, batch_acc, \
+                feed_queue, underlying_train_reader, underlying_test_reader, (dshape, [1])
