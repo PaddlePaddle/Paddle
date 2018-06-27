@@ -145,7 +145,7 @@ class TestDistMnist(unittest.TestCase):
                 retry_times -= 1
 
     def stop_pserver(self, pid):
-        os.kill(pid, signal.SIGTERM)
+        os.kill(pid, signal.SIGKILL)
 
     def test_with_place(self):
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
