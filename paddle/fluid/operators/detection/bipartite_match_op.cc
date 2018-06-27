@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thrust/sort.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -52,6 +51,12 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   }
 };
 
+template <class T>
+bool DistPairDescend(std::tuple<int, int, T> pair1,
+                     std::tuple<int, int, T> pair2) {
+  return std::get<2>(pair1) > std::get<2>(pair2);
+}
+
 template <typename T>
 class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
@@ -63,27 +68,23 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
     auto* dist_data = dist.data<T>();
-    // Test results: When row==57, the speed of these two methods is almost the
-    // same
-    if (row >= 57) {
-      std::vector<std::pair<int, int>> coord;
-      std::vector<T> distance;
+    // Test result: When row==130 the speed of these two methods almost the same
+    if (row >= 130) {
+      std::vector<std::tuple<int, int, T>> match_pair;
 
       for (int64_t i = 0; i < row; ++i) {
         for (int64_t j = 0; j < col; ++j) {
-          coord.push_back(std::make_pair(i, j));
-          distance.push_back(dist_data[i * col + j]);
+          match_pair.push_back(std::make_tuple(i, j, dist_data[i * col + j]));
         }
       }
-      thrust::sort_by_key(&distance[0], &distance[0] + col * row, &coord[0],
-                          thrust::greater<T>());
+      std::sort(match_pair.begin(), match_pair.end(), DistPairDescend<T>);
       std::vector<int> row_indices(row, -1);
 
       int64_t idx = 0;
       for (uint64_t k = 0; k < row * col; ++k) {
-        int64_t i = coord[k].first;
-        int64_t j = coord[k].second;
-        T dist = distance[k];
+        int64_t i = std::get<0>(match_pair[k]);
+        int64_t j = std::get<1>(match_pair[k]);
+        T dist = std::get<2>(match_pair[k]);
 
         if (idx >= row) {
           break;

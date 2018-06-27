@@ -117,8 +117,8 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
 class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
-        lod = [[100]]
-        dist = np.random.random((100, 17)).astype('float32')
+        lod = [[300]]
+        dist = np.random.random((300, 17)).astype('float32')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0])
 
         self.inputs = {'DistMat': dist}
