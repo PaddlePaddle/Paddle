@@ -151,9 +151,6 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
       LoDTensor* dx) {
-    // math::SetConstant<platform::CPUDeviceContext, T> set_zero;
-    // set_zero(context, dx, static_cast<T>(0));
-
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
       int repeat_num = ref_lod[i] - ref_lod[i - 1];
