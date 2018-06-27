@@ -51,8 +51,6 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
-
   if (!platform::is_cpu_place(t.place())) {
     LoDTensor tt;
     framework::TensorCopy(t, platform::CPUPlace(), &tt);
@@ -70,7 +68,13 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   // only print first ten elements
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
-    os << t.data<float>()[i] << " ";
+    if (t.type().hash_code() == typeid(float).hash_code()) {
+      os << t.data<float>()[i] << " ";
+    } else if (t.type().hash_code() == typeid(int64_t).hash_code()) {
+      os << t.data<int64_t>()[i] << " ";
+    } else {
+      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
+    }
   }
 
   return os;
@@ -408,6 +412,39 @@ void LoDTensor::MergeLoDTensor(
     framework::TensorCopy(*src, dst_place, &dst);
     begin = end;
   }
+}
+
+LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
+  LoD length_lod;
+  length_lod.reserve(offset_lod.size());
+  for (size_t lvl = 0; lvl < offset_lod.size(); ++lvl) {
+    std::vector<size_t> level;
+    if (offset_lod[lvl].size() > 0) {
+      level.reserve(offset_lod[lvl].size() - 1);
+    }
+    for (size_t idx = 0; idx < offset_lod[lvl].size() - 1; ++idx) {
+      level.push_back(offset_lod[lvl][idx + 1] - offset_lod[lvl][idx]);
+    }
+    length_lod.push_back(level);
+  }
+  return length_lod;
+}
+
+LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
+  LoD offset_lod;
+  offset_lod.reserve(length_lod.size());
+  for (size_t lvl = 0; lvl < length_lod.size(); ++lvl) {
+    std::vector<size_t> level;
+    level.reserve(length_lod[lvl].size() + 1);
+    size_t tmp = 0;
+    level.push_back(tmp);
+    for (size_t idx = 0; idx < length_lod[lvl].size(); ++idx) {
+      tmp += length_lod[lvl][idx];
+      level.push_back(tmp);
+    }
+    offset_lod.push_back(level);
+  }
+  return offset_lod;
 }
 
 }  // namespace framework

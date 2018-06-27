@@ -43,7 +43,7 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType FCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library{framework::LibraryType::kMKLDNN};
-  framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+  framework::DataLayout layout{framework::DataLayout::kMKLDNN};
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
@@ -65,7 +65,7 @@ void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType FCOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library{framework::LibraryType::kMKLDNN};
-  framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+  framework::DataLayout layout{framework::DataLayout::kMKLDNN};
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),

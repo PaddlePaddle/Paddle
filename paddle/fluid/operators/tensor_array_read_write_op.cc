@@ -38,15 +38,14 @@ class WriteToArrayOp : public ArrayOp {
                << " to " << offset + 1;
       out->resize(offset + 1);
     }
+    auto *out_tensor = &out->at(offset);
+    out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      auto *out_tensor = &out->at(offset);
-
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
       TensorCopy(x_tensor, place, dev_ctx, out_tensor);
-      out_tensor->set_lod(x_tensor.lod());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                   "nothing has been written to output array["

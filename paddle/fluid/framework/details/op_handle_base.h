@@ -36,7 +36,7 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(bool use_event);
+  void Run(bool use_cuda);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
@@ -79,6 +79,8 @@ class OpHandleBase {
   }
 
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  size_t NoDummyInputSize() const;
 
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);

@@ -195,6 +195,15 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
+      # Only deps libmklml.so, not link
+      if("${cc_library_DEPS};" MATCHES "mklml;")
+        list(REMOVE_ITEM cc_library_DEPS mklml)
+        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
+          list(APPEND cc_library_DEPS dynload_mklml)
+        endif()
+        add_dependencies(${TARGET_NAME} mklml)
+        target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
@@ -609,4 +618,22 @@ function(grpc_library TARGET_NAME)
     PROPERTIES
     COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
+endfunction()
+
+
+function(brpc_library TARGET_NAME)
+  set(oneValueArgs PROTO)
+  set(multiValueArgs SRCS DEPS)
+  set(options "")
+  cmake_parse_arguments(brpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  message(STATUS "generating brpc ${brpc_library_PROTO}")
+
+  get_filename_component(ABS_PROTO ${brpc_library_PROTO} ABSOLUTE)
+  get_filename_component(PROTO_WE ${brpc_library_PROTO} NAME_WE)
+  get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
+
+  protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
+  cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
+  cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()

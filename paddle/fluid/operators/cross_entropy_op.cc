@@ -124,7 +124,8 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
              "Tensor<float/double> with shape [N x D].");
     AddOutput("Y",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape "
-              "[N x 1]. The cross entropy loss.");
+              "[N x 1]. The cross entropy loss.")
+        .Reuse("X");
     AddAttr<bool>("soft_label",
                   "(bool, default false), a flag indicating whether to "
                   "interpretate the given labels as soft labels.")

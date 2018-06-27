@@ -16,9 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/norm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    norm, ops::NormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::NormKernel<paddle::platform::CUDADeviceContext, double, float>);
-REGISTER_OP_CUDA_KERNEL(
-    norm_grad, ops::NormGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::NormGradKernel<paddle::platform::CUDADeviceContext, double, float>);
+using CUDA = paddle::platform::CUDADeviceContext;
+
+REGISTER_OP_CUDA_KERNEL(norm, ops::NormKernel<CUDA, float>,
+                        ops::NormKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(norm_grad, ops::NormGradKernel<CUDA, float>,
+                        ops::NormGradKernel<CUDA, double>);

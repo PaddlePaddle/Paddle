@@ -19,156 +19,110 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+inline void GetDims(const framework::DDim& dim, int axis, int* pre, int* n,
+                    int* post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
+
+template <typename DeviceContext, typename T>
 class NormKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* scale = context.Input<framework::Tensor>("Scale");
-    auto* out = context.Output<framework::Tensor>("Out");
-    auto epsilon = static_cast<T>(context.Attr<AttrType>("epsilon"));
-    out->mutable_data<T>(context.GetPlace());
-    int batch_size = in_x->dims()[0];
-    int channels = in_x->dims()[1];
-    int height = in_x->dims()[2];
-    int width = in_x->dims()[3];
-    int fea_len = height * width;
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
-    auto x =
-        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *in_x, framework::make_ddim({batch_size, fea_len * channels}));
-    // get square
-    framework::Tensor x_square;
-    x_square.mutable_data<T>(in_x->dims(), context.GetPlace());
-    auto x_square_eigen =
-        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            x_square, framework::make_ddim({batch_size, fea_len * channels}));
-    x_square_eigen.device(*place) = x.square();
-    auto scale_eigen =
-        framework::EigenVector<T, Eigen::RowMajor, Eigen::DenseIndex>::Flatten(
-            *scale);
-    for (int n = 0; n < batch_size; ++n) {
-      framework::Tensor in_x_batch = in_x->Slice(n, n + 1);
-      auto in_x_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              in_x_batch, framework::make_ddim({channels, fea_len}));
-      framework::Tensor x_square_batch = x_square.Slice(n, n + 1);
-      auto x_square_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              x_square_batch, framework::make_ddim({channels, fea_len}));
-      framework::Tensor out_batch = out->Slice(n, n + 1);
-      auto out_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              out_batch, framework::make_ddim({channels, fea_len}));
-      framework::Tensor tmp_tensor;
-      tmp_tensor.mutable_data<T>(framework::make_ddim({1, fea_len}),
-                                 context.GetPlace());
-      auto tmp = framework::EigenVector<T, Eigen::RowMajor,
-                                        Eigen::DenseIndex>::Flatten(tmp_tensor);
-      // get colsum and sqrt , inverse
-      auto dim = Eigen::array<int, 1>({{0}});
-      tmp.device(*place) = x_square_batch_eigen.sum(dim);
-      tmp.device(*place) = (tmp + epsilon).sqrt().inverse();
-      Eigen::array<int, 2> broadcast_dim_col;
-      broadcast_dim_col[1] = 1;
-      broadcast_dim_col[0] = channels;
-      out_batch_eigen.device(*place) =
-          in_x_batch_eigen * (tmp.broadcast(broadcast_dim_col));
-      Eigen::array<int, 2> broadcast_dim_row;
-      broadcast_dim_row[1] = fea_len;
-      broadcast_dim_row[0] = 1;
-      out_batch_eigen.device(*place) =
-          out_batch_eigen * (scale_eigen.broadcast(broadcast_dim_row));
-    }
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* in_x = ctx.Input<framework::Tensor>("X");
+    auto* out_y = ctx.Output<framework::Tensor>("Out");
+    auto* out_norm = ctx.Output<framework::Tensor>("Norm");
+    out_y->mutable_data<T>(ctx.GetPlace());
+    out_norm->mutable_data<T>(ctx.GetPlace());
+
+    auto xdim = in_x->dims();
+    auto ndim = out_norm->dims();
+    T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
+    int axis = ctx.Attr<int>("axis");
+    if (axis < 0) axis = xdim.size() + axis;
+    int pre, n, post;
+    GetDims(xdim, axis, &pre, &n, &post);
+
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+
+    Eigen::DSizes<int, 3> shape(pre, n, post);
+    Eigen::DSizes<int, 2> norm_shape(pre, post);
+
+    auto x_e = framework::EigenVector<T>::Flatten(*in_x);
+    auto y_e = framework::EigenVector<T>::Flatten(*out_y);
+    auto norm_e = framework::EigenVector<T>::Flatten(*out_norm);
+    auto x = x_e.reshape(shape);
+    auto y = y_e.reshape(shape);
+    auto norm = norm_e.reshape(norm_shape);
+
+    Eigen::DSizes<int, 1> rdim(1);
+    // y = x / sqrt((sum(x * x) + epsilon))
+    // norm = sqrt(sum(x * x) + epsilon)
+    auto sum = x.pow(2).sum(rdim) + eps;
+    norm.device(*place) = sum.sqrt();
+    // y = x / norm
+    Eigen::DSizes<int, 3> rshape(pre, 1, post);
+    Eigen::DSizes<int, 3> bcast(1, n, 1);
+    y.device(*place) = x / norm.reshape(rshape).broadcast(bcast);
   }
 };
 template <typename DeviceContext, typename T, typename AttrType = T>
 class NormGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* scale = context.Input<framework::Tensor>("Scale");
-    const framework::Tensor* out_grad =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto epsilon = static_cast<T>(context.Attr<AttrType>("epsilon"));
-    framework::Tensor* in_x_grad =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
-    in_x_grad->mutable_data<T>(context.GetPlace());
-    int batch_size = in_x->dims()[0];
-    int channels = in_x->dims()[1];
-    int height = in_x->dims()[2];
-    int width = in_x->dims()[3];
-    int fea_len = height * width;
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* in_x = ctx.Input<framework::Tensor>("X");
+    auto* in_norm = ctx.Input<framework::Tensor>("Norm");
+    auto* in_dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* out_dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    out_dx->mutable_data<T>(ctx.GetPlace());
 
-    auto scale_eigen =
-        framework::EigenVector<T, Eigen::RowMajor, Eigen::DenseIndex>::Flatten(
-            *scale);
-    auto x =
-        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *in_x, framework::make_ddim({batch_size, fea_len * channels}));
-    // get square
-    framework::Tensor x_square;
-    x_square.mutable_data<T>(in_x->dims(), context.GetPlace());
-    auto x_square_eigen =
-        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            x_square, framework::make_ddim({batch_size, fea_len * channels}));
-    x_square_eigen.device(*place) = x.square();
+    auto xdim = in_x->dims();
+    int axis = ctx.Attr<int>("axis");
+    if (axis < 0) axis = xdim.size() + axis;
+    int pre, n, post;
+    GetDims(xdim, axis, &pre, &n, &post);
 
-    for (int n = 0; n < batch_size; ++n) {
-      framework::Tensor in_x_batch = in_x->Slice(n, n + 1);
-      auto in_x_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              in_x_batch, framework::make_ddim({channels, fea_len}));
-      framework::Tensor in_g_batch = in_x_grad->Slice(n, n + 1);
-      auto in_g_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              in_g_batch, framework::make_ddim({channels, fea_len}));
-      framework::Tensor x_square_batch = x_square.Slice(n, n + 1);
-      auto x_square_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              x_square_batch, framework::make_ddim({channels, fea_len}));
-      framework::Tensor outg_batch = out_grad->Slice(n, n + 1);
-      auto outg_batch_eigen =
-          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              outg_batch, framework::make_ddim({channels, fea_len}));
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
-      framework::Tensor tmp_tensor;
-      tmp_tensor.mutable_data<T>(framework::make_ddim({1, fea_len}),
-                                 context.GetPlace());
-      auto tmp_eigen =
-          framework::EigenVector<T, Eigen::RowMajor,
-                                 Eigen::DenseIndex>::Flatten(tmp_tensor);
-      auto dim = Eigen::array<int, 1>({{0}});
-      tmp_eigen.device(*place) = (in_x_batch_eigen * outg_batch_eigen).sum(dim);
-      framework::Tensor norm_tmp_tensor;
-      norm_tmp_tensor.mutable_data<T>(framework::make_ddim({1, fea_len}),
-                                      context.GetPlace());
-      auto norm_tmp_eigen =
-          framework::EigenVector<T, Eigen::RowMajor,
-                                 Eigen::DenseIndex>::Flatten(norm_tmp_tensor);
-      norm_tmp_eigen.device(*place) =
-          (x_square_batch_eigen.sum(dim) + epsilon).sqrt();
-      Eigen::array<int, 2> broadcast_dim_col;
-      broadcast_dim_col[1] = 1;
-      broadcast_dim_col[0] = channels;
-      in_g_batch_eigen.device(*place) =
-          in_x_batch_eigen * tmp_eigen.broadcast(broadcast_dim_col);
-      in_g_batch_eigen.device(*place) =
-          in_g_batch_eigen /
-          (norm_tmp_eigen * norm_tmp_eigen).broadcast(broadcast_dim_col);
-      in_g_batch_eigen.device(*place) = outg_batch_eigen - in_g_batch_eigen;
-      // outg_batch_eigen + (in_g_batch_eigen * -1);
-      in_g_batch_eigen.device(*place) =
-          in_g_batch_eigen / norm_tmp_eigen.broadcast(broadcast_dim_col);
-      Eigen::array<int, 2> broadcast_dim_row;
-      broadcast_dim_row[1] = fea_len;
-      broadcast_dim_row[0] = 1;
-      in_g_batch_eigen.device(*place) =
-          in_g_batch_eigen * (scale_eigen.broadcast(broadcast_dim_row));
-    }
+    auto x_e = framework::EigenVector<T>::Flatten(*in_x);
+    auto dy_e = framework::EigenVector<T>::Flatten(*in_dy);
+    auto norm_e = framework::EigenVector<T>::Flatten(*in_norm);
+    auto dx_e = framework::EigenVector<T>::Flatten(*out_dx);
+
+    Eigen::DSizes<int, 3> shape(pre, n, post);
+    Eigen::DSizes<int, 2> norm_shape(pre, post);
+    auto x = x_e.reshape(shape);
+    auto dy = dy_e.reshape(shape);
+    auto norm = norm_e.reshape(norm_shape);
+    auto dx = dx_e.reshape(shape);
+
+    framework::Tensor rsum;
+    rsum.mutable_data<T>({pre, post}, ctx.GetPlace());
+    auto sum = framework::EigenTensor<T, 2>::From(rsum);
+
+    Eigen::DSizes<int, 1> rdim(1);
+    Eigen::DSizes<int, 3> bcast(1, n, 1);
+    Eigen::DSizes<int, 3> rshape(pre, 1, post);
+
+    // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
+    //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
+    //    = [dy - x * sum(x*dy) / (sum(x*x) + e)] / sqrt(sum(x*x))
+    // 1. sum = sum(x*dy)
+    sum.device(*place) = (x * dy).sum(rdim);
+    // 2. dx = x * sum
+    dx.device(*place) = sum.reshape(rshape).broadcast(bcast) * x;
+    // 3. dx / (sum(x*x) + e)
+    // where, norm.pow(2) = sum(x*x) + e, which is calculated in forward.
+    dx.device(*place) = dx / norm.pow(2).broadcast(bcast);
+    // 4. [dy - dx] / sqrt(sum(x*x))
+    dx.device(*place) = (dy - dx) / norm.broadcast(bcast);
   }
 };
 }  // namespace operators

@@ -43,9 +43,10 @@ void TensorRTEngine::Execute(int batch_size) {
 }
 
 TensorRTEngine::~TensorRTEngine() {
+  cudaStreamSynchronize(*stream_);
   // clean buffer
   for (auto& buf : buffers_) {
-    if (buf.buffer != nullptr) {
+    if (buf.device == DeviceType::GPU && buf.buffer != nullptr) {
       PADDLE_ENFORCE_EQ(0, cudaFree(buf.buffer));
       buf.buffer = nullptr;
       buf.max_size = 0;
@@ -80,6 +81,8 @@ void TensorRTEngine::FreezeNetwork() {
     auto& buf = buffer(item.first);
     CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
     PADDLE_ENFORCE_EQ(0, cudaMalloc(&buf.buffer, item.second));
+    VLOG(4) << "buffer malloc " << item.first << " " << item.second << " "
+            << buf.buffer;
     buf.size = buf.max_size = item.second;
     buf.device = DeviceType::GPU;
   }
@@ -96,6 +99,7 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] *
                         analysis::AccuDims(dims.d, dims.nbDims);
+  PADDLE_ENFORCE(input->isNetworkInput());
   TensorRTEngine::SetITensor(name, input);
   return input;
 }
@@ -109,7 +113,9 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
   SetITensor(name, output);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
+  PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
+  PADDLE_ENFORCE(output->isNetworkOutput());
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
   buffer_sizes_[name] = 0;
@@ -122,6 +128,7 @@ void TensorRTEngine::DeclareOutput(const std::string& name) {
   auto* output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
+  PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.

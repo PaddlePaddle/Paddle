@@ -144,10 +144,10 @@ class TestChunkEvalOp(OpTest):
         starts = sorted(starts)
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = self.gen_chunks(
             infer, label, starts)
-        self.inputs = {
-            'Inference': (infer, [starts]),
-            'Label': (label, [starts])
-        }
+        lod = []
+        for i in range(len(starts) - 1):
+            lod.append(starts[i + 1] - starts[i])
+        self.inputs = {'Inference': (infer, [lod]), 'Label': (label, [lod])}
         precision = float(
             self.num_correct_chunks
         ) / self.num_infer_chunks if self.num_infer_chunks else 0

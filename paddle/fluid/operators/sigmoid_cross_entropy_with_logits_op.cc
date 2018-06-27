@@ -113,14 +113,14 @@ The logistic loss is given as follows:
 
        $$loss = -Labels * \log(\sigma(X)) - (1 - Labels) * \log(1 - \sigma(X))$$
 
-We know that $$\sigma(X) = (1 / (1 + \exp(-X)))$$. By substituting this we get:
+We know that $$\sigma(X) = \\frac{1}{1 + \exp(-X)}$$. By substituting this we get:
 
        $$loss = X - X * Labels + \log(1 + \exp(-X))$$
 
 For stability and to prevent overflow of $$\exp(-X)$$ when X < 0,
 we reformulate the loss as follows:
 
-       $$loss = \max(X, 0) - X * Labels + \log(1 + \exp(-|X|))$$
+       $$loss = \max(X, 0) - X * Labels + \log(1 + \exp(-\|X\|))$$
 
 Both the input `X` and `Labels` can carry the LoD (Level of Details) information.
 However the output only shares the LoD with input `X`.

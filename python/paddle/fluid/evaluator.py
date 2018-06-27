@@ -41,7 +41,12 @@ def _clone_var_(block, var):
 
 class Evaluator(object):
     """
-    Base Class for all evaluators
+    Warning: better to use the fluid.metrics.* things, more
+    flexible support via pure Python and Operator, and decoupled
+    with executor. Short doc are intended to urge new user
+    start from Metrics.
+
+    Base Class for all evaluators.
 
     Args:
         name(str): The name of evaluator. such as, "accuracy". Used for generate
@@ -69,6 +74,10 @@ class Evaluator(object):
     def reset(self, executor, reset_program=None):
         """
         reset metric states at the begin of each pass/user specified batch
+
+        Args:
+            executor(Executor|ParallelExecutor): a executor for executing the reset_program
+            reset_program(Program): a single Program for reset process
         """
         if reset_program is None:
             reset_program = Program()
@@ -85,14 +94,15 @@ class Evaluator(object):
     def eval(self, executor, eval_program=None):
         """
         Evaluate the statistics merged by multiple mini-batches.
+        Args:
+            executor(Executor|ParallelExecutor): a executor for executing the eval_program
+            eval_program(Program): a single Program for eval process
         """
         raise NotImplementedError()
 
-    def create_state(self, suffix, dtype, shape):
+    def _create_state(self, suffix, dtype, shape):
         """
         Create state variable.
-
-        NOTE: It is not a public API.
 
         Args:
             suffix(str): the state suffix.
@@ -113,9 +123,35 @@ class Evaluator(object):
 
 class ChunkEvaluator(Evaluator):
     """
+    Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator 
+    instead.
+
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
     numbers.
+    For some basics of chunking, please refer to
+    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+
+    Args:
+        input (Variable): prediction output of the network.
+        label (Variable): label of the test data set.
+        chunk_scheme (str): can be IOB/IOE/IOBES and IO. See the chunk_eval op for details.
+        num_chunk_types (int): the number of chunk type.
+        excluded_chunk_types (list): A list including chunk type ids, indicating chunk types that are not counted.
+
+    Returns:
+        tuple: tuple containing: precision, recall, f1_score
+
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.executor(place)
+            evaluator = fluid.Evaluator.ChunkEvaluator(input, label)
+            for epoch in PASS_NUM:
+                evaluator.reset(exe)
+                for data in batches:
+                    loss = exe.run(fetch_list=[cost])
+                distance, instance_error = distance_evaluator.eval(exe)
     """
 
     def __init__(
@@ -130,11 +166,11 @@ class ChunkEvaluator(Evaluator):
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
 
-        self.num_infer_chunks = self.create_state(
+        self.num_infer_chunks = self._create_state(
             dtype='int64', shape=[1], suffix='num_infer_chunks')
-        self.num_label_chunks = self.create_state(
+        self.num_label_chunks = self._create_state(
             dtype='int64', shape=[1], suffix='num_label_chunks')
-        self.num_correct_chunks = self.create_state(
+        self.num_correct_chunks = self._create_state(
             dtype='int64', shape=[1], suffix='num_correct_chunks')
         precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
             input=input,
@@ -178,6 +214,8 @@ class ChunkEvaluator(Evaluator):
 
 class EditDistance(Evaluator):
     """
+    Warning: This would be deprecated in the future. Please use fluid.metrics.EditDistance
+    instead.
     Accumulate edit distance sum and sequence number from mini-batches and
     compute the average edit_distance and instance error of all batches.
 
@@ -188,15 +226,16 @@ class EditDistance(Evaluator):
         ignored_tokens(list of int): Tokens that should be removed before
         calculating edit distance.
 
-    Example:
+    Examples:
+        .. code-block:: python
 
-        exe = fluid.executor(place)
-        distance_evaluator = fluid.Evaluator.EditDistance(input, label)
-        for epoch in PASS_NUM:
-            distance_evaluator.reset(exe)
-            for data in batches:
-                loss = exe.run(fetch_list=[cost])
-            distance, instance_error = distance_evaluator.eval(exe)
+            exe = fluid.executor(place)
+            distance_evaluator = fluid.Evaluator.EditDistance(input, label)
+            for epoch in PASS_NUM:
+                distance_evaluator.reset(exe)
+                for data in batches:
+                    loss = exe.run(fetch_list=[cost])
+                distance, instance_error = distance_evaluator.eval(exe)
 
         In the above example:
         'distance' is the average of the edit distance in a pass.
@@ -210,11 +249,11 @@ class EditDistance(Evaluator):
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
 
-        self.total_distance = self.create_state(
+        self.total_distance = self._create_state(
             dtype='float32', shape=[1], suffix='total_distance')
-        self.seq_num = self.create_state(
+        self.seq_num = self._create_state(
             dtype='int64', shape=[1], suffix='seq_num')
-        self.instance_error = self.create_state(
+        self.instance_error = self._create_state(
             dtype='int64', shape=[1], suffix='instance_error')
         distances, seq_num = layers.edit_distance(
             input=input, label=label, ignored_tokens=ignored_tokens)
@@ -256,9 +295,10 @@ class EditDistance(Evaluator):
 
 class DetectionMAP(Evaluator):
     """
+    Warning: This would be deprecated in the future. Please use fluid.metrics.DetectionMAP
+    instead.
     Calculate the detection mean average precision (mAP).
 
-    TODO (Dang Qingqing): update the following doc.
     The general steps are as follows:
     1. calculate the true positive and false positive according to the input
         of detection and labels.
@@ -293,17 +333,18 @@ class DetectionMAP(Evaluator):
             - 11point: the 11-point interpolated average precision.
             - integral: the natural integral of the precision-recall curve.
 
-    Example:
+    Examples:
+        .. code-block:: python
 
-        exe = fluid.executor(place)
-        map_evaluator = fluid.Evaluator.DetectionMAP(input,
-            gt_label, gt_box, gt_difficult)
-        cur_map, accum_map = map_evaluator.get_map_var()
-        fetch = [cost, cur_map, accum_map]
-        for epoch in PASS_NUM:
-            map_evaluator.reset(exe)
-            for data in batches:
-                loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
+            exe = fluid.executor(place)
+            map_evaluator = fluid.Evaluator.DetectionMAP(input,
+                gt_label, gt_box, gt_difficult)
+            cur_map, accum_map = map_evaluator.get_map_var()
+            fetch = [cost, cur_map, accum_map]
+            for epoch in PASS_NUM:
+                map_evaluator.reset(exe)
+                for data in batches:
+                    loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
 
         In the above example:
 
@@ -340,9 +381,10 @@ class DetectionMAP(Evaluator):
             evaluate_difficult=evaluate_difficult,
             ap_version=ap_version)
 
-        self.create_state(dtype='int32', shape=None, suffix='accum_pos_count')
-        self.create_state(dtype='float32', shape=None, suffix='accum_true_pos')
-        self.create_state(dtype='float32', shape=None, suffix='accum_false_pos')
+        self._create_state(dtype='int32', shape=None, suffix='accum_pos_count')
+        self._create_state(dtype='float32', shape=None, suffix='accum_true_pos')
+        self._create_state(
+            dtype='float32', shape=None, suffix='accum_false_pos')
 
         self.has_state = None
         var = self.helper.create_variable(
