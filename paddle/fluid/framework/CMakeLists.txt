@@ -21,10 +21,10 @@ endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
-nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place memory device_context init)
+nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place memory device_context)
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
-nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor init)
+nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 
@@ -38,7 +38,7 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
 nv_test(data_device_transform_test SRCS data_device_transform_test.cu
-        DEPS operator op_registry init math_function)
+        DEPS operator op_registry device_context math_function)
 
 if(WITH_GPU)
   nv_library(data_type_transform SRCS data_type_transform.cu DEPS tensor)
@@ -63,7 +63,7 @@ cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
     shape_inference data_transform lod_tensor profiler)
-cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
+cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
@@ -100,9 +100,6 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
-
-cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece operator)
-cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)

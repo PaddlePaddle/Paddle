@@ -1,4 +1,4 @@
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor )
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
