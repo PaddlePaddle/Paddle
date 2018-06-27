@@ -218,10 +218,10 @@ def decode_main(use_cuda, is_sparse):
     init_recursive_seq_lens = [1] * batch_size
     init_recursive_seq_lens = [init_recursive_seq_lens, init_recursive_seq_lens]
 
-    init_ids = fluid.create_lod_tensor(init_ids_data,
-                                       init_init_recursive_seq_lens, place)
+    init_ids = fluid.create_lod_tensor(init_ids_data, init_recursive_seq_lens,
+                                       place)
     init_scores = fluid.create_lod_tensor(init_scores_data,
-                                          init_init_recursive_seq_lens, place)
+                                          init_recursive_seq_lens, place)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
