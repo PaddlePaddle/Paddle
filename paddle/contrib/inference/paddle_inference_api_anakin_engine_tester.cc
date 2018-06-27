@@ -37,28 +37,26 @@ TEST(inference, anakin) {
 
   float data[1 * 3 * 224 * 224] = {1.0f};
 
-  PaddleBuf buf{.data = data, .length = sizeof(data)};
   PaddleTensor tensor{.name = "input_0",
                       .shape = std::vector<int>({1, 3, 224, 224}),
-                      .data = buf,
+                      .data = PaddleBuf(data, sizeof(data)),
                       .dtype = PaddleDType::FLOAT32};
 
   // For simplicity, we set all the slots with the same data.
-  std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
+  std::vector<PaddleTensor> paddle_tensor_feeds;
+  paddle_tensor_feeds.emplace_back(std::move(tensor));
 
-  float data_out[1000];
-
-  PaddleBuf buf_out{.data = data_out, .length = sizeof(data)};
   PaddleTensor tensor_out{.name = "prob_out",
                           .shape = std::vector<int>({1000, 1}),
-                          .data = buf_out,
+                          .data = PaddleBuf(),
                           .dtype = PaddleDType::FLOAT32};
 
-  std::vector<PaddleTensor> outputs(1, tensor_out);
+  std::vector<PaddleTensor> outputs;
+  outputs.emplace_back(std::move(tensor_out));
 
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
 
-  float* data_o = static_cast<float*>(outputs[0].data.data);
+  float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < 1000; ++j) {
     LOG(INFO) << "output[" << j << "]: " << data_o[j];
   }
