@@ -61,6 +61,7 @@ extern void* rccl_dso_handle;
   __macro(rcclCommCuDevice);            \
   __macro(rcclCommUserRank);            \
   __macro(rcclAllReduce);               \
+  __macro(rcclReduce);                  \
   __macro(rcclBcast);                   \
   __macro(rcclGetErrorString);
 

@@ -125,7 +125,9 @@ void ReduceOpHandle::RunImpl() {
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
 #ifdef PADDLE_WITH_HIP
-              PADDLE_THROW("Reduce is not supported.");
+              PADDLE_ENFORCE(platform::dynload::rcclReduce(
+                  buffer, recvbuffer, numel, static_cast<rcclDataType_t>(type),
+                  rcclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
 #else
 	      PADDLE_ENFORCE(platform::dynload::ncclReduce(
 		  buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
