@@ -72,10 +72,8 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
-                test_loss = np.array(test_loss)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
-                train_loss = np.array(train_loss)
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):
