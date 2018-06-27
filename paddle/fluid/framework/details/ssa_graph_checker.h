@@ -16,6 +16,8 @@
 
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -31,6 +33,10 @@ class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
     auto graph = builder_->Build(program);
     PADDLE_ENFORCE(IsValidGraph(graph.get()));
     return graph;
+  }
+
+  int GetVarDeviceID(const std::string& var_name) const override {
+    return builder_->GetVarDeviceID(var_name);
   }
 
   bool IsValidGraph(const SSAGraph* graph) const;
