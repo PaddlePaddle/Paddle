@@ -15,6 +15,7 @@
 import numpy as np
 import argparse
 import time
+import math
 
 import paddle
 import paddle.fluid as fluid
@@ -145,7 +146,7 @@ class TestDistMnist(unittest.TestCase):
                 retry_times -= 1
 
     def stop_pserver(self, pid):
-        os.kill(pid, signal.SIGKILL)
+        os.kill(pid, signal.SIGTERM)
 
     def test_with_place(self):
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
@@ -194,7 +195,7 @@ class TestDistMnist(unittest.TestCase):
                     acc_val = np.array(acc_set).mean()
                     avg_loss_val = np.array(avg_loss_set).mean()
                     if float(acc_val
-                             ) > 0.2:  # Smaller value to increase CI speed
+                             ) > 0.8:  # Smaller value to increase CI speed
                         return
                     else:
                         print(
