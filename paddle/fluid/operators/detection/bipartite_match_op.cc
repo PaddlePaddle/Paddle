@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/sort.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -68,23 +69,27 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
     auto* dist_data = dist.data<T>();
+    // Test results: When row==57, the speed of these two methods is almost the
+    // same
+    if (row >= 57) {
+      std::vector<std::pair<int, int>> coord;
+      std::vector<T> distance;
 
-    if (row >= 60) {
-      std::vector<std::pair<std::pair<int, int>, T>> match_pair;
       for (int64_t i = 0; i < row; ++i) {
         for (int64_t j = 0; j < col; ++j) {
-          match_pair.push_back(
-              std::make_pair(std::make_pair(i, j), dist_data[i * col + j]));
+          coord.push_back(std::make_pair(i, j));
+          distance.push_back(dist_data[i * col + j]);
         }
       }
-      std::sort(match_pair.begin(), match_pair.end(), MatchPairDescend<T>);
+      thrust::sort_by_key(&distance[0], &distance[0] + col * row, &coord[0],
+                          thrust::greater<T>());
       std::vector<int> row_indices(row, -1);
 
       int64_t idx = 0;
       for (uint64_t k = 0; k < row * col; ++k) {
-        int64_t i = match_pair[k].first.first;
-        int64_t j = match_pair[k].first.second;
-        T dist = match_pair[k].second;
+        int64_t i = coord[k].first;
+        int64_t j = coord[k].second;
+        T dist = distance[k];
 
         if (idx >= row) {
           break;
