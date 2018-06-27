@@ -52,12 +52,6 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   }
 };
 
-template <class T>
-bool MatchPairDescend(const std::pair<std::pair<int, int>, T>& pair1,
-                      const std::pair<std::pair<int, int>, T>& pair2) {
-  return pair1.second > pair2.second;
-}
-
 template <typename T>
 class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
