@@ -6,4 +6,6 @@ foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
 
+set_property(TEST test_recognize_digits PROPERTY SERIAL 1)
+
 add_subdirectory(high-level-api)
