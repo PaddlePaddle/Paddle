@@ -101,7 +101,8 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
-cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece operator)
+cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece
+  operator cpu_helper)
 cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
