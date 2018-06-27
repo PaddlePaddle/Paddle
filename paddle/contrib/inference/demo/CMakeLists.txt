@@ -44,9 +44,10 @@ function(inference_download_test_demo TARGET)
              --refer=${test_dir}/result.txt)
 endfunction()
 
-inference_download_test_demo(mobilenet_inference_demo
-    SRCS vis_demo.cc
-    URL ${URL_ROOT}mobilenet.tar.gz)
+# disable mobilenet test
+#inference_download_test_demo(mobilenet_inference_demo
+#    SRCS vis_demo.cc
+#    URL ${URL_ROOT}mobilenet.tar.gz)
 inference_download_test_demo(se_resnext50_inference_demo
     SRCS vis_demo.cc
     URL ${URL_ROOT}se_resnext50.tar.gz)
