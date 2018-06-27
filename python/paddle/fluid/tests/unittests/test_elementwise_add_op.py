@@ -18,19 +18,23 @@ from op_test import OpTest
 
 
 class TestElementwiseAddOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_add"
         self.dtype = np.float32
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
+        self.init_kernel_type()
         self.init_axis()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': self.axis}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):

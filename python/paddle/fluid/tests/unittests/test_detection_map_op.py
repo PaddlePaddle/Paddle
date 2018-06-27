@@ -74,13 +74,13 @@ class TestDetectionMAPOp(OpTest):
         self.evaluate_difficult = True
         self.ap_type = "integral"
 
-        self.label_lod = [[0, 2, 4]]
+        self.label_lod = [[2, 2]]
         # label difficult xmin ymin xmax ymax
         self.label = [[1, 0, 0.1, 0.1, 0.3, 0.3], [1, 1, 0.6, 0.6, 0.8, 0.8],
                       [2, 0, 0.3, 0.3, 0.6, 0.5], [1, 0, 0.7, 0.1, 0.9, 0.3]]
 
         # label score xmin ymin xmax ymax difficult
-        self.detect_lod = [[0, 3, 7]]
+        self.detect_lod = [[3, 4]]
         self.detect = [
             [1, 0.3, 0.1, 0.0, 0.4, 0.3], [1, 0.7, 0.0, 0.1, 0.2, 0.3],
             [1, 0.9, 0.7, 0.6, 0.8, 0.8], [2, 0.8, 0.2, 0.1, 0.4, 0.4],
@@ -89,7 +89,7 @@ class TestDetectionMAPOp(OpTest):
         ]
 
         # label score true_pos false_pos
-        self.tf_pos_lod = [[0, 3, 7]]
+        self.tf_pos_lod = [[3, 4]]
         self.tf_pos = [[1, 0.9, 1, 0], [1, 0.7, 1, 0], [1, 0.3, 0, 1],
                        [1, 0.2, 1, 0], [2, 0.8, 0, 1], [2, 0.1, 1, 0],
                        [3, 0.2, 0, 1]]
@@ -112,15 +112,19 @@ class TestDetectionMAPOp(OpTest):
             for i, count in enumerate(class_pos_count):
                 class_pos_count_dict[i] = count
 
-            for i in range(len(true_pos_lod[0]) - 1):
-                start = true_pos_lod[0][i]
-                end = true_pos_lod[0][i + 1]
+            cur_pos = 0
+            for i in range(len(true_pos_lod[0])):
+                start = cur_pos
+                cur_pos += true_pos_lod[0][i]
+                end = cur_pos
                 for j in range(start, end):
                     true_pos_dict[i].append(true_pos[j])
 
-            for i in range(len(false_pos_lod[0]) - 1):
-                start = false_pos_lod[0][i]
-                end = false_pos_lod[0][i + 1]
+            cur_pos = 0
+            for i in range(len(false_pos_lod[0])):
+                start = cur_pos
+                cur_pos += false_pos_lod[0][i]
+                end = cur_pos
                 for j in range(start, end):
                     false_pos_dict[i].append(false_pos[j])
 
@@ -130,19 +134,19 @@ class TestDetectionMAPOp(OpTest):
             label_number = self.class_num
 
             out_class_pos_count = []
-            out_true_pos_lod = [0]
+            out_true_pos_lod = []
             out_true_pos = []
-            out_false_pos_lod = [0]
+            out_false_pos_lod = []
             out_false_pos = []
 
             for i in range(label_number):
                 out_class_pos_count.append([label_count[i]])
                 true_pos_list = true_pos[i]
                 out_true_pos += true_pos_list
-                out_true_pos_lod.append(len(out_true_pos))
+                out_true_pos_lod.append(len(true_pos_list))
                 false_pos_list = false_pos[i]
                 out_false_pos += false_pos_list
-                out_false_pos_lod.append(len(out_false_pos))
+                out_false_pos_lod.append(len(false_pos_list))
 
             return out_class_pos_count, out_true_pos, [
                 out_true_pos_lod
@@ -241,7 +245,7 @@ class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
 
         self.evaluate_difficult = False
 
-        self.tf_pos_lod = [[0, 2, 6]]
+        self.tf_pos_lod = [[2, 4]]
         # label score true_pos false_pos
         self.tf_pos = [[1, 0.7, 1, 0], [1, 0.3, 0, 1], [1, 0.2, 1, 0],
                        [2, 0.8, 0, 1], [2, 0.1, 1, 0], [3, 0.2, 0, 1]]
@@ -267,9 +271,9 @@ class TestDetectionMAPOpMultiBatch(TestDetectionMAPOp):
     def init_test_case(self):
         super(TestDetectionMAPOpMultiBatch, self).init_test_case()
         self.class_pos_count = [0, 2, 1]
-        self.true_pos_lod = [[0, 0, 3, 5]]
+        self.true_pos_lod = [[0, 3, 2]]
         self.true_pos = [[0.7, 1.], [0.3, 0.], [0.2, 1.], [0.8, 0.], [0.1, 1.]]
-        self.false_pos_lod = [[0, 0, 3, 5]]
+        self.false_pos_lod = [[0, 3, 2]]
         self.false_pos = [[0.7, 0.], [0.3, 1.], [0.2, 0.], [0.8, 1.], [0.1, 0.]]
 
 

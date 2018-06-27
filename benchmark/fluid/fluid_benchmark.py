@@ -144,7 +144,7 @@ def dist_transpile(trainer_id, args):
         return train_program, fluid.default_startup_program()
     else:
         raise ValueError(
-            'TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
+            'PADDLE_TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
         )
 
 
@@ -329,7 +329,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             test_acc = test(startup_exe, infer_prog, test_reader, feeder,
                             batch_acc)
             print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
-        exit(0)
 
 
 def print_arguments(args):
@@ -348,10 +347,19 @@ def print_train_time(start_time, end_time, num_samples):
           (num_samples, train_elapsed, examples_per_sec))
 
 
+def print_paddle_envs():
+    print('----------- Configuration envs -----------')
+    for k in os.environ:
+        if "PADDLE_" in k:
+            print "ENV %s:%s" % (k, os.environ[k])
+    print('------------------------------------------------')
+
+
 def main():
     global feed_queue
     args = parse_args()
     print_arguments(args)
+    print_paddle_envs()
 
     # the unique trainer id, starting from 0, needed by trainer
     # only

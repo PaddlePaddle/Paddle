@@ -17,47 +17,8 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
-set(ANAKIN_INCLUDE "" CACHE STRING "root of Anakin header files")
-set(ANAKIN_LIBRARY "" CACHE STRING "path of Anakin library")
-
 
 set(inference_deps paddle_inference_api paddle_fluid_api)
-
-# if anakin is set enable anakin api implementation
-if(ANAKIN_INCLUDE AND ANAKIN_LIBRARY)
-    set(ANAKIN_FOUND ON)
-else()
-    set(ANAKIN_FOUND OFF)
-endif()
-
-function(fetch_include_recursively root_dir) 
-    if (IS_DIRECTORY ${root_dir}) 
-        include_directories(${root_dir})
-    endif()
-
-    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
-    foreach(sub ${ALL_SUB})
-        if (IS_DIRECTORY ${root_dir}/${sub})
-            fetch_include_recursively(${root_dir}/${sub})
-        endif()
-    endforeach()
-endfunction()
-
-if (ANAKIN_FOUND)
-    # Anakin's code style doesn't follow google c style.
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-variable -Wno-error=format-extra-args -Wno-error=comment -Wno-error=format -Wno-error=switch -Wno-error=return-type -Wno-error=non-virtual-dtor -Wno-reorder -Wno-error=cpp")
-
-    message(STATUS "Anakin for inference is enabled")
-    message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
-    fetch_include_recursively(${ANAKIN_INCLUDE})
-
-    link_directories(${ANAKIN_LIBRARY})
-
-    nv_library(inference_anakin_api SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
-    target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-    list(APPEND inference_deps inference_anakin_api)
-endif()
-
 
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
@@ -79,7 +40,7 @@ function(inference_api_test TARGET_NAME)
 endfunction(inference_api_test)
 
 cc_library(paddle_inference_api
-    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc 
+    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
 cc_test(test_paddle_inference_api
@@ -89,9 +50,17 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
-if (ANAKIN_FOUND)
+if (WITH_ANAKIN AND WITH_TESTING) # only needed in CI
+    # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
+    # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
+    # compile the libinference_anakin_api.a and compile with anakin.so.
+    nv_library(inference_anakin_api SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
+    target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+    target_link_libraries(inference_anakin_api anakin anakin_saber_common)
     cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
-    DEPS ${inference_deps})
+                                  ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
+                                  DEPS inference_anakin_api)
+    target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
 endif()
 
 if(WITH_TESTING)
