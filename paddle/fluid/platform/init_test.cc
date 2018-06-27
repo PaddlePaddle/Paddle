@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/init.h"
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;

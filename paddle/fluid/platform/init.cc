@@ -16,10 +16,10 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
