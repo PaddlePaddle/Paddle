@@ -81,7 +81,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             begin = time.time()
             first_loss, = run_executor(
                 exe=exe, feed=feed_dict, fetch_list=[loss.name])
-            first_loss = np.array(first_loss)
 
             for i in xrange(iter):
                 run_executor(exe=exe, feed=feed_dict, fetch_list=[])
@@ -93,8 +92,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             if batch_size is not None:
                 print "%.4f Instance per second" % (
                     (batch_size * iter + 2) / (end - begin))
-
-            last_loss = np.array(last_loss)
 
             print first_loss, last_loss
             # self.assertGreater(first_loss[0], last_loss[0])
