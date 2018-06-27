@@ -149,7 +149,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::vectorize2int(filter->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
-    // Get unique name for index
+    // Get unique name for storing MKLDNN primitives
     const std::string key = ConvMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
         ctx.op().Output("Output"));
