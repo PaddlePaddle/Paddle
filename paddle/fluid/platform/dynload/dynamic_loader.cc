@@ -113,6 +113,7 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
   void* dso_handle = nullptr;
 
+  constexpr char* dl_error_msg = nullptr;
   std::string dlPath = dso_name;
   if (search_root.empty()) {
     dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
@@ -122,12 +123,18 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     dso_handle = dlopen(dlPath.c_str(), dynload_flags);
     // if not found, search from default path
     if (nullptr == dso_handle) {
+      dl_error_msg = dlerror();
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
-                   << dlerror() << ")";
+                   << dl_error_msg << ")";
       dlPath = dso_name;
       dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
     }
   }
+
+  if (dl_error_msg == nullptr) {
+    dl_error_msg = dlerror();
+  }
+
   auto error_msg =
       "Failed to find dynamic library: %s ( %s ) \n Please specify "
       "its path correctly using following ways: \n Method. set "
@@ -137,9 +144,9 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
   if (throw_on_error) {
-    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, dlerror());
+    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, dl_error_msg);
   } else if (nullptr == dso_handle) {
-    LOG(WARNING) << string::Sprintf(error_msg, dlPath, dlerror());
+    LOG(WARNING) << string::Sprintf(error_msg, dlPath, dl_error_msg);
   }
 
   return dso_handle;
