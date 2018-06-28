@@ -13,7 +13,6 @@
    limitations under the License. */
 
 #pragma once
-#include <fstream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
@@ -40,7 +39,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* in = ctx.Input<Tensor>("X");
-    const Tensor* imgRealSize = ctx.Input<Tensor>("Y");
+    const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
     // TODO(fuhailong): add new data layer to solve multibatch inference
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
     // TODO(wanghaoshuang): Add layout checker after 'set_layout'
@@ -55,37 +54,34 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
     auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
-    if (imgRealSize != NULL && batch_size > 1) {
-      // TODO(fuhailong): fix gpu inference
+    if (imgrealsize != NULL && batch_size > 1) {
       Tensor cpu_shape_tensor;
-      TensorCopySync(*imgRealSize, platform::CPUPlace(), &cpu_shape_tensor);
-      std::vector<int> imgReal_H;
-      std::vector<int> imgReal_W;
+      TensorCopySync(*imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
+      std::vector<int> imgreal_h;
+      std::vector<int> imgreal_w;
       std::vector<int> output_height;
       std::vector<int> output_width;
       int result = 0;
       for (int i = 0; i < batch_size; i++) {
-        int tmp_real_H = static_cast<int>((cpu_shape_tensor.data<T>())[2 * i]);
-        int tmp_real_W =
+        int tmp_real_h = static_cast<int>((cpu_shape_tensor.data<T>())[2 * i]);
+        int tmp_real_w =
             static_cast<int>((cpu_shape_tensor.data<T>())[2 * i + 1]);
-        if (tmp_real_H % out_stride[0] == 0) {
-          tmp_real_H = tmp_real_H / out_stride[0];
+        if (tmp_real_h % out_stride[0] == 0) {
+          tmp_real_h = tmp_real_h / out_stride[0];
         } else {
-          tmp_real_H = tmp_real_H / out_stride[0] + 1;
+          tmp_real_h = tmp_real_h / out_stride[0] + 1;
         }
-        if (tmp_real_W % out_stride[1] == 0) {
-          tmp_real_W = tmp_real_W / out_stride[1];
+        if (tmp_real_w % out_stride[1] == 0) {
+          tmp_real_w = tmp_real_w / out_stride[1];
         } else {
-          tmp_real_W = tmp_real_W / out_stride[1] + 1;
+          tmp_real_w = tmp_real_w / out_stride[1] + 1;
         }
-        imgReal_H.push_back(tmp_real_H);
-        imgReal_W.push_back(tmp_real_W);
+        imgreal_h.push_back(tmp_real_h);
+        imgreal_w.push_back(tmp_real_w);
         output_height.push_back(Im2SeqOutputSize(
-            imgReal_H[i], kernels[0], paddings[0], paddings[2], strides[0]));
+            imgreal_h[i], kernels[0], paddings[0], paddings[2], strides[0]));
         output_width.push_back(Im2SeqOutputSize(
-            imgReal_W[i], kernels[1], paddings[1], paddings[3], strides[1]));
-        // TODO(fuhailong): compute dims of output
-        // call: out->mutable_data<T>(ctx.GetPlace(), output_dims);
+            imgreal_w[i], kernels[1], paddings[1], paddings[3], strides[1]));
         result += output_height[i] * output_width[i];
       }
 
@@ -93,10 +89,6 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
                            ctx.GetPlace());
 
       const std::vector<int> dilations({1, 1});
-      // TODO(fuhailong): out_dims has two index,
-      // out_dims[0] and out_dims[1],
-      // {batchsize*output_height*output_width,channel*kernel[0],*kernel[1]},
-      // multi batch ,the first place is output_height[i]*output_width[i].
       int offset_out = 0;
       for (int i = 0; i < batch_size; i++) {
         const Tensor src =

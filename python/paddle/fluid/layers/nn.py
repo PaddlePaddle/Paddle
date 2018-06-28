@@ -3916,15 +3916,13 @@ def transpose(x, perm, name=None):
 
 
 def im2sequence(input,
-                inputImgSize,
                 filter_size=1,
                 stride=1,
                 padding=0,
+                inputImgSize=None,
                 out_stride=1,
                 name=None):
     """
-    Add inputImgSize and out_stride to deal with ctc batch inference for
-    OCR, the solution is just for right padding and bottom padding.
     Extracts image patches from the input tensor to form a tensor of shape
     {input.batch_size * output_height * output_width, filter_size_H *
     filter_size_W * input.channels} which is similar with im2col.
@@ -3959,6 +3957,15 @@ def im2sequence(input,
             paddings of four direction. Otherwise, a scalar padding means
             padding_up = padding_down = padding_left = padding_right = padding
             Default: padding = 0.
+
+        inputImgSize(Variable): the input contains image real size.It's dim
+            is [batchsize, 2]. It is dispensable.It is just for batch inference.
+
+        out_stride(int|tuple): The scaling of image through CNN. It is
+            dispensable. It is valid only when inputImgSize is not null.
+            If out_stride is tuple,  it must contain two intergers,
+            (out_stride_H, out_stride_W). Otherwise,
+            the out_stride_H = out_stride_W = out_stride.
 
         name (int): The name of this layer. It is optional.
 
@@ -4010,7 +4017,7 @@ def im2sequence(input,
                            [ 5.  7.  2.  4.  1.  3.  9.  0.]
                            [ 7.  9.  4.  8.  3.  5.  0.  8.]]
 
-            output.dims = {8, 8}
+            output.dims = {8, 9}
 
             output.lod = [[4, 4]]
 
@@ -4032,8 +4039,9 @@ def im2sequence(input,
     if len(padding) == 2:
         padding.append(padding[0])
         padding.append(padding[1])
-    if isinstance(out_stride, int):
-        out_stride = [out_stride, out_stride]
+    if not inputImgSize:
+        if isinstance(out_stride, int):
+            out_stride = [out_stride, out_stride]
 
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -4046,7 +4054,7 @@ def im2sequence(input,
             'kernels': filter_size,
             'strides': stride,
             'paddings': padding,
-            'out_stride': out_stride
+            'out_stride': out_stride,
         })
     return out
 

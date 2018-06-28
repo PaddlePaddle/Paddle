@@ -15,10 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/im2sequence_op.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -46,11 +42,6 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-    // TODO(fuhailong): change img_height to img_height_real , but how to send
-    // real img_height_real into this op . fuhailong
-    // this function is to  calculate  output_height
-    // =  1 + (padding_height + padding_down + img_height
-    // - kernel_height + stride_height - 1) / stride_height;
     int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
                                          paddings[2], strides[0]);
     int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
@@ -70,7 +61,10 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
              "C: channels"
              "H: height"
              "W: width");
-    AddInput("Y", "image real size.").AsDispensable();
+    AddInput("Y",
+             "(Tensor) The input tensor of image real size(H, W)."
+             "2-D with shape [batchsize, 2]")
+        .AsDispensable();
     AddOutput("Out", "(LodTensor) The output data of im2sequence op,");
     AddAttr<std::vector<int>>("kernels",
                               "(vector<int>), the "
@@ -86,6 +80,9 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
     // TODO(fuhailong): add out_stride, use this to calculate
     // the real image size after cnn
     AddAttr<std::vector<int>>("out_stride",
+                              "the attribute is valid only when input(Y)"
+                              "is not NULL.this attribute represents the"
+                              "scaling of the pic through the CNN"
                               "(vector<int> dedault:{1,1}),the out_stride"
                               " (out_stride_height, out_stride_width)")
         .SetDefault({1, 1});
