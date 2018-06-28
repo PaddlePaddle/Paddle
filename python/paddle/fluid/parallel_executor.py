@@ -160,7 +160,7 @@ class ParallelExecutor(object):
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
-    def run(self, fetch_list, feed=None, feed_dict=None):
+    def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
         Run a parallel executor with fetch_list.
 
@@ -196,6 +196,8 @@ class ParallelExecutor(object):
                 to each device. Default None.
             feed_dict: Alias for feed parameter, for backward compatibility.
                 This parameter has been deprecated. Default None.
+            return_numpy(bool): Whether converts the fetched tensor to numpy.
+                Default: True.
 
         Returns:
             List: The fetched result list.
@@ -269,6 +271,9 @@ class ParallelExecutor(object):
 
         if self.is_dist:
             self.bcast_params()
+
+        if return_numpy:
+            return executor.as_numpy(arr)
 
         return [arr[i] for i in range(len(arr))]
 
