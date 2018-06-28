@@ -53,6 +53,7 @@ template <typename DeviceContext, typename T>
 class TensorRTEngineKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    VLOG(4) << "TensorRTEngineKernel executing";
     auto engine_name = context.Attr<std::string>("engine_uniq_key");
     if (!Singleton<TRT_EngineManager>::Global().HasEngine(engine_name)) {
       Prepare(context);

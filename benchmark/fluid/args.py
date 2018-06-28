@@ -122,5 +122,9 @@ def parse_args():
         type=str,
         default="",
         help='Directory that contains all the training recordio files.')
+    parser.add_argument(
+        '--use_inference_transpiler',
+        action='store_true',
+        help='If set, uses inference transpiler to optimize the program.')
     args = parser.parse_args()
     return args

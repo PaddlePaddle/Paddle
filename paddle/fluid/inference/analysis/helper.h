@@ -14,10 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdio>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -25,6 +27,10 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+template <typename T>
+void SetAttr(framework::proto::OpDesc *op, const std::string &name,
+             const T &data);
 
 template <typename Vec>
 int AccuDims(Vec &&vec, int size) {
@@ -93,7 +99,7 @@ template <typename T>
 class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
-    PADDLE_ENFORCE(!dic_.count(name));
+    PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
     dic_[name] = data_.size();
     data_.emplace_back(std::unique_ptr<T>(x));
     return data_.back().get();
@@ -115,6 +121,20 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
   PADDLE_ENFORCE(var != nullptr);
   return *var->GetMutable<T>();
+}
+
+static void ExecShellCommand(const std::string &cmd, std::string *message) {
+  char buffer[128];
+  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+  if (!pipe) {
+    LOG(ERROR) << "error running command: " << cmd;
+    return;
+  }
+  while (!feof(pipe.get())) {
+    if (fgets(buffer, 128, pipe.get()) != nullptr) {
+      *message += buffer;
+    }
+  }
 }
 
 }  // namespace analysis
