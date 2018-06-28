@@ -18,6 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -48,8 +52,8 @@ void DataTransform(const OpKernelType& expected_kernel_type,
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
-        auto out_format =
-            MKLDNNFormatForSize(in.dims().size(), ToMKLDNNFormat(lin));
+        auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
+                                                        ToMKLDNNFormat(lin));
 
         out.ShareDataWith(input_tensor);
         out.set_layout(DataLayout::kMKLDNN);
