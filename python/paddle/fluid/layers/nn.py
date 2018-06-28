@@ -2226,7 +2226,6 @@ def layer_norm(input,
     return helper.append_activation(layer_norm_out)
 
 
-
 def beam_search_decode(ids, scores, name=None):
     """
     Beam Search Decode
