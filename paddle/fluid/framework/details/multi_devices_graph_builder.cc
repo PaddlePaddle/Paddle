@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/data_balance_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -217,6 +218,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         // gradients.
         CreateComputationalOps(&result, *op, places_.size());
 
+        if (op->Type() == "read") {
+          const auto &data_var_names = op->Output("Out");
+          InsertDataBalanceOp(&result, data_var_names);
+        }
+
         if (!is_forwarding && places_.size() > 1) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
@@ -357,6 +363,24 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
     auto var = new VarHandle(vars.size(), i, og, p);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
+  }
+}
+
+void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
+    SSAGraph *result, const std::vector<std::string> &datas) const {
+  result->ops_.emplace_back(new DataBalanceOpHandle(local_scopes_, places_));
+  auto *op_handle = result->ops_.back().get();
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+    for (const std::string &d_name : datas) {
+      auto &vars = result->vars_[i][d_name];
+      PADDLE_ENFORCE(!vars.empty());
+      op_handle->AddInput(vars.back().get());
+      auto var = new VarHandle(vars.size(), i, d_name, p);
+      vars.emplace_back(var);
+      op_handle->AddOutput(var);
+    }
   }
 }
 
@@ -509,7 +533,8 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
     op_dev_id = GetVarDeviceID(op.InputArgumentNames()[0]);
     // the variable name which contains .block means it was splited by
     // split_byref op
-    // so that we can balance the variable blocks to all the pserver instances.
+    // so that we can balance the variable blocks to all the pserver
+    // instances.
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce &&
         op.InputArgumentNames()[0].find(".block") == std::string::npos) {
       op_dev_id = GetAppropriateDeviceID(op.InputArgumentNames());
