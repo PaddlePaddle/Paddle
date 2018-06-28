@@ -194,14 +194,14 @@ if(WITH_DISTRIBUTE)
     else()
         set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib)
         if(WITH_BRPC_RDMA)
-            find_library(IBVERBS_LIBRARY NAMES libibverbs.so)
+            find_library(IBVERBS_LIBRARY NAMES ibverbs)
             ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
-            SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY_STATIC})
+            SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${IBVERBS_LIBRARY})
 
 
-            find_library(RDMACM_LIBRARY_STATIC NAMES librdmacm.so)
+            find_library(RDMACM_LIBRARY NAMES rdmacm)
             ADD_LIBRARY(rdmacm SHARED IMPORTED GLOBAL)
-            SET_PROPERTY(TARGET rdmacm PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY_STATIC})
+            SET_PROPERTY(TARGET rdmacm PROPERTY IMPORTED_LOCATION ${RDMACM_LIBRARY})
 
             set(DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} ibverbs rdmacm)
         endif()
