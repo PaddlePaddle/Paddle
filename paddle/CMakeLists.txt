@@ -13,9 +13,14 @@ if(NOT WITH_FLUID_ONLY)
     add_subdirectory(trainer)
     add_subdirectory(scripts)
 
-    if(WITH_C_API)
-      add_subdirectory(capi)
-    endif()
+# Disable the build of C-API, which is the inference library of old PaddlePaddle.
+# I want to disable it because the capi/CMakeLists.txt depends on SWIG, which 
+# is no longer useful with Fluid and would bother the development of Tape.
+# Once this removal is confirmed alright by the fact that no one askes the C-API
+# in a while, we would be confident to clear the code.
+#    if(WITH_C_API)
+#      add_subdirectory(capi)
+#    endif()
 
     if(WITH_SWIG_PY)
       add_subdirectory(api)
