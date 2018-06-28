@@ -15,7 +15,7 @@ limitations under the License. */
 /*
  * This file contains the definition of a simple Inference API for Paddle.
  *
- * ATTENTION: It requires some C++ features, for lower version C++ or C, we
+ * ATTENTION: It requires some C++11 features, for lower version C++ or C, we
  * might release another API.
  */
 
@@ -73,12 +73,12 @@ struct PaddleTensor {
 };
 
 enum class PaddleEngineKind {
-  kNative = 0,  // Use the native Fluid facility.
-  kAnakin,      // Use Anakin for inference.
+  kNative = 0,         // Use the native Fluid facility.
+  kAnakin,             // Use Anakin for inference.
+  kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
   // TODO(Superjomn) support following engines latter.
   // kTensorRT,           // Use TensorRT for inference.
   // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
-  // kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
 };
 
 /*
@@ -130,6 +130,11 @@ struct AnakinConfig : public PaddlePredictor::Config {
   int max_batch_size{-1};
 };
 
+struct TensorRTConfig : public NativeConfig {
+  // Determine whether a subgraph will be executed by TRT.
+  int min_subgraph_size{1};
+};
+
 // A factory to help create different predictors.
 //
 // FOR EXTENSION DEVELOPER:
@@ -140,4 +145,7 @@ struct AnakinConfig : public PaddlePredictor::Config {
 // Similarly, each engine kind should map to a unique predictor implementation.
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+
+int PaddleDtypeSize(PaddleDType dtype);
+
 }  // namespace paddle
