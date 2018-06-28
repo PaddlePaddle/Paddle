@@ -35,6 +35,7 @@ import io
 import evaluator
 import initializer
 import layers
+import contrib
 import nets
 import optimizer
 import backward
@@ -65,7 +66,8 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
               'io',
               'initializer',
               'layers',
-              'transpiler'
+              'contrib',
+              'transpiler',
               'nets',
               'optimizer',
               'learning_rate_decay',
