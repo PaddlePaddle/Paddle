@@ -18,7 +18,10 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api paddle_inference_tensorrt_subgraph_engine)
+set(inference_deps paddle_inference_api paddle_fluid_api)
+if(WITH_GPU AND TENSORRT_FOUND)
+    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
+endif()
 
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
