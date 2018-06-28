@@ -165,7 +165,7 @@ if(WITH_CONTRIB)
 
   copy(contrib_inference_lib DEPS paddle_inference_api paddle_inference_api_shared
         SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
-        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
+        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api*
         DSTS ${contrib_dst_dir} ${contrib_dst_dir})
   list(APPEND inference_deps contrib_inference_lib)
 endif()
