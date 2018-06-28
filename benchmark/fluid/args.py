@@ -132,5 +132,9 @@ def parse_args():
         type=int,
         default=64,
         help='Capacity of feed queue when use_py_reader_op is true')
+    parser.add_argument(
+        '--use_inference_transpiler',
+        action='store_true',
+        help='If set, uses inference transpiler to optimize the program.')
     args = parser.parse_args()
     return args

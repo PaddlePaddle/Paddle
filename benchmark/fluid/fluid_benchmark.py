@@ -178,6 +178,11 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     exe = fluid.Executor(place)
     exe.run(startup_prog)
 
+    # Use inference_transpiler to speedup
+    if args.use_inference_transpiler:
+        t = fluid.InferenceTranspiler()
+        t.transpile(infer_prog, place)
+
     if not args.use_reader_op and not args.use_py_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()

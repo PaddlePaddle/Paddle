@@ -95,6 +95,7 @@ __all__ = [
     'relu',
     'log',
     'crop',
+    'fill_zeros_like',
 ]
 
 
@@ -1993,7 +1994,8 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False):
+               do_model_average_for_mean_and_var=False,
+               fuse_with_relu=False):
     """
     **Batch Normalization Layer**
 
@@ -2036,6 +2038,7 @@ def batch_norm(input,
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2121,7 +2124,8 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": use_mkldnn,
+            "fuse_with_relu": fuse_with_relu
         })
 
     return helper.append_activation(batch_norm_out)
@@ -5180,4 +5184,41 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def fill_zeros_like(x):
+    """
+    This layer takes an input and outputs a variable that has the same structure as
+    the input and with all the element values as zero. The variable can be a Tensor
+    or TensorArray.
+
+    .. code-block:: text
+
+
+       Given
+          X = [[0, 1, 2, 0],
+               [0, 3, 4, 0],
+               [0, 0, 0, 0]],
+       output is:
+          Out = [[0, 0, 0, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]].
+
+    Args:
+        x (Variable): The input variable, which could be a tensor or tensor array
+
+    Returns:
+        Variable: The zero-filled variable, which has the same type and shape as
+                  the input variable.
+
+    Examples:
+
+        .. code-block:: python
+            y = fluid.layers.fill_zeros_like(x)
+    """
+    helper = LayerHelper('fill_zeros_like', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
     return out
