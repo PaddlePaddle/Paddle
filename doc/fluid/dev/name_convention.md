@@ -4,7 +4,7 @@ To make the operator document itself more clear, we recommend operator names obe
 
 ## OpProtoMaker names
 
-When defining an operator in Paddle, a corresponding [OpProtoMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L170) (TODO: OpProtoMaker Doc)need to be defined. All the Input/Output and Attributes will write into the [OpProto](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L61) , and will be used in client language to create operator.
+When defining an operator in Paddle, a corresponding [OpProtoMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.h#L170) (TODO: OpProtoMaker Doc)need to be defined. All the Input/Output and Attributes will write into the [OpProto](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto#L61) , and will be used in client language to create operator.
 
 - Input/Output.
   - Input/Output names follow the **CamelCase**. e.g. `X`, `Y`, `Matrix`, `LastAxisInMatrix`. Input/Output much more like Variables, we prefer to meaningful English words.

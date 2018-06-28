@@ -41,7 +41,7 @@ namespace paddle {
  */
 template <class BaseClass, typename... CreateArgs>
 class ClassRegistrar {
-public:
+ public:
   typedef std::function<BaseClass*(CreateArgs...)> ClassCreator;
 
   // Register a class using a creation function.
@@ -74,7 +74,7 @@ public:
     }
   }
 
-protected:
+ protected:
   std::map<std::string, ClassCreator> creatorMap_;
 };
 

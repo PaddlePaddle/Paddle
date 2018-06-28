@@ -122,7 +122,7 @@ void MultiNetwork::finish() {
 }
 
 class MultiCombinedEvaluator : public Evaluator {
-public:
+ public:
   MultiCombinedEvaluator() {}
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
@@ -167,7 +167,7 @@ public:
     }
   }
 
-protected:
+ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 

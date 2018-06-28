@@ -41,7 +41,7 @@ Training docker image needs to package the paddle pserver and paddle trainer run
 - Generating the initialization arguments for `Paddle PServer` and `Paddle Training` processes.
 
 Since the paddlepaddle official docker image already has the runtimes we need, we'll take it as the base image and pack some additional scripts for the processes mentioned above to build our training image. for more detail, please find from the following link:
-- https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/src/k8s_train/Dockerfile
+- https://github.com/PaddlePaddle/Paddle/tree/develop/doc/v2/howto/cluster/multi_cluster/src/k8s_train/Dockerfile
 
 
 ```bash
@@ -62,7 +62,7 @@ represent the Docker Image which built in this step.
 ### Prepare Training Data
 
 We can download and split the training job by creating a Kubernetes Job, or custom your image
-by editing [k8s_train](./src/k8s_train/).
+by editing [k8s_train](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/v2/howto/cluster/multi_cluster/src/k8s_train).
 
 Before creating a Job, we need to bind a [persistenVolumeClaim](https://kubernetes.io/docs/user-guide/persistent-volumes) by the different type of
 the different file system, the generated dataset would be saved on this volume.

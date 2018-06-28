@@ -15,26 +15,24 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/ssa_graph.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
 class SSAGraphExecutor {
   DISABLE_COPY_AND_ASSIGN(SSAGraphExecutor);
 
  public:
-  // Steal graph inside
-  explicit SSAGraphExecutor(std::unique_ptr<SSAGraph> &&graph);
+  SSAGraphExecutor() {}
 
   virtual ~SSAGraphExecutor();
 
   virtual FeedFetchList Run(const std::vector<std::string> &fetch_tensors) = 0;
-
- protected:
-  std::unique_ptr<SSAGraph> graph_;
 };
 }  // namespace details
 }  // namespace framework

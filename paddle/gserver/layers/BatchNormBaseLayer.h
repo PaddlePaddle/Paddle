@@ -40,7 +40,7 @@ namespace paddle {
  */
 
 class BatchNormBaseLayer : public Layer {
-public:
+ public:
   explicit BatchNormBaseLayer(const LayerConfig& config) : Layer(config) {}
 
   ~BatchNormBaseLayer() {}
@@ -61,7 +61,7 @@ public:
    */
   void calFeatureMapSize();
 
-protected:
+ protected:
   /// Batch normalization scale parameter, which is referred to as gamma in
   /// in original paper.
   std::unique_ptr<Weight> weight_;

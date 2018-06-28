@@ -34,7 +34,7 @@ namespace paddle {
  * @note: Operator can't have parameters.
  */
 class Operator {
-public:
+ public:
   static Operator* create(const OperatorConfig& config, bool useGpu);
 
   Operator(const OperatorConfig& config, bool useGpu)
@@ -81,7 +81,7 @@ public:
    */
   virtual LayerStatePtr getState() { return nullptr; }
 
-protected:
+ protected:
   /// Config of operator
   OperatorConfig config_;
   bool useGpu_;

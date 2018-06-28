@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_conv_op.h"
 
+#include <algorithm>
+
 namespace paddle {
 namespace operators {
 
@@ -100,8 +102,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
 
 class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(LoDTensor) the input(X) is a LodTensor, which supports "
@@ -174,8 +175,9 @@ context_length, context_stride and context_start.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
-            sequence_conv_grad, ops::SequenceConvGradOp);
+REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_conv,

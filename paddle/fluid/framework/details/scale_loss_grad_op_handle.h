@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -23,10 +25,6 @@ namespace framework {
 namespace details {
 
 struct ScaleLossGradOpHandle : public OpHandleBase {
-  float coeff_;
-  Scope *scope_;
-  platform::Place place_;
-
   ScaleLossGradOpHandle(size_t num_dev, Scope *scope, platform::Place place,
                         platform::DeviceContext *context);
 
@@ -36,6 +34,11 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+ private:
+  float coeff_;
+  Scope *scope_;
+  platform::Place place_;
 };
 
 }  // namespace details

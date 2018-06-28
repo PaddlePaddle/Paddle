@@ -21,7 +21,7 @@ namespace reader {
 
 class MultiPassReader : public framework::DecoratedReader {
  public:
-  MultiPassReader(ReaderBase* reader, int pass_num)
+  MultiPassReader(const std::shared_ptr<ReaderBase>& reader, int pass_num)
       : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
@@ -65,20 +65,19 @@ class CreateMultiPassReaderOp : public framework::OperatorBase {
 };
 
 class CreateMultiPassReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateMultiPassReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("pass_num", "The number of pass to run.").GreaterThan(0);
     AddComment(R"DOC(
       CreateMultiPassReader Operator
 
-      This operator creates a multi-pass reader. A multi-pass reader 
-      is used to yield data for several pass training continuously. 
+      This operator creates a multi-pass reader. A multi-pass reader
+      is used to yield data for several pass training continuously.
       It takes the number of passes to run as one of its attributes
-      ('pass_num'), and maintains a pass counter to record how many 
-      passes it has completed. When the underlying reader reaches the 
-      EOF, the multi-pass reader checks whether it has completed training 
-      of the given number of pass. If not, the underlying reader will 
+      ('pass_num'), and maintains a pass counter to record how many
+      passes it has completed. When the underlying reader reaches the
+      EOF, the multi-pass reader checks whether it has completed training
+      of the given number of pass. If not, the underlying reader will
       be re-initialized and starts a new pass automatically.
     )DOC");
   }

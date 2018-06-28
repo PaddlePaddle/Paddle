@@ -245,7 +245,6 @@ class DeviceTracerImpl : public DeviceTracer {
   void Enable() {
     std::lock_guard<std::mutex> l(trace_mu_);
     if (enabled_) {
-      fprintf(stderr, "DeviceTracer already enabled\n");
       return;
     }
     EnableActivity();
@@ -323,7 +322,6 @@ class DeviceTracerImpl : public DeviceTracer {
     DisableActivity();
     dynload::cuptiUnsubscribe(subscriber_);
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
-    PADDLE_ENFORCE(dynload::cuptiFinalize());
     enabled_ = false;
   }
 

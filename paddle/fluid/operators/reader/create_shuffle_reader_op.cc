@@ -23,7 +23,8 @@ namespace reader {
 
 class ShuffleReader : public framework::DecoratedReader {
  public:
-  ShuffleReader(ReaderBase* reader, size_t buffer_size, size_t seed = 0)
+  ShuffleReader(const std::shared_ptr<ReaderBase>& reader, size_t buffer_size,
+                size_t seed = 0)
       : DecoratedReader(reader), buffer_size_(buffer_size), seed_(seed) {
     VLOG(10) << "Create shuffle reader of " << reader_;
     if (seed_ == 0) {
@@ -92,9 +93,8 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
 };
 
 class CreateShuffleReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateShuffleReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("buffer_size", "The shuffle buffer size.").GreaterThan(0);
     AddComment(R"DOC(
       CreateShuffleReader Operator

@@ -57,10 +57,7 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    auto &dev_ctx = *pool.Get(src_item.place());
-
-    TensorCopy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
-    dev_ctx.Wait();
+    TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
     dst_item.set_lod(src_item.lod());
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
@@ -69,8 +66,7 @@ class FetchOp : public framework::OperatorBase {
 
 class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FetchOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of fetch op");
     AddOutput("Out", "The output of fetch op");
     AddAttr<int>("col", "(int) The column of fetch");

@@ -119,7 +119,7 @@ An actual Fluid example is described  [here](https://github.com/PaddlePaddle/Pad
 
 From the example, the Fluid programs look very similar to their PyTorch equivalent programs, except that Fluid's loop structure, wrapped with Python's `with` statement, could run much faster than just a Python loop.
 
-We have more examples of the [`if-then-else`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/if_else_op.md) structure of Fluid.
+We have more examples of the [`if-then-else`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/execution/if_else_op.md) structure of Fluid.
 
 ## Turing Completeness
 

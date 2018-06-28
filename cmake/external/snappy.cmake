@@ -11,19 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-IF(MOBILE_INFERENCE)
+if(MOBILE_INFERENCE OR RPI)
     return()
-ENDIF()
+endif()
 
 include (ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
 
-SET(SNAPPY_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy)
-SET(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
-SET(SNAPPY_INCLUDE_DIR "${SNAPPY_INSTALL_DIR}/include/" CACHE PATH "snappy include directory." FORCE)
+set(SNAPPY_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy)
+set(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_INSTALL_DIR}/include" CACHE PATH "snappy include directory." FORCE)
+
+set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.a")
 
 ExternalProject_Add(
     extern_snappy
@@ -46,13 +47,10 @@ ExternalProject_Add(
                      -DCMAKE_INSTALL_LIBDIR:PATH=${SNAPPY_INSTALL_DIR}/lib
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-    BUILD_COMMAND   make -j8
-    INSTALL_COMMAND make install
 )
 
 add_library(snappy STATIC IMPORTED GLOBAL)
-set_property(TARGET snappy PROPERTY IMPORTED_LOCATION
-             "${SNAPPY_INSTALL_DIR}/lib/libsnappy.a")
+set_property(TARGET snappy PROPERTY IMPORTED_LOCATION ${SNAPPY_LIBRARIES})
 
 include_directories(${SNAPPY_INCLUDE_DIR})
 add_dependencies(snappy extern_snappy)

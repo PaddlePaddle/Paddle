@@ -53,7 +53,7 @@ namespace paddle {
  * backward and communication is not supported.
  */
 class RemoteParameterUpdater : public ParameterUpdater {
-public:
+ public:
   RemoteParameterUpdater(
       const OptimizationConfig& config,
       int expectedPassCount,
@@ -101,7 +101,7 @@ public:
   virtual void apply();
   virtual void restore();
 
-protected:
+ protected:
   /**
    * control all pservers with all trainers for sync-sgd
    */
@@ -128,7 +128,7 @@ protected:
    */
   void copyParametersFromDevice(ParameterType parameterType);
 
-protected:
+ protected:
   /// Optimization config used to guide initialization and finishBatch
   OptimizationConfig config_;
   /// internal parameter client object for exchanging data with pserver
@@ -178,7 +178,7 @@ protected:
  * It contains separate send and recv thread for pipeline usage.
  */
 class ConcurrentRemoteParameterUpdater : public RemoteParameterUpdater {
-public:
+ public:
   ConcurrentRemoteParameterUpdater(
       OptimizationConfig config,
       int expectedPassCount,
@@ -194,7 +194,7 @@ public:
    */
   virtual void finishBatch(real cost);
 
-protected:
+ protected:
   virtual void updateImpl(Parameter* para);
   /// internal thread called in send thread
   void send(Parameter* para);  // para == NULL indicate end of a minibatch
@@ -221,7 +221,7 @@ protected:
     return (numBatches_ + 1) % config_.num_batches_per_send_parameter() == 0;
   }
 
-private:
+ private:
   /// send thread used for overlapping
   std::unique_ptr<std::thread> sendThread_;
   /// recv thread used for overlapping
@@ -263,7 +263,7 @@ private:
  * to encapsulate sparse specified message for all pservers.
  */
 class SparseRemoteParameterUpdater : public ParameterUpdater {
-public:
+ public:
   SparseRemoteParameterUpdater(const OptimizationConfig& config,
                                int expectedPassCount,
                                bool testing);
@@ -303,7 +303,7 @@ public:
   }
 #endif
 
-protected:
+ protected:
   /// update implimentation, not implemented
   virtual void updateImpl(Parameter* para) {}
 
@@ -313,7 +313,7 @@ protected:
   /// start controller thread
   void startController();
 
-protected:
+ protected:
   /// optimization config
   OptimizationConfig config_;
   /// internal parameter client
@@ -335,7 +335,7 @@ protected:
  * it directly call internal dense and sparse udpater individually.
  */
 class SparseRemoteParameterUpdaterComposite : public ParameterUpdaterComposite {
-public:
+ public:
   enum {
     UPDATER_SPARSE_REMOTE = 0,  // execute in sync thread pool(tid:0)
     UPDATER_NORMAL = 1,         // execute in Owner thread(tid:1)
@@ -364,7 +364,7 @@ public:
 };
 
 class ParameterUpdaterCreators {
-public:
+ public:
   /**
    * @brief add a creator to create custom ParameterUpdater while training.
    *        The creator is a function with type (alogrithm, optConfig, isLocal,
@@ -407,7 +407,7 @@ public:
     return nullptr;
   }
 
-private:
+ private:
   static std::vector<std::function<ParameterUpdater*(
       const std::string&, const OptimizationConfig&, bool, size_t)>>
       constructors_;

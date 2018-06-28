@@ -56,8 +56,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
@@ -118,8 +117,9 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(transpose, ops::TransposeOp, ops::TransposeOpMaker, transpose_grad,
-            ops::TransposeOpGrad);
+REGISTER_OPERATOR(transpose, ops::TransposeOp, ops::TransposeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

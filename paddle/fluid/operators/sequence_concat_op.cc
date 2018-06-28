@@ -43,8 +43,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
 
 class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConcatOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LodTensorArray) Input is a vector of LoDTensor, "
              "each of which is a variable-length sequence or nested sequence.")
@@ -124,9 +123,11 @@ class SequenceConcatGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_EX(sequence_concat, ops::SequenceConcatOp,
-               ops::SequenceConcatOpMaker, sequence_concat_grad,
-               ops::SequenceConcatGradOp, false);
+REGISTER_OPERATOR(sequence_concat, ops::SequenceConcatOp,
+                  ops::SequenceConcatOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<
+                      false> /* set false to disable empty grad */);
+REGISTER_OPERATOR(sequence_concat_grad, ops::SequenceConcatGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat,
     ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, float>);

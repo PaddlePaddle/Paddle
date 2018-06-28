@@ -108,7 +108,7 @@ paddle_error paddle_matrix_get_row(paddle_matrix mat,
 paddle_error paddle_matrix_get_shape(paddle_matrix mat,
                                      uint64_t* height,
                                      uint64_t* width) {
-  if (mat == nullptr) return kPD_NULLPTR;
+  if (mat == nullptr || cast(mat)->mat == nullptr) return kPD_NULLPTR;
   if (height != nullptr) {
     *height = cast(mat)->mat->getHeight();
   }

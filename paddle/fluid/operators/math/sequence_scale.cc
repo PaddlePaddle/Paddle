@@ -21,15 +21,15 @@ namespace math {
 template <typename T>
 class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  framework::LoDTensor& seq, const T* scales) {
+  void operator()(const platform::CPUDeviceContext& context, const T* scales,
+                  framework::LoDTensor* seq) {
     const size_t level = 0;
-    auto lod = seq.lod();
+    auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
-    size_t seq_width = seq.dims()[1];
+    size_t seq_width = seq->dims()[1];
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
 
-    T* seq_data = seq.mutable_data<T>(context.GetPlace());
+    T* seq_data = seq->mutable_data<T>(context.GetPlace());
     for (size_t i = 0; i < num_seq; ++i) {
       for (size_t j = lod[level][i] * seq_width;
            j < lod[level][i + 1] * seq_width; ++j) {

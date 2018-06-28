@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -27,21 +29,26 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
 ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
 
 void ScaleLossGradOpHandle::RunImpl() {
+  // Doesn't wait any event
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
+  auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
-  float *tmp =
-      scope_->FindVar(var_name)->GetMutable<LoDTensor>()->mutable_data<float>(
-          make_ddim({1}), place_);
+  float *tmp = local_scope.FindVar(var_name)
+                   ->GetMutable<LoDTensor>()
+                   ->mutable_data<float>(make_ddim({1}), place_);
 
   if (platform::is_cpu_place(place_)) {
     *tmp = coeff_;
   } else {
 #ifdef PADDLE_WITH_CUDA
-    auto stream =
-        static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
-            ->stream();
-    memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
-                 platform::CPUPlace(), &coeff_, sizeof(float), stream);
+    this->RunAndRecordEvent([&] {
+      auto stream =
+          static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
+              ->stream();
+      memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
+                   platform::CPUPlace(), &coeff_, sizeof(float), stream);
+      VLOG(1) << place_ << "RUN Scale loss grad op";
+    });
 #endif
   }
 }

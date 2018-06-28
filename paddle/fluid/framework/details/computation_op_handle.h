@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -24,10 +27,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 struct ComputationOpHandle : public OpHandleBase {
-  std::unique_ptr<OperatorBase> op_;
-  Scope *scope_;
-  platform::Place place_;
-
+ public:
   ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
                       platform::Place place);
 
@@ -35,6 +35,13 @@ struct ComputationOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  bool NeedWait(VarHandleBase *in_var) override;
+
+ private:
+  std::unique_ptr<OperatorBase> op_;
+  Scope *scope_;
+  platform::Place place_;
 };
 }  // namespace details
 }  // namespace framework

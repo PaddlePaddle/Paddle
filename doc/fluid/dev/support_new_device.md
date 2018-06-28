@@ -13,7 +13,7 @@ So, how to support a new Device/Library in Fluid becomes a challenge.
 
 ## Basic: Integrate A New Device/Library
 
-For a general overview of fluid, please refer to the [overview doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/read_source.md).
+For a general overview of fluid, please refer to the [overview doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/read_source.md).
 
 There are mainly three parts that we have to consider while integrating a new device/library:
 
@@ -28,7 +28,7 @@ There are mainly three parts that we have to consider while integrating a new de
 Please note that device and computing library are not one-to-one corresponding. A device can have a lot of computing libraries and a computing library can also support several devices.
 
 #### Place
-Fluid uses class [Place](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/place.h#L55) to represent the device memory where data is located. If we add another device, we have to add the corresponding `DevicePlace`.
+Fluid uses class [Place](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/platform/place.h#L55) to represent the device memory where data is located. If we add another device, we have to add the corresponding `DevicePlace`.
 
 ```
         |   CPUPlace
@@ -44,7 +44,7 @@ typedef boost::variant<CUDAPlace, CPUPlace, FPGAPlace> Place;
 
 #### DeviceContext
 
-Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L30) to manage the resources in different libraries, such as CUDA stream in `CDUADeviceContext`. There are also inheritance relationships between different kinds of `DeviceContext`.
+Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/fluid/paddle/platform/device_context.h#L30) to manage the resources in different libraries, such as CUDA stream in `CDUADeviceContext`. There are also inheritance relationships between different kinds of `DeviceContext`.
 
 
 ```
@@ -73,7 +73,7 @@ class CUDADeviceContext : public DeviceContext {
   Place GetPlace() const override { return place_; }
 private:
   CUDAPlace place_;
-  cudaStream_t stream_; 
+  cudaStream_t stream_;
   cublasHandle_t cublas_handle_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;  // binds with stream_
 };
@@ -84,7 +84,7 @@ private:
 
 #### memory module
 
-Fluid provides the following [memory interfaces](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/memory/memory.h#L36):
+Fluid provides the following [memory interfaces](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/memory/memory.h#L36):
 
 ```
 template <typename Place>
@@ -102,7 +102,7 @@ To implement these interfaces, we have to implement MemoryAllocator for differen
 
 #### Tensor
 
-[Tensor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/tensor.h#L36) holds data with some shape in a specific Place.
+[Tensor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/tensor.h#L36) holds data with some shape in a specific Place.
 
 ```cpp
 class Tensor {
@@ -161,7 +161,7 @@ t.mutable_data(place);
 
 Fluid implements computing units based on different DeviceContexts. Some computing units are shared between operators. This common part will be put in operators/math directory as basic Functors.
 
-Let's take [MaxOutFunctor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/math/maxouting.h#L27) as an example:
+Let's take [MaxOutFunctor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/math/maxouting.h#L27) as an example:
 
 The interface is defined in the header file.
 
@@ -210,7 +210,7 @@ The implementation of `OpKernel` is similar to math functors, the extra thing we
 Fluid provides different register interfaces in op_registry.h
 
 
-Let's take [Crop](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/crop_op.cc#L134) operator as an example:
+Let's take [Crop](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/crop_op.cc#L134) operator as an example:
 
 In .cc file:
 
@@ -236,5 +236,5 @@ Generally, we will implement OpKernel for all Device/Library of an Operator. We 
 
 For more details, please refer to following docs:
 
-- operator kernel type [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md)
-- switch kernel [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md)
+- operator kernel type [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/multi_devices/operator_kernel_type.md)
+- switch kernel [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/execution/switch.md)

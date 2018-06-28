@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -24,16 +26,18 @@ ComputationOpHandle::ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
       place_(place) {}
 
 void ComputationOpHandle::RunImpl() {
-  auto *cur_ctx = dev_ctxes_[place_];
-  for (auto *in : inputs_) {
-    bool need_wait =
-        in->generated_op_ && in->generated_op_->dev_ctxes_[place_] != cur_ctx;
-    if (need_wait) {
-      in->generated_op_->Wait(cur_ctx);
-    }
-  }
+  WaitInputVarGenerated(place_);
 
-  op_->Run(*scope_->FindVar("@TMP_SCOPE@")->Get<Scope *>(), place_);
+  this->RunAndRecordEvent([this] {
+    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
+  });
+}
+
+bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
+  bool need_wait =
+      in_var && in_var->generated_op_ &&
+      in_var->generated_op_->DeviceContext(place_) != dev_ctxes_[place_];
+  return need_wait;
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }

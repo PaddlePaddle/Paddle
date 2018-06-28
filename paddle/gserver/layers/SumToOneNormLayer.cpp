@@ -32,13 +32,13 @@ namespace paddle {
  */
 
 class SumToOneNormLayer : public Layer {
-protected:
+ protected:
   /// reciprocalRowSum_ = \f$1 / \sum_{k=1}^N in[k]\f$
   MatrixPtr reciprocalRowSum_;
   /// dotSum = output_.grad \f$.*\f$ output_.value
   MatrixPtr dotSum_;
 
-public:
+ public:
   explicit SumToOneNormLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

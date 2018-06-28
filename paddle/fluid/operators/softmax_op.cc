@@ -49,6 +49,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
@@ -58,6 +61,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
 
@@ -68,21 +72,19 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                      "float16 can only be used on GPU place");
     }
 
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                   framework::StringToDataLayout(data_format),
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                    library_);
   }
 };
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
-    AddOutput("Out", "The normalized values with the same shape as X.");
+    AddOutput("Out", "The normalized values with the same shape as X.")
+        .Reuse("X");
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
@@ -96,6 +98,9 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("AnyLayout");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "Disable epsilon adding to softmax results. Used by MKLDNN.")
         .SetDefault(false);
     AddComment(R"DOC(
 Softmax Operator.
@@ -140,15 +145,30 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        framework::StringToDataLayout(data_format), library_);
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                     "float16 can only be used on GPU place");
+    }
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                   library_);
   }
 };
 
@@ -157,10 +177,13 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker, softmax_grad,
-            ops::SoftmaxOpGrad);
+REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
+    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     softmax_grad,
-    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

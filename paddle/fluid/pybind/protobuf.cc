@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
-#include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -125,26 +124,12 @@ void BindProgramDesc(pybind11::module *m) {
            })
       .def("append_block", &pd::ProgramDesc::AppendBlock,
            pybind11::return_value_policy::reference)
-      .def("append_backward",
-           [](pd::ProgramDesc &program_desc, const pd::VarDesc &target,
-              const std::unordered_set<std::string> &no_grad_vars) {
-             pd::ParamGradInfoMap param_grad_map =
-                 AppendBackward(program_desc, target, no_grad_vars);
-             std::unordered_map<
-                 std::string, std::tuple<std::string /* grad_var_name */,
-                                         int /* block_idx */, int /* op_idx */>>
-                 retv;
-             for (auto it = param_grad_map.begin(); it != param_grad_map.end();
-                  ++it) {
-               const auto &grad_info = it->second;
-               retv[it->first] = std::make_tuple(
-                   grad_info.name_, grad_info.block_idx_, grad_info.op_idx_);
-             }
-             return retv;
-           })
       .def("block", &pd::ProgramDesc::MutableBlock,
            pybind11::return_value_policy::reference)
       .def("num_blocks", &pd::ProgramDesc::Size)
+      .def("flush", &pd::ProgramDesc::Flush)
+      .def("get_feed_target_names", &pd::ProgramDesc::GetFeedTargetNames)
+      .def("get_fetch_target_names", &pd::ProgramDesc::GetFetchTargetNames)
       .def("serialize_to_string", SerializeMessage<pd::ProgramDesc>)
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
@@ -253,6 +238,7 @@ void BindVarDsec(pybind11::module *m) {
 
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)
+      .value("UINT8", pd::proto::VarType::UINT8)
       .value("INT16", pd::proto::VarType::INT16)
       .value("INT32", pd::proto::VarType::INT32)
       .value("INT64", pd::proto::VarType::INT64)
@@ -282,7 +268,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
-      .value("BLOCK", pd::proto::AttrType::BLOCK);
+      .value("BLOCK", pd::proto::AttrType::BLOCK)
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -307,6 +294,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_attr", &pd::OpDesc::SetAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
+      .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
            [](pd::OpDesc &self, const std::string &name,
               const pybind11::bytes &seriralized) {
@@ -317,6 +305,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)
+      .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", &pd::OpDesc::Block,
            pybind11::return_value_policy::reference);

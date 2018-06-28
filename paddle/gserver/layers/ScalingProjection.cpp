@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 
 class ScalingProjection : public Projection {
-public:
+ public:
   ScalingProjection(const ProjectionConfig& config,
                     const ParameterPtr& parameter,
                     bool useGpu)
@@ -48,7 +48,7 @@ public:
     }
   }
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
 };
 

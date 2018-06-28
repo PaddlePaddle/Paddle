@@ -41,11 +41,11 @@ extern void *cupti_dso_handle;
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
     inline CUptiResult CUPTIAPI operator()(Args... args) {                 \
-      typedef CUptiResult CUPTIAPI (*cuptiFunc)(Args...);                  \
+      using cuptiFunc = decltype(&::__name);                               \
       std::call_once(cupti_dso_flag, []() {                                \
         cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
       });                                                                  \
-      void *p_##__name = dlsym(cupti_dso_handle, #__name);                 \
+      static void *p_##__name = dlsym(cupti_dso_handle, #__name);          \
       return reinterpret_cast<cuptiFunc>(p_##__name)(args...);             \
     }                                                                      \
   };                                                                       \
@@ -72,7 +72,6 @@ extern void *cupti_dso_handle;
   __macro(cuptiGetResultString);              \
   __macro(cuptiActivityGetNumDroppedRecords); \
   __macro(cuptiActivityFlushAll);             \
-  __macro(cuptiFinalize);                     \
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
   __macro(cuptiEnableCallback);               \

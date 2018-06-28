@@ -22,7 +22,7 @@ namespace paddle {
  * TensorShape used to represent shape of normal tensor.
  */
 class TensorShape {
-public:
+ public:
   TensorShape() : ndims_(0), nelements_(0) { initDims(0); }
 
   TensorShape(size_t ndims) : ndims_(ndims), nelements_(1) { initDims(ndims); };
@@ -80,7 +80,7 @@ public:
 
   bool operator!=(const TensorShape& t) const { return !(*this == t); }
 
-private:
+ private:
   // compute number of elements
   void numElements() {
     nelements_ = 1;

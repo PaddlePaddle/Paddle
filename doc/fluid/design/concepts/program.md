@@ -4,7 +4,7 @@
 
 A PaddlePaddle program consists of two parts -- the first generates a `ProgramDesc` protobuf message that describes the program, and the second runs this message using a C++ class `Executor`.
 
-A simple example PaddlePaddle program can be found in [graph.md](./graph.md):
+A simple example PaddlePaddle program can be found in [graph.md](../others/graph.md):
 
 ```python
 x = layer.data("images")

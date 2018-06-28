@@ -29,12 +29,12 @@ namespace paddle {
  */
 
 class SequenceReshapeLayer : public Layer {
-protected:
+ protected:
   std::unique_ptr<Weight> biases_;
 
   MatrixPtr reshapedOutputGrad;
 
-public:
+ public:
   explicit SequenceReshapeLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

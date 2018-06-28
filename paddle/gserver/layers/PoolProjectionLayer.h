@@ -24,13 +24,13 @@ namespace paddle {
  * @brief Basic parent layer of different kinds of pooling
  */
 class PoolProjectionLayer : public PoolLayer {
-protected:
+ protected:
   size_t imgSizeH_, imgSizeW_;
   size_t outputH_, outputW_;
   std::unique_ptr<PoolProjection> poolProjection_;
   ProjectionConfig projectionConfig_;
 
-public:
+ public:
   explicit PoolProjectionLayer(const LayerConfig& config) : PoolLayer(config) {
     PoolConfig* conf = projectionConfig_.mutable_pool_conf();
     *conf = config_.inputs(0).pool_conf();

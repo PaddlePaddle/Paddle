@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/increment_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -46,8 +47,7 @@ class IncrementOp : public framework::OperatorWithKernel {
 
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IncrementOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
     AddAttr<float>("step",
@@ -89,4 +89,4 @@ REGISTER_OP_CPU_KERNEL(
     increment, ops::IncrementKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>)
+    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>);

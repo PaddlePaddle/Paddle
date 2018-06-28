@@ -26,7 +26,7 @@ namespace paddle {
  */
 
 class CudnnPoolLayer : public PoolLayer {
-protected:
+ protected:
   int windowHeight, windowWidth;
   int heightPadding, widthPadding, strideHeight, strideWidth;
   int imageH_, imageW_, outputH_, outputW_;
@@ -40,7 +40,7 @@ protected:
   /// A description of a pooling operation.
   hl_pooling_descriptor poolingDesc_;
 
-public:
+ public:
   static bool typeCheck(const std::string& poolType,
                         hl_pooling_mode_t* mode = nullptr);
   explicit CudnnPoolLayer(const LayerConfig& config);

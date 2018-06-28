@@ -56,7 +56,7 @@ struct ParameterUtilConfig {
  * Utility class for loading and saving parameters
  */
 class ParameterUtil {
-public:
+ public:
   /**
    * Ctor.
    *
@@ -115,7 +115,7 @@ public:
     }
   }
 
-private:
+ private:
   std::shared_ptr<TrainerConfigHelper> config_;
   std::unique_ptr<ParameterUtilConfig> intConfig_;
   GradientMachinePtr gserver_;

@@ -38,11 +38,11 @@ namespace paddle {
  */
 
 class FeatureMapExpandLayer : public Layer {
-private:
+ private:
   int numFilters_;
   bool asRowVector_;
 
-public:
+ public:
   explicit FeatureMapExpandLayer(const LayerConfig& config) : Layer(config) {}
 
   ~FeatureMapExpandLayer() {}

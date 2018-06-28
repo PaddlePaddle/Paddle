@@ -49,7 +49,7 @@ namespace paddle {
  */
 template <class T>
 class ThreadLocal {
-public:
+ public:
   ThreadLocal() {
     CHECK_EQ(pthread_key_create(&threadSpecificKey_, dataDestructor), 0);
   }
@@ -92,7 +92,7 @@ public:
    */
   operator T*() { return get(); }
 
-private:
+ private:
   static void dataDestructor(void* p) { delete (T*)p; }
 
   pthread_key_t threadSpecificKey_;
@@ -111,7 +111,7 @@ private:
  */
 template <class T>
 class ThreadLocalD {
-public:
+ public:
   ThreadLocalD() { CHECK_EQ(pthread_key_create(&threadSpecificKey_, NULL), 0); }
   ~ThreadLocalD() {
     pthread_key_delete(threadSpecificKey_);
@@ -150,7 +150,7 @@ public:
    */
   T& operator*() { return *get(); }
 
-private:
+ private:
   static void dataDestructor(void* p) { delete (T*)p; }
 
   void updateMap(T* p) {
@@ -172,7 +172,7 @@ private:
  * @brief Thread-safe C-style random API.
  */
 class ThreadLocalRand {
-public:
+ public:
   /**
    * initSeed just like srand,
    * called by main thread,
@@ -205,7 +205,7 @@ public:
    */
   static int getDefaultSeed() { return defaultSeed_; }
 
-protected:
+ protected:
   static unsigned int defaultSeed_;
   static ThreadLocal<unsigned int> seed_;
 };
@@ -214,7 +214,7 @@ protected:
  * @brief Thread-safe C++ style random engine.
  */
 class ThreadLocalRandomEngine {
-public:
+ public:
   /**
    * get random_engine for each thread.
    *
@@ -222,7 +222,7 @@ public:
    */
   static std::default_random_engine& get();
 
-protected:
+ protected:
   static ThreadLocal<std::default_random_engine> engine_;
 };
 

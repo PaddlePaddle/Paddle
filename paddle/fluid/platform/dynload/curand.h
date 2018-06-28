@@ -30,11 +30,11 @@ extern void *curand_dso_handle;
   struct DynLoad__##__name {                                                 \
     template <typename... Args>                                              \
     curandStatus_t operator()(Args... args) {                                \
-      typedef curandStatus_t (*curandFunc)(Args...);                         \
+      using curandFunc = decltype(&::__name);                                \
       std::call_once(curand_dso_flag, []() {                                 \
         curand_dso_handle = paddle::platform::dynload::GetCurandDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(curand_dso_handle, #__name);                  \
+      static void *p_##__name = dlsym(curand_dso_handle, #__name);           \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);              \
     }                                                                        \
   };                                                                         \

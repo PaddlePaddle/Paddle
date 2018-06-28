@@ -35,7 +35,7 @@ typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
  *
  */
 class MKLDNNMatrix : public CpuMatrix, public mkldnn::memory {
-public:
+ public:
   MKLDNNMatrix(CpuMatrixPtr m, mkldnn::memory::primitive_desc pd)
       : CpuMatrix(m->getData(), m->getHeight(), m->getWidth(), false),
         mkldnn::memory(pd, m->getData()),
@@ -107,7 +107,7 @@ public:
     dst.copyFrom(*m_);
   }
 
-public:
+ public:
   /**
    * Reorder this MKLDNNMatrix from other format.
    * Support inplace reorder.
@@ -226,7 +226,7 @@ public:
    */
   mkldnn::engine getEngine() { return getPrimitiveDesc().get_engine(); }
 
-protected:
+ protected:
   /**
    * Do reorder once.
    * Can support inplace.
@@ -248,7 +248,7 @@ protected:
     set_data_handle(data);
   }
 
-private:
+ private:
   // save the CpuMatrixPtr in case the buffer released outside
   CpuMatrixPtr m_;
 };

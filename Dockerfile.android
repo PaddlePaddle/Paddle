@@ -27,7 +27,7 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-RUN pip install --upgrade pip && \
+RUN pip install --upgrade pip==9.0.3 && \
     pip install -U 'protobuf==3.1.0' && \
     pip install -U wheel sphinx && \
     pip install pre-commit
@@ -40,5 +40,3 @@ RUN mkdir -p ${ANDROID_TOOLCHAINS_DIR} && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
     rm -rf /opt/android-ndk-tmp
-
-CMD ["bash", "/paddle/paddle/scripts/docker/build_android.sh"]

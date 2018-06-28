@@ -24,7 +24,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -36,9 +35,9 @@ class TopkKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
     // FIXME: only deal with matrix(2d tensor).
-    auto* input = ctx.Input<LoDTensor>("X");
-    auto* output = ctx.Output<LoDTensor>("Out");
-    auto* indices = ctx.Output<LoDTensor>("Indices");
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* indices = ctx.Output<Tensor>("Indices");
     // k is determined by Attr
     const size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
@@ -56,6 +55,9 @@ class TopkKernel : public framework::OpKernel<T> {
     // NOTE: eigen shape doesn't affect paddle tensor.
     eg_input.reshape(flat2dims);
 
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
     for (size_t i = 0; i < row; i++) {
       std::vector<std::pair<T, size_t>> vec;
       for (size_t j = 0; j < col; j++) {

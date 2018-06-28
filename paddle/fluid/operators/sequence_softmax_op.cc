@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_softmax_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
 
 class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor) 1-D or 2-D input LoDTensor with the 2-nd dimension "
              "of length 1.");
@@ -154,9 +154,10 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_softmax, ops::SequenceSoftmaxOp,
-            ops::SequenceSoftmaxOpMaker, sequence_softmax_grad,
-            ops::SequenceSoftmaxGradOp);
+REGISTER_OPERATOR(sequence_softmax, ops::SequenceSoftmaxOp,
+                  ops::SequenceSoftmaxOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
     ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,

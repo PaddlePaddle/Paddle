@@ -32,7 +32,7 @@ const int TGT_SIZE = 21;
 const int CHANNELS = 3;
 
 class PerturbationTest : public testing::Test {
-protected:
+ protected:
   virtual void SetUp() { generateTestImages(gpuImages_); }
 
   virtual void TearDown() {}

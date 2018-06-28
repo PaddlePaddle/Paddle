@@ -30,6 +30,7 @@ class SSAGraphBuilder {
   SSAGraphBuilder() {}
   virtual ~SSAGraphBuilder() {}
   virtual std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const = 0;
+  virtual int GetVarDeviceID(const std::string &var_name) const = 0;
 
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
@@ -48,13 +49,13 @@ class SSAGraphBuilder {
                                                const platform::Place &place,
                                                size_t place_offset);
 
+  // Add an output variable (each_var_name, place, place_offset) to op_handle,
+  // which belongs to graph
   static void CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
                              const std::string &each_var_name,
                              const platform::Place &place, size_t place_offset);
 
   static void AddOutputToLeafOps(SSAGraph *graph);
-
-  static void PrintGraphviz(const SSAGraph &graph, std::ostream &sout);
 };
 }  // namespace details
 }  // namespace framework

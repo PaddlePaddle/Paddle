@@ -6,6 +6,7 @@ PaddlePaddle adheres to the following three sections of code and document specif
 
 
 PaddlePaddle uses git for version control and Docker is used for building and testing environment. The code includes Cuda, C++, Python, Shell and other programming languages，which comply with Google C++ Style, Pep-8, and the code base includes style checking by an automatic inspection tool. Code comments need to follow the Doxygen specification. The code that does not meet the style requirements will fail to compile. We provide the following guidelines for the use of Git, build tests and code development.
+
 ..  toctree::
   :maxdepth: 1
 

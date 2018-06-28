@@ -24,11 +24,11 @@ namespace paddle {
  */
 
 class ClipLayer : public Layer {
-protected:
+ protected:
   double min_;
   double max_;
 
-public:
+ public:
   explicit ClipLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

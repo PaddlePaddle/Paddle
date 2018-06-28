@@ -65,7 +65,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
         auto &grad_rows = grad->rows();
 
         size_t grad_row_numel = grad_value.numel() / grad_rows.size();
-        PADDLE_ENFORCE_EQ(grad_row_numel, param_out->numel() / grad_height);
+        PADDLE_ENFORCE_EQ(static_cast<int64_t>(grad_row_numel),
+                          param_out->numel() / grad_height);
 
         auto *grad_data = grad_value.data<T>();
         auto *out_data = param_out->data<T>();
@@ -73,7 +74,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
         for (size_t i = 0; i < grad_rows.size(); i++) {
           PADDLE_ENFORCE(grad_rows[i] < grad_height,
                          "Input rows index should less than height");
-          for (int64_t j = 0; j < grad_row_numel; j++) {
+          for (size_t j = 0; j < grad_row_numel; j++) {
             out_data[grad_rows[i] * grad_row_numel + j] -=
                 lr[0] * grad_data[i * grad_row_numel + j];
           }
@@ -95,8 +96,12 @@ class SGDOpKernel : public framework::OpKernel<T> {
         return;
       }
 
-      size_t param_row_width = param.value().numel() / param.rows().size();
-      size_t grad_row_width = grad.value().numel() / grad.rows().size();
+      auto param_row_width = param.value().dims()[1];
+      auto grad_row_width = grad.value().dims()[1];
+      VLOG(4) << " param rows: " << param.rows().size()
+              << " param memory rows: " << param.value().dims()[0]
+              << " grad rows: " << grad.rows().size()
+              << " grad memory rows: " << grad.value().dims()[0];
       PADDLE_ENFORCE_EQ(param_row_width, grad_row_width,
                         "param_row should have the same size with grad_row");
 
@@ -106,7 +111,9 @@ class SGDOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < grad.rows().size(); i++) {
         PADDLE_ENFORCE(grad.rows()[i] < grad.height(),
                        "Input rows index should less than height");
-        int64_t id_index = param.index(grad.rows()[i]);
+        int64_t id_index = param.Index(grad.rows()[i]);
+        PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
+                          "id should be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];

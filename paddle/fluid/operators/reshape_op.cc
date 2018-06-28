@@ -22,8 +22,7 @@ namespace operators {
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor). The input tensor of reshape operator.");
     AddInput("Shape",
              "(Tensor<int32>, optional). If provided, reshape according to "
@@ -113,8 +112,9 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OP(reshape, ops::ReshapeOp, ops::ReshapeOpMaker, reshape_grad,
-            ops::ReshapeGradOp);
+REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(reshape, ops::ReshapeKernel<CPU, float>,
                        ops::ReshapeKernel<CPU, double>,
                        ops::ReshapeKernel<CPU, int>,

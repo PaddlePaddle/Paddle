@@ -60,7 +60,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
   static framework::DDim ValidateShape(const std::vector<int> shape,
                                        const framework::DDim &in_dims) {
     const int64_t in_size = framework::product(in_dims);
-    // only one dimension canbe set to -1, whose size will be automatically
+    // only one dimension can be set to -1, whose size will be automatically
     // infered.
     const int64_t unk_dim_val = -1;
     const int64_t copy_dim_val = 0;
@@ -92,9 +92,17 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
 
     if (unk_dim_idx != -1) {
-      output_shape[unk_dim_idx] = -in_size / capacity;
-      PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
-                        "Invalid shape is given.");
+      if (in_size > 0) {
+        // in_size < 0 and is un-determinate in compile time, skip the check,
+        // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
+        // capacity = -24, in_size = -8, output_shape[0] = 0
+        // the following check will fail.
+        output_shape[unk_dim_idx] = -in_size / capacity;
+        PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
+                          "Invalid shape is given.");
+      } else {
+        output_shape[unk_dim_idx] = -1;
+      }
     } else {
       PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
     }
@@ -116,15 +124,18 @@ class ReshapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
-    auto *shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
 
     framework::DDim out_dims = out->dims();
+
     if (shape_tensor) {
       auto *shape_data = shape_tensor->data<int>();
+      framework::Tensor cpu_shape_tensor;
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        framework::Tensor cpu_shape_tensor;
-        TensorCopy(*shape_tensor, platform::CPUPlace(), ctx.device_context(),
-                   &cpu_shape_tensor);
+        TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
         shape_data = cpu_shape_tensor.data<int>();
       }
       auto shape =
@@ -144,8 +155,7 @@ class ReshapeKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     if (!inplace) {
       out->mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
-      // TensorCopy will resize to in_dims.
+      framework::TensorCopySync(*in, ctx.GetPlace(), out);
       out->Resize(out_dims);
     } else {
       out->ShareDataWith(*in);
@@ -167,6 +177,7 @@ class ReshapeGradKernel : public framework::OpKernel<T> {
     auto in_dims = d_x->dims();
     if (!inplace) {
       framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+      ctx.device_context().Wait();
       d_x->Resize(in_dims);
     } else {
       d_x->ShareDataWith(*d_out);

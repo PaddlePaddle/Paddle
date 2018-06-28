@@ -44,13 +44,13 @@ namespace paddle {
  * The config file api if gru_step_layer.
  */
 class GruStepLayer : public Layer, public GruCompute {
-protected:
+ protected:
   Argument gate_;
   Argument resetOutput_;
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> bias_;
 
-public:
+ public:
   explicit GruStepLayer(const LayerConfig& config) : Layer(config) {}
 
   ~GruStepLayer() {}

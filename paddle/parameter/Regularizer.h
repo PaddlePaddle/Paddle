@@ -20,7 +20,7 @@ namespace paddle {
 
 // Regularizer function for parameter, e.g. L1/L2
 class Regularizer {
-public:
+ public:
   virtual void update(const VectorPtr vecs[],
                       const ParameterConfig& paraConfig,
                       real learningRate,  // learningrate from optimizer

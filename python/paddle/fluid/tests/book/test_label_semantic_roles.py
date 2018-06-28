@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import math
-
 import numpy as np
+import os
+import time
+import unittest
+
 import paddle
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
-from paddle.fluid.initializer import init_on_cpu
-import contextlib
-import time
-import unittest
-import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -109,34 +108,11 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
         input_tmp = [mix_hidden, lstm]
 
     feature_out = fluid.layers.sums(input=[
-        fluid.layers.fc(input=input_tmp[0], size=label_dict_len),
-        fluid.layers.fc(input=input_tmp[1], size=label_dict_len)
+        fluid.layers.fc(input=input_tmp[0], size=label_dict_len, act='tanh'),
+        fluid.layers.fc(input=input_tmp[1], size=label_dict_len, act='tanh')
     ])
 
     return feature_out
-
-
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = fluid.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
-
-
-def create_random_lodtensor(lod, place, low, high):
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
 
 
 def train(use_cuda, save_dirname=None, is_local=True):
@@ -171,22 +147,16 @@ def train(use_cuda, save_dirname=None, is_local=True):
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(
         learning_rate=fluid.layers.exponential_decay(
-            learning_rate=0.0001,
+            learning_rate=0.01,
             decay_steps=100000,
             decay_rate=0.5,
             staircase=True))
-    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
-
-    chunk_evaluator = fluid.evaluator.ChunkEvaluator(
-        input=crf_decode,
-        label=target,
-        chunk_scheme="IOB",
-        num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -203,7 +173,6 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
-
         embedding_param = fluid.global_scope().find_var(
             embedding_name).get_tensor()
         embedding_param.set(
@@ -213,27 +182,19 @@ def train(use_cuda, save_dirname=None, is_local=True):
         start_time = time.time()
         batch_id = 0
         for pass_id in xrange(PASS_NUM):
-            chunk_evaluator.reset(exe)
             for data in train_data():
-                cost, precision, recall, f1_score = exe.run(
-                    main_program,
-                    feed=feeder.feed(data),
-                    fetch_list=[avg_cost] + chunk_evaluator.metrics)
-                pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
-                    exe)
+                cost = exe.run(main_program,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_cost])
+                cost = cost[0]
 
                 if batch_id % 10 == 0:
-                    print("avg_cost:" + str(cost) + " precision:" + str(
-                        precision) + " recall:" + str(recall) + " f1_score:" +
-                          str(f1_score) + " pass_precision:" + str(
-                              pass_precision) + " pass_recall:" + str(
-                                  pass_recall) + " pass_f1_score:" + str(
-                                      pass_f1_score))
+                    print("avg_cost:" + str(cost))
                     if batch_id != 0:
                         print("second per batch: " + str((time.time(
                         ) - start_time) / batch_id))
                     # Set the threshold low to speed up the CI test
-                    if float(pass_precision) > 0.05:
+                    if float(cost) < 60.0:
                         if save_dirname is not None:
                             # TODO(liuyiqun): Change the target to crf_decode
                             fluid.io.save_inference_model(save_dirname, [
@@ -248,23 +209,18 @@ def train(use_cuda, save_dirname=None, is_local=True):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
-        t.transpile(
-            optimize_ops,
-            params_grads,
-            trainer_id,
-            pservers=pserver_endpoints,
-            trainers=trainers)
+        t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
@@ -291,23 +247,35 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        lod = [0, 4, 10]
-        word = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        pred = create_random_lodtensor(
-            lod, place, low=0, high=pred_dict_len - 1)
-        ctx_n2 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_n1 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_0 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_p1 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        ctx_p2 = create_random_lodtensor(
-            lod, place, low=0, high=word_dict_len - 1)
-        mark = create_random_lodtensor(
-            lod, place, low=0, high=mark_dict_len - 1)
+        # Setup inputs by creating LoDTensors to represent sequences of words.
+        # Here each word is the basic element of these LoDTensors and the shape of 
+        # each word (base_shape) should be [1] since it is simply an index to 
+        # look up for the corresponding word vector.
+        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
+        # which has only one lod level. Then the created LoDTensors will have only 
+        # one higher level structure (sequence of words, or sentence) than the basic 
+        # element (word). Hence the LoDTensor will hold data for three sentences of 
+        # length 3, 4 and 2, respectively. 
+        # Note that lod info should be a list of lists.
+        lod = [[3, 4, 2]]
+        base_shape = [1]
+        # The range of random integers is [low, high]
+        word = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        pred = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=pred_dict_len - 1)
+        ctx_n2 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_n1 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_0 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_p1 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_p2 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        mark = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=mark_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.

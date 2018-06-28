@@ -23,7 +23,7 @@ func paddlepaddle() {
 }
 ```
 
-This program consists of a [block](block.md) of three operators --
+This program consists of a [block](../concepts/block.md) of three operators --
 `read`, `assign`, and `mult`.  Its `ProgramDesc` message looks like
 the following
 
@@ -39,7 +39,7 @@ message ProgramDesc {
   }
 }
 ```
- 
+
 ## Transpilers
 
 We can write a transpiler program that takes a `ProgramDesc`, e.g.,
@@ -93,7 +93,7 @@ specific hardware platform, for example, the `mult` operator, the
 generated code should call its CUDA kernel:
 
 ```c++
-paddle::Tensor fluid_cuda_mult(const paddle::Tensor& a, 
+paddle::Tensor fluid_cuda_mult(const paddle::Tensor& a,
                                const paddle::Tensor& b) {
   paddle::Tensor t;
   paddle::operator::Mult m(a, b, ...);
@@ -107,4 +107,4 @@ where `cuda_context` could be a global variable of type
 ## Multi-Block Code Generation
 
 Most Fluid application programs may have more than one blocks.  To
-execute them, we need to trace [scopes](scope.md).
+execute them, we need to trace [scopes](../concepts/scope.md).

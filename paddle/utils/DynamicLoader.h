@@ -58,3 +58,11 @@ void GetWarpCTCDsoHandle(void** dso_handle);
  *
  */
 void GetLapackDsoHandle(void** dso_handle);
+
+/**
+ * @brief    load the DSO of tensorrt
+ *
+ * @param    **dso_handle   dso handler
+ *
+ */
+void GetTensorRtDsoHandle(void** dso_handle);

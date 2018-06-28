@@ -36,11 +36,11 @@ extern void* warpctc_dso_handle;
   struct DynLoad__##__name {                                                   \
     template <typename... Args>                                                \
     auto operator()(Args... args) -> decltype(__name(args...)) {               \
-      using warpctcFunc = decltype(__name(args...)) (*)(Args...);              \
+      using warpctcFunc = decltype(&::__name);                                 \
       std::call_once(warpctc_dso_flag, []() {                                  \
         warpctc_dso_handle = paddle::platform::dynload::GetWarpCTCDsoHandle(); \
       });                                                                      \
-      void* p_##_name = dlsym(warpctc_dso_handle, #__name);                    \
+      static void* p_##_name = dlsym(warpctc_dso_handle, #__name);             \
       return reinterpret_cast<warpctcFunc>(p_##_name)(args...);                \
     }                                                                          \
   };                                                                           \

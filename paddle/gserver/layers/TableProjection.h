@@ -32,7 +32,7 @@ namespace paddle {
  * @note If \f$ids[i] = -1\f$, it will be ignored.
  */
 class TableProjection : public Projection {
-public:
+ public:
   TableProjection(const ProjectionConfig& config,
                   const ParameterPtr& parameter,
                   bool useGpu);
@@ -43,7 +43,7 @@ public:
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-protected:
+ protected:
   std::unique_ptr<Weight> table_;
 };
 

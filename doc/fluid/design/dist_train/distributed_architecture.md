@@ -177,7 +177,7 @@ The local training architecture will be the same as the distributed training arc
 ### Training Data
 
 In PaddlePaddle v0.10.0, training data is typically read
-with [data reader](../reader/README.md) from Python. This approach is
+with [data reader](./README.md) from Python. This approach is
 no longer efficient when training distributedly since the Python
 process no longer runs on the same node with the trainer processes,
 the Python reader will need to read from the distributed filesystem

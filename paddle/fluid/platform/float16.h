@@ -873,6 +873,11 @@ HOSTDEVICE inline bool(isfinite)(const float16& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+inline std::ostream& operator<<(std::ostream& os, const float16& a) {
+  os << static_cast<float>(a);
+  return os;
+}
+
 }  // namespace platform
 }  // namespace paddle
 

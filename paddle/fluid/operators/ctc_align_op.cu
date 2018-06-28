@@ -15,6 +15,7 @@ limitations under the License. */
 #include <stdio.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <vector>
 #include "paddle/fluid/operators/ctc_align_op.h"
 
 namespace paddle {

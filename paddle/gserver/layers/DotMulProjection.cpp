@@ -26,14 +26,14 @@ namespace paddle {
  * The config file api is dotmul_projection.
  */
 class DotMulProjection : public Projection {
-public:
+ public:
   DotMulProjection(const ProjectionConfig& config,
                    const ParameterPtr& parameter,
                    bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-protected:
+ protected:
   /// shared memory with parameter
   std::unique_ptr<Weight> weight_;
 };

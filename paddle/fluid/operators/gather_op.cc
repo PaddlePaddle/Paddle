@@ -33,7 +33,6 @@ class GatherOp : public framework::OperatorWithKernel {
     auto index_dims = ctx->GetInputDim("Index");
     PADDLE_ENFORCE(index_dims.size() == 1);
     int batch_size = ctx->GetInputDim("Index")[0];
-    PADDLE_ENFORCE_GE(batch_size, 0, "Batch size must be >0");
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
     ctx->SetOutputDim("Out", output_dims);
@@ -67,8 +66,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GatherOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of gather op");
@@ -100,7 +98,8 @@ Out = [[3, 4],
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(gather, ops::GatherOp, ops::GatherOpMaker, gather_grad,
-            ops::GatherGradOp);
+REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>);

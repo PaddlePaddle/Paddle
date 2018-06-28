@@ -76,14 +76,17 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
 };
 
 class CreateRecordIOReaderOpMaker : public FileReaderMakerBase {
- public:
-  CreateRecordIOReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : FileReaderMakerBase(op_proto, op_checker) {
-    AddAttr<std::string>("filename", "The filename of record io reader");
+ protected:
+  void Apply() override {
+    AddAttr<std::string>(
+        "filename",
+        "The filename of record file. This file will given to reader.");
     AddComment(R"DOC(
-      CreateRecordIOReader Operator
+Open a recordio file and return the reader object. The returned reader object
+is thread-safe.
 
-      Create a reader from a record io file
+NOTE: This is a very low-level API. It is used for debugging data file or
+training. Please use `open_files` instead of this API for production usage.
     )DOC");
   }
 };

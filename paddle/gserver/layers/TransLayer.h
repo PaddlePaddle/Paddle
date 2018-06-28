@@ -29,7 +29,7 @@ namespace paddle {
  * The config file api is trans_layer.
  */
 class TransLayer : public Layer {
-public:
+ public:
   explicit TransLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

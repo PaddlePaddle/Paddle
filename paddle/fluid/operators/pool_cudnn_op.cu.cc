@@ -135,7 +135,11 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
-      pooling_mode = PoolingMode::kMaximum;
+      if (FLAGS_cudnn_deterministic) {
+        pooling_mode = PoolingMode::kMaximumDeterministic;
+      } else {
+        pooling_mode = PoolingMode::kMaximum;
+      }
     } else {
       pooling_mode = PoolingMode::kAverage;
     }
@@ -174,7 +178,8 @@ REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
 
 REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
-                   ops::PoolCUDNNOpKernel<double>);
+                   ops::PoolCUDNNOpKernel<double>,
+                   ops::PoolCUDNNOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>);

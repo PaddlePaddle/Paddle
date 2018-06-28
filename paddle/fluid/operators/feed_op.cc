@@ -66,8 +66,7 @@ class FeedOp : public framework::OperatorBase {
 
 class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FeedOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");
     AddAttr<int>("col", "(int) The column of feed");

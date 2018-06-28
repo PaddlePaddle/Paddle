@@ -20,8 +20,7 @@ namespace operators {
 
 class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Unpool2dOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of unpool operator. "
@@ -132,8 +131,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool_grad,
-            ops::UnpoolOpGrad);
+REGISTER_OPERATOR(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
     unpool, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnpoolKernel<paddle::platform::CPUDeviceContext, double>);

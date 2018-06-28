@@ -41,6 +41,10 @@ if(USE_EIGEN_FOR_BLAS)
     add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
 endif(USE_EIGEN_FOR_BLAS)
 
+if(EIGEN_USE_THREADS)
+    add_definitions(-DEIGEN_USE_THREADS)
+endif(EIGEN_USE_THREADS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -80,6 +84,19 @@ if(WITH_GPU)
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
+
+    if(TENSORRT_FOUND)
+        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
+        endif()
+        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+            message(FATAL_ERROR "TensorRT needs CUDNN >= 7.0 to compile")
+        endif()
+        if(${TENSORRT_MAJOR_VERSION} VERSION_LESS 4)
+            message(FATAL_ERROR "Paddle needs TensorRT >= 4.0 to compile")
+        endif()
+        include_directories(${TENSORRT_INCLUDE_DIR})
+    endif()
 elseif(WITH_AMD_GPU)
     add_definitions(-DPADDLE_WITH_HIP)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
@@ -100,6 +117,10 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
+
+if(WITH_DISTRIBUTE)
+  add_definitions(-DPADDLE_WITH_DISTRIBUTE)
+endif()
 
 if(WITH_GOLANG)
   # we need to symlink Paddle directory into GOPATH. If we
@@ -149,3 +170,7 @@ if(WITH_GOLANG)
   endif()
 
 endif(WITH_GOLANG)
+
+if(WITH_GRPC)
+    add_definitions(-DPADDLE_WITH_GRPC)
+endif(WITH_GRPC)

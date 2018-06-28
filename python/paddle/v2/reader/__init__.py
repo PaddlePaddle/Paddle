@@ -50,7 +50,7 @@ An example implementation for single item data reader creator:
         def reader():
             while True:
                 yield numpy.random.uniform(-1, 1, size=width*height)
-    return reader
+        return reader
 
 An example implementation for multiple item data reader creator:
 
@@ -60,7 +60,7 @@ An example implementation for multiple item data reader creator:
         def reader():
             while True:
                 yield numpy.random.uniform(-1, 1, size=width*height), label
-    return reader
+        return reader
 
 
 TODO(yuyang18): Should we add whole design doc here?

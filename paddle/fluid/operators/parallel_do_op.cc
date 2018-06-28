@@ -196,8 +196,7 @@ class ParallelDoOp : public framework::OperatorBase {
 
 class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ParallelDoOpProtoMaker(OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kInputs, "").AsDuplicable();
     AddInput(kParameters, "").AsDuplicable();
     AddInput(kPlaces, "");
@@ -296,7 +295,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
-            framework::AttributeMap{});
+            framework::AttributeMap{{"use_mkldnn", {false}}});
         VLOG(10) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);
@@ -364,7 +363,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kParallelBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kParallelBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
   }

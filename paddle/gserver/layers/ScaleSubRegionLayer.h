@@ -29,7 +29,7 @@ namespace paddle {
  *                  region.
  */
 class ScaleSubRegionLayer : public Layer {
-public:
+ public:
   explicit ScaleSubRegionLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ScaleSubRegionLayer() {}
@@ -40,7 +40,7 @@ public:
 
   void backward(const UpdateCallback& callback = nullptr);
 
-protected:
+ protected:
   TensorShape shape_;
   TensorShape indicesShape_;
   size_t imgH_;

@@ -129,7 +129,7 @@ void RowConvGrad<DEVICE_TYPE_CPU>(const CpuMatrix& outG,
 
 template <DeviceType Device>
 class RowConvFunc : public FunctionBase {
-public:
+ public:
   void init(const FuncConfig& config) override {}
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -176,7 +176,7 @@ public:
 template <DeviceType Device>
 class RowConvGradFunc : public FunctionBase {
   // TODO(qingqing): split into RowConvDataFunc and RowConvWeightFunc
-public:
+ public:
   void init(const FuncConfig& config) override {}
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {

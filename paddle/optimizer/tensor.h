@@ -26,7 +26,7 @@ namespace optimizer {
 
 template <class T>
 class TensorT {
-public:
+ public:
   TensorT(size_t size) : height_(1), width_(size) {
     // new T[size]() initializes all element to zero value.
     data_ptr_ = std::shared_ptr<T>(new T[size](), std::default_delete<T[]>());
@@ -54,7 +54,7 @@ public:
   // TODO: replace with tensorshape
   size_t size() const { return this->width_ * this->height_; }
 
-protected:
+ protected:
   size_t height_;
   size_t width_;
   std::shared_ptr<T> data_ptr_;

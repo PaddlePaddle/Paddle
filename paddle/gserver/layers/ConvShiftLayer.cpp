@@ -42,7 +42,7 @@ namespace paddle {
  */
 
 class ConvShiftLayer : public Layer {
-public:
+ public:
   explicit ConvShiftLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ConvShiftLayer() {}

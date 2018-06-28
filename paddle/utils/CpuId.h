@@ -35,7 +35,7 @@ enum simd_t {
 // clang-format on
 
 class SIMDFlags final {
-public:
+ public:
   DISABLE_COPY(SIMDFlags);
 
   SIMDFlags();
@@ -46,7 +46,7 @@ public:
     return !((simd_flags_ & flags) ^ flags);
   }
 
-private:
+ private:
   int simd_flags_ = SIMD_NONE;
 };
 

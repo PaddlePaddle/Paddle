@@ -36,7 +36,7 @@ namespace paddle {
  */
 
 class SlopeInterceptLayer : public Layer {
-public:
+ public:
   explicit SlopeInterceptLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap,

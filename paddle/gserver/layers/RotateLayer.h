@@ -32,7 +32,7 @@ namespace paddle {
  */
 
 class RotateLayer : public Layer {
-public:
+ public:
   explicit RotateLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -40,7 +40,7 @@ public:
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
 
-private:
+ private:
   int batchSize_;
   int size_;
   int height_;

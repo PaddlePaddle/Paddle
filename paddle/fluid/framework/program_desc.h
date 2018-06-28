@@ -51,6 +51,8 @@ class ProgramDesc {
 
   size_t Size() const { return blocks_.size(); }
 
+  void Flush();
+
   proto::ProgramDesc *Proto();
 
   // The output variable of feed_op is referenced as feed_target.

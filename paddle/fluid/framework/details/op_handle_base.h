@@ -24,11 +24,72 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class OpHandleBase {
- private:
-  DISABLE_COPY_AND_ASSIGN(OpHandleBase);
+constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 
+class OpHandleBase {
  public:
+  OpHandleBase() {}
+
+  virtual ~OpHandleBase();
+
+  std::string DebugString() const;
+
+  virtual std::string Name() const = 0;
+
+  void Run(bool use_cuda);
+
+  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
+
+  void AddInput(VarHandleBase *in);
+
+  void AddOutput(VarHandleBase *out);
+
+  // This method adds the wait events of all the input on all the device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated();
+
+  // This method adds the wait events of all the input on the specified device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated(const platform::Place &place);
+
+  virtual bool NeedWait(VarHandleBase *in_var);
+
+  // If the Op involves data transfer of multiple devices that
+  // will likely block other computations.
+  virtual bool IsMultiDeviceTransfer() { return false; }
+
+  const platform::DeviceContext *DeviceContext(platform::Place place) {
+    return dev_ctxes_[place];
+  }
+
+  void SetDeviceContext(platform::Place place, platform::DeviceContext *ctx_) {
+    dev_ctxes_[place] = ctx_;
+  }
+
+  const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
+
+  size_t NoDupInputSize() const {
+    std::unordered_set<VarHandleBase *> res;
+    for (auto *var : inputs_) {
+      res.emplace(var);
+    }
+    return res.size();
+  }
+
+  const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  size_t NoDummyInputSize() const;
+
+ protected:
+  void RunAndRecordEvent(const std::function<void()> &callback);
+
+  void RunAndRecordEvent(platform::Place p,
+                         const std::function<void()> &callback);
+
+  virtual void RunImpl() = 0;
+
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
   std::unordered_map<platform::Place, platform::DeviceContext *,
@@ -39,28 +100,7 @@ class OpHandleBase {
   std::unordered_map<int, cudaEvent_t> events_;
 #endif
 
-  OpHandleBase() {}
-
-  std::string DebugString() const;
-
-  virtual std::string Name() const = 0;
-
-  virtual ~OpHandleBase();
-
-  void Run(bool use_event);
-
-  virtual void Wait(platform::DeviceContext *waited_dev);
-
-  void AddInput(VarHandleBase *in);
-
-  void AddOutput(VarHandleBase *out);
-
-  // If the Op involves data transfer of multiple devices that
-  // will likely block other computations.
-  virtual bool IsMultiDeviceTransfer() { return false; }
-
- protected:
-  virtual void RunImpl() = 0;
+  DISABLE_COPY_AND_ASSIGN(OpHandleBase);
 };
 
 }  // namespace details

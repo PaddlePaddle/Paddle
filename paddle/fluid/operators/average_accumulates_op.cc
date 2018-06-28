@@ -111,8 +111,7 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
 
 class AverageAccumulatesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AverageAccumulatesOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("param", "(Tensor), The parameter to be accumulated.");
     AddInput("in_sum_1",
              "(Tensor), A tensor used to store the parameter "

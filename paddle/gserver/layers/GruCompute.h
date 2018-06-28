@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 
 class GruCompute {
-public:
+ public:
   void init(LayerConfig &config);
 
   template <bool useGpu>
@@ -33,7 +33,7 @@ public:
                 int frameSize,
                 int batchSize = 1);
 
-public:
+ public:
   hl_activation_mode_t activeNode_;
   hl_activation_mode_t activeGate_;
 };

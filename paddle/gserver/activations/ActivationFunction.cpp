@@ -44,10 +44,10 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  */
 #define BEGIN_DEFINE_ACTIVATION(ACTIVATION_NAME)                             \
   class ACTIVATION_CLASS_NAME(ACTIVATION_NAME) : public ActivationFunction { \
-  private:                                                                   \
+   private:                                                                  \
     static const std::string name;                                           \
                                                                              \
-  public:                                                                    \
+   public:                                                                   \
     const std::string& getName() const { return name; }
 /**
  * @def END_DEFINE_ACTIVATION
@@ -70,7 +70,7 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  * Do nothing when forward/backward.
  */
 class IdentityActivation : public ActivationFunction {
-public:
+ public:
   static const std::string name;
   Error __must_check forward(Argument& act) {
     (void)act;

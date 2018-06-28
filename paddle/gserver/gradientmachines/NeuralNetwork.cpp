@@ -362,7 +362,7 @@ void NeuralNetwork::releaseOutput() {
 #ifndef PADDLE_MOBILE_INFERENCE
 
 class CombinedEvaluator : public Evaluator {
-public:
+ public:
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
   }
@@ -400,11 +400,11 @@ public:
     }
   }
 
-protected:
+ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 
   // Evaluator interface
-public:
+ public:
   /**
    * @brief getNames will return all inside evaluators' names.
    * @param names [out]: return names.
@@ -435,7 +435,7 @@ public:
         });
   }
 
-private:
+ private:
   template <typename T>
   T getMethodHelper(const std::string& name,
                     Error* err,
@@ -454,7 +454,7 @@ private:
 };
 
 class SubnetEvaluator : public CombinedEvaluator {
-public:
+ public:
   SubnetEvaluator(const std::string& layerName,
                   std::unique_ptr<Evaluator>&& evaluator)
       : layerName_(layerName) {
@@ -473,7 +473,7 @@ public:
                     << " in submodel " << nn.getName();
   }
 
-protected:
+ protected:
   std::string layerName_;
 };
 

@@ -74,13 +74,13 @@ class TestRecordIO(unittest.TestCase):
 
                 avg_loss_np.append(tmp)
                 batch_id += 1
-            data_file.reset()
             self.assertEqual(batch_id, self.num_batches)
             self.assertLess(avg_loss_np[-1], avg_loss_np[0])
 
     def test_shuffle_reader(self):
-        self.test_main(decorator_callback=lambda reader: fluid.layers.io.shuffle(reader, buffer_size=200))
+        self.test_main(decorator_callback=lambda reader: fluid.layers.io.shuffle(
+            reader, buffer_size=200))
 
     def test_double_buffer_reader(self):
         self.test_main(decorator_callback=lambda reader: fluid.layers.io.double_buffer(reader,
-                                                                                                  place='cuda:0' if fluid.core.is_compiled_with_cuda() else 'cpu'))
+                                                                                       place='cuda:0' if fluid.core.is_compiled_with_cuda() else 'cpu'))

@@ -69,8 +69,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ShrinkRNNMemoryOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) The RNN step memory to be shrinked.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
     AddInput("I",

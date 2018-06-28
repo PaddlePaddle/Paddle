@@ -17,43 +17,58 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(DataTypeTransform, CPUTransform) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
+  auto place = paddle::platform::CPUPlace();
 
-  auto place = CPUPlace();
+  auto kernel_fp16 = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::FP16, place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp16 = OpKernelType(proto::VarType::FP16, place,
-                                  DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_fp32 = OpKernelType(proto::VarType::FP32, place,
-                                  DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_fp64 = OpKernelType(proto::VarType::FP64, place,
-                                  DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_int32 = OpKernelType(proto::VarType::INT32, place,
-                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_int64 = OpKernelType(proto::VarType::INT64, place,
-                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_bool = OpKernelType(proto::VarType::BOOL, place,
-                                  DataLayout::kAnyLayout, LibraryType::kPlain);
+  auto kernel_fp32 = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::FP32, place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_fp64 = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::FP64, place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_int32 = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::INT32, place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_int64 = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::INT64, place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_bool = paddle::framework::OpKernelType(
+      paddle::framework::proto::VarType::BOOL, place,
+      paddle::framework::DataLayout::kAnyLayout,
+      paddle::framework::LibraryType::kPlain);
 
   // data type transform from float32
   {
-    Tensor in;
-    Tensor out;
+    paddle::framework::Tensor in;
+    paddle::framework::Tensor out;
 
-    float* ptr = in.mutable_data<float>(make_ddim({2, 3}), place);
+    float* ptr =
+        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
       ptr[i] = i / 3;
     }
 
-    TransDataType(kernel_fp32, kernel_fp64, in, &out);
+    paddle::framework::TransDataType(kernel_fp32, kernel_fp64, in, &out);
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_double[i], static_cast<double>(i / 3));
     }
 
-    TransDataType(kernel_fp32, kernel_int32, in, &out);
+    paddle::framework::TransDataType(kernel_fp32, kernel_int32, in, &out);
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_int[i], static_cast<int>(i / 3));
@@ -62,10 +77,11 @@ TEST(DataTypeTransform, CPUTransform) {
 
   // data type transform from/to float16
   {
-    Tensor in;
-    Tensor out;
+    paddle::framework::Tensor in;
+    paddle::framework::Tensor out;
 
-    float16* ptr = in.mutable_data<float16>(make_ddim({2, 3}), place);
+    paddle::platform::float16* ptr = in.mutable_data<paddle::platform::float16>(
+        paddle::framework::make_ddim({2, 3}), place);
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
@@ -73,94 +89,104 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     // transform from float16 to other data types
-    TransDataType(kernel_fp16, kernel_fp32, in, &out);
+    paddle::framework::TransDataType(kernel_fp16, kernel_fp32, in, &out);
     float* out_data_float = out.data<float>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
     }
 
-    TransDataType(kernel_fp16, kernel_fp64, in, &out);
+    paddle::framework::TransDataType(kernel_fp16, kernel_fp64, in, &out);
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
     }
 
-    TransDataType(kernel_fp16, kernel_int32, in, &out);
+    paddle::framework::TransDataType(kernel_fp16, kernel_int32, in, &out);
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
     }
 
-    TransDataType(kernel_fp16, kernel_int64, in, &out);
+    paddle::framework::TransDataType(kernel_fp16, kernel_int64, in, &out);
     int64_t* out_data_int64 = out.data<int64_t>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
     }
 
-    TransDataType(kernel_fp16, kernel_bool, in, &out);
+    paddle::framework::TransDataType(kernel_fp16, kernel_bool, in, &out);
     bool* out_data_bool = out.data<bool>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
     }
 
     // transform float to float16
-    float* in_data_float = in.mutable_data<float>(make_ddim({2, 3}), place);
+    float* in_data_float =
+        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_float[i] = i;
     }
 
-    TransDataType(kernel_fp32, kernel_fp16, in, &out);
-    ptr = out.data<float16>();
+    paddle::framework::TransDataType(kernel_fp32, kernel_fp16, in, &out);
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_float[i]).x);
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_float[i]).x);
     }
 
     // transform double to float16
-    double* in_data_double = in.mutable_data<double>(make_ddim({2, 3}), place);
+    double* in_data_double =
+        in.mutable_data<double>(paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_double[i] = i;
     }
 
-    TransDataType(kernel_fp64, kernel_fp16, in, &out);
-    ptr = out.data<float16>();
+    paddle::framework::TransDataType(kernel_fp64, kernel_fp16, in, &out);
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_double[i]).x);
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_double[i]).x);
     }
 
     // transform int to float16
-    int* in_data_int = in.mutable_data<int>(make_ddim({2, 3}), place);
+    int* in_data_int =
+        in.mutable_data<int>(paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int[i] = i;
     }
 
-    TransDataType(kernel_int32, kernel_fp16, in, &out);
-    ptr = out.data<float16>();
+    paddle::framework::TransDataType(kernel_int32, kernel_fp16, in, &out);
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_int[i]).x);
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_int[i]).x);
     }
 
     // transform int64 to float16
-    int64_t* in_data_int64 = in.mutable_data<int64_t>(make_ddim({2, 3}), place);
+    int64_t* in_data_int64 =
+        in.mutable_data<int64_t>(paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int64[i] = i;
     }
 
-    TransDataType(kernel_int64, kernel_fp16, in, &out);
-    ptr = out.data<float16>();
+    paddle::framework::TransDataType(kernel_int64, kernel_fp16, in, &out);
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_int64[i]).x);
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_int64[i]).x);
     }
 
     // transform bool to float16
-    bool* in_data_bool = in.mutable_data<bool>(make_ddim({2, 3}), place);
+    bool* in_data_bool =
+        in.mutable_data<bool>(paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_bool[i] = i;
     }
 
-    TransDataType(kernel_bool, kernel_fp16, in, &out);
-    ptr = out.data<float16>();
+    paddle::framework::TransDataType(kernel_bool, kernel_fp16, in, &out);
+    ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_bool[i]).x);
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_bool[i]).x);
     }
   }
 }

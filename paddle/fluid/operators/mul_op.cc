@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -74,8 +76,7 @@ class MulOp : public framework::OperatorWithKernel {
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
@@ -159,8 +160,12 @@ class MulGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
+REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
-    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
+    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);

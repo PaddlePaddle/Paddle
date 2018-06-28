@@ -26,21 +26,24 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
                    "Input(X) of FillZerosLikeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillZerosLikeOp should not be null.");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
+
+    if (ctx->IsRuntime() &&
+        ctx->GetOutputsVarType("Out")[0] ==
+            framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      return;  // skip runtime infershape when is tensor array;
+    }
   }
 };
 
 class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillZerosLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of fill-zeros-like op.");
     AddOutput("Out", "The variable will be filled up with zeros.");
     AddComment(R"DOC(
 FillZerosLike Operator.
 
-Fill up a variable with zeros.
+Fill up a variable with zeros, supporting both LoDTensor and LoDTensorArray.
 The output will have the same size as the input.
 
 )DOC");

@@ -58,8 +58,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupTableOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("W",
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
@@ -77,6 +76,9 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "
                   "Sparse update.")
+        .SetDefault(false);
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.")
         .SetDefault(false);
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "

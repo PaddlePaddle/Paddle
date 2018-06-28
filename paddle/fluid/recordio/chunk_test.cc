@@ -43,5 +43,5 @@ TEST(Chunk, Compressor) {
 
   ch.Clear();
   ch.Parse(ss);
-  ASSERT_EQ(ch.NumBytes(), 18);
+  ASSERT_EQ(ch.NumBytes(), 18ul);
 }

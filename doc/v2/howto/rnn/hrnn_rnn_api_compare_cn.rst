@@ -134,7 +134,7 @@
 
 **输入不等长** 是指recurrent_group的多个输入序列，在每个时间步的子序列长度可以不相等。但序列输出时，需要指定与某一个输入的序列信息是一致的。使用\ :red:`targetInlink`\ 可以指定哪一个输入和输出序列信息一致，默认指定第一个输入。 
 
-示例3的配置分别为\ `单层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.conf>`_\ 和\ `双层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.conf>`_\ 。
+示例3的配置分别为\ `单层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_\ 和\ `双层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ 。
 
 示例3对于单层RNN和双层RNN数据完全相同。
 

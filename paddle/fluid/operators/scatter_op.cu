@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gather.cu.h"
+#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_op.h"
-#include "scatter.cu.h"
+#include "paddle/fluid/operators/scatter.cu.h"
+#include "paddle/fluid/operators/scatter_op.h"
 
 namespace paddle {
 namespace operators {

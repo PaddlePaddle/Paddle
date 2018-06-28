@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <string>
+#include <tuple>
 #include <type_traits>
 #include <typeinfo>
 #include <unordered_map>
@@ -81,8 +83,14 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
   void operator()(const char* op_type, const char* library_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+    std::string library(library_type);
+    std::string data_layout = "ANYLAYOUT";
+    if (library == "MKLDNN") {
+      data_layout = "MKLDNNLAYOUT";
+    }
     OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
-                     DataLayout::kAnyLayout, StringToLibraryType(library_type));
+                     StringToDataLayout(data_layout),
+                     StringToLibraryType(library_type));
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
@@ -97,7 +105,8 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
   void operator()(const char* op_type, const char* library_type) const {}
 };
 
-// User can register many kernel in one place. The data type could be different.
+// User can register many kernel in one place. The data type could be
+// different.
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
@@ -141,51 +150,21 @@ class OpKernelRegistrar : public Registrar {
     return 0;                                                          \
   }
 
-/**
- * Macro to register Operator. When the input is duplicable, you should
- * use REGISTER_OP_EX with drop_empty_grad=false instead.
- */
-#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type, \
-                    grad_op_class)                                   \
-  REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,    \
-                 grad_op_class, true)
-
-// When an argument is duplicable, we need to use this version.
-// Perhaps we can omit DropEmptyIG template parameter and
-// only have one version of REGISTER_OP.
-#define REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,       \
-                       grad_op_class, drop_empty_grad)                        \
-  REGISTER_OPERATOR(grad_op_type, grad_op_class);                             \
-  class _GradOpDescMaker_##grad_op_type##_                                    \
-      : public ::paddle::framework::DefaultGradOpDescMaker<drop_empty_grad> { \
-    using ::paddle::framework::DefaultGradOpDescMaker<                        \
-        drop_empty_grad>::DefaultGradOpDescMaker;                             \
-                                                                              \
-   protected:                                                                 \
-    virtual std::string GradOpType() const { return #grad_op_type; }          \
-  };                                                                          \
-  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_,    \
-                    op_maker_class);
-
-#define REGISTER_OP_WITH_KERNEL(op_type, ...)                         \
-  REGISTER_OPERATOR(op_type, ::paddle::framework::OperatorWithKernel, \
-                    ##__VA_ARGS__)
-
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
   REGISTER_OPERATOR(op_type, op_class, op_maker_class)
 
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, LIBRARY_TYPE, place_class, ...)        \
+#define REGISTER_OP_KERNEL(op_type, library_type, place_class, ...)        \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##__,                      \
+      __reg_op_kernel_##op_type##_##library_type##__,                      \
       "REGISTER_OP_KERNEL must be called in global namespace");            \
   static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
-      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__(#op_type,       \
-                                                           #LIBRARY_TYPE); \
-  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE() {                \
-    __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__.Touch();          \
+      __op_kernel_registrar_##op_type##_##library_type##__(#op_type,       \
+                                                           #library_type); \
+  int TouchOpKernelRegistrar_##op_type##_##library_type() {                \
+    __op_kernel_registrar_##op_type##_##library_type##__.Touch();          \
     return 0;                                                              \
   }
 

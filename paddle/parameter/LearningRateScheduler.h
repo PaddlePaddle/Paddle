@@ -26,7 +26,7 @@ namespace paddle {
   })
 
 class LearningRateScheduler {
-public:
+ public:
   static LearningRateScheduler* create(const OptimizationConfig& config);
   virtual ~LearningRateScheduler() {}
   virtual real calcLearningRate(int64_t numSamplesProcessed, int64_t pass) = 0;

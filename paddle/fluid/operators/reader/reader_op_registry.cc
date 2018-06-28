@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "reader_op_registry.h"
+#include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -51,11 +53,8 @@ std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
   return std::unique_ptr<framework::ReaderBase>(reader);
 }
 
-FileReaderMakerBase::FileReaderMakerBase(
-    framework::OpProtoAndCheckerMaker::OpProto* op_proto,
-    framework::OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(op_proto, op_checker) {
-  AddOutput("Out", "(ReaderHolder) The created random reader.").AsDuplicable();
+void FileReaderMakerBase::Make() {
+  AddOutput("Out", "(ReaderHolder): The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
   AddAttr<std::vector<int>>(
       "ranks",
@@ -66,6 +65,7 @@ FileReaderMakerBase::FileReaderMakerBase(
       "It means the reader will generate two data each time,"
       "whose shapes are [2,3,4] and [5,6] respectively.");
   AddAttr<std::vector<int>>("lod_levels", "The LoD levels of each data.");
+  Apply();
 }
 
 void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
@@ -115,6 +115,7 @@ void DecoratedReaderInferShape::operator()(
       boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
   out_reader->SetLoDLevels(in_reader->GetLoDLevels());
 }
+
 void DecoratedReaderInferVarType::operator()(
     const framework::OpDesc& op_desc, framework::BlockDesc* block) const {
   std::string in_reader_name = op_desc.Input("UnderlyingReader")[0];
@@ -125,13 +126,11 @@ void DecoratedReaderInferVarType::operator()(
   out_reader->SetDataTypes(in_reader->GetDataTypes());
 }
 
-DecoratedReaderMakerBase::DecoratedReaderMakerBase(
-    framework::OpProtoAndCheckerMaker::OpProto* op_proto,
-    framework::OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(op_proto, op_checker) {
+void DecoratedReaderMakerBase::Make() {
   AddInput("UnderlyingReader",
            "(ReaderHolder) The underlying reader for creating a batch reader.");
   AddOutput("Out", "(ReaderHolder) The created batch reader.");
+  Apply();
 }
 
 }  // namespace reader

@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program
+from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program, Program
 from ..unique_name import generate as unique_name
 from control_flow import BlockGuard
 from ..layer_helper import LayerHelper
 from ..executor import global_scope
+from layer_function_generator import generate_layer_fn, templatedoc
 
 __all__ = [
-    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'open_files', 'read_file', 'shuffle', 'double_buffer'
+    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
+    'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
+    'double_buffer', 'random_data_generator', 'Preprocessor', 'load'
 ]
 
 
@@ -50,8 +53,6 @@ def data(name,
        dtype(int|float): The type of data : float32, float_16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
-       main_program(Program): Name of the main program that calls this
-       startup_program(Program): Name of the startup program
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
 
     Returns:
@@ -74,13 +75,15 @@ def data(name,
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
 
-    return helper.create_global_variable(
+    data_var = helper.create_global_variable(
         name=name,
         shape=shape,
         dtype=dtype,
         type=type,
         stop_gradient=stop_gradient,
-        lod_level=lod_level)
+        lod_level=lod_level,
+        is_data=True)
+    return data_var
 
 
 class BlockGuardServ(BlockGuard):
@@ -106,10 +109,35 @@ class BlockGuardServ(BlockGuard):
 
 class ListenAndServ(object):
     """
-    ListenAndServ class.
+    **ListenAndServ Layer**
 
-    ListenAndServ class is used to wrap listen_and_serv op to create a server
-    which can receive variables from clients and run a block.
+    ListenAndServ is used to create a rpc server bind and listen
+    on specific TCP port, this server will run the sub-block when
+    received variables from clients.
+
+    Args:
+        endpoint(string): IP:port string which the server will listen on.
+        inputs(list): a list of variables that the server will get from clients.
+        fan_in(int): how many client are expected to report to this server, default: 1.
+        optimizer_mode(bool): whether to run the server as a parameter server, default: True.
+
+    Examples:
+        .. code-block:: python
+
+            with fluid.program_guard(main):
+                serv = layers.ListenAndServ(
+                    "127.0.0.1:6170", ["X"], optimizer_mode=False)
+                with serv.do():
+                    x = layers.data(
+                        shape=[32, 32],
+                        dtype='float32',
+                        name="X",
+                        append_batch_size=False)
+                    fluid.initializer.Constant(value=1.0)(x, main.global_block())
+                    layers.scale(x=x, scale=10.0, out=out_var)
+
+            exe = fluid.Executor(place)
+            exe.run(main)
     """
 
     def __init__(self, endpoint, inputs, fan_in=1, optimizer_mode=True):
@@ -166,56 +194,59 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'OptimizeBlock': current_block
+                'optimize_blocks': [
+                    current_block
+                ],  # did not support multiple optimize blocks in layers
+                'sync_mode': True,  # did not support async now in layers
+                'grad_to_block_id': [""]
             })
 
 
-def Send(endpoints, send_vars, get_vars):
+def Send(endpoints, send_vars, sync=True):
     """
-    Send layer
-
-    Args:
-        endpoints: comma seperated IP:PORT pairs in the order
-                   of send_vars to send
-        send_vars: vars to send
-        get_vars: vars to get from server after send completes.
-
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
+
+    Args:
+        endpoints (str): comma seperated IP:PORT pairs in the order
+                   of send_vars to send
+        send_vars (list): variables to send to server
+        sync (bool): whether to wait the request finish
+
     """
     assert (type(send_vars) == list)
-    assert (type(get_vars) == list)
 
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Send", **locals())
-    rpc_client_var = default_main_program().global_block().create_var(
-        name="RPC_CLIENT_VAR", persistable=True, type=core.VarDesc.VarType.RAW)
+    rpc_op_role_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
-        outputs={"Out": get_vars,
-                 "RPCClient": rpc_client_var},
-        attrs={"endpoints": endpoints,
-               "epmap": epmap})
+        attrs={
+            "endpoints": endpoints,
+            "epmap": epmap,
+            rpc_op_role_name: core.op_proto_and_checker_maker.OpRole.RPC
+        })
+    if sync:
+        helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
 
 
-def Recv(endpoints, get_vars):
+def Recv(endpoints, get_vars, sync=True):
     """
-    Recv layer
+    Receive variables from server side
 
     Args:
-        endpoints: comma seperated IP:PORT pairs in the order
+        endpoints (str): comma seperated IP:PORT pairs in the order
                    of send_vars to send
-        send_vars: vars to send
-        get_vars: vars to get from server after send completes.
+        get_vars (list): vars to get from server after send completes.
+        sync (bool): whether to wait the request finish
 
-    Send variables to the server side, and get vars from server
-    side when server have finished running server side program.
+    Returns:
+        list: list of received variables
     """
-    assert (type(send_vars) == list)
     assert (type(get_vars) == list)
 
     epmap = endpoints.split(",")
@@ -228,6 +259,9 @@ def Recv(endpoints, get_vars):
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
+    if sync:
+        helper.append_op(type="fetch_barrier", attrs={"endpoints": endpoints})
+    return get_vars
 
 
 def monkey_patch_reader_methods(reader):
@@ -278,41 +312,38 @@ def _copy_reader_create_op_(block, op):
     return new_op
 
 
+@templatedoc(op_type='create_recordio_file_reader')
 def open_recordio_file(filename,
                        shapes,
                        lod_levels,
                        dtypes,
                        pass_num=1,
-                       for_parallel=False):
+                       for_parallel=True):
     """
-    Open a RecordIO file
-
-    This layer takes a RecordIO file to read from and returns a Reader Variable.
-    Via the Reader Variable, we can get data from the given RecordIO file.
+    ${comment}
 
     Args:
-       filename(str): The RecordIO file's name.
+       filename(${filename_type}): ${filename_comment}.
        shapes(list): List of tuples which declaring data shapes.
-       lod_levels(list): List of ints which declaring data lod_level.
+       lod_levels(${lod_levels_type}): ${lod_levels_comment}.
        dtypes(list): List of strs which declaring data type.
        pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run
             subsequent operators in parallel.
 
     Returns:
-       Variable: A Reader Variable via which we can get RecordIO file data.
+       ${out_comment}.
 
     Examples:
-       .. code-block:: python
 
-         reader = fluid.layers.io.open_recordio_file(
-                                          filename='./data.recordio',
-                                          shapes=[(3,224,224), (1)],
-                                          lod_levels=[0, 0],
-                                          dtypes=['float32', 'int64'])
-
-         # Via the reader, we can use 'read_file' layer to get data:
-         image, label = fluid.layers.read_file(reader)
+        >>> import paddle.fluid as fluid
+        >>> reader = fluid.layers.io.open_recordio_file(
+        >>>                               filename='./data.recordio',
+        >>>                               shapes=[(3,224,224), (1)],
+        >>>                               lod_levels=[0, 0],
+        >>>                               dtypes=['float32', 'int64'])
+        >>> # Via the reader, we can use 'read_file' layer to get data:
+        >>> image, label = fluid.layers.io.read_file(reader)
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -350,14 +381,81 @@ def open_recordio_file(filename,
     return monkey_patch_reader_methods(main_prog_var)
 
 
+def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
+    """
+    Create a uniform random data generator
+
+    This layer returns a Reader Variable.
+    Instead of opening a file and reading data from it, this 
+    Reader Variable generates float uniform random data by itself. 
+    It can be used as a dummy reader to test a network without 
+    opening a real file.
+
+    Args:
+       low(float): The lower bound of data's uniform distribution.
+       high(float): The upper bound of data's uniform distribution.
+       shapes(list): List of tuples which declaring data shapes.
+       lod_levels(list): List of ints which declaring data lod_level.
+       for_parallel(Bool): Set it as True if you are going to run
+            subsequent operators in parallel.
+
+    Returns:
+       Variable: A Reader Variable from which we can get random data.
+
+    Examples:
+
+        .. code-block:: python
+
+            reader = fluid.layers.random_data_generator(
+                                             low=0.0,
+                                             high=1.0,
+                                             shapes=[[3,224,224], [1]],
+                                             lod_levels=[0, 0])
+            # Via the reader, we can use 'read_file' layer to get data:
+            image, label = fluid.layers.read_file(reader)
+    """
+    dtypes = [core.VarDesc.VarType.FP32] * len(shapes)
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    var_name = unique_name('random_data_generator')
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=var_name)
+    startup_blk.append_op(
+        type='create_random_data_generator',
+        outputs={'Out': [startup_var]},
+        attrs={
+            'low': low,
+            'high': high,
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+
+    if for_parallel:
+        main_prog_var = parallel(reader=main_prog_var)
+
+    return monkey_patch_reader_methods(main_prog_var)
+
+
 def open_files(filenames,
                shapes,
                lod_levels,
                dtypes,
-               thread_num,
+               thread_num=1,
                buffer_size=None,
                pass_num=1,
-               for_parallel=False):
+               for_parallel=True):
     """
     Open files
 
@@ -371,10 +469,13 @@ def open_files(filenames,
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
        thread_num(int): The maximal concurrent prefetch thread number.
-       buffer_size(int): The size of prefetch buffer.
+       buffer_size(int|None): The size of prefetch buffer. If it is setted None, 
+            buffer size will be thread_num * 3.
+            Default: None
        pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run 
             subsequent operators in parallel.
+            Default: True
 
     Returns:
        Variable: A Reader Variable via which we can get file data.
@@ -394,7 +495,7 @@ def open_files(filenames,
          image, label = fluid.layers.io.read_file(reader)
     """
     if buffer_size is None:
-        buffer_size = thread_num
+        buffer_size = thread_num * 3
     if isinstance(filenames, basestring):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
@@ -450,8 +551,8 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def __create_unshared_decorated_reader__(op_type, reader, attrs):
-    new_reader_name = unique_name(op_type)
+def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
+    new_reader_name = name if name is not None else unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
     main_blk.append_op(
@@ -459,22 +560,86 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs):
         inputs={'UnderlyingReader': reader},
         outputs={'Out': [new_reader]},
         attrs=attrs)
-    new_reader.persistable = True
-    new_reader.stop_gradient = True
     return monkey_patch_reader_methods(new_reader)
 
 
 def shuffle(reader, buffer_size):
+    """
+    Shuffle the reader.
+    """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
 
 
-def double_buffer(reader, place=None):
+def batch(reader, batch_size):
+    """
+    This layer is a reader decorator. It takes a reader and adds 
+    'batching' decoration on it. When reading with the result 
+    decorated reader, output data will be automatically organized 
+    to the form of batches.
+
+    Args:
+        reader(Variable): The reader to be decorated with 'batching'.
+        batch_size(int): The batch size.
+
+    Returns:
+        Variable: The reader which has been decorated with 'batching'.
+
+    Examples:
+        .. code-block:: python
+
+            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
+                                                           './data2.recordio'],
+                                                    shapes=[(3,224,224), (1)],
+                                                    lod_levels=[0, 0],
+                                                    dtypes=['float32', 'int64'],
+                                                    thread_num=2,
+                                                    buffer_size=2)
+            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
+
+            # If we read data with the raw_reader:
+            #     data = fluid.layers.read_file(raw_reader)
+            # We can only get data instance by instance.
+            # 
+            # However, if we read data with the batch_reader:
+            #     data = fluid.layers.read_file(batch_reader)
+            # Each 5 adjacent instances will be automatically combined together 
+            # to become a batch. So what we get('data') is a batch data instead 
+            # of an instance.
+    """
+    return __create_unshared_decorated_reader__(
+        'create_batch_reader', reader, {'batch_size': int(batch_size)})
+
+
+def double_buffer(reader, place=None, name=None):
+    """
+    Wrap a double buffer reader. The data will copy to target place with a
+    double buffer queue. If the target place is None, the place that executor
+    perform on will be used.
+
+    Args:
+        reader(Variable): the reader variable need to be wrapped.
+        place(Place): the place of target data. Default is the sample place of
+            executor perform.
+
+        name(str): Variable name. None if the user does not care.
+
+    Returns:
+        wrapped reader with double buffer.
+
+    Examples:
+
+        >>> reader = fluid.layers.open_files(filenames=['somefile'],
+        >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  dtypes=['float32', 'int64'])
+        >>> reader = fluid.layers.double_buffer(reader)
+        >>> img, label = fluid.layers.read_file(reader)
+    """
     attrs = dict()
     if place is not None:
         attrs['place'] = str(place).upper()
-    return __create_unshared_decorated_reader__('create_double_buffer_reader',
-                                                reader, attrs)
+    return __create_unshared_decorated_reader__(
+        'create_double_buffer_reader', reader, attrs, name=name)
 
 
 def multi_pass(reader, pass_num):
@@ -487,16 +652,167 @@ def parallel(reader):
                                               {})
 
 
-def read_file(file_obj):
+def read_file(reader):
+    """
+    Execute the given reader and get data via it.
+
+    A reader is also a Variable. It can be a raw reader generated by 
+    `fluid.layers.open_files()` or a decorated one generated by 
+    `fluid.layers.double_buffer()` and so on.
+
+    Args:
+
+        reader(Variable): The reader to execute.
+
+    Returns:
+        Tuple[Variable]: Data read via the given reader.
+
+    Examples:
+        .. code-block:: python
+
+           data_file = fluid.layers.open_files(
+                filenames=['mnist.recordio'],
+                shapes=[(-1, 748), (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"])
+            data_file = fluid.layers.double_buffer(
+                fluid.layers.batch(data_file, batch_size=64))
+            input, label = fluid.layers.read_file(data_file)
+    """
     helper = LayerHelper('read_file')
     out = [
         helper.create_tmp_variable(
             stop_gradient=True, dtype='float32')
-        for _ in range(len(file_obj.desc.shapes()))
+        for _ in range(len(reader.desc.shapes()))
     ]
     helper.append_op(
-        type='read', inputs={'Reader': [file_obj]}, outputs={'Out': out})
+        type='read', inputs={'Reader': [reader]}, outputs={'Out': out})
     if len(out) == 1:
         return out[0]
     else:
         return out
+
+
+class Preprocessor(object):
+    """
+    A block for data pre-processing in reader.
+
+    Args:
+        reader (Variable): A reader variable.
+        name (str, default None): The name of the reader.
+
+    Examples:
+          .. code-block:: python
+
+            preprocessor = fluid.layers.io.Preprocessor(reader=reader)
+            with preprocessor.block():
+                img, lbl = preprocessor.inputs()
+                img_out = img / 2
+                lbl_out = lbl + 1
+                preprocessor.outputs(img_out, lbl_out)
+
+            data_file = fluid.layers.io.double_buffer(preprocessor())
+
+    """
+    BEFORE_SUB_BLOCK = 0
+    IN_SUB_BLOCK = 1
+    AFTER_SUB_BLOCK = 2
+
+    def __init__(self, reader, name=None):
+        self.underlying_reader = reader
+        new_reader_name = name if name is not None else unique_name(
+            "create_custom_reader")
+        self.main_prog = default_main_program()
+        self.reader = self.main_prog.current_block().create_var(
+            name=new_reader_name)
+        self.sub_block = None
+        self.source_var_names = None
+        self.sink_var_names = None
+        self.status = Preprocessor.BEFORE_SUB_BLOCK
+
+    def is_completed(self):
+        return self.sub_block and self.source_var_names and self.sink_var_names
+
+    @contextlib.contextmanager
+    def block(self):
+        self.status = Preprocessor.IN_SUB_BLOCK
+        self.sub_block = self.main_prog.create_block()
+        yield
+        self.main_prog.rollback()
+        self.status = Preprocessor.AFTER_SUB_BLOCK
+        if not self.is_completed():
+            raise RuntimeError(
+                "The definition of preprocessor is incompleted! "
+                "Please make sure that you have set input and output "
+                "variables by invoking 'inputs' and 'outputs' in "
+                "Preprocessor's sub-block.")
+
+    def inputs(self):
+        if self.status != Preprocessor.IN_SUB_BLOCK:
+            raise RuntimeError(
+                "Preprocessor.inputs() can only be invoked inside the sub-block."
+            )
+
+        source_shapes = self.underlying_reader.desc.shapes()
+        source_dtypes = self.underlying_reader.desc.dtypes()
+        source_lod_levels = self.underlying_reader.desc.lod_levels()
+        self.source_var_names = [
+            unique_name("preprocessor_source")
+            for _ in xrange(len(source_shapes))
+        ]
+        source_vars = []
+        for var_name, shape, dtype, lod_level in zip(
+                self.source_var_names, source_shapes, source_dtypes,
+                source_lod_levels):
+            source_vars.append(self.main_prog.current_block().create_var(
+                name=var_name, shape=shape, dtype=dtype, lod_level=lod_level))
+        return source_vars
+
+    def outputs(self, *outs):
+        if self.status != Preprocessor.IN_SUB_BLOCK:
+            raise RuntimeError(
+                "Preprocessor.outputs() can only be invoked inside the sub-block."
+            )
+        self.sink_var_names = [var.name for var in outs]
+
+    def __call__(self, *args, **kwargs):
+        if self.status != Preprocessor.AFTER_SUB_BLOCK:
+            raise RuntimeError(
+                "Preprocessor output can only be retrieved after rnn block.")
+
+        self.main_prog.current_block().append_op(
+            type="create_custom_reader",
+            inputs={'UnderlyingReader': self.underlying_reader},
+            outputs={'Out': [self.reader]},
+            attrs={
+                "sub_block": self.sub_block,
+                "source_var_names": self.source_var_names,
+                "sink_var_names": self.sink_var_names
+            })
+        return monkey_patch_reader_methods(self.reader)
+
+
+@templatedoc()
+def load(out, file_path, load_as_fp16=None):
+    """
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
+
+    Args:
+        out(${out_type}): ${out_comment}.
+
+        file_path(${file_path_type}): ${file_path_comment}.
+
+        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
+
+    Returns:
+        None
+    """
+    helper = LayerHelper("load", **locals())
+    attrs = {"file_path": file_path}
+    if load_as_fp16 is not None:
+        attrs['load_as_fp16'] = load_as_fp16
+    helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)

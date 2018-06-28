@@ -28,14 +28,14 @@ namespace paddle {
  * The config file api is full_matrix_projection.
  */
 class FullMatrixProjection : public Projection {
-public:
+ public:
   FullMatrixProjection(const ProjectionConfig& config,
                        const ParameterPtr& parameter,
                        bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-protected:
+ protected:
   std::unique_ptr<Weight> weight_;
 };
 

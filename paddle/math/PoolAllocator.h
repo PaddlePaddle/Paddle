@@ -27,7 +27,7 @@ namespace paddle {
  * @brief Memory pool allocator implementation.
  */
 class PoolAllocator {
-public:
+ public:
   /**
    * @brief constructor.
    * @param allocator a Allocator object.
@@ -47,7 +47,7 @@ public:
   void free(void* ptr, size_t size);
   std::string getName() { return name_; }
 
-private:
+ private:
   void freeAll();
   void printAll();
   std::unique_ptr<Allocator> allocator_;

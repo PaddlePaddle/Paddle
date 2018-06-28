@@ -50,8 +50,7 @@ class ChannelCloseOpOpInferShape : public framework::InferShapeBase {
 
 class ChannelCloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChannelCloseOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kChannel,
              "The Channel Variable that should be closed by"
              " the ChannelClose Op.");

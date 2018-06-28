@@ -26,7 +26,7 @@ namespace paddle {
  * If not set memory handler, then the data could be auto growth.
  */
 class RowBuffer {
-public:
+ public:
   /**
    * @brief RowBuffer create a auto-growth row buffer. The row length is width.
    * @param width the length of each row, a.k.a matrix width.
@@ -129,7 +129,7 @@ public:
    */
   inline size_t getWidth() const { return width_; }
 
-private:
+ private:
   //! TODO(yuyang18): Add resize method to CpuMemHandlePtr, then we can get rid
   //! of std::vector here.
   CpuMemHandlePtr preallocatedBuf_;

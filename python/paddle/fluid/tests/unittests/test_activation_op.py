@@ -361,10 +361,7 @@ class TestCeil(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+    # The same reason with TestFloor
 
     def init_dtype(self):
         pass
@@ -396,10 +393,8 @@ class TestFloor(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+    # the gradient on floor, ceil, round is undefined.
+    # we return zero as gradient, but the numpy return nan 
 
     def init_dtype(self):
         pass
@@ -500,11 +495,6 @@ class TestRound(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
         pass
@@ -1096,83 +1086,6 @@ class TestFP16Swish(TestSwish):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=1e-3)
-
-
-#--------------------test MKLDNN--------------------
-class TestMKLDNNReluDim2(TestRelu):
-    def setUp(self):
-        super(TestMKLDNNReluDim2, self).setUp()
-
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNTanhDim2(TestTanh):
-    def setUp(self):
-        super(TestMKLDNNTanhDim2, self).setUp()
-
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNSqrtDim2(TestSqrt):
-    def setUp(self):
-        super(TestMKLDNNSqrtDim2, self).setUp()
-
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNAbsDim2(TestAbs):
-    def setUp(self):
-        super(TestMKLDNNAbsDim2, self).setUp()
-
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNReluDim4(TestRelu):
-    def setUp(self):
-        super(TestMKLDNNReluDim4, self).setUp()
-
-        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
-        # The same reason with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        out = np.maximum(x, 0)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNTanhDim4(TestTanh):
-    def setUp(self):
-        super(TestMKLDNNTanhDim4, self).setUp()
-
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
-        }
-        self.outputs = {'Out': np.tanh(self.inputs['X'])}
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNSqrtDim4(TestSqrt):
-    def setUp(self):
-        super(TestMKLDNNSqrtDim4, self).setUp()
-
-        self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
-        }
-        self.outputs = {'Out': np.sqrt(self.inputs['X'])}
-        self.attrs = {"use_mkldnn": True}
-
-
-class TestMKLDNNAbsDim4(TestAbs):
-    def setUp(self):
-        super(TestMKLDNNAbsDim4, self).setUp()
-
-        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
-        # The same reason with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        self.inputs = {'X': x}
-        self.outputs = {'Out': np.abs(self.inputs['X'])}
-        self.attrs = {"use_mkldnn": True}
 
 
 if __name__ == "__main__":

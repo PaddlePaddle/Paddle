@@ -29,7 +29,7 @@ namespace paddle {
  */
 
 class Thread {
-public:
+ public:
   /**
    * @brief Construct Function. Default thread pointer is null.
    */
@@ -62,7 +62,7 @@ public:
    */
   virtual void run() = 0;
 
-protected:
+ protected:
   std::unique_ptr<std::thread> thread_;
 };
 
@@ -73,7 +73,7 @@ protected:
  * Use addJob() to add a new job to the job queue.
  */
 class ThreadWorker : protected Thread {
-public:
+ public:
   typedef std::function<void()> JobFunc;
 
   /**
@@ -116,7 +116,7 @@ public:
     finishCV_.wait([this] { return empty_; });
   }
 
-protected:
+ protected:
   /**
    * @brief Execute jobs in the job queue sequentianlly,
    * @note If finish all the jobs in the job queue,
@@ -150,7 +150,7 @@ protected:
  * JobFunc can use tid to divide input data.
  */
 class SyncThreadPool {
-public:
+ public:
   typedef std::function<void(int tid, size_t numThreads)> JobFunc;
 
   /**
@@ -236,7 +236,7 @@ public:
     }
   }
 
-protected:
+ protected:
   /**
    * @brief Start all the workers in the pool, call their run() function.
    */
@@ -285,7 +285,7 @@ protected:
     }
   }
 
-protected:
+ protected:
   pid_t ownerThreadId_;
   bool stopping_;
   ThreadBarrier jobStartBarrier_;
@@ -323,7 +323,7 @@ protected:
  */
 template <class T>
 class MultiThreadWorker {
-public:
+ public:
   typedef T ResultType;
   typedef std::shared_ptr<ResultType> ResultPtrType;
   typedef std::function<ResultPtrType()> JobFunc;
@@ -424,7 +424,7 @@ public:
    */
   bool testResult() { return results_.empty(); }
 
-protected:
+ protected:
   /**
    * @brief Do the jobs in the job queue sequentianlly
    * and enqueue the result into the result queue.
@@ -476,7 +476,7 @@ protected:
  *    thread pool.
  */
 class AsyncThreadPool {
-public:
+ public:
   typedef std::function<void()> JobFunc;
 
   AsyncThreadPool() { LOG(FATAL) << "Not implemented"; }
@@ -594,7 +594,7 @@ public:
     }
   }
 
-protected:
+ protected:
   /**
    * @brief Execute the jobs in the job queue.
    */
@@ -606,7 +606,7 @@ protected:
     }
   }
 
-private:
+ private:
   std::vector<std::unique_ptr<std::thread>> workers_;
   Queue<JobFunc> jobs_;
   bool stopping_;

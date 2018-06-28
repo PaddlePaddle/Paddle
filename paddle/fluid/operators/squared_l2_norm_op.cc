@@ -48,8 +48,7 @@ class SquaredL2NormGradOp : public framework::OperatorWithKernel {
 
 class SquaredL2NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquaredL2NormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) The input of squared_l2_norm op.");
     AddOutput("Out", "(Scalar) The output of squared_l2_norm op.");
     AddComment(R"DOC(
@@ -67,8 +66,10 @@ $$Out = \sum_{i} X_{i}^2$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(squared_l2_norm, ops::SquaredL2NormOp, ops::SquaredL2NormOpMaker,
-            squared_l2_norm_grad, ops::SquaredL2NormGradOp);
+REGISTER_OPERATOR(squared_l2_norm, ops::SquaredL2NormOp,
+                  ops::SquaredL2NormOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,
     ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, float>);

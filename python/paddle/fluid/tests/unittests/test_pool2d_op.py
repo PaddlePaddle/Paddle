@@ -109,8 +109,11 @@ class TestPool2d_Op(OpTest):
 
         self.outputs = {'Out': output}
 
+    def testcudnn(self):
+        return core.is_compiled_with_cuda() and self.use_cudnn
+
     def test_check_output(self):
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
@@ -119,7 +122,7 @@ class TestPool2d_Op(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.use_cudnn and self.pool_type != "max":
+        if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, set(['X']), 'Out', max_relative_error=0.07)
@@ -315,37 +318,6 @@ class TestCeilModeCase3(TestCase1):
 class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
-
-
-#--------------------test pool2d MKLDNN--------------------
-class TestMKLDNNCase1(TestPool2d_Op):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase2(TestCase1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase3(TestCase2):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase4(TestCase3):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase5(TestCase4):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase6(TestCase5):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
 
 
 if __name__ == '__main__':

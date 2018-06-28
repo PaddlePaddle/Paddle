@@ -32,7 +32,7 @@ namespace paddle {
  */
 
 class ScalingLayer : public Layer {
-public:
+ public:
   explicit ScalingLayer(const LayerConfig& config) : Layer(config) {}
 
   ~ScalingLayer() {}

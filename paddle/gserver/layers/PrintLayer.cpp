@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 
 class PrintLayer : public Layer {
-public:
+ public:
   explicit PrintLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override {

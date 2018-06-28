@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include <map>
 
 namespace paddle {
 namespace framework {
@@ -39,9 +39,9 @@ OpHandleBase::~OpHandleBase() {
 #endif
 }
 
-void OpHandleBase::Run(bool use_event) {
+void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_event) {
+  if (events_.empty() && use_cuda) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
@@ -50,32 +50,21 @@ void OpHandleBase::Run(bool use_event) {
     }
   }
 #else
-  PADDLE_ENFORCE(!use_event);
+  PADDLE_ENFORCE(!use_cuda);
 #endif
 
   RunImpl();
-
-#ifdef PADDLE_WITH_CUDA
-  if (use_event) {
-    for (auto &p : dev_ctxes_) {
-      int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
-      auto stream =
-          static_cast<platform::CUDADeviceContext *>(p.second)->stream();
-      PADDLE_ENFORCE(cudaEventRecord(events_.at(dev_id), stream));
-    }
-  }
-#endif
 }
 
-void OpHandleBase::Wait(platform::DeviceContext *waited_dev) {
+void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_cpu_place(waited_dev->GetPlace()) || events_.empty()) {
+  if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
       dev_ctx.second->Wait();
     }
   } else {
     auto stream =
-        static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
+        static_cast<platform::CUDADeviceContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
       PADDLE_ENFORCE(cudaStreamWaitEvent(stream, ev.second, 0));
     }
@@ -95,6 +84,80 @@ void OpHandleBase::AddInput(VarHandleBase *in) {
 void OpHandleBase::AddOutput(VarHandleBase *out) {
   outputs_.emplace_back(out);
   out->generated_op_ = this;
+}
+
+void OpHandleBase::WaitInputVarGenerated() {
+  for (auto in_var : inputs_) {
+    if (NeedWait(in_var)) {
+      for (auto &pair : dev_ctxes_) {
+        in_var->generated_op_->RecordWaitEventOnCtx(pair.second);
+      }
+    }
+  }
+}
+
+void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
+  for (auto *in : inputs_) {
+    if (NeedWait(in)) {
+      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[place]);
+    }
+  }
+}
+
+size_t OpHandleBase::NoDummyInputSize() const {
+  size_t cnt = 0;
+  for (auto *in : inputs_) {
+    if (dynamic_cast<DummyVarHandle *>(in) == nullptr) {
+      ++cnt;
+    }
+  }
+  return cnt;
+}
+
+bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
+  return in_var && in_var->generated_op_;
+}
+
+void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
+#ifdef PADDLE_WITH_CUDA
+  if (!events_.empty()) {  // Use event
+    std::function<void()> method = callback;
+    // NOTE(zcd): device context must be ordered here because RecordEvent
+    // will use a mutex to ensure the safe of multi-threads.
+    std::map<platform::DeviceContext *, platform::Place> ordered_ctxes;
+    for (auto &p : dev_ctxes_) {
+      ordered_ctxes.emplace(p.second, p.first);
+    }
+    for (auto &p : ordered_ctxes) {
+      method = [method, p, this]() {
+        static_cast<platform::CUDADeviceContext *>(p.first)->RecordEvent(
+            events_.at(boost::get<platform::CUDAPlace>(p.second).device),
+            method);
+      };
+    }
+    method();
+  } else {
+#endif
+    callback();
+#ifdef PADDLE_WITH_CUDA
+  }
+#endif
+}
+
+void OpHandleBase::RunAndRecordEvent(platform::Place p,
+                                     const std::function<void()> &callback) {
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_cpu_place(p) || events_.empty()) {
+    callback();
+  } else {
+    auto *ctx = dev_ctxes_.at(p);
+    auto *cuda_ctx = static_cast<platform::CUDADeviceContext *>(ctx);
+    cuda_ctx->RecordEvent(events_.at(boost::get<platform::CUDAPlace>(p).device),
+                          callback);
+  }
+#else
+  callback();
+#endif
 }
 
 }  // namespace details

@@ -37,7 +37,7 @@ namespace paddle {
  */
 
 class DataNormLayer : public Layer {
-public:
+ public:
   enum NormalizationStrategy { kZScore = 0, kMinMax = 1, kDecimalScaling = 2 };
 
   explicit DataNormLayer(const LayerConfig& config) : Layer(config) {}
@@ -50,7 +50,7 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
-protected:
+ protected:
   int mode_;
   std::unique_ptr<Weight> weight_;
   MatrixPtr min_;

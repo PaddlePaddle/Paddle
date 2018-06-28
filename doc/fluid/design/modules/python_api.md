@@ -36,7 +36,7 @@ Please be aware that these Python classes need to maintain some construction-tim
 
 ### Program
 
-A `ProgramDesc` describes a [DL program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md), which is composed of an array of `BlockDesc`s.  The `BlockDesc`s in a `ProgramDesc` can have a tree-like hierarchical structure. However, the `ProgramDesc` onlys stores a flattened array of `BlockDesc`s. A `BlockDesc` refers to its parent block by its index in the array.  For example, operators in the step block of an RNN operator need to be able to access variables in its ancestor blocks.
+A `ProgramDesc` describes a [DL program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/program.md), which is composed of an array of `BlockDesc`s.  The `BlockDesc`s in a `ProgramDesc` can have a tree-like hierarchical structure. However, the `ProgramDesc` onlys stores a flattened array of `BlockDesc`s. A `BlockDesc` refers to its parent block by its index in the array.  For example, operators in the step block of an RNN operator need to be able to access variables in its ancestor blocks.
 
 Whenever we create a block, we need to set its parent block to the current block, hence the Python class `Program` needs to maintain a data member `current_block`.
 
@@ -70,7 +70,7 @@ class Program(objects):
 
 ### Block
 
-A [Block](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md) includes
+A [Block](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/block.md) includes
 
 1. a map from variable names to an instance of the Python `Variable` class, and
 1. a list of `Operator` instances.

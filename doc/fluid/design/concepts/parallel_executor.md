@@ -84,7 +84,7 @@ Running an operator can be asynchronized. There is a thread pool to execute an `
 
 ## Synchronize GPU Kernels
 
-The GPU is a non-blocking device. The different streams need be synchronized when switing streams. In current implementation, the synchronization based on the following algorithm:
+The GPU is a non-blocking device. The different streams need be synchronized when switching streams. In current implementation, the synchronization based on the following algorithm:
 
 1. `OpHandle` will record `DeviceContext` that it is used.
 2. In `OpHandle::Run`, if the `DeviceContext` of current operator is different from `DeviceContext` of any input variable, just wait the generate operator of this input variable.
