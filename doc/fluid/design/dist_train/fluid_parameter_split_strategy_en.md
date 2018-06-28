@@ -2,13 +2,16 @@
 In this article, we'll explain the reason and the design of parameters segmentaion when we do pserver-based distributed training with PaddlePaddle Fluid, we will give a case of how this segmentation scheme could be used in python code;
 
 ## Background
-### Reason for segmentation
+In the design of the model, we usually do not limit the size of the parameters used by each layer of the model. Suppose we have 3 parameter servers and 2 trainers now:
 
-In the design of the model, we usually do not limit the size of the parameters used by each layer of the model. Suppose we have 3 parameter servers now and we want to train the following network:
+![fluid_3_ps_design.png](src/fluid_3_ps_design.png)
+
+And we want to train the following network:
 
 ![fluid_3_layer_network](src/fluid_3_layers_network.png)
 
-The fluid.input layer is very wide, causing the w1, b1 parameter dimensions to be very large, reaching 10 * 1000, while the fluid.fc layer is very narrow, resulting in a 1 * 10 dimension of the w2, b2 parameter.
+### Reason for segmentation
+It's obvious that the ```fluid.layers.data``` input layer is very wide, causing the w1, b1 parameter dimensions to be very large, reaching 10 * 1000, while the ```fluid.layers.fc``` hidden layer is very narrow, resulting in a 1 * 10 dimension of the w2, b2 parameter.
 
 If we simply assign these parameters to the parameter server, the parameter size obtained by each parameter server will not be uniform, and the lightly loaded parameter server will wait for the parameter server with heavy load.
 Therefore, for the case of non-uniform size of the parameters, in the Distribute Transpiler, we will segment the parameters of the model and the corresponding gradients into one or more parameter blocks.
