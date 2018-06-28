@@ -259,11 +259,8 @@ def monkey_patch_reader_methods(reader):
     return reader
 
 
-def _copy_reader_var_(block, var, new_name=None):
-    if new_name == None:
-        new_name = var.name
-    new_var = block.create_var(
-        name=str(new_name), type=core.VarDesc.VarType.READER)
+def _copy_reader_var_(block, var):
+    new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
     new_var.persistable = True
