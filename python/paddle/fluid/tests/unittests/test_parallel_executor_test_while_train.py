@@ -70,9 +70,10 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
+                test_loss = np.array(test_loss)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
-
+                train_loss = np.array(train_loss)
                 self.assertTrue(
                     np.allclose(
                         train_loss, test_loss, atol=1e-8),
