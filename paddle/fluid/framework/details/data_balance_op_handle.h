@@ -41,8 +41,8 @@ struct DataBalanceOpHandle : public OpHandleBase {
   std::vector<std::array<int, 3>> GetBalancePlan(
       const std::vector<int> &batch_size_per_device);
 
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
+  const std::vector<Scope *> local_scopes_;
+  const std::vector<platform::Place> places_;
 };
 
 }  // namespace details
