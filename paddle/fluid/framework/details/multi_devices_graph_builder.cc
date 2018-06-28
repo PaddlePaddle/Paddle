@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/data_balance_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -354,6 +355,22 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad.get());
 
+    auto var = new VarHandle(vars.size(), i, og, p);
+    vars.emplace_back(var);
+    op_handle->AddOutput(var);
+  }
+}
+
+void MultiDevSSAGraphBuilder::InsertDataBalanceOp(SSAGraph *result,
+                                                  const std::string &og) const {
+  result->ops_.emplace_back(new DataBalanceOpHandle(local_scopes_, places_));
+  auto *op_handle = result->ops_.back().get();
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+    auto &vars = result->vars_[i][og];
+    PADDLE_ENFORCE(!vars.empty());
+    op_handle->AddInput(vars.back().get());
     auto var = new VarHandle(vars.size(), i, og, p);
     vars.emplace_back(var);
     op_handle->AddOutput(var);

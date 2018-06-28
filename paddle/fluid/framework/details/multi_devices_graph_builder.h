@@ -101,6 +101,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
   void InsertAllReduceOp(SSAGraph *result, const std::string &og) const;
 
+  void InsertDataBalanceOp(SSAGraph *result, const std::string &og) const;
+
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
