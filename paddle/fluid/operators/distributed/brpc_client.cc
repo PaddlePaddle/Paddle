@@ -270,6 +270,9 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   ChannelQueuePtr q(new framework::BlockingQueue<ChannelContextPtr>());
 
   brpc::ChannelOptions options;
+#ifdef PADDLE_WITH_BRPC_RDMA
+  options.use_rdma = true;
+#endif
   options.protocol = "baidu_std";
   options.connection_type = "pooled";
   options.connect_timeout_ms = 100;

@@ -63,7 +63,7 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def slice_variable(var_list, slice_count, min_block_size=131072):
+def slice_variable(var_list, slice_count, min_block_size=1048576):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor

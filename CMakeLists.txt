@@ -63,6 +63,7 @@ option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single proces
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
+option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -159,6 +160,16 @@ if(WITH_DISTRIBUTE)
         include(external/leveldb)
         include(external/openssl)
         include(external/brpc)
+    endif()
+endif()
+
+if(WITH_BRPC_RDMA)
+    message(STATUS "Use brpc with rdma.")
+    if(WITH_GRPC)
+        message(FATAL_ERROR "Can't use grpc with brpc rdma.")
+    endif()
+    if(NOT WITH_DISTRIBUTE)
+        message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
 endif()
 

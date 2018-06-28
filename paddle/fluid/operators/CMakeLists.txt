@@ -193,6 +193,18 @@ if(WITH_DISTRIBUTE)
         set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
     else()
         set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib)
+        if(WITH_BRPC_RDMA)
+            find_library(IBVERBS_LIBRARY NAMES libibverbs.so)
+            ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
+            SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY_STATIC})
+
+
+            find_library(RDMACM_LIBRARY_STATIC NAMES librdmacm.so)
+            ADD_LIBRARY(rdmacm SHARED IMPORTED GLOBAL)
+            SET_PROPERTY(TARGET rdmacm PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY_STATIC})
+
+            set(DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} ibverbs rdmacm)
+        endif()
     endif()
 
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")

@@ -29,7 +29,7 @@ set_source_files_properties(brpc_server.cc brpc_client.cc rpc_server_test.cc brp
     brpc_variable_response.cc brpc_sendrecvop_utils.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
 brpc_library(sendrecvop_brpc SRCS brpc_client.cc brpc_server.cc rpc_server.cc rpc_client.cc request_handler_impl.cc brpc_sendrecvop_utils.cc 
-    brpc_variable_response.cc variable_response.cc sendrecvop_utils.cc
+    brpc_variable_response.cc variable_response.cc sendrecvop_utils.cc brpc_rdma_pool.cc
   PROTO send_recv.proto
   DEPS lod_tensor selected_rows memory)
 

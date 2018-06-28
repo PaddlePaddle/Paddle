@@ -32,8 +32,11 @@ class IOBufWriter {
  public:
   static void FreeMemory(void* p) {
 #ifdef PADDLE_WITH_CUDA
-    // GPU data is copied to CPU buffer when sending,
-    // free the buffer when possible.
+// GPU data is copied to CPU buffer when sending,
+// free the buffer when possible.
+#ifdef PADDLE_WITH_BRPC_RDMA
+    return;
+#endif
     platform::CUDAPinnedPlace cuda_pinned;
     memory::Free(cuda_pinned, p);
 #endif
@@ -51,6 +54,9 @@ class IOBufWriter {
                              int64_t vlen) {
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
+#ifdef PADDLE_WITH_BRPC_RDMA
+    RdmaMemPool::Instance().Register(varname, v, vlen);
+#endif
     // TODO(gongwb): use append_zero to avoid copy
     // iobuf->append(v, vlen);
     iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);

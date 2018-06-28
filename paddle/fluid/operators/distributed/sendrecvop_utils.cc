@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/var_obj_pool.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 
 namespace paddle {
@@ -27,6 +28,17 @@ namespace operators {
 namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
+
+void* GetVarPayLoad(const std::string varname, int64_t size) {
+#ifdef PADDLE_WITH_BRPC_RDMA
+  void* data = RdmaMemPool::Instance().Find(varname, size);
+  if (data) {
+    return data
+  }
+#endif
+  platform::CUDAPinnedPlace cuda_pinned;
+  return memory::Alloc(cuda_pinned, size);
+}
 
 void GetTensorPayload(framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,
@@ -52,15 +64,15 @@ void GetTensorPayload(framework::Variable* var,
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
-    platform::CUDAPinnedPlace cuda_pinned;
+    // platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
-    *payload = memory::Alloc(cuda_pinned, copy_size);
-
+    *payload = GetVarPayLoad(varname, copy_size);
     memory::Copy(cuda_pinned, *payload,
                  boost::get<platform::CUDAPlace>(tensor.place()),
                  reinterpret_cast<const void*>(tensor.data<void>()), copy_size,
                  gpu_dev_ctx.stream());
+
     ctx.Wait();
 #endif
   } else {
@@ -88,7 +100,7 @@ void GetSelectedRowsPayload(framework::Variable* var,
     platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
-    *payload = memory::Alloc(cuda_pinned, copy_size);
+    *payload = GetVarPayLoad(varname, copy_size);
     memory::Copy(cuda_pinned, *payload,
                  boost::get<platform::CUDAPlace>(tensor->place()),
                  reinterpret_cast<const void*>(tensor->data<void>()), copy_size,

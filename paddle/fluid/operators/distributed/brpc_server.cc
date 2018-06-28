@@ -154,6 +154,9 @@ void AsyncBRPCServer::StartServer() {
   }
 
   brpc::ServerOptions options;
+#ifdef PADDLE_WITH_BRPC_RDMA
+  options.use_rdma = true;
+#endif
   options.idle_timeout_sec = idle_timeout_s_;
   options.max_concurrency = max_concurrency_;
   if (server_.Start(bind_address_.c_str(), &options) != 0) {

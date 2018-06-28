@@ -23,11 +23,13 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-class RdmaPool {
+class RdmaMemPool {
  public:
-  static RdmaPool& Instance();
+  static RdmaMemPool& Instance();
+  RdmaMemPool() {}
 
-  void* VarMem(const std::string& varname, int64_t size);
+  void Register(const std::string& varname, void* data, int64_t size);
+  void* Find(const std::string& varname, int64_t size);
 
  private:
   struct VarInfo {
@@ -36,8 +38,6 @@ class RdmaPool {
 
     VarInfo() : data(nullptr), data_size(0) {}
   };
-  void Insert(const std::string& varname, void* data, int64_t size);
-  VarInfo* Get(const std::string& varname);
 
  private:
   std::unordered_map<std::string, VarInfo> pool_;
