@@ -21,11 +21,22 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <algorithm>
 #include "gflags/gflags.h"
 
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
+
+DEFINE_uint64(initial_cpu_memory_in_mb,
+#ifdef PADDLE_WITH_MKLDNN
+              /* Aligned with mozga-intel, MKLDNN need at least 5000 MB
+               * to obtain the best performance*/
+              5000,
+#else
+              500,
+#endif
+              "Initial CPU memory for PaddlePaddle, in MD unit.");
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
@@ -63,8 +74,11 @@ size_t CpuMinChunkSize() {
 }
 
 size_t CpuMaxChunkSize() {
-  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory.
-  return CpuMaxAllocSize() / 32;
+  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory,
+  // or the initial_cpu_memory_in_mb.
+  return std::min(
+      static_cast<size_t>(CpuMaxAllocSize() / 32),
+      static_cast<size_t>(FLAGS_initial_cpu_memory_in_mb * 1 << 20));
 }
 
 size_t CUDAPinnedMaxAllocSize() {

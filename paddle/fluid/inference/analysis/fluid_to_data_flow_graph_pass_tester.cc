@@ -23,11 +23,11 @@ namespace analysis {
 
 TEST_F(DFG_Tester, Init) {
   FluidToDataFlowGraphPass pass;
-  pass.Initialize();
-  pass.Initialize(desc);
+  pass.Initialize(&argument);
   DataFlowGraph graph;
   pass.Run(&graph);
-  ASSERT_GT(graph.nodes.size(), 0);
+  // Analysis is sensitive to ProgramDesc, careful to change the original model.
+  ASSERT_EQ(graph.nodes.size(), 37);
   pass.Finalize();
   LOG(INFO) << '\n' << graph.DotString();
 }

@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/operators/distributed/grpc_client.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -43,6 +46,14 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+void Executor::Complete() {
+  ::paddle::operators::distributed::RPCClient::GetInstance<
+      ::paddle::operators::distributed::GRPCClient>()
+      ->SendComplete();
+}
+#endif
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -284,13 +295,14 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id) {
-  auto* ctx = new ExecutorPrepareContext(program, block_id);
+  std::unique_ptr<ExecutorPrepareContext> ctx(
+      new ExecutorPrepareContext(program, block_id));
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return std::unique_ptr<ExecutorPrepareContext>(ctx);
+  return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
@@ -309,7 +321,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars) {
+                                  bool create_local_scope, bool create_vars,
+                                  bool keep_kids) {
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -319,8 +332,12 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
+    VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
+    // NOTE! Please do not delete this line, it's usefull because the debug
+    // string before and after op.run are different, after run the output
+    // will have right shape which is usefull for debug.
+    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
@@ -328,12 +345,20 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  if (create_vars && create_local_scope) {
+  if (local_scope != scope) {
     scope->DeleteScope(local_scope);
   } else {
-    // Delete the local scopes created in operators.
-    scope->DropKids();
+    if (!keep_kids) {
+      // By default, we should delete all kid scopes after run executor because
+      // some operators may create local scope when running, such as while_op.
+      // But when while_op also create a local executor to run it's sub block,
+      // the sub scopes it created should not be dropped immediately, because
+      // while_grad_op will use some variables created during while_op run, so
+      // we need to keep the kids and wait for the outer executor to drop them.
+      scope->DropKids();
+    }
   }
+
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
     VLOG(2) << "Memory used after deleting local scope: "
@@ -391,6 +416,9 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
+#else
+  LOG(WARNING)
+      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
 #endif
 }
 

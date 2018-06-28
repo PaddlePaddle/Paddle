@@ -14,12 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/inference/analysis/node.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-// It is a better idea that the inputs and outputs of this graph is set manully
+// It is a better idea that the inputs and outputs of this graph is set manually
 // before, but there must be a Pass that helps to prune the unnecessary ops that
 // do not contribute to the given targets, so in this pass, analysis and get the
 // inputs and outputs is OK.
@@ -49,6 +50,25 @@ void DataFlowGraph::Build() {
       outputs.push_back(out);
     }
   }
+
+  Clean();
+}
+
+void DataFlowGraph::Clean() {
+  for (auto &node : nodes.nodes()) {
+    std::unordered_set<Node *> inlinks_set(node->inlinks.begin(),
+                                           node->inlinks.end());
+    std::unordered_set<Node *> outlinks_set(node->outlinks.begin(),
+                                            node->outlinks.end());
+    if (inlinks_set.size() < node->inlinks.size()) {
+      LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
+      node->inlinks.assign(inlinks_set.begin(), inlinks_set.end());
+    }
+    if (outlinks_set.size() < node->outlinks.size()) {
+      LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
+      node->outlinks.assign(outlinks_set.begin(), outlinks_set.end());
+    }
+  }
 }
 
 std::string DataFlowGraph::DotString() const {
@@ -57,19 +77,7 @@ std::string DataFlowGraph::DotString() const {
   // Add nodes
   for (size_t i = 0; i < nodes.size(); i++) {
     const Node &node = nodes.Get(i);
-    switch (node.type()) {
-      case Node::Type::kValue:
-        dot.AddNode(node.repr(), node.dot_attrs());
-        break;
-      case Node::Type::kFunction:
-        dot.AddNode(node.repr(), node.dot_attrs());
-        break;
-      case Node::Type::kFunctionBlock:
-        dot.AddNode(node.repr(), node.dot_attrs());
-        break;
-      default:
-        PADDLE_THROW("unsupported Node type %d", static_cast<int>(node.type()));
-    }
+    dot.AddNode(node.repr(), node.dot_attrs());
   }
 
   // Add edges
