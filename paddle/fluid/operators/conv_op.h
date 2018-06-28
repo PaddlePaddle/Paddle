@@ -324,8 +324,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
       Tensor filter_grad_ = *filter_grad;
       filter_grad_.Resize(filter_matrix_shape);
-      // Test FLAGS_init_allocated_mem
-      //      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
+      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; i++) {
