@@ -16,7 +16,9 @@
 #include "gflags/gflags.h"
 
 // default to 3min to avoid temprary network failures.
-DEFINE_int32(grpc_deadline, 180000, "deadline timeouts for grpc");
+// FIXME(typhoonzero): change this default to smaller value once we have
+// implemented pass barriers and tests.
+DEFINE_int32(grpc_deadline, 3600000, "deadline timeouts for grpc");
 
 namespace paddle {
 namespace operators {
