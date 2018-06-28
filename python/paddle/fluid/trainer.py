@@ -315,7 +315,7 @@ class Trainer(object):
             for ip in worker_ips.split(","):
                 worker_endpoints.append(':'.join([ip, port]))
             self.num_trainers = len(worker_endpoints)
-            current_endpoint = os.getenv("POD_IP") + ":" + port
+            current_endpoint = os.getenv("PADDLE_CURRENT_IP") + ":" + port
             worker_endpoints.remove(current_endpoint)
             # TODO(wuyi): use self.nccl_id_var, self.num_trainers and self.trainer_id
             # in ParallelExecutor to start
