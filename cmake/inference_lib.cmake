@@ -149,7 +149,9 @@ copy(memory_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
 )
 
-set(inference_deps paddle_fluid_shared paddle_fluid)
+set(inference_deps
+    paddle_fluid_shared paddle_fluid
+    paddle_inference_api paddle_inference_api_shared)
 
 if(WITH_CONTRIB)
     message(STATUS "installing contrib")
