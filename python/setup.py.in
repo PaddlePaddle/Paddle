@@ -134,11 +134,7 @@ package_dir['paddle.libs']=libs_path
 # The reason is that libwarpctc.so, libiomp5.so etc are in paddle.libs, and
 # core.so is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
-os.environ['core_rpath']=str(os.popen("patchelf --print-rpath \
-    ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so").read().strip('\n'))
-os.environ['core_rpath']=os.environ['core_rpath']+":'$ORIGIN/../libs/'"
-command = "patchelf --set-rpath " + os.environ['core_rpath'] +\
-    " ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
+command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
 os.system(command)
 
 setup(name='${PACKAGE_NAME}',
