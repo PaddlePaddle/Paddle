@@ -13,20 +13,25 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_BRPC_RDMA
 
+#include <pthread.h>  // NOLINT
 #include <string>
 #include <unordered_map>
-#include "boost/ref.hpp"
-#include "boost/thread/thread.hpp"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
+/*
+ * This class is used to avoid duplicated registion of brpc::rdma.
+ */
 class RdmaMemPool {
  public:
   static RdmaMemPool& Instance();
-  RdmaMemPool() {}
+  RdmaMemPool() : access_(PTHREAD_RWLOCK_INITIALIZER) {}
+
+  virtual ~RdmaMemPool() { pthread_rwlock_destroy(&access_); }
 
   void Register(const std::string& varname, void* data, int64_t size);
   void* Find(const std::string& varname, int64_t size);
@@ -41,9 +46,11 @@ class RdmaMemPool {
 
  private:
   std::unordered_map<std::string, VarInfo> pool_;
-  boost::shared_mutex access_;
+  pthread_rwlock_t access_;
 };
 
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
+
+#endif

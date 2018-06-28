@@ -19,6 +19,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
 #include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/brpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
@@ -32,11 +33,11 @@ class IOBufWriter {
  public:
   static void FreeMemory(void* p) {
 #ifdef PADDLE_WITH_CUDA
-// GPU data is copied to CPU buffer when sending,
-// free the buffer when possible.
 #ifdef PADDLE_WITH_BRPC_RDMA
     return;
 #endif
+    // GPU data is copied to CPU buffer when sending,
+    // free the buffer when possible.
     platform::CUDAPinnedPlace cuda_pinned;
     memory::Free(cuda_pinned, p);
 #endif
@@ -50,12 +51,13 @@ class IOBufWriter {
     iobuf->append(v, vlen);
   }
 
-  static void AppendZeroCopy(butil::IOBuf* iobuf, int k, const char* v,
-                             int64_t vlen) {
+  static void AppendZeroCopy(const std::string varname, butil::IOBuf* iobuf,
+                             int k, const char* v, int64_t vlen) {
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
 #ifdef PADDLE_WITH_BRPC_RDMA
-    RdmaMemPool::Instance().Register(varname, v, vlen);
+    RdmaMemPool::Instance().Register(
+        varname, static_cast<void*>(const_cast<char*>(v)), vlen);
 #endif
     // TODO(gongwb): use append_zero to avoid copy
     // iobuf->append(v, vlen);
@@ -105,9 +107,8 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
-  // TODO(gongwb): use append_zero to avoid data copy.
   IOBufWriter::AppendZeroCopy(
-      iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
+      name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
       static_cast<char*>(payload), payload_size);
 
   if (var->IsType<framework::SelectedRows>()) {

@@ -19,8 +19,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/operators/distributed/var_obj_pool.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 
 namespace paddle {
@@ -33,7 +33,7 @@ void* GetVarPayLoad(const std::string varname, int64_t size) {
 #ifdef PADDLE_WITH_BRPC_RDMA
   void* data = RdmaMemPool::Instance().Find(varname, size);
   if (data) {
-    return data
+    return data;
   }
 #endif
   platform::CUDAPinnedPlace cuda_pinned;
@@ -67,7 +67,9 @@ void GetTensorPayload(framework::Variable* var,
     // platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
-    *payload = GetVarPayLoad(varname, copy_size);
+    *payload = GetVarPayLoad(request->varname(), copy_size);
+
+    platform::CUDAPinnedPlace cuda_pinned;
     memory::Copy(cuda_pinned, *payload,
                  boost::get<platform::CUDAPlace>(tensor.place()),
                  reinterpret_cast<const void*>(tensor.data<void>()), copy_size,
@@ -97,10 +99,11 @@ void GetSelectedRowsPayload(framework::Variable* var,
   auto* tensor = slr->mutable_value();
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-    platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
-    *payload = GetVarPayLoad(varname, copy_size);
+    *payload = GetVarPayLoad(request->varname(), copy_size);
+
+    platform::CUDAPinnedPlace cuda_pinned;
     memory::Copy(cuda_pinned, *payload,
                  boost::get<platform::CUDAPlace>(tensor->place()),
                  reinterpret_cast<const void*>(tensor->data<void>()), copy_size,
