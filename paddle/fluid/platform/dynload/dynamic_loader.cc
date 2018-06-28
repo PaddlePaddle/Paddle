@@ -113,7 +113,7 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
   void* dso_handle = nullptr;
 
-  constexpr char* dl_error_msg = nullptr;
+  char* dl_error_msg = nullptr;
   std::string dlPath = dso_name;
   if (search_root.empty()) {
     dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
@@ -131,7 +131,7 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     }
   }
 
-  if (dl_error_msg == nullptr) {
+  if (dso_handle == nullptr && dl_error_msg == nullptr) {
     dl_error_msg = dlerror();
   }
 
