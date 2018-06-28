@@ -149,9 +149,7 @@ copy(memory_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
 )
 
-set(inference_deps
-    paddle_fluid_shared paddle_fluid
-    paddle_inference_api paddle_inference_api_shared)
+set(inference_deps paddle_fluid_shared paddle_fluid)
 
 if(WITH_CONTRIB)
     message(STATUS "installing contrib")
@@ -165,7 +163,7 @@ if(WITH_CONTRIB)
         list(APPEND inference_deps contrib_anakin_inference_lib)
    endif()
 
-  copy(contrib_inference_lib DEPS paddle_inference_api
+  copy(contrib_inference_lib DEPS paddle_inference_api paddle_inference_api_shared
         SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
         ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
         DSTS ${contrib_dst_dir} ${contrib_dst_dir})
