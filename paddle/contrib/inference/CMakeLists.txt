@@ -19,6 +19,9 @@ endif(APPLE)
 
 
 set(inference_deps paddle_inference_api paddle_fluid_api)
+if(WITH_GPU AND TENSORRT_FOUND)
+    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
+endif()
 
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
@@ -50,13 +53,24 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_paddle_inference_api_impl
                     ARGS test_word2vec test_image_classification)
 
+if(WITH_GPU AND TENSORRT_FOUND)
+cc_library(paddle_inference_tensorrt_subgraph_engine
+        SRCS paddle_inference_api_tensorrt_subgraph_engine.cc
+        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api)
+
+inference_api_test(test_paddle_inference_api_tensorrt_subgraph_engine ARGS test_word2vec)
+endif()
+
 if (WITH_ANAKIN AND WITH_TESTING) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
     # compile the libinference_anakin_api.a and compile with anakin.so.
-    nv_library(inference_anakin_api SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
+    nv_library(inference_anakin_api SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
+    nv_library(inference_anakin_api_shared SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
     target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+    target_compile_options(inference_anakin_api_shared BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     target_link_libraries(inference_anakin_api anakin anakin_saber_common)
+    target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
     cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
                                   ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
                                   DEPS inference_anakin_api)
