@@ -1108,6 +1108,9 @@ class ModelAverage(Optimizer):
     parameter variables of current model by calling 'apply()' method. And the
     'restore()' method is used to restored the parameter values of current model.
 
+    The size of average window is determined by average_window_rate,
+    min_average_window, max_average_window and current update times.
+
     Args:
         average_window_rate: The rate of average window.
         params_grads: A list of parameter-grad variable pairs.
