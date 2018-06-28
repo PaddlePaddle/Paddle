@@ -13,16 +13,18 @@ cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 
 function (inference_analysis_test TARGET)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs SRCS)
-    cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if(WITH_TESTING)
+        set(options "")
+        set(oneValueArgs "")
+        set(multiValueArgs SRCS)
+        cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    cc_test(${TARGET}
-            SRCS "${analysis_test_SRCS}"
-            DEPS analysis
-            ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model --fraction_of_gpu_memory_to_use=0.5)
-    set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
+        cc_test(${TARGET}
+                SRCS "${analysis_test_SRCS}"
+                DEPS analysis
+                ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model --fraction_of_gpu_memory_to_use=0.5)
+        set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
+    endif(WITH_TESTING)
 endfunction(inference_analysis_test)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
