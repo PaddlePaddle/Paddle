@@ -20,6 +20,17 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+template <>
+std::string &NodeAttr::As<std::string>() {
+  if (data_.empty()) {
+    type_hash_ = typeid(std::string).hash_code();
+  }
+  PADDLE_ENFORCE_EQ(type_hash_, typeid(std::string).hash_code());
+  return data_;
+}
+
+std::string &NodeAttr::String() { return As<std::string>(); }
+
 std::vector<Dot::Attr> Value::dot_attrs() const {
   return std::vector<Dot::Attr>({Dot::Attr("style", "filled,rounded"),
                                  Dot::Attr("shape", "box"),
