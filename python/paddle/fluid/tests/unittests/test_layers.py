@@ -401,7 +401,7 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
-    def test_maxout(self):
+    def test_crop(self):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[3, 5], dtype="float32")
