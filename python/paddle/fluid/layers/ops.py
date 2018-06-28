@@ -71,6 +71,7 @@ __all__ = [
     'polygon_box_transform',
     'shape',
     'maxout',
+    'all_gather',
 ] + __activations__
 
 for _OP in set(__all__):
