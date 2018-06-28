@@ -415,7 +415,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[16], dtype='float32')
             y = layers.data(name='label', shape=[1], dtype='int64')
-            iou = layers.mean_iou(x, y)
+            iou = layers.mean_iou(x, y, 2)
             self.assertIsNotNone(loss)
         print(str(program))
 
