@@ -253,6 +253,7 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], Variable):
             fetch_list = map(block.var, fetch_list)
+        fetch_list = [g for g in fetch_list if g.persistable]
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
@@ -261,6 +262,8 @@ class OpTest(unittest.TestCase):
 
     def check_output_with_place(self, place, atol):
         outs, fetch_list = self._calc_output(place)
+        if not fetch_list:
+            return
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -451,7 +454,8 @@ class OpTest(unittest.TestCase):
         inputs = self._get_inputs(block)
         feed_dict = self.feed_var(inputs, place)
 
-        fetch_list = [g for p, g in param_grad_list]
+        fetch_list = [g for p, g in param_grad_list if g.persistable]
+
         if parallel:
             use_cuda = False
             if isinstance(place, fluid.CUDAPlace(0)):
