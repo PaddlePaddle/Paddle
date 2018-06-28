@@ -410,6 +410,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_mean_iou(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32')
+            y = layers.data(name='label', shape=[1], dtype='int64')
+            iou = layers.mean_iou(x, y)
+            self.assertIsNotNone(loss)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
