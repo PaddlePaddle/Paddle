@@ -1,7 +1,7 @@
 # Inference Analysis
 
-The `inference/analysis` module is used to analysis and optimize the inference program,
-it references some philosophy from `LLVM/analysis` , 
+The `inference/analysis` module is used to analyze and optimize the inference program,
+it references some philosophy from `LLVM/analysis`, 
 and make the various optimization features be pluggable and co-exist in a pipeline.
 
 We borrowed some concepts from LLVM, such as
@@ -39,7 +39,7 @@ Generate a final `ProgramDesc` from a data flow graph, this should be the last p
 
 ### `TensorRTSubgraphNodeMarkPass`
 Mark the `Node` that are supported by TensorRT, 
-this pass will generate a visualization file which can be used for debug.
+this pass will generate a visualization file which can be used for debugging.
 
 ### `TensorRTSubGraphPass`
 Split the sub-graph that are can be accelerated by TensorRT.
@@ -47,11 +47,11 @@ Split the sub-graph that are can be accelerated by TensorRT.
 ### `DFG_GraphvizDrawPass`
 This pass is just for debug, it will visualize the `DataFlowGraph` using the [graphviz](http://www.graphviz.org) tool.
 
-It can be used as a helper class that draw the modified graph after each pass.
+It can be used as a helper class that draws the modified graph after each pass.
 
 ## Utilities
 
-There are some helper function/class for analysis.
+There is some helper function/class for analysis.
 
 - [dot.h](./dot.h) give a easy to use interface for generating `DOT` codes,
 - [graph_traits.h](./graph_traits.h) contains the graph traversal algorithms, it uses `iterator` to make the algorithms easy to share across different passes.
