@@ -66,6 +66,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto *mean = ctx.Input<Tensor>("Mean");
@@ -111,6 +112,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     unsigned flags = mkldnn::use_scale_shift;
     if (is_test) flags |= mkldnn::use_global_stats;
+    if (fuse_with_relu) flags |= mkldnn::fuse_bn_relu;
 
     // create mkldnn memory from input x tensor
     auto src_memory =

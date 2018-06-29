@@ -132,6 +132,7 @@ class BeamSearch {
    * that means no candidates is provided, and the task will stop running.
    */
   void operator()(const framework::LoDTensor& pre_ids,
+                  const framework::LoDTensor& pre_scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores);
   /*
@@ -153,14 +154,16 @@ class BeamSearch {
 
  protected:
   /*
-   * Delete all the records that follows the end token.
+   * Prune the source sentences all branchs finished, and it is optional.
+   * Pruning must one step later than finishing (thus pre_ids is needed here),
+   * since the end tokens must be writed out.
    */
-  int PruneEndidCandidates(const framework::LoDTensor& pre_ids,
-                           std::vector<std::vector<Item>>* items);
+  void PruneEndBeams(const framework::LoDTensor& pre_ids,
+                     std::vector<std::vector<Item>>* items);
 
   /*
    * Transform the items into a map whose key is offset, value is the items.
-   * NOTE low performance
+   * NOTE low performance.
    */
   std::vector<std::vector<Item>> ToMap(
       const std::vector<std::vector<Item>>& inputs, size_t element_num);
@@ -168,12 +171,16 @@ class BeamSearch {
   /*
    * For each source, select top beam_size records.
    */
-  std::vector<std::vector<Item>> SelectTopBeamSizeItems();
+  std::vector<std::vector<Item>> SelectTopBeamSizeItems(
+      const framework::LoDTensor& pre_ids,
+      const framework::LoDTensor& pre_scores);
 
   /*
    * Get the items of next source sequence, return false if no remaining items.
    */
-  bool NextItemSet(std::vector<Item>* items);
+  bool NextItemSet(const framework::LoDTensor& pre_ids,
+                   const framework::LoDTensor& pre_scores,
+                   std::vector<Item>* items);
 
  private:
   size_t beam_size_;
@@ -192,24 +199,25 @@ template <typename DeviceContext, typename T>
 class BeamSearchOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* ids_var = context.Input<framework::LoDTensor>("ids");
-    auto* scores_var = context.Input<framework::LoDTensor>("scores");
-    auto* pre_ids_var = context.Input<framework::LoDTensor>("pre_ids");
-    PADDLE_ENFORCE_NOT_NULL(ids_var);
-    PADDLE_ENFORCE_NOT_NULL(scores_var);
-    PADDLE_ENFORCE_NOT_NULL(pre_ids_var);
+    auto* ids = context.Input<framework::LoDTensor>("ids");
+    auto* scores = context.Input<framework::LoDTensor>("scores");
+    auto* pre_ids = context.Input<framework::LoDTensor>("pre_ids");
+    auto* pre_scores = context.Input<framework::LoDTensor>("pre_scores");
+    PADDLE_ENFORCE_NOT_NULL(ids);
+    PADDLE_ENFORCE_NOT_NULL(scores);
+    PADDLE_ENFORCE_NOT_NULL(pre_ids);
+    PADDLE_ENFORCE_NOT_NULL(pre_scores);
 
     size_t level = context.Attr<int>("level");
     size_t beam_size = context.Attr<int>("beam_size");
     int end_id = context.Attr<int>("end_id");
-    BeamSearch alg(*ids_var, *scores_var, level, beam_size, end_id);
-    auto selected_ids_var =
-        context.Output<framework::LoDTensor>("selected_ids");
-    auto selected_scores_var =
+    BeamSearch alg(*ids, *scores, level, beam_size, end_id);
+    auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
+    auto selected_scores =
         context.Output<framework::LoDTensor>("selected_scores");
-    PADDLE_ENFORCE_NOT_NULL(selected_ids_var);
-    PADDLE_ENFORCE_NOT_NULL(selected_scores_var);
-    alg(*pre_ids_var, selected_ids_var, selected_scores_var);
+    PADDLE_ENFORCE_NOT_NULL(selected_ids);
+    PADDLE_ENFORCE_NOT_NULL(selected_scores);
+    alg(*pre_ids, *pre_scores, selected_ids, selected_scores);
   }
 };
 }  // namespace operators
