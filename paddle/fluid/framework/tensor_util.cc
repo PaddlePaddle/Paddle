@@ -86,6 +86,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(dst_place)) {
+    if (!platform::is_same_place(dst_place, src.place())) {
+      pool.Get(src.place())->Wait();
+    }
     dev_ctx = pool.Get(dst_place);
   } else {
     dev_ctx = pool.Get(src.place());
