@@ -24,10 +24,11 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of AnchorGeneratorOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Anchors"),
-                   "Input(Input) of AnchorGeneratorOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Variances"),
-                   "Input(Input) of AnchorGeneratorOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Anchors"),
+                   "Output(Anchors) of AnchorGeneratorOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Variances"),
+        "Output(Variances) of AnchorGeneratorOp should not be null.");
 
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
