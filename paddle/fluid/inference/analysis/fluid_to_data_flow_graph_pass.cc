@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "analyzer.h"
+#include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 
@@ -88,7 +88,8 @@ namespace {
 class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
  public:
   using Config = DFG_GraphvizDrawPass::Config;
-  DFG_DebuggerPass(const Config &config) : DFG_GraphvizDrawPass(config) {}
+  explicit DFG_DebuggerPass(const Config &config)
+      : DFG_GraphvizDrawPass(config) {}
   std::string repr() const override { return "fluid-to-dfg-debuger-pass"; }
   bool Finalize() override { return true; }
 };
