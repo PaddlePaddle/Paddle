@@ -24,6 +24,10 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of AnchorGeneratorOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Anchors"),
+                   "Input(Input) of AnchorGeneratorOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Variances"),
+                   "Input(Input) of AnchorGeneratorOp should not be null.");
 
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
@@ -76,8 +80,10 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<float>>(
         "anchor_sizes",
-        "(vector<float>) List of RPN anchor sizes "
-        " given in absolute pixels e.g. (64, 128, 256, 512)")
+        "(vector<float>) List of Region Proposal Network(RPN) anchor sizes "
+        " given in absolute pixels e.g. (64, 128, 256, 512)."
+        " For instance, the anchor size of 64 means the area of this anchor "
+        "equals to 64**2.")
         .AddCustomChecker([](const std::vector<float>& anchor_sizes) {
           PADDLE_ENFORCE_GT(anchor_sizes.size(), 0,
                             "Size of anchor_sizes must be at least 1.");
@@ -88,7 +94,10 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<std::vector<float>>(
         "aspect_ratios",
-        "(vector<float>) List of RPN anchor aspect ratios, e.g. (0.5, 1, 2)");
+        "(vector<float>) List of Region Proposal Network(RPN) anchor aspect "
+        "ratios, e.g. (0.5, 1, 2)."
+        "For instacne, the aspect ratio of 0.5 means the height / width of "
+        "this anchor equals 0.5.");
 
     AddAttr<std::vector<float>>("variances",
                                 "(vector<float>) List of variances to be used "

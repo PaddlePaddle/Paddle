@@ -922,48 +922,48 @@ def anchor_generator(input,
     """
     **Anchor generator operator**
 
-    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
-    Each position of the input produce N prior boxes, N is determined by
-    the count of min_sizes, max_sizes and aspect_ratios, The size of the
-    box is in range(min_size, max_size) interval, which is generated in
-    sequence according to the aspect_ratios.
+    Generate anchors for Faster RCNN algorithm.
+    Each position of the input produce N anchors, N =
+    size(anchor_sizes) * size(aspect_ratios). The order of generated anchors
+    is firstly aspect_ratios loop then anchor_sizes loop.
 
     Args:
-       input(Variable): The Input feature map, the format is NCHW.
-       anchor_sizes(list|tuple|float value): Anchor sizes of generated anchors.
-       Defalut: [64, 128, 256, 512]
-       aspect_ratios(list|tuple|float value): The aspect ratios of generated
-            anchors. Default: [0.5, 1.0, 2.0].
+       input(Variable): The input feature map, the format is NCHW.
+       anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
+       given in absolute pixels e.g. [64., 128., 256., 512.].
+       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
+       aspect_ratios(list|tuple|float): The height / width ratios of generated
+            anchors, e.g. [0.5, 1.0, 2.0].
        variance(list|tuple): The variances to be used in box regression deltas.
             Default:[0.1, 0.1, 0.2, 0.2].
-       stride(list|turple): Anchors stride across width and height.
-            Default: [16.0, 16.0]
+       stride(list|turple): The anchors stride across width and height,
+            e.g. [16.0, 16.0]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
 
     Returns:
-        Anchors(Variable):  The output anchors of AnchorGeneratorOp.
-             The layout is [H, W, num_anchors, 4].
-             H is the height of input, W is the width of input,
-             num_anchors is the box count of each position.
-             Each anchor is in (x1, y1, x2, y2) format.
-        Variances(Variable): The expanded variances of PriorBox.
-             The layout is [H, W, num_priors, 4].
-             H is the height of input, W is the width of input
-             num_priors is the box count of each position.
-             Each variance is in (x, y, w, h) format
-             which is unrelated with Anchors'.
+        Anchors(Variable):  The output anchors with a layout of [H, W, num_anchors, 4].
+              H is the height of input, W is the width of input,
+              num_anchors is the box count of each position.
+              Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+        Variances(Variable): The expanded variances of anchors
+              with a layout of [H, W, num_priors, 4].
+              H is the height of input, W is the width of input
+              num_anchors is the box count of each position.
+              Each variance is in (xcenter, ycenter, w, h) format.
 
 
     Examples:
+
         .. code-block:: python
+
             anchor, var = anchor_generator(
-            input=conv1,
-            anchor_sizes=[64, 128, 256, 512],
-            aspect_ratios=[0.5, 1.0, 2.0],
-            variance=[0.1, 0.1, 0.2, 0.2],
-            stride=[16.0, 16.0],
-            offset=0.5)
+                input=conv1,
+                anchor_sizes=[64, 128, 256, 512],
+                aspect_ratios=[0.5, 1.0, 2.0],
+                variance=[0.1, 0.1, 0.2, 0.2],
+                stride=[16.0, 16.0],
+                offset=0.5)
     """
     helper = LayerHelper("anchor_generator", **locals())
     dtype = helper.input_dtype()
