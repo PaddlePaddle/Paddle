@@ -35,7 +35,7 @@ struct DataBalanceOpHandle : public OpHandleBase {
                       const platform::NCCLContextMap *ctxs);
 #else
   DataBalanceOpHandle(const std::vector<Scope *> &local_scopes,
-                      const std::vector<platform::Place> *places)
+                      const std::vector<platform::Place> &places);
 #endif
 
   std::string Name() const override;
