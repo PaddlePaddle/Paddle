@@ -138,7 +138,7 @@ struct GraphTraits<DataFlowGraph> {
 // sub-graph is the inputs nodes and output nodes that doesn't inside the
 // sub-graph.
 static std::pair<std::vector<Node *>, std::vector<Node *>>
-ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
   std::unordered_set<Node *> nodes(graph.begin(), graph.end());
   std::unordered_set<Node *> inputs;
   std::unordered_set<Node *> outputs;
