@@ -161,8 +161,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
       if ((N * H * W * D) == 1) {
-        LOG(WARNING) << "Only 1 elementwise in normalization dimension, "
-                     << "we kip the batch norm calculation, let y = x";
+        LOG(WARNING) << "Only 1 element in normalization dimension, "
+                     << "we skip the batch norm calculation, let y = x.";
         framework::TensorCopySync(*x, ctx.GetPlace(), y);
       } else {
         double this_factor = 1. - momentum;
