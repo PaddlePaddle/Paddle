@@ -50,17 +50,7 @@ class PassManager : public OrderedRegistry<Pass> {
   // globally shared, so pass them as the arguemnts for all the pass managers.
   virtual bool Initialize(const Argument& argument) { return false; }
 
-  virtual bool Initialize(Argument* argument) {
-    argument_ = argument;
-    for (auto& pass : data_) {
-      LOG(INFO) << "Initializing pass " << pass->repr();
-      if (!pass->Initialize(argument)) {
-        LOG(ERROR) << "Failed to initialize pass [" << pass->repr() << "]";
-        return false;
-      }
-    }
-    return true;
-  }
+  virtual bool Initialize(Argument* argument);
 
   // Call all the passes' Finalize methods.
   virtual bool Finalize() {

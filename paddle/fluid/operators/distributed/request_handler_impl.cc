@@ -22,10 +22,15 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+// define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
+// to directory specified.
+constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
 bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
@@ -116,6 +121,24 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   executor_->RunPreparedContext(
       (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
 
+  return true;
+}
+
+bool RequestCheckpointHandler::Handle(const std::string& varname,
+                                      framework::Scope* scope,
+                                      framework::Variable* invar,
+                                      framework::Variable** outvar,
+                                      const std::string& out_var_name) {
+  PADDLE_ENFORCE(
+      checkpoint_notify_id != -1,
+      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
+
+  auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  lt_var->clear();
+  lt_var->append(out_var_name);
+  VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
+          << out_var_name;
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
 }
 

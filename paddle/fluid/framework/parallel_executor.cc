@@ -133,17 +133,18 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
-  // the the initialize bcast, all vars would be bcast from device(0), otherwise
+  // the the initializing bcast, all vars would be bcast from device(0),
+  // otherwise
   // bcast from the specified device.
-  bool initialize = builder_.get() == nullptr ? true : false;
+  bool initializing = builder_.get() == nullptr ? true : false;
 
   for (auto &var : vars) {
     int var_dev_id =
         builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
-    if (!initialize && var_dev_id == -1) continue;
+    if (!initializing && var_dev_id == -1) continue;
 
     framework::Variable *main_var = nullptr;
-    if (initialize) {
+    if (initializing) {
       main_var = member_->local_scopes_[0]->FindVar(var);
     } else {
       main_var = member_->local_scopes_[var_dev_id]->FindVar(var);
@@ -165,7 +166,8 @@ void ParallelExecutor::BCastParamsToGPUs(
         auto place = member_->places_[i];
         void *buffer;
 
-        if ((initialize && i == 0) || (!initialize && i == var_dev_id)) {
+        if ((initializing && i == 0) ||
+            (!initializing && static_cast<int>(i) == var_dev_id)) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
@@ -182,8 +184,16 @@ void ParallelExecutor::BCastParamsToGPUs(
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
-          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
-                                       nccl_ctx.comm_, nccl_ctx.stream());
+          if (initializing) {
+            platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
+                                         nccl_ctx.comm_, nccl_ctx.stream());
+          } else {
+            if (var_dev_id >= 0) {
+              platform::dynload::ncclBcast(buffers[i], numel, data_type,
+                                           var_dev_id, nccl_ctx.comm_,
+                                           nccl_ctx.stream());
+            }
+          }
         }
         member_->nccl_ctxs_->WaitAll();
       }
