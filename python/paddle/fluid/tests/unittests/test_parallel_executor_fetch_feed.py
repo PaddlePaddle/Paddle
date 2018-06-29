@@ -74,17 +74,13 @@ class TestFetchOp(unittest.TestCase):
                 if 'tmp' not in k and k[0] is not '_' or v.persistable:
                     fetch_list.append(k)
 
-            has_nan = False
             for data in train_inputs:
                 ret = pe.run(fetch_list,
                              feed=feeder.feed(data),
                              return_numpy=True)
                 for i in range(len(fetch_list)):
-                    print("%s, %f" % (fetch_list[i], np.sum(ret[i])))
-                    if math.isnan(np.sum(ret[i])) or math.isinf(np.sum(ret[i])):
-                        has_nan = True
-
-        return has_nan
+                    assert not math.isnan(np.sum(ret[i])) and \
+                           not math.isinf(np.sum(ret[i]))
 
     def test_fetch_op(self):
         tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
@@ -95,14 +91,9 @@ class TestFetchOp(unittest.TestCase):
         for i in range(iters):
             train_inputs.append(tst_reader_iter.next())
 
-        os.environ['CPU_NUM'] = str(2)
-        print("GPU:")
-        has_nan1 = self.parallel_exe(train_inputs, seed=1, use_cuda=True)
-        print("CPU:")
-        has_nan2 = self.parallel_exe(train_inputs, seed=1, use_cuda=False)
-
-        if has_nan1 or has_nan2:
-            assert False
+        os.environ['CPU_NUM'] = str(4)
+        self.parallel_exe(train_inputs, seed=1, use_cuda=True)
+        self.parallel_exe(train_inputs, seed=1, use_cuda=False)
 
 
 class TestFeedParallel(unittest.TestCase):

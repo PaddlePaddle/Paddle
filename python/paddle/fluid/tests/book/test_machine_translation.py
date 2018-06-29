@@ -108,7 +108,7 @@ def decoder_decode(context, is_sparse):
         pre_state = pd.array_read(array=state_array, i=counter)
         pre_score = pd.array_read(array=scores_array, i=counter)
 
-        # expand the lod of pre_state to be the same with pre_score
+        # expand the recursive_sequence_lengths of pre_state to be the same with pre_score
         pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
         pre_ids_emb = pd.embedding(
@@ -252,11 +252,13 @@ def decode_main(use_cuda, is_sparse):
         [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
-    init_lod = [1] * batch_size
-    init_lod = [init_lod, init_lod]
+    init_recursive_seq_lens = [1] * batch_size
+    init_recursive_seq_lens = [init_recursive_seq_lens, init_recursive_seq_lens]
 
-    init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
-    init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
+    init_ids = fluid.create_lod_tensor(init_ids_data, init_recursive_seq_lens,
+                                       place)
+    init_scores = fluid.create_lod_tensor(init_scores_data,
+                                          init_recursive_seq_lens, place)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -280,7 +282,7 @@ def decode_main(use_cuda, is_sparse):
             feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print result_ids.lod()
+        print result_ids.recursive_sequence_lengths()
         break
 
 
