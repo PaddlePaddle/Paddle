@@ -228,7 +228,7 @@ class MKLDNNHandler {
       return dstr;
     };
     return dims2str(operand_dims) + suffix;
-  };
+  }
 
  protected:
   const MKLDNNDeviceContext& dev_ctx_;
@@ -236,6 +236,16 @@ class MKLDNNHandler {
   std::string key_;
   bool is_reusing_;
 };
+
+inline mkldnn::memory::format MKLDNNFormatForSize(
+    size_t dims_size, mkldnn::memory::format data_format) {
+  if (dims_size == 1) {
+    return mkldnn::memory::format::x;
+  } else if (dims_size == 2) {
+    return mkldnn::memory::format::nc;
+  }
+  return data_format;
+}
 
 }  // namespace platform
 }  // namespace paddle
