@@ -219,8 +219,8 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           variance_out->mutable_data<T>(ctx.GetPlace()), C);
 
       if ((N * sample_size) == 1) {
-        LOG(WARNING) << "Only 1 elementwise in normalization dimension, "
-                     << "we kip the batch norm calculation, let y = x";
+        LOG(WARNING) << "Only 1 element in normalization dimension, "
+                     << "we skip the batch norm calculation, let y = x.";
         framework::TensorCopySync(*x, ctx.GetPlace(), y);
         return;
       }
