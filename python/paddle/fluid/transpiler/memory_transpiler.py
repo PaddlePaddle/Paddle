@@ -19,8 +19,9 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
-from paddle.fluid.framework import Program, default_main_program, Parameter, Variable, program_guard
+from paddle.fluid.framework import Program, default_main_program, Parameter, Variable, program_guard, OpProtoHolder
 from paddle.fluid.backward import _rename_arg_, append_backward
+import paddle.fluid.op as op
 
 # from .. import core
 # from .. import layers
@@ -50,7 +51,7 @@ class Graph(object):
 
     def __init__(self, ops):
         self._ops = ops
-        self._ops_dep_var = defaultdict(
+        self._ops_use_var = defaultdict(
             list)  # var name x -> op set deps on var x
         self._vars = defaultdict(set)
         self._link_dependency()
@@ -58,10 +59,10 @@ class Graph(object):
     def _link_dependency(self):
         for op in self._ops:
             for input_arg in op.input_arg_names:
-                self._ops_dep_var[input_arg].append(op)
+                self._ops_use_var[input_arg].append(op)
 
-    def get_ops_dep_var(self, var_name):
-        return self._ops_dep_var[var_name]
+    def get_ops_use_var(self, var_name):
+        return self._ops_use_var[var_name]
 
     def _remove_circle(self, ops):
         no_circle_op_role = set([
@@ -139,16 +140,6 @@ class ControlFlowGraph(object):
         self._uses = defaultdict(set)  # variables used in op
         self._defs = defaultdict(set)  # new generated variables
 
-    def _update_use_def_chain(self):
-        for i in range(len(self._ops)):
-            self._uses[i].update(self._ops[i].input_arg_names)
-            self._defs[i].update(self._ops[i].output_arg_names)
-
-    def _connect(self, connections):
-        for node1, node2 in connections:
-            self._successors[node1].append(node2)
-            self._predecessors[node2].append(node1)
-
     def _build_graph(self):
         """
         NOTE(dzh):
@@ -162,6 +153,16 @@ class ControlFlowGraph(object):
         connections = [(i, i + 1) for i in range(len(self._ops) - 1)]
         self._update_use_def_chain()
         self._connect(connections)
+
+    def _update_use_def_chain(self):
+        for i in range(len(self._ops)):
+            self._uses[i].update(self._ops[i].input_arg_names)
+            self._defs[i].update(self._ops[i].output_arg_names)
+
+    def _connect(self, connections):
+        for node1, node2 in connections:
+            self._successors[node1].append(node2)
+            self._predecessors[node2].append(node1)
 
     def compute_liveness_range(self):
         """
@@ -260,10 +261,10 @@ class MemoryBlock(object):
             return False
         return True
 
-    def GE(self, rhs):
+    def great_or_equal(self, rhs):
         return self._compare_attr(rhs, operator.ge)
 
-    def EQ(self, rhs):
+    def equal(self, rhs):
         return self._compare_attr(rhs, operator.eq) and self.shape == rhs.shape
 
 
@@ -291,30 +292,30 @@ class MemoryPlan(object):
         self._graph = None  # Dependency graph
         self._ops = None  # sorted ops
 
-    def _liveness_plan(self):
+    def build_graph(self):
         ops = self._block.ops
         graph = Graph(ops)
         graph.topology_sort()
-        cfg = ControlFlowGraph(ops)
-        cfg.compute_liveness_range()
         self._graph = graph
         self._ops = ops
         self._vars = self._block.vars
+
+    def _liveness_plan(self):
+        cfg = ControlFlowGraph(self._ops)
+        cfg.compute_liveness_range()
         self._ir = cfg
 
     def _is_memory_block(self, var_name):
         if var_name not in self._vars:
             return False
-        x = self._var_names[var_name]
-        if x.persistable or x.shape == None:
+        x = self._vars[var_name]
+        if x.persistable == True or x.shape == None:
             return False
-        # NOTE(dzh): assert x.type() is seperated intendly, because if it not hold a Tensor, it
-        # will not have the attribute of type.
-        if x.type() != core.VarDesc.VarType.LOD_TENSOR:
+        if x.type != core.VarDesc.VarType.LOD_TENSOR:
             return False
         return True
 
-    def _create_memory_block(self, op, var_name):
+    def _var_to_memory_block(self, op, var_name):
         var = self._vars[var_name]
         place = None
         if op.has_attr("force_cpu") and op.attr("force_cpu") == True:
@@ -324,7 +325,7 @@ class MemoryPlan(object):
     def _find_memory_block(self, memory_block):
         found = False
         for idx, memory in enumerate(self._memory_pool):
-            if memory.EQ(memory_block):
+            if memory.equal(memory_block):
                 found = True
                 break
         if found:
@@ -333,62 +334,124 @@ class MemoryPlan(object):
         else:
             return -1, None
 
-    def _reuse_cache(self, cache, op, var_name, idx):
+    def __reuse_variable(self, cache, op, var_name, idx):
         op_descs = [op.desc for op in self._ops]
         _rename_arg_(op_descs, var_name, cache.name, begin_idx=idx)
         self._block.var(var_name).name = cache.name
         self._ir.rename(var_name, cache.name, begin_idx=idx)
 
-    def _reuse_inplace(self, op, var_name, idx):
-        reuse_var = op.attr("reuse")
-        ops_dep_var = self._graph.get_ops_dep_var(reuse_var)
+    def _reuse_cache(self, cache, op, var_name, idx):
+        self.__reuse_variable(cache, op, var_name, idx)
+
+    def _is_inplace_in_graph(self, op, var_name, reused_var_name):
         """
         only the last referenced op can apply inplace to the variable.
         For example, x is the variable. x_a want to reuse x in op_a, and x_b want to reuse x in op_b,
         if all of these two op use inplace, then the second op will get wrong.
         So, we build the dependency graph, and only let the last op apply inplace.
         """
-        if ops_dep_var[-1] != op:
-            return
-        if self.logging:
-            print(("Hit inplace !!!! inplace op %s"
-                   "var is %s, "
-                   "reused var is %s.") % (op.type, str(var_name),
-                                           str(reuse_var)))
-        op_descs = [op.desc for op in self._ops]
-        _rename_arg_(op_descs, var_name, reuse_var, begin_idx=idx)
-        self._block.var(var_name).desc.name = reuse_var
-        self._ir.rename(var_name, reuse_var, begin_idx=idx)
+        print(var_name, reused_var_name)
+        return True
+        ops_use_var = self._graph.get_ops_use_var(reused_var_name)
+        if len(ops_use_var) != 0 and ops_use_var[-1] == op:
+            return True
+        return False
 
-    def apply(self):
+    def _reuse_inplace(self, op, var_name, reused_var_name, idx):
+        op_descs = [op.desc for op in self._ops]
+        _rename_arg_(op_descs, var_name, reused_var_name, begin_idx=idx)
+        self._block.var(var_name).desc.set_name(reused_var_name)
+        # = reused_var_name
+
+    def _get_inplace_vars(self, op):
+        op_proto = OpProtoHolder.instance().get_op_proto(op.type)
+        inplace_vars = []
+        for var_proto in op_proto.outputs:
+            if var_proto.HasField("reuse"):
+                var_name, reused_var_name = var_proto.name, var_proto.reuse
+                # mapping from symbol name to unique var name
+                inplace_vars.append(
+                    (op.output(var_name)[0], op.input(reused_var_name)[0]))
+        return inplace_vars
+
+    def _has_inplace_var(self, op):
+        return len(self._get_inplace_vars(op)) != 0
+
+    def inplace_pass(self):
+        for idx, op in enumerate(self._ops):
+            block_desc = op.block
+            # if op.attr("op_role") == int(core.op_proto_and_checker_maker.OpRole.Forward):
+            # print (op.type, self._has_inplace_var(op))
+            if op.attr("op_role") == int(core.op_proto_and_checker_maker.OpRole.Forward) \
+               and self._has_inplace_var(op) :
+                for (var_name, reused_var_name) in self._get_inplace_vars(op):
+                    # for var_name in var_defs:
+                    if self._is_inplace_in_graph(op, var_name, reused_var_name):
+                        if self.logging:
+                            print(
+                                ("Hit inplace !!!! inplace op %s "
+                                 "var is %s, "
+                                 "reused var is %s.") % (op.type, str(var_name),
+                                                         str(reused_var_name)))
+                        self._reuse_inplace(op, var_name, reused_var_name, idx)
+
+    def liveness_pass(self):
         self._liveness_plan()
         for idx, op in enumerate(self._ops):
             if op.has_sub_block():
                 continue
             block_desc = op.block
-            var_defs = filter(lambda x: self._is_memory_block,
+            var_defs = filter(lambda x: self._is_memory_block(x),
+                              self._ir.get_def(idx))
+            # # 1. apply inplace variable pass
+            # if op.attr("op_role") == int(core.op_proto_and_checker_maker.OpRole.Forward) \
+            #    and self._has_inplace_var(op) :
+            #     for (var_name, reused_var_name) in enumerate(self._get_inplace_vars(op)):
+            #     # for var_name in var_defs:
+            #         if self._is_inplace_in_graph(op, var_name, reused_var_name):
+            #             if self.logging:
+            #                 print(("Hit inplace !!!! inplace op %s"
+            #                     "var is %s, "
+            #                     "reused var is %s.") % (op.type, str(var_name),
+            #                                             str(reuse_var_name)))
+            #             self._reuse_inplace(op, var_name, idx)
+
+            # # 2. apply liveness variable reuse pass
+            var_defs = filter(lambda x: self._is_memory_block(x),
                               self._ir.get_def(idx))
             for var_name in var_defs:
-                if op.has_attr("reuse"):
-                    self._reuse_inplace(op, var_name, idx)
+                # self._has_inplace_var(op)
+                # if op.has_attr("reuse"):
+                #     self._reuse_inplace(op, var_name, idx)
                 if var_name not in self._ir.get_use(idx):
-                    memory = self._create_memory_block(op, var_name)
-                    index, cache = self._find_memory_block(memory)
+                    memory_block = self._var_to_memory_block(op, var_name)
+                    index, cache = self._find_memory_block(memory_block)
                     if cache:
                         if self.logging:
                             print(("Hit Cache !!!! cache pool index "
                                    "is %d, var is %s, "
-                                   "cached var is %s.") % (index, str(memory),
-                                                           str(cache)))
+                                   "cached var is %s.") %
+                                  (index, str(memory_block), str(cache)))
                         self._reuse_cache(cache, op, var_name, idx)
                         break
             live_in = self._ir.live_in(idx)
             live_out = self._ir.live_out(idx)
             caches_candidate = live_in - (live_in & live_out)
-            caches = filter(lambda x: self._is_memory_block, caches_candidate)
+            # print(live_in)
+            # print(live_out)
+            # print(caches_candidate)
+            # print("\n")
+            caches = filter(lambda x: self._is_memory_block(x),
+                            caches_candidate)
+            # print(caches)
             for cache in caches:
-                self._memory_pool.append(self._create_memory_block(op, cache))
-            print(tostr(self._memory_pool))
+                self._memory_pool.append(self._var_to_memory_block(op, cache))
+            # print(tostr(self._memory_pool))
+
+    def apply(self):
+        self.build_graph()
+        self.inplace_pass()
+        self.liveness_pass()
 
 
 class MemoryTranspiler(object):
@@ -438,6 +501,23 @@ def GenProgram1():
     return program
 
 
+def GenProgramInplace():
+    program = Program()
+    with program_guard(program, startup_program=Program()):
+        x = layers.data(name='x', shape=[13], dtype='float32')
+        x = layers.fc(input=x, size=1, act=None)
+        x1 = layers.relu(x)
+        x2 = layers.relu(x)
+        x = layers.sums(x1, x2)
+        y_predict = layers.relu(x)
+        y = layers.data(name='y', shape=[1], dtype='float32')
+        cost = layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = layers.mean(cost)
+        opt = optimizer.SGD(learning_rate=0.001)
+        opt = opt.minimize(avg_cost)
+    return program
+
+
 def GenProgram2():
     program = Program()
     with program_guard(program, startup_program=Program()):
@@ -453,10 +533,60 @@ def GenProgram2():
     return program
 
 
+import unittest
+from pprint import pprint
+
+
+class TestGraph(unittest.TestCase):
+    def setUp(self):
+        program = Program()
+        with program_guard(program, startup_program=Program()):
+            x0 = layers.data(name='x', shape=[4, 2], dtype='float32')
+            x1, x2 = layers.split(x0, num_or_sections=2)
+            x3, x4 = layers.split(x0, num_or_sections=2)
+            x5 = layers.sums(input=[x2, x3])
+            x6 = layers.sums([x1, x5, x4])
+            y_p = layers.fc(input=x6, size=1)
+            y = layers.data(name='y', shape=[1], dtype='float32')
+            cost = layers.square_error_cost(input=y_p, label=y)
+            avg_cost = layers.mean(cost)
+            opt = optimizer.SGD(learning_rate=0.001)
+            opt = opt.minimize(avg_cost)
+        self.program = program
+        self.x0 = x0
+        self.cost = cost
+
+    def test_graph(self):
+        program = self.program
+        x0 = self.x0
+        cost = self.cost
+        graph = Graph(program.block(0).ops)
+        var_to_ops_mapping = dict()
+        for var_name in program.block(0).vars.keys():
+            ops = graph.get_ops_use_var(var_name)
+            var_to_ops_mapping[var_name] = map(lambda x: x.type, ops)
+        self.assertTrue(var_to_ops_mapping[x0.name] == [u'split', u'split'])
+        self.assertTrue(var_to_ops_mapping[cost.name] ==
+                        [u'mean', u'mean_grad', u'square_grad'])
+
+    def test_topology_sort(self):
+        program = self.program
+        ops = program.block(0).ops
+        graph = Graph(ops)
+        orderd_ops = graph.topology_sort()
+        self.assertTrue(ops != orderd_ops)
+        t0 = map(lambda x: x.type, ops)
+        t1 = map(lambda x: x.type, orderd_ops)
+        print t0
+        print t1
+
+
 if __name__ == "__main__":
-    program = GenProgram1()
     # program = GenProgram1()
+    # program = GenProgram2()
+    program = GenProgramInplace()
     # print program
-    MemoryTranspiler(program, logging=False).transpile()
+    MemoryTranspiler(program, logging=True).transpile()
+    # unittest.main()
     # plan = MemoryPlan(program, logging=True)
     # plan.apply()
