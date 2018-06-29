@@ -76,12 +76,19 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst) {
+  // NOTE(zcd): If the src.place() and dst_place are two different GPU,
+  // the copy operation is carried out on the dst_place's stream. This is
+  // very important, because TensorCopy is an async operator, and in most
+  // case, once this copy operator returns, dst is to be used in dst_place's
+  // stream, if this copy operation is carried out on the src_place's stream,
+  // when dst is used in dst_place's stream the copy operation may be
+  // not completed.
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(src.place())) {
-    dev_ctx = pool.Get(src.place());
-  } else {
+  if (platform::is_gpu_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
+  } else {
+    dev_ctx = pool.Get(src.place());
   }
   TensorCopy(src, dst_place, *dev_ctx, dst);
 }
