@@ -20,7 +20,7 @@ def git_commit():
 def _get_version_detail(idx):
     assert idx < 3
 
-    version_details = '${PADDLE_VERSION}'.split('.')
+    version_details = '@PADDLE_VERSION@'.split('.')
     if len(version_details) == 3:
         if re.match('[0-9]+', version_details[idx]):
             return int(version_details[idx])
@@ -50,14 +50,15 @@ def get_patch():
 
 def is_taged():
     try:
-        #  release/0.13.0
-        #  git describe --exact-match --tags
-        cmd = ['git', 'rev-parse', 'HEAD']
-        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+        cmd = ['git', 'describe', '--exact-match', '--tags']
+        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
     except:
-        git_commit = 'Unknown'
-    return git_commit
-    return ISTAGED
+        return False
+
+    if git_tag.replace('v', '') == '@PADDLE_VERSION@':
+        return True
+    else:
+        return False;
 
 def write_version_py(filename='paddle/version.py'):
     cnt = '''
