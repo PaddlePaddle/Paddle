@@ -27,6 +27,7 @@ __all__ = [
     'Variable',
     'Program',
     'Operator',
+    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
