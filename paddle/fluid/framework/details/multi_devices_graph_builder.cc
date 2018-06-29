@@ -368,7 +368,12 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
 
 void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
     SSAGraph *result, const std::vector<std::string> &datas) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new DataBalanceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
   result->ops_.emplace_back(new DataBalanceOpHandle(local_scopes_, places_));
+#endif
   auto *op_handle = result->ops_.back().get();
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
