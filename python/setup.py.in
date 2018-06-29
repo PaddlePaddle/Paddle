@@ -27,19 +27,19 @@ def _get_version_detail(idx):
 
     return None
 
-def get_minor():
-    minor = _get_version_detail(0)
-    if minor is not None:
-        return minor
-
-    return MINOR
-
 def get_major():
-    major = _get_version_detail(1)
+    major = _get_version_detail(0)
     if major is not None:
         return major
 
     return MAJOR
+
+def get_minor():
+    minor = _get_version_detail(1)
+    if minor is not None:
+        return minor
+
+    return MINOR
 
 def get_patch():
     patch = _get_version_detail(2)
