@@ -212,7 +212,7 @@ class GRPCClient : public RPCClient {
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
   void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
-                             int64_t time_out = FLAGS_grpc_deadline) override;
+                             int64_t time_out = FLAGS_rpc_deadline) override;
 
   void Wait() override;
 
