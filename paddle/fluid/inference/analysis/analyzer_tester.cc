@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
-#include "paddle/fluid/inference/analysis/subgraph_splitter.h"
+#include "paddle/fluid/inference/analysis/analyzer.h"
+#include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TensorRTSubGraphPass::TensorRTSubGraphPass(
-    const TensorRTSubGraphPass::NodeInsideSubgraphTeller &teller)
-    : node_inside_subgraph_teller_(teller) {}
-
-void TensorRTSubGraphPass::Run(DataFlowGraph *graph) {
-  SubGraphFuse(graph, node_inside_subgraph_teller_)();
+TEST_F(DFG_Tester, main) {
+  Analyzer analyser;
+  analyser.Run(&argument);
 }
 
 }  // namespace analysis
 }  // namespace inference
-
 }  // namespace paddle

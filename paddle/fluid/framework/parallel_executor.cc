@@ -253,6 +253,9 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       t->set_lod(lod_tensors[j].lod());
     }
   }
+  for (auto &p : member_->places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
 }
 
 ParallelExecutor::~ParallelExecutor() {
