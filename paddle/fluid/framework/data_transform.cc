@@ -26,9 +26,9 @@ static void PassTensorData(Tensor *from, Tensor *to) {
   *from = Tensor();
 }
 
-void TransferData(const OpKernelType &expected_kernel_type,
-                  const OpKernelType &kernel_type_for_var,
-                  const Tensor &input_tensor, Tensor *output_tensor) {
+void TransformData(const OpKernelType &expected_kernel_type,
+                   const OpKernelType &kernel_type_for_var,
+                   const Tensor &input_tensor, Tensor *output_tensor) {
   bool transformed = false;
   Tensor in;
   in.ShareDataWith(input_tensor);
