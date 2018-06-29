@@ -45,6 +45,10 @@ cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
+cc_library(paddle_inference_api_shared SHARED
+    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+
 cc_test(test_paddle_inference_api
         SRCS test_paddle_inference_api.cc
         DEPS paddle_inference_api paddle_fluid ${GLOB_DISTRIBUTE_DEPS})

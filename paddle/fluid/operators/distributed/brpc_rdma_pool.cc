@@ -51,17 +51,28 @@ void RdmaMemPool::Register(const std::string& varname, void* data,
                            int64_t data_size) {
   void* old = Find(varname, data_size);
   if (old != nullptr) {
+    VLOG(7) << "Find on rdma:" << varname << " data:" << data
+            << " data_size:" << data_size;
     return;
   }
 
   pthread_rwlock_wrlock(&access_);
+
   VarInfo info;
   info.data = data;
   info.data_size = data_size;
   pool_[varname] = info;
 
-  brpc::rdma::RegisterMemoryForRdma(data, data_size);
+  if (brpc::rdma::RegisterMemoryForRdma(data, data_size)) {
+    LOG(FATAL) << "register " << varname << " data:" << data
+               << " data_size:" << data_size << " error";
+  }
+
   pthread_rwlock_unlock(&access_);
+
+  VLOG(4) << "register on rdma:" << varname << " data:" << data
+          << " data_size:" << data_size;
+
   return;
 }
 
