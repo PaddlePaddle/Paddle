@@ -107,7 +107,6 @@ void DataBalanceOpHandle::RunImpl() {
     auto *tensor_var = local_scope->FindVar(in_var_handles[i]->name_);
     PADDLE_ENFORCE(tensor_var->IsType<LoDTensor>());
     auto *tensor = tensor_var->GetMutable<LoDTensor>();
-    PADDLE_ENFORCE(places_[place_idx] == tensor->place());
     lod_tensors[data_idx].push_back(tensor);
     int ins_size =
         tensor->lod().empty() ? tensor->dims()[0] : tensor->NumElements();

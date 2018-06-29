@@ -67,10 +67,14 @@ class ReadOp : public framework::OperatorBase {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
     if (ins.empty()) {
-      ins.resize(out_arg_names.size());
-      for (auto& tensor : ins) {
-        // data type is not important for subsequent DataBalanceOpHandle
-        tensor.mutable_data<float>(framework::make_ddim({0}), dev_place);
+      if (Attr<bool>("throw_eof_exp")) {
+        PADDLE_THROW("There is no next data.");
+      } else {
+        ins.resize(out_arg_names.size());
+        for (auto& tensor : ins) {
+          // data type is not important for subsequent DataBalanceOpHandle
+          tensor.mutable_data<float>(framework::make_ddim({0}), dev_place);
+        }
       }
     }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
@@ -88,6 +92,10 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
     AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
+    AddAttr<bool>("throw_eof_exp",
+                  "If set true, an exception will be thrown when the Reader "
+                  "yields empty (which means there is no next data).")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

@@ -393,6 +393,7 @@ void LoDTensor::MergeLoDTensor(
     new_dim[0] += t->dims()[0];
 
     auto &lod = t->lod();
+    PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
       auto &offset = sub_lod.back();
