@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import errno
 import time
 import shutil
 
@@ -25,7 +26,8 @@ __all__ = [
     'load_persistables', 'save_inference_model', 'load_inference_model',
     'get_inference_program', 'save_checkpoint', 'load_checkpoint',
     'clean_checkpoint', 'load_persist_vars_without_grad',
-    'save_persist_vars_without_grad', 'get_latest_checkpoint_serial'
+    'load_lookup_table_vars', 'save_persist_vars_without_grad',
+    'get_latest_checkpoint_serial'
 ]
 
 
@@ -795,6 +797,7 @@ def get_parameter_value_by_name(name, executor, program=None):
 SUCCESS_MARK_FILENAME = "_SUCCESS"
 CHECKPOINT_PREFIX = "checkpoint"
 MODEL_DIR = "__model__"
+LOOKUP_TABLE_DIR = "__lookup_table__"
 TRAINER_PREFIX = "trainer"
 CHECKPOINT_SEPARATOR = "_"
 
@@ -804,7 +807,9 @@ def save_checkpoint(executor,
                     trainer_id,
                     trainer_args=None,
                     main_program=None,
-                    max_num_checkpoints=3):
+                    max_num_checkpoints=3,
+                    lookup_table=None,
+                    ps_endpoint_list=None):
     """
     This function filters out all checkpoint variables from the give
     main_program and then saves these variables to the `checkpoint_dir` 
@@ -836,6 +841,12 @@ def save_checkpoint(executor,
         max_num_checkpoints(int): The max number of total number of existing 
             checkpoints.
             Default: 3
+        lookup_table(string|None): the lookup table name, when use distribute
+            lookup table, we can get lookup table name by DistributeTranspiler.
+            table_name 
+        ps_endpoint_list(list|None): the parameter server ip:port list.  
+            when use distribute lookup table, we can get ps_endpoint_list by 
+            distribute arguments.
 
     Returns:
         None
@@ -852,29 +863,39 @@ def save_checkpoint(executor,
             prog = fluid.default_main_program()
             trainer_args = {"epoch_id": 200,
                             "step_id": 20} # just an example
+            table_name = "share_w"
+            ps_endpoints = ["127.0.0.1:6000","127.0.0.1:6001"]
+
             fluid.io.save_checkpoint(executor=exe,
                                      checkpoint_dir=path,
                                      trainer_id=0,
                                      trainer_args=trainer_args,
                                      main_program=prog,
-                                     max_num_checkpoints=3)
+                                     max_num_checkpoints=3,
+                                     lookup_table=table_name,
+                                     ps_endpoint_list = ps_endpoints)
     """
     if checkpoint_dir is None:
         raise ValueError("'checkpoint_dir' should not be None")
+    assert checkpoint_dir
 
     if trainer_args:
         assert isinstance(trainer_args, dict)
 
-    if not os.path.isdir(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
+    is_chief = trainer_id == 0
 
+    _make_chekcpoint_dirs(checkpoint_dir)
     serial = get_latest_checkpoint_serial(checkpoint_dir) + 1
     cur_dir = _get_serial_dir(checkpoint_dir, serial)
 
     save_trainer_args(cur_dir, trainer_id, trainer_args)
 
-    if trainer_id == 0:
+    if is_chief:
         save_persist_vars_without_grad(executor, cur_dir, main_program)
+
+    if is_chief and lookup_table and ps_endpoint_list:
+        save_pserver_vars_by_notify(executor, cur_dir, lookup_table,
+                                    ps_endpoint_list)
 
     _scroll_delete(checkpoint_dir, max_num_checkpoints)
 
@@ -942,8 +963,9 @@ def load_checkpoint(executor, checkpoint_dir, serial, main_program):
 
 def clean_checkpoint(checkpoint_dir, delete_dir=False):
     """
-    clean the checkpoint dir, when the train exits normally, the trainer will call clean_checkpoint to delete checkpoint directory saved before.
-    delete_dir only works when the directory is empty, otherwise, OSError is raised.
+    clean the checkpoint dir, when the train exits normally, 
+    the trainer will call clean_checkpoint to delete checkpoint directory saved before.
+    delete_dir only works when the directory is empty, otherwise, OSError is raised.  
 
     : param checkpoint_dir
     : param delete_dir
@@ -1009,6 +1031,56 @@ def load_persist_vars_without_grad(executor,
         filename=None)
 
 
+def load_lookup_table_vars(executor, dirname, program, pserver_id, table_name):
+    """
+    The parameter server will load lookup table's local file in 
+    selectedrows variable.
+
+    Args:
+        executor(Executor): The executor to run for loading persistable variables
+        dirname(str): The directory path
+        main_program(Program): Find the variable named table_name in main_program
+        pserver_id(int): the serial number in pserver_endpoints list
+        table_name(str): lookup table name
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            dirname = "./checkpoints/checkpoint_9/__model__"
+            prog = fluid.default_main_program()
+            pserver_id = 1
+            table_name = "share_w"
+            fluid.io.load_lookup_table_vars(executor=exe,
+                    dirname=dirname, program=prog, pserver_id=pserver_id,
+                    table_name=table_name)
+    """
+
+    for var in program.list_vars():
+        if var.name == table_name:
+            lookup_table_var = var
+            break
+
+    assert lookup_table_var is not None
+
+    lookup_table_dir = os.path.join(dirname, LOOKUP_TABLE_DIR)
+    table_file = table_name + CHECKPOINT_SEPARATOR + str(pserver_id)
+
+    load_prog = Program()
+    load_block = load_prog.global_block()
+
+    load_block.append_op(
+        type='load',
+        inputs={},
+        outputs={'Out': [lookup_table_var]},
+        attrs={'file_path': os.path.join(lookup_table_dir, table_file)})
+
+    executor.run(load_prog)
+
+
 def save_persist_vars_without_grad(executor, dirname, program):
     """
     This function filters out all checkpoint variables from the give
@@ -1055,6 +1127,54 @@ def save_persist_vars_without_grad(executor, dirname, program):
     _write_success(cur_dir)
 
 
+def save_pserver_vars_by_notify(executor, dirname, lookup_table,
+                                ps_endpoint_list):
+    """
+    This function will send checkpoint notify message from Trainer 0
+    to all the pservers.
+    The checkpoint notify message contains lookup table name, 
+    the absolute path on pserver to save lookup_table.
+
+    Args:
+        executor(Executor): The executor to run for send checkpoint notify.
+        dirname(str): The folder where to save checkpoints.
+        lookup_table(string): the lookup table name, when use distribute
+            lookup table, we can get lookup table name by DistributeTranspiler.
+            table_name 
+        ps_endpoint_list(list): the parameter server ip:port list.  
+            when use distribute lookup table, we can get ps_endpoint_list by 
+            distribute arguments.
+    Return:
+        None
+    
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            param_path = "./my_paddle_model"
+            prog = fluid.default_main_program()
+            table_name = "share_w"
+            ps_endpoints = ["127.0.0.1:6000","127.0.0.1:6001"]
+
+            fluid.io.save_pserver_vars_by_notify(executor=exe,
+                    dirname=param_path, lookup_table=table_name, 
+                    ps_endpoint_list=ps_endpoints)
+    """
+    cur_dir = _get_lookuptable_dir(dirname)
+
+    checkpoint_notify_program = Program()
+    checkpoint_notify_block = checkpoint_notify_program.global_block()
+
+    attrs = {}
+    attrs['epmap'] = ps_endpoint_list
+    attrs['dir'] = cur_dir
+    attrs['lookup_table'] = lookup_table
+
+    checkpoint_notify_block.append_op(
+        type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
+    executor.run(checkpoint_notify_program)
+
+
 def save_trainer_args(dirname, trainer_id, trainer_args):
     assert isinstance(trainer_args, dict)
 
@@ -1068,6 +1188,29 @@ def save_trainer_args(dirname, trainer_id, trainer_args):
 
 
 def load_trainer_args(checkpoint_dir, serial, trainer_id, trainer_args):
+    """
+    trainer will load some args from it's independent directory, 
+    such as epoch_id and step_id.
+
+    Args:
+        checkpoint_dir(str): The folder where all checkpoints are.
+        serial(int): The serial of checkpoint you would like to load.
+        trainer_id(int): current trainer id.
+        trainer_args(list): list about load trainer args
+    Return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            param_path = "./checkpoint/"
+            serial = 7
+            trainer_id = 2
+            trainer_args = ["epoch_id", "step_id"]
+
+            fluid.io.load_trainer_args(checkpoint_dir=param_path, serial=serial,
+            trainer_id=trainer_id, trainer_args=trainer_args)
+    """
     assert isinstance(trainer_args, list)
 
     cur_dir = _get_serial_dir(checkpoint_dir, serial)
@@ -1088,7 +1231,7 @@ def _is_checkpoint_var(var):
     the checkpoint will not save or load all the variables.
     var type is FEED_MINIBATCH/FETCH_LIST/RAW or var name ends with @GRAD are discarded.
 
-    : param var
+    : param var(Variable)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
             var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
@@ -1108,6 +1251,23 @@ def _is_checkpoint_var(var):
     return var.persistable
 
 
+def _make_chekcpoint_dirs(dirs):
+    """
+    _make_chekcpoint_dirs will makdir local directory directly, when the directory is exist, it will igore it.
+    """
+    assert dirs is not None
+
+    if os.path.isfile(dirs):
+        raise OSError(errno.ENOTDIR, "dirs path shoule be a Directory.", dirs)
+
+    if not os.path.isdir(dirs):
+        try:
+            os.makedirs(dirs)
+        except OSError as err:
+            if err.errno != errno.EEXIST:
+                raise err
+
+
 def _get_dir_serial(dirname):
     _, serial = dirname.split(CHECKPOINT_SEPARATOR)
 
@@ -1121,29 +1281,27 @@ def _get_dir_serial(dirname):
 def _get_serial_dir(dirname, serial):
     serial_folder = CHECKPOINT_PREFIX + CHECKPOINT_SEPARATOR + str(serial)
     serial_dir = os.path.join(dirname, serial_folder)
-
-    if not os.path.isdir(serial_dir):
-        os.makedirs(serial_dir)
+    _make_chekcpoint_dirs(serial_dir)
 
     return serial_dir
 
 
 def _get_model_dir(dirname):
     model_dir = os.path.join(dirname, MODEL_DIR)
-
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
-
+    _make_chekcpoint_dirs(model_dir)
     return model_dir
+
+
+def _get_lookuptable_dir(dirname):
+    lookuptable_dir = os.path.join(dirname, LOOKUP_TABLE_DIR)
+    _make_chekcpoint_dirs(lookuptable_dir)
+    return lookuptable_dir
 
 
 def _get_trainer_dir(dirname, trainer_id):
     trainer_folder = TRAINER_PREFIX + CHECKPOINT_SEPARATOR + str(trainer_id)
     trainer_dir = os.path.join(dirname, trainer_folder)
-
-    if not os.path.isdir(trainer_dir):
-        os.makedirs(trainer_dir)
-
+    _make_chekcpoint_dirs(trainer_dir)
     return trainer_dir
 
 
@@ -1162,7 +1320,11 @@ def _scroll_delete(dirname, max_num_checkpoints=3):
     serials = serials[max_num_checkpoints:]
     for serial in serials:
         cur_dir = _get_serial_dir(dirname, serial)
-        shutil.rmtree(cur_dir)
+        try:
+            shutil.rmtree(cur_dir)
+        except OSError as err:
+            if err.errno != errno.ENOENT:
+                raise err
 
 
 def _write_success(dirname):

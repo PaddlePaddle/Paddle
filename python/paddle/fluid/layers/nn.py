@@ -23,6 +23,7 @@ from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
 import random
+from .. import unique_name
 
 __all__ = [
     'fc',
@@ -94,6 +95,7 @@ __all__ = [
     'relu',
     'log',
     'crop',
+    'fill_zeros_like',
 ]
 
 
@@ -1992,7 +1994,8 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False):
+               do_model_average_for_mean_and_var=False,
+               fuse_with_relu=False):
     """
     **Batch Normalization Layer**
 
@@ -2035,6 +2038,7 @@ def batch_norm(input,
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2120,7 +2124,8 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": use_mkldnn,
+            "fuse_with_relu": fuse_with_relu
         })
 
     return helper.append_activation(batch_norm_out)
@@ -2221,56 +2226,6 @@ def layer_norm(input,
                "begin_norm_axis": begin_norm_axis})
 
     return helper.append_activation(layer_norm_out)
-
-
-def beam_search_decode(ids, scores, name=None):
-    """
-    Beam Search Decode
-
-    This layers is to pack the output of beam search layer into sentences and
-    associated scores. It is usually called after the beam search layer.
-    Typically, the output of beam search layer is a tensor of selected ids, with
-    a tensor of the score of each id. Beam search layer's output ids, however,
-    are generated directly during the tree search, and they are stacked by each
-    level of the search tree. Thus we need to reorganize them into sentences,
-    based on the score of each id. This layer takes the output of beam search
-    layer as input and repack them into sentences.
-
-    Args:
-        ids (Variable): The selected ids, output of beam search layer.
-        scores (Variable): The associated scores of the ids, out put of beam
-            search layer.
-        name (str): The name of this layer. It is optional.
-
-    Returns:
-        tuple(Variable): a tuple of two output tensors: sentence_ids, sentence_scores.
-        sentence_ids is a tensor with shape [size, length], where size is the
-        beam size of beam search, and length is the length of each sentence.
-        Note that the length of sentences may vary.
-        sentence_scores is a tensor with the same shape as sentence_ids.
-
-    Examples:
-        .. code-block:: python
-
-            ids, scores = fluid.layers.beam_search(
-                pre_ids, ids, scores, beam_size, end_id)
-            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
-                ids, scores)
-    """
-    helper = LayerHelper('beam_search_decode', **locals())
-    sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
-    sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
-
-    helper.append_op(
-        type="beam_search_decode",
-        inputs={"Ids": ids,
-                "Scores": scores},
-        outputs={
-            "SentenceIds": sentence_ids,
-            "SentenceScores": sentence_scores
-        })
-
-    return sentence_ids, sentence_scores
 
 
 def conv2d_transpose(input,
@@ -2383,10 +2338,17 @@ def conv2d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
-    helper = LayerHelper("conv2d_transpose", **locals())
+
+    input_channel = input.shape[1]
+
+    op_type = 'conv2d_transpose'
+    if (input_channel == groups and num_filters == input_channel and
+            not use_cudnn):
+        op_type = 'depthwise_conv2d_transpose'
+
+    helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv2d_transpose must be Variable")
-    input_channel = input.shape[1]
 
     padding = utils.convert_to_list(padding, 2, 'padding')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -2420,7 +2382,7 @@ def conv2d_transpose(input,
 
     pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type='conv2d_transpose',
+        type=op_type,
         inputs={'Input': [input],
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
@@ -2676,38 +2638,89 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
-def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
-    '''
-    **beam search**
-
-    This function implements the beam search algorithm.
-
-    Beam search is a classical algorithm for selecting candidate words
-    in a machine translation task.
+def beam_search(pre_ids,
+                pre_scores,
+                ids,
+                scores,
+                beam_size,
+                end_id,
+                level=0,
+                name=None):
+    """
+    Beam search is a classical algorithm for selecting candidate words in a
+    machine translation task.
 
     Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
+    
+    This layer does the search in beams for one time step. Specifically, it 
+    selects the top-K candidate word ids of current step from :attr:`ids`
+    according to their :attr:`scores` for all source sentences, where K is
+    :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
+    computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
+    the output of beam_search at previous step, they are needed for special use
+    to handle ended candidate translations.
+ 
+    Note that the :attr:`scores` passed in should be accumulated scores, and
+    length penalty should be done with extra operators before calculating the
+    accumulated scores if needed, also suggest finding top-K before it and
+    using the top-K candidates following.
+
+    Please see the following demo for a fully beam search usage example:
+
+        fluid/tests/book/test_machine_translation.py
 
     Args:
-        pre_ids (Variable): ids in previous step.
-        ids (Variable): a LoDTensor of shape of [None,k]
-        scores (Variable): a LoDTensor that has the same shape and LoD with `ids`
-        beam_size (int): beam size for beam search
-        end_id (int): the token id which indicates the end of a sequence
-        level (int): the level of LoDTensor
+        pre_ids(Variable): The LodTensor variable which is the output of
+            beam_search at previous step. It should be a LodTensor with shape
+            :math:`(batch_size, 1)` and lod
+            :math:`[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
+            first step.
+        pre_scores(Variable): The LodTensor variable which is the output of
+            beam_search at previous step.
+        ids(Variable): The LodTensor variable containing the candidates ids.
+            Its shape should be :math:`(batch_size \\times beam_size, K)`,
+            where :math:`K` supposed to be :attr:`beam_size`.
+        scores(Variable): The LodTensor variable containing the accumulated
+            scores corresponding to :attr:`ids` and its shape is the same as
+            the shape of :attr:`ids`.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        level(int, default 0): It can be ignored and mustn't change currently.
+            It means the source level of lod, which is explained as following.
+            The lod level of :attr:`ids` should be 2. The first level is source
+            level which describes how many prefixes (branchs) for each source
+            sentece (beam), and the second level is sentence level which
+            describes how these candidates belong to the prefix. The paths
+            linking prefixes and selected candidates are organized and reserved
+            in lod.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
-        tuple: a tuple of beam_search output variables: `selected_ids`, `selected_scores`
+        Variable: The LodTensor pair containing the selected ids and the \
+            corresponding scores.
 
     Examples:
         .. code-block:: python
 
-             # current_score is a Tensor of shape (num_batch_size, embed_size), which
-             # consists score of each candidate word.
-             topk_scores, topk_indices = pd.topk(current_score, k=50)
-             selected_ids, selected_scores = pd.beam_search(
-                 pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
-    '''
+            # Suppose `probs` contains predicted results from the computation
+            # cell and `pre_ids` and `pre_scores` is the output of beam_search
+            # at previous step.
+            topk_scores, topk_indices = layers.topk(probs, k=beam_size)
+            accu_scores = layers.elementwise_add(
+                x=layers.log(x=topk_scores)),
+                y=layers.reshape(
+                    pre_scores, shape=[-1]),
+                axis=0)
+            selected_ids, selected_scores = layers.beam_search(
+                pre_ids=pre_ids,
+                pre_scores=pre_scores,
+                ids=topk_indices,
+                scores=accu_scores,
+                beam_size=beam_size,
+                end_id=end_id)
+    """
     helper = LayerHelper('beam_search', **locals())
     score_type = scores.dtype
     id_type = ids.dtype
@@ -2719,6 +2732,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         type='beam_search',
         inputs={
             'pre_ids': pre_ids,
+            'pre_scores': pre_scores,
             'ids': ids,
             'scores': scores,
         },
@@ -2734,6 +2748,56 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         })
 
     return selected_ids, selected_scores
+
+
+def beam_search_decode(ids, scores, beam_size, end_id, name=None):
+    """
+    Beam Search Decode Layer. This layer constructs the full hypotheses for
+    each source sentence by walking back along the LoDTensorArray :attr:`ids`
+    whose lods can be used to restore the path in the beam search tree.
+    Please see the following demo for a fully beam search usage example:
+        fluid/tests/book/test_machine_translation.py
+
+    Args:
+        ids(Variable): The LodTensorArray variable containing the selected ids
+            of all steps.
+        scores(Variable): The LodTensorArray variable containing the selected
+            scores of all steps.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The LodTensor pair containing the generated id sequences \
+            and the corresponding scores. The shapes and lods of the two \
+            LodTensor are same. The lod level is 2 and the two levels \
+            separately indicate how many hypotheses each source sentence has \
+            and how many ids each hypothesis has.
+
+    Examples:
+        .. code-block:: python
+            # Suppose `ids` and `scores` are LodTensorArray variables reserving
+            # the selected ids and scores of all steps
+            finished_ids, finished_scores = layers.beam_search_decode(
+                ids, scores, beam_size=5, end_id=0)
+    """
+    helper = LayerHelper('beam_search_decode', **locals())
+    sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
+    sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
+
+    helper.append_op(
+        type="beam_search_decode",
+        inputs={"Ids": ids,
+                "Scores": scores},
+        outputs={
+            "SentenceIds": sentence_ids,
+            "SentenceScores": sentence_scores
+        },
+        attrs={"beam_size": beam_size,
+               "end_id": end_id})
+
+    return sentence_ids, sentence_scores
 
 
 def lstm_unit(x_t,
@@ -4266,13 +4330,17 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                                 say :attr:`actual_shape` has a higher priority
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to output variable.
-        inplace(bool): If this flag is set true, a new output tensor is created
-                       whose data is copied from input x, otherwise the output
-                       shares data with input without copying.
+        inplace(bool): If this flag is set true, the output
+                       shares data with input without copying, otherwise
+                       a new output tensor is created
+                       whose data is copied from input x.
         name (str): The name of this layer. It is optional.
 
     Returns:
         Variable: The output tensor.
+
+    Raises:
+        TypeError: if actual_shape is neither Variable nor None.
 
     Examples:
         .. code-block:: python
@@ -4285,6 +4353,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python lsit or tuple.")
+    inputs = {"X": x}
+    if isinstance(actual_shape, Variable):
+        inputs["Shape"] = actual_shape
+    elif actual_shape is not None:
+        raise TypeError("actual_shape should either be Variable or None")
 
     # Validate the shape
     unk_dim_idx = -1
@@ -4305,9 +4378,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     reshaped = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
-        inputs={"X": x,
-                "Shape": actual_shape}
-        if isinstance(actual_shape, Variable) else {"X": x},
+        inputs=inputs,
         attrs={"shape": shape,
                "inplace": inplace},
         outputs={"Out": reshaped})
@@ -4889,47 +4960,39 @@ def random_crop(x, shape, seed=None):
         >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
     helper = LayerHelper("random_crop", **locals())
-    dtype = helper.input_dtype()
+    dtype = x.dtype
     out = helper.create_tmp_variable(dtype)
     if seed is None:
         seed = random.randint(-65536, 65535)
-
+    op_attrs = {"shape": shape}
     if isinstance(seed, int):
-        seed_value = seed
-        seed = helper.create_tmp_variable(dtype="int64")
-        helper.append_op(
-            type="fill_constant",
-            inputs={},
-            outputs={"Out": seed},
-            attrs={
-                "dtype": seed.dtype,
-                "shape": [1],
-                "value": float(seed_value),
-                "force_cpu": True
-            })
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("random_crop_seed"),
+            dtype="int64",
+            persistable=True)
     elif not isinstance(seed, Variable):
         raise ValueError("'seed' must be a Variable or an int.")
-    seed_out = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="random_crop",
         inputs={"X": x,
                 "Seed": seed},
         outputs={"Out": out,
-                 "SeedOut": seed_out},
-        attrs={"shape": shape})
+                 "SeedOut": seed},
+        attrs=op_attrs)
     return out
 
 
-def log(input):
+def log(x):
     """
     Calculates the natural log of the given input tensor, element-wise.
 
     .. math::
 
-        Out = \\ln(input)
+        Out = \\ln(x)
 
     Args:
-        input (Variable): Input tensor.
+        x (Variable): Input tensor.
 
     Returns:
         Variable: The natural log of the input tensor computed element-wise.
@@ -4938,7 +5001,7 @@ def log(input):
 
         .. code-block:: python
 
-            output = fluid.layers.log(input)
+            output = fluid.layers.log(x)
     """
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -4947,18 +5010,18 @@ def log(input):
     return out
 
 
-def relu(input):
+def relu(x):
     """
     Relu takes one input data (Tensor) and produces one output data (Tensor)
-    where the rectified linear function, y = max(0, input), is applied to
+    where the rectified linear function, y = max(0, x), is applied to
     the tensor elementwise.
 
     .. math::
 
-        Out = \\max(0, input)
+        Out = \\max(0, x)
 
     Args:
-        input (Variable): The input tensor.
+        x (Variable): The input tensor.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -4967,7 +5030,7 @@ def relu(input):
 
         .. code-block:: python
 
-            output = fluid.layers.relu(input)
+            output = fluid.layers.relu(x)
     """
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -5121,4 +5184,41 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def fill_zeros_like(x):
+    """
+    This layer takes an input and outputs a variable that has the same structure as
+    the input and with all the element values as zero. The variable can be a Tensor
+    or TensorArray.
+
+    .. code-block:: text
+
+
+       Given
+          X = [[0, 1, 2, 0],
+               [0, 3, 4, 0],
+               [0, 0, 0, 0]],
+       output is:
+          Out = [[0, 0, 0, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]].
+
+    Args:
+        x (Variable): The input variable, which could be a tensor or tensor array
+
+    Returns:
+        Variable: The zero-filled variable, which has the same type and shape as
+                  the input variable.
+
+    Examples:
+
+        .. code-block:: python
+            y = fluid.layers.fill_zeros_like(x)
+    """
+    helper = LayerHelper('fill_zeros_like', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
     return out

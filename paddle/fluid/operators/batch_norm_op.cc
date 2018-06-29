@@ -155,6 +155,9 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<bool>("fuse_with_relu",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Batch Normalization.
 
