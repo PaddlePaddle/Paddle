@@ -5078,12 +5078,12 @@ def mean_iou(input, label, num_classes):
     out_correct = helper.create_tmp_variable(dtype='int32')
     helper.append_op(
         type="mean_iou",
-        inputs={"predictions": input,
-                "labels": label},
+        inputs={"Predictions": input,
+                "Labels": label},
         outputs={
-            "out_mean_iou": out_mean_iou,
-            "out_wrong": out_wrong,
-            "out_correct": out_correct
+            "OutMeanIou": out_mean_iou,
+            "OutWrong": out_wrong,
+            "OutCorrect": out_correct
         },
         attrs={"num_classes": num_classes})
     return out_mean_iou, out_wrong, out_correct
