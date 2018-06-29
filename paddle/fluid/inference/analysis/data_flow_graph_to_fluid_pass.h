@@ -41,10 +41,7 @@ class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
     return "Transform a DFG to a Fluid ProgramDesc";
   }
 
-  Pass *CreatePrinterPass(std::ostream &os,
-                          const std::string &banner) const override {
-    return nullptr;
-  }
+  Pass *CreateGraphvizDebugerPass() const override;
 
  protected:
   // Add a Fluid Op into the ProgramDesc.
@@ -54,6 +51,7 @@ class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
 
  private:
   framework::proto::ProgramDesc *desc_;
+  Argument *argument_;
 };
 }  // namespace analysis
 }  // namespace inference

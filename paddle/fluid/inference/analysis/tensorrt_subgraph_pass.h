@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/inference/analysis/node.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 #include "paddle/fluid/inference/analysis/subgraph_splitter.h"
@@ -37,6 +38,11 @@ class TensorRTSubGraphPass : public DataFlowGraphPass {
   // This class get a sub-graph as input and determine whether to transform this
   // sub-graph into TensorRT.
   void Run(DataFlowGraph* graph) override;
+
+  bool Finalize() override { return true; }
+
+  std::string repr() const { return "tensorrt-sub-graph"; }
+  std::string description() const { return "tensorrt sub graph pass"; }
 
  private:
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
