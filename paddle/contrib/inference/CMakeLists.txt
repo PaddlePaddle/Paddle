@@ -61,7 +61,7 @@ cc_library(paddle_inference_tensorrt_subgraph_engine
 inference_api_test(test_paddle_inference_api_tensorrt_subgraph_engine ARGS test_word2vec)
 endif()
 
-if (WITH_ANAKIN AND WITH_TESTING) # only needed in CI
+if (WITH_ANAKIN) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
     # compile the libinference_anakin_api.a and compile with anakin.so.
@@ -71,10 +71,12 @@ if (WITH_ANAKIN AND WITH_TESTING) # only needed in CI
     target_compile_options(inference_anakin_api_shared BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     target_link_libraries(inference_anakin_api anakin anakin_saber_common)
     target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
-    cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
+    if (WITH_TESTING)
+        cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
                                   ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
                                   DEPS inference_anakin_api)
-    target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+     endif(WITH_TESTING)
 endif()
 
 if(WITH_TESTING)
