@@ -725,7 +725,7 @@ Scope* OperatorWithKernel::TryTransferData(
 
       auto* trans_var = new_scope->Var(var_name);
       Tensor out;
-      TransferData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
+      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
     }
   }

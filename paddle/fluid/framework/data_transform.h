@@ -30,9 +30,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void TransferData(const OpKernelType &expected_kernel_type,
-                  const OpKernelType &kernel_type_for_var,
-                  const Tensor &input_tensor, Tensor *out);
+void TransformData(const OpKernelType &expected_kernel_type,
+                   const OpKernelType &kernel_type_for_var,
+                   const Tensor &input_tensor, Tensor *out);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
