@@ -60,6 +60,7 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
+      PADDLE_ENFORCE_NOT_NULL(dev_ctx.second);
       dev_ctx.second->Wait();
     }
   } else {
