@@ -4039,23 +4039,17 @@ def im2sequence(input,
     if len(padding) == 2:
         padding.append(padding[0])
         padding.append(padding[1])
+    inputs = {"X": input}
+    attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
     if not inputImgSize:
         if isinstance(out_stride, int):
             out_stride = [out_stride, out_stride]
-
+        inputs["Y"] = input_img_size
+        attrs["out_stride"] = out_stride
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
-        type='im2sequence',
-        inputs={'X': input,
-                'Y': inputImgSize},
-        outputs={'Out': out},
-        attrs={
-            'kernels': filter_size,
-            'strides': stride,
-            'paddings': padding,
-            'out_stride': out_stride,
-        })
+        type='im2sequence', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 

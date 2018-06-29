@@ -132,7 +132,6 @@ class TestBlockExpandOp(OpTest):
             'kernels': [2, 2],
             'strides': [1, 1],
             'paddings': [1, 1, 1, 1],
-            'out_stride': [1, 1]
         }
 
     def setUp(self):
@@ -164,7 +163,6 @@ class TestBlockExpandOpCase2(TestBlockExpandOp):
             'kernels': [2, 1],
             'strides': [2, 1],
             'paddings': [2, 1, 2, 1],
-            'out_stride': [1, 1]
         }
 
 
@@ -178,7 +176,6 @@ class TestBlockExpandOpCase3(TestBlockExpandOp):
             'kernels': [2, 1],
             'strides': [2, 1],
             'paddings': [2, 0, 2, 0],
-            'out_stride': [1, 1]
         }
 
 
@@ -192,7 +189,6 @@ class TestBlockExpandOpCase4(TestBlockExpandOp):
             'kernels': [2, 2],
             'strides': [1, 1],
             'paddings': [0, 0, 0, 0],
-            'out_stride': [1, 1]
         }
 
 

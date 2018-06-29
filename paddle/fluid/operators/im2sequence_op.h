@@ -39,7 +39,6 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* in = ctx.Input<Tensor>("X");
-    const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
     // TODO(fuhailong): add new data layer to solve multibatch inference
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
     // TODO(wanghaoshuang): Add layout checker after 'set_layout'
@@ -49,12 +48,12 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
-
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
-    if (imgrealsize != NULL && batch_size > 1) {
+    if (ctx.HasInput("Y") && batch_size > 1) {
+      const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
+      auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       Tensor cpu_shape_tensor;
       TensorCopySync(*imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> imgreal_h;
