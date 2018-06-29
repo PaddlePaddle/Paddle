@@ -58,7 +58,7 @@ def is_taged():
     if git_tag.replace('v', '') == '@PADDLE_VERSION@':
         return True
     else:
-        return False;
+        return False
 
 def write_version_py(filename='paddle/version.py'):
     cnt = '''
