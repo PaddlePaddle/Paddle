@@ -28,12 +28,9 @@ namespace memory {
 using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
-  static detail::BuddyAllocator* a = nullptr;
-  if (a == nullptr) {
-    a = new detail::BuddyAllocator(new detail::CPUAllocator,
-                                   platform::CpuMinChunkSize(),
-                                   platform::CpuMaxChunkSize());
-  }
+  static detail::BuddyAllocator* a = new detail::BuddyAllocator(
+      new detail::CPUAllocator, platform::CpuMinChunkSize(),
+      platform::CpuMaxChunkSize());
   return a;
 }
 
