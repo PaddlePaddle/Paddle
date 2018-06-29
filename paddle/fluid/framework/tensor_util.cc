@@ -69,7 +69,28 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+    if (platform::is_same_place(src_place, dst_place)) {
+      memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                   stream);
+    } else {
+      // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
+      // and dst_place are two different GPU, to ensure that the operation can
+      // be carried out correctly, we should make ctx wait.
+      // If ctx_place and src_place are the same, we should add ctx.Wait()
+      // after memory::Copy; if ctx_place and dst_place are the same, we should
+      // add ctx.Wait() before memory::Copy.
+      if (platform::is_same_place(ctx_place, src_place)) {
+        memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                     stream);
+        ctx.Wait();
+      } else if (platform::is_same_place(ctx_place, dst_place)) {
+        ctx.Wait();
+        memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                     stream);
+      } else {
+        PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
+      }
+    }
   }
 #endif
 }
@@ -86,9 +107,6 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(dst_place)) {
-    if (!platform::is_same_place(dst_place, src.place())) {
-      pool.Get(src.place())->Wait();
-    }
     dev_ctx = pool.Get(dst_place);
   } else {
     dev_ctx = pool.Get(src.place());
