@@ -75,6 +75,13 @@ class BRPCClient : public RPCClient {
   void AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
+  virtual void AsyncCheckpointNotify(const std::string& ep,
+                                     const std::string& dir,
+                                     int64_t time_out = FLAGS_rpc_deadline) {
+    // FIXME(gongwb): implement it!
+    assert(false);
+  }
+
   void Wait() override;
 
   void SendComplete() override;
