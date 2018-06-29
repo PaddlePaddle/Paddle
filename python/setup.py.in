@@ -1,5 +1,6 @@
 from setuptools import setup, Distribution, Extension
 import subprocess
+import re
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
@@ -19,6 +20,40 @@ def git_commit():
     except:
         git_commit = 'Unknown'
     return git_commit
+
+def _get_version_detail(idx):
+    assert idx < 3
+
+    version_details = '${PADDLE_VERSION}'.split('.')
+    if len(version_details) == 3:
+        if re.match('[0-9]+', version_details[idx]):
+            return int(version_details[idx])
+
+    return None
+
+def get_minor():
+    minor = _get_version_detail(0)
+    if minor is not None:
+        return minor
+
+    return MINOR
+
+def get_major():
+    major = _get_version_detail(1)
+    if major is not None:
+        return major
+
+    return MAJOR
+
+def get_patch():
+    patch = _get_version_detail(2)
+    if patch is not None:
+        return patch
+
+    return PATCH
+
+def is_taged():
+    return ISTAGED
 
 def write_version_py(filename='paddle/version.py'):
     cnt = '''
@@ -49,13 +84,13 @@ def mkl():
     commit = git_commit()
     with open(filename, 'w') as f:
         f.write(cnt % {
-            'major': MAJOR,
-            'minor': MINOR,
-            'patch': PATCH,
+            'major': get_major(),
+            'minor': get_minor(),
+            'patch': get_patch(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'commit': commit,
-            'istaged': ISTAGED,
+            'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
@@ -113,7 +148,7 @@ package_dir={
 }
 if '${WITH_FLUID_ONLY}'== 'OFF':
     package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
-    
+
 
 paddle_rt_lib_dir = 'lib'
 paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
