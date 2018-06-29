@@ -960,8 +960,6 @@ class DistributeTranspiler(object):
             if not block_map.has_key(varname):
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
-        # Do not remove this important debug message:
-        print("block map: %s" % block_map)
 
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
