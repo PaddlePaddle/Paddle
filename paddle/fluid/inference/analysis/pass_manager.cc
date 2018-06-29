@@ -19,6 +19,18 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+bool PassManager::Initialize(Argument* argument) {
+  argument_ = argument;
+  for (auto& pass : data_) {
+    LOG(INFO) << "Initializing pass " << pass->repr();
+    if (!pass->Initialize(argument)) {
+      LOG(ERROR) << "Failed to initialize pass [" << pass->repr() << "]";
+      return false;
+    }
+  }
+  return true;
+}
+
 void DfgPassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
   for (auto& pass : data_) {

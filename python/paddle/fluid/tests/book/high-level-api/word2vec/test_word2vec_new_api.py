@@ -124,21 +124,22 @@ def infer(use_cuda, inference_program, params_dirname=None):
 
     # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
     # is simply an index to look up for the corresponding word vector and hence 
-    # the shape of word (base_shape) should be [1]. The length-based level of 
-    # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
-    # one lod_level and there is only one sequence of one word on this level.
-    # Note that lod info should be a list of lists.
-    lod = [[1]]
+    # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths, 
+    # which is length-based level of detail (lod) of each LoDTensor, should be [[1]] 
+    # meaning there is only one level of detail and there is only one sequence of 
+    # one word on this level.
+    # Note that recursive_sequence_lengths should be a list of lists.
+    recursive_seq_lens = [[1]]
     base_shape = [1]
     # The range of random integers is [low, high]
     first_word = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=dict_size - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
     second_word = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=dict_size - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
     third_word = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=dict_size - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
     fourth_word = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=dict_size - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
 
     result = inferencer.infer(
         {
