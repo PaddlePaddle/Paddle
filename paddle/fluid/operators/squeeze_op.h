@@ -33,7 +33,6 @@ class SqueezeKernel : public framework::OpKernel<T> {
 
     framework::DDim out_dims = out->dims();
 
-    // TODO(chenweihang): Where is this attr be add.
     bool inplace = ctx.Attr<bool>("inplace");
     out->Resize(out_dims);
     if (!inplace) {
