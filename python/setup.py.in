@@ -5,11 +5,7 @@ class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
 
-MAJOR   = 0
-MINOR   = 11
-PATCH   = 0
 RC      = 0
-ISTAGED = False
 
 
 
@@ -53,6 +49,14 @@ def get_patch():
     return PATCH
 
 def is_taged():
+    try:
+        #  release/0.13.0
+        #  git describe --exact-match --tags
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+    except:
+        git_commit = 'Unknown'
+    return git_commit
     return ISTAGED
 
 def write_version_py(filename='paddle/version.py'):
