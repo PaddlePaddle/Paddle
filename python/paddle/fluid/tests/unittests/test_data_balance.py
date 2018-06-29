@@ -15,7 +15,6 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
 import numpy as np
 
 
