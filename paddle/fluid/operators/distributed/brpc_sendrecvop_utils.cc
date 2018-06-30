@@ -33,6 +33,8 @@ class IOBufWriter {
  public:
   static void FreeMemory(void* p) {
 #ifdef PADDLE_WITH_CUDA
+    VLOG(7) << "FreeMemory data:" << p;
+
     // GPU data is copied to CPU buffer when sending,
     // free the buffer when possible.
     platform::CUDAPinnedPlace cuda_pinned;
@@ -48,6 +50,10 @@ class IOBufWriter {
 
   static void AppendTCPZeroCopy(butil::IOBuf* iobuf, int k, const char* v,
                                 int64_t vlen, bool in_cuda_pinned) {
+    VLOG(7) << "AppendTCPZeroCopy "
+            << " k:" << k << " data:" << v << " data_size:" << vlen
+            << " in_cuda_pinned:" << in_cuda_pinned;
+
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
     if (in_cuda_pinned) {
@@ -61,6 +67,10 @@ class IOBufWriter {
   static void AppendRdmaZeroCopy(const std::string varname, butil::IOBuf* iobuf,
                                  int k, const char* v, int64_t vlen,
                                  bool in_cuda_pinned) {
+    VLOG(7) << "AppendRdmaZeroCopy varname:" << varname << " k:" << k
+            << " data:" << v << " data_size:" << vlen
+            << " in_cuda_pinned:" << in_cuda_pinned;
+
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
 
@@ -68,11 +78,7 @@ class IOBufWriter {
         varname, static_cast<void*>(const_cast<char*>(v)), vlen);
 
     // to avoid register memory in rdma.
-    if (in_cuda_pinned) {
-      iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);
-    } else {
-      iobuf->append_zerocopy(v, vlen, nullptr);
-    }
+    iobuf->append_zerocopy(v, vlen, nullptr);
     return;
   }
 #endif
