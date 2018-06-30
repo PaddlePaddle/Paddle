@@ -68,7 +68,7 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   // only print first ten elements
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
-    if (t.type().hash_code() == typeid(float).hash_code()) {
+    if (t.type().hash_code() == typeid(float).hash_code()) {  // NOLINT
       os << t.data<float>()[i] << " ";
     } else if (t.type().hash_code() == typeid(int64_t).hash_code()) {
       os << t.data<int64_t>()[i] << " ";

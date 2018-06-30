@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
+#include <string>
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
