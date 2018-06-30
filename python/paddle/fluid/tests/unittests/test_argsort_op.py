@@ -20,7 +20,7 @@ from op_test import OpTest
 class TestArgsortOp(OpTest):
     def setUp(self):
         self.init_axis()
-        x = np.random.random((2, 3, 4, 5)).astype("float32")
+        x = np.random.random((2, 3, 4, 5, 10)).astype("float32")
         if self.axis < 0:
             self.axis = self.axis + len(x.shape)
         self.indices = np.argsort(x, kind='quicksort', axis=self.axis)

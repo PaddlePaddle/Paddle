@@ -80,10 +80,11 @@ enum class GrpcMethod {
   kSendVariable,
   kGetVariable,
   kPrefetchVariable,
+  kCheckpointNotify,
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kPrefetchVariable) + 1;
+    static_cast<int>(GrpcMethod::kCheckpointNotify) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
@@ -93,6 +94,8 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/GetVariable";
     case GrpcMethod::kPrefetchVariable:
       return "/sendrecv.SendRecvService/PrefetchVariable";
+    case GrpcMethod::kCheckpointNotify:
+      return "/sendrecv.SendRecvService/CheckpointNotify";
   }
 
   // Shouldn't be reached.

@@ -119,10 +119,12 @@ void SubGraphFuse::operator()() { ReplaceNodesWithSubGraphs(); }
 void SubGraphFuse::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubGraphSplitter(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
+    std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
-    auto *block_node = graph_->nodes.Create(Node::Type::kFunctionBlock);
+    auto *block_node = static_cast<FunctionBlock *>(
+        graph_->nodes.Create(Node::Type::kFunctionBlock));
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
     block_node->inlinks = std::move(io.first);
     block_node->outlinks = std::move(io.second);
@@ -130,21 +132,25 @@ void SubGraphFuse::ReplaceNodesWithSubGraphs() {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
       // pass.
       node->SetDeleted();
+      block_node->subgraph.push_back(node);
     }
 
-    std::unordered_map<Node *, Node *>
-        delelte_node_map;  // deleted node to BlockNode
-    for (auto *n : block_node->inlinks) {
-      n->inlinks.clear();
+    // Change all the sub-graph's inputs and outputs corresponding inlink and
+    // outlink to this sub-graph node.
+    auto inlink_or_outlink_cleaner = [&](std::vector<Node *> &nodes) {
+      for (auto *&n : nodes) {
+        if (subgraph_uniq.count(n)) {
+          n = block_node;
+        }
+      }
+      std::unordered_set<Node *> uniq(nodes.begin(), nodes.end());
+      nodes.assign(uniq.begin(), uniq.end());
+    };
+    for (auto *i : block_node->inlinks) {
+      inlink_or_outlink_cleaner(i->outlinks);
     }
-    for (auto *n : block_node->outlinks) {
-      n->outlinks.clear();
-    }
-    for (auto *n : block_node->inlinks) {
-      n->outlinks.push_back(block_node);
-    }
-    for (auto *n : block_node->outlinks) {
-      n->inlinks.push_back(n);
+    for (auto *&o : block_node->outlinks) {
+      inlink_or_outlink_cleaner(o->inlinks);
     }
   }
 }

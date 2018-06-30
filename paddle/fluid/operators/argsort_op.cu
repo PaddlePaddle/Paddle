@@ -26,14 +26,15 @@ namespace operators {
 using Tensor = framework::Tensor;
 using platform::PADDLE_CUDA_NUM_THREADS;
 
+const int kMaxRank = 9;  // The max rank of a tensor allowed in Fluid
+
 __global__ void ComputeTargetIdx(const int64_t* in_dims, int dims_size,
                                  int axis, int64_t n, int64_t* trg_idx,
                                  int64_t* med_ids) {
   int64_t index = threadIdx.x + blockDim.x * blockIdx.x;
   if (index < n) {
-    const int max_rank = 9;  // Max rank of a tensor allow in Fluid
-    int64_t shape_out_axis[max_rank - 1] = {0};
-    int64_t dims_out_axis[max_rank - 1] = {0};
+    int64_t shape_out_axis[kMaxRank - 1] = {0};
+    int64_t dims_out_axis[kMaxRank - 1] = {0};
     int64_t tmp = index;
     int64_t pos_in_axis = 0;
     int64_t i = dims_size - 2;
@@ -125,10 +126,8 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
     Tensor trg_idx_t;
     int64_t* trg_idx = trg_idx_t.mutable_data<int64_t>(in_dims, ctx.GetPlace());
 
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                      ctx.device_context())
-                      .stream();
-    int num_threads = PADDLE_CUDA_NUM_THREADS;
+    auto stream = ctx.cuda_device_context().stream();
+    const int num_threads = PADDLE_CUDA_NUM_THREADS;
 
     ComputeTargetIdx<<<(numel - 1) / num_threads + 1, num_threads, 0, stream>>>(
         in_dims_data, in_dims.size(), axis, numel, trg_idx, med_ids_data);
