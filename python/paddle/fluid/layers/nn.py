@@ -4043,7 +4043,7 @@ def im2sequence(input,
     if input_image_size:
         if isinstance(out_stride, int):
             out_stride = [out_stride, out_stride]
-        inputs["Y"] = input_img_size
+        inputs["Y"] = input_image_size
         attrs["out_stride"] = out_stride
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
