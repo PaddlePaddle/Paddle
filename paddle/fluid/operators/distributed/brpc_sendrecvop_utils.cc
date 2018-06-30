@@ -51,8 +51,9 @@ class IOBufWriter {
   static void AppendTCPZeroCopy(butil::IOBuf* iobuf, int k, const char* v,
                                 int64_t vlen, bool in_cuda_pinned) {
     VLOG(7) << "AppendTCPZeroCopy "
-            << " k:" << k << " data:" << v << " data_size:" << vlen
-            << " in_cuda_pinned:" << in_cuda_pinned;
+            << " k:" << k
+            << " data:" << static_cast<void*>(const_cast<char*>(v))
+            << " data_size:" << vlen << " in_cuda_pinned:" << in_cuda_pinned;
 
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
@@ -68,8 +69,8 @@ class IOBufWriter {
                                  int k, const char* v, int64_t vlen,
                                  bool in_cuda_pinned) {
     VLOG(7) << "AppendRdmaZeroCopy varname:" << varname << " k:" << k
-            << " data:" << v << " data_size:" << vlen
-            << " in_cuda_pinned:" << in_cuda_pinned;
+            << " data:" << static_cast<void*>(const_cast<char*>(v))
+            << " data_size:" << vlen << " in_cuda_pinned:" << in_cuda_pinned;
 
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
@@ -77,7 +78,6 @@ class IOBufWriter {
     RdmaMemPool::Instance().Register(
         varname, static_cast<void*>(const_cast<char*>(v)), vlen);
 
-    // to avoid register memory in rdma.
     iobuf->append_zerocopy(v, vlen, nullptr);
     return;
   }
