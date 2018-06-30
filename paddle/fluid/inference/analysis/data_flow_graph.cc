@@ -90,6 +90,20 @@ std::string DataFlowGraph::DotString() const {
   return dot.Build();
 }
 
+std::string DataFlowGraph::HumanReadableInfo(bool show_values,
+                                             bool show_functions) const {
+  std::stringstream values, functions;
+  for (auto &n : nodes.nodes()) {
+    if (show_values && n->IsValue()) {
+      values << n->repr() << "\n";
+    }
+    if (show_functions && n->IsFunction()) {
+      functions << n->repr() << "\n";
+    }
+  }
+  return "Values:\n" + values.str() + "\n\n" + "Functions:\n" + functions.str();
+}
+
 //
 // NodesBFSIterator
 //

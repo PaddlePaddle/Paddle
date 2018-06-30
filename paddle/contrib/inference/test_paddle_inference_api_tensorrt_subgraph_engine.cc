@@ -24,7 +24,7 @@ DEFINE_string(dirname, "", "Directory of the inference model.");
 void Main(bool use_gpu) {
   //# 1. Create PaddlePredictor with a config.
   TensorRTConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;

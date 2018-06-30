@@ -65,6 +65,13 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
         continue;
     }
   }
+
+  LOG(INFO) << "debug";
+  PADDLE_ENFORCE(argument_->transformed_program_desc.get());
+  auto& main_block = argument_->transformed_program_desc->blocks(0);
+  for (int i = 0; i < main_block.ops_size(); i++) {
+    LOG(INFO) << "op:" << main_block.ops(i).type();
+  }
 }
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node* node) {
