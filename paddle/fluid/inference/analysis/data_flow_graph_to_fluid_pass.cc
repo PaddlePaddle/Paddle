@@ -111,7 +111,7 @@ void CreateTrtEngineOp(Node* node, const DataFlowGraph& graph,
   desc.SetType("tensorrt_engine");
   // Set attrs
   SetAttr(desc.Proto(), "subgraph", block.SerializeAsString());
-  SetAttr(desc.Proto(), "engine_unique_key",
+  SetAttr(desc.Proto(), "engine_uniq_key",
           "trt-" + std::to_string(counter++));
   SetAttr(desc.Proto(), "max_batch", 100);  // TODO(Superjomn) add config latter
   SetAttr(desc.Proto(), "max_workspace",
