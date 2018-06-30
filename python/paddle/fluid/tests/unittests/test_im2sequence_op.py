@@ -23,10 +23,10 @@ def get_output_shape(attrs, in_shape, imgRealSize):
     paddings = np.array(attrs['paddings']).astype("int32")
     kernels = np.array(attrs['kernels']).astype("int32")
     strides = np.array(attrs['strides']).astype("int32")
-    out_stride = np.array(attrs['out_stride']).astype("int32")
     output_height = np.zeros((1, batchsize)).astype("int32")
     output_width = np.zeros((1, batchsize)).astype("int32")
     if len(imgRealSize):
+        out_stride = np.array(attrs['out_stride']).astype("int32")
         imgreal_H = 0
         imgreal_W = 0
         for index in range(batchsize):
