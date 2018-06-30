@@ -33,9 +33,6 @@ class IOBufWriter {
  public:
   static void FreeMemory(void* p) {
 #ifdef PADDLE_WITH_CUDA
-#ifdef PADDLE_WITH_BRPC_RDMA
-    return;
-#endif
     // GPU data is copied to CPU buffer when sending,
     // free the buffer when possible.
     platform::CUDAPinnedPlace cuda_pinned;
@@ -46,28 +43,55 @@ class IOBufWriter {
   static void Append(butil::IOBuf* iobuf, int k, const char* v, int64_t vlen) {
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
-    // TODO(gongwb): use append_zero to avoid copy
-    // iobuf->append(v, vlen);
     iobuf->append(v, vlen);
   }
 
-  static void AppendZeroCopy(const std::string varname, butil::IOBuf* iobuf,
-                             int k, const char* v, int64_t vlen) {
+  static void AppendTCPZeroCopy(butil::IOBuf* iobuf, int k, const char* v,
+                                int64_t vlen, bool in_cuda_pinned) {
     iobuf->append(reinterpret_cast<char*>(&k), 4);
     iobuf->append(reinterpret_cast<char*>(&vlen), 8);
+    if (in_cuda_pinned) {
+      iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);
+    } else {
+      iobuf->append_zerocopy(v, vlen, nullptr);
+    }
+  }
+
 #ifdef PADDLE_WITH_BRPC_RDMA
+  static void AppendRdmaZeroCopy(const std::string varname, butil::IOBuf* iobuf,
+                                 int k, const char* v, int64_t vlen,
+                                 bool in_cuda_pinned) {
+    iobuf->append(reinterpret_cast<char*>(&k), 4);
+    iobuf->append(reinterpret_cast<char*>(&vlen), 8);
+
     RdmaMemPool::Instance().Register(
         varname, static_cast<void*>(const_cast<char*>(v)), vlen);
+
+    // to avoid register memory in rdma.
+    if (in_cuda_pinned) {
+      iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);
+    } else {
+      iobuf->append_zerocopy(v, vlen, nullptr);
+    }
+    return;
+  }
 #endif
-    // TODO(gongwb): use append_zero to avoid copy
-    // iobuf->append(v, vlen);
-    iobuf->append_zerocopy(v, vlen, IOBufWriter::FreeMemory);
+
+  static void AppendZeroCopy(const std::string varname, butil::IOBuf* iobuf,
+                             int k, const char* v, int64_t vlen,
+                             bool in_cuda_pinned) {
+#ifdef PADDLE_WITH_BRPC_RDMA
+    IOBufWriter::AppendRdmaZeroCopy(varname, iobuf, k, v, vlen, in_cuda_pinned);
+#else
+    IOBufWriter::AppendTCPZeroCopy(iobuf, k, v, vlen, in_cuda_pinned);
+#endif
   }
 };
 
 void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,
-                      butil::IOBuf* iobuf, const std::string& out_varname) {
+                      butil::IOBuf* iobuf, const std::string& out_varname,
+                      bool var_is_not_stable) {
   void* payload = nullptr;
   size_t payload_size = 0;
 
@@ -107,9 +131,25 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
-  IOBufWriter::AppendZeroCopy(
-      name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
-      static_cast<char*>(payload), payload_size);
+  // FIXME(gongwb): brpc need support to call callback when context is not
+  // useful.
+  if (var_is_not_stable) {
+    IOBufWriter::Append(iobuf,
+                        ::sendrecv::VariableMessage::kSerializedFieldNumber,
+                        static_cast<char*>(payload), payload_size);
+  } else {
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+      IOBufWriter::AppendZeroCopy(
+          name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
+          static_cast<char*>(payload), payload_size, true);
+#endif
+    } else {
+      IOBufWriter::AppendZeroCopy(
+          name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
+          static_cast<char*>(payload), payload_size, false);
+    }
+  }
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();

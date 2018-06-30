@@ -93,9 +93,16 @@ class BRPCServiceImpl : public SendRecvService {
 
     if (outvar) {
       distributed::SerializeToIOBuf(varname, outvar, *request_get_h_->dev_ctx(),
-                                    response, &cntl->response_attachment());
+                                    response, &cntl->response_attachment(), "",
+                                    false);
     }
   }
+
+  /*
+  static void HandlePrefetchRequest(distributed::VariableResponse* resp){
+      delete resp;
+  }
+  */
 
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
@@ -115,19 +122,20 @@ class BRPCServiceImpl : public SendRecvService {
 
     distributed::BRPCVariableResponse resp(
         request_prefetch_h_->scope(), request_prefetch_h_->dev_ctx(), true);
+
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
 
     auto scope = resp.GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
-    paddle::framework::Variable* outvar = scope->FindVar(out_var_name);
+    paddle::framework::Variable* outvar = scope->Var(out_var_name);
 
     request_prefetch_h_->Handle(in_var_name, scope, invar, &outvar,
                                 out_var_name);
 
     distributed::SerializeToIOBuf(out_var_name, outvar,
                                   *request_prefetch_h_->dev_ctx(), response,
-                                  &cntl->response_attachment());
+                                  &cntl->response_attachment(), "", true);
   }
 
  private:

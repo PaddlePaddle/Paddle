@@ -69,8 +69,8 @@ bool BRPCClient::AsyncSendVar(const std::string& ep,
 
         auto* var = p_scope->FindVar(var_name_val);
         sendrecv::VariableMessage request;
-        SerializeToIOBuf(var_name_val, var, *p_ctx, &request,
-                         &cntl->request_attachment());
+        distributed::SerializeToIOBuf(var_name_val, var, *p_ctx, &request,
+                                      &cntl->request_attachment(), "", false);
 
         // varhandle
         VarHandle var_h;
@@ -203,8 +203,8 @@ bool BRPCClient::AsyncPrefetchVar(const std::string& ep,
     auto* var = p_scope->FindVar(in_var_name_val);
     sendrecv::VariableMessage req;
     distributed::SerializeToIOBuf(in_var_name_val, var, *p_ctx, &req,
-                                  &cntl->request_attachment(),
-                                  out_var_name_val);
+                                  &cntl->request_attachment(), out_var_name_val,
+                                  false);
 
     // var handle
     VarHandle var_h;

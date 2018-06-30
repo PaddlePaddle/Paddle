@@ -33,7 +33,9 @@ brpc_library(sendrecvop_brpc SRCS brpc_client.cc brpc_server.cc rpc_server.cc rp
   PROTO send_recv.proto
   DEPS lod_tensor selected_rows memory)
 
-set(brpc_test_depends sendrecvop_brpc brpc protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy ssl crypto)
+set(brpc_test_depends sendrecvop_brpc brpc ssl crypto protobuf leveldb gflags glog executor proto_desc lookup_table_op snappystream snappy)
+
+message(STATUS "brpc_test_depends:" ${brpc_test_depends})
 
 cc_test(brpc_server_test SRCS rpc_server_test.cc 
     DEPS ${brpc_test_depends} SERIAL)

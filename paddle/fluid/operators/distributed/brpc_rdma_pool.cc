@@ -39,7 +39,8 @@ void* RdmaMemPool::Find(const std::string& varname, int64_t size) {
   auto info = it->second;
   if (info.data_size != size) {
     pthread_rwlock_unlock(&access_);
-    PADDLE_ENFORCE(false, "var size:%ld != %ld", size, info.data_size);
+    PADDLE_ENFORCE(false, "var size:%ld != %ld or data:%ld != %ld", size,
+                   info.data_size);
     return nullptr;
   }
 
@@ -49,7 +50,7 @@ void* RdmaMemPool::Find(const std::string& varname, int64_t size) {
 
 void RdmaMemPool::Register(const std::string& varname, void* data,
                            int64_t data_size) {
-  void* old = Find(varname, data_size);
+  void* old = Find(varname, data, data_size);
   if (old != nullptr) {
     VLOG(7) << "Find on rdma:" << varname << " data:" << data
             << " data_size:" << data_size;

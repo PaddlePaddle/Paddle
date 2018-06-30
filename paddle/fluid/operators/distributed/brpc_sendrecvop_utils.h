@@ -35,8 +35,8 @@ namespace distributed {
 
 void SerializeToIOBuf(const std::string& name, framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,
-                      butil::IOBuf* iobuf,
-                      const std::string& out_varname = std::string());
+                      butil::IOBuf* iobuf, const std::string& out_varname,
+                      bool var_is_not_stable);
 
 void DeserializeFromIOBuf(const VarMsg& meta, const butil::IOBuf& iobuf,
                           const platform::DeviceContext& ctx,
