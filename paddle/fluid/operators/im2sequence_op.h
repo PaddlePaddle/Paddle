@@ -39,10 +39,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* in = ctx.Input<Tensor>("X");
-    // TODO(fuhailong): add new data layer to solve multibatch inference
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
-    // TODO(wanghaoshuang): Add layout checker after 'set_layout'
-    // being available for python API
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
@@ -102,8 +99,6 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
-      // set lod information
-      // TODO(wanghaoshuang): Move this to InferShape
       framework::LoD lod(1);
       lod[0].reserve(batch_size + 1);
       int offset = 0;
@@ -135,8 +130,6 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
       out->Resize(out_dims);
-      // set lod information
-      // TODO(wanghaoshuang): Move this to InferShape
       framework::LoD lod(1);
       lod[0].reserve(batch_size + 1);
       int offset = 0;

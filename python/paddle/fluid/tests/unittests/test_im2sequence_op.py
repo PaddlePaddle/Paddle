@@ -16,7 +16,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def get_output_shape(attrs, in_shape, imgRealSize):
+def get_output_shape(attrs, in_shape, img_real_size):
     batchsize = in_shape[0]
     img_height = in_shape[2]
     img_width = in_shape[3]
@@ -25,27 +25,27 @@ def get_output_shape(attrs, in_shape, imgRealSize):
     strides = np.array(attrs['strides']).astype("int32")
     output_height = np.zeros((1, batchsize)).astype("int32")
     output_width = np.zeros((1, batchsize)).astype("int32")
-    if len(imgRealSize):
+    if len(img_real_size):
         out_stride = np.array(attrs['out_stride']).astype("int32")
-        imgreal_H = 0
-        imgreal_W = 0
+        imgreal_h = 0
+        imgreal_w = 0
         for index in range(batchsize):
-            if imgRealSize[index, 0] % out_stride[0] == 0:
-                imgreal_H = imgRealSize[index, 0] / out_stride[0]
+            if img_real_size[index, 0] % out_stride[0] == 0:
+                imgreal_h = img_real_size[index, 0] / out_stride[0]
             else:
-                imgreal_H = imgRealSize[index, 0] / out_stride[0] + 1
-            if imgRealSize[index, 0] % out_stride[1] == 0:
-                imgreal_W = imgRealSize[index, 1] / out_stride[1]
+                imgreal_h = img_real_size[index, 0] / out_stride[0] + 1
+            if img_real_size[index, 0] % out_stride[1] == 0:
+                imgreal_w = img_real_size[index, 1] / out_stride[1]
             else:
-                imgreal_W = imgRealSize[index, 0] / out_stride[1] + 1
+                imgreal_w = img_real_size[index, 0] / out_stride[1] + 1
             output_height[0,index] = \
               1 +  \
-              (imgreal_H + paddings[0] + paddings[2] - kernels[0] + strides[0] - 1) / \
+              (imgreal_h + paddings[0] + paddings[2] - kernels[0] + strides[0] - 1) / \
                   strides[0]
 
             output_width[0,index] = \
               1 + \
-              (imgreal_W + paddings[1] + paddings[3] - kernels[1] + strides[1] - 1) / \
+              (imgreal_w + paddings[1] + paddings[3] - kernels[1] + strides[1] - 1) / \
                   strides[1]
     else:
         for index in range(batchsize):
@@ -100,9 +100,9 @@ def im2col(attrs, im, col):
                                     im_row_offset][im_col_offset]
 
 
-def Im2Sequence(inputs, ImgRealSize, attrs):
+def Im2Sequence(inputs, img_real_size, attrs):
     output_height, output_width = get_output_shape(attrs, inputs.shape,
-                                                   ImgRealSize)
+                                                   img_real_size)
     img_channels = inputs.shape[1]
     batch_size = inputs.shape[0]
     out = []
@@ -141,8 +141,8 @@ class TestBlockExpandOp(OpTest):
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
 
-        realSize = np.array([]).astype("float32")
-        out = Im2Sequence(x, realSize, self.attrs)
+        real_size = np.array([]).astype("float32")
+        out = Im2Sequence(x, real_size, self.attrs)
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
@@ -211,9 +211,9 @@ class TestBlockExpandOpCase5(OpTest):
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
-        realSize = np.array([[8, 10], [5, 8]]).astype("float32")
-        out = np.array(Im2Sequence(x, realSize, self.attrs))
-        self.inputs = {'X': x, 'Y': realSize}  #l ??
+        real_size = np.array([[8, 10], [5, 8]]).astype("float32")
+        out = np.array(Im2Sequence(x, real_size, self.attrs))
+        self.inputs = {'X': x, 'Y': real_size}  #l ??
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -239,9 +239,9 @@ class TestBlockExpandOpCase6(OpTest):
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
-        realSize = np.array([[8, 10], [5, 8], [5, 8]]).astype("float32")
-        out = np.array(Im2Sequence(x, realSize, self.attrs))
-        self.inputs = {'X': x, 'Y': realSize}  #l ??
+        real_size = np.array([[8, 10], [5, 8], [5, 8]]).astype("float32")
+        out = np.array(Im2Sequence(x, real_size, self.attrs))
+        self.inputs = {'X': x, 'Y': real_size}  #l ??
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -267,9 +267,9 @@ class TestBlockExpandOpCase7(OpTest):
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
-        realSize = np.array([[6, 6], [4, 4]]).astype("float32")
-        out = np.array(Im2Sequence(x, realSize, self.attrs))
-        self.inputs = {'X': x, 'Y': realSize}  #l ??
+        real_size = np.array([[6, 6], [4, 4]]).astype("float32")
+        out = np.array(Im2Sequence(x, real_size, self.attrs))
+        self.inputs = {'X': x, 'Y': real_size}
         self.outputs = {'Out': out}
 
     def test_check_output(self):

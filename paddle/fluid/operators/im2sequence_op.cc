@@ -77,8 +77,6 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int> default:{0, 0, 0, 0}), the "
                               "paddings(up_pad, left_pad, down_pad, right_pad)")
         .SetDefault({0, 0, 0, 0});
-    // TODO(fuhailong): add out_stride, use this to calculate
-    // the real image size after cnn
     AddAttr<std::vector<int>>("out_stride",
                               "the attribute is valid only when input(Y)"
                               "is not NULL.this attribute represents the"

@@ -3918,7 +3918,7 @@ def im2sequence(input,
                 filter_size=1,
                 stride=1,
                 padding=0,
-                inputImgSize=None,
+                input_image_size=None,
                 out_stride=1,
                 name=None):
     """
@@ -3957,11 +3957,11 @@ def im2sequence(input,
             padding_up = padding_down = padding_left = padding_right = padding
             Default: padding = 0.
 
-        inputImgSize(Variable): the input contains image real size.It's dim
+        input_image_size(Variable): the input contains image real size.It's dim
             is [batchsize, 2]. It is dispensable.It is just for batch inference.
 
         out_stride(int|tuple): The scaling of image through CNN. It is
-            dispensable. It is valid only when inputImgSize is not null.
+            dispensable. It is valid only when input_image_size is not null.
             If out_stride is tuple,  it must contain two intergers,
             (out_stride_H, out_stride_W). Otherwise,
             the out_stride_H = out_stride_W = out_stride.
@@ -4016,7 +4016,7 @@ def im2sequence(input,
                            [ 5.  7.  2.  4.  1.  3.  9.  0.]
                            [ 7.  9.  4.  8.  3.  5.  0.  8.]]
 
-            output.dims = {8, 9}
+            output.dims = {8, 8}
 
             output.lod = [[4, 4]]
 
@@ -4040,7 +4040,7 @@ def im2sequence(input,
         padding.append(padding[1])
     inputs = {"X": input}
     attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
-    if not inputImgSize:
+    if input_image_size:
         if isinstance(out_stride, int):
             out_stride = [out_stride, out_stride]
         inputs["Y"] = input_img_size
