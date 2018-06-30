@@ -63,7 +63,7 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def slice_variable(var_list, slice_count, min_block_size=8192):
+def slice_variable(var_list, slice_count, min_block_size=1048576):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
@@ -71,7 +71,10 @@ def slice_variable(var_list, slice_count, min_block_size=8192):
 
     We need to have a minimal block size so that the calculations in
     the parameter server side can gain better performance. By default
-    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
+    minimum block size 1024K elements (maybe 16bit or 32bit or 64bit).
+
+    According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+    We can use bandwidth effiently when data size is larger than 2MB.
 
     Args:
         var_list (list): List of variables.
