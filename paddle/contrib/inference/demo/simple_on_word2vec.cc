@@ -21,6 +21,7 @@ limitations under the License. */
 #include <memory>
 #include <thread>
 #include "paddle/contrib/inference/paddle_inference_api.h"
+
 namespace paddle {
 namespace demo {
 

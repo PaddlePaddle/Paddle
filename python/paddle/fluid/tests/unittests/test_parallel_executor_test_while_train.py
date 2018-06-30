@@ -16,6 +16,8 @@ import paddle.fluid as fluid
 import numpy as np
 import unittest
 import os
+import sys
+import math
 
 
 def simple_fc_net():
@@ -70,10 +72,17 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
             for i in xrange(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
-                test_loss = np.array(test_loss)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
-                train_loss = np.array(train_loss)
+
+                avg_test_loss_val = np.array(test_loss).mean()
+                if math.isnan(float(avg_test_loss_val)):
+                    sys.exit("got NaN loss, testing failed.")
+
+                avg_train_loss_val = np.array(train_loss).mean()
+                if math.isnan(float(avg_train_loss_val)):
+                    sys.exit("got NaN loss, training failed.")
+
                 self.assertTrue(
                     np.allclose(
                         train_loss, test_loss, atol=1e-8),

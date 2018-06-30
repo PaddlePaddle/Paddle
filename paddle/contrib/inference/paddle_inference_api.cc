@@ -16,6 +16,19 @@ limitations under the License. */
 
 namespace paddle {
 
+int PaddleDtypeSize(PaddleDType dtype) {
+  switch (dtype) {
+    case PaddleDType::FLOAT32:
+      return sizeof(float);
+    case PaddleDType::INT64:
+      return sizeof(int64_t);
+    default:
+      //
+      assert(false);
+      return -1;
+  }
+}
+
 PaddleBuf::PaddleBuf(PaddleBuf&& other)
     : data_(other.data_),
       length_(other.length_),

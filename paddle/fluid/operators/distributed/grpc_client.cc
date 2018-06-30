@@ -239,6 +239,23 @@ void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
+void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                       const std::string& dir,
+                                       int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
+  req.set_out_varname(dir);
+
+  auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+}
+
 void GRPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
   sync_cond_.wait(lk, [this] { return req_count_ == 0; });
@@ -269,14 +286,15 @@ void GRPCClient::Proceed() {
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
-  // TODO(Yancey1989): make grpc client completely thread-safe
   std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;
   }
 
+  // Channel configurations:
   grpc::ChannelArguments args;
+  args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 2000);
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());

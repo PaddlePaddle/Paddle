@@ -156,7 +156,7 @@ def cast(x, dtype):
 
     Examples:
         .. code-block:: python
-             
+
             data = fluid.layers.data(name='x', shape=[13], dtype='float32')
             result = fluid.layers.cast(x=data, dtype='float64')
     """
@@ -189,7 +189,7 @@ def concat(input, axis=0, name=None):
 
     Examples:
         .. code-block:: python
-        
+
            out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
     """
     helper = LayerHelper('concat', **locals())
@@ -239,7 +239,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output):
+def assign(input, output=None):
     """
     **Assign**
 
@@ -247,7 +247,7 @@ def assign(input, output):
 
     Args:
         input(Variable|numpy.ndarray): The source variable
-        output(Variable): The destination variable
+        output(Variable|None): The destination variable
 
     Returns:
         Variable: The destination variable that was supplied as the *output*.
@@ -260,6 +260,8 @@ def assign(input, output):
           fluid.layers.assign(hidden, out)
     """
     helper = LayerHelper('assign', **locals())
+    if output is None:
+        output = helper.create_tmp_variable(dtype=input.dtype)
     if isinstance(input, Variable):
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
@@ -443,7 +445,7 @@ def argmax(x, axis=0):
     return out
 
 
-def argsort(input, axis=-1):
+def argsort(input, axis=-1, name=None):
     """
     Performs sorting on the input Variable along the given axis, and outputs 
     sorted data Varibale and its corresponding index Variable with the same 
@@ -471,6 +473,8 @@ def argsort(input, axis=-1):
         axis(int): The axis along which to sort the input Variable. When 
                    :attr:`axis` < 0, the actual axis will be :attr:`axis` + 
                    rank(:attr:`input`). Default -1, the last dimension.
+        name(str|None): (optional) A name for this layer. If set None, the 
+                   layer will be named automatically.
 
     Returns:
         tuple: A tuple of sorted data Variable and the sorted indices.
@@ -488,8 +492,8 @@ def argsort(input, axis=-1):
         type='argsort',
         inputs={'X': input},
         outputs={'Out': out,
-                 'Indics': ids},
-        attts={'axis': axis})
+                 'Indices': ids},
+        attrs={'axis': axis})
     return out, ids
 
 

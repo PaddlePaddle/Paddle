@@ -97,7 +97,7 @@ class RequestSend final : public RequestBase {
 
   void Process() override {
     std::string varname = GetReqName();
-    VLOG(3) << "RequestSend var_name:" << varname;
+    VLOG(4) << "RequestSend var_name:" << varname;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
@@ -132,7 +132,7 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
-    VLOG(3) << "RequestGet " << varname;
+    VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
@@ -178,7 +178,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
-    VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
+    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
     auto scope = request_->GetMutableLocalScope();
@@ -200,11 +200,50 @@ class RequestPrefetch final : public RequestBase {
   framework::Scope* local_scope_;
 };
 
+class RequestCheckpointNotify final : public RequestBase {
+ public:
+  explicit RequestCheckpointNotify(GrpcService::AsyncService* service,
+                                   ::grpc::ServerCompletionQueue* cq,
+                                   RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    request_.reset(new VariableResponse(request_handler->scope(),
+                                        request_handler->dev_ctx()));
+    int method_id =
+        static_cast<int>(distributed::GrpcMethod::kCheckpointNotify);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestCheckpointNotify() {}
+
+  std::string GetReqName() override { return request_->Varname(); }
+
+  void Process() override {
+    auto scope = request_->GetMutableLocalScope();
+
+    std::string checkpoint_notify = request_->Varname();
+    std::string checkpoint_dir = request_->OutVarname();
+
+    VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
+            << ", dir: " << checkpoint_dir;
+
+    request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
+                             checkpoint_dir);
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  std::shared_ptr<VariableResponse> request_;
+  sendrecv::VoidMessage reply_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+};
+
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(3) << "AsyncGRPCServer is wait server ready";
+  VLOG(4) << "AsyncGRPCServer is wait server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(3) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
 
 void AsyncGRPCServer::StartServer() {
@@ -237,13 +276,14 @@ void AsyncGRPCServer::StartServer() {
     reqs.reserve(kRequestBufSize);
 
     for (int i = 0; i < kRequestBufSize; i++) {
+      VLOG(6) << "TryToRegisterNewOne on RPC NAME: " << rpc_name << " I: " << i;
       TryToRegisterNewOne(rpc_name, i);
     }
 
     for (int i = 0; i < threadnum; i++) {
       rpc_threads_[rpc_name].emplace_back(new std::thread(std::bind(
           &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_name, f)));
-      VLOG(3) << t.first << " creates threads!";
+      VLOG(4) << t.first << " creates threads!";
     }
   }
 
@@ -260,7 +300,7 @@ void AsyncGRPCServer::StartServer() {
     auto& threads = t.second;
     for (size_t i = 0; i < threads.size(); ++i) {
       threads[i]->join();
-      VLOG(3) << t.first << " threads ends!";
+      VLOG(4) << t.first << " threads ends!";
     }
   }
 }
@@ -268,7 +308,7 @@ void AsyncGRPCServer::StartServer() {
 void AsyncGRPCServer::ShutdownQueue() {
   for (auto& t : rpc_cq_) {
     t.second->Shutdown();
-    VLOG(3) << t.first << " shutdown!";
+    VLOG(4) << t.first << " queue shutdown!";
   }
 }
 
@@ -277,7 +317,7 @@ void AsyncGRPCServer::ShutDownImpl() {
   is_shut_down_ = true;
   ShutdownQueue();
 
-  VLOG(3) << "server_ shutdown!";
+  VLOG(4) << "server_ shutdown!";
   server_->Shutdown();
 }
 
@@ -285,12 +325,12 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
                                           int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
-    LOG(WARNING) << "shutdown, do not TryToRegisterNewSendOne";
+    VLOG(4) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
 
-  VLOG(4) << "register send rpc_name:" << rpc_name
-          << ", handler:" << rpc_call_map_[kRequestSend];
+  VLOG(4) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
+          << " REQ ID: " << req_id;
 
   auto& reqs = rpc_reqs_[rpc_name];
   auto& handler = rpc_call_map_[rpc_name];
@@ -303,6 +343,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestGet(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestCheckpoint) {
+    b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }
@@ -321,7 +363,7 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(INFO) << "CompletionQueue " << rpc_name << " shutdown!";
+      VLOG(3) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
