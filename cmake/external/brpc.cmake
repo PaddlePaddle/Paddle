@@ -14,6 +14,15 @@
 
 INCLUDE(ExternalProject)
 
+find_library(SSL_LIBRARY NAMES ssl)
+ADD_LIBRARY(ssl SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${SSL_LIBRARY})
+
+find_library(CRYPTO_LIBRARY NAMES crypto)
+ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${CRYPTO_LIBRARY})
+
+
 SET(BRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/brpc)
 SET(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
 SET(BRPC_INCLUDE_DIR "${BRPC_INSTALL_DIR}/include" CACHE PATH "brpc include directory." FORCE)
@@ -22,7 +31,6 @@ SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.a" CACHE FILEPATH "brpc libr
 INCLUDE_DIRECTORIES(${BRPC_INCLUDE_DIR})
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
-#set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/openssl|${THIRD_PARTY_PATH}/install/zlib")
 set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib")
 
 # If minimal .a is need, you can set  WITH_DEBUG_SYMBOLS=OFF

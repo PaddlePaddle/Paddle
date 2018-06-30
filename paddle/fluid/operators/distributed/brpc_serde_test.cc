@@ -56,7 +56,8 @@ void RunSerdeTestSelectedRows(platform::Place place) {
     math::set_constant(ctx, tensor, 32.7);
     for (int i = 0; i < 564; ++i) rows->push_back(i);
 
-    operators::distributed::SerializeToIOBuf("myvar", &var, ctx, &msg, &iobuf);
+    operators::distributed::SerializeToIOBuf("myvar", &var, ctx, &msg, &iobuf,
+                                             "", false);
   }
 
   // desrialize
@@ -111,7 +112,8 @@ void RunTestLodTensor(platform::Place place) {
     tensor->mutable_data<float>(place);
     math::set_constant(ctx, tensor, 31.9);
 
-    operators::distributed::SerializeToIOBuf("myvar", &var, ctx, &msg, &iobuf);
+    operators::distributed::SerializeToIOBuf("myvar", &var, ctx, &msg, &iobuf,
+                                             "", false);
   }
 
   // check sendrecv::VariableMessage meta data
