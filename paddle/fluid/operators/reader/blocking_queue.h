@@ -88,14 +88,19 @@ class BlockingQueue {
     receive_cv_.notify_all();
   }
 
-  bool IsClosed() {
+  bool IsClosed() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return closed_;
   }
 
-  size_t Cap() {
+  size_t Cap() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return capacity_;
+  }
+
+  size_t Size() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return queue_.size();
   }
 
  private:
@@ -103,9 +108,9 @@ class BlockingQueue {
   bool closed_;
   std::deque<T> queue_;
 
-  std::mutex mutex_;
-  std::condition_variable receive_cv_;
-  std::condition_variable send_cv_;
+  mutable std::mutex mutex_;
+  mutable std::condition_variable receive_cv_;
+  mutable std::condition_variable send_cv_;
 };
 }  // namespace reader
 }  // namespace operators

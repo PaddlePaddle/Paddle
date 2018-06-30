@@ -206,35 +206,35 @@ def infer(use_cuda, inference_program, params_dirname):
     inferencer = fluid.Inferencer(
         inference_program, param_path=params_dirname, place=place)
 
-    # Setup inputs by creating LoDTensors to represent sequences of words.
-    # Here each word is the basic element of these LoDTensors and the shape of 
+    # Setup input by creating LoDTensor to represent sequence of words.
+    # Here each word is the basic element of the LoDTensor and the shape of 
     # each word (base_shape) should be [1] since it is simply an index to 
     # look up for the corresponding word vector.
-    # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
-    # which has only one lod level. Then the created LoDTensors will have only 
+    # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
+    # which has only one level of detail. Then the created LoDTensor will have only 
     # one higher level structure (sequence of words, or sentence) than the basic 
     # element (word). Hence the LoDTensor will hold data for three sentences of 
     # length 3, 4 and 2, respectively. 
-    # Note that lod info should be a list of lists.
-    lod = [[3, 4, 2]]
+    # Note that recursive_sequence_lengths should be a list of lists.
+    recursive_seq_lens = [[3, 4, 2]]
     base_shape = [1]
     # The range of random integers is [low, high]
     word = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_n2 = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_n1 = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_0 = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_p1 = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     ctx_p2 = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=WORD_DICT_LEN - 1)
     pred = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=PRED_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=PRED_DICT_LEN - 1)
     mark = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=MARK_DICT_LEN - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=MARK_DICT_LEN - 1)
 
     results = inferencer.infer(
         {

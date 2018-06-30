@@ -191,9 +191,9 @@ class ExecutionContext {
     return op_.Attr<T>(name);
   }
 
-  bool HasInput(const std::string& name) const { return op_.HasInputs(name); }
+  bool HasInput(const std::string& name) const;
 
-  bool HasOutput(const std::string& name) const { return op_.HasOutputs(name); }
+  bool HasOutput(const std::string& name) const;
 
   size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
@@ -384,6 +384,20 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+
+  /**
+   * Transfer data from scope to a transfered scope. If there is no data need to
+   * be tranfered, it returns nullptr.
+   *
+   * * transfered_inplace_vars is a output vector.
+   */
+  Scope* TryTransferData(
+      const Scope& scope, const OpKernelType& expected_kernel_key,
+      std::vector<std::string>* transfered_inplace_vars) const;
+
+  void TransferInplaceVarsBack(const Scope& scope,
+                               const std::vector<std::string>& inplace_vars,
+                               const Scope& exec_scope) const;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

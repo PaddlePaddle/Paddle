@@ -194,16 +194,16 @@ def train(word_dict,
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
@@ -238,17 +238,21 @@ def infer(word_dict, use_cuda, save_dirname=None):
         # Here each word is the basic element of the LoDTensor and the shape of 
         # each word (base_shape) should be [1] since it is simply an index to 
         # look up for the corresponding word vector.
-        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
-        # which has only one lod level. Then the created LoDTensor will have only 
+        # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
+        # which has only one level of detail. Then the created LoDTensor will have only 
         # one higher level structure (sequence of words, or sentence) than the basic 
         # element (word). Hence the LoDTensor will hold data for three sentences of 
         # length 3, 4 and 2, respectively. 
-        # Note that lod info should be a list of lists.
-        lod = [[3, 4, 2]]
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[3, 4, 2]]
         base_shape = [1]
         # The range of random integers is [low, high]
         tensor_words = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -257,7 +261,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: tensor_words},
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
         print("Inference results: ", np_data)

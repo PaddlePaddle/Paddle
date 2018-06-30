@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -29,6 +31,8 @@ struct BuildStrategy {
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
+
+  std::string debug_graphviz_path_{""};
 };
 
 }  // namespace details

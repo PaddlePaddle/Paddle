@@ -15,7 +15,7 @@ if(NOT WITH_DISTRIBUTE)
 endif(NOT WITH_DISTRIBUTE)
 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
-list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184 
+list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_nce) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/7778
 list(REMOVE_ITEM TEST_OPS test_recurrent_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/6152
@@ -48,7 +48,8 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach(TEST_OP)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
 py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
-# FIXME(Yancey1989): this test would cost much more time on CUDAPlace
-# since load cudnn libraries, so we use a longer timeout to make this
-# unit test stability.
-set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 30)
+py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
+py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
+set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
+set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 180)
+set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 180)

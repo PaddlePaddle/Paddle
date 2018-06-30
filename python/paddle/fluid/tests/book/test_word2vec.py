@@ -125,16 +125,16 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
@@ -168,21 +168,22 @@ def infer(use_cuda, save_dirname=None):
 
         # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
         # is simply an index to look up for the corresponding word vector and hence 
-        # the shape of word (base_shape) should be [1]. The length-based level of 
-        # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
-        # one lod_level and there is only one sequence of one word on this level.
-        # Note that lod info should be a list of lists.
-        lod = [[1]]
+        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths, 
+        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]] 
+        # meaning there is only one level of detail and there is only one sequence of 
+        # one word on this level.
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[1]]
         base_shape = [1]
         # The range of random integers is [low, high]
         first_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         second_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         third_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         fourth_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'
@@ -200,7 +201,7 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
 

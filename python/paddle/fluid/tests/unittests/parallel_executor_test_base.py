@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import multiprocessing
+import os
 import unittest
 import paddle.fluid as fluid
 import time
 import numpy as np
+import math
+import sys
 
 __all__ = ['TestParallelExecutorBase']
 
@@ -23,6 +27,7 @@ __all__ = ['TestParallelExecutorBase']
 class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(self,
                                   method,
+                                  use_cuda=True,
                                   memory_opt=True,
                                   iter=50,
                                   batch_size=None,
@@ -53,7 +58,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
-            place = fluid.CUDAPlace(0)
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
             exec_strategy = fluid.ExecutionStrategy()
@@ -64,7 +69,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
-                    True,
+                    use_cuda,
                     loss_name=loss.name,
                     exec_strategy=exec_strategy,
                     build_strategy=build_strategy)
@@ -72,11 +77,12 @@ class TestParallelExecutorBase(unittest.TestCase):
                 exe = fluid.Executor(place=place)
 
             if batch_size is not None:
-                batch_size *= fluid.core.get_cuda_device_count()
+                batch_size *= fluid.core.get_cuda_device_count(
+                ) if use_cuda else int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             begin = time.time()
             first_loss, = run_executor(
                 exe=exe, feed=feed_dict, fetch_list=[loss.name])
-            first_loss = np.array(first_loss)
 
             for i in xrange(iter):
                 run_executor(exe=exe, feed=feed_dict, fetch_list=[])
@@ -89,7 +95,11 @@ class TestParallelExecutorBase(unittest.TestCase):
                 print "%.4f Instance per second" % (
                     (batch_size * iter + 2) / (end - begin))
 
-            last_loss = np.array(last_loss)
+            avg_last_loss_val = np.array(last_loss).mean()
+            avg_first_loss_val = np.array(first_loss).mean()
+            if math.isnan(float(avg_last_loss_val)) or math.isnan(
+                    float(avg_first_loss_val)):
+                sys.exit("got NaN loss, training failed.")
 
             print first_loss, last_loss
             # self.assertGreater(first_loss[0], last_loss[0])

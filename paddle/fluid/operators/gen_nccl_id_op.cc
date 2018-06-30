@@ -21,9 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/request_handler_impl.h"
+#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
@@ -61,12 +60,18 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
-    detail::RPCClient client;
+    distributed::RPCClient* client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
-      client.AsyncSendVariable(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
+      client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
     }
-    client.Wait();
+    client->Wait();
+    for (auto& ep : endpoint_list) {
+      client->AsyncSendBatchBarrier(ep);
+    }
+    client->Wait();
     VLOG(3) << "sending completed...";
   }
 
@@ -76,10 +81,12 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    detail::RequestSendHandler rpc_h(true);
-    detail::AsyncGRPCServer rpc_service(endpoint, 1);
-    rpc_service.RegisterRPC(detail::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(&rpc_service);
+    distributed::RequestSendHandler rpc_h(true);
+    std::unique_ptr<distributed::RPCServer> rpc_service(
+        new RPCSERVER_T(endpoint, 1));
+
+    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
+    rpc_h.SetRPCServer(rpc_service.get());
 
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
@@ -89,12 +96,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
     rpc_h.SetExecutor(&executor);
 
     std::thread server_thread(
-        std::bind(&detail::AsyncGRPCServer::StartServer, &rpc_service));
-    rpc_service.SetCond(detail::kRequestSend);
+        std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
+
+    rpc_service->SetCond(distributed::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service.WaitBarrier(detail::kRequestSend);
+    rpc_service->WaitBarrier(distributed::kRequestSend);
     VLOG(3) << "got nccl id and stop server...";
-    rpc_service.ShutDown();
+    rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
   }

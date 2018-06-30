@@ -15,33 +15,46 @@ limitations under the License. */
 #pragma once
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include <fstream>
 #include <string>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/io.h"
 
 namespace paddle {
 namespace inference {
+
+// Read ProgramDesc from a __model__ file, defined in io.cc
+extern void ReadBinaryFile(const std::string& filename, std::string* contents);
+
 namespace analysis {
 
 DEFINE_string(inference_model_dir, "", "inference test model dir");
 
 static framework::proto::ProgramDesc LoadProgramDesc(
     const std::string& model_dir = FLAGS_inference_model_dir) {
-  paddle::platform::CPUPlace place;
-  paddle::framework::Executor executor(place);
-  paddle::framework::Scope scope;
-  auto program = Load(&executor, &scope, model_dir);
-  return *program->Proto();
+  std::string msg;
+  std::string net_file = FLAGS_inference_model_dir + "/__model__";
+  std::ifstream fin(net_file, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", net_file);
+  fin.seekg(0, std::ios::end);
+  msg.resize(fin.tellg());
+  fin.seekg(0, std::ios::beg);
+  fin.read(&(msg.at(0)), msg.size());
+  fin.close();
+  framework::proto::ProgramDesc program_desc;
+  program_desc.ParseFromString(msg);
+  return program_desc;
 }
 
 static DataFlowGraph ProgramDescToDFG(
     const framework::proto::ProgramDesc& desc) {
   DataFlowGraph graph;
   FluidToDataFlowGraphPass pass;
-  pass.Initialize(desc);
+  Argument argument;
+  argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
+  pass.Initialize(&argument);
   pass.Run(&graph);
   pass.Finalize();
   return graph;
@@ -49,9 +62,12 @@ static DataFlowGraph ProgramDescToDFG(
 
 class DFG_Tester : public ::testing::Test {
  protected:
-  void SetUp() override { desc = LoadProgramDesc(FLAGS_inference_model_dir); }
+  void SetUp() override {
+    auto desc = LoadProgramDesc(FLAGS_inference_model_dir);
+    argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
+  }
 
-  framework::proto::ProgramDesc desc;
+  Argument argument;
 };
 
 }  // namespace analysis
