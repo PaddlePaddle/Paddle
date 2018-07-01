@@ -16,7 +16,7 @@
 #include "gflags/gflags.h"
 
 // default to 3min to avoid temprary network failures.
-DEFINE_int32(rpc_deadline, 30000, "deadline timeouts for rpc");
+DEFINE_int32(rpc_deadline, 180000, "deadline timeouts for rpc");
 
 namespace paddle {
 namespace operators {
