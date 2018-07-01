@@ -37,7 +37,7 @@ void GRPCClient::InitEventLoop() {
 
 void GRPCClient::SendBeginPass() {
   for (auto& it : channels_) {
-    VLOG(3) << "send begin pass to: " it.first;
+    VLOG(3) << "send begin pass to: " << it.first;
     this->AsyncSendBeginPass(it.first);
   }
 }
