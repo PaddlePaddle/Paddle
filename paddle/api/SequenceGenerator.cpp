@@ -17,7 +17,7 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 #include "PaddleAPI.h"
-#include "paddle/gserver/gradientmachines/GradientMachine.h"
+#include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/Flags.h"
 
