@@ -220,33 +220,33 @@ void compareNetwork(const std::string& config_file_a,
 }
 
 TEST(Compare, concat_dotmul) {
-  std::string config_file_a = "./gserver/tests/concat_dotmul_a.conf";
-  std::string config_file_b = "./gserver/tests/concat_dotmul_b.conf";
+  std::string config_file_a = "./legacy/gserver/tests/concat_dotmul_a.conf";
+  std::string config_file_b = "./legacy/gserver/tests/concat_dotmul_b.conf";
   compareNetwork(config_file_a, config_file_b);
 }
 
 TEST(Compare, concat_fullmatrix) {
-  std::string config_file_a = "./gserver/tests/concat_fullmatrix_a.conf";
-  std::string config_file_b = "./gserver/tests/concat_fullmatrix_b.conf";
+  std::string config_file_a = "./legacy/gserver/tests/concat_fullmatrix_a.conf";
+  std::string config_file_b = "./legacy/gserver/tests/concat_fullmatrix_b.conf";
   compareNetwork(config_file_a, config_file_b);
 }
 
 TEST(Compare, concat_table) {
-  std::string config_file_a = "./gserver/tests/concat_table_a.conf";
-  std::string config_file_b = "./gserver/tests/concat_table_b.conf";
+  std::string config_file_a = "./legacy/gserver/tests/concat_table_a.conf";
+  std::string config_file_b = "./legacy/gserver/tests/concat_table_b.conf";
   compareNetwork(config_file_a, config_file_b);
 }
 
 TEST(Compare, concat_slice) {
-  std::string config_file_a = "./gserver/tests/concat_slice_a.conf";
-  std::string config_file_b = "./gserver/tests/concat_slice_b.conf";
+  std::string config_file_a = "./legacy/gserver/tests/concat_slice_a.conf";
+  std::string config_file_b = "./legacy/gserver/tests/concat_slice_b.conf";
   compareNetwork(config_file_a, config_file_b);
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST(Compare, img_pool) {
-  std::string config_file_a = "./gserver/tests/img_pool_a.conf";
-  std::string config_file_b = "./gserver/tests/img_pool_b.conf";
+  std::string config_file_a = "./legacy/gserver/tests/img_pool_a.conf";
+  std::string config_file_b = "./legacy/gserver/tests/img_pool_b.conf";
   bool useGpu = FLAGS_use_gpu;
   FLAGS_use_gpu = true;
   compareNetwork(config_file_a, config_file_b);
@@ -254,8 +254,8 @@ TEST(Compare, img_pool) {
 }
 
 TEST(Compare, img_conv) {
-  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
-  std::string config_file_b = "./gserver/tests/img_conv_b.conf";
+  std::string config_file_a = "./legacy/gserver/tests/img_conv_a.conf";
+  std::string config_file_b = "./legacy/gserver/tests/img_conv_b.conf";
   bool useGpu = FLAGS_use_gpu;
   FLAGS_use_gpu = true;
   compareNetwork(config_file_a, config_file_b);
@@ -264,8 +264,8 @@ TEST(Compare, img_conv) {
 
 // Test cudnn_conv and exconv give the same result
 TEST(Compare, img_conv2) {
-  std::string config_file_a = "./gserver/tests/img_conv_cudnn.py";
-  std::string config_file_b = "./gserver/tests/img_conv_exconv.py";
+  std::string config_file_a = "./legacy/gserver/tests/img_conv_cudnn.py";
+  std::string config_file_b = "./legacy/gserver/tests/img_conv_exconv.py";
   bool useGpu = FLAGS_use_gpu;
   double eps = FLAGS_checkgrad_eps;
   FLAGS_use_gpu = true;

@@ -40,9 +40,10 @@ DEFINE_double(
 DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_int32(seed);
 
-static const string& config_file_a = "gserver/tests/sequence_recurrent.py";
+static const string& config_file_a =
+    "legacy/gserver/tests/sequence_recurrent.py";
 static const string& config_file_b =
-    "gserver/tests/sequence_recurrent_group.py";
+    "legacy/gserver/tests/sequence_recurrent_group.py";
 
 struct ComData {
   vector<Argument> outArgs;
