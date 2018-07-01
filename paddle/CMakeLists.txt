@@ -3,7 +3,7 @@ if(NOT WITH_FLUID_ONLY)
   add_subdirectory(function)
   add_subdirectory(utils)
   add_subdirectory(math)
-  add_subdirectory(gserver)
+  add_subdirectory(legacy/gserver)
   add_subdirectory(parameter)
 
   if(MOBILE_INFERENCE)
