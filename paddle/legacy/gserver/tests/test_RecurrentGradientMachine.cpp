@@ -102,11 +102,11 @@ void test(const string& conf1, const string& conf2, double eps, bool useGpu) {
   FLAGS_use_gpu = useGpu;
   int num_passes = 5;
   real* cost1 = new real[num_passes];
-  const string dir1 = "gserver/tests/t1";
+  const string dir1 = "legacy/gserver/tests/t1";
   CalCost(conf1, dir1, cost1, num_passes);
 
   real* cost2 = new real[num_passes];
-  const string dir2 = "gserver/tests/t2";
+  const string dir2 = "legacy/gserver/tests/t2";
   CalCost(conf2, dir2, cost2, num_passes);
 
   for (int i = 0; i < num_passes; i++) {
@@ -121,8 +121,8 @@ void test(const string& conf1, const string& conf2, double eps, bool useGpu) {
 
 TEST(RecurrentGradientMachine, HasSubSequence) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_layer_group.conf",
-         "gserver/tests/sequence_nest_layer_group.conf",
+    test("legacy/gserver/tests/sequence_layer_group.conf",
+         "legacy/gserver/tests/sequence_nest_layer_group.conf",
          1e-5,
          useGpu);
   }
@@ -130,8 +130,8 @@ TEST(RecurrentGradientMachine, HasSubSequence) {
 
 TEST(RecurrentGradientMachine, rnn) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_rnn.conf",
-         "gserver/tests/sequence_nest_rnn.conf",
+    test("legacy/gserver/tests/sequence_rnn.conf",
+         "legacy/gserver/tests/sequence_nest_rnn.conf",
          1e-6,
          useGpu);
   }
@@ -139,8 +139,8 @@ TEST(RecurrentGradientMachine, rnn) {
 
 TEST(RecurrentGradientMachine, rnn_multi_input) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_rnn_multi_input.conf",
-         "gserver/tests/sequence_nest_rnn_multi_input.conf",
+    test("legacy/gserver/tests/sequence_rnn_multi_input.conf",
+         "legacy/gserver/tests/sequence_nest_rnn_multi_input.conf",
          1e-6,
          useGpu);
   }
@@ -148,8 +148,8 @@ TEST(RecurrentGradientMachine, rnn_multi_input) {
 
 TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
-         "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",
+    test("legacy/gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
+         "legacy/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",
          1e-6,
          useGpu);
   }
@@ -157,8 +157,8 @@ TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
 
 TEST(RecurrentGradientMachine, rnn_mixed_input) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_rnn_mixed_inputs.py",
-         "gserver/tests/sequence_rnn_matched_inputs.py",
+    test("legacy/gserver/tests/sequence_rnn_mixed_inputs.py",
+         "legacy/gserver/tests/sequence_rnn_matched_inputs.py",
          1e-6,
          useGpu);
   }

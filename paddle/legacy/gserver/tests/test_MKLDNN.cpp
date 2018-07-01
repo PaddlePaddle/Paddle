@@ -426,7 +426,7 @@ DECLARE_string(config_args);
 TEST(MKLDNNNet, net) {
   std::vector<std::string> cases = {"simple", "branch"};
   for (auto name : cases) {
-    std::string config = "./gserver/tests/mkldnn_" + name + "_net.conf";
+    std::string config = "./legacy/gserver/tests/mkldnn_" + name + "_net.conf";
     for (auto channels : {2, 32}) {
       std::ostringstream oss;
       oss << "channels=" << channels;

@@ -22,7 +22,7 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-static const string& configFile1 = "gserver/tests/sequence_lstm.conf";
+static const string& configFile1 = "legacy/gserver/tests/sequence_lstm.conf";
 
 DECLARE_bool(use_gpu);
 DECLARE_string(config);

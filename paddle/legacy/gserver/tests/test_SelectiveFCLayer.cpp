@@ -76,7 +76,7 @@ void calcOutput(ComData& comData,
   FLAGS_config = configFile;
   FLAGS_config_args = configArgs;
   FLAGS_use_gpu = useGpu;
-  FLAGS_init_model_path = "gserver/tests/SelectiveFcTest/model";
+  FLAGS_init_model_path = "legacy/gserver/tests/SelectiveFcTest/model";
   *ThreadLocalRand::getSeed() = 0;
   srand(0);
 
@@ -311,13 +311,13 @@ LayerPtr initFcLayer(LayerPtr dataLayer,
 #ifndef PADDLE_TYPE_DOUBLE
 // The parameter file used in fc.conf and selective_fc.conf is float
 TEST(Layer, SelectiveFcLayer_train_dense_mul) {
-  const string& fcConfig = "gserver/tests/SelectiveFcTest/conf/fc.conf";
+  const string& fcConfig = "legacy/gserver/tests/SelectiveFcTest/conf/fc.conf";
   const string& fcConfigArgs =
-      "filelist=gserver/tests/SelectiveFcTest/dense_mul_list";
+      "filelist=legacy/gserver/tests/SelectiveFcTest/dense_mul_list";
   const string& selFcConfig =
-      "gserver/tests/SelectiveFcTest/conf/selective_fc.conf";
+      "legacy/gserver/tests/SelectiveFcTest/conf/selective_fc.conf";
   const string& selConfigArgs =
-      "filelist=gserver/tests/SelectiveFcTest/dense_mul_list";
+      "filelist=legacy/gserver/tests/SelectiveFcTest/dense_mul_list";
 
   for (auto useGpu : {false, true}) {
 #ifndef PADDLE_WITH_CUDA
@@ -350,7 +350,7 @@ void testSelectiveFcLayerTrainSparseMul(const LayerConfig& config,
       creatDataLayer("data", batchSize, dataLayerSize, values, useGpu);
 
   const string& selfcParaFile =
-      "gserver/tests/SelectiveFcTest/model/rand_fc_param.w.transpose";
+      "legacy/gserver/tests/SelectiveFcTest/model/rand_fc_param.w.transpose";
   const string& selfcParaName = "rand_fc_param.w.transpose";
 
   std::shared_ptr<SelectiveFullyConnectedLayer> selfcLayer =
@@ -396,7 +396,7 @@ void testSelectiveFcLayerTrainSparseMul(const LayerConfig& config,
   size_t nnz = cpuOutMatSelfc->getElementCnt();
 
   const string& fcParaFile =
-      "gserver/tests/SelectiveFcTest/model/rand_fc_param.w";
+      "legacy/gserver/tests/SelectiveFcTest/model/rand_fc_param.w";
   const string& fcParaName = "rand_fc_param.w";
   LayerConfig fcLayerConfig;
   fcLayerConfig.set_name("fc_layer");
