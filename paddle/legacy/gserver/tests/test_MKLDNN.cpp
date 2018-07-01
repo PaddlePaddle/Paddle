@@ -19,7 +19,7 @@ limitations under the License. */
 #include "MKLDNNTester.h"
 #include "ModelConfig.pb.h"
 #include "paddle/legacy/gserver/activations/MKLDNNActivation.h"
-#include "paddle/math/MathUtils.h"
+#include "paddle/legacy/math/MathUtils.h"
 
 using namespace paddle;  // NOLINT
 

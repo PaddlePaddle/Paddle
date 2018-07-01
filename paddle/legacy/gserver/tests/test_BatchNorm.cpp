@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
-#include "paddle/cuda/include/hl_batch_norm.h"
-#include "paddle/math/tests/TensorCheck.h"
+#include "paddle/legacy/cuda/include/hl_batch_norm.h"
+#include "paddle/legacy/math/tests/TensorCheck.h"
 #include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT

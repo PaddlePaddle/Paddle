@@ -154,7 +154,7 @@ The implementation of the forward part has the following steps.
 
 - Every layer must call :code:`Layer::forward(passType);` at the beginning of its :code:`forward` function.
 - Then it allocates memory for the output using :code:`reserveOutput(batchSize, size);`. This step is necessary because we support the batches to have different batch sizes. :code:`reserveOutput` will change the size of the output accordingly. For the sake of efficiency, we will allocate new memory if we want to expand the matrix, but we will reuse the existing memory block if we want to shrink the matrix.
-- Then it computes :math:`\sum_i W_i x + b` using Matrix operations. :code:`getInput(i).value` retrieve the matrix of the i-th input. Each input is a :math:`batchSize \times dim` matrix, where each row represents an single input in a batch. For a complete lists of supported matrix operations, please refer to :code:`paddle/math/Matrix.h` and :code:`paddle/math/BaseMatrix.h`.
+- Then it computes :math:`\sum_i W_i x + b` using Matrix operations. :code:`getInput(i).value` retrieve the matrix of the i-th input. Each input is a :math:`batchSize \times dim` matrix, where each row represents an single input in a batch. For a complete lists of supported matrix operations, please refer to :code:`paddle/legacy/math/Matrix.h` and :code:`paddle/legacy/math/BaseMatrix.h`.
 - Finally it applies the activation function using :code:`forwardActivation();`. It will automatically applies the corresponding activation function specifies in the network configuration.
 
 

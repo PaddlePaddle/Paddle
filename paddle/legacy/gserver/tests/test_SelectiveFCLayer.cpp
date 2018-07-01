@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/legacy/gserver/layers/FullyConnectedLayer.h"
 #include "paddle/legacy/gserver/layers/Layer.h"
 #include "paddle/legacy/gserver/layers/SelectiveFullyConnectedLayer.h"
-#include "paddle/math/CpuSparseMatrix.h"
+#include "paddle/legacy/math/CpuSparseMatrix.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

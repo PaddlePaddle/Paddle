@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "ConvBaseLayer.h"
-#include "paddle/math/MathUtils.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/MathUtils.h"
+#include "paddle/legacy/math/Matrix.h"
 
 namespace paddle {
 

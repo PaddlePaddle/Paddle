@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "Layer.h"
 #include "PoolProjection.h"
-#include "paddle/math/MathUtils.h"
+#include "paddle/legacy/math/MathUtils.h"
 #include "paddle/utils/Logging.h"
 
 namespace paddle {

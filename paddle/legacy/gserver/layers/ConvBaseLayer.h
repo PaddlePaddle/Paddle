@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
-#include "paddle/math/MathUtils.h"
+#include "paddle/legacy/math/MathUtils.h"
 namespace paddle {
 
 /**

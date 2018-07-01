@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
-#include "paddle/math/BaseMatrix.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/BaseMatrix.h"
+#include "paddle/legacy/math/Matrix.h"
 
 namespace paddle {
 /**

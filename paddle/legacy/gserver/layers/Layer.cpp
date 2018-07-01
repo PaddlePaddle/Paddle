@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "CostLayer.h"
-#include "paddle/math/SparseMatrix.h"
+#include "paddle/legacy/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
 

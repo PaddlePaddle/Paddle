@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/trainer/Trainer.h"
 
 #include <gtest/gtest.h>
-#include <paddle/pserver/ParameterServer2.h>
+#include <paddle/legacy/pserver/ParameterServer2.h>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

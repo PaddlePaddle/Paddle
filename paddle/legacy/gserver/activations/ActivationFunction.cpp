@@ -20,7 +20,7 @@ limitations under the License. */
 #include <string>
 #include <thread>
 #include <type_traits>
-#include "paddle/parameter/Argument.h"
+#include "paddle/legacy/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Logging.h"
 

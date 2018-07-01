@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ConvOperator.h"
-#include "paddle/math/MathUtils.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/MathUtils.h"
+#include "paddle/legacy/math/Matrix.h"
 
 namespace paddle {
 

@@ -17,12 +17,12 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include "ModelConfig.pb.h"
-#include "paddle/function/Function.h"
+#include "paddle/legacy/function/Function.h"
 #include "paddle/legacy/gserver/activations/ActivationFunction.h"
-#include "paddle/math/CpuSparseMatrix.h"
-#include "paddle/parameter/Argument.h"
-#include "paddle/parameter/Parameter.h"
-#include "paddle/parameter/Weight.h"
+#include "paddle/legacy/math/CpuSparseMatrix.h"
+#include "paddle/legacy/parameter/Argument.h"
+#include "paddle/legacy/parameter/Parameter.h"
+#include "paddle/legacy/parameter/Weight.h"
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Util.h"
 

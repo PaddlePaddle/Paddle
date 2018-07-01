@@ -20,7 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/legacy/gserver/layers/DataLayer.h"
-#include "paddle/math/MathUtils.h"
+#include "paddle/legacy/math/MathUtils.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"

@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "PaddleAPI.h"
 #include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
-#include "paddle/parameter/Argument.h"
+#include "paddle/legacy/parameter/Argument.h"
 #include "paddle/utils/Flags.h"
 
 // used to represent partial sequence
