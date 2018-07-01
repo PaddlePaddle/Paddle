@@ -16,7 +16,7 @@ from paddle.trainer_config_helpers import *
 
 ######################## data source ################################
 define_py_data_sources2(
-    train_list='gserver/tests/Sequence/dummy.list',
+    train_list='legacy/gserver/tests/Sequence/dummy.list',
     test_list=None,
     module='rnn_data_provider',
     obj='process_mixed')
