@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <fstream>
 #include "ModelConfig.pb.h"
-#include "paddle/parameter/Argument.h"
-#include "paddle/pserver/ParameterClient2.h"
+#include "paddle/legacy/parameter/Argument.h"
+#include "paddle/legacy/pserver/ParameterClient2.h"
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Error.h"
 

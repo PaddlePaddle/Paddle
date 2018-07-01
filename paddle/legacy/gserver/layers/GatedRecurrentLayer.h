@@ -17,7 +17,7 @@ limitations under the License. */
 #include "GruCompute.h"
 #include "Layer.h"
 #include "SequenceToBatch.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 
 namespace paddle {
 

@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 #include <cstring>
 #include <iostream>
 #include "PaddleAPI.h"
-#include "paddle/math/CpuSparseMatrix.h"
-#include "paddle/math/SparseMatrix.h"
+#include "paddle/legacy/math/CpuSparseMatrix.h"
+#include "paddle/legacy/math/SparseMatrix.h"
 
 struct MatrixPrivate {
   std::shared_ptr<paddle::Matrix> mat;

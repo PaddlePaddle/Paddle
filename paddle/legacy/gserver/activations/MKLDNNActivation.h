@@ -16,8 +16,8 @@ limitations under the License. */
 #include "ActivationFunction.h"
 #include "mkldnn.hpp"
 #include "paddle/legacy/gserver/layers/MKLDNNBase.h"
-#include "paddle/math/MKLDNNMatrix.h"
-#include "paddle/parameter/Argument.h"
+#include "paddle/legacy/math/MKLDNNMatrix.h"
+#include "paddle/legacy/parameter/Argument.h"
 
 namespace paddle {
 

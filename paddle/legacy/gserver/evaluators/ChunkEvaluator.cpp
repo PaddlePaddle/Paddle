@@ -15,7 +15,7 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "paddle/math/Vector.h"
+#include "paddle/legacy/math/Vector.h"
 #include "paddle/utils/StringUtil.h"
 
 #include "Evaluator.h"

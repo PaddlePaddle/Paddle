@@ -153,7 +153,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
 
 - 每个层在其 :code:`forward` 函数的开头必须调用 :code:`Layer::forward(passType);` 。
 - 之后使用 :code:`reserveOutput(batchSize, size);` 为输出分配内存。由于我们支持训练数据有不同的批次大小，所以这一步是必要的。 :code:`reserveOutput`  会相应地改变输出的尺寸。为了保证效率，如果需要扩大矩阵，我们会重新分配内存；如果需要缩减矩阵，我们会继续使用现有的内存块。
-- 之后使用矩阵运算函数来计算 :math:`\sum_i W_i x + b`。:code:`getInput(i).value` 返回第i个输入矩阵。每个输入都是一个 :math:`batchSize \times dim` 的矩阵，每行表示一个批次中的单个输入。对于我们支持的全部矩阵操作，请参考 :code:`paddle/math/Matrix.h`和:code:`paddle/math/BaseMatrix.h` 。
+- 之后使用矩阵运算函数来计算 :math:`\sum_i W_i x + b`。:code:`getInput(i).value` 返回第i个输入矩阵。每个输入都是一个 :math:`batchSize \times dim` 的矩阵，每行表示一个批次中的单个输入。对于我们支持的全部矩阵操作，请参考 :code:`paddle/legacy/math/Matrix.h`和:code:`paddle/legacy/math/BaseMatrix.h` 。
 - 最终，使用 :code:`forwardActivation();` 进行激活操作。这会自动进行网络配置中声明的激活操作。
 
 

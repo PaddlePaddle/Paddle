@@ -178,7 +178,7 @@ include(inference_lib)      # add paddle fluid inference libraries
 
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
+include_directories("${PADDLE_SOURCE_DIR}/paddle/legacy/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
@@ -222,7 +222,7 @@ add_subdirectory(proto)
 if(NOT MOBILE_INFERENCE AND NOT WITH_FLUID_ONLY)
     # "add_subdirectory(go)" should be placed after the following loine,
     # because it depends on paddle/optimizer.
-    add_subdirectory(paddle/optimizer)
+    add_subdirectory(paddle/legacy/optimizer)
 endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be

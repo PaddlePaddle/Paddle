@@ -18,7 +18,7 @@ limitations under the License. */
 #include <memory>
 #include "paddle/utils/Logging.h"
 
-#include "paddle/math/SparseMatrix.h"
+#include "paddle/legacy/math/SparseMatrix.h"
 
 namespace paddle {
 

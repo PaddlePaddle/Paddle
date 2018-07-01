@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MKLDNNPoolLayer.h"
-#include "paddle/math/MathUtils.h"
+#include "paddle/legacy/math/MathUtils.h"
 #include "paddle/utils/Logging.h"
 
 using namespace mkldnn;  // NOLINT

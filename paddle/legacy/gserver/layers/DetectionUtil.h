@@ -17,7 +17,7 @@ limitations under the License. */
 #include <float.h>
 #include <algorithm>
 #include <vector>
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 
 using std::vector;
 using std::pair;

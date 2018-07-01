@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "Layer.h"
 #include "MultinomialSampler.h"
-#include "paddle/math/MathFunctions.h"
+#include "paddle/legacy/math/MathFunctions.h"
 
 namespace paddle {
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 
 #include "SequencePoolLayer.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "Layer.h"
 #include "ModelConfig.pb.h"
-#include "paddle/parameter/Parameter.h"
+#include "paddle/legacy/parameter/Parameter.h"
 
 namespace paddle {
 

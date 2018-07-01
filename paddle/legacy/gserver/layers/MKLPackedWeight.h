@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/math/MathFunctions.h"
-#include "paddle/parameter/Parameter.h"
-#include "paddle/parameter/Weight.h"
+#include "paddle/legacy/math/MathFunctions.h"
+#include "paddle/legacy/parameter/Parameter.h"
+#include "paddle/legacy/parameter/Weight.h"
 
 namespace paddle {
 

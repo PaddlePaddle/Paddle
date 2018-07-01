@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "ConvBaseLayer.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 
 namespace paddle {
 

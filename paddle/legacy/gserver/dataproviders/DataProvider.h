@@ -25,10 +25,10 @@ limitations under the License. */
 #include <vector>
 
 #include "DataConfig.pb.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/math/SparseMatrix.h"
-#include "paddle/math/Vector.h"
-#include "paddle/parameter/Argument.h"
+#include "paddle/legacy/math/Matrix.h"
+#include "paddle/legacy/math/SparseMatrix.h"
+#include "paddle/legacy/math/Vector.h"
+#include "paddle/legacy/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/Locks.h"

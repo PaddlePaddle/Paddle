@@ -15,7 +15,7 @@ limitations under the License. */
 #include "SelectiveFullyConnectedLayer.h"
 #include <algorithm>
 #include <vector>
-#include "paddle/math/SparseMatrix.h"
+#include "paddle/legacy/math/SparseMatrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 #include "paddle/utils/ThreadLocal.h"
 
 namespace paddle {

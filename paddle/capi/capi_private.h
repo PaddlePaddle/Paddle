@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "capi.h"
 #include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/math/Vector.h"
-#include "paddle/parameter/Argument.h"
+#include "paddle/legacy/math/Matrix.h"
+#include "paddle/legacy/math/Vector.h"
+#include "paddle/legacy/parameter/Argument.h"
 #pragma once
 
 namespace paddle {
