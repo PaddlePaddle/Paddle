@@ -58,7 +58,7 @@ Finally we can use chain rule to calculate :math:`\frac{\partial z}{\partial x}`
 Implement C++ Class
 ===================
 
-The C++ class of the layer implements the initialization, forward, and backward part of the layer. The fully connected layer is at :code:`paddle/gserver/layers/FullyConnectedLayer.h` and :code:`paddle/gserver/layers/FullyConnectedLayer.cpp`. We list simplified version of the code below.
+The C++ class of the layer implements the initialization, forward, and backward part of the layer. The fully connected layer is at :code:`paddle/legacy/gserver/layers/FullyConnectedLayer.h` and :code:`paddle/legacy/gserver/layers/FullyConnectedLayer.cpp`. We list simplified version of the code below.
 
 It needs to derive the base class :code:`paddle::Layer`, and it needs to override the following functions:
 
@@ -263,7 +263,7 @@ Finally, you can use :code:`REGISTER_LAYER(fc, FullyConnectedLayer);` to registe
     REGISTER_LAYER(fc, FullyConnectedLayer);
     }
 
-If the :code:`cpp` file is put into :code:`paddle/gserver/layers`, it will be automatically added to the compilation list.
+If the :code:`cpp` file is put into :code:`paddle/legacy/gserver/layers`, it will be automatically added to the compilation list.
 
 
 Write Gradient Check Unit Test
@@ -271,7 +271,7 @@ Write Gradient Check Unit Test
 
 An easy way to verify the correctness of new layer's implementation is to write a gradient check unit test. Gradient check unit test utilizes finite difference method to verify the gradient of a layer. It modifies the input with a small perturbation :math:`\Delta x` and observes the changes of output :math:`\Delta y`, the gradient can be computed as :math:`\frac{\Delta y}{\Delta x }`. This gradient can be compared with the gradient computed by the :code:`backward` function of the layer to ensure the correctness of the gradient computation. Notice that the gradient check only tests the correctness of the gradient computation, it does not necessarily guarantee the correctness of the implementation of the :code:`forward` and :code:`backward` function. You need to write more sophisticated unit tests to make sure your layer is implemented correctly.
 
-All the gradient check unit tests are located in :code:`paddle/gserver/tests/test_LayerGrad.cpp`. You are recommended to put your test into a new test file if you are planning to write a new layer. The gradient test of the gradient check unit test of the fully connected layer is listed below. It has the following steps.
+All the gradient check unit tests are located in :code:`paddle/legacy/gserver/tests/test_LayerGrad.cpp`. You are recommended to put your test into a new test file if you are planning to write a new layer. The gradient test of the gradient check unit test of the fully connected layer is listed below. It has the following steps.
 
 + Create layer configuration. A layer configuration can include the following attributes:
    - size of the bias parameter. (4096 in our example)
@@ -323,7 +323,7 @@ All the gradient check unit tests are located in :code:`paddle/gserver/tests/tes
       }
     }
 
-If you are creating a new file for the test, such as :code:`paddle/gserver/tests/testFCGrad.cpp`, you need to add the file to :code:`paddle/gserver/tests/CMakeLists.txt`. An example is given below. All the unit tests will run when you execute the command :code:`make tests`. Notice that some layers might need high accuracy for the gradient check unit tests to work well. You need to configure :code:`WITH_DOUBLE` to `ON` when configuring cmake.
+If you are creating a new file for the test, such as :code:`paddle/legacy/gserver/tests/testFCGrad.cpp`, you need to add the file to :code:`paddle/legacy/gserver/tests/CMakeLists.txt`. An example is given below. All the unit tests will run when you execute the command :code:`make tests`. Notice that some layers might need high accuracy for the gradient check unit tests to work well. You need to configure :code:`WITH_DOUBLE` to `ON` when configuring cmake.
 
 .. code-block:: bash
 
