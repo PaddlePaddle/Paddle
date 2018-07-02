@@ -18,6 +18,8 @@ import unittest
 import paddle.fluid as fluid
 import time
 import numpy as np
+import math
+import sys
 
 __all__ = ['TestParallelExecutorBase']
 
@@ -81,7 +83,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             begin = time.time()
             first_loss, = run_executor(
                 exe=exe, feed=feed_dict, fetch_list=[loss.name])
-            first_loss = np.array(first_loss)
 
             for i in xrange(iter):
                 run_executor(exe=exe, feed=feed_dict, fetch_list=[])
@@ -94,7 +95,11 @@ class TestParallelExecutorBase(unittest.TestCase):
                 print "%.4f Instance per second" % (
                     (batch_size * iter + 2) / (end - begin))
 
-            last_loss = np.array(last_loss)
+            avg_last_loss_val = np.array(last_loss).mean()
+            avg_first_loss_val = np.array(first_loss).mean()
+            if math.isnan(float(avg_last_loss_val)) or math.isnan(
+                    float(avg_first_loss_val)):
+                sys.exit("got NaN loss, training failed.")
 
             print first_loss, last_loss
             # self.assertGreater(first_loss[0], last_loss[0])

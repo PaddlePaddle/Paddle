@@ -21,7 +21,7 @@ namespace reader {
 
 class MultiPassReader : public framework::DecoratedReader {
  public:
-  MultiPassReader(ReaderBase* reader, int pass_num)
+  MultiPassReader(const std::shared_ptr<ReaderBase>& reader, int pass_num)
       : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {

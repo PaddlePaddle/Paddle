@@ -75,7 +75,9 @@ class TestFetchOp(unittest.TestCase):
                     fetch_list.append(k)
 
             for data in train_inputs:
-                ret = pe.run(fetch_list, feed=feeder.feed(data))
+                ret = pe.run(fetch_list,
+                             feed=feeder.feed(data),
+                             return_numpy=True)
                 for i in range(len(fetch_list)):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
@@ -128,7 +130,7 @@ class TestFeedParallel(unittest.TestCase):
             use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
         for batch_id, data in enumerate(reader()):
-            loss_np = np.array(pe.run(feed=data, fetch_list=[loss.name])[0])
+            loss_np = pe.run(feed=data, fetch_list=[loss.name])[0]
             print batch_id, loss_np
             if batch_id == 2:
                 break

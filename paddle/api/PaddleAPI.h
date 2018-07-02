@@ -19,7 +19,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "paddle/gserver/gradientmachines/GradientMachine.h"
+#include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
 

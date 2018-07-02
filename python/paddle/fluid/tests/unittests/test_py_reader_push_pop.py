@@ -81,7 +81,7 @@ class TestPyReader(unittest.TestCase):
                     self.outputs.append(
                         executor.run(fetch_list=list(read_out_data)))
 
-            feed_queue.close()
+            feed_queue.push_eof()
             self.validate()
 
     def validate(self):
