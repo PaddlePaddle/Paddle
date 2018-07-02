@@ -91,7 +91,10 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
     OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
                      StringToDataLayout(data_layout),
                      StringToLibraryType(library_type));
-    OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
+    OperatorWithKernel::AllOpKernels()[op_type][key] =
+        [](const framework::ExecutionContext& ctx) {
+          KERNEL_TYPE().Compute(ctx);
+        };
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
