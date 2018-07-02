@@ -146,7 +146,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, true, I,
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
 struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
                                   DataTypeAndKernelType...> {
-  using KERNEL_TYPE =
+  using Functor =
       typename std::tuple_element<I + 1,
                                   std::tuple<DataTypeAndKernelType...>>::type;
   using T =
@@ -154,10 +154,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
                                   std::tuple<DataTypeAndKernelType...>>::type;
 
   void operator()(const char* op_type, const char* library_type) const {
-    RegisterKernelClass<PlaceType, T>(
-        op_type, library_type, [](const framework::ExecutionContext& ctx) {
-          KERNEL_TYPE().Compute(ctx);
-        });
+    RegisterKernelClass<PlaceType, T>(op_type, library_type, Functor());
 
     constexpr auto size =
         std::tuple_size<std::tuple<DataTypeAndKernelType...>>::value;
@@ -238,11 +235,11 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
     return 0;                                                               \
   }
 
-#define REGISTER_OP_CUDA_KERNEL_EX(op_type, ...)                     \
-  REGISTER_OP_KERNEL_EX(p_type, CUDA, ::paddle::platform::CUDAPlace, \
+#define REGISTER_OP_CUDA_KERNEL_FUNCTOR(op_type, ...)                 \
+  REGISTER_OP_KERNEL_EX(op_type, CUDA, ::paddle::platform::CUDAPlace, \
                         __VA_ARGS__)
 
-#define REGISTER_OP_CPU_KERNEL_EX(op_type, ...) \
+#define REGISTER_OP_CPU_KERNEL_FUNCTOR(op_type, ...) \
   REGISTER_OP_KERNEL_EX(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
 /**
