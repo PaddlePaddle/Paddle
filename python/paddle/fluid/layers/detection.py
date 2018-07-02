@@ -16,7 +16,7 @@ All layers just related to the detection neural network.
 """
 
 from layer_function_generator import generate_layer_fn
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 import tensor
 import nn
@@ -30,6 +30,7 @@ __all__ = [
     'detection_output',
     'ssd_loss',
     'detection_map',
+    'anchor_generator',
 ]
 
 __auto__ = [
@@ -97,7 +98,9 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+        Variable: 
+        
+            The detection outputs is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
             instance, the offsets in first dimension are called LoD, the offset
@@ -110,15 +113,15 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
-        pb = layers.data(name='prior_box', shape=[10, 4],
+            pb = layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-        pbv = layers.data(name='prior_box_var', shape=[10, 4],
+            pbv = layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-        loc = layers.data(name='target_box', shape=[2, 21, 4],
+            loc = layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
-        scores = layers.data(name='scores', shape=[2, 21, 10],
+            scores = layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
-        nmsed_outs = fluid.layers.detection_output(scores=scores,
+            nmsed_outs = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
                                        prior_box_var=pbv)
@@ -153,7 +156,7 @@ def detection_output(loc,
     return nmsed_outs
 
 
-@autodoc()
+@templatedoc()
 def detection_map(detect_res,
                   label,
                   class_num,
@@ -164,6 +167,47 @@ def detection_map(detect_res,
                   input_states=None,
                   out_states=None,
                   ap_version='integral'):
+    """
+    ${comment}
+
+    Args:
+        detect_res: ${detect_res_comment}
+        label:  ${label_comment}
+        class_num: ${class_num_comment}
+        background_label: ${background_label_comment}
+        overlap_threshold: ${overlap_threshold_comment}
+        evaluate_difficult: ${evaluate_difficult_comment}
+        has_state: ${has_state_comment}
+        input_states: If not None, It contains 3 elements:
+            1. pos_count ${pos_count_comment}.
+            2. true_pos ${true_pos_comment}.
+            3. false_pos ${false_pos_comment}.
+        out_states: If not None, it contains 3 elements.
+            1. accum_pos_count ${accum_pos_count_comment}.
+            2. accum_true_pos ${accum_true_pos_comment}.
+            3. accum_false_pos ${accum_false_pos_comment}.
+        ap_version: ${ap_type_comment}
+
+    Returns:
+        ${map_comment}
+
+
+    Examples:
+          .. code-block:: python
+
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+
+            map_out = fluid.layers.detection_map(detect_res, label, 21)
+    """
     helper = LayerHelper("detection_map", **locals())
 
     def __create_var(type):
@@ -296,8 +340,6 @@ def target_assign(input,
                   mismatch_value=None,
                   name=None):
     """
-    **Target assigner operator**
-
     This operator can be, for given the target bounding boxes or labels,
     to assign classification and regression targets to each prediction as well as
     weights to prediction. The weights is used to specify which prediction would
@@ -311,20 +353,24 @@ def target_assign(input,
 
     1. Assigning all outpts based on `match_indices`:
 
-    If id = match_indices[i][j] > 0,
+    .. code-block:: text
 
-        out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
-        out_weight[i][j] = 1.
+        If id = match_indices[i][j] > 0,
 
-    Otherwise,
+            out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
+            out_weight[i][j] = 1.
 
-        out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
-        out_weight[i][j] = 0.
+        Otherwise,
+
+            out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
+            out_weight[i][j] = 0.
 
     2. Assigning out_weight based on `neg_indices` if `neg_indices` is provided:
 
     Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
     for i-th instance and each `id` of neg_indices in this instance:
+    
+    .. code-block:: text
 
         out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
         out_weight[i][id] = 1.0
@@ -341,10 +387,23 @@ def target_assign(input,
        mismatch_value (float32): Fill this value to the mismatched location.
 
     Returns:
-       out (Variable): The output is a 3D Tensor with shape [N, P, K],
-           N and P is the same as they are in `neg_indices`, K is the
-           same as it in input of X. If `match_indices[i][j]`.
-       out_weight (Variable): The weight for output with the shape of [N, P, 1].
+        tuple: 
+        
+               A tuple(out, out_weight) is returned. out is a 3D Tensor with 
+               shape [N, P, K], N and P is the same as they are in 
+               `neg_indices`, K is the same as it in input of X. If 
+               `match_indices[i][j]`. out_weight is the weight for output with 
+               the shape of [N, P, 1].
+
+    Examples:
+
+        .. code-block:: python
+
+            matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
+            gt = layers.data(
+                        name='gt', shape=[1, 1], dtype='int32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                            gt, matched_indices, mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
@@ -603,7 +662,7 @@ def prior_box(input,
               offset=0.5,
               name=None):
     """
-    **Prior box operator**
+    **Prior Box Operator**
 
     Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
@@ -632,26 +691,30 @@ def prior_box(input,
        name(str): Name of the prior box op. Default: None.
 
     Returns:
-        boxes(Variable): the output prior boxes of PriorBox.
-             The layout is [H, W, num_priors, 4].
-             H is the height of input, W is the width of input,
-             num_priors is the total
-             box count of each position of input.
-        Variances(Variable): the expanded variances of PriorBox.
-             The layout is [H, W, num_priors, 4].
-             H is the height of input, W is the width of input
-             num_priors is the total
-             box count of each position of input
+        tuple: A tuple with two Variable (boxes, variances)
+
+        boxes: the output prior boxes of PriorBox.
+        The layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input,
+        num_priors is the total
+        box count of each position of input.
+
+        variances: the expanded variances of PriorBox.
+        The layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input
+        num_priors is the total
+        box count of each position of input
 
 
     Examples:
         .. code-block:: python
-            box, var = prior_box(
-            input=conv1,
-            image=images,
-            min_sizes=[100.],
-            flip=True,
-            clip=True)
+
+            box, var = fluid.layers.prior_box(
+                input=conv1,
+                image=images,
+                min_sizes=[100.],
+                flip=True,
+                clip=True)
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -721,11 +784,9 @@ def multi_box_head(inputs,
                    stride=1,
                    name=None):
     """
-    **Prior_boxes**
-
     Generate prior boxes for SSD(Single Shot MultiBox Detector)
     algorithm. The details of this algorithm, please refer the
-    section 2.2 of SSD paper (SSD: Single Shot MultiBox Detector)
+    section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
@@ -766,24 +827,27 @@ def multi_box_head(inputs,
        name(str): Name of the prior box layer. Default: None.
 
     Returns:
-        mbox_loc(Variable): The predicted boxes' location of the inputs.
-             The layout is [N, H*W*Priors, 4]. where Priors
-             is the number of predicted boxes each position of each input.
-        mbox_conf(Variable): The predicted boxes' confidence of the inputs.
-             The layout is [N, H*W*Priors, C]. where Priors
-             is the number of predicted boxes each position of each input
-             and C is the number of Classes.
-        boxes(Variable): the output prior boxes of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
-             box count of each position of inputs.
-        Variances(Variable): the expanded variances of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
-             box count of each position of inputs
+        tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
+
+        mbox_loc: The predicted boxes' location of the inputs. The layout
+        is [N, H*W*Priors, 4]. where Priors is the number of predicted
+        boxes each position of each input.
+
+        mbox_conf: The predicted boxes' confidence of the inputs. The layout
+        is [N, H*W*Priors, C]. where Priors is the number of predicted boxes
+        each position of each input and C is the number of Classes.
+
+        boxes: the output prior boxes of PriorBox. The layout is [num_priors, 4].
+        num_priors is the total box count of each position of inputs.
+
+        variances: the expanded variances of PriorBox. The layout is
+        [num_priors, 4]. num_priors is the total box count of each position of inputs
 
 
     Examples:
         .. code-block:: python
-          mbox_locs, mbox_confs, box, var = layers.multi_box_head(
+
+          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
             image=images,
             num_classes=21,
@@ -935,3 +999,95 @@ def multi_box_head(inputs,
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
+
+
+def anchor_generator(input,
+                     anchor_sizes=None,
+                     aspect_ratios=None,
+                     variance=[0.1, 0.1, 0.2, 0.2],
+                     stride=None,
+                     offset=0.5,
+                     name=None):
+    """
+    **Anchor generator operator**
+
+    Generate anchors for Faster RCNN algorithm.
+    Each position of the input produce N anchors, N =
+    size(anchor_sizes) * size(aspect_ratios). The order of generated anchors
+    is firstly aspect_ratios loop then anchor_sizes loop.
+
+    Args:
+       input(Variable): The input feature map, the format is NCHW.
+       anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
+       given in absolute pixels e.g. [64., 128., 256., 512.].
+       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
+       aspect_ratios(list|tuple|float): The height / width ratios of generated
+            anchors, e.g. [0.5, 1.0, 2.0].
+       variance(list|tuple): The variances to be used in box regression deltas.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       stride(list|turple): The anchors stride across width and height,
+            e.g. [16.0, 16.0]
+       offset(float): Prior boxes center offset. Default: 0.5
+       name(str): Name of the prior box op. Default: None.
+
+    Returns:
+        Anchors(Variable):  The output anchors with a layout of [H, W, num_anchors, 4].
+              H is the height of input, W is the width of input,
+              num_anchors is the box count of each position.
+              Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+        Variances(Variable): The expanded variances of anchors
+              with a layout of [H, W, num_priors, 4].
+              H is the height of input, W is the width of input
+              num_anchors is the box count of each position.
+              Each variance is in (xcenter, ycenter, w, h) format.
+
+
+    Examples:
+
+        .. code-block:: python
+
+            anchor, var = anchor_generator(
+                input=conv1,
+                anchor_sizes=[64, 128, 256, 512],
+                aspect_ratios=[0.5, 1.0, 2.0],
+                variance=[0.1, 0.1, 0.2, 0.2],
+                stride=[16.0, 16.0],
+                offset=0.5)
+    """
+    helper = LayerHelper("anchor_generator", **locals())
+    dtype = helper.input_dtype()
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(anchor_sizes):
+        anchor_sizes = [anchor_sizes]
+    if not _is_list_or_tuple_(aspect_ratios):
+        aspect_ratios = [aspect_ratios]
+    if not (_is_list_or_tuple_(stride) and len(stride) == 2):
+        raise ValueError('stride should be a list or tuple ',
+                         'with length 2, (stride_width, stride_height).')
+
+    anchor_sizes = list(map(float, anchor_sizes))
+    aspect_ratios = list(map(float, aspect_ratios))
+    stride = list(map(float, stride))
+
+    attrs = {
+        'anchor_sizes': anchor_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'stride': stride,
+        'offset': offset
+    }
+
+    anchor = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="anchor_generator",
+        inputs={"Input": input},
+        outputs={"Anchors": anchor,
+                 "Variances": var},
+        attrs=attrs, )
+    anchor.stop_gradient = True
+    var.stop_gradient = True
+    return anchor, var

@@ -17,7 +17,6 @@ __activations__ = [
     'sigmoid',
     'logsigmoid',
     'exp',
-    'relu',
     'tanh',
     'tanh_shrink',
     'softshrink',
@@ -29,7 +28,6 @@ __activations__ = [
     'sin',
     'round',
     'reciprocal',
-    'log',
     'square',
     'softplus',
     'softsign',
@@ -70,6 +68,7 @@ __all__ = [
     'slice',
     'polygon_box_transform',
     'shape',
+    'iou_similarity',
     'maxout',
 ] + __activations__
 

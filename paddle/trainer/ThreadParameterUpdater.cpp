@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 
-#include "paddle/math/SparseRowMatrix.h"
-#include "paddle/parameter/ThreadLocalBuffer.h"
+#include "paddle/legacy/math/SparseRowMatrix.h"
+#include "paddle/legacy/parameter/ThreadLocalBuffer.h"
 #include "paddle/utils/Thread.h"
 
 DECLARE_int32(trainer_count);

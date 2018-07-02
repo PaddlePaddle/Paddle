@@ -204,8 +204,6 @@ void Pool2dOpMaker::Make() {
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
-Pool2d Operator.
-
 The pooling2d operation calculates the output based on
 the input, pooling_type and ksize, strides, paddings parameters.
 Input(X) and output(Out) are in NCHW format, where N is batch size, C is the
@@ -215,19 +213,28 @@ These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
 Example:
+
   Input:
+
        X shape: $(N, C, H_{in}, W_{in})$
+
   Output:
+
        Out shape: $(N, C, H_{out}, W_{out})$
+
   For ceil_mode = false:
        $$
-       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
+       H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
   For ceil_mode = true:
        $$
-       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
+       H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
 )DOC");

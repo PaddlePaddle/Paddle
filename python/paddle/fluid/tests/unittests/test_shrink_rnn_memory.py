@@ -54,12 +54,12 @@ class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
     def test_refer_lod(self):
         cpu = core.CPUPlace()
         x_tensor = core.LoDTensor()
-        x_tensor.set_lod([[0, 2, 5, 6]])
+        x_tensor.set_recursive_sequence_lengths([[2, 3, 1]])
         tensor_np = np.random.random(size=(6, 100)).astype('float32')
         x_tensor.set(tensor_np, cpu)
 
         rank_table_tensor = core.LoDTensor()
-        rank_table_tensor.set_lod([[0, 1, 3, 6]])
+        rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
         rank_table_tensor.set(np.random.random(size=(6, 1)).astype('float32'),
                               cpu)
 
@@ -83,7 +83,7 @@ class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
         x_tensor.set(tensor_np, cpu)
 
         rank_table_tensor = core.LoDTensor()
-        rank_table_tensor.set_lod([[0, 1, 3, 6]])
+        rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
         rank_table_tensor.set(np.random.random(size=(6, 1)).astype('float32'),
                               cpu)
 
