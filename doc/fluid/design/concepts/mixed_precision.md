@@ -84,9 +84,8 @@ Example code
 ```
 
 ## Reference
+[Mixed precision training ICLR2017](https://arxiv.org/pdf/1710.03740.pdf)
 
-[Nvidia mixed precision training blog](https://devblogs.nvidia.com/mixed-precision-training-deep-neural-networks/)
+[Nvidia mixed-precision-training-deep-neural-networks](https://devblogs.nvidia.com/mixed-precision-training-deep-neural-networks/)
 
-[mixed precision training guide](https://docs.nvidia.com/deeplearning/sdk/mixed-precision-training/index.html)
-
-[mixed precision training](https://arxiv.org/pdf/1710.03740.pdf)
+[Nvidia mixed precision training guide](https://docs.nvidia.com/deeplearning/sdk/mixed-precision-training/index.html)
