@@ -30,9 +30,9 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "TesterConfig.h"
-#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/gserver/layers/ValidationLayer.h"
+#include "paddle/legacy/gserver/gradientmachines/GradientMachineMode.h"
+#include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/legacy/gserver/layers/ValidationLayer.h"
 
 namespace paddle {
 
