@@ -107,7 +107,6 @@ void CreateTrtEngineOp(Node* node, const DataFlowGraph& graph,
     io.push_back(x->name());
   }
   desc.SetOutput("Ys", io);
-
   desc.SetType("tensorrt_engine");
   // Set attrs
   SetAttr(desc.Proto(), "subgraph", block.SerializeAsString());

@@ -63,6 +63,7 @@ option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single proces
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
+option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -130,6 +131,10 @@ if (NOT DEFINED WITH_MKLDNN)
         message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
         set(WITH_MKLDNN OFF)
     endif()
+endif()
+
+if (REPLACE_ENFORCE_GLOG)
+  add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
 ########################################################################################
 
