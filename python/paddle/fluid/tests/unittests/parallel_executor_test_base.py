@@ -65,7 +65,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             exec_strategy.allow_op_delay = allow_op_delay
 
             build_strategy = fluid.BuildStrategy()
-            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce if balance_parameter_opt_between_cards else fluid.BuildStrategy.ReduceStrategy.AllReduce
+            build_strategy.reduce_strategy = "Reduce" if balance_parameter_opt_between_cards else "AllReduce"
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(

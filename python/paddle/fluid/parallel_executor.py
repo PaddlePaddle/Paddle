@@ -22,8 +22,167 @@ import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
 
-ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
-BuildStrategy = core.ParallelExecutor.BuildStrategy
+
+class BuildStrategy(object):
+    """
+    BuildStrategy allows user to more preciously control how to build
+    the SSA Graph in ParallelExecutor.
+
+    Args:
+        reduce_strategy (str): There are two reduce strategies, 'AllReduce'
+            and 'Reduce'. If you want that all parameters will be optimized
+            on all devices, you can choose 'AllReduce'; if you choose
+            'Reduce', all parameters will be evenly allocated to different
+            devices for optimization, and then broadcast the optimized
+            parameter to other devices. Default 'AllReduce'.
+        gradient_scale_strategy (str): There are two ways of defining loss@grad,
+            'CoeffNumDevice' and 'Customized'. By default, ParallelExecutor
+            sets the loss@grad according to the number of devices. If you want
+            to customize loss@grad, you can choose 'Customized'.
+            Default 'CoeffNumDevice'.
+        debug_graphviz_path (str): Whether to write the SSA Graph to file in the
+            form of graphviz. It is useful for debugging. Default "".
+
+    Returns:
+        BuildStrategy: The initialized BuildStrategy object.
+
+    Raises:
+        ValueError: If reduce_strategy is not 'AllReduce' or 'Reduce',
+            or gradient_scale is not 'CoeffNumDevice' or 'Customized'.
+
+    """
+
+    def __init__(self,
+                 reduce_strategy="AllReduce",
+                 gradient_scale_strategy="CoeffNumDevice",
+                 debug_graphviz_path=""):
+        if reduce_strategy not in ["AllReduce", "Reduce"]:
+            raise ValueError("Unknown reduce_strategy: '%s'. It can only be "
+                             "'AllReduce' or 'Reduce'.", str(reduce_strategy))
+        if gradient_scale_strategy not in ["CoeffNumDevice", "Customized"]:
+            raise ValueError(
+                "Unknown gradient_scale_strategy: '%s'. It can only be "
+                "'CoeffNumDevice' or 'Customized'.",
+                str(gradient_scale_strategy))
+
+        self.reduce_strategy_map = {
+            "AllReduce":
+            core.ParallelExecutor.BuildStrategy.ReduceStrategy.AllReduce,
+            "Reduce": core.ParallelExecutor.BuildStrategy.ReduceStrategy.Reduce
+        }
+        self.gradient_scale_strategy_map = {
+            "CoeffNumDevice": core.ParallelExecutor.BuildStrategy.
+            GradientScaleStrategy.CoeffNumDevice,
+            "Customized":
+            core.ParallelExecutor.BuildStrategy.GradientScaleStrategy.Customized
+        }
+
+        self._reduce_strategy = self.reduce_strategy_map[reduce_strategy]
+        self._gradient_scale_strategy = \
+            self.gradient_scale_strategy_map[gradient_scale_strategy]
+        self._debug_graphviz_path = debug_graphviz_path
+
+    @property
+    def reduce_strategy(self):
+        return self._reduce_strategy
+
+    @reduce_strategy.setter
+    def reduce_strategy(self, reduce_strategy):
+        assert isinstance(reduce_strategy, str)
+        assert reduce_strategy in ["AllReduce", "Reduce"]
+        self._reduce_strategy = self.reduce_strategy_map[reduce_strategy]
+
+    @property
+    def gradient_scale_strategy(self):
+        return self._gradient_scale_strategy
+
+    @gradient_scale_strategy.setter
+    def gradient_scale_strategy(self, gradient_scale_strategy):
+        assert isinstance(gradient_scale_strategy, str)
+        assert gradient_scale_strategy in ["CoeffNumDevice", "Customized"]
+        self._gradient_scale_strategy =\
+            self.gradient_scale_strategy_map[gradient_scale_strategy]
+
+    @property
+    def debug_graphviz_path(self):
+        return self._debug_graphviz_path
+
+    @debug_graphviz_path.setter
+    def debug_graphviz_path(self, debug_graphviz_path):
+        assert isinstance(debug_graphviz_path, str)
+        self._debug_graphviz_path = debug_graphviz_path
+
+
+class ExecutionStrategy(object):
+    """
+    ExecutionStrategy allows user to more preciously control how to run
+    the program in ParallelExecutor.
+
+    Args:
+        use_cuda (bool): Whether to use CUDA or not. Default True.
+        num_threads (int): The number of threads that used to run the
+            operators in ParallelExecutor. If it is not set, it will be
+            set in ParallelExecutor according to the device count.
+            Default 0.
+        allow_op_delay (bool): Whether to delay the communication operators
+            to run. Default False.
+        num_iteration_per_drop_scope (int): how many iterations between
+            the two dropping local scopes. Default 100.
+
+    Returns:
+        ExecutionStrategy: The initialized ExecutionStrategy object.
+
+    """
+
+    def __init__(self,
+                 use_cuda=True,
+                 num_threads=0,
+                 allow_op_delay=False,
+                 num_iteration_per_drop_scope=100):
+        assert isinstance(use_cuda, bool)
+        assert num_threads >= 0
+        assert isinstance(allow_op_delay, bool)
+        assert num_iteration_per_drop_scope > 0
+        self._use_cuda = use_cuda
+        self._num_threads = num_threads
+        self._allow_op_delay = allow_op_delay
+        self._num_iteration_per_drop_scope = num_iteration_per_drop_scope
+
+    @property
+    def use_cuda(self):
+        return self._use_cuda
+
+    @use_cuda.setter
+    def use_cuda(self, use_cuda):
+        assert isinstance(use_cuda, bool)
+        self._use_cuda = use_cuda
+
+    @property
+    def num_threads(self):
+        return self._num_threads
+
+    @num_threads.setter
+    def num_threads(self, num_threads):
+        assert num_threads >= 0
+        self._num_threads = num_threads
+
+    @property
+    def allow_op_delay(self):
+        return self._num_threads
+
+    @allow_op_delay.setter
+    def allow_op_delay(self, allow_op_delay):
+        assert isinstance(allow_op_delay, bool)
+        self._allow_op_delay = allow_op_delay
+
+    @property
+    def num_iteration_per_drop_scope(self):
+        return self._num_threads
+
+    @num_iteration_per_drop_scope.setter
+    def num_iteration_per_drop_scope(self, num_iteration_per_drop_scope):
+        assert num_iteration_per_drop_scope > 0
+        self._num_iteration_per_drop_scope = num_iteration_per_drop_scope
 
 
 class ParallelExecutor(object):
@@ -37,11 +196,25 @@ class ParallelExecutor(object):
             then default_main_program will be used. Default None.
         share_vars_from(ParallelExecutor): If provied, it will share variables
             from the specified ParallelExecutor. Default None.
-        num_trainers(int): If greater than 1, NCCL will be initialized with
-            multiple rank of nodes, each node should have same number of GPUs.
-            Distributed training will be enabled then. Default 1.
-        trainer_id(int: Must use together with num_trainers. trainer_id is the
-            "rank" of current node starts from 0. Default 0.
+        exec_strategy(ExecutionStrategy): exec_strategy allows a user to more
+            preciously control how to run the program, such as how many threads
+            are used to run the operators (default: dev_cnt * 2 for CPU,
+            dev_cnt * 4 for GPU), whether to delay the communication operators,
+            how many iterations between the two dropping local scopes.
+            For detail information, please refer to ExecutionStrategy's Doc.
+            Default None.
+        build_strategy(BuildStrategy): build_strategy allows a user to more
+            preciously control how to build the SSA Graph, such as whether to
+            make balancing parameter optimization between GPUs, whether to
+            write the SSA Graph to file in the form of graphviz. For detail
+            information, please refer to BuildStrategy's Doc. Default None.
+        num_trainers(int): num_trainers is a parameter for distributed training.
+            If it is greater than 1, NCCL will be initialized with multiple rank
+            of nodes, and each node should have same number of GPUs. Distributed
+            training will be enabled then. Default 1.
+        trainer_id(int): trainer_id is a parameter for distributed training. The
+            trainer_id is used together with num_trainers. It is the "rank" of
+            current node starts from 0. Default 0.
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -109,26 +282,33 @@ class ParallelExecutor(object):
                 self._places.append(p)
         assert self._places, "no place for execution"
 
-        if exec_strategy is None:
-            exec_strategy = ExecutionStrategy()
-        exec_strategy.use_cuda = use_cuda
+        core_exec_strategy = core.ParallelExecutor.ExecutionStrategy()
+        core_exec_strategy.use_cuda = use_cuda
+        if exec_strategy is not None:
+            core_exec_strategy.num_threads = exec_strategy.num_threads
+            core_exec_strategy.allow_op_delay = True if exec_strategy.allow_op_delay else False
+            core_exec_strategy.num_iteration_per_drop_scope = exec_strategy.num_iteration_per_drop_scope
 
-        if exec_strategy.num_threads == 0:
+        if core_exec_strategy.num_threads == 0:
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                exec_strategy.num_threads = len(self._places) * 4
+                core_exec_strategy.num_threads = len(self._places) * 4
             else:
                 cpu_num = int(
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num
+                core_exec_strategy.num_threads = cpu_num * 2
 
-        if build_strategy is None:
-            build_strategy = BuildStrategy()
+        core_build_strategy = core.ParallelExecutor.BuildStrategy()
+        if build_strategy is not None:
+            core_build_strategy.reduce_strategy = build_strategy.reduce_strategy
+            core_build_strategy.gradient_scale_strategy = build_strategy.gradient_scale_strategy
+            core_build_strategy.debug_graphviz_path = build_strategy.debug_graphviz_path
 
         main = main_program
         main = main if main else framework.default_main_program()
         scope = executor.global_scope()
+
         # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
         # train program, call self.bcast_param() at the end of each mini-batch.
         self.is_dist = True if "recv" in [
@@ -156,8 +336,8 @@ class ParallelExecutor(object):
                 if not p.stop_gradient
             ]),
             set(self.persistable_vars), main.desc, loss_name
-            if loss_name else '', scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id)
+            if loss_name else '', scope, local_scopes, core_exec_strategy,
+            core_build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):

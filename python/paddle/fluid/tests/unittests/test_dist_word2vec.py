@@ -174,13 +174,10 @@ class TestDistMnist(unittest.TestCase):
 
         use_gpu = True if core.is_compiled_with_cuda() else False
 
-        exec_strategy = ExecutionStrategy()
-        exec_strategy.use_cuda = use_gpu
         train_exe = fluid.ParallelExecutor(
             use_cuda=use_gpu,
             main_program=trainer_prog,
-            loss_name=avg_cost.name,
-            exec_strategy=exec_strategy)
+            loss_name=avg_cost.name)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.itervalues()

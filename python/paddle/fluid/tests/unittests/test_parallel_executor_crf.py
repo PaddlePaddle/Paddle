@@ -175,7 +175,7 @@ class TestCRFModel(unittest.TestCase):
     @unittest.skip(reason="CI hangs")
     def test_update_sparse_parameter_all_reduce(self):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+        build_strategy.reduce_strategy = "AllReduce"
         self.check_network_convergence(
             is_sparse=True, build_strategy=build_strategy, use_cuda=True)
         self.check_network_convergence(
@@ -184,7 +184,7 @@ class TestCRFModel(unittest.TestCase):
     @unittest.skip(reason="CI hangs")
     def test_update_dense_parameter_all_reduce(self):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+        build_strategy.reduce_strategy = "AllReduce"
         self.check_network_convergence(
             is_sparse=False, build_strategy=build_strategy, use_cuda=True)
         self.check_network_convergence(
@@ -193,7 +193,7 @@ class TestCRFModel(unittest.TestCase):
     @unittest.skip(reason="CI hangs")
     def test_update_sparse_parameter_reduce(self):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        build_strategy.reduce_strategy = "Reduce"
         self.check_network_convergence(
             is_sparse=True, build_strategy=build_strategy, use_cuda=True)
         self.check_network_convergence(
@@ -202,7 +202,7 @@ class TestCRFModel(unittest.TestCase):
     @unittest.skip(reason="CI hangs")
     def test_update_dense_parameter_reduce(self):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        build_strategy.reduce_strategy = "Reduce"
         self.check_network_convergence(
             is_sparse=False, build_strategy=build_strategy, use_cuda=True)
         self.check_network_convergence(

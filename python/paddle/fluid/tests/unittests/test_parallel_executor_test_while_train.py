@@ -91,7 +91,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+        build_strategy.reduce_strategy = "AllReduce"
         self.check_network_convergence(
             use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
@@ -99,7 +99,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        build_strategy.reduce_strategy = "Reduce"
         self.check_network_convergence(
             use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
