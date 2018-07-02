@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/reshape_op.h"
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL_EX(reshape, float, ops::ReshapeKernel, double,
-                           ops::ReshapeKernel, int, ops::ReshapeKernel, int64_t,
-                           ops::ReshapeKernel);
-REGISTER_OP_CUDA_KERNEL(reshape_grad,
-                        paddle::operators::ReshapeGradKernel<float>,
-                        paddle::operators::ReshapeGradKernel<double>,
-                        paddle::operators::ReshapeGradKernel<int>,
-                        paddle::operators::ReshapeGradKernel<int64_t>);
+
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
+                                ops::ReshapeKernel, int, ops::ReshapeKernel,
+                                int64_t, ops::ReshapeKernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
+                                double, ops::ReshapeGradKernel, int,
+                                ops::ReshapeGradKernel, int64_t,
+                                ops::ReshapeGradKernel);

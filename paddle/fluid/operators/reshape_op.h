@@ -118,21 +118,15 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReshapeKernel : public framework::OpKernelBase {
+class ReshapeKernel {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const final;
+  void operator()(const framework::ExecutionContext &ctx) const;
 };
 
-class ReshapeGradKernelBase : public framework::OpKernelBase {
+class ReshapeGradKernel {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const;
+  void operator()(const framework::ExecutionContext &ctx) const;
 };
 
-template <typename T>
-class ReshapeGradKernel : public ReshapeGradKernelBase {
- public:
-  // Tell register element type.
-  using ELEMENT_TYPE = T;
-};
 }  // namespace operators
 }  // namespace paddle
