@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/data_balance_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -215,7 +216,14 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       } else {
         // This op runs on all devices, and its output may have parameter's
         // gradients.
-        CreateComputationalOps(&result, *op, places_.size());
+        if (op->Type() == "read" && strategy_.enable_data_balance_) {
+          op->SetAttr("throw_eof_exp", false);
+          CreateComputationalOps(&result, *op, places_.size());
+          const auto &data_var_names = op->Output("Out");
+          InsertDataBalanceOp(&result, data_var_names);
+        } else {
+          CreateComputationalOps(&result, *op, places_.size());
+        }
 
         if (!is_forwarding && places_.size() > 1) {
           // Currently, we assume that once gradient is generated, it can be
@@ -360,6 +368,29 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
   }
 }
 
+void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
+    SSAGraph *result, const std::vector<std::string> &datas) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new DataBalanceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
+  result->ops_.emplace_back(new DataBalanceOpHandle(local_scopes_, places_));
+#endif
+  auto *op_handle = result->ops_.back().get();
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+    for (const std::string &d_name : datas) {
+      auto &vars = result->vars_[i][d_name];
+      PADDLE_ENFORCE(!vars.empty());
+      op_handle->AddInput(vars.back().get());
+      auto var = new VarHandle(vars.size(), i, d_name, p);
+      vars.emplace_back(var);
+      op_handle->AddOutput(var);
+    }
+  }
+}
+
 bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
     const std::string &og,
     std::unordered_set<std::string> *og_has_been_broadcast) const {
@@ -486,6 +517,9 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
     }
   } else if (op.Type() == "concat") {
     op_dev_id = GetVarDeviceID(op.InputArgumentNames()[0]);
+    for (auto &varname : op.OutputArgumentNames()) {
+      var_name_on_devices_.emplace(varname, op_dev_id);
+    }
   } else {
     PADDLE_ENFORCE(
         "the distribute training related op should be in [split_byref, "
@@ -509,7 +543,8 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
     op_dev_id = GetVarDeviceID(op.InputArgumentNames()[0]);
     // the variable name which contains .block means it was splited by
     // split_byref op
-    // so that we can balance the variable blocks to all the pserver instances.
+    // so that we can balance the variable blocks to all the pserver
+    // instances.
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce &&
         op.InputArgumentNames()[0].find(".block") == std::string::npos) {
       op_dev_id = GetAppropriateDeviceID(op.InputArgumentNames());

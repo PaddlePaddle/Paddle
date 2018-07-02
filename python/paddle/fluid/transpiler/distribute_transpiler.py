@@ -301,8 +301,8 @@ class DistributeTranspiler(object):
             Program: trainer side program.
         """
         # remove optimize ops and add a send op to main_program
+        # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
-        # FIXME(typhoonzero): serialize once will fix error occurs when clone.
         self.origin_program.__str__()
         return self.origin_program
 
@@ -383,11 +383,12 @@ class DistributeTranspiler(object):
             if self._is_adam_connected_op(op):
                 global_ops.append(op)
 
-        def __append_optimize_op__(op, block, grad_to_block_id, merged_var):
+        def __append_optimize_op__(op, block, grad_to_block_id, merged_var,
+                                   lr_ops):
             if self._is_optimizer_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
                                          self.origin_program, merged_var)
-            else:
+            elif op not in lr_ops:
                 self._append_pserver_non_opt_ops(block, op)
 
         def __op_have_grad_input__(op):
@@ -452,8 +453,10 @@ class DistributeTranspiler(object):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and op not in global_ops:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
-                                           merged_var)
+                                           merged_var, lr_ops)
 
+        # dedup grad to ids list
+        grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
             opt_state_block = pserver_program.create_block(
@@ -461,7 +464,7 @@ class DistributeTranspiler(object):
             optimize_blocks.append(opt_state_block)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id, None)
+                                       grad_to_block_id, None, lr_ops)
 
         # process distributed lookup_table
         prefetch_var_name_to_block_id = []
@@ -537,7 +540,6 @@ class DistributeTranspiler(object):
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
-            new_inputs = dict()
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
@@ -960,8 +962,6 @@ class DistributeTranspiler(object):
             if not block_map.has_key(varname):
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
-        # Do not remove this important debug message:
-        print("block map: %s" % block_map)
 
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
@@ -1401,6 +1401,16 @@ class DistributeTranspiler(object):
                     break
         return lr_ops
 
+    def _is_opt_role_op(self, op):
+        # NOTE: depend on oprole to find out whether this op is for
+        # optimize
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attrs and \
+            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
+
     def _get_optimize_pass(self):
         """
         Get optimizer operators, paramters and gradients from origin_program
@@ -1413,10 +1423,7 @@ class DistributeTranspiler(object):
         params_grads = []
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
-            # NOTE(Yancey1989): we can not use op role to distinguish an optimizer op
-            # or not, because all ops in optimizer sub-graph would
-            # sign the optimizer op role
-            if self._is_optimizer_op(op):
+            if self._is_opt_role_op(op):
                 opt_ops.append(op)
                 # HACK(wuyi): if we find grad vars from input of optimize
                 # ops, we may get the output of clip op. Use syntax "@GRAD"

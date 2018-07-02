@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -297,6 +298,37 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("reset", &framework::ReaderHolder::ReInit);
 
+  using LoDTensorBlockingQueue =
+      ::paddle::operators::reader::LoDTensorBlockingQueue;
+  using LoDTensorBlockingQueueHolder =
+      ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
+      .def("push",
+           [](LoDTensorBlockingQueue &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             pybind11::gil_scoped_release release;
+             return self.Push(lod_tensor_vec);
+           })
+      .def("size", &LoDTensorBlockingQueue::Size)
+      .def("capacity", &LoDTensorBlockingQueue::Cap)
+      .def("close", &LoDTensorBlockingQueue::Close)
+      .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
+
+  m.def("init_lod_tensor_blocking_queue",
+        [](Variable &var, size_t capacity,
+           const std::vector<std::vector<int64_t>> &shapes)
+            -> LoDTensorBlockingQueue * {
+              std::vector<DDim> dims(shapes.size());
+              std::transform(shapes.begin(), shapes.end(), dims.begin(),
+                             [](const std::vector<int64_t> &shape) {
+                               return make_ddim(shape);
+                             });
+              auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
+              holder->InitOnce(capacity, dims);
+              return holder->GetQueue().get();
+            },
+        py::return_value_policy::reference);
+
   py::class_<Scope>(m, "Scope", "")
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
@@ -463,9 +495,11 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_DISTRIBUTE
       .def("complete", &Executor::Complete)
 #endif
-      .def("run",
-           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
-               Executor::Run);
+      .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
+                     int block_id, bool create_local_scope, bool create_vars) {
+        pybind11::gil_scoped_release release;
+        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+      });
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -609,7 +643,11 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
             self.debug_graphviz_path_ = path;
-          });
+          })
+      .def_property(
+          "enable_data_balance",
+          [](const BuildStrategy &self) { return self.enable_data_balance_; },
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -631,7 +669,12 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
-      .def("run", &ParallelExecutor::Run);
+      .def("run", [](ParallelExecutor &self,
+                     const std::vector<std::string> &fetch_tensors,
+                     const std::string &fetched_var_name) {
+        pybind11::gil_scoped_release release;
+        self.Run(fetch_tensors, fetched_var_name);
+      });
 
   BindRecordIOWriter(&m);
   return m.ptr();

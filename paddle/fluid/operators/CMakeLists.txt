@@ -184,6 +184,7 @@ else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
 endif()
 
+set(DISTRIBUTE_DEPS "")
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
     
@@ -192,6 +193,18 @@ if(WITH_DISTRIBUTE)
         set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
     else()
         set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib)
+        if(WITH_BRPC_RDMA)
+            find_library(IBVERBS_LIBRARY NAMES ibverbs)
+            ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
+            SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${IBVERBS_LIBRARY})
+
+
+            find_library(RDMACM_LIBRARY NAMES rdmacm)
+            ADD_LIBRARY(rdmacm SHARED IMPORTED GLOBAL)
+            SET_PROPERTY(TARGET rdmacm PROPERTY IMPORTED_LOCATION ${RDMACM_LIBRARY})
+
+            set(DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} ibverbs rdmacm)
+        endif()
     endif()
 
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -205,7 +218,7 @@ if(WITH_DISTRIBUTE)
     #        listen_and_serv_op sum_op executor SERIAL)
     if(WITH_GPU)
         set_source_files_properties(test_send_nccl_id.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-        cc_test(test_send_nccl_id SRCS test_send_nccl_id.cc DEPS listen_and_serv_op executor SERIAL)
+        cc_test(test_send_nccl_id SRCS test_send_nccl_id.cc DEPS listen_and_serv_op ${DISTRIBUTE_DEPS} executor SERIAL)
         if(WITH_GRPC)
             op_library(gen_nccl_id_op DEPS nccl_common sendrecvop_grpc)
         else()
@@ -226,7 +239,8 @@ op_library(sequence_softmax_op DEPS softmax)
 if (WITH_GPU AND TENSORRT_FOUND)
     op_library(tensorrt_engine_op DEPS tensorrt_engine)
     nv_test(test_tensorrt_engine_op SRCS tensorrt_engine_op_test.cc
-      DEPS tensorrt_engine_op tensorrt_engine tensorrt_converter)
+      DEPS tensorrt_engine_op tensorrt_engine tensorrt_converter
+      analysis)
 else()
     set(DEPS_OPS ${DEPS_OPS} tensorrt_engine_op)
 endif()
@@ -296,6 +310,7 @@ foreach(src ${DETECTION_LIBRARY})
 endforeach()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+set(GLOB_DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} CACHE INTERNAL "distributed dependency")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
