@@ -10,6 +10,6 @@
     :maxdepth: 2
     
     install/install_doc.rst
-    quick_start/quick_start.rst
+    quick_start/index.rst
     basics/index.rst
     basics/Guide.md
