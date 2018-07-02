@@ -19,7 +19,7 @@ limitations under the License. */
 #include <stdio.h>
 
 #include "hl_gpu.h"
-#include "paddle/gserver/gradientmachines/GradientMachine.h"
+#include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
 
 #include "TrainerConfig.pb.h"
 

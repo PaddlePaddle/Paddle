@@ -69,7 +69,22 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+    if (platform::is_same_place(src_place, dst_place)) {
+      memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                   stream);
+    } else {
+      if (platform::is_same_place(ctx_place, src_place)) {
+        memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                     stream);
+        platform::DeviceContextPool::Instance().Get(src.place())->Wait();
+      } else if (platform::is_same_place(ctx_place, dst_place)) {
+        platform::DeviceContextPool::Instance().Get(src.place())->Wait();
+        memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                     stream);
+      } else {
+        PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
+      }
+    }
   }
 #endif
 }
@@ -78,10 +93,10 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(src.place())) {
-    dev_ctx = pool.Get(src.place());
-  } else {
+  if (platform::is_gpu_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
+  } else {
+    dev_ctx = pool.Get(src.place());
   }
   TensorCopy(src, dst_place, *dev_ctx, dst);
 }

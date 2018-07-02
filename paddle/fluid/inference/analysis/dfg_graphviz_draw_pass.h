@@ -46,24 +46,29 @@ class DFG_GraphvizDrawPass : public DataFlowGraphPass {
     const bool display_deleted_node;
   };
 
-  DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
+  explicit DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
 
   bool Initialize(Argument *argument) override { return true; }
   void Run(DataFlowGraph *graph) override;
-  bool Finalize() override { return Pass::Finalize(); }
+  bool Finalize() override { return true; }
 
   std::string repr() const override { return "DFG graphviz drawer"; }
   std::string description() const override {
     return "Debug a DFG by draw with graphviz";
   }
 
- private:
+ protected:
+  // A counter to add a number prefix to the debugger image output so that they
+  // will sort in the triggered order.
+  static int counter_;
+
   // Path of the dot file to output.
   std::string GenDotPath() const {
-    return config_.dir + "/" + "graph_" + config_.id + ".dot";
+    return config_.dir + "/" + std::to_string(counter_++) + "-graph_" +
+           config_.id + ".dot";
   }
 
-  std::string Draw(DataFlowGraph *graph);
+  virtual std::string Draw(DataFlowGraph *graph);
 
   Config config_;
 };

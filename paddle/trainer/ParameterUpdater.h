@@ -17,15 +17,15 @@ limitations under the License. */
 #include "paddle/utils/Thread.h"
 #include "paddle/utils/Util.h"
 
-#include "paddle/parameter/AverageOptimizer.h"
-#include "paddle/parameter/FirstOrderOptimizer.h"
-#include "paddle/parameter/OptimizerFunctions.h"
-#include "paddle/parameter/OptimizerWithRegularizer.h"
-#include "paddle/parameter/Parameter.h"
-#include "paddle/parameter/ParameterUpdaterBase.h"
+#include "paddle/legacy/parameter/AverageOptimizer.h"
+#include "paddle/legacy/parameter/FirstOrderOptimizer.h"
+#include "paddle/legacy/parameter/OptimizerFunctions.h"
+#include "paddle/legacy/parameter/OptimizerWithRegularizer.h"
+#include "paddle/legacy/parameter/Parameter.h"
+#include "paddle/legacy/parameter/ParameterUpdaterBase.h"
 
 #include "TrainerConfig.pb.h"
-#include "paddle/gserver/layers/Layer.h"
+#include "paddle/legacy/gserver/layers/Layer.h"
 
 #include <memory>
 #include <vector>
