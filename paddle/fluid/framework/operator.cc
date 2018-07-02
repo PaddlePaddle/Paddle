@@ -634,7 +634,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
-  // workarkound for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
     expected_kernel_key.library_type_ = LibraryType::kPlain;
