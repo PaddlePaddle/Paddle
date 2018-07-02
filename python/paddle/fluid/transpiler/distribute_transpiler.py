@@ -148,6 +148,7 @@ class DistributeTranspiler(object):
     def transpile(self,
                   trainer_id,
                   program=None,
+                  startup_program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
                   slice_var_up=True,
@@ -170,6 +171,8 @@ class DistributeTranspiler(object):
             sync_mode (bool): Do sync training or not, default is True.
         """
         assert (split_method.__bases__[0] == PSDispatcher)
+        if startup_program is None:
+            self.origin_startup_program = default_startup_program()
         if program is None:
             program = default_main_program()
         self.origin_program = program
@@ -183,10 +186,10 @@ class DistributeTranspiler(object):
         ps_dispatcher = split_method(self.pserver_endpoints)
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
-        # split and create vars, then put splited vars in dicts for later use.
+        # step 1: split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars(slice_var_up)
 
-        # step 3.1: insert send op to send gradient vars to parameter servers
+        # step 2: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
         send_vars = []
 
@@ -242,7 +245,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        # step 3.2: insert recv op to receive parameters from parameter server
+        # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
         for _, var in enumerate(send_vars):
             recv_vars.append(self.grad_param_mapping[var])
@@ -304,15 +307,72 @@ class DistributeTranspiler(object):
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
+
         return self.origin_program
+
+    def get_trainer_startup_program(self):
+        """
+        Get transpiled trainer side startup program.
+
+        Returns:
+            Program: trainer side startup program.
+        """
+        orig_s_prog = self.origin_startup_program
+
+        # add concat ops to origin parameters in startup program to
+        # let the origin parameters initialized by the spilited parameters
+        for varname, splited_var in self.param_var_mapping.iteritems():
+            if len(splited_var) <= 1:
+                continue
+
+            recv_vars = []
+            for _, var in enumerate(send_vars):
+                recv_vars.append(self.grad_param_mapping[var])
+            ps_dispatcher.reset()
+            eplist = ps_dispatcher.dispatch(recv_vars)
+
+            for i, ep in enumerate(eplist):
+                self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
+                self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+
+            # step4: Concat the parameters splits together after recv.
+            for varname, splited_var in self.param_var_mapping.iteritems():
+                eps = []
+                for var in splited_var:
+                    index = [v.name for v in recv_vars].index(var.name)
+                    eps.append(eplist[index])
+            splited_var_in_startup_prog = []
+            # create splited_var with remote initializer
+            for var in splited_var:
+                var_in_startup_prog = orig_s_prog.global_block().create_var(
+                    name=var.name,
+                    shape=var.shape,
+                    dtype=var.dtype,
+                    type=var.type,
+                    lod_level=var.lod_level,
+                    persistable=True,
+                    is_data=var.is_data,
+                    initializer=RemoteInitializer(eps))
+
+                # var with remote initializer
+                splited_var_in_startup_prog.append(var_in_startup_prog)
+
+            orig_param = orig_s_prog.global_block().vars[varname]
+            program.global_block().append_op(
+                type="concat",
+                inputs={"X": splited_var_in_startup_prog},
+                outputs={"Out": [orig_param]},
+                attrs={"axis": 0})
+
+        return orig_s_prog
 
     def get_pserver_program(self, endpoint):
         """
         Get parameter server side program.
-        
+
         Args:
             endpoint (str): current parameter server endpoint.
-        
+
         Returns:
             Program: the program for current parameter server to run.
         """
@@ -514,12 +574,12 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): call get_pserver_program first and
                 pass the result here.
-        
+
         Returns:
             Program: parameter server side startup program.
         """
         s_prog = Program()
-        orig_s_prog = default_startup_program()
+        orig_s_prog = self.origin_startup_program
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):
@@ -976,34 +1036,35 @@ class DistributeTranspiler(object):
                     var_mapping[varname] = \
                         [program.global_block().var(orig_var.name)]
                 continue
-
-            var_mapping[varname] = []
-            orig_shape = orig_var.shape
-            orig_dim1_flatten = 1
-            if len(orig_shape) >= 2:
-                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
-
-            for i, block in enumerate(splited):
-                size = block[1]
-                rows = size / orig_dim1_flatten
-                splited_shape = [rows]
+            else:
+                var_mapping[varname] = []
+                orig_shape = orig_var.shape
+                orig_dim1_flatten = 1
                 if len(orig_shape) >= 2:
-                    splited_shape.extend(orig_shape[1:])
-                new_var_name = ""
-                if self.sync_mode and add_trainer_suffix:
-                    new_var_name = "%s.block%d.trainer_%d" % \
-                        (varname, i, self.trainer_id)
-                else:
-                    new_var_name = "%s.block%d" % \
-                        (varname, i)
-                var = program.global_block().create_var(
-                    name=new_var_name,
-                    persistable=False,
-                    dtype=orig_var.dtype,
-                    type=orig_var.type,
-                    shape=splited_shape)  # flattend splited var
-                var_mapping[varname].append(var)
-            program.global_block().sync_with_cpp()
+                    orig_dim1_flatten = reduce(lambda x, y: x * y,
+                                               orig_shape[1:])
+
+                for i, block in enumerate(splited):
+                    size = block[1]
+                    rows = size / orig_dim1_flatten
+                    splited_shape = [rows]
+                    if len(orig_shape) >= 2:
+                        splited_shape.extend(orig_shape[1:])
+                    new_var_name = ""
+                    if self.sync_mode and add_trainer_suffix:
+                        new_var_name = "%s.block%d.trainer_%d" % \
+                            (varname, i, self.trainer_id)
+                    else:
+                        new_var_name = "%s.block%d" % \
+                            (varname, i)
+                    var = program.global_block().create_var(
+                        name=new_var_name,
+                        persistable=False,
+                        dtype=orig_var.dtype,
+                        type=orig_var.type,
+                        shape=splited_shape)  # flattend splited var
+                    var_mapping[varname].append(var)
+                program.global_block().sync_with_cpp()
         return var_mapping
 
     def create_splited_vars(self, source_var, block, tag):
