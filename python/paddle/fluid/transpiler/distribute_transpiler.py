@@ -455,6 +455,8 @@ class DistributeTranspiler(object):
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
+        # dedup grad to ids list
+        grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
             opt_state_block = pserver_program.create_block(
