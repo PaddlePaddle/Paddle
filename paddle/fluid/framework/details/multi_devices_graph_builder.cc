@@ -216,7 +216,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       } else {
         // This op runs on all devices, and its output may have parameter's
         // gradients.
-        if (op->Type() == "read") {
+        if (op->Type() == "read" && strategy_.enable_data_balance_) {
           op->SetAttr("throw_eof_exp", false);
           CreateComputationalOps(&result, *op, places_.size());
           const auto &data_var_names = op->Output("Out");
