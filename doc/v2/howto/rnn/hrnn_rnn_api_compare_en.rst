@@ -4,7 +4,7 @@
 API comparision between RNN and hierarchical RNN
 #####################
 
-This article takes PaddlePaddle's hierarchical RNN unit test as an example. We will use several examples to illestrate the usage of single-layer and hierarchical RNNs. Each example has two model configurations, one for single-layer, and the other for hierarchical RNN. Although the implementations are different, both the two model configurations' effects are the same. All of the examples in this article only describe the API interface of the hierarchical RNN, while we do not use this hierarchical RNN to solve practical problems. If you want to understand the use of hierarchical RNN in specific issues, please refer to \ :ref:`algo_hrnn_demo`\ 。The unit test file used in this article's example is \ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
+This article takes PaddlePaddle's hierarchical RNN unit test as an example. We will use several examples to illestrate the usage of single-layer and hierarchical RNNs. Each example has two model configurations, one for single-layer, and the other for hierarchical RNN. Although the implementations are different, both the two model configurations' effects are the same. All of the examples in this article only describe the API interface of the hierarchical RNN, while we do not use this hierarchical RNN to solve practical problems. If you want to understand the use of hierarchical RNN in specific issues, please refer to \ :ref:`algo_hrnn_demo`\ 。The unit test file used in this article's example is \ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
 
 Example 1：Hierarchical RNN without Memory between subsequences
 ================================
@@ -13,8 +13,8 @@ The classical case in the hierarchical RNN is to perform sequence operations on 
 
 In this example, the network configuration of single-layer RNNs and hierarchical RNNs are all to use LSTM as en encoder to compress a word-segmented sentence into a vector. The difference is that, RNN uses a hierarchical RNN model, treating multiple sentences as a whole to use encoder to compress simultaneously. They are completely consistent in their semantic meanings. This pair of semantically identical example configurations is as follows：
 
-* RNN\: `sequence_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_layer_group.conf>`_
-* Hierarchical RNN\: `sequence_nest_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_layer_group.conf>`_
+* RNN\: `sequence_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_layer_group.conf>`_
+* Hierarchical RNN\: `sequence_nest_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_nest_layer_group.conf>`_
 
 
 Reading hierarchical sequence data
@@ -24,18 +24,18 @@ Firstly, the original data in this example is as follows \:
 
 - The original data in this example has 10 samples. Each of the sample includes two components: a lable(all 2 here), and a word-segmented sentence. This data is used by single RNN as well. 
 
-..  literalinclude:: ../../../../paddle/gserver/tests/Sequence/tour_train_wdseg
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/Sequence/tour_train_wdseg
     :language: text
 
 
 - The data for hierarchical RNN has 4 samples. Every sample is seperated by a blank line, while the content of the data is the same as the original data. But as for hierarchical LSTM, the first sample will encode two sentences into two vectors simultaneously. The sentence count dealed simultaneously by this 4 samples are \ :code:`[2, 3, 2, 3]`\ .
 
-..  literalinclude:: ../../../../paddle/gserver/tests/Sequence/tour_train_wdseg.nest
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/Sequence/tour_train_wdseg.nest
     :language: text
 
-Secondly, as for these two types of different input data formats, the contrast of different DataProviders are as follows (`sequenceGen.py <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequenceGen.py>`_)\：
+Secondly, as for these two types of different input data formats, the contrast of different DataProviders are as follows (`sequenceGen.py <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequenceGen.py>`_)\：
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequenceGen.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequenceGen.py
     :language: python
     :lines: 21-39
     :linenos:
@@ -47,7 +47,7 @@ Secondly, as for these two types of different input data formats, the contrast o
     - "words" is a list of word table indices corresponding to each word in the sentence in the original data. Its data type is integer_value_sequence, that is integer list. So, "words" is a singler-layer time series in the data. 
     - "label" is the categorical label of each sentence, whose data type is integer_value. 
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequenceGen.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequenceGen.py
     :language: python
     :lines: 42-71
     :linenos:
@@ -64,7 +64,7 @@ Model configuration
 
 Firstly, let's look at the configuration of single-layer RNN. The hightlighted part of line 9 to line 15 is the usage of single-layer RNN. Here we use the pre-defined RNN process function in PaddlePaddle. In this function, for each time step, RNN passes through an LSTM network. 
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_layer_group.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_layer_group.conf
     :language: python
     :lines: 38-63
     :linenos:
@@ -85,7 +85,7 @@ Secondly, let's look at the model configuration of hierarchical RNN which has th
 
 * Till now, \ :code:`lstm_last`\ has the same result as \ :code:`lstm_last`\ in single-layer RNN configuration. 
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_layer_group.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_nest_layer_group.conf
     :language: python
     :lines: 38-64
     :linenos:
@@ -107,7 +107,7 @@ We select the different parts between single-layer RNN and hierarchical RNN conf
 
 - single-layer RNN：passes through a simple recurrent_group. For each time step, the current input y and the last time step's output rnn_state pass through a fully-connected layer. 
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_rnn.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_rnn.conf
     :language: python
     :lines: 36-48
 
@@ -116,7 +116,7 @@ We select the different parts between single-layer RNN and hierarchical RNN conf
   - The recurrent_group of inner layer's inner_step is nearly the same as single-layer sequence, except for the case of boot_layer=outer_mem, which means using the outer layer's outer_mem as the initial state for the inner layer's memory. In the outer layer's out_step, outer_mem is the last vector of a subsequence, that is, the whole hierarchical group uses the last vector of the previous subsequence as the initial state for the next subsequence's memory. 
   - From the aspect of the input data, sentences from single-layer and hierarchical RNN are the same. The only difference is that, hierarchical RNN disassembes the sequence into subsequences. So in the hierarchical RNN configuration, we must use the last element of the previous subsequence as a boot_layer for the memory of the next subsequence, so that it makes no difference with "every time step uses the output of last time step" in the sigle-layer RNN configuration. 
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_rnn.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_nest_rnn.conf
     :language: python
     :lines: 39-66
 
@@ -134,7 +134,7 @@ Example 3：hierarchical RNN with unequal length inputs
 
 **unequal length inputs** means in the multiple input sequences of recurrent_group, the lengths of subsequences can be unequal. But the output of the sequence, needs to be consistent with one of the input sequences. Using \ :red:`targetInlink`\ can help you specify which of the input sequences and the output sequence can be consistent, by default is the first input. 
 
-The configurations of Example 3 are \ `sequence_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_ \ and \ `sequence_nest_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ . 
+The configurations of Example 3 are \ `sequence_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_ \ and \ `sequence_nest_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ .
 
 The data for the configurations of Example 3's single-layer RNN and hierarchical RNN are exactly the same. 
 
@@ -152,14 +152,14 @@ Similar to Example 2's configuration, Example 3's configuration uses single-laye
 
 * single-layer RNN\:
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_rnn_multi_unequalength_inputs.py
     :language: python
     :lines: 42-59
     :linenos:
 
 * hierarchical RNN\ \:
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
     :language: python
     :lines: 41-80
     :linenos:

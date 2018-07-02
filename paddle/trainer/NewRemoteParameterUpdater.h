@@ -19,7 +19,7 @@ limitations under the License. */
 #include "OptimizerConfig.pb.h"
 #include "ParameterUpdater.h"
 #include "libpaddle_pserver_cclient.h"
-#include "paddle/pserver/ParameterClient2.h"
+#include "paddle/legacy/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/Util.h"
 

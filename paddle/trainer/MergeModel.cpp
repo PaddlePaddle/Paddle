@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "ParamUtil.h"
 #include "Trainer.h"
-#include "paddle/pserver/ParameterServer2.h"
+#include "paddle/legacy/pserver/ParameterServer2.h"
 #include "paddle/utils/PythonUtil.h"
 
 DEFINE_string(model_dir, "", "Directory for separated model files");
