@@ -47,8 +47,11 @@ GRPCClient::~GRPCClient() {
   {
     std::lock_guard<std::mutex> guard(chan_mutex_);
     for (auto& it : channels_) {
+      LOG(ERROR) << "channel ptr use count:" << it.second.use_count();
+      LOG(ERROR) << "channel ptr use count:" << it.second.get();
       it.second.reset();
     }
+    channels_.clear();
   }
   client_thread_->join();
 }
@@ -301,7 +304,9 @@ std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
 
   auto ch =
       grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
+  LOG(ERROR) << "get channel ep: " << ep << "count: " << ch.use_count();
   channels_[ep] = ch;
+  LOG(ERROR) << "get channel ep: " << ep << "count: " << ch.use_count();
   return ch;
 }
 
