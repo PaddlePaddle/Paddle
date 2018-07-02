@@ -37,8 +37,9 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 ExternalProject_Add(
     extern_brpc
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    # TODO(gongwb): change to de newst repo when they changed.
     GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
-    GIT_TAG         "7dc04defad1fd4173aae170c3fcbde131b65155a"
+    GIT_TAG         "df900417c72f74734906ff536ba994f14a0955f9"
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
