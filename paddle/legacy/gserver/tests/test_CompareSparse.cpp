@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <paddle/utils/PythonUtil.h>
 
-#include "paddle/trainer/Trainer.h"
+#include "paddle/legacy/trainer/Trainer.h"
 
 #include <gtest/gtest.h>
 #include <paddle/legacy/pserver/ParameterServer2.h>

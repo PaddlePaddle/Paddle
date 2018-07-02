@@ -18,8 +18,8 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 
+#include "paddle/legacy/trainer/Trainer.h"
 #include "paddle/testing/TestUtil.h"
-#include "paddle/trainer/Trainer.h"
 #include "paddle/utils/Stat.h"
 
 using namespace paddle;  // NOLINT

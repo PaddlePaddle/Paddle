@@ -15,9 +15,9 @@
 from paddle.trainer.config_parser import parse_config_and_serialize
 
 if __name__ == '__main__':
-    parse_config_and_serialize('trainer/tests/test_config.conf', '')
+    parse_config_and_serialize('legacy/trainer/tests/test_config.conf', '')
     parse_config_and_serialize(
-        'trainer/tests/sample_trainer_config.conf',
+        'legacy/trainer/tests/sample_trainer_config.conf',
         'extension_module_name=paddle.trainer.config_parser_extension')
     parse_config_and_serialize(
         'legacy/gserver/tests/pyDataProvider/trainer.conf', '')

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <paddle/utils/PythonUtil.h>
 
-#include "paddle/trainer/Trainer.h"
+#include "paddle/legacy/trainer/Trainer.h"
 
 #include <gtest/gtest.h>
 #include <cstdlib>
@@ -22,7 +22,8 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-static const string& configFile = "trainer/tests/sample_trainer_config.conf";
+static const string& configFile =
+    "/legacy/trainer/tests/sample_trainer_config.conf";
 
 DECLARE_int32(gpu_id);
 DECLARE_bool(use_gpu);

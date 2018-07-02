@@ -10,7 +10,7 @@ if(NOT WITH_FLUID_ONLY)
     add_subdirectory(legacy/capi)
   else()
     add_subdirectory(legacy/pserver)
-    add_subdirectory(trainer)
+    add_subdirectory(legacy/trainer)
     add_subdirectory(scripts)
 
     if(WITH_C_API)

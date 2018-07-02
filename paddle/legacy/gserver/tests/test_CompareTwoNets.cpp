@@ -17,7 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 
-#include "paddle/trainer/Trainer.h"
+#include "paddle/legacy/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

@@ -16,7 +16,7 @@ from paddle.trainer_config_helpers import *
 
 settings(batch_size=17, learning_method=AdaGradOptimizer(), learning_rate=1e-4)
 
-file_list = 'trainer/tests/fake_file_list.list'
+file_list = 'legacy/trainer/tests/fake_file_list.list'
 
 define_py_data_sources2(
     train_list=file_list,

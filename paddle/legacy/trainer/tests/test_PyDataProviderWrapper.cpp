@@ -26,7 +26,7 @@ limitations under the License. */
 #include "picojson.h"
 
 void checkValue(std::vector<paddle::Argument>& arguments, picojson::array& arr);
-const std::string kDir = "./trainer/tests/pydata_provider_wrapper_dir/";
+const std::string kDir = "./legacy/trainer/tests/pydata_provider_wrapper_dir/";
 
 TEST(PyDataProviderWrapper, SequenceData) {
   paddle::DataConfig conf;
