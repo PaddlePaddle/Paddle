@@ -46,7 +46,6 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS malloc
     place eigen3 stringpiece ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
-# cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
