@@ -151,16 +151,9 @@ class ReshapeKernel : public framework::OpKernel<T> {
           "sequence_reshape op.");
     }
 
-    bool inplace = ctx.Attr<bool>("inplace");
+    out->mutable_data<T>(ctx.GetPlace());
+    framework::TensorCopySync(*in, ctx.GetPlace(), out);
     out->Resize(out_dims);
-    if (!inplace) {
-      out->mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopySync(*in, ctx.GetPlace(), out);
-      out->Resize(out_dims);
-    } else {
-      out->ShareDataWith(*in);
-      out->Resize(out_dims);
-    }
   }
 };
 
@@ -172,17 +165,11 @@ class ReshapeGradKernel : public framework::OpKernel<T> {
     auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    bool inplace = ctx.Attr<bool>("inplace");
 
     auto in_dims = d_x->dims();
-    if (!inplace) {
-      framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
-      ctx.device_context().Wait();
-      d_x->Resize(in_dims);
-    } else {
-      d_x->ShareDataWith(*d_out);
-      d_x->Resize(in_dims);
-    }
+    framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+    ctx.device_context().Wait();
+    d_x->Resize(in_dims);
   }
 };
 }  // namespace operators

@@ -33,12 +33,6 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor). The output tensor of reshape operator.");
     AddAttr<std::vector<int>>(
         "shape", "(std::vector<int>) Target shape of reshape operator.");
-    AddAttr<bool>("inplace",
-                  "(default: false) Change the source tensor's shape without "
-                  "memory copy. When Attr(inplace) is set true, the output "
-                  "tensor shares memory with Input(X), otherwise, a new output "
-                  "tensor is created, and its data are copied from Input(x).")
-        .SetDefault(false);
     AddComment(R"DOC(
 Reshape Operator.
 
