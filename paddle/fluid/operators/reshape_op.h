@@ -118,72 +118,21 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename DeviceContext, typename T>
-class ReshapeKernel : public framework::OpKernel<T> {
+class ReshapeKernel : public framework::OpKernelBase {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const {
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
-    auto *in = ctx.Input<framework::LoDTensor>("X");
-
-    auto *shape_tensor = ctx.HasInput("Shape")
-                             ? ctx.Input<framework::LoDTensor>("Shape")
-                             : nullptr;
-
-    framework::DDim out_dims = out->dims();
-
-    if (shape_tensor) {
-      auto *shape_data = shape_tensor->data<int>();
-      framework::Tensor cpu_shape_tensor;
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-        TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
-        shape_data = cpu_shape_tensor.data<int>();
-      }
-      auto shape =
-          std::vector<int>(shape_data, shape_data + shape_tensor->numel());
-      out_dims = ReshapeOp::ValidateShape(shape, in->dims());
-    }
-    if (!in->lod().empty()) {
-      PADDLE_ENFORCE_EQ(
-          out_dims[0], in->dims()[0],
-          "Reshape operator cannot reshape an input sequence batch "
-          "into an output sequence batch that has a different "
-          "number of time steps. Please consider using "
-          "sequence_reshape op.");
-    }
-
-    bool inplace = ctx.Attr<bool>("inplace");
-    out->Resize(out_dims);
-    if (!inplace) {
-      out->mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopySync(*in, ctx.GetPlace(), out);
-      out->Resize(out_dims);
-    } else {
-      out->ShareDataWith(*in);
-      out->Resize(out_dims);
-    }
-  }
+  void Compute(const framework::ExecutionContext &ctx) const final;
 };
 
-template <typename DeviceContext, typename T>
-class ReshapeGradKernel : public framework::OpKernel<T> {
+class ReshapeGradKernelBase : public framework::OpKernelBase {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const {
-    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+  void Compute(const framework::ExecutionContext &ctx) const;
+};
 
-    d_x->mutable_data<T>(ctx.GetPlace());
-    bool inplace = ctx.Attr<bool>("inplace");
-
-    auto in_dims = d_x->dims();
-    if (!inplace) {
-      framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
-      ctx.device_context().Wait();
-      d_x->Resize(in_dims);
-    } else {
-      d_x->ShareDataWith(*d_out);
-      d_x->Resize(in_dims);
-    }
-  }
+template <typename T>
+class ReshapeGradKernel : public ReshapeGradKernelBase {
+ public:
+  // Tell register element type.
+  using ELEMENT_TYPE = T;
 };
 }  // namespace operators
 }  // namespace paddle

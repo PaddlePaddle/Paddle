@@ -13,14 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/reshape_op.h"
-using CUDA = paddle::platform::CUDADeviceContext;
-
-REGISTER_OP_CUDA_KERNEL(reshape, paddle::operators::ReshapeKernel<CUDA, float>,
-                        paddle::operators::ReshapeKernel<CUDA, double>,
-                        paddle::operators::ReshapeKernel<CUDA, int>,
-                        paddle::operators::ReshapeKernel<CUDA, int64_t>);
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL_EX(reshape, float, ops::ReshapeKernel, double,
+                           ops::ReshapeKernel, int, ops::ReshapeKernel, int64_t,
+                           ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL(reshape_grad,
-                        paddle::operators::ReshapeGradKernel<CUDA, float>,
-                        paddle::operators::ReshapeGradKernel<CUDA, double>,
-                        paddle::operators::ReshapeGradKernel<CUDA, int>,
-                        paddle::operators::ReshapeGradKernel<CUDA, int64_t>);
+                        paddle::operators::ReshapeGradKernel<float>,
+                        paddle::operators::ReshapeGradKernel<double>,
+                        paddle::operators::ReshapeGradKernel<int>,
+                        paddle::operators::ReshapeGradKernel<int64_t>);
