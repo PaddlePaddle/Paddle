@@ -643,7 +643,11 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
             self.debug_graphviz_path_ = path;
-          });
+          })
+      .def_property(
+          "enable_data_balance",
+          [](const BuildStrategy &self) { return self.enable_data_balance_; },
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,

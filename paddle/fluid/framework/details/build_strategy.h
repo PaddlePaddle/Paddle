@@ -33,6 +33,8 @@ struct BuildStrategy {
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
 
   std::string debug_graphviz_path_{""};
+
+  bool enable_data_balance_{true};
 };
 
 }  // namespace details
