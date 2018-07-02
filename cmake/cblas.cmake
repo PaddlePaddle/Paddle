@@ -83,6 +83,11 @@ else()
   set(REFERENCE_CBLAS_LIB_SEARCH_PATHS ${REFERENCE_CBLAS_ROOT}/lib)
 endif()
 
+# TODO(typhoonzero): I deleted those REFERENCE_CBLAS_INCLUDE_DIR things
+# that may cause builds fail if we installed other cblas libs like "veclib",
+# in paddle/fluid/operators/math/blas.h which will throw "Not Implemented"
+# for other cblas. Openblas and MKL are supported only.
+
 if(IOS_USE_VECLIB_FOR_BLAS AND VECLIB_FOUND)
   set(CBLAS_FOUND ON)
   set(CBLAS_PROVIDER vecLib)
