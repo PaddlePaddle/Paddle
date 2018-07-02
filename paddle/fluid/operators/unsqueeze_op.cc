@@ -32,42 +32,85 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of UnsqueezeOp should not be null.");
 
-    const auto& x_dims = ctx->GetInputDim("X");
     const auto& axes = ctx->Attrs().Get<std::vector<int>>("axes");
-    // Check output tensor dims (<9).
-    PADDLE_ENFORCE_LE(x_dims.size() + axes.size(), 9,
-                      "Invalid dimnesions, dynamic dimensions must have "
-                      "between [1, 9] dimensions.");
-    // Check the range of unsqueeze aixs.
-    for (int a : axes) {
-      PADDLE_ENFORCE_LT(a, static_cast<int64_t>(x_dims.size() + axes.size()),
-                        "The axis must be less than output tensor's rank.");
+    PADDLE_ENFORCE(!axes.empty(),
+                   "The unsqueeze axes information must be set by Attr(axes).");
+
+    const auto& x_dims = ctx->GetInputDim("X");
+    // Validity Check: input tensor dims (<6).
+    PADDLE_ENFORCE(x_dims.size() < 6,
+                   "Invalid dimensions, dynamic dimensions should within "
+                   "[0, 5] dimensions (Eigen limit).");
+    // Validity Check: the range of unsqueeze aixs.
+    // TODO(chenweihang): Don't consider negative axis?.
+    for (unsigned int idx = 0; idx < axes.size(); ++idx) {
+      PADDLE_ENFORCE(axes[idx] < 6,
+                     "Invalid dimensions, input axis should within "
+                     "[0, 5] dimensions (Eigen limit).");
     }
 
     auto out_dims = GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
   }
 
-  static framework::DDim GetOutputShape(const std::vector<int> unsqueeze_dims,
+  static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
                                         const framework::DDim& in_dims) {
-    int out_dims_size = in_dims.size() + unsqueeze_dims.size();
-    bool should_unsqueeze[9] = {false};
+    /*
+     * STL version
+     * Test Error! don't know why?.
+    std::vector<int64_t> output_shape;
 
-    // Determines the dimensions should be unsqueezed in output tensor after.
-    for (unsigned int idx = 0; idx < unsqueeze_dims.size(); ++idx) {
-      int current = unsqueeze_dims[idx] < 0
-                        ? unsqueeze_dims[idx] + out_dims_size
-                        : unsqueeze_dims[idx];
-      // Check current index.
-      PADDLE_ENFORCE_GE(current, 0,
-                        "Invaild axis, negative axis is out of range.");
-      should_unsqueeze[idx] = true;
+    // Contruct base output shape
+    for(int idx = 0; idx < in_dims.size(); ++idx) {
+      output_shape.emplace_back(in_dims[idx]);
+    }
+    // Validity Check: output dimensions limit.
+    PADDLE_ENFORCE(unsqz_dims.size() + output_shape.size() < 6,
+                   "The Attr(axes) size is too large. The output shape should "
+                   "be less than 6 (Eigne limit).");
+    // Insert the unsqueeze axis in turn.
+    auto it = output_shape.begin();
+    for (int axis : unsqz_dims) {
+      int cur = axis < 0 ? (axis + output_shape.size() + 1)
+                         : axis;
+      // Vaildity Check: the axis bound
+      PADDLE_ENFORCE(cur >= 0 && cur <= static_cast<int>(output_shape.size()),
+                     "The unsqueeze dims must be within range of current
+    rank.");
+      output_shape.emplace(it + axis, 1);
+    }
+    */
+
+    unsigned int unsqz_mask = 0;
+    unsigned int front = 0, back = 0;
+    int output_dims_size = in_dims.size();
+
+    // Simulate insert by bit calc.
+    for (int axis : unsqz_dims) {
+      int cur = axis < 0 ? axis + output_dims_size + 1 : axis;
+      // Vaildity Check: the axis bound
+      PADDLE_ENFORCE(
+          cur >= 0 && cur <= output_dims_size,
+          "The unsqueeze dims must be within range of current rank.");
+      // Save the front part.
+      front = unsqz_mask & ((1 << axis) - 1);
+      // Move the back part.
+      back = unsqz_mask & ~((1 << axis) - 1);
+      back <<= 1;
+      // Merge two part.
+      back |= (1 << axis);
+      unsqz_mask = front | back;
+      // Add the output size.
+      output_dims_size++;
+      // Validity Check: rank range.
+      PADDLE_ENFORCE(output_dims_size < 6,
+                     "The output tensor's rank should be less than 6.");
     }
 
-    // Make output dimensions
-    std::vector<int64_t> output_shape(out_dims_size, 0);
-    for (int in_idx = 0, out_idx = 0; out_idx < out_dims_size; ++out_idx) {
-      if (!should_unsqueeze[out_idx]) {
+    // Make output shape
+    std::vector<int64_t> output_shape(output_dims_size, 0);
+    for (int in_idx = 0, out_idx = 0; out_idx < output_dims_size; ++out_idx) {
+      if ((unsqz_mask & (1 << out_idx)) == 0) {
         output_shape[out_idx] = in_dims[in_idx++];
       } else {
         output_shape[out_idx] = 1;
@@ -94,15 +137,15 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         "tensor is created, and its data are copied from Input(x).")
         .SetDefault(false);
     AddComment(R"DOC(
-		Unsqueeze Operator.
-		
-		Insert single-dimensional entries to the shape of a tensor. 
-		Takes one required argument axes, a list of dimensions that will be inserted. 
-		Dimension indices in axes are as seen in the output tensor. 
+    Unsqueeze Operator.
+    
+    Insert single-dimensional entries to the shape of a tensor. 
+    Takes one required argument axes, a list of dimensions that will be inserted. 
+    Dimension indices in axes are as seen in the output tensor. 
 
-		For example: 
-		  Given a tensor such that tensor with shape [3, 4, 5], 
-		  then Unsqueeze(tensor, axes=[0, 4]) has shape [1, 3, 4, 5, 1]
+    For example: 
+      Given a tensor such that tensor with shape [3, 4, 5], 
+      then Unsqueeze(tensor, axes=[0, 4]) has shape [1, 3, 4, 5, 1]
     )DOC");
   }
 };

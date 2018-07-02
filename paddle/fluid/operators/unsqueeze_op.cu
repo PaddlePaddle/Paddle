@@ -18,12 +18,12 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    squeeze, ops::UnsqueezeKernel<paddle::platform::CUDADeviceContext, float>,
+    unsqueeze, ops::UnsqueezeKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnsqueezeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::UnsqueezeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::UnsqueezeKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
-    squeeze_grad,
+    unsqueeze_grad,
     ops::UnsqueezeGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnsqueezeGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::UnsqueezeGradKernel<paddle::platform::CUDADeviceContext, int>,
