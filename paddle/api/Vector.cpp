@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "PaddleAPI.h"
 
-#include "paddle/math/Vector.h"
+#include "paddle/legacy/math/Vector.h"
 
 #include <cstring>
 
