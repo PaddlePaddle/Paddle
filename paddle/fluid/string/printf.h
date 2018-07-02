@@ -90,8 +90,8 @@ std::string Sprintf(const Args&... args) {
   return oss.str();
 }
 
-template <typename... Args>
-std::string Sprintf(const char* fmt, const Args&... args) {
+template <const char* fmt, typename... Args>
+std::string Sprintf(const Args&... args) {
   std::ostringstream oss;
   Fprintf(oss, fmt, args...);
   return oss.str();
