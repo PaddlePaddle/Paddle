@@ -132,10 +132,6 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     exe.run(startup_prog)
 
     # Use inference_transpiler to speedup
-    if args.use_inference_transpiler:
-        t = fluid.InferenceTranspiler()
-        t.transpile(infer_prog, place)
-
     if not args.use_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
@@ -186,6 +182,10 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
         if not args.no_test and batch_acc and not args.use_reader_op:
+            if args.use_inference_transpiler:
+                t = fluid.InferenceTranspiler()
+                t.transpile(infer_prog, place)
+
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -316,6 +316,8 @@ def main():
     args = parse_args()
     print_arguments(args)
     print_paddle_envs()
+    if args.no_random:
+        fluid.default_startup_program().random_seed = 1
 
     # the unique trainer id, starting from 0, needed by trainer
     # only
