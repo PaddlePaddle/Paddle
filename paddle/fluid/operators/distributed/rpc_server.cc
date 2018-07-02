@@ -67,7 +67,7 @@ void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
 void RPCServer::BeginPass() {
   VLOG(4) << "RPCServer begin increase pass barrier";
   {
-    std::unique_lock<std::mutex> locl(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     client_num_++;
     VLOG(4) << "increase client_num to: " << client_num_;
   }
@@ -77,7 +77,7 @@ void RPCServer::BeginPass() {
 void RPCServer::EndPass() {
   VLOG(4) << "RPCServer begin increase pass barrier";
   {
-    std::unique_lock<std::mutex> locl(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     client_num_--;
     VLOG(4) << "decrease client_num to: " << client_num_;
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {

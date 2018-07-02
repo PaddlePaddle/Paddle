@@ -40,6 +40,7 @@ void GRPCClient::SendBeginPass() {
     VLOG(3) << "send begin pass to: " << it.first;
     this->AsyncSendBeginPass(it.first);
   }
+  this->Wait();
 }
 
 void GRPCClient::SendEndPass() {
@@ -47,6 +48,7 @@ void GRPCClient::SendEndPass() {
     VLOG(3) << "send end pass to " << it.first;
     this->AsyncSendEndPass(it.first);
   }
+  this->Wait();
 }
 
 GRPCClient::~GRPCClient() {
