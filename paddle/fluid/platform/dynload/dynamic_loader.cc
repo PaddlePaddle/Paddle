@@ -49,6 +49,8 @@ DEFINE_string(
     tensorrt_dir, "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
+DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -76,6 +78,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
+  // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
 
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
@@ -97,6 +100,10 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   }
 #endif
 
+  if (nullptr == dso_handle) {
+    LOG(WARNING) << "Can not find library: " << dso_path
+                 << ". Please try to add the lib path to LD_LIBRARY_PATH.";
+  }
   return dso_handle;
 }
 
@@ -203,6 +210,14 @@ void* GetTensorRtDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
+#endif
+}
+
+void* GetMKLMLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
 }
 
