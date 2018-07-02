@@ -33,9 +33,9 @@ limitations under the License. */
 #include "TesterConfig.h"
 #include "ThreadParameterUpdater.h"
 #include "TrainerConfigHelper.h"
-#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/gserver/layers/ValidationLayer.h"
+#include "paddle/legacy/gserver/gradientmachines/GradientMachineMode.h"
+#include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/legacy/gserver/layers/ValidationLayer.h"
 
 DEFINE_string(config, "", "Trainer config file");
 
