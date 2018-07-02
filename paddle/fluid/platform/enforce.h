@@ -73,7 +73,7 @@ struct EnforceNotMet : public std::exception {
     } catch (const std::exception& exp) {
       std::ostringstream sout;
 
-      sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
+      sout << string::Sprintf("'%s' at [%s:%d]", exp.what(), f, l) << std::endl;
       sout << "PaddlePaddle Call Stacks: " << std::endl;
 
       void* call_stack[TRACE_STACK_LIMIT];
@@ -97,6 +97,15 @@ struct EnforceNotMet : public std::exception {
       free(symbols);
       err_str_ = sout.str();
     }
+  }
+
+  const char* what() const noexcept { return err_str_.c_str(); }
+};
+
+struct EOFException : public std::exception {
+  std::string err_str_;
+  EOFException(const char* err_msg, const char* f, int l) {
+    err_str_ = string::Sprintf("'%s' at [%s:%d]", err_msg, f, l);
   }
 
   const char* what() const noexcept { return err_str_.c_str(); }
@@ -242,6 +251,11 @@ inline void throw_on_error(T e) {
 #define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif
 
+#define PADDLE_THROW_EOF()                                                     \
+  do {                                                                         \
+    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
+                                           __LINE__);                          \
+  } while (false)
 /*
  * Some enforce helpers here, usage:
  *    int a = 1;

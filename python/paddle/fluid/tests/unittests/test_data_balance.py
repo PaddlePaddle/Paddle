@@ -118,8 +118,7 @@ class TestDataBalance(unittest.TestCase):
                 try:
                     image_val, label_val = parallel_exe.run(fetch_list,
                                                             return_numpy=True)
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
                 ins_num = image_val.shape[0]
                 broadcasted_label = np.ones(
@@ -162,8 +161,7 @@ class TestDataBalance(unittest.TestCase):
                 try:
                     ins_tensor, label_tensor = parallel_exe.run(
                         fetch_list, return_numpy=False)
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
 
                 ins_val = np.array(ins_tensor)
