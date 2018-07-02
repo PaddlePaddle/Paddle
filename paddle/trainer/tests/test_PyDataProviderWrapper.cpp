@@ -15,9 +15,9 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 #include <DataConfig.pb.h>
 #include <gtest/gtest.h>
-#include <paddle/gserver/dataproviders/DataProvider.h>
-#include <paddle/math/Matrix.h>
-#include <paddle/parameter/Argument.h>
+#include <paddle/legacy/gserver/dataproviders/DataProvider.h>
+#include <paddle/legacy/math/Matrix.h>
+#include <paddle/legacy/parameter/Argument.h>
 #include <paddle/utils/PythonUtil.h>
 #include <fstream>
 #include <typeinfo>
