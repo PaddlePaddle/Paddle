@@ -15,7 +15,7 @@ limitations under the License. */
 #include "MKLDNNTester.h"
 #include "paddle/legacy/gserver/layers/MKLDNNBase.h"
 #include "paddle/legacy/gserver/layers/MKLDNNLayer.h"
-#include "paddle/trainer/Trainer.h"
+#include "paddle/legacy/trainer/Trainer.h"
 
 namespace paddle {
 

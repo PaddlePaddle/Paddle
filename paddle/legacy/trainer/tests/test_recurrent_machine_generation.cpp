@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 
-#include <paddle/trainer/Trainer.h>
+#include <paddle/legacy/trainer/Trainer.h>
 #include <paddle/utils/PythonUtil.h>
 
 #include <gtest/gtest.h>
@@ -22,13 +22,15 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-static const string& CONFIG_FILE = "trainer/tests/sample_trainer_rnn_gen.conf";
+static const string& CONFIG_FILE =
+    "legacy/trainer/tests/sample_trainer_rnn_gen.conf";
 static const string& NEST_CONFIG_FILE =
-    "trainer/tests/sample_trainer_nest_rnn_gen.conf";
-static const string& OUTPUT_DIR = "trainer/tests/dump_text.test";
-static string modelDir = "trainer/tests/rnn_gen_test_model_dir/t1";  // NOLINT
-static string expectFile =                                           // NOLINT
-    "trainer/tests/rnn_gen_test_model_dir/r1.test";                  // NOLINT
+    "legacy/trainer/tests/sample_trainer_nest_rnn_gen.conf";
+static const string& OUTPUT_DIR = "legacy/trainer/tests/dump_text.test";
+static string modelDir =
+    "legacy/trainer/tests/rnn_gen_test_model_dir/t1";       // NOLINT
+static string expectFile =                                  // NOLINT
+    "legacy/trainer/tests/rnn_gen_test_model_dir/r1.test";  // NOLINT
 
 DECLARE_string(config_args);
 

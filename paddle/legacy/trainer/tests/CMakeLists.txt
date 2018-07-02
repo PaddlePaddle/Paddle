@@ -5,7 +5,7 @@ add_custom_target(copy_trainer_conf ALL DEPENDS sample_trainer_config.conf)
 
 set(PYTHON_PATH 
    ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d 
-   ${PADDLE_BINARY_DIR}/python/:${PADDLE_BINARY_DIR}/paddle/trainer/tests)
+   ${PADDLE_BINARY_DIR}/python/:${PADDLE_BINARY_DIR}/paddle/legacy/trainer/tests)
 function(trainer_test TARGET)
   add_unittest_without_exec(${TARGET} ${TARGET}.cpp)
   add_test(NAME ${TARGET}
@@ -33,5 +33,5 @@ endif()
 #################### test_config_parser #########################
 add_test(NAME test_config_parser
   COMMAND ${PYTHON_PATH} ${PYTHON_EXECUTABLE} 
-        ${PADDLE_SOURCE_DIR}/paddle/trainer/tests/config_parser_test.py
+        ${PADDLE_SOURCE_DIR}/paddle/legacy/trainer/tests/config_parser_test.py
     WORKING_DIRECTORY ${PADDLE_BINARY_DIR}/paddle/)

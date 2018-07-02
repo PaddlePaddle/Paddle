@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <paddle/utils/GlobalConstants.h>
 #include <paddle/utils/PythonUtil.h>
-#include "paddle/trainer/Trainer.h"
-#include "paddle/trainer/TrainerInternal.h"
+#include "paddle/legacy/trainer/Trainer.h"
+#include "paddle/legacy/trainer/TrainerInternal.h"
 
 #include <gtest/gtest.h>
 #include <paddle/legacy/pserver/ParameterServer2.h>
@@ -23,12 +23,13 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-static const string& configFile1 = "trainer/tests/sample_trainer_config.conf";
+static const string& configFile1 =
+    "legacy/trainer/tests/sample_trainer_config.conf";
 static const string& configFile2 =
-    "trainer/tests/sample_trainer_config_parallel.conf";
+    "legacy/trainer/tests/sample_trainer_config_parallel.conf";
 
 static const string& configFileSimpleSparse =
-    "trainer/tests/simple_sparse_neural_network.py";
+    "legacy/trainer/tests/simple_sparse_neural_network.py";
 
 DECLARE_bool(use_gpu);
 DECLARE_string(config);

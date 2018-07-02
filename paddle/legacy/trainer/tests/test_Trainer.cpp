@@ -14,18 +14,19 @@ limitations under the License. */
 
 #include <paddle/utils/PythonUtil.h>
 #include <paddle/utils/Version.h>
-#include "paddle/trainer/Trainer.h"
+#include "paddle/legacy/trainer/Trainer.h"
 
 #include <gtest/gtest.h>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-static const string& configFile1 = "trainer/tests/sample_trainer_config.conf";
+static const string& configFile1 =
+    "legacy/trainer/tests/sample_trainer_config.conf";
 static const string& configFile2 =
-    "trainer/tests/sample_trainer_config_hsigmoid.conf";
+    "legacy/trainer/tests/sample_trainer_config_hsigmoid.conf";
 static const string& configFile4 =
-    "trainer/tests/sample_trainer_config_parallel.conf";
+    "legacy/trainer/tests/sample_trainer_config_parallel.conf";
 
 DECLARE_bool(use_gpu);
 DECLARE_string(config);
