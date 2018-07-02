@@ -65,23 +65,25 @@ def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
         distance (numpy.array) : The distance of two entries with shape [M, N].
         lod (list of int): The offsets of each input in this batch.
     """
-    n = len(lod) - 1
+    n = len(lod)
     m = distance.shape[1]
     match_indices = -1 * np.ones((n, m), dtype=np.int)
     match_dist = np.zeros((n, m), dtype=np.float32)
-    for i in range(len(lod) - 1):
-        bipartite_match(distance[lod[i]:lod[i + 1], :], match_indices[i, :],
-                        match_dist[i, :])
+    cur_offset = 0
+    for i in range(n):
+        bipartite_match(distance[cur_offset:(cur_offset + lod[i]), :],
+                        match_indices[i, :], match_dist[i, :])
         if match_type == 'per_prediction':
-            argmax_match(distance[lod[i]:lod[i + 1], :], match_indices[i, :],
-                         match_dist[i, :], dist_threshold)
+            argmax_match(distance[cur_offset:(cur_offset + lod[i]), :],
+                         match_indices[i, :], match_dist[i, :], dist_threshold)
+        cur_offset += lod[i]
     return match_indices, match_dist
 
 
 class TestBipartiteMatchOpWithLoD(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
-        lod = [[0, 5, 11, 23]]
+        lod = [[5, 6, 12]]
         dist = np.random.random((23, 217)).astype('float32')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0])
 
@@ -98,8 +100,25 @@ class TestBipartiteMatchOpWithLoD(OpTest):
 class TestBipartiteMatchOpWithoutLoD(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
-        lod = [[0, 8]]
+        lod = [[8]]
         dist = np.random.random((8, 17)).astype('float32')
+        match_indices, match_dist = batch_bipartite_match(dist, lod[0])
+
+        self.inputs = {'DistMat': dist}
+        self.outputs = {
+            'ColToRowMatchIndices': match_indices,
+            'ColToRowMatchDist': match_dist,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
+    def setUp(self):
+        self.op_type = 'bipartite_match'
+        lod = [[300]]
+        dist = np.random.random((300, 17)).astype('float32')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0])
 
         self.inputs = {'DistMat': dist}
@@ -115,7 +134,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
 class TestBipartiteMatchOpWithPerPredictionType(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
-        lod = [[0, 5, 11, 23]]
+        lod = [[5, 6, 12]]
         dist = np.random.random((23, 237)).astype('float32')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0],
                                                           'per_prediction', 0.5)

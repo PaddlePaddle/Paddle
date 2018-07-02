@@ -26,15 +26,16 @@ class TestSequenceSoftmaxOp(OpTest):
         self.init_op_type()
 
         x = np.random.uniform(0.1, 1, (11, 1)).astype("float32")
-        lod = [[0, 4, 5, 8, 11]]
+        lod = [[4, 1, 3, 3]]
 
         out = np.zeros((11, 1)).astype("float32")
-        for i in range(4):
-            sub_x = x[lod[0][i]:lod[0][i + 1], :]
-            sub_x = sub_x.reshape(1, lod[0][i + 1] - lod[0][i])
+        offset = 0
+        for i in range(len(lod[0])):
+            sub_x = x[offset:offset + lod[0][i], :]
+            sub_x = sub_x.reshape(1, lod[0][i])
             sub_out = stable_softmax(sub_x)
-            out[lod[0][i]:lod[0][i + 1], :] = sub_out.reshape(
-                lod[0][i + 1] - lod[0][i], 1)
+            out[offset:offset + lod[0][i], :] = sub_out.reshape(lod[0][i], 1)
+            offset += lod[0][i]
 
         self.inputs = {"X": (x, lod)}
         self.outputs = {"Out": out}

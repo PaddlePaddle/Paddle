@@ -75,35 +75,38 @@ class TestSeqProject(OpTest):
         pading_data = self.pad_data
         out = np.zeros((self.input_size[0], self.context_length *
                         self.input_size[1])).astype('float32')
-        lod = lod[0]
+        offset = [0]
+        for seq_len in lod[0]:
+            offset.append(offset[-1] + seq_len)
         begin_pad = np.max([0, -self.context_start])
 
-        for i in range(len(lod) - 1):
+        for i in range(len(offset) - 1):
             for j in range(self.context_length):
-                in_begin = lod[i] + self.context_start + j
-                in_end = lod[i + 1] + self.context_start + j
-                out_begin = lod[i]
-                out_end = lod[i + 1]
-                if in_begin < lod[i]:
-                    pad_size = np.min([lod[i] - in_begin, lod[i + 1] - lod[i]])
+                in_begin = offset[i] + self.context_start + j
+                in_end = offset[i + 1] + self.context_start + j
+                out_begin = offset[i]
+                out_end = offset[i + 1]
+                if in_begin < offset[i]:
+                    pad_size = np.min(
+                        [offset[i] - in_begin, offset[i + 1] - offset[i]])
                     if self.padding_trainable:
                         sub_w = pading_data[j:j + pad_size, :]
-                        out[lod[i]:lod[i] + pad_size, j * self.input_size[1]:(
-                            j + 1) * self.input_size[1]] = sub_w
-                    out_begin = lod[i] + pad_size
-                    in_begin = lod[i]
+                        out[offset[i]:offset[i] + pad_size, j * self.input_size[
+                            1]:(j + 1) * self.input_size[1]] = sub_w
+                    out_begin = offset[i] + pad_size
+                    in_begin = offset[i]
 
-                if in_end > lod[i + 1]:
+                if in_end > offset[i + 1]:
                     pad_size = np.min(
-                        [in_end - lod[i + 1], lod[i + 1] - lod[i]])
+                        [in_end - offset[i + 1], offset[i + 1] - offset[i]])
                     if self.padding_trainable:
                         sub_w = pading_data[begin_pad + self.context_start + j -
                                             pad_size:begin_pad +
                                             self.context_start + j, :]
-                        out[lod[i + 1] - pad_size:lod[i + 1], j * self.
+                        out[offset[i + 1] - pad_size:offset[i + 1], j * self.
                             input_size[1]:(j + 1) * self.input_size[1]] = sub_w
-                    in_end = lod[i + 1]
-                    out_end = lod[i + 1] - pad_size
+                    in_end = offset[i + 1]
+                    out_end = offset[i + 1] - pad_size
                 if in_end <= in_begin:
                     continue
 
@@ -175,7 +178,11 @@ class TestSeqProject(OpTest):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        self.lod = [[0, 4, 5, 8, self.input_row]]
+        offset_lod = [[0, 4, 5, 8, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
 
 
@@ -188,7 +195,11 @@ class TestSeqProjectCase1(TestSeqProject):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        self.lod = [[0, 4, 5, 8, self.input_row]]
+        offset_lod = [[0, 4, 5, 8, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
 
 
@@ -203,8 +214,12 @@ class TestSeqProjectCase2(TestSeqProject):
         self.input_size = [self.input_row, 23]
         idx = range(self.input_size[0])
         del idx[0]
-        self.lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
-                    [self.input_size[0]]]
+        offset_lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
+                      [self.input_size[0]]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
 
 

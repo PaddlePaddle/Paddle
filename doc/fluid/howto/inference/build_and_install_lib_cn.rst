@@ -13,6 +13,7 @@ cpu_noavx_openblas       `fluid.tgz <https://guest:@paddleci.ngrok.io/repository
 cuda7.5_cudnn5_avx_mkl   `fluid.tgz <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/fluid.tgz>`_
 cuda8.0_cudnn5_avx_mkl   `fluid.tgz <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/fluid.tgz>`_
 cuda8.0_cudnn7_avx_mkl   `fluid.tgz <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/fluid.tgz>`_
+cuda9.0_cudnn7_avx_mkl   `fluid.tgz <https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda90cudnn7avxMkl/.lastSuccessful/fluid.tgz>`_
 ======================   ========================================
 
 从源码编译

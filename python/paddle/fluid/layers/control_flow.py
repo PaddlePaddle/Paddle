@@ -20,13 +20,13 @@ from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from ops import logical_and, logical_not, logical_or
+import numpy
 
 __all__ = [
     'split_lod_tensor',
     'merge_lod_tensor',
     'BlockGuard',
     'BlockGuardWithCompletion',
-    'StaticRNNMemoryLink',
     'WhileGuard',
     'While',
     'Switch',
@@ -55,34 +55,36 @@ __all__ = [
 
 def split_lod_tensor(input, mask, level=0):
     """
-    **split_lod_tensor**
-
     This function takes in an input that contains the complete lod information,
     and takes in a mask which is used to mask certain parts of the input.
     The output is the true branch and the false branch with the mask applied to
-    the input at a certain level in the tensor.
+    the input at a certain level in the tensor. Mainly used in IfElse to split
+    data into two parts.
 
     Args:
         input(tuple|list|None): The input tensor that contains complete
                                 lod information needed to construct the output.
         mask(list): A bool column vector which masks the input.
-        level(int): The specific lod level to rank.
+        level(int): The specific lod level to split.
 
     Returns:
-        Variable: The true branch of tensor as per the mask applied to input.
-        Variable: The false branch of tensor as per the mask applied to input.
+        tuple(Variable, Variable):
+        The true branch of tensor as per the mask applied to input.
+
+        The false branch of tensor as per the mask applied to input.
 
     Examples:
         .. code-block:: python
 
-          x = layers.data(name='x', shape=[1])
+          x = fluid.layers.data(name='x', shape=[1])
           x.persistable = True
 
-          y = layers.data(name='y', shape=[1])
+          y = fluid.layers.data(name='y', shape=[1])
           y.persistable = True
 
-          out_true, out_false = layers.split_lod_tensor(
+          out_true, out_false = fluid.layers.split_lod_tensor(
                 input=x, mask=y, level=level)
+
     """
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_tmp_variable(dtype=input.dtype)
@@ -105,8 +107,9 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
 
     This function takes in an input :math:`x`, the True branch, the False
     branch and a binary :math:`mask`. Using this information, this function
-    merges the True and False branches of the tensor into a single Output
-    at a certain lod level indiacted by :math:`level`.
+    merges the True and False branches of the tensor into a single tensor as
+    output at a certain lod level indicated by :math:`level`. Used in IfElse
+    to merge the output if True block and False Block.
 
     Args:
         in_true(tuple|list|None): The True branch to be merged.
@@ -114,7 +117,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
         x(tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
         mask(list): A bool column vector which masks the input.
-        level(int): The specific lod level to rank.
+        level(int): The specific lod level to merge.
 
     Returns:
         Variable: The merged output tensor.
@@ -182,12 +185,14 @@ def Print(input,
     Returns:
         Variable: Output tensor, same data with input tensor.
 
+
     Examples:
+
         .. code-block:: python
 
-        value = some_layer(...)
-        Print(value, summarize=10,
-              message="The content of some_layer: ")
+           value = some_layer(...)
+           Print(value, summarize=10,
+               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -233,9 +238,56 @@ class BlockGuard(object):
 
 class ParallelDo(object):
     """
-    ParallelDo class.
+    ParallelDo is used to represent multi-thread data parallel processing.
 
-    ParallelDo class is used to create a ParallelDo.
+    Its vanilla implementation can be shown as the following (:math:`|` means
+    single thread and :math:`||||` means multiple threads)
+
+    .. code-block:: text
+
+      In the forward pass
+        |      Split input onto different devices
+        |      Copy parameter onto different devices
+        ||||   Compute forward pass in parallel
+        |      Merge output from different devices
+
+      In the backward pass
+        |      Split output@grad onto different devices
+        ||||   Compute backward pass in parallel
+        |      accumulate param@grad from different devices to the first device
+        |      Merge input@grad from different devices
+        |      Copy param@grad to the place of parallel_do_op
+
+    Examples:
+
+    .. code-block:: python
+
+      images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+      label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+      # ParallelDo version & Single-thread version
+      if thread_num > 1:
+          places = fluid.layers.get_places(thread_num)
+          pd = fluid.layers.ParallelDo(places)
+          with pd.do():
+              images = pd.read_input(images)
+              label = pd.read_input(label)
+              predict = cnn_model(images)
+              cost = fluid.layers.cross_entropy(input=predict, label=label)
+
+              avg_cost = fluid.layers.mean(x=cost)
+              pd.write_output(avg_cost)
+
+          avg_cost = pd()
+          avg_cost = fluid.layers.mean(avg_cost)
+      else:
+          predict = cnn_model(images)
+          cost = fluid.layers.cross_entropy(input=predict, label=label)
+          avg_cost = fluid.layers.mean(x=cost)
+
+    .. warning::
+    
+       It will be soon deprecated, please use ParallelExecutor instead.
     """
 
     def __init__(self, places, use_nccl=False, name=None):
@@ -362,16 +414,17 @@ class StaticRNNMemoryLink(object):
     """
     StaticRNNMemoryLink class.
 
-    Args:
-        init: the initial variable for Memory
-        init: Variable
-        pre_mem: the memory variable in previous time step
-        pre_mem: Variable
-        mem: the memory variable in current time step
-        mem: Variable
-
     StaticRNNMemoryLink class is used to create a link between two
     memory cells of a StaticRNN.
+
+
+    NOTE: This is a internal data structure of a very low-level API.
+    Please use StaticRNN instead.
+
+    Args:
+        init(Variable): the initial variable for Memory.
+        pre_mem(Variable): the memory variable in previous time step.
+        mem(Variable): the memory variable in current time step.
     """
 
     def __init__(self, init, pre_mem, mem=None):
@@ -606,6 +659,29 @@ class WhileGuard(BlockGuard):
 
 
 class While(object):
+    """
+    while loop control flow.
+
+    Args:
+        cond (Variable): condition used to compare.
+        name (str): The name of this layer.
+
+    Examples:
+          .. code-block:: python
+
+            d0 = layers.data("d0", shape=[10], dtype='float32')
+            data_array = layers.array_write(x=d0, i=i)
+            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
+
+            cond = layers.less_than(x=i, y=array_len)
+            while_op = layers.While(cond=cond)
+            with while_op.block():
+                d = layers.array_read(array=data_array, i=i)
+                i = layers.increment(x=i, in_place=True)
+                layers.array_write(result, i=i, array=d)
+                layers.less_than(x=i, y=array_len, cond=cond)
+    """
+
     BEFORE_WHILE_BLOCK = 0
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
@@ -675,8 +751,8 @@ def lod_rank_table(x, level=0):
         .. code-block:: text
 
             x is a LoDTensor:
-                x.lod = [[0,                2, 3],
-                         [0,             5, 6, 7]]
+                x.lod = [[2,                1],
+                         [5,             1, 1]]
                 x.data = [a, b, c, d, e, f, g]
 
             1. set level to 0:
@@ -706,7 +782,7 @@ def lod_rank_table(x, level=0):
         .. code-block:: python
 
             x = fluid.layers.data(name='x', shape=[10],
-                            dtype='float32', lod_level=1)
+                                  dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
     """
     helper = LayerHelper("lod_rank_table", **locals())
@@ -748,17 +824,25 @@ def max_sequence_len(rank_table):
 
 
 def lod_tensor_to_array(x, table):
-    """ Convert a LOD_TENSOR to an LOD_TENSOR_ARRAY.
+    """ 
+    Convert a LoDTensor to a LoDTensorArray.
+
+    This function split a LoDTesnor to a LoDTensorArray according to its LoD 
+    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in 
+    PaddlePaddle. The generated LoDTensorArray of this function can be further read 
+    or written by `read_from_array()` and `write_to_array()` operators. However, 
+    this function is generally an internal component of PaddlePaddle `DynamicRNN`. 
+    Users should not use it directly.
 
     Args:
-        x (Variable|list): The LOD tensor to be converted to a LOD tensor array.
+        x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
-                                descending order.
+                                descending order. It is generally generated 
+                                by `layers.lod_rank_table()` API.
 
     Returns:
-        Variable: The variable of type array that has been converted from a
-                  tensor.
+        Variable: The LoDTensorArray that has been converted from the input tensor.
 
     Examples:
         .. code-block:: python
@@ -823,8 +907,7 @@ def increment(x, value=1.0, in_place=True):
         in_place (bool): If the increment should be performed in-place.
 
     Returns:
-        Variable: The tensor variable storing the transformation of
-                  element-wise increment of each value in the input.
+        Variable: The elementwise-incremented object.
 
     Examples:
         .. code-block:: python
@@ -866,7 +949,7 @@ def array_write(x, i, array=None):
         Variable: The output LOD_TENSOR_ARRAY where the input tensor is written.
 
     Examples:
-        .. code-block::python
+        .. code-block:: python
 
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
@@ -887,14 +970,17 @@ def array_write(x, i, array=None):
 
 
 def create_array(dtype):
-    """This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
-    LayerHelper.
+    """
+    **Create LoDTensorArray**
+
+    This function creates an array of LOD_TENSOR_ARRAY . It is mainly used to
+    implement RNN with array_write, array_read and While.
 
     Args:
-        dtype (int|float): The data type of the elements in the array.
+        dtype (int|float): The data type of the elements in the lod_tensor_array.
 
     Returns:
-        Variable: The tensor variable storing the elements of data type.
+        Variable: The lod_tensor_array variable storing the elements of data type.
 
     Examples:
         .. code-block:: python
@@ -909,37 +995,40 @@ def create_array(dtype):
         dtype=dtype)
 
 
-def less_than(x, y, force_cpu=True, cond=None, **ignored):
+@templatedoc()
+def less_than(x, y, force_cpu=None, cond=None, **ignored):
     """
-    **Less than**
+    ${comment}
 
-    This layer returns the truth value of :math:`x < y` elementwise.
+    >>> import paddle.fluid as fluid
+    >>> less = fluid.layers.less_than(x=label, y=limit)
 
     Args:
-        x(Variable): First operand of *less_than*
-        y(Variable): Second operand of *less_than*
-        force_cpu(Bool|True): The output data will be on CPU if set true.
+        x(${x_type}): ${x_comment}.
+        y(${y_type}): ${y_comment}.
+        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
         cond(Variable|None): Optional output variable to store the result of *less_than*
 
     Returns:
-        Variable: The tensor variable storing the output of *less_than*.
-
-    Examples:
-        .. code-block:: python
-
-          less = fluid.layers.less_than(x=label, y=limit)
+        ${out_comment}.
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
         cond.stop_gradient = True
 
+    attrs = dict()
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
     helper.append_op(
         type='less_than',
         inputs={'X': [x],
                 'Y': [y]},
         outputs={'Out': [cond]},
-        attrs={'force_cpu': force_cpu or force_init_on_cpu()})
+        attrs=attrs)
     return cond
 
 
@@ -974,16 +1063,34 @@ def equal(x, y, cond=None, **ignored):
 
 
 def array_read(array, i):
-    """This function performs the operation to read the data in as an
+    """
+    This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
+
+    .. code-block:: text
+
+        Given:
+
+        array = [0.6, 0.1, 0.3, 0.1]
+        
+        And:
+        
+        i = 2
+
+        Then:
+
+        output = 0.3
+
     Args:
-        array (Variable|list): The input tensor that will be written to an array.
-        i (Variable|list): The subscript index in tensor array, that points the
-                           place where data will be written to.
+        array (Variable|list): The input tensor that store data to be read.
+        i (Variable|list): The index of the data to be read from input array.
+
     Returns:
         Variable: The tensor type variable that has the data written to it.
+
     Examples:
-        .. code-block::python
+        .. code-block:: python
+
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = layers.array_read(tmp, i=i)
@@ -1004,8 +1111,28 @@ def array_read(array, i):
 
 def shrink_memory(x, i, table):
     """
-    This function creates an operator to shrink_rnn_memory using the RankTable
+    This function creates an operator to shrink rnn memory using the RankTable
     as mentioned in the input parameter.
+
+    NOTE: This API is very low-level API. It is used by DynamicRNN only.
+
+    Since the Dynamic RNN uses no-padding way to implement RNN. The sequence
+    will be sorted by order, and the length of valid memory will be shrink after
+    each time step.
+
+    Args:
+        x(Variable): The memory object in the previous time step.
+        i(Variable): The step count variable. A int scalar as LoDTensor.
+        table(Variable): The RNNRankTable object.
+
+    Returns:
+        the memory variable after shrink.
+
+    Examples:
+
+        Since this API is very low level API. The example is not provided.
+        Please reference the implementation of class DynamicRNN for detail
+        usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
@@ -1020,8 +1147,13 @@ def shrink_memory(x, i, table):
 
 
 def array_length(array):
-    """This function performs the operation to find the length of the input
+    """
+    **Get the Length of Input LoDTensorArray**
+
+    This function performs the operation to find the length of the input
     LOD_TENSOR_ARRAY.
+
+    Related API: array_read, array_write, While.
 
     Args:
         array (LOD_TENSOR_ARRAY): The input array that will be used
@@ -1031,12 +1163,13 @@ def array_length(array):
         Variable: The length of the input LoDTensorArray.
 
     Examples:
-        .. code-block::python
+        .. code-block:: python
 
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
           arr_len = fluid.layers.array_length(arr)
+
     """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_tmp_variable(dtype='int64')
@@ -1047,6 +1180,13 @@ def array_length(array):
 
 
 class ConditionalBlockGuard(BlockGuard):
+    """
+    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for 
+    holding a ConditionalBlock, and helping users entering and exiting the 
+    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard 
+    is generally an internal component of IfElse, users should not use it directly.
+    """
+
     def __init__(self, block):
         if not isinstance(block, ConditionalBlock):
             raise TypeError("block should be conditional block")
@@ -1063,6 +1203,31 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
+    '''
+    **ConditionalBlock**
+
+    ConditionalBlock is an operator that bind a block to a specific condition,
+    if the condition matches, the corresponding block will be executed.
+
+    Args:
+        inputs (Variable): bool conditions.
+        is_scalar_condition (bool): whether the branch is controled by a scalar.
+        name(str): name of this ConditionalBlock.
+
+    Examples:
+        .. code-block:: python
+
+             cond = layers.less_than(x=label, y=limit)
+             true_image, false_image = layers.split_lod_tensor(
+                 input=image, mask=cond)
+             true_cond = layers.ConditionalBlock([true_image])
+
+             with true_cond.block():
+                 ...
+             with false_cond.block():
+                 ...
+    '''
+
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
@@ -1120,6 +1285,42 @@ class ConditionalBlock(object):
 
 
 class Switch(object):
+    """
+    Switch class works just like a `if-elif-else`. Can be used in learning rate scheduler
+    to modify learning rate
+
+    The Semantics:
+
+    1. A `switch` control-flow checks cases one-by-one.
+
+    2. The condition of each case is a boolean value, which is a scalar Variable.
+
+    3. It runs the first matched case, or the default case if there is one.
+
+    4. Once it matches a case, it runs the corresponding branch and only that branch.
+
+    Examples:
+        .. code-block:: python
+
+            lr = fluid.layers.tensor.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype='float32',
+                persistable=True,
+                name="learning_rate")
+            one_var = tensor.fill_constant(
+                shape=[1], dtype='float32', value=1.0)
+            two_var = tensor.fill_constant(
+                shape=[1], dtype='float32', value=2.0)
+
+            with fluid.layers.control_flow.Switch() as switch:
+                with switch.case(global_step == zero_var):
+                    fluid.layers.tensor.assign(input=one_var, output=lr)
+                with switch.default():
+                    fluid.layers.tensor.assign(input=two_var, output=lr)
+
+    """
+
     def __init__(self, name=None):
         self.helper = LayerHelper('switch', name=name)
         self.inside_scope = False
@@ -1149,7 +1350,8 @@ class Switch(object):
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
-        """create a default case for this switch
+        """
+        create a default case for this switch
         """
         pre_cond_num = len(self.pre_not_conditions)
         if pre_cond_num == 0:
@@ -1209,6 +1411,34 @@ class IfElseBlockGuard(object):
 
 
 class IfElse(object):
+    """
+    if-else control flow.
+
+    Args:
+        cond (Variable): condition used to compare.
+        name (str, default None): The name of this layer.
+
+    Examples:
+          .. code-block:: python
+
+            limit = fluid.layers.fill_constant_batch_size_like(
+                input=label, dtype='int64', shape=[1], value=5.0)
+            cond = fluid.layers.less_than(x=label, y=limit)
+            ie = fluid.layers.IfElse(cond)
+            with ie.true_block():
+                true_image = ie.input(image)
+                hidden = fluid.layers.fc(input=true_image, size=100, act='tanh')
+                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                ie.output(prob)
+
+            with ie.false_block():
+                false_image = ie.input(image)
+                hidden = fluid.layers.fc(
+                    input=false_image, size=200, act='tanh')
+                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                ie.output(prob)
+            prob = ie()
+    """
     OUT_IF_ELSE_BLOCKS = 0
     IN_IF_ELSE_TRUE_BLOCKS = 1
     IN_IF_ELSE_FALSE_BLOCKS = 2
@@ -1311,6 +1541,38 @@ class IfElse(object):
 
 
 class DynamicRNN(object):
+    """
+    The dynamic RNN can process a batch of sequence data. The length of each
+    sample sequence can be different. This API automatically process them in
+    batch.
+
+    The input lod must be set. Please reference `lod_tensor`
+
+    >>> import paddle.fluid as fluid
+    >>> data = fluid.layers.data(name='sentence', dtype='int64', lod_level=1)
+    >>> embedding = fluid.layers.embedding(input=data, size=[65535, 32],
+    >>>                                    is_sparse=True)
+    >>>
+    >>> drnn = fluid.layers.DynamicRNN()
+    >>> with drnn.block():
+    >>>     word = drnn.step_input(embedding)
+    >>>     prev = drnn.memory(shape=[200])
+    >>>     hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
+    >>>     drnn.update_memory(prev, hidden)  # set prev to hidden
+    >>>     drnn.output(hidden)
+    >>>
+    >>> # last is the last time step of rnn. It is the encoding result.
+    >>> last = fluid.layers.sequence_last_step(drnn())
+
+    The dynamic RNN will unfold sequence into timesteps. Users need to define
+    how to process each time step during the :code:`with` block.
+
+    The `memory` is used staging data cross time step. The initial value of
+    memory can be zero or another variable.
+
+    The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
+    get the output sequence.
+    """
     BEFORE_RNN = 0
     IN_RNN = 1
     AFTER_RNN = 2
@@ -1333,6 +1595,15 @@ class DynamicRNN(object):
         self.mem_link = []
 
     def step_input(self, x):
+        """
+        Mark a sequence as a dynamic RNN input.
+        Args:
+            x(Variable): The input sequence.
+
+        Returns:
+            The current timestep in the input sequence.
+
+        """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
             raise TypeError(
@@ -1376,6 +1647,15 @@ class DynamicRNN(object):
         return array_read(array=input_array, i=self.step_idx)
 
     def static_input(self, x):
+        """
+        Mark a variable as a RNN input. The input will not be scattered into
+        time steps.
+        Args:
+            x(Variable): The input variable.
+
+        Returns:
+            The input variable that can access in RNN.
+        """
         self._assert_in_rnn_block_("static_input")
         if not isinstance(x, Variable):
             raise TypeError(
@@ -1397,6 +1677,10 @@ class DynamicRNN(object):
 
     @contextlib.contextmanager
     def block(self):
+        """
+        The block for user to define operators in RNN. See the class docstring
+        for more details.
+        """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
         self.step_idx = fill_constant(
@@ -1423,6 +1707,9 @@ class DynamicRNN(object):
                     x=each_array, table=self.lod_rank_table))
 
     def __call__(self, *args, **kwargs):
+        """
+        Get the output of RNN. This API should only be invoked after RNN.block()
+        """
         if self.status != DynamicRNN.AFTER_RNN:
             raise ValueError(("Output of the dynamic RNN can only be visited "
                               "outside the rnn block."))
@@ -1437,6 +1724,70 @@ class DynamicRNN(object):
                value=0.0,
                need_reorder=False,
                dtype='float32'):
+        """
+        Create a memory variable for dynamic rnn.
+
+        If the :code:`init` is not None, :code:`memory` will be initialized by
+        this variable. The :code:`need_reorder` is used to reorder the memory as
+        the input variable. It should be set to true when the initialized memory
+        depends on the input sample.
+
+        For example,
+
+        >>> import paddle.fluid as fluid
+        >>> sentence = fluid.layers.data(
+        >>>                 name='sentence', dtype='float32', shape=[32])
+        >>> boot_memory = fluid.layers.data(
+        >>>                 name='boot', dtype='float32', shape=[10])
+        >>>
+        >>> drnn = fluid.layers.DynamicRNN()
+        >>> with drnn.block():
+        >>>     word = drnn.step_input(sentence)
+        >>>     memory = drnn.memory(init=boot_memory, need_reorder=True)
+        >>>     hidden = fluid.layers.fc(
+        >>>                 input=[word, memory], size=10, act='tanh')
+        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
+        >>>     drnn.output(hidden)
+        >>> rnn_output = drnn()
+
+
+        Otherwise, if :code:`shape`, :code:`value`, :code:`dtype` are set, the
+        :code:`memory` will be initialized by this :code:`value`.
+
+        For example,
+
+        >>> import paddle.fluid as fluid
+        >>> sentence = fluid.layers.data(
+        >>>                 name='sentence', dtype='float32', shape=[32])
+        >>>
+        >>> drnn = fluid.layers.DynamicRNN()
+        >>> with drnn.block():
+        >>>     word = drnn.step_input(sentence)
+        >>>     memory = drnn.memory(shape=[10], dtype='float32', value=0)
+        >>>     hidden = fluid.layers.fc(
+        >>>             input=[word, memory], size=10, act='tanh')
+        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
+        >>>     drnn.output(hidden)
+        >>> rnn_output = drnn()
+
+
+        Args:
+            init(Variable|None): The initialized variable.
+
+            shape(list|tuple): The memory shape. NOTE the shape does not contain
+            batch_size.
+
+            value(float): the initalized value.
+
+            need_reorder(bool): True if the initialized memory depends on the
+            input sample.
+
+            dtype(str|numpy.dtype): The data type of the initialized memory.
+
+        Returns:
+            the memory variable.
+
+        """
         self._assert_in_rnn_block_('memory')
         if init is not None:
             if not isinstance(init, Variable):
@@ -1504,6 +1855,16 @@ class DynamicRNN(object):
             return self.memory(init=init)
 
     def update_memory(self, ex_mem, new_mem):
+        """
+        Update the memory from ex_mem to new_mem. NOTE that the shape and data
+        type of :code:`ex_mem` and :code:`new_mem` must be same.
+        Args:
+            ex_mem(Variable): the memory variable.
+            new_mem(Variable): the plain variable generated in RNN block.
+
+        Returns:
+            None
+        """
         self._assert_in_rnn_block_('update_memory')
         if not isinstance(ex_mem, Variable):
             raise TypeError("The input arg `ex_mem` of update_memory() must "
@@ -1521,6 +1882,15 @@ class DynamicRNN(object):
         self.mem_link.append((new_mem, mem_array))
 
     def output(self, *outputs):
+        """
+        mark the RNN output variables.
+
+        Args:
+            outputs: The output variables.
+
+        Returns:
+            None
+        """
         self._assert_in_rnn_block_('output')
         parent_block = self._parent_block_()
         for each in outputs:
@@ -1563,26 +1933,26 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 def is_empty(x, cond=None, **ignored):
     """
-    **Is Empty**
-
-    This layer returns the truth value of whether the variable is empty.
+    Test whether a Variable is empty.
 
     Args:
-        x(Variable): Operand of *is_empty*
-        cond(Variable|None): Optional output variable to store the result
-                             of *is_empty*
+        x (Variable): The Variable to be tested.
+        cond (Variable|None): Output parameter. Returns the test result 
+                              of given 'x'. Default: None
 
     Returns:
-        Variable: The tensor variable storing the output of *is_empty*.
+        Variable: A bool scalar. True if 'x' is an empty Variable.
 
     Raises:
         TypeError: If input cond is not a variable, or cond's dtype is
-                   not bool
+                   not bool.
 
     Examples:
         .. code-block:: python
 
-          less = fluid.layers.is_empty(x=input)
+          res = fluid.layers.is_empty(x=input)
+          # or:
+          fluid.layers.is_empty(x=input, cond=res)
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:

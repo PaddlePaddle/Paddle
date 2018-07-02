@@ -15,7 +15,7 @@ limitations under the License. */
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
 
-#include "paddle/parameter/Argument.h"
+#include "paddle/legacy/parameter/Argument.h"
 
 size_t Arguments::getSlotNum() const { return m->outputs.size(); }
 
