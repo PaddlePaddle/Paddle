@@ -19,7 +19,7 @@ limitations under the License. */
 #include <atomic>
 #include <memory>
 
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/ParamUtil.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/trainer/TrainerInternal.h"
