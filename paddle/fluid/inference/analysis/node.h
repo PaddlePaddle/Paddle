@@ -25,6 +25,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/inference/analysis/device.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -57,12 +58,12 @@ struct NodeAttr {
     // init storage in the first usage.
     if (data_.empty()) {
       VLOG(4) << "resize data to " << sizeof(T);
-      type_hash_ = typeid(T).hash_code();
+      type_index_ = std::type_index(typeid(T));
       data_.resize(sizeof(T));
     }
-    PADDLE_ENFORCE(type_hash_ == typeid(T).hash_code(),
+    PADDLE_ENFORCE(framework::IsType<T>(type_index_),
                    "type not matched, origin is %s, want %s",
-                   DataTypeNamer::Global().repr(type_hash_),
+                   DataTypeNamer::Global().repr(type_index_),
                    DataTypeNamer::Global().repr<T>());
     PADDLE_ENFORCE_EQ(data_.size(), sizeof(T), "Node attr type recast error");
     return *reinterpret_cast<T *>(&data_[0]);
@@ -70,7 +71,7 @@ struct NodeAttr {
 
  private:
   std::string data_;
-  size_t type_hash_{std::numeric_limits<size_t>::max()};
+  std::type_index type_index_{typeid(NodeAttr)};
 };
 
 /*
