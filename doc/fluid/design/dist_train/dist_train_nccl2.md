@@ -25,7 +25,7 @@ persistable variable, Then we can insert this op at the end of
 "startup program" of fluid, so that all workers can get the same ID to
 initialize NCCL communicator objects.
 
-<img src="src/nccl2_design.png">
+<img src="src/ncc2_design.png">
 
 The above figure indicates the general process when training with NCCL2
 distributed. Each trainer have the number of communicators equal to the
