@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <fenv.h>
-#include "paddle/pserver/ParameterServerController.h"
+#include "paddle/legacy/pserver/ParameterServerController.h"
 #include "paddle/utils/PythonUtil.h"
 
 #include "ParamUtil.h"

@@ -216,19 +216,19 @@ def infer(use_cuda, save_dirname=None):
         # Here each word is the basic element of the LoDTensor and the shape of 
         # each word (base_shape) should be [1] since it is simply an index to 
         # look up for the corresponding word vector.
-        # Suppose the length_based level of detail (lod) info is set to [[4, 6]],
-        # which has only one lod level. Then the created LoDTensor will have only 
+        # Suppose the recursive_sequence_lengths info is set to [[4, 6]],
+        # which has only one level of detail. Then the created LoDTensor will have only 
         # one higher level structure (sequence of words, or sentence) than the basic 
         # element (word). Hence the LoDTensor will hold data for two sentences of 
         # length 4 and 6, respectively. 
-        # Note that lod info should be a list of lists.
-        lod = [[4, 6]]
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[4, 6]]
         base_shape = [1]
         # The range of random integers is [low, high]
         word_data = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=1)
+            recursive_seq_lens, base_shape, place, low=0, high=1)
         trg_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=1)
+            recursive_seq_lens, base_shape, place, low=0, high=1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -241,7 +241,7 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference shape: ", np_data.shape)
         print("Inference results: ", np_data)
