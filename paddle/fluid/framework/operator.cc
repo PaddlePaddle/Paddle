@@ -592,8 +592,7 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
