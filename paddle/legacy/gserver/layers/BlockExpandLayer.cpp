@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "BlockExpandLayer.h"
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "hl_matrix_ops.cuh"
 #include "hl_sequence.h"
 #include "hl_sparse.ph"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
 DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1 * a + p2 * b);

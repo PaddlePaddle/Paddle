@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include "CostLayer.h"
 #include "paddle/legacy/math/SparseMatrix.h"
-#include "paddle/utils/Error.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Error.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #ifndef PADDLE_MOBILE_INFERENCE
 #include "ValidationLayer.h"

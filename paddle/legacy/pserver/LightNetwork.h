@@ -21,7 +21,7 @@ limitations under the License. */
 #include <thread>
 #include <vector>
 
-#include "paddle/utils/Thread.h"
+#include "paddle/legacy/utils/Thread.h"
 
 struct sxi_socket;
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "MKLDNNActivation.h"
 #include "mkldnn.hpp"
-#include "paddle/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
 
 namespace paddle {
 

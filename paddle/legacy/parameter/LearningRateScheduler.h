@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "TrainerConfig.pb.h"
-#include "paddle/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
 
 namespace paddle {
 // NOLINTNEXTLINES_4

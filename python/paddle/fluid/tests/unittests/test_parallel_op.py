@@ -113,7 +113,9 @@ class BaseParallelForTest(unittest.TestCase):
             generator = callback()
             # Automatically insert parallel do if use_parallel = True
             if use_parallel:
-                places = fluid.layers.get_places()
+                thread_num = fluid.core.get_cuda_device_count(
+                ) if use_gpu else 8
+                places = fluid.layers.get_places(thread_num)
                 pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
                 data = next(generator)
 

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "Storage.h"
 #include "Allocator.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/StringUtil.h"
+#include "paddle/legacy/utils/Util.h"
 
 #ifndef PADDLE_MOBILE_INFERENCE
 DEFINE_int32(pool_limit_size,
