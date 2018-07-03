@@ -54,4 +54,4 @@ It can be used as a helper class that draws the modified graph after each pass.
 There is some helper legacy/function/class for analysis.
 
 - [dot.h](./dot.h) give a easy to use interface for generating `DOT` codes,
-- [graph_traits.h](./graph_traits.h) contains the graph traversal algorithms, it uses `iterator` to make the algorithms easy to share across different passes.
+- [graph_traits.h](./graph_traits.h) defines the interfaces of the graph traversal algorithms, it uses `iterator` to make the algorithms easy to share across different passes. Some algorithms are implementted in `data_flow_graph.h` such as BFS and DFS.
