@@ -1,7 +1,21 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy
 import collections
 import topology
-import minibatch
+import paddle
 import cPickle
 
 __all__ = ['infer', 'Inference']
@@ -49,7 +63,7 @@ class Inference(object):
             assert isinstance(val, api.Vector)
             val.copyFromNumpyArray(parameters.get(name).flatten())
             # the setValueUpdated function is called in randomize, zeroMem,
-            # load function in paddle/parameter/Parameter.cpp. But in the
+            # load function in paddle/legacy/parameter/Parameter.cpp. But in the
             # inference mode, the setValueUpdated is never called, it will
             # cause the parameter will not be dispatched
             # in MultiGradientMachine for multi-GPU. So setValueUpdated is
@@ -66,7 +80,7 @@ class Inference(object):
             for each_sample in input:
                 yield each_sample
 
-        reader = minibatch.batch(__reader_impl__, batch_size=batch_size)
+        reader = paddle.batch(__reader_impl__, batch_size=batch_size)
 
         self.__gradient_machine__.start()
         for data_batch in reader():

@@ -58,12 +58,12 @@ def is_compatible_with(x, Type):
 
 class HookAttribute(object):
     """
-    Hook Attribute object. As a member of ParameterAttribute class, the hook is an auxiliary operation that occurs 
+    Hook Attribute object. As a member of ParameterAttribute class, the hook is an auxiliary operation that occurs
     during training process of a layer with parameters, such as img_conv layer, fc layer.
 
-    :param  type: Hook type, currently supported types: 
+    :param  type: Hook type, currently supported types:
                         'pruning' :  user specify a sparsity_ratio before training started, and the
-                            network will prune the parameters based on the sparsity_ratio. 
+                            network will prune the parameters based on the sparsity_ratio.
                             eg: The definition of Hook object can be hk = HookAttribute('pruning', 0.6)
                             The specific usage can be paddle.layer.img_conv(input=img, filter_size=3,
                                                                        num_channels=3, num_filters=64,
@@ -71,10 +71,10 @@ class HookAttribute(object):
                             The pruning details can be found https://arxiv.org/pdf/1506.02626.pdf
     :type type: string
 
-    :param sparsity_ratio: Must be specified if hook type is 'pruning', 
+    :param sparsity_ratio: Must be specified if hook type is 'pruning',
                         it represents the ratio of the zero elements to be set by the Parameter.
     :type sparsity_ratio: float or None
-	
+
     """
 
     def __init__(self, type, sparsity_ratio=None):
@@ -130,10 +130,12 @@ class ParameterAttribute(object):
     :param sparse_update: Enable sparse update for this parameter. It will
                           enable both local and remote sparse update.
     :type sparse_update: bool
+    :param update_hooks: A HookAttribute object.
+    :type update_hooks: HookAttribute
     :param initializer: If not None, it should be a callable object which accepts
                         a parameter name and returns numpy array for the initial
                         value of the parameter
-    :param initializer: callable object
+    :type initializer: callable object
     """
 
     def __init__(self,
@@ -238,14 +240,15 @@ class ExtraLayerAttribute(object):
     :type error_clipping_threshold: float
     :param drop_rate: Dropout rate. Dropout will create a mask on layer output.
                       The dropout rate is the zero rate of this mask. The
-                      details of what dropout is please refer to `here
-                      <https://www.cs.toronto.edu/~hinton/absps/
-                      JMLRdropout.pdf>`_.
+                      details of what dropout is please refer to `JMLRdropout
+                      <https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf
+                      >`_.
     :type drop_rate: float
     :param device: device ID of layer. device=-1, use CPU. device>=0, use GPU.
-                   The details allocation in parallel_nn please refer to `here
-                   <http://www.paddlepaddle.org/doc/ui/cmd_argument/
-                   use_case.html#case-2-specify-layers-in-different-devices>`_.
+                   The details allocation in parallel_nn please refer to `use_case
+                   <https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2
+                   /howto/cmd_parameter/use_case_en.md#case-2-specify-layers-in
+                   -different-devices>`_.
     :type device: int
     """
 

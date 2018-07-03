@@ -383,19 +383,22 @@ class Parameters(object):
             params.deserialize(param_name, f)
         return params
 
-    def init_from_tar(self, f):
+    def init_from_tar(self, f, exclude_params=[]):
         """
         Different from `from_tar`, this interface can be used to
         init partial network parameters from another saved model.
 
         :param f: the initialized model file.
         :type f: tar file
+        :param exclude_params: the names of parameters that should  
+            not be initialized from the model file.
+        :type exclude_params: list of strings
         :return: Nothing.
         """
 
         tar_param = Parameters.from_tar(f)
         for pname in tar_param.names():
-            if pname in self.names():
+            if pname in self.names() and pname not in exclude_params:
                 self.set(pname, tar_param.get(pname))
 
 

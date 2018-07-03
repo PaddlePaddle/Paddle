@@ -1,4 +1,4 @@
-MOBILE
+移动端
 ======
 
 ..  toctree::

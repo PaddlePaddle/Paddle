@@ -23,10 +23,8 @@ Besides, this module also provides API for building dictionary.
 import paddle.v2.dataset.common
 import collections
 import tarfile
-import Queue
 import re
 import string
-import threading
 
 __all__ = ['build_dict', 'train', 'test', 'convert']
 
@@ -74,47 +72,20 @@ def build_dict(pattern, cutoff):
     return word_idx
 
 
-def reader_creator(pos_pattern, neg_pattern, word_idx, buffer_size):
+def reader_creator(pos_pattern, neg_pattern, word_idx):
     UNK = word_idx['<unk>']
+    INS = []
 
-    qs = [Queue.Queue(maxsize=buffer_size), Queue.Queue(maxsize=buffer_size)]
-
-    def load(pattern, queue):
+    def load(pattern, out, label):
         for doc in tokenize(pattern):
-            queue.put(doc)
-        queue.put(None)
+            out.append(([word_idx.get(w, UNK) for w in doc], label))
+
+    load(pos_pattern, INS, 0)
+    load(neg_pattern, INS, 1)
 
     def reader():
-        # Creates two threads that loads positive and negative samples
-        # into qs.
-        t0 = threading.Thread(
-            target=load, args=(
-                pos_pattern,
-                qs[0], ))
-        t0.daemon = True
-        t0.start()
-
-        t1 = threading.Thread(
-            target=load, args=(
-                neg_pattern,
-                qs[1], ))
-        t1.daemon = True
-        t1.start()
-
-        # Read alternatively from qs[0] and qs[1].
-        i = 0
-        doc = qs[i].get()
-        while doc != None:
-            yield [word_idx.get(w, UNK) for w in doc], i % 2
-            i += 1
-            doc = qs[i % 2].get()
-
-        # If any queue is empty, reads from the other queue.
-        i += 1
-        doc = qs[i % 2].get()
-        while doc != None:
-            yield [word_idx.get(w, UNK) for w in doc], i % 2
-            doc = qs[i % 2].get()
+        for doc, label in INS:
+            yield doc, label
 
     return reader
 
@@ -133,7 +104,7 @@ def train(word_idx):
     """
     return reader_creator(
         re.compile("aclImdb/train/pos/.*\.txt$"),
-        re.compile("aclImdb/train/neg/.*\.txt$"), word_idx, 1000)
+        re.compile("aclImdb/train/neg/.*\.txt$"), word_idx)
 
 
 def test(word_idx):
@@ -150,10 +121,10 @@ def test(word_idx):
     """
     return reader_creator(
         re.compile("aclImdb/test/pos/.*\.txt$"),
-        re.compile("aclImdb/test/neg/.*\.txt$"), word_idx, 1000)
+        re.compile("aclImdb/test/neg/.*\.txt$"), word_idx)
 
 
-def word_dict():
+def word_dict(cutoff=150):
     """
     Build a word dictionary from the corpus.
 
@@ -161,7 +132,7 @@ def word_dict():
     :rtype: dict
     """
     return build_dict(
-        re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
+        re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), cutoff)
 
 
 def fetch():

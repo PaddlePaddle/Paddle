@@ -13,18 +13,19 @@
 # serve to show the default.
 import sys
 import os, subprocess
-sys.path.insert(0, os.path.abspath('@PADDLE_SOURCE_DIR@/python'))
+sys.path.insert(0, os.path.abspath('@PADDLE_BINARY_DIR@/python'))
 import shlex
 from recommonmark import parser, transform
-import paddle
-import paddle.v2
+@IMPORT_PADDLE_STRING@
+@IMPORT_PADDLEV2_STRING@
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-templates_path = ["@PADDLE_SOURCE_DIR@/doc_theme/templates"]
+templates_path = ["@PADDLE_SOURCE_DIR@/doc/templates"]
 
 # -- General configuration ------------------------------------------------
 
@@ -82,7 +83,7 @@ language = 'zh_CN'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', '**/*_en*', '*_en*']
+exclude_patterns = ['_build', '**/*_en*', '*_en*', 'api/*']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -120,7 +121,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['@PADDLE_SOURCE_DIR@/doc_theme/static']
+#html_static_path = []
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'

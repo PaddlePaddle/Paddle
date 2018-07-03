@@ -15,10 +15,14 @@ PADDLE_CLUSTER_TRAIN=True
 env
 
 # start pserver
-stdbuf -oL nohup paddle pserver --port=$PADDLE_INIT_PORT --ports_num=$PADDLE_INIT_PORTS_NUM \
-  --ports_num_for_sparse=$PADDLE_INIT_PORTS_NUM_FOR_SPARSE --nics=$NICS \
+stdbuf -oL nohup paddle pserver \
+  --port=$PADDLE_INIT_PORT \
+  --ports_num=$PADDLE_INIT_PORTS_NUM \
+  --ports_num_for_sparse=$PADDLE_INIT_PORTS_NUM_FOR_SPARSE \
+  --nics=$NICS \
   --comment=paddle_cluster_pserver \
-  --num_gradient_servers=$PADDLE_INIT_NUM_GRADIENT_SERVERS &> logs/pserver.log &
+  --num_gradient_servers=$PADDLE_INIT_NUM_GRADIENT_SERVERS \
+  &> logs/pserver.log &
 
 # start trainer
 # NOTE: train.py will use the above environment variables as configuration

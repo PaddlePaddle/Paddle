@@ -44,7 +44,7 @@ __all__ = ['train', 'test', 'valid']
 DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
 LABEL_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
 SETID_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat'
-DATA_MD5 = '52808999861908f626f3c1f4e79d11fa'
+DATA_MD5 = '33bfc11892f1e405ca193ae9a9f2a118'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
 # In official 'readme', tstid is the flag of test data
@@ -76,7 +76,8 @@ def reader_creator(data_file,
                    dataset_name,
                    mapper,
                    buffered_size=1024,
-                   use_xmap=True):
+                   use_xmap=True,
+                   cycle=False):
     '''
     1. read images from tar file and
         merge images into batch files in 102flowers.tgz_batch/
@@ -96,6 +97,8 @@ def reader_creator(data_file,
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: data reader
     :rtype: callable
     '''
@@ -108,23 +111,27 @@ def reader_creator(data_file,
     file_list = batch_images_from_tar(data_file, dataset_name, img2label)
 
     def reader():
-        for file in open(file_list):
-            file = file.strip()
-            batch = None
-            with open(file, 'r') as f:
-                batch = cPickle.load(f)
-            data = batch['data']
-            labels = batch['label']
-            for sample, label in itertools.izip(data, batch['label']):
-                yield sample, int(label) - 1
+        while True:
+            for file in open(file_list):
+                file = file.strip()
+                batch = None
+                with open(file, 'r') as f:
+                    batch = cPickle.load(f)
+                data = batch['data']
+                labels = batch['label']
+                for sample, label in itertools.izip(data, batch['label']):
+                    yield sample, int(label) - 1
+            if not cycle:
+                break
 
     if use_xmap:
-        return xmap_readers(mapper, reader, cpu_count(), buffered_size)
+        cpu_num = int(os.environ.get('CPU_NUM', cpu_count()))
+        return xmap_readers(mapper, reader, cpu_num, buffered_size)
     else:
         return map_readers(mapper, reader)
 
 
-def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
+def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers training set reader.
     It returns a reader, each sample in the reader is
@@ -137,17 +144,23 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: train data reader
     :rtype: callable
     '''
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), TRAIN_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        TRAIN_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+        cycle=cycle)
 
 
-def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
+def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers test set reader.
     It returns a reader, each sample in the reader is
@@ -160,14 +173,20 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: test data reader
     :rtype: callable
     '''
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), TEST_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        TEST_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+        cycle=cycle)
 
 
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):

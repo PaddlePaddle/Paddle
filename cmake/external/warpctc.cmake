@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,8 +38,7 @@ ENDIF()
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/gangliao/warp-ctc.git"
-    GIT_TAG         b63a0644654a3e0ed624c85a1767bc8193aead09
+    GIT_REPOSITORY  "https://github.com/dzhwinter/warp-ctc.git"
     PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -52,6 +51,7 @@ ExternalProject_Add(
                     -DWITH_TORCH=OFF
                     -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
                     -DBUILD_SHARED=ON
+                    -DBUILD_TESTS=OFF
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
@@ -61,9 +61,10 @@ ExternalProject_Add(
 )
 
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
-INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
+INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
-ADD_LIBRARY(warpctc STATIC IMPORTED GLOBAL)
+ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})
 ADD_DEPENDENCIES(warpctc extern_warpctc)
 

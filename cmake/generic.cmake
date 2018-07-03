@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -96,6 +96,20 @@ if(NOT APPLE AND NOT ANDROID)
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
 endif(NOT APPLE AND NOT ANDROID)
 
+set_property(GLOBAL PROPERTY FLUID_MODULES "")
+# find all fluid modules is used for paddle fluid static library
+# for building inference libs
+function(find_fluid_modules TARGET_NAME)
+  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
+  string(FIND "${__target_path}" "fluid" pos)
+  if(pos GREATER 1)
+    get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+    set(fluid_modules ${fluid_modules} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
+  endif()
+endfunction(find_fluid_modules)
+
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
@@ -104,7 +118,9 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
-  list(REMOVE_DUPLICATES libs_deps)
+  if(libs_deps)
+    list(REMOVE_DUPLICATES libs_deps)
+  endif()
 
   # To produce a library we need at least one source file.
   # It is created by add_custom_command below and will helps
@@ -120,7 +136,7 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
@@ -160,7 +176,7 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs} ${target_OBJS})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
@@ -179,15 +195,31 @@ function(cc_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (cc_library_SRCS)
-    if (cc_library_SHARED OR cc_library_shared) # build *.so
+  if(cc_library_SRCS)
+    if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     else()
       add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+      find_fluid_modules(${TARGET_NAME})
     endif()
-    if (cc_library_DEPS)
-      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+
+    if(cc_library_DEPS)
+      # Don't need link libwarpctc.so
+      if("${cc_library_DEPS};" MATCHES "warpctc;")
+        list(REMOVE_ITEM cc_library_DEPS warpctc)
+        add_dependencies(${TARGET_NAME} warpctc)
+      endif()
+      # Only deps libmklml.so, not link
+      if("${cc_library_DEPS};" MATCHES "mklml;")
+        list(REMOVE_ITEM cc_library_DEPS mklml)
+        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
+          list(APPEND cc_library_DEPS dynload_mklml)
+        endif()
+        add_dependencies(${TARGET_NAME} mklml)
+        target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
     
     # cpplint code style
@@ -197,8 +229,6 @@ function(cc_library TARGET_NAME)
         list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
       endif()
     endforeach()
-    add_style_check_target(${TARGET_NAME} ${cc_library_SRCS} ${cc_library_HEADERS})
-
   else(cc_library_SRCS)
     if(cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
@@ -222,14 +252,20 @@ endfunction(cc_binary)
 
 function(cc_test TARGET_NAME)
   if(WITH_TESTING)
-    set(options "")
+    set(options SERIAL)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
+    set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
-    add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
+    add_test(NAME ${TARGET_NAME}
+             COMMAND ${TARGET_NAME} ${cc_test_ARGS}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (${cc_test_SERIAL})
+        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
+    endif()
   endif()
 endfunction(cc_test)
 
@@ -243,7 +279,8 @@ function(nv_library TARGET_NAME)
       if (nv_library_SHARED OR nv_library_shared) # build *.so
         cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
       else()
-          cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+        cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+        find_fluid_modules(${TARGET_NAME})
       endif()
       if (nv_library_DEPS)
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
@@ -256,7 +293,6 @@ function(nv_library TARGET_NAME)
           list(APPEND nv_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-      add_style_check_target(${TARGET_NAME} ${nv_library_SRCS} ${nv_library_HEADERS})
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         merge_static_libs(${TARGET_NAME} ${nv_library_DEPS})
@@ -283,16 +319,95 @@ endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
   if (WITH_GPU AND WITH_TESTING)
-    set(options "")
+    set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main memory gtest gflags glog)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_test(${TARGET_NAME} ${TARGET_NAME})
+    if (nv_test_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
+    endif()
   endif()
 endfunction(nv_test)
+
+function(hip_library TARGET_NAME)
+  if (WITH_AMD_GPU)
+    set(options STATIC static SHARED shared)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(hip_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_sources ${hip_library_SRCS})
+    HIP_PREPARE_TARGET_COMMANDS(${TARGET_NAME} OBJ _generated_files _source_files ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options})
+    if(_source_files)
+      list(REMOVE_ITEM _sources ${_source_files})
+    endif()
+    if(hip_library_SRCS)
+      if (hip_library_SHARED OR hip_library_shared) # build *.so
+        add_library(${TARGET_NAME} SHARED ${_cmake_options} ${_generated_files} ${_sources})
+        set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
+      else()
+        add_library(${TARGET_NAME} STATIC ${_cmake_options} ${_generated_files} ${_sources})
+        set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE CXX)
+        target_link_libraries(${TARGET_NAME} /opt/rocm/hip/lib/libhip_hcc.so /opt/rocm/hip/lib/libhip_device.a)
+	find_fluid_modules(${TARGET_NAME})
+      endif()
+      if (hip_library_DEPS)
+	add_dependencies(${TARGET_NAME} ${hip_library_DEPS})
+	target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+      endif()
+      # cpplint code style
+      foreach(source_file ${hip_library_SRCS})
+	string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+	  list(APPEND hip_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+	endif()
+      endforeach()
+    else(hip_library_SRCS)
+      if (hip_library_DEPS)
+	merge_static_libs(${TARGET_NAME} ${hip_library_DEPS})
+      else()
+	message(FATAL "Please specify source file or library in nv_library.")
+      endif()
+    endif(hip_library_SRCS)
+  endif()
+endfunction(hip_library)
+
+function(hip_binary TARGET_NAME)
+  if (WITH_AMD_GPU)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(hip_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    hip_add_executable(${TARGET_NAME} ${hip_binary_SRCS})
+    if(hip_binary_DEPS)
+      target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
+      add_dependencies(${TARGET_NAME} ${hip_binary_DEPS})
+    endif()
+  endif()
+endfunction(hip_binary)
+
+function(hip_test TARGET_NAME)
+  if (WITH_AMD_GPU AND WITH_TESTING)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_sources ${hip_test_SRCS})
+    HIP_PREPARE_TARGET_COMMANDS(${TARGET_NAME} OBJ _generated_files _source_files ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options})
+    if(_source_files)
+      list(REMOVE_ITEM _sources ${_source_files})
+    endif()
+    add_executable(${TARGET_NAME} ${_cmake_options} ${_generated_files} ${_sources})
+    set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
+    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    add_test(${TARGET_NAME} ${TARGET_NAME})
+  endif()
+endfunction(hip_test)
 
 function(go_library TARGET_NAME)
   set(options STATIC static SHARED shared)
@@ -324,7 +439,7 @@ function(go_library TARGET_NAME)
     )
 
   # Add dummy code to support `make target_name` under Terminal Command
-  file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+  file(WRITE ${dummyfile} "const char *dummy_${TARGET_NAME} = \"${dummyfile}\";")
   if (go_library_SHARED OR go_library_shared)
     add_library(${TARGET_NAME} SHARED ${dummyfile})
   else()
@@ -457,14 +572,14 @@ endfunction()
 
 function(py_test TARGET_NAME)
   if(WITH_TESTING)
-    set(options STATIC static SHARED shared)
+    set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS ARGS)
+    set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
+             COMMAND env FLAGS_init_allocated_mem=true PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction()
 
@@ -488,6 +603,9 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
+  #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
+  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here 
+  # for now to enable dist CI.
   protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
@@ -498,6 +616,9 @@ function(grpc_library TARGET_NAME)
           COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
           ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
+          COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+          ARGS --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
+          "${ABS_PROTO}"
           DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} extern_grpc)
 
   # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it
@@ -513,4 +634,22 @@ function(grpc_library TARGET_NAME)
     PROPERTIES
     COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
+endfunction()
+
+
+function(brpc_library TARGET_NAME)
+  set(oneValueArgs PROTO)
+  set(multiValueArgs SRCS DEPS)
+  set(options "")
+  cmake_parse_arguments(brpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  message(STATUS "generating brpc ${brpc_library_PROTO}")
+
+  get_filename_component(ABS_PROTO ${brpc_library_PROTO} ABSOLUTE)
+  get_filename_component(PROTO_WE ${brpc_library_PROTO} NAME_WE)
+  get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
+
+  protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
+  cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
+  cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()

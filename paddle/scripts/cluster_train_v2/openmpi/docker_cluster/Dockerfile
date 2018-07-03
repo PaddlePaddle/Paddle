@@ -1,7 +1,7 @@
 # Build this image:  docker build -t mpi .
 #
 
-FROM paddledev/paddle:0.10.0rc3
+FROM paddlepaddle/paddle:0.10.0rc3
 
 ENV DEBIAN_FRONTEND noninteractive
 

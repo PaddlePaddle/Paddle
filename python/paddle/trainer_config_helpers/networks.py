@@ -25,10 +25,10 @@ from paddle.trainer.config_parser import *
 __all__ = [
     'sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
     "img_conv_bn_pool", 'lstmemory_group', 'lstmemory_unit', 'small_vgg',
-    'img_conv_group', 'vgg_16_network', 'gru_unit', 'gru_group', 'simple_gru',
-    'simple_attention', 'dot_product_attention', 'multi_head_attention',
-    'simple_gru2', 'bidirectional_gru', 'text_conv_pool', 'bidirectional_lstm',
-    'inputs', 'outputs'
+    'img_conv_group', 'img_separable_conv', 'vgg_16_network', 'gru_unit',
+    'gru_group', 'simple_gru', 'simple_attention', 'dot_product_attention',
+    'multi_head_attention', 'simple_gru2', 'bidirectional_gru',
+    'text_conv_pool', 'bidirectional_lstm', 'inputs', 'outputs'
 ]
 
 ######################################################
@@ -251,13 +251,13 @@ def img_conv_bn_pool(input,
                      pool_layer_attr=None):
     """
     Convolution, batch normalization, pooling group.
-    
+
     Img input => Conv => BN => Pooling => Output.
 
     :param name: group name.
     :type name: basestring
     :param input: input layer.
-    :type input: LayerOutput 
+    :type input: LayerOutput
     :param filter_size: see img_conv_layer for details.
     :type filter_size: int
     :param num_filters: see img_conv_layer for details.
@@ -433,6 +433,85 @@ def img_conv_group(input,
 
     return img_pool_layer(
         input=tmp, stride=pool_stride, pool_size=pool_size, pool_type=pool_type)
+
+
+@wrap_name_default("separable_conv")
+def img_separable_conv(input,
+                       num_channels,
+                       num_out_channels,
+                       filter_size,
+                       stride=1,
+                       padding=0,
+                       depth_multiplier=1,
+                       act=None,
+                       bias_attr=None,
+                       param_attr=None,
+                       shared_bias=True,
+                       layer_type='exconv',
+                       name=None):
+    """
+    Separable Convolution.
+
+    The separable convolution module is consisted of a depthwise convolution
+    that acts separately on input channels, followed by a pointwise convolution
+    with 1*1 kernels that mixes channels. It is used for Xception:
+    https://arxiv.org/pdf/1610.02357.pdf
+
+    :param input: input layer.
+    :type input: LayerOutput
+    :param num_channels: the number of input channels.
+    :type num_channels: int
+    :param num_out_channels: the number of output channels.
+    :type num_out_channels: int
+    :param filter_size: the filter size for the depthwise convolution.
+    :type filter_size: int|tuple
+    :param stride: the stride size for the depthwise convolution.
+    :type stride: int|tuple
+    :param padding: the padding size for the depthwise convolution.
+    :type padding: int|tuple
+    :param depth_multiplier: the number of filter for one channel in the
+                             depthwize convolution.
+    :type depth_multiplier: int
+    :param act: the activation function for the output.
+    :type act: BaseActivation
+    :param bias_attr: see img_conv_layer for details.
+    :type bias_attr: ParameterAttribute
+    :param param_attr: see img_conv_layer for details.
+    :type param_attr: ParameterAttribute
+    :param shared_bias: see img_conv_layer for details.
+    :type shared_bias: bool
+    :param layer_type: see img_conv_layer for details.
+    :type layer_type: bool
+    :return: layer's output
+    :rtype: LayerOutput
+    """
+    __depthwise_conv__ = img_conv_layer(
+        name="%s_depthwise_conv" % name,
+        input=input,
+        num_channels=num_channels,
+        num_filters=num_channels * depth_multiplier,
+        groups=num_channels,
+        filter_size=filter_size,
+        stride=stride,
+        padding=padding,
+        act=LinearActivation(),
+        bias_attr=bias_attr,
+        param_attr=param_attr,
+        shared_biases=shared_bias,
+        layer_type=layer_type)
+    __pointwise_conv__ = img_conv_layer(
+        name="%s_pointwise_conv" % name,
+        input=__depthwise_conv__,
+        num_channels=num_channels * depth_multiplier,
+        num_filters=num_out_channels,
+        filter_size=1,
+        stride=1,
+        padding=0,
+        act=act,
+        bias_attr=bias_attr,
+        param_attr=param_attr,
+        shared_biases=shared_bias)
+    return __pointwise_conv__
 
 
 def small_vgg(input_image, num_channels, num_classes):
@@ -648,7 +727,7 @@ def lstmemory_unit(input,
                    lstm_bias_attr=None,
                    lstm_layer_attr=None):
     """
-    lstmemory_unit defines the caculation process of a LSTM unit during a 
+    lstmemory_unit defines the caculation process of a LSTM unit during a
     single time step. This function is not a recurrent layer, so it can not be
     directly used to process sequence input. This function is always used in
     recurrent_group (see layers.py for more details) to implement attention
@@ -869,7 +948,7 @@ def gru_unit(input,
              gru_layer_attr=None,
              naive=False):
     """
-    gru_unit defines the calculation process of a gated recurrent unit during a single 
+    gru_unit defines the calculation process of a gated recurrent unit during a single
     time step. This function is not a recurrent layer, so it can not be
     directly used to process sequence input. This function is always used in
     the recurrent_group (see layers.py for more details) to implement attention
@@ -1012,7 +1091,7 @@ def simple_gru(input,
     simple_gru in network.py. The reason why there are so many interfaces is
     that we have two ways to implement recurrent neural network. One way is to
     use one complete layer to implement rnn (including simple rnn, gru and lstm)
-    with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But 
+    with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But
     the multiplication operation :math:`W x_t` is not computed in these layers.
     See details in their interfaces in layers.py.
     The other implementation is to use an recurrent group which can ensemble a
@@ -1116,11 +1195,12 @@ def simple_gru2(input,
     :type act: BaseActivation
     :param gate_act: gate activiation type of gru
     :type gate_act: BaseActivation
-    :param gru_bias_attr: bias parameter attribute of gru layer, 
+    :param gru_bias_attr: bias parameter attribute of gru layer,
                           False means no bias, None means default bias.
     :type gru_bias_attr: ParameterAttribute|False|None
-    :param gru_layer_attr: Extra attribute of the gru layer.
-    :type gru_layer_attr: ExtraLayerAttribute
+    :param gru_param_attr: param parameter attribute of gru layer,
+                          None means default param.
+    :type gru_param_attr: ParameterAttribute|None
     :return: the gru group.
     :rtype: LayerOutput
     """
@@ -1188,7 +1268,7 @@ def bidirectional_gru(input,
     :type size: int
     :param return_seq: If set False, the last time step of output are
                        concatenated and returned.
-                       If set True, the entire output sequences in forward 
+                       If set True, the entire output sequences in forward
                        and backward directions are concatenated and returned.
     :type return_seq: bool
     :return: LayerOutput object.
@@ -1277,7 +1357,7 @@ def bidirectional_lstm(input,
     :type size: int
     :param return_seq: If set False, the last time step of output are
                        concatenated and returned.
-                       If set True, the entire output sequences in forward 
+                       If set True, the entire output sequences in forward
                        and backward directions are concatenated and returned.
     :type return_seq: bool
     :return: LayerOutput object.

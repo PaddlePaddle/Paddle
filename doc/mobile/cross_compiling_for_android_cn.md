@@ -1,8 +1,9 @@
 # Android平台编译指南
 
 用户可通过如下两种方式，交叉编译Android平台上适用的PaddlePaddle库：
-- 基于Docker容器的编译方式
-- 基于Linux交叉编译环境的编译方式
+
+- [基于Docker容器的编译方式](#基于docker容器的编译方式)
+- [基于Linux交叉编译环境的编译方式](#基于linux交叉编译环境的编译方式)
 
 ## 基于Docker容器的编译方式
 Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行，因此，使用基于Docker容器的编译方式，用户可在自己熟悉的开发平台上编译Android平台上适用的PaddlePaddle库。
@@ -14,6 +15,18 @@ Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运
 $ git clone https://github.com/PaddlePaddle/Paddle.git
 $ cd Paddle
 $ docker build -t username/paddle-android:dev . -f Dockerfile.android
+```
+
+用户也可以使用PaddlePaddle提供的官方开发镜像：
+
+```bash
+$ docker pull paddlepaddle/paddle:latest-dev-android
+```
+
+对于国内用户，我们提供了加速访问的镜像源：
+
+```bash
+$ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
 ```
 
 ### 编译PaddlePaddle C-API库
@@ -41,23 +54,25 @@ Android的Docker开发镜像向用户提供两个可配置的参数：
 </tr>
 <tr class="row-odd">
   <td>ANDROID_API</td>
-  <td>>= 21</td>
+  <td>>= 16</td>
   <td>21</td>
 </tr>
 </tbody>
 </table>
 
 - 编译`armeabi-v7a`，`Android API 21`的PaddlePaddle库
-  ```bash
-  $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" username/paddle-android:dev
-  ```
+
+```bash
+$ docker run -it --rm -v $PWD:/paddle -w /paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" username/paddle-android:dev ./paddle/scripts/paddle_build.sh build_android
+```
 
 - 编译`arm64-v8a`，`Android API 21`的PaddlePaddle库
-  ```bash
-  $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=arm64-v8a" -e "ANDROID_API=21" username/paddle-android:dev
-  ```
 
-执行上述`docker run`命令时，容器默认执行[paddle/scripts/docker/build_android.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh)脚本。该脚本中记录了交叉编译Android版PaddlePaddle库常用的CMake配置，并且会根据`ANDROID_ABI`和`ANDROID_API`自动构建独立工具链、进行编译和安装。由于arm64架构要求Android API不小于21。因此当`ANDROID_ABI=arm64-v8a`，`ANDROID_API<21`时，Docker容器中将默认使用`Android API 21`的编译工具链。用户可以参考下文**配置交叉编译参数**章节，根据个人的需求修改定制Docker容器所执行的脚本。编译安装结束之后，PaddlePaddle的C-API库将被安装到`$PWD/install_android`目录，所依赖的第三方库同时也被安装到`$PWD/install_android/third_party`目录。
+```bash
+$ docker run -it --rm -v $PWD:/paddle -w /paddle -e "ANDROID_ABI=arm64-v8a" -e "ANDROID_API=21" username/paddle-android:dev ./paddle/scripts/paddle_build.sh build_android
+```
+
+执行上述`docker run`命令时，容器执行[paddle/scripts/paddle_build.sh build_android](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/paddle_build.sh)脚本。该脚本中记录了交叉编译Android版PaddlePaddle库常用的CMake配置，并且会根据`ANDROID_ABI`和`ANDROID_API`自动构建独立工具链、进行编译和安装。由于arm64架构要求Android API不小于21。因此当`ANDROID_ABI=arm64-v8a`，`ANDROID_API<21`时，Docker容器中将默认使用`Android API 21`的编译工具链。用户可以参考下文[配置交叉编译参数](#配置交叉编译参数)章节，根据个人的需求修改定制Docker容器所执行的脚本。编译安装结束之后，PaddlePaddle的C-API库将被安装到`$PWD/install_android`目录，所依赖的第三方库同时也被安装到`$PWD/install_android/third_party`目录。
 
 ## 基于Linux交叉编译环境的编译方式
 本文档将以Linux x86-64平台为例，介绍交叉编译Android平台上适用的PaddlePaddle库的方法和步骤。
@@ -83,6 +98,7 @@ your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain
 此命令将在`your/path/to/arm_standalone_toolchain`目录生成一套独立编译工具链，面向架构为32位ARM架构，支持的最小的Android API级别为21，支持编译器`arm-linux-androideabi-gcc (GCC) 4.9`和`clang 3.8`。
 
 - 构建`arm64-v8a`、 `Android API 21`的独立工具链：
+
 ```bash
 your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
         --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
@@ -90,14 +106,12 @@ your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain
 
 此命令将在`your/path/to/arm64_standalone_toolchain`目录生成一套独立编译工具链，面向架构为64位ARM64架构，支持的最小Android API级别为21，支持编译器`arm-linux-androideabi-gcc (GCC) 4.9`和`clang 3.8`。
 
-注意：**PaddlePaddle要求使用的编译工具链所支持的Android API级别不小于21**。
-
 ### 配置交叉编译参数
 
 CMake系统对交叉编译提供了支持[cmake-toolchains](https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling)。为了简化cmake配置，PaddlePaddle为交叉编译提供了工具链配置文档[cmake/cross_compiling/android.cmake](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/android.cmake)，以提供一些默认的编译器和编译参数相关配置。注意，从CMake 3.7版本开始，CMake官方对Android平台的交叉编译提供了通用的支持。PaddlePaddle若检测到用户使用的CMake版本不低于3.7时，将会将用户传进来的配置参数传递CMake系统，交由CMake系统本身来处理。有关参数配置的详细说明见[cmake-toolchains](https://cmake.org/cmake/help/v3.7/manual/cmake-toolchains.7.html#cross-compiling)。
 
 交叉编译Android版本的PaddlePaddle库时，有一些必须配置的参数：
-- `CMAKE_SYSTEM_NAME`，CMake编译的目标平台，必须设置为`Android`。在设置`CMAKE_SYSTEM_NAME=Android`后，PaddlePaddle的CMake系统才认为是在交叉编译Android系统的版本，并自动编译宿主机版protoc可执行文件、目标机版protobuf库、以及Android所需`arm_soft_fp_abi`分支的目标机版OpenBLAS库。此外，还会强制设置一些PaddlePaddle参数的值（`WITH_GPU=OFF`、`WITH_AVX=OFF`、`WITH_PYTHON=OFF`、`WITH_RDMA=OFF`）。
+- `CMAKE_SYSTEM_NAME`，CMake编译的目标平台，必须设置为`Android`。在设置`CMAKE_SYSTEM_NAME=Android`后，PaddlePaddle的CMake系统才认为是在交叉编译Android系统的版本，并自动编译PaddlePaddle所需的所有第三方库。此外，还会强制设置一些PaddlePaddle参数的值（`WITH_GPU=OFF`、`WITH_AVX=OFF`、`WITH_PYTHON=OFF`、`WITH_RDMA=OFF`、`WITH_MKL=OFF`、`WITH_GOLANG=OFF`）。
 - `WITH_C_API`，必须设置为`ON`。在Android平台上只支持使用C-API来预测。
 - `WITH_SWIG_PY`，必须设置为`OFF`。在Android平台上不支持通过swig调用来训练或者预测。
 
@@ -119,7 +133,7 @@ Android平台可选配置参数：
 其他配置参数：
 
 - `USE_EIGEN_FOR_BLAS`，是否使用Eigen库进行矩阵计算。可设置`ON/OFF`，默认值为`OFF`。
-- `HOST_C/CXX_COMPILER`，宿主机的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS库时需要用到。默认设置成环境变量`CC`的值；若环境变量`CC`没有设置，则设置成`cc`编译器。
+- `HOST_C/CXX_COMPILER`，宿主机的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS库时需要用到。默认设置成环境变量`CC/CXX`的值；若环境变量`CC/CXX`没有设置，则设置成`cc/c++`编译器。
 
 常用的cmake配置如下：
 
@@ -147,9 +161,14 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       ..
 ```
 
-用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置`CMAKE_BUILD_TYPE`为`MinSizeRel`；若希望最快的执行速度，则可设置`CMAKE_BUILD_TYPE`为`Release`。亦可以通过手动设置`CMAKE_C/CXX_FLAGS_MINSIZEREL/RELEASE`来影响PaddlePaddle的编译过程。
+用户还可根据自己的需求设置其他编译参数。
+
+- 设置`CMAKE_BUILD_TYPE`为`MinSizeRel`，最小化生成的库的大小。
+- 设置`CMAKE_BUILD_TYPE`为`Release`，获得最快的执行速度，
+- 用户亦可以通过手动设置`CMAKE_C/CXX_FLAGS`来影响PaddlePaddle的编译过程。
 
 **性能TIPS**，为了达到最快的计算速度，在CMake参数配置上，有以下建议：
+
 - 设置`CMAKE_BUILD_TYPE`为`Release`
 - 使用`clang`编译工具链
 - `armeabi-v7a`时，设置`USE_EIGEN_BLAS=ON`，使用Eigen进行矩阵计算；`arm64-v8a`时，设置`USE_EIGEN_FOR_BLAS=OFF`，使用OpenBLAS进行矩阵计算

@@ -1,6 +1,9 @@
 # Build PaddlePaddle for Android
 
-There are two approaches to build PaddlePaddle for Android: using Docker and on Linux without Docker. 
+There are two approaches to build PaddlePaddle for Android: 
+
+- [Cross-Compiling Using Docker](#cross-compiling-using-docker)
+- [Cross-Compiling on Linux](#cross-compiling-on-linux) 
 
 ## Cross-Compiling Using Docker
 
@@ -16,12 +19,24 @@ $ cd Paddle
 $ docker build -t paddle:dev-android . -f Dockerfile.android
 ```
 
+Users can directly use the published Docker image.
+
+```bash
+$ docker pull paddlepaddle/paddle:latest-dev-android
+```
+
+For users in China, we provide a faster mirror.
+
+```bash
+$ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
+```
+
 ### Build the Inference Library
 
 We can run the Docker image we just created to build the inference library of PaddlePaddle for Android using the command below:
 
 ```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android
+$ docker run -it --rm -v $PWD:/paddle -w /paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android ./paddle/scripts/paddle_build.sh build_android
 ```
 
 The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
@@ -47,7 +62,7 @@ The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
 </tr>
 <tr class="row-odd">
   <td>ANDROID_API</td>
-  <td>>= 21</td>
+  <td>>= 16</td>
   <td>21</td>
 </tr>
 </tbody>
@@ -55,7 +70,7 @@ The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
 
 The ARM-64 architecture (`arm64-v8a`) requires at least level 21 of Android API.
 
-The default entry-point of the Docker image, [`paddle/scripts/docker/build_android.sh`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
+The build command, [`paddle/scripts/paddle_build.sh build_android`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/paddle_build.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
 
 The above command generates and outputs the inference library in `$PWD/install_android` and puts third-party libraries in `$PWD/install_android/third_party`.
 
@@ -77,23 +92,21 @@ Android NDK includes everything we need to build the [*standalone toolchain*](ht
 
 - To build the standalone toolchain for `armeabi-v7a` and Android API level 21:
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
-  ```
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
+```
   
   The generated standalone toolchain will be in `your/path/to/arm_standalone_toolchain`.
 
 - To build the standalone toolchain for `arm64-v8a` and Android API level 21:
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
-  ```
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
+```
 
   The generated standalone toolchain will be in `your/path/to/arm64_standalone_toolchain`.
-
-**Please be aware that the minimum level of Android API required by PaddlePaddle is 21.**
 
 ### Cross-Compiling Arguments
 
@@ -101,7 +114,7 @@ CMake supports [choosing the toolchain](https://cmake.org/cmake/help/v3.0/manual
 
 Some other CMake arguments you need to know:
 
-- `CMAKE_SYSTEM_NAME` must be `Android`.  This tells PaddlePaddle's CMake system to cross-compile third-party dependencies.  This also changes some other CMake arguments like `WITH_GPU=OFF`, `WITH_AVX=OFF`, `WITH_PYTHON=OFF`, and `WITH_RDMA=OFF`.
+- `CMAKE_SYSTEM_NAME` must be `Android`.  This tells PaddlePaddle's CMake system to cross-compile third-party dependencies. This also changes some other CMake arguments like `WITH_GPU=OFF`, `WITH_AVX=OFF`, `WITH_PYTHON=OFF`, `WITH_RDMA=OFF`, `WITH_MKL=OFF` and `WITH_GOLANG=OFF`.
 - `WITH_C_API` must be `ON`, to build the C-based inference library for Android.
 - `WITH_SWIG_PY` must be `OFF` because the Android platform doesn't support SWIG-based API.
 
@@ -123,7 +136,7 @@ Some Android-specific arguments:
 Other useful arguments:
 
 - `USE_EIGEN_FOR_BLAS`: indicates if using Eigen.  Could be `ON` or `OFF`, defaults to `OFF`.
-- `HOST_C/CXX_COMPILER`: specifies the host compiler, which is used to build the host-specific protoc and target-specific OpenBLAS.  It defaults to the value of the environment variable `CC`, or `cc`.
+- `HOST_C/CXX_COMPILER`: specifies the host compiler, which is used to build the host-specific protoc and target-specific OpenBLAS.  It defaults to the value of the environment variable `CC/C++`, or `cc/c++`.
 
 Some frequent configurations for your reference:
 
@@ -158,6 +171,7 @@ There are some other arguments you might want to configure.
 - `CMAKE_BUILD_TYPE-Release` optimizes the runtime performance.
 
 Our own tip for performance optimization to use clang and Eigen or OpenBLAS:
+
 - `CMAKE_BUILD_TYPE=Release`
 - `ANDROID_TOOLCHAIN=clang`
 - `USE_EIGEN_BLAS=ON` for `armeabi-v7a`, or `USE_EIGEN_FOR_BLAS=OFF` for `arm64-v8a`.
