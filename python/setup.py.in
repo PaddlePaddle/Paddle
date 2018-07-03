@@ -95,7 +95,7 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
     paddle_bin_dir = 'opt/paddle/bin'
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
                    '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
-                   '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main',
+                   '${PADDLE_BINARY_DIR}/paddle/legacy/pserver/paddle_pserver_main',
                    '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 package_data={'paddle.fluid': ['core.so']}
