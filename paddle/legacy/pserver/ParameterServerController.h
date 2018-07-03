@@ -17,7 +17,7 @@ limitations under the License. */
 #include "ParameterServer2.h"
 #include "ParameterServerConfig.pb.h"
 #include "RDMANetwork.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/legacy/utils/StringUtil.h"
 
 namespace paddle {
 

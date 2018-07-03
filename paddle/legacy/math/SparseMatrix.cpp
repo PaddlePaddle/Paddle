@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "hl_gpu.h"
 #include "hl_top_k.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

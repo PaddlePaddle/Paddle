@@ -77,11 +77,12 @@ class BaseProcessor {
     context_.reset(new grpc::ClientContext());
     var_h_ = var_info;
     context_->set_wait_for_ready(true);
-
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
-
-    context_->set_deadline(deadline);
+    if (time_out) {
+      std::chrono::system_clock::time_point deadline =
+          std::chrono::system_clock::now() +
+          std::chrono::milliseconds(time_out);
+      context_->set_deadline(deadline);
+    }
   }
 
   virtual void Prepare(int64_t time_out) {
@@ -214,9 +215,17 @@ class GRPCClient : public RPCClient {
   void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
+  void AsyncSendBeginPass(const std::string& ep,
+                          int64_t time_out = FLAGS_rpc_deadline) override;
+
+  void AsyncSendEndPass(const std::string& ep,
+                        int64_t time_out = FLAGS_rpc_deadline) override;
+
   void Wait() override;
 
-  void SendComplete() override;
+  void SendBeginPass() override;
+
+  void SendEndPass() override;
 
  protected:
   void InitImpl() override;
@@ -226,9 +235,6 @@ class GRPCClient : public RPCClient {
   void InitEventLoop();
 
   void Proceed();
-
-  void AsyncSendComplete(const std::string& ep,
-                         int64_t time_out = FLAGS_rpc_deadline);
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 

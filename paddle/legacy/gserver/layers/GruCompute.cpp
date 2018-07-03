@@ -15,7 +15,7 @@ limitations under the License. */
 #include "GruCompute.h"
 #include "hl_recurrent_apply.cuh"
 #include "paddle/legacy/function/GruFunctor.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

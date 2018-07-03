@@ -21,7 +21,7 @@ limitations under the License. */
 #include <algorithm>
 #include "Matrix.h"
 #include "RowBuffer.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

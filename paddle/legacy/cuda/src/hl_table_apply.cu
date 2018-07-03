@@ -15,7 +15,7 @@ limitations under the License. */
 #include "hl_base.h"
 #include "hl_cuda.h"
 #include "hl_device_functions.cuh"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 template <int blockDimX, int blockDimY, int gridDimX, bool AddRow>
 __global__ void KeMatrixAddRows(real* output,

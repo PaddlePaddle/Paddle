@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <cmath>
 #include <memory>
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #include "paddle/legacy/math/SparseMatrix.h"
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "MKLDNNConvLayer.h"
 #include "paddle/legacy/math/MathUtils.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 using namespace mkldnn;  // NOLINT
 typedef memory::format format;

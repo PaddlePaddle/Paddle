@@ -495,7 +495,8 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
 #ifdef PADDLE_WITH_DISTRIBUTE
-      .def("complete", &Executor::Complete)
+      .def("begin_pass", &Executor::BeginPass)
+      .def("end_pass", &Executor::EndPass)
 #endif
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars) {
@@ -647,7 +648,11 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
             self.debug_graphviz_path_ = path;
-          });
+          })
+      .def_property(
+          "enable_data_balance",
+          [](const BuildStrategy &self) { return self.enable_data_balance_; },
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
