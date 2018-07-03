@@ -12,41 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/unsqueeze_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::OpKernelType;
-using framework::Tensor;
-
-class UnsqueezeOp : public framework::OperatorWithKernel {
+class UnsqueezeOpInferShape : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of UnsqueezeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of UnsqueezeOp should not be null.");
 
-    const auto& axes = ctx->Attrs().Get<std::vector<int>>("axes");
+    const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     PADDLE_ENFORCE(!axes.empty(),
                    "The unsqueeze axes information must be set by Attr(axes).");
 
-    const auto& x_dims = ctx->GetInputDim("X");
+    const auto &x_dims = ctx->GetInputDim("X");
     // Validity Check: input tensor dims (<6).
-    PADDLE_ENFORCE(x_dims.size() < 6,
+    PADDLE_ENFORCE(static_cast<int>(x_dims.size()) <= 6,
                    "Invalid dimensions, dynamic dimensions should within "
-                   "[0, 5] dimensions (Eigen limit).");
+                   "[1, 6] dimensions (Eigen limit).");
     // Validity Check: the range of unsqueeze aixs.
-    // TODO(chenweihang): Don't consider negative axis?.
-    for (unsigned int idx = 0; idx < axes.size(); ++idx) {
-      PADDLE_ENFORCE(axes[idx] < 6,
+    for (int axis : axes) {
+      PADDLE_ENFORCE(axis < 6,
                      "Invalid dimensions, input axis should within "
-                     "[0, 5] dimensions (Eigen limit).");
+                     "[1, 6] dimensions (Eigen limit).");
     }
 
     auto out_dims = GetOutputShape(axes, x_dims);
@@ -54,33 +48,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
-                                        const framework::DDim& in_dims) {
-    /*
-     * STL version
-     * Test Error! don't know why?.
-    std::vector<int64_t> output_shape;
-
-    // Contruct base output shape
-    for(int idx = 0; idx < in_dims.size(); ++idx) {
-      output_shape.emplace_back(in_dims[idx]);
-    }
-    // Validity Check: output dimensions limit.
-    PADDLE_ENFORCE(unsqz_dims.size() + output_shape.size() < 6,
-                   "The Attr(axes) size is too large. The output shape should "
-                   "be less than 6 (Eigne limit).");
-    // Insert the unsqueeze axis in turn.
-    auto it = output_shape.begin();
-    for (int axis : unsqz_dims) {
-      int cur = axis < 0 ? (axis + output_shape.size() + 1)
-                         : axis;
-      // Vaildity Check: the axis bound
-      PADDLE_ENFORCE(cur >= 0 && cur <= static_cast<int>(output_shape.size()),
-                     "The unsqueeze dims must be within range of current
-    rank.");
-      output_shape.emplace(it + axis, 1);
-    }
-    */
-
+                                        const framework::DDim &in_dims) {
     unsigned int unsqz_mask = 0;
     unsigned int front = 0, back = 0;
     int output_dims_size = in_dims.size();
@@ -93,17 +61,17 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
           cur >= 0 && cur <= output_dims_size,
           "The unsqueeze dims must be within range of current rank.");
       // Save the front part.
-      front = unsqz_mask & ((1 << axis) - 1);
+      front = unsqz_mask & ((1 << cur) - 1);
       // Move the back part.
-      back = unsqz_mask & ~((1 << axis) - 1);
+      back = unsqz_mask & ~((1 << cur) - 1);
       back <<= 1;
       // Merge two part.
-      back |= (1 << axis);
+      back |= (1 << cur);
       unsqz_mask = front | back;
       // Add the output size.
       output_dims_size++;
       // Validity Check: rank range.
-      PADDLE_ENFORCE(output_dims_size < 6,
+      PADDLE_ENFORCE(output_dims_size <= 6,
                      "The output tensor's rank should be less than 6.");
     }
 
@@ -118,6 +86,31 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     }
 
     return framework::make_ddim(output_shape);
+  }
+};
+
+class UnsqueezeOp : public framework::OperatorBase {
+ public:
+  UnsqueezeOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto &axes = Attr<std::vector<int>>("axes");
+    auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
+    auto out_dims = UnsqueezeOpInferShape::GetOutputShape(axes, x_dims);
+
+    framework::AttributeMap attrs;
+    attrs["shape"] = framework::vectorize2int(out_dims);
+    attrs["inplace"] = Attr<bool>("inplace");
+    // Invoke Reshape op.
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
+        {{"Out", {Output("Out")}}}, attrs);
+    reshape_op->Run(scope, place);
   }
 };
 
@@ -150,42 +143,49 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class UnsqueezeGradOp : public framework::OperatorWithKernel {
+class UnsqueezeGradInferShape : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UnsqueezeGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Output(Out@GRAD) of UnsqueezeGradOp should not be null.");
+  void operator()(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
+};
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+class UnsqueezeGradOp : public framework::OperatorBase {
+ public:
+  UnsqueezeGradOp(const std::string &type,
+                  const framework::VariableNameMap &inputs,
+                  const framework::VariableNameMap &outputs,
+                  const framework::AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto dx_name = Output(framework::GradVarName("X"));
+    auto dout_name = Input(framework::GradVarName("Out"));
+    auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
+
+    framework::AttributeMap attrs;
+    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["inplace"] = Attr<bool>("inplace");
+
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
+        attrs);
+    reshape_op->Run(scope, place);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+// Tell linker to use reshape op.
+USE_OP(reshape);
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
+                  ops::UnsqueezeOpInferShape,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp);
-REGISTER_OP_CPU_KERNEL(
-    unsqueeze, ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    unsqueeze_grad,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp,
+                  ops::UnsqueezeGradInferShape);
