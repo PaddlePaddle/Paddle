@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <limits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -36,17 +37,16 @@ struct TolerableValue {
 
 // float16 value clip behave different.
 using paddle::platform::float16;
-using paddle::platform::isinf;
 using paddle::platform::isfinite;
 template <>
 struct TolerableValue<float16> {
   HOSTDEVICE float16 operator()(const float16& x) const {
     if (isfinite(x))
       return x;
-    else if (x > 0)
-      return x.max();
+    else if (x > static_cast<float16>(0))
+      return std::numeric_limits<float16>::max();
     else
-      return x.min();
+      return std::numeric_limits<float16>::min();
   }
 };
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/sgd_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -93,7 +94,9 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
 
-      auto for_range(ctx.template device_context(), param->numel());
+      // auto for_range(ctx.template device_context(), param->numel());
+      platform::ForRange<platform::CUDADeviceContext> for_range(
+          ctx.device_context(), param.numel());
 
       if (ctx.Attr<bool>("mixed_precision_mode")) {
         PADDLE_ENFORCE(std::type_index(typeid(T)) ==

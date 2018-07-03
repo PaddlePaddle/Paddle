@@ -109,7 +109,8 @@ class TestConv2dOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
+            print "float16 testing"
+            # return
         if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
