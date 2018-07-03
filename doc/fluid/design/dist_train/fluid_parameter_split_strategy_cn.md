@@ -61,7 +61,8 @@
 
 至此, 我们对参数还有梯度的切分策略就结束了, 针对上面的例子, 我们会得到如下图所示的切分结果:
 
-![fluid_parameter_slice_up](src/fluid_parameter_slice_up.png)
+<p align="center">
+<img src="src/fluid_parameter_slice_up.png" height=400 hspace='10'/> <br />
 
 
 ## 参数切分用例

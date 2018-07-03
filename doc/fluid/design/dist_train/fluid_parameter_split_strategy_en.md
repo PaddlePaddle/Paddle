@@ -52,7 +52,8 @@ In Hash mode, we will perform Hash operation on parameter block names and then m
 
 At this point, our strategy for segmenting parameters and gradients is over. For the above example, we will get the segmentation result as shown in the following figure:
 
-![fluid_parameter_slice_up](src/fluid_parameter_slice_up.png)
+<p align="center">
+<img src="src/fluid_parameter_slice_up.png" height=400 hspace='10'/> <br />
 
 
 ## Model Parameter Segmentation Use Case
