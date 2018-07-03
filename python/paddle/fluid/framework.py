@@ -27,6 +27,8 @@ except ImportError, e:
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
     directory. The original error is: """ % str(e))
+except Exception, e:
+    raise e
 import unique_name
 
 __all__ = [
