@@ -449,7 +449,7 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def py_reader(capacity, shapes, lod_levels, dtypes, for_parallel=True):
+def py_reader(capacity, shapes, lod_levels, dtypes):
     """
     Create a reader and blocking queue for data feeding in Python
     
@@ -466,8 +466,6 @@ def py_reader(capacity, shapes, lod_levels, dtypes, for_parallel=True):
        shapes(list): List of tuples which declaring data shapes.
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
-       for_parallel(Bool): Set it as True if you are going to run
-            subsequent operators in parallel.
 
     Returns:
        tuple(Variable, BlockingQueue):
@@ -496,6 +494,7 @@ def py_reader(capacity, shapes, lod_levels, dtypes, for_parallel=True):
                     queue.push(data)
             
             thread = threading.Thread(target=feed_data, args=(queue, feed_images, feed_labels))
+            thread.start()
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -526,9 +525,6 @@ def py_reader(capacity, shapes, lod_levels, dtypes, for_parallel=True):
 
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
                                       startup_var)
-
-    if for_parallel:
-        main_prog_var = parallel(reader=main_prog_var)
 
     return monkey_patch_reader_methods(main_prog_var), feed_queue
 
