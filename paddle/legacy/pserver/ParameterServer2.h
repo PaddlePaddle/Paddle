@@ -29,10 +29,10 @@ limitations under the License. */
 #include "paddle/legacy/math/Vector.h"
 #include "paddle/legacy/parameter/Parameter.h"
 #include "paddle/legacy/parameter/ParameterOptimizer.h"
-#include "paddle/utils/Common.h"
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/Locks.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 #include "ParameterService.pb.h"
 

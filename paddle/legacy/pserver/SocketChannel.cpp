@@ -22,7 +22,7 @@ limitations under the License. */
 #include <unistd.h>
 #include "RDMANetwork.h"
 
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

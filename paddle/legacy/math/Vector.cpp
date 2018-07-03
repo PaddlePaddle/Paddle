@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Vector.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include <memory>
 #include "Matrix.h"
 #include "hl_gpu.h"
 #include "hl_matrix.h"
 #include "hl_table_apply.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Thread.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Thread.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 namespace paddle {
 

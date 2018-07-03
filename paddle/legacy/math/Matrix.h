@@ -18,16 +18,16 @@ limitations under the License. */
 #include <memory>
 #include <thread>
 
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 #include <hl_gpu.h>
 
 #include "BaseMatrix.h"
 #include "MemoryHandle.h"
 #include "Vector.h"
-#include "paddle/utils/Common.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 namespace paddle {
 
