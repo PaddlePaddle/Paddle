@@ -21,8 +21,8 @@ limitations under the License. */
 #include <thread>
 #include <type_traits>
 #include "paddle/legacy/parameter/Argument.h"
-#include "paddle/utils/ClassRegistrar.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "MKLDNNActivation.h"

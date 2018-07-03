@@ -16,8 +16,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <fstream>
 #include "paddle/legacy/gserver/dataproviders/DataProvider.h"
-#include "paddle/utils/PythonUtil.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/PythonUtil.h"
+#include "paddle/legacy/utils/Util.h"
 
 DEFINE_string(train_list, "unittest.list", "file list for unittest");
 
