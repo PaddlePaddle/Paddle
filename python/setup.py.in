@@ -33,21 +33,21 @@ def get_major():
     if major is not None:
         return major
 
-    return 0
+    return 'UNKNOWN'
 
 def get_minor():
     minor = _get_version_detail(1)
     if minor is not None:
         return minor
 
-    return 0
+    return 'UNKNOWN'
 
 def get_patch():
     patch = _get_version_detail(2)
     if patch is not None:
         return patch
 
-    return 0
+    return 'UNKNOWN'
 
 def is_taged():
     try:
