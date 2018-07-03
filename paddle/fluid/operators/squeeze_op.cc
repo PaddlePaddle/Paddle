@@ -28,10 +28,10 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
                    "Output(Out) of SqueezeOp should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
-    // Check input tensor dims (<9).
-    PADDLE_ENFORCE(x_dims.size() <= 9,
+    // Check input tensor dims (<6) Eigen limit.
+    PADDLE_ENFORCE(x_dims.size() <= 6,
                    "Invalid dimnesions, dynamic dimensions must have "
-                   "between [1, 9] dimensions.");
+                   "between [1, 6] dimensions (Eigen limit).");
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
@@ -41,7 +41,6 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
 
     auto out_dims = GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
-    // TODO(chenweihang): This share option is necessary?
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
