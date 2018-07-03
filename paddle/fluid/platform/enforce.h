@@ -73,7 +73,7 @@ struct EnforceNotMet : public std::exception {
     } catch (const std::exception& exp) {
       std::ostringstream sout;
 
-      sout << string::Sprintf("'%s' at [%s:%d]", exp.what(), f, l) << std::endl;
+      sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
       sout << "PaddlePaddle Call Stacks: " << std::endl;
 
       void* call_stack[TRACE_STACK_LIMIT];
@@ -105,7 +105,7 @@ struct EnforceNotMet : public std::exception {
 struct EOFException : public std::exception {
   std::string err_str_;
   EOFException(const char* err_msg, const char* f, int l) {
-    err_str_ = string::Sprintf("'%s' at [%s:%d]", err_msg, f, l);
+    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, f, l);
   }
 
   const char* what() const noexcept { return err_str_.c_str(); }
