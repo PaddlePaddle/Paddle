@@ -15,7 +15,7 @@
 #include "paddle/contrib/inference/paddle_inference_api.h"
 #include "paddle/contrib/inference/paddle_inference_api_impl.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include "paddle/fluid/inference/legacy/utils/singleton.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 

@@ -25,9 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/legacy/utils/singleton.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {

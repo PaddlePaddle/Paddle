@@ -23,7 +23,7 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 static const string& configFile =
-    "./legacy/trainer/tests/sample_trainer_config.conf";
+    "legacy/trainer/tests/sample_trainer_config.conf";
 
 DECLARE_int32(gpu_id);
 DECLARE_bool(use_gpu);
