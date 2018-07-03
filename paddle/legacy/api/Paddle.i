@@ -2,7 +2,7 @@
 %include "std_string.i"
 %{
 #define SWIG_FILE_WITH_INIT
-#include "api/PaddleAPI.h"   
+#include "legacy/api/PaddleAPI.h"
 %}
 
 %include "exception.i"
@@ -199,4 +199,4 @@ namespace std {
 %ignore OptimizationConfigPrivate;
 %ignore ParameterTraverseCallbackPrivate;
 %include "utils/GlobalConstants.h"
-%include "api/PaddleAPI.h"
+%include "legacy/api/PaddleAPI.h"
