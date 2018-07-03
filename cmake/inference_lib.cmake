@@ -141,7 +141,7 @@ set(inference_deps paddle_fluid_shared paddle_fluid)
 if(WITH_CONTRIB)
     message(STATUS "installing contrib")
     set(contrib_dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
-    if (WITH_ANAKIN)
+    if (WITH_ANAKIN AND WITH_GPU)
         copy(contrib_anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
             SRCS
             ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libinference_anakin_api* # compiled anakin api

@@ -19,4 +19,5 @@ if __name__ == '__main__':
     parse_config_and_serialize(
         'trainer/tests/sample_trainer_config.conf',
         'extension_module_name=paddle.trainer.config_parser_extension')
-    parse_config_and_serialize('gserver/tests/pyDataProvider/trainer.conf', '')
+    parse_config_and_serialize(
+        'legacy/gserver/tests/pyDataProvider/trainer.conf', '')
