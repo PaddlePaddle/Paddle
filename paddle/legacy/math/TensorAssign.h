@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 

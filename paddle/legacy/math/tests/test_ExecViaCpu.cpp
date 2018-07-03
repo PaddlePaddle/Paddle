@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/PythonUtil.h>
-#include <paddle/utils/Util.h>
+#include <paddle/legacy/utils/PythonUtil.h>
+#include <paddle/legacy/utils/Util.h>
 #include <vector>
 #include "paddle/legacy/math/SparseMatrix.h"
 

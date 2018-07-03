@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include "Layer.h"
 #include "SequenceToBatch.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 namespace paddle {
 

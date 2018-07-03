@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include <netdb.h>
 #include <netinet/in.h>
@@ -23,7 +23,7 @@ limitations under the License. */
 #include <thread>
 
 #include "paddle/legacy/math/Vector.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 struct MessageHeader {
   int64_t dataLength;

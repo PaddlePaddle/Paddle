@@ -19,7 +19,7 @@ limitations under the License. */
 #include "PaddleAPI.h"
 #include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/legacy/parameter/Argument.h"
-#include "paddle/utils/Flags.h"
+#include "paddle/legacy/utils/Flags.h"
 
 // used to represent partial sequence
 struct Path {

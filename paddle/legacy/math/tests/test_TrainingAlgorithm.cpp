@@ -17,7 +17,7 @@ limitations under the License. */
 #include "PerfUtils.h"
 #include "TensorCheck.h"
 #include "paddle/legacy/math/TrainingAlgorithmOp.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 
