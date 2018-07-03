@@ -15,28 +15,43 @@
 import framework
 import numpy as np
 import contextlib
+from framework import convert_np_dtype_to_dtype_
+from core import VarDesc
 
 __all__ = [
-    'Constant', 'Uniform', 'Normal', 'Xavier', 'force_init_on_cpu',
-    'init_on_cpu', 'ConstantInitializer', 'UniformInitializer',
-    'NormalInitializer', 'XavierInitializer'
+    'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
+    'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
+    'UniformInitializer', 'NormalInitializer', 'XavierInitializer',
+    'BilinearInitializer', 'MSRAInitializer'
 ]
 
 _force_init_on_cpu_ = False
 
 
 def force_init_on_cpu():
+    """
+    The flag of whether force to init variables on CPU.
+
+    Examples:
+        .. code-block:: python
+
+            if force_init_on_cpu():
+                pass
+
+    """
     return _force_init_on_cpu_
 
 
 @contextlib.contextmanager
 def init_on_cpu():
     """
-    Switch program with `with` statement
+    Force the variable to be inited on CPU.
 
     Examples:
-        >>> with init_on_cpu():
-        >>>   step = layers.create_global_var()
+        .. code-block:: python
+
+            with init_on_cpu():
+                step = layers.create_global_var()
 
     """
     global _force_init_on_cpu_
@@ -102,14 +117,18 @@ class Initializer(object):
 
 class ConstantInitializer(Initializer):
     """Implements the constant initializer
+
+    Args:
+        value (float): constant value to initialize the variable
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Constant(value=2.0))
     """
 
     def __init__(self, value=0.0, force_cpu=False):
-        """Constructor for ConstantInitializer
-
-        Args:
-            value: constant value to initialize the variable
-        """
         assert value is not None
         super(ConstantInitializer, self).__init__()
         self._value = value
@@ -144,16 +163,20 @@ class ConstantInitializer(Initializer):
 
 class UniformInitializer(Initializer):
     """Implements the random uniform distribution initializer
+
+    Args:
+        low (float): lower boundary of the uniform distribution
+        high (float): upper boundary of the uniform distribution
+        seed (int): random seed
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
     def __init__(self, low=-1.0, high=1.0, seed=0):
-        """Constructor for UniformInitializer
-
-        Args:
-            low: lower boundary of the uniform distribution
-            high: upper boundary of the uniform distribution
-            seed: random seed
-        """
         assert low is not None
         assert high is not None
         assert high >= low
@@ -194,17 +217,21 @@ class UniformInitializer(Initializer):
 
 
 class NormalInitializer(Initializer):
-    """Implements the  random Normal(Gaussian) distribution initializer
+    """Implements the Random Normal(Gaussian) distribution initializer
+
+    Args:
+        loc (float): mean of the normal distribution
+        scale (float): standard deviation of the normal distribution
+        seed (int): random seed
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
     """
 
     def __init__(self, loc=0.0, scale=1.0, seed=0):
-        """Constructor for NormalInitializer
-
-        Args:
-            loc: mean of the normal distribution
-            scale: standard deviation of the normal distribution
-            seed: random seed
-        """
         assert loc is not None
         assert scale is not None
         assert seed is not None
@@ -244,39 +271,49 @@ class NormalInitializer(Initializer):
 
 
 class XavierInitializer(Initializer):
-    """Implements the Xavier initializer
-
+    """
     This class implements the Xavier weight initializer from the paper
-    Understanding the difficulty of training deep feedforward neural
-    networks[1] by Xavier Glorot and Yoshua Bengio.
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio.
 
     This initializer is designed to keep the scale of the gradients
     approximately same in all the layers. In case of Uniform distribution,
-    the range is [-x, x], where x = sqrt(6 / (fan_in + fan_out)).
-    In case of Normal distribution, the mean is 0 and the standard deviation
-    is sqrt(2/ (fan_in + fan_out)).
+    the range is [-x, x], where
 
-    References:
-        [1] Understanding the difficulty of training deep feedforward neural
-            networks. International conference on artificial intelligence and
-            statistics.
-            (http://proceedings.mlr.press/v9/glorot10a.html)
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+
+    In case of Normal distribution, the mean is 0 and the standard deviation
+    is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+
+
+    Args:
+        uniform (bool): whether to use uniform or normal distribution
+        fan_in (float): fan_in for Xavier initialization. If None, it is
+                inferred from the variable.
+        fan_out (float): fan_out for Xavier initialization. If None, it is
+                 inferred from the variable.
+        seed (int): random seed
+
+    Note:
+        It is recommended to set fan_in and fan_out to None for most cases.
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(
+                input=queries, size=10,
+                param_attr=fluid.initializer.Xavier(uniform=False))
+
     """
 
     def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
-        """Constructor for XavierInitializer
-
-        Args:
-            uniform: whether to use uniform or normal distribution
-            fan_in: fan_in for Xavier initialization. If None, it is
-                    inferred from the variable.
-            fan_out: fan_out for Xavier initialization. If None, it is
-                     inferred from the variable.
-            seed: random seed
-
-        Note: It is recommended to set fan_in and fan_out to None for
-              most cases.
-        """
         assert uniform is not None
         assert seed is not None
         super(XavierInitializer, self).__init__()
@@ -340,30 +377,42 @@ class MSRAInitializer(Initializer):
     """Implements the MSRA initializer a.k.a. Kaiming Initializer
 
     This class implements the weight initialization from the paper
-    Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-    ImageNet Classification[1] by Kaiming He, Xiangyu Zhang, Shaoqing Ren
-    and Jian Sun. This is a robust initialization method that particularly
-    considers the rectifier nonlinearities. In case of Uniform distribution,
-    the range is [-x, x], where x = sqrt(6 / fan_in). In case of Normal
-    distribution, the mean is 0 and the standard deviation
-    is sqrt(2/ fan_in).
+    `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+    ImageNet Classification <https://arxiv.org/abs/1502.01852>`_
+    by Kaiming He, Xiangyu Zhang, Shaoqing Ren and Jian Sun. This is a
+    robust initialization method that particularly considers the rectifier
+    nonlinearities. In case of Uniform distribution, the range is [-x, x], where
 
-    References:
-        [1] Delving Deep into Rectifiers: Surpassing Human-Level Performance
-            on ImageNet Classification
-            (https://arxiv.org/abs/1502.01852)
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in}}
+
+    In case of Normal distribution, the mean is 0 and the standard deviation
+    is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in}}
+
+    Args:
+        uniform (bool): whether to use uniform or normal distribution
+        fan_in (float): fan_in for MSRAInitializer. If None, it is\
+        inferred from the variable.
+        seed (int): random seed
+
+    Note:
+        It is recommended to set fan_in to None for most cases.
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(
+                input=queries, size=10,
+                param_attr=fluid.initializer.MSRA(uniform=False))
     """
 
     def __init__(self, uniform=True, fan_in=None, seed=0):
         """Constructor for MSRAInitializer
-
-        Args:
-            uniform: whether to use uniform or normal distribution
-            fan_in: fan_in for MSRAInitializer. If None, it is
-                    inferred from the variable.
-            seed: random seed
-
-        Note: It is recommended to set fan_in to None for most cases.
         """
         assert uniform is not None
         assert seed is not None
@@ -422,6 +471,104 @@ class MSRAInitializer(Initializer):
         return op
 
 
+class BilinearInitializer(Initializer):
+    """
+    This initializer can be used in transposed convolution operator to
+    act as upsampling. Users can upsample a feature map with shape of
+    (B, C, H, W) by any integer factor. The usage is:
+
+    Examples:
+
+        .. code-block:: python
+
+            factor = 2
+            w_attr = ParamAttr(learning_rate=0., regularizer=L2Decay(0.),
+                               initializer=Bilinear())
+            conv_up = fluid.layers.conv2d_transpose(
+                input,
+                num_filters=C,
+                output_size=None,
+                filter_size=2 * factor - factor % 2,
+                padding=ceil((factor - 1) / 2.),
+                stride=factor,
+                groups=C,
+                param_attr=w_attr,
+                bias_attr=False)
+
+    Where, `num_filters=C` and `groups=C` means this is channel-wise transposed
+    convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
+    This initializer will set a (K, K) interpolation kernel for every channel
+    of the filter identically. The resulting shape of the output feature map
+    will be (B, C, factor * H, factor * W). Note that the learning rate and the
+    weight decay are set to 0 in order to keep coefficient values of bilinear
+    interpolation unchanged during training.
+
+    """
+
+    def __init__(self):
+        """Constructor for BilinearInitializer.
+        """
+        super(BilinearInitializer, self).__init__()
+
+    def __call__(self, var, block):
+        """Add biliear initialization ops for a variable
+
+        Args:
+            var (Variable): Variable that needs to be initialized.
+            block (Block): The block in which initialization ops should
+                           be added.
+
+        Returns:
+            Operator: the initialization op
+
+        Raises:
+            ValueError: If type of `var` and `block` is not right.
+                        If the shape of `var` size is not 4 and
+                        var.shape[2] != var.shape[3].
+        """
+        if not isinstance(var, framework.Variable):
+            raise ValueError("var must be framework.Variable.")
+
+        if not isinstance(block, framework.Block):
+            raise ValueError("block must be framework.Block.")
+
+        shape = var.shape
+        if len(shape) != 4:
+            raise ValueError("the length of shape must be 4.")
+        if shape[2] != shape[3]:
+            raise ValueError("shape[2] must be equal to shape[3].")
+
+        weight = np.zeros(np.prod(var.shape), dtype='float32')
+        size = shape[3]
+        # factor
+        f = np.ceil(size / 2.)
+        # center
+        c = (2 * f - 1 - f % 2) / (2. * f)
+        for i in range(np.prod(shape)):
+            x = i % size
+            y = (i / size) % size
+            weight[i] = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
+        weight = np.reshape(weight, shape)
+
+        if var.dtype == VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in weight.flat]
+        else:
+            raise ValueError("Unsupported dtype %s", input.dtype)
+        if np.prod(shape) > 1024 * 1024:
+            raise ValueError("The size of input is too big. ")
+        op = block.append_op(
+            type='assign_value',
+            outputs={'Out': [var]},
+            attrs={
+                'dtype': var.dtype,
+                'shape': list(shape),
+                value_name: values
+            })
+        var.op = op
+        return op
+
+
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
@@ -436,3 +583,4 @@ Uniform = UniformInitializer
 Normal = NormalInitializer
 Xavier = XavierInitializer
 MSRA = MSRAInitializer
+Bilinear = BilinearInitializer

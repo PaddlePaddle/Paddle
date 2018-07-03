@@ -20,6 +20,17 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+template <>
+std::string &NodeAttr::As<std::string>() {
+  if (data_.empty()) {
+    type_index_ = std::type_index(typeid(std::string));
+  }
+  PADDLE_ENFORCE_EQ(type_index_, std::type_index(typeid(std::string)));
+  return data_;
+}
+
+std::string &NodeAttr::String() { return As<std::string>(); }
+
 std::vector<Dot::Attr> Value::dot_attrs() const {
   return std::vector<Dot::Attr>({Dot::Attr("style", "filled,rounded"),
                                  Dot::Attr("shape", "box"),
@@ -39,6 +50,9 @@ Node *NodeMap::Create(Node::Type type) {
       break;
     case Node::Type::kValue:
       nodes_.emplace_back(new Value);
+      break;
+    case Node::Type::kFunctionBlock:
+      nodes_.emplace_back(new FunctionBlock);
       break;
     default:
       PADDLE_THROW("Not supported node type.");

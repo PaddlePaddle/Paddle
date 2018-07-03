@@ -47,10 +47,11 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
+  int GetVarDeviceID(const std::string &varname) const override;
 
  private:
   void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
-                         size_t place_id) const;
+                         size_t device_id) const;
 
  private:
   std::string loss_var_name_;
@@ -96,21 +97,26 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
-  int GetOpDeviceID(
-      const std::vector<std::unordered_set<std::string>> &var_name_on_devices,
-      const OpDesc &op) const;
+  int GetOpDeviceID(const OpDesc &op) const;
 
   void InsertAllReduceOp(SSAGraph *result, const std::string &og) const;
+
+  void InsertDataBalanceOp(SSAGraph *result,
+                           const std::vector<std::string> &datas) const;
 
   void CreateBroadcastOp(SSAGraph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 
-  bool IsSparseGradient(
-      const std::unordered_map<std::string, VarDesc *> &all_vars,
-      const std::string &og) const;
+  bool IsSparseGradient(const std::string &og) const;
+
+  size_t GetAppropriateDeviceID(
+      const std::vector<std::string> &var_names) const;
 
  private:
   BuildStrategy strategy_;
+  mutable std::unordered_map<std::string, VarDesc *> all_vars_;
+  mutable std::unordered_map<std::string, int> var_name_on_devices_;
+  mutable std::vector<int64_t> balance_vars_;
 
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
