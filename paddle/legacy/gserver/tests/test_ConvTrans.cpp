@@ -18,7 +18,7 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "paddle/legacy/gserver/layers/DataLayer.h"
 #include "paddle/legacy/math/MathUtils.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/legacy/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"

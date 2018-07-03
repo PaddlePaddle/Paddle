@@ -19,7 +19,7 @@ limitations under the License. */
 #else
 #define PROMPT_ERR() LOG(FATAL) << "Paddle is not compiled with rdma"
 #endif
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #include <netinet/in.h>
 struct sxi_sock;

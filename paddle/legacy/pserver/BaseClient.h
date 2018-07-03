@@ -17,8 +17,8 @@ limitations under the License. */
 #include "ParameterService.pb.h"
 #include "paddle/legacy/math/Matrix.h"
 #include "paddle/legacy/pserver/ProtoServer.h"
-#include "paddle/utils/Common.h"
-#include "paddle/utils/Queue.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/Queue.h"
 
 namespace paddle {
 

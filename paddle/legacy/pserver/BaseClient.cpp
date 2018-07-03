@@ -16,7 +16,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <string.h>
 #include <vector>
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 DECLARE_string(pservers);
 

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "MultiGradientMachine.h"
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 #include "NeuralNetwork.h"
 #include "ParallelNeuralNetwork.h"

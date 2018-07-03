@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 #include "Projection.h"
 

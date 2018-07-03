@@ -17,12 +17,12 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #include "SIMDFunctions.h"
 
-#include "paddle/utils/Thread.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Thread.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 
