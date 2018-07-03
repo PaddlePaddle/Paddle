@@ -33,10 +33,10 @@ class SqueezeOp : public framework::OperatorWithKernel {
                    "Output(Out) of SqueezeOp should not be null.");
 
     const auto& x_dims = ctx->GetInputDim("X");
-    // Check input tensor dims (<9).
-    PADDLE_ENFORCE(x_dims.size() <= 9,
+    // Check input tensor dims (<6) Eigen limit.
+    PADDLE_ENFORCE(x_dims.size() <= 6,
                    "Invalid dimnesions, dynamic dimensions must have "
-                   "between [1, 9] dimensions.");
+                   "between [1, 6] dimensions (Eigen limit).");
 
     const auto& axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {

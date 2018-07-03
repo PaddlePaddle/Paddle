@@ -27,7 +27,7 @@ class TestSqueezeOp1(OpTest):
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": False}
+        self.attrs = {"axes": axes, "inplace": False}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -46,7 +46,7 @@ class TestSqueezeOp2(OpTest):
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": False}
+        self.attrs = {"axes": axes, "inplace": False}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -65,7 +65,7 @@ class TestSqueezeOp3(OpTest):
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": False}
+        self.attrs = {"axes": axes, "inplace": False}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -78,13 +78,13 @@ class TestSqueezeOp3(OpTest):
 # Correct: Just part of axes be squeezed. 
 class TestSqueezeOp4(OpTest):
     def setUp(self):
-        ori_shape = (1, 3, 1, 5, 1, 4, 1)
-        axes = (2, 6)
-        new_shape = (1, 3, 5, 1, 4)
+        ori_shape = (3, 1, 5, 1, 4, 1)
+        axes = (1, -1)
+        new_shape = (3, 5, 1, 4)
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": False}
+        self.attrs = {"axes": axes, "inplace": False}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -122,7 +122,7 @@ class TestSqueezeOpInplace2(OpTest):
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": True}
+        self.attrs = {"axes": axes, "inplace": True}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -141,7 +141,7 @@ class TestSqueezeOpInplace3(OpTest):
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": True}
+        self.attrs = {"axes": axes, "inplace": True}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -154,13 +154,13 @@ class TestSqueezeOpInplace3(OpTest):
 # Correct: Inpalce. Just part of axes be squeezed. 
 class TestSqueezeOpInplace4(OpTest):
     def setUp(self):
-        ori_shape = (1, 3, 1, 5, 1, 4, 1)
-        axes = (2, 6)
-        new_shape = (1, 3, 5, 1, 4)
+        ori_shape = (3, 1, 5, 1, 4, 1)
+        axes = (1, -1)
+        new_shape = (3, 5, 1, 4)
 
         self.op_type = "squeeze"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inpalce": True}
+        self.attrs = {"axes": axes, "inplace": True}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
