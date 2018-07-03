@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/var_type.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
@@ -68,9 +69,9 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   // only print first ten elements
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
-    if (t.type().hash_code() == typeid(float).hash_code()) {  // NOLINT
+    if (IsType<float>(t.type())) {
       os << t.data<float>()[i] << " ";
-    } else if (t.type().hash_code() == typeid(int64_t).hash_code()) {
+    } else if (IsType<int64_t>(t.type())) {
       os << t.data<int64_t>()[i] << " ";
     } else {
       PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
@@ -89,6 +90,7 @@ std::string LoDToString(const LoD &lod) {
 LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
   PADDLE_ENFORCE_LT(level, in.size());
+  PADDLE_ENFORCE_LT(elem_begin, elem_end);
   PADDLE_ENFORCE_LT(elem_end, in[level].size());
 
   LoD res;
@@ -384,7 +386,7 @@ void LoDTensor::MergeLoDTensor(
   LoD new_lod = lod_tensors[0]->lod();
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
+    PADDLE_ENFORCE_EQ(new_type, t->type());
     PADDLE_ENFORCE_EQ(new_layout, t->layout());
 
     PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
@@ -392,6 +394,7 @@ void LoDTensor::MergeLoDTensor(
     new_dim[0] += t->dims()[0];
 
     auto &lod = t->lod();
+    PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
       auto &offset = sub_lod.back();
