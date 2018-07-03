@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <algorithm>
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/StringUtil.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

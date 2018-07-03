@@ -27,11 +27,11 @@ limitations under the License. */
 #include <mkldnn.hpp>
 #endif
 
+#include <map>
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -201,9 +201,7 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::unordered_map<const platform::Place,
-                     std::unique_ptr<platform::DeviceContext>, PlaceHash>
-      device_contexts_;
+  std::map<Place, std::unique_ptr<DeviceContext>> device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "CudnnBatchNormLayer.h"
 #include "Layer.h"
 #include "paddle/legacy/cuda/include/hl_batch_norm.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 namespace paddle {
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "GradientMachine.h"
 
 #include <fstream>
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #include "NeuralNetwork.h"
 #include "hl_gpu.h"

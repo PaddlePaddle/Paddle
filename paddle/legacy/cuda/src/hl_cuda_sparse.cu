@@ -18,7 +18,7 @@ limitations under the License. */
 #include "hl_matrix_ops.cuh"
 #include "hl_sparse.h"
 #include "hl_sparse.ph"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 DEFINE_MATRIX_UNARY_PARAMETER_OP(mul_scalar, ONE_PARAMETER, a = a * p);
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
