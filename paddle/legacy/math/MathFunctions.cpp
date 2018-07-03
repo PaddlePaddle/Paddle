@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/legacy/math/MathFunctions.h"
 #include "hl_matrix_apply.cuh"
 #include "hl_matrix_ops.cuh"
-#include "paddle/utils/DynamicLoader.h"
+#include "paddle/legacy/utils/DynamicLoader.h"
 
 namespace dynload {
 

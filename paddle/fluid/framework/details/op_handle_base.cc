@@ -58,8 +58,10 @@ void OpHandleBase::Run(bool use_cuda) {
 
 void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_NOT_NULL(waited_ctx);
   if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
+      PADDLE_ENFORCE_NOT_NULL(dev_ctx.second);
       dev_ctx.second->Wait();
     }
   } else {
@@ -122,16 +124,10 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
     std::function<void()> method = callback;
-    // NOTE(zcd): device context must be ordered here because RecordEvent
-    // will use a mutex to ensure the safe of multi-threads.
-    std::map<platform::DeviceContext *, platform::Place> ordered_ctxes;
     for (auto &p : dev_ctxes_) {
-      ordered_ctxes.emplace(p.second, p.first);
-    }
-    for (auto &p : ordered_ctxes) {
       method = [method, p, this]() {
-        static_cast<platform::CUDADeviceContext *>(p.first)->RecordEvent(
-            events_.at(boost::get<platform::CUDAPlace>(p.second).device),
+        static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(
+            events_.at(boost::get<platform::CUDAPlace>(p.first).device),
             method);
       };
     }

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/legacy/gserver/evaluators/Evaluator.h"
 #include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/StringUtil.h"
 
 DECLARE_int32(trainer_id);
 

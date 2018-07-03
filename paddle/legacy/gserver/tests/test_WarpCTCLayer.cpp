@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Version.h>
+#include <paddle/legacy/utils/Version.h>
 #include "ModelConfig.pb.h"
 #include "paddle/legacy/gserver/layers/CTCLayer.h"
 #include "paddle/legacy/gserver/layers/DataLayer.h"
