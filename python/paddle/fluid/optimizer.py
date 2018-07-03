@@ -44,11 +44,13 @@ class Optimizer(object):
     def __init__(self,
                  learning_rate,
                  regularization=None,
+                 clip=None,
                  LARS_weight_decay=0.0):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
         self.regularization = regularization
+        self.clip = clip
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
         self._dtype = None
@@ -256,7 +258,7 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads = append_gradient_clip_ops(params_grads)
+        params_grads = append_gradient_clip_ops(params_grads, self.clip)
 
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,

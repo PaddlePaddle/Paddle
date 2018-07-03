@@ -324,13 +324,15 @@ def set_gradient_clip(clip, param_list=None, program=None):
         param.gradient_clip_attr = copy.deepcopy(clip)
 
 
-def append_gradient_clip_ops(param_grad):
+def append_gradient_clip_ops(param_grad, global_clip=None):
     context = dict()
     for p, g in param_grad:
         with p.block.program.optimized_guard(p):
-            clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
+            clip = NullGradientClipAttr(
+            ) if global_clip is None else global_clip
+            clip_attr = getattr(p, 'gradient_clip_attr', global_clip)
             if clip_attr is None:
-                clip_attr = NullGradientClipAttr()
+                clip_attr = clip
             if not isinstance(clip_attr, BaseGradientClipAttr):
                 raise TypeError(
                     "clip attribute should be an instance of BaseGradientClipAttr"
