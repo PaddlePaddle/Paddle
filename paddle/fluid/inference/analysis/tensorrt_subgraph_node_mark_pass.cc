@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/tensorrt_subgraph_node_mark_pass.h"
+#include <string>
+
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/node_attr_flags.h"
+#include "paddle/fluid/inference/analysis/tensorrt_subgraph_node_mark_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -29,7 +31,7 @@ void TensorRTSubgraphNodeMarkPass::Run(DataFlowGraph *graph) {
 
 class DfgDebuggerPass : public DFG_GraphvizDrawPass {
  public:
-  DfgDebuggerPass(const DFG_GraphvizDrawPass::Config &config)
+  explicit DfgDebuggerPass(const DFG_GraphvizDrawPass::Config &config)
       : DFG_GraphvizDrawPass(config) {}
 
   std::string repr() const override {
