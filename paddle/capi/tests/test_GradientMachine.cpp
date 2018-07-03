@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/legacy/gserver/gradientmachines/GradientMachine.h>
 #include <paddle/trainer/TrainerConfigHelper.h>
 #include <stdlib.h>
 #include <string.h>
