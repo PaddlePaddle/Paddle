@@ -46,7 +46,7 @@ class DFG_GraphvizDrawPass : public DataFlowGraphPass {
     const bool display_deleted_node;
   };
 
-  DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
+  explicit DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
 
   bool Initialize(Argument *argument) override { return true; }
   void Run(DataFlowGraph *graph) override;

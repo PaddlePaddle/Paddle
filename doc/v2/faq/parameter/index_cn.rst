@@ -196,6 +196,6 @@ PaddlePaddle保存的模型参数文件内容由16字节头信息和网络参数
         obj="process",
         args={"src_dict_path": src_dict_path})
 
-完整源码可参考 `sequence_recurrent <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_recurrent.py>`_ 示例。
+完整源码可参考 `sequence_recurrent <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_recurrent.py>`_ 示例。
 
 
