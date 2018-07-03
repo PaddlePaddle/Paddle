@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/parameter/AverageOptimizer.h"
-#include "paddle/parameter/FirstOrderOptimizer.h"
-#include "paddle/parameter/OptimizerFunctions.h"
-#include "paddle/parameter/OptimizerWithRegularizer.h"
-#include "paddle/parameter/Parameter.h"
-#include "paddle/parameter/Regularizer.h"
+#include "paddle/legacy/parameter/AverageOptimizer.h"
+#include "paddle/legacy/parameter/FirstOrderOptimizer.h"
+#include "paddle/legacy/parameter/OptimizerFunctions.h"
+#include "paddle/legacy/parameter/OptimizerWithRegularizer.h"
+#include "paddle/legacy/parameter/Parameter.h"
+#include "paddle/legacy/parameter/Regularizer.h"
 #include "paddle/utils/Util.h"
 
 #include <memory>
