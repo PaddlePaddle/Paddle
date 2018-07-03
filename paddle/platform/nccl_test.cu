@@ -89,9 +89,13 @@ TEST(NCCL, all_reduce) {
   for (int i = 0; i < dev_count; ++i) {
     VLOG(1) << "Invoking ncclAllReduce with device " << i;
     SetDeviceId(i);
-    PADDLE_ENFORCE(dynload::ncclAllReduce(
-        data[i]->SendBuff(), data[i]->RecvBuff(), ELEM_COUNT, ncclDouble,
-        ncclSum, comms[i], data[i]->dev_ctx.stream()));
+    PADDLE_ENFORCE(dynload::ncclAllReduce(data[i]->SendBuff(),
+                                          data[i]->RecvBuff(),
+                                          ELEM_COUNT,
+                                          ncclDouble,
+                                          ncclSum,
+                                          comms[i],
+                                          data[i]->dev_ctx.stream()));
     VLOG(1) << "Invoked ncclAllReduce for device " << i;
   }
 

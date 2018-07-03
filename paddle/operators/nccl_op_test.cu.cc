@@ -81,7 +81,8 @@ class NCCLTester : public ::testing::Test {
   }
 
   template <class T>
-  void PerThreadProgram(int gpu_id, const f::OpDescBind &op_desc,
+  void PerThreadProgram(int gpu_id,
+                        const f::OpDescBind &op_desc,
                         f::Scope *scope) {
     std::unique_lock<std::mutex> lk(mu);
     const f::OpDescBind *op1 = &op_desc;
@@ -157,8 +158,11 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
 
   for (size_t i = 0; i < gpu_list.size(); ++i) {
     dev_scopes.emplace_back(&g_scope.NewScope());
-    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-                   *op2.get(), dev_scopes[i]);
+    std::thread th(&NCCLTester::PerThreadProgram<float>,
+                   this,
+                   gpu_list[i],
+                   *op2.get(),
+                   dev_scopes[i]);
     ths.emplace_back(std::move(th));
   }
 
@@ -180,7 +184,10 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
     paddle::memory::Copy(
-        cpu_place, ct, p::GPUPlace(gpu_list[i]), rt,
+        cpu_place,
+        ct,
+        p::GPUPlace(gpu_list[i]),
+        rt,
         recv_tensor.numel() * sizeof(float),
         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
 
@@ -206,8 +213,11 @@ TEST_F(NCCLTester, ncclReduceOp) {
 
   for (size_t i = 0; i < gpu_list.size(); ++i) {
     dev_scopes.emplace_back(&g_scope.NewScope());
-    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-                   *op2.get(), dev_scopes[i]);
+    std::thread th(&NCCLTester::PerThreadProgram<float>,
+                   this,
+                   gpu_list[i],
+                   *op2.get(),
+                   dev_scopes[i]);
     ths.emplace_back(std::move(th));
   }
 
@@ -229,7 +239,10 @@ TEST_F(NCCLTester, ncclReduceOp) {
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
   paddle::memory::Copy(
-      cpu_place, ct, p::GPUPlace(gpu_list[kRoot]), rt,
+      cpu_place,
+      ct,
+      p::GPUPlace(gpu_list[kRoot]),
+      rt,
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
 
@@ -254,8 +267,11 @@ TEST_F(NCCLTester, ncclBcastOp) {
 
   for (size_t i = 0; i < gpu_list.size(); ++i) {
     dev_scopes.emplace_back(&g_scope.NewScope());
-    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-                   *op2.get(), dev_scopes[i]);
+    std::thread th(&NCCLTester::PerThreadProgram<float>,
+                   this,
+                   gpu_list[i],
+                   *op2.get(),
+                   dev_scopes[i]);
     ths.emplace_back(std::move(th));
   }
 
@@ -277,7 +293,10 @@ TEST_F(NCCLTester, ncclBcastOp) {
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
   paddle::memory::Copy(
-      cpu_place, ct, p::GPUPlace(gpu_list[idx]), rt,
+      cpu_place,
+      ct,
+      p::GPUPlace(gpu_list[idx]),
+      rt,
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[idx])->stream());
 
