@@ -30,6 +30,7 @@ __all__ = [
     'detection_output',
     'ssd_loss',
     'detection_map',
+    'anchor_generator',
 ]
 
 __auto__ = [
@@ -998,3 +999,95 @@ def multi_box_head(inputs,
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
+
+
+def anchor_generator(input,
+                     anchor_sizes=None,
+                     aspect_ratios=None,
+                     variance=[0.1, 0.1, 0.2, 0.2],
+                     stride=None,
+                     offset=0.5,
+                     name=None):
+    """
+    **Anchor generator operator**
+
+    Generate anchors for Faster RCNN algorithm.
+    Each position of the input produce N anchors, N =
+    size(anchor_sizes) * size(aspect_ratios). The order of generated anchors
+    is firstly aspect_ratios loop then anchor_sizes loop.
+
+    Args:
+       input(Variable): The input feature map, the format is NCHW.
+       anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
+       given in absolute pixels e.g. [64., 128., 256., 512.].
+       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
+       aspect_ratios(list|tuple|float): The height / width ratios of generated
+            anchors, e.g. [0.5, 1.0, 2.0].
+       variance(list|tuple): The variances to be used in box regression deltas.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       stride(list|turple): The anchors stride across width and height,
+            e.g. [16.0, 16.0]
+       offset(float): Prior boxes center offset. Default: 0.5
+       name(str): Name of the prior box op. Default: None.
+
+    Returns:
+        Anchors(Variable):  The output anchors with a layout of [H, W, num_anchors, 4].
+              H is the height of input, W is the width of input,
+              num_anchors is the box count of each position.
+              Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+        Variances(Variable): The expanded variances of anchors
+              with a layout of [H, W, num_priors, 4].
+              H is the height of input, W is the width of input
+              num_anchors is the box count of each position.
+              Each variance is in (xcenter, ycenter, w, h) format.
+
+
+    Examples:
+
+        .. code-block:: python
+
+            anchor, var = anchor_generator(
+                input=conv1,
+                anchor_sizes=[64, 128, 256, 512],
+                aspect_ratios=[0.5, 1.0, 2.0],
+                variance=[0.1, 0.1, 0.2, 0.2],
+                stride=[16.0, 16.0],
+                offset=0.5)
+    """
+    helper = LayerHelper("anchor_generator", **locals())
+    dtype = helper.input_dtype()
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(anchor_sizes):
+        anchor_sizes = [anchor_sizes]
+    if not _is_list_or_tuple_(aspect_ratios):
+        aspect_ratios = [aspect_ratios]
+    if not (_is_list_or_tuple_(stride) and len(stride) == 2):
+        raise ValueError('stride should be a list or tuple ',
+                         'with length 2, (stride_width, stride_height).')
+
+    anchor_sizes = list(map(float, anchor_sizes))
+    aspect_ratios = list(map(float, aspect_ratios))
+    stride = list(map(float, stride))
+
+    attrs = {
+        'anchor_sizes': anchor_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'stride': stride,
+        'offset': offset
+    }
+
+    anchor = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="anchor_generator",
+        inputs={"Input": input},
+        outputs={"Anchors": anchor,
+                 "Variances": var},
+        attrs=attrs, )
+    anchor.stop_gradient = True
+    var.stop_gradient = True
+    return anchor, var

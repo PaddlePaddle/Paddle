@@ -115,6 +115,7 @@ class MKLDNNMemory {
 
 template <typename T>
 class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
+ public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "gradient_machine.h"
 #include "capi_private.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
 
 #define cast(v) paddle::capi::cast<paddle::capi::CGradientMachine>(v)
 
