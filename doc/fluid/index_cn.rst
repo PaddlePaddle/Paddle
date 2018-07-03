@@ -14,10 +14,3 @@
     new_docs/user_guides/index.rst
     new_docs/advanced_usage/index.rst
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
