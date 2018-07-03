@@ -4,11 +4,13 @@ In this article, we'll explain the reason and the design of parameters segmentai
 ## Background
 In the design of the model, we usually do not limit the size of the parameters used by each layer of the model. Suppose we have 3 parameter servers and 2 trainers now:
 
-![fluid_3_ps_design.png](src/fluid_3_ps_design.png)
+<p align="center">
+<img src="src/fluid_3_ps_design.png" height=400 hspace='10'/> <br />
 
 And we want to train the following network:
 
-![fluid_3_layer_network](src/fluid_3_layers_network.png)
+<p align="center">
+<img src="src/fluid_3_layers_network.png" height=400 hspace='10'/> <br />
 
 ### Reason for segmentation
 It's obvious that the ```fluid.layers.data``` input layer is very wide, causing the w1, b1 parameter dimensions to be very large, reaching 10 * 1000, while the ```fluid.layers.fc``` hidden layer is very narrow, resulting in a 1 * 10 dimension of the w2, b2 parameter.
