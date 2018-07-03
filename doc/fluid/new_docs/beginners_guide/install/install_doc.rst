@@ -23,7 +23,7 @@
 
      pip install paddlepaddle
 
-当前的默认版本为0.13.0，cpu_avx_openblas，您可以通过指定版本号来安装其它版本，例如：
+您可以通过指定版本号来安装其它版本，例如：
 
   .. code-block:: bash
 

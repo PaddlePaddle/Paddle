@@ -12,4 +12,4 @@
     install/install_doc.rst
     quick_start/index.rst
     basics/index.rst
-    basics/Guide.md
+    basics/learning_materials.md
