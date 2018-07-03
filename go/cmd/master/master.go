@@ -28,8 +28,8 @@ import (
 	log "github.com/inconshreveable/log15"
 	"github.com/namsral/flag"
 
+	"github.com/PaddlePaddle/Paddle/go/legacy/utils/networkhelper"
 	"github.com/PaddlePaddle/Paddle/go/master"
-	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
 )
 
 func main() {

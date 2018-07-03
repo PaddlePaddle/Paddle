@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "MemoryHandle.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

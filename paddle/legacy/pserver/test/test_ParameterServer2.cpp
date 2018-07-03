@@ -15,8 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <paddle/legacy/pserver/ParameterClient2.h>
 #include <paddle/legacy/pserver/ParameterServer2.h>
-#include <paddle/utils/Flags.h>
-#include <paddle/utils/Util.h>
+#include <paddle/legacy/utils/Flags.h>
+#include <paddle/legacy/utils/Util.h>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

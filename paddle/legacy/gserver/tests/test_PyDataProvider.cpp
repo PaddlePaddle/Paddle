@@ -18,7 +18,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/legacy/gserver/dataproviders/PyDataProvider.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include "paddle/testing/TestUtil.h"
 

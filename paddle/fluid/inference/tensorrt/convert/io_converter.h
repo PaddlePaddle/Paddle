@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/inference/legacy/utils/singleton.h"
 
 namespace paddle {
 namespace inference {

@@ -18,9 +18,9 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Locks.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Util.h"
 
 DEFINE_int32(test_thread_num, 100, "testing thread number");
 

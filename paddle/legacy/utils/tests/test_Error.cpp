@@ -12,12 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/StringUtil.h"
+#include "paddle/legacy/utils/Error.h"
 
 #include <gtest/gtest.h>
 
-TEST(StringUtil, to) {
-  ASSERT_NEAR(paddle::str::to<double>("12.45"), 12.45, 1e-5);
-  ASSERT_DEATH_IF_SUPPORTED(paddle::str::to<double>("12.45x23"), ".*");
-  ASSERT_DEATH_IF_SUPPORTED(paddle::str::to<int>(""), ".*");
+TEST(Error, testAll) {
+  paddle::Error error;
+  ASSERT_TRUE(error.isOK());
+  error = paddle::Error("I'm the error");
+  ASSERT_FALSE(error.isOK());
+  ASSERT_STREQ("I'm the error", error.msg());
+
+  error = paddle::Error("error2");
+  ASSERT_FALSE(error.isOK());
+  ASSERT_STREQ("error2", error.msg());
+
+  int i = 3;
+  auto error3 = paddle::Error("error%d", i);
+  ASSERT_FALSE(error3.isOK());
+  ASSERT_STREQ("error3", error3.msg());
 }

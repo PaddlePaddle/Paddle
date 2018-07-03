@@ -24,8 +24,8 @@ limitations under the License. */
 
 #include "paddle/legacy/math/Vector.h"
 #include "paddle/legacy/parameter/Parameter.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

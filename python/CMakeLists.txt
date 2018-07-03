@@ -1,4 +1,4 @@
-file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
+file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
 file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/*.py)
 set(PY_FILES paddle/__init__.py
   ${UTILS_PY_FILES}

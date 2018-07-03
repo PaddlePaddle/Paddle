@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
+	"github.com/PaddlePaddle/Paddle/go/legacy/utils/networkhelper"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	log "github.com/inconshreveable/log15"

@@ -11,9 +11,9 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/CpuId.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/CpuId.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 

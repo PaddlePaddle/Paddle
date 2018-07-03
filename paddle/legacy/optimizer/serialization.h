@@ -19,7 +19,7 @@
 #include <string>
 #include <type_traits>
 #include "OptimizerConfig.pb.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 #include "tensor.h"
 
 namespace paddle {

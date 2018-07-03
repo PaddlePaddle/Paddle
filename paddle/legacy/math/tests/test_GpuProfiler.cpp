@@ -17,9 +17,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "paddle/legacy/math/Matrix.h"
 #include "paddle/legacy/math/SparseMatrix.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/Util.h"
 #include "paddle/testing/TestUtil.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

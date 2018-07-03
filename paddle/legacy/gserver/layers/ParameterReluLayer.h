@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "Layer.h"
 #include "paddle/legacy/math/Matrix.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 namespace paddle {
 

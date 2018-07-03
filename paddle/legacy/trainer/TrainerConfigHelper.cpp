@@ -15,8 +15,8 @@ limitations under the License. */
 #include "TrainerConfigHelper.h"
 #include "ParamUtil.h"
 #include "TrainerConfig.pb.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/PythonUtil.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/PythonUtil.h"
 
 DECLARE_string(config);
 DECLARE_string(init_model_path);

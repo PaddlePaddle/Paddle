@@ -20,8 +20,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/inference/engine.h"
+#include "paddle/fluid/inference/legacy/utils/singleton.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {

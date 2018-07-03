@@ -18,8 +18,8 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "paddle/legacy/parameter/Argument.h"
 #include "paddle/legacy/pserver/ParameterClient2.h"
-#include "paddle/utils/ClassRegistrar.h"
-#include "paddle/utils/Error.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/Error.h"
 
 namespace paddle {
 

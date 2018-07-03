@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/legacy/gserver/layers/Layer.h"
 
 #include "paddle/legacy/gserver/gradientmachines/RecurrentGradientMachine.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 namespace paddle {
 

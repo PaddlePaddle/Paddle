@@ -1,7 +1,7 @@
 if(NOT WITH_FLUID_ONLY)
   add_subdirectory(legacy/cuda)
   add_subdirectory(legacy/function)
-  add_subdirectory(utils)
+  add_subdirectory(legacy/utils)
   add_subdirectory(legacy/math)
   add_subdirectory(legacy/gserver)
   add_subdirectory(legacy/parameter)

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/Thread.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Thread.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include "paddle/legacy/parameter/AverageOptimizer.h"
 #include "paddle/legacy/parameter/FirstOrderOptimizer.h"

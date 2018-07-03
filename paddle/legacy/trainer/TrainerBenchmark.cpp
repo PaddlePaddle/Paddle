@@ -15,8 +15,8 @@ limitations under the License. */
 #undef PADDLE_DISABLE_TIMER
 
 #include "Trainer.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/Util.h"
 
 DECLARE_int32(test_period);
 

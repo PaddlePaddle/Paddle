@@ -18,8 +18,8 @@
 
 #include <string.h>
 #include <memory>
-#include "paddle/utils/Common.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 namespace optimizer {

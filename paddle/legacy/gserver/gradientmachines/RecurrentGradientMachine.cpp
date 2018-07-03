@@ -20,9 +20,9 @@ limitations under the License. */
 #include <limits>
 #include "NeuralNetwork.h"
 #include "paddle/legacy/gserver/layers/AgentLayer.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/Util.h"
 
 DEFINE_string(diy_beam_search_prob_so, "", "the diy beam search cost so");
 

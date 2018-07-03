@@ -198,5 +198,5 @@ namespace std {
 %ignore ParameterConfigPrivate;
 %ignore OptimizationConfigPrivate;
 %ignore ParameterTraverseCallbackPrivate;
-%include "utils/GlobalConstants.h"
+%include "legacy/utils/GlobalConstants.h"
 %include "legacy/api/PaddleAPI.h"

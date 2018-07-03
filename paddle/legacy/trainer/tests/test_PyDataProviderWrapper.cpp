@@ -18,7 +18,7 @@ limitations under the License. */
 #include <paddle/legacy/gserver/dataproviders/DataProvider.h>
 #include <paddle/legacy/math/Matrix.h>
 #include <paddle/legacy/parameter/Argument.h>
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/legacy/utils/PythonUtil.h>
 #include <fstream>
 #include <typeinfo>
 #include <unordered_map>

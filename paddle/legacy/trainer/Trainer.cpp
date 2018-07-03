@@ -23,11 +23,11 @@ limitations under the License. */
 
 #include <google/protobuf/text_format.h>
 
-#include "paddle/utils/Common.h"
-#include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/PythonUtil.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/GlobalConstants.h"
+#include "paddle/legacy/utils/PythonUtil.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include "RemoteParameterUpdater.h"
 #include "TesterConfig.h"

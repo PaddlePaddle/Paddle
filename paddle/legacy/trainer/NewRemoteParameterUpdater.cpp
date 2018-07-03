@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "NewRemoteParameterUpdater.h"
 #include "Trainer.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 DECLARE_int32(trainer_id);
 DECLARE_string(save_dir);
