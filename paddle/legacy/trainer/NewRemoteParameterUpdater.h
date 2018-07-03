@@ -20,8 +20,8 @@ limitations under the License. */
 #include "ParameterUpdater.h"
 #include "libpaddle_pserver_cclient.h"
 #include "paddle/legacy/pserver/ParameterClient2.h"
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Queue.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

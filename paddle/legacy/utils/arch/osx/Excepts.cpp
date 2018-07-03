@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Excepts.h"
+#include "paddle/legacy/utils/Excepts.h"
 
 #if defined(__APPLE__) || defined(__OSX__)
 #if defined(__arm__) || defined(__arm64__)

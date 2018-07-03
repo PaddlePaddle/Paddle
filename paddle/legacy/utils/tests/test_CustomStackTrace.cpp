@@ -15,10 +15,10 @@ limitations under the License. */
 #include <gflags/gflags.h>  // NOLINT
 #include <gtest/gtest.h>    // NOLINT
 
-#include "paddle/utils/CustomStackTrace.h"
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/CustomStackTrace.h"
+#include "paddle/legacy/utils/Locks.h"
+#include "paddle/legacy/utils/StringUtil.h"
+#include "paddle/legacy/utils/Util.h"
 
 DEFINE_int32(test_thread_num, 10, "testing thread number");
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "ParameterUpdaterBase.h"
 #include <fstream>
 #include "hl_gpu.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 

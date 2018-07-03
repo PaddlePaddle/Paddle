@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "BufferArg.h"
 #include "paddle/legacy/math/Matrix.h"
-#include "paddle/utils/Any.h"
-#include "paddle/utils/ClassRegistrar.h"
-#include "paddle/utils/Error.h"
+#include "paddle/legacy/utils/Any.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/Error.h"
 
 namespace paddle {
 

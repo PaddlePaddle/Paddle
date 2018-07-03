@@ -15,7 +15,7 @@ limitations under the License. */
 #include "MulOp.h"
 #include "GemmFunctor.h"
 #include "paddle/legacy/math/SIMDFunctions.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 namespace {
 inline void vecAddTo(real* a, const real* b, real scaleB, size_t len) {

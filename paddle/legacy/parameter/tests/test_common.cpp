@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/utils/Util.h>
+#include <paddle/legacy/utils/Util.h>
 #include <stdlib.h>
 
 #include <gtest/gtest.h>
 #include <paddle/legacy/parameter/ParameterUpdateFunctions.h>
-#include <paddle/utils/Flags.h>
-#include <paddle/utils/Stat.h>
-#include <paddle/utils/Thread.h>
+#include <paddle/legacy/utils/Flags.h>
+#include <paddle/legacy/utils/Stat.h>
+#include <paddle/legacy/utils/Thread.h>
 
 using namespace paddle;  // NOLINT
 

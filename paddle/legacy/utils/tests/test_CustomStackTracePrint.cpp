@@ -12,23 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Error.h"
+#include "paddle/legacy/utils/CustomStackTrace.h"
+#include "paddle/legacy/utils/StringUtil.h"
+#include "paddle/legacy/utils/Util.h"
 
-#include <gtest/gtest.h>
+int main(int argc, char** argv) {
+  paddle::initMain(argc, argv);
 
-TEST(Error, testAll) {
-  paddle::Error error;
-  ASSERT_TRUE(error.isOK());
-  error = paddle::Error("I'm the error");
-  ASSERT_FALSE(error.isOK());
-  ASSERT_STREQ("I'm the error", error.msg());
+  for (size_t i = 0; i < 1000; ++i) {
+    paddle::gLayerStackTrace.push("layer_" + paddle::str::to_string(i));
+    if (i == 998) {
+      throw "Unhandle exception";
+    }
+  }
 
-  error = paddle::Error("error2");
-  ASSERT_FALSE(error.isOK());
-  ASSERT_STREQ("error2", error.msg());
-
-  int i = 3;
-  auto error3 = paddle::Error("error%d", i);
-  ASSERT_FALSE(error3.isOK());
-  ASSERT_STREQ("error3", error3.msg());
+  return 0;
 }

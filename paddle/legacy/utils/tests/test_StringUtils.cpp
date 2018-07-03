@@ -12,19 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/CustomStackTrace.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/StringUtil.h"
 
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
+#include <gtest/gtest.h>
 
-  for (size_t i = 0; i < 1000; ++i) {
-    paddle::gLayerStackTrace.push("layer_" + paddle::str::to_string(i));
-    if (i == 998) {
-      throw "Unhandle exception";
-    }
-  }
-
-  return 0;
+TEST(StringUtil, to) {
+  ASSERT_NEAR(paddle::str::to<double>("12.45"), 12.45, 1e-5);
+  ASSERT_DEATH_IF_SUPPORTED(paddle::str::to<double>("12.45x23"), ".*");
+  ASSERT_DEATH_IF_SUPPORTED(paddle::str::to<int>(""), ".*");
 }

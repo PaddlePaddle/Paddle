@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <fenv.h>
 #include "paddle/legacy/pserver/ParameterServerController.h"
-#include "paddle/utils/PythonUtil.h"
+#include "paddle/legacy/utils/PythonUtil.h"
 
 #include "ParamUtil.h"
 #include "Trainer.h"

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "GruCompute.h"
 #include "Layer.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 namespace paddle {
 

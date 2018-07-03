@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/inference/legacy/utils/singleton.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 
 namespace paddle {

@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string.h>
 #include <type_traits>
 #include "capi.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 static std::vector<paddle_real> randomBuffer(size_t bufSize) {
   auto& eng = paddle::ThreadLocalRandomEngine::get();

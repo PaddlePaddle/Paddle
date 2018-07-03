@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/legacy/parameter/OptimizerWithRegularizer.h"
 #include "paddle/legacy/parameter/Parameter.h"
 #include "paddle/legacy/parameter/Regularizer.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include <memory>
 #include <vector>

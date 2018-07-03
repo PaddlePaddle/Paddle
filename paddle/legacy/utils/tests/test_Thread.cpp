@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Thread.h>
+#include <paddle/legacy/utils/Thread.h>
 #include <atomic>
 
 using paddle::AsyncThreadPool;  // NOLINT

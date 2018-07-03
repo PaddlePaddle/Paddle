@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "ParameterUpdater.h"
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
-#include "paddle/utils/Thread.h"
+#include "paddle/legacy/utils/Thread.h"
 
 namespace paddle {
 

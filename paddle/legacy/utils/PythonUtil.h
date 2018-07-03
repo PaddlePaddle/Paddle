@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 // clang-format off
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #ifndef PADDLE_NO_PYTHON
 // must include the following two blocks, otherwise,

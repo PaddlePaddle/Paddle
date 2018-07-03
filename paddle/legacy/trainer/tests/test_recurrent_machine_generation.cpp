@@ -15,7 +15,7 @@ limitations under the License. */
 #include <fstream>
 
 #include <paddle/legacy/trainer/Trainer.h>
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/legacy/utils/PythonUtil.h>
 
 #include <gtest/gtest.h>
 

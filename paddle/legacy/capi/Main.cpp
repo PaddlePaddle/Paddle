@@ -19,8 +19,8 @@ limitations under the License. */
 #include "capi_private.h"
 #include "main.h"
 #include "paddle/legacy/trainer/TrainerConfigHelper.h"
-#include "paddle/utils/Excepts.h"
-#include "paddle/utils/PythonUtil.h"
+#include "paddle/legacy/utils/Excepts.h"
+#include "paddle/legacy/utils/PythonUtil.h"
 
 static void initPaddle(int argc, char** argv) {
   paddle::initMain(argc, argv);

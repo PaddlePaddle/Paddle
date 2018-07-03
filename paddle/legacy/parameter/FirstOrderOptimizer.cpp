@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "FirstOrderOptimizer.h"
 #include "paddle/legacy/math/TrainingAlgorithmOp.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include <cmath>
 
