@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "PaddleAPI.h"
 
-#include "paddle/parameter/Parameter.h"
+#include "paddle/legacy/parameter/Parameter.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/PythonUtil.h"

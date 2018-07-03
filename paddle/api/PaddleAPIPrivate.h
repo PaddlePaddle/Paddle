@@ -14,9 +14,9 @@ limitations under the License. */
 #pragma once
 #include <memory>
 #include "PaddleAPI.h"
-#include "paddle/gserver/evaluators/Evaluator.h"
-#include "paddle/gserver/gradientmachines/GradientMachine.h"
-#include "paddle/parameter/ParameterUpdaterBase.h"
+#include "paddle/legacy/gserver/evaluators/Evaluator.h"
+#include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
+#include "paddle/legacy/parameter/ParameterUpdaterBase.h"
 #include "paddle/trainer/TrainerConfigHelper.h"
 
 struct GradientMachinePrivate {
