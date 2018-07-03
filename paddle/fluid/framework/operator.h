@@ -347,9 +347,9 @@ class OpKernel : public OpKernelBase {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  using OpKernelFunc = std::function<void(const ExecutionContext&)>;
   using OpKernelMap =
-      std::unordered_map<OpKernelType, std::unique_ptr<OpKernelBase>,
-                         OpKernelType::Hash>;
+      std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
@@ -135,15 +136,14 @@ class WhileGradOp : public framework::OperatorBase {
         auto &og_inside =
             detail::Ref(cur_scope.Var(inside_og_name),
                         "Cannot find inside gradient %s", inside_og_name);
-        if (og_outside.Type().hash_code() ==
-            typeid(framework::LoDTensor).hash_code()) {
+        if (framework::IsType<framework::LoDTensor>(og_outside.Type())) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
           auto &inside_tensor =
               detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
-        } else if (og_outside.Type().hash_code() ==
-                   typeid(framework::LoDTensorArray).hash_code()) {
+        } else if (framework::IsType<framework::LoDTensorArray>(
+                       og_outside.Type())) {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
