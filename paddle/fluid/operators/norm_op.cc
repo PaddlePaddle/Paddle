@@ -23,7 +23,16 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis on which to apply normalization. If axis < 0, "
                  "the dimension to normalization is rank(X) + axis. -1 is "
-                 "the last dimension.");
+                 "the last dimension. (default -1)")
+        .SetDefault(-1);
+    AddAttr<int>("p",
+                 "the order of the normalization, only 1 or 2 are "
+                 "supported. (default 2)")
+        .SetDefault(2)
+        .AddCustomChecker([](const int& p) {
+          PADDLE_ENFORCE(p == 1 || p == 2,
+                         "Only 1 or 2 are supported for the parameter p.");
+        });
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) The epsilon value is used "
                    "to avoid division by zero.")
@@ -35,8 +44,9 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) A tensor of the same shape as X.");
     AddComment(R"DOC(
 
-Given a tensor, apply 2-normalization along the provided axis.
-
+Given a tensor, apply Lp-normalization along the provided axis.
+For Example:
+if p = 2,
 $$
 y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
 $$

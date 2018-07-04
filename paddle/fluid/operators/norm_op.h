@@ -63,16 +63,30 @@ class NormKernel : public framework::OpKernel<T> {
     auto norm = norm_e.reshape(norm_shape);
 
     Eigen::DSizes<int, 1> rdim(1);
-    // y = x / sqrt((sum(x * x) + epsilon))
-    // norm = sqrt(sum(x * x) + epsilon)
-    auto sum = x.pow(2).sum(rdim) + eps;
-    norm.device(*place) = sum.sqrt();
+    int p = ctx.Attr<int>("p");
+    switch (p) {
+      case 1: {
+        // y = x / ( sum(abs(x)) + epsilon )
+        // norm = sum(abs(x)) + epsilon
+        norm.device(*place) = x.abs().sum(rdim) + eps;
+      } break;
+      case 2: {
+        // y = x / sqrt((sum(x * x) + epsilon))
+        // norm = sqrt(sum(x * x) + epsilon)
+        auto sum = x.pow(2).sum(rdim) + eps;
+        norm.device(*place) = sum.sqrt();
+      } break;
+      default:
+        PADDLE_THROW("unsupported p's value: %d", p);
+        break;
+    }
     // y = x / norm
     Eigen::DSizes<int, 3> rshape(pre, 1, post);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
     y.device(*place) = x / norm.reshape(rshape).broadcast(bcast);
   }
 };
+
 template <typename DeviceContext, typename T, typename AttrType = T>
 class NormGradKernel : public framework::OpKernel<T> {
  public:
@@ -110,19 +124,38 @@ class NormGradKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 1> rdim(1);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
     Eigen::DSizes<int, 3> rshape(pre, 1, post);
-
-    // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
-    //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
-    //    = [dy - x * sum(x*dy) / (sum(x*x) + e)] / sqrt(sum(x*x))
-    // 1. sum = sum(x*dy)
-    sum.device(*place) = (x * dy).sum(rdim);
-    // 2. dx = x * sum
-    dx.device(*place) = sum.reshape(rshape).broadcast(bcast) * x;
-    // 3. dx / (sum(x*x) + e)
-    // where, norm.pow(2) = sum(x*x) + e, which is calculated in forward.
-    dx.device(*place) = dx / norm.pow(2).broadcast(bcast);
-    // 4. [dy - dx] / sqrt(sum(x*x))
-    dx.device(*place) = (dy - dx) / norm.broadcast(bcast);
+    int p = ctx.Attr<int>("p");
+    switch (p) {
+      case 1: {
+        // dx = dy * [sum(abs(x)) - x * sign(x)])
+        //              / [sum(abs(x) + e)*sum(abs(x) + e)]
+        // 1. dx = x * sign(x)
+        dx.device(*place) = x * x.sign();
+        // 2. dx = sum - dx
+        dx.device(*place) = sum.reshape(rshape).broadcast(bcast) - dx;
+        // 3. dx = dx / (sum * sum)
+        dx.device(*place) = dx / norm.pow(2).broadcast(bcast);
+        // 4. dy * dx
+        dx.device(*place) = dy * dx;
+      } break;
+      case 2: {
+        // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
+        //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
+        //    = [dy - x * sum(x*dy) / (sum(x*x) + e)] / sqrt(sum(x*x))
+        // 1. sum = sum(x*dy)
+        sum.device(*place) = (x * dy).sum(rdim);
+        // 2. dx = x * sum
+        dx.device(*place) = sum.reshape(rshape).broadcast(bcast) * x;
+        // 3. dx / (sum(x*x) + e)
+        // where, norm.pow(2) = sum(x*x) + e, which is calculated in forward.
+        dx.device(*place) = dx / norm.pow(2).broadcast(bcast);
+        // 4. [dy - dx] / sqrt(sum(x*x))
+        dx.device(*place) = (dy - dx) / norm.broadcast(bcast);
+      } break;
+      default:
+        PADDLE_THROW("unsupported p's value: %d", p);
+        break;
+    }
   }
 };
 }  // namespace operators

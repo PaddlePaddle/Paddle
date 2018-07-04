@@ -17,12 +17,58 @@ import numpy as np
 from op_test import OpTest
 
 
+def l1_norm(x, axis, qpsilon):
+    x1 = np.fabs(x)
+    s = np.sum(x1, axis=axis, keepdims=True)
+    y = x / np.broadcast_to(s, x.shape)
+    return y, s
+
+
 def l2_norm(x, axis, epsilon):
     x2 = x**2
     s = np.sum(x2, axis=axis, keepdims=True)
     r = np.sqrt(s + epsilon)
     y = x / np.broadcast_to(r, x.shape)
     return y, r
+
+
+class TestNormL1Op(OpTest):
+    def setUp(self):
+        self.op_type = "norm"
+        self.init_test_case()
+        x = np.random.random(self.shape).astype("float64")
+        y, norm = l1_norm(x, self.axis, self.epsilon)
+        self.inputs = {'X': x}
+        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis, 'p': self.p}
+        self.outputs = {'Out': y, 'Norm': norm}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.1)
+
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 4]
+        self.axis = 1
+        self.p = 1
+        self.epsilon = 1e-8
+
+
+class TestNormOpL12(TestNormL1Op):
+    def init_test_case(self):
+        self.shape = [5, 3, 9, 7]
+        self.axis = 0
+        self.p = 1
+        self.epsilon = 1e-8
+
+
+class TestNormOpL13(TestNormL1Op):
+    def init_test_case(self):
+        self.shape = [5, 3, 2, 7]
+        self.axis = -1
+        self.p = 1
+        self.epsilon = 1e-8
 
 
 class TestNormOp(OpTest):
