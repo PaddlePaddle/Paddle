@@ -296,8 +296,6 @@ function build_ios() {
 function run_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    readelf -d python/paddle/fluid/core.so
-    ldd python/paddle/fluid/core.so
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -317,8 +315,6 @@ EOF
 function assert_api_not_changed() {
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
-    readelf -d ../python/paddle/fluid/core.so
-    ldd ../python/paddle/fluid/core.so
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
