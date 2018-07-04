@@ -16,7 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise_op.h"
 namespace ops = paddle::operators;
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, "Add");
-REGISTER_ELEMWISE_OP(elementwise_add, "Add", "Out = X + Y");
+REGISTER_ELEMWISE_EXPLICIT_OP(elementwise_add, "Add", "Out = X + Y", "Out",
+                              "X");
 
 REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,
                   __ElemwiseOpelementwise_addMaker__,

@@ -63,7 +63,29 @@ TEST(ProtoMaker, InplaceOutput) {
   TestInplaceProtoMaker proto_maker;
   ASSERT_THROW(proto_maker(&op_proto, &op_checker),
                paddle::platform::EnforceNotMet);
-  // proto_maker(&op_proto, &op_checker);
-  // proto_maker.Make();
-  // ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
+}
+
+class TestReuseProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "input of test op");
+    AddOutput("Out", "output of test op");
+    TestReuse();
+  }
+  virtual void TestReuse() {}
+};
+
+class TestReuseProtoMaker2 : public TestReuseProtoMaker {
+ public:
+  void TestReuse() {
+    PADDLE_ENFORCE(Reuse("Out", "X") == true);
+    PADDLE_ENFORCE(Reuse("Out", "Y") == false);
+  }
+};
+
+TEST(ProtoMaker, Reuse) {
+  paddle::framework::proto::OpProto op_proto;
+  paddle::framework::OpAttrChecker op_checker;
+  TestReuseProtoMaker2 proto_maker;
+  proto_maker(&op_proto, &op_checker);
 }

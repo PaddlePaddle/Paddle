@@ -140,12 +140,13 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    dy->mutable_data<T>(ctx.GetPlace());
+    auto *x = dx, *y = dy;
+    auto* out = dout;
 
     if (platform::is_cpu_place(ctx.GetPlace()) && (x->dims() == y->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
