@@ -27,12 +27,8 @@ __all__ = [
     'get_inference_program', 'save_checkpoint', 'load_checkpoint',
     'clean_checkpoint', 'load_persist_vars_without_grad',
     'load_lookup_table_vars', 'save_persist_vars_without_grad',
-    'get_latest_checkpoint_serial', 'foo'
+    'get_latest_checkpoint_serial'
 ]
-
-
-def foo():
-    pass
 
 
 def is_parameter(var):
