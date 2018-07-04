@@ -5,7 +5,7 @@
 
 若您的系统为Linux或Windows，您可以使用我们提供的安装包来安装PaddlePaddle。
 
-对于MacOS系统，我们暂未提供安装包，您可以使用**从源码编译**的方式安装。
+对于MacOS系统，我们暂未提供安装包，您可以使用 **从源码编译** 的方式安装。
 
 
 .. _install_linux:
@@ -177,7 +177,7 @@ Docker安装完成后，请您执行下面的步骤：
 在MacOS安装PaddlePaddle
 --------
 
-对于MacOS系统，我们暂未提供pip安装方式，您可以使用**从源码编译**的方式安装。
+对于MacOS系统，我们暂未提供pip安装方式，您可以使用 **从源码编译** 的方式安装。
 
 .. _others:
 
@@ -406,7 +406,7 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 
     cmake .. -DWITH_GPU=ON -DWITH_TESTING=OFF -DCUDNN_ROOT=/opt/cudnnv5
 
-**注意：这几个编译选项的设置，只在第一次cmake的时候有效。如果之后想要重新设置，推荐清理整个编译目录（** :code:`rm -rf` ）**后，再指定。**
+注意：这几个编译选项的设置，只在第一次cmake的时候有效。如果之后想要重新设置，推荐清理整个编译目录（ :code:`rm -rf` ）后，再指定。
 
 .. _install_docker:
 
