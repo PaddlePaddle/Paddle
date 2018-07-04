@@ -21,209 +21,71 @@ from op_test import OpTest
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
     def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, 2)
-        new_shape = (1, 3, 1, 5)
-
+        self.init_test_case()
         self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"axes": self.axes, "inplace": False}
+        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (1, 2)
+        self.new_shape = (3, 1, 1, 5)
 
 
 # Correct: Single input index.
-class TestUnsqueezeOp1(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (-1, )
-        new_shape = (3, 5, 1)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestUnsqueezeOp1(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (-1, )
+        self.new_shape = (3, 5, 1)
 
 
 # Correct: Mixed input axis.
-class TestUnsqueezeOp2(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, -1)
-        new_shape = (1, 3, 5, 1)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestUnsqueezeOp2(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (0, -1)
+        self.new_shape = (1, 3, 5, 1)
 
 
 # Correct: There is duplicated axis.
-class TestUnsqueezeOp3(OpTest):
-    def setUp(self):
-        ori_shape = (3, 2, 5)
-        axes = (0, 3, 3)
-        new_shape = (1, 3, 2, 1, 1, 5)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestUnsqueezeOp3(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (0, 3, 3)
+        self.new_shape = (1, 3, 2, 1, 1, 5)
 
 
 # Correct: Inplace.
-class TestUnsqueezeOpInplace1(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, 2)
-        new_shape = (1, 3, 1, 5)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": True}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestUnsqueezeOpInplace1(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (0, 2)
+        self.new_shape = (1, 3, 1, 5)
 
 
 # Correct: Inplace. There is mins index.
-class TestUnsqueezeOpInplace2(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, -2)
-        new_shape = (1, 3, 1, 5)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": True}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestUnsqueezeOpInplace2(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (0, -2)
+        self.new_shape = (1, 3, 1, 5)
 
 
 # Correct: Inplace. There is duplicated axis.
-class TestUnsqueezeOpInplace3(OpTest):
-    def setUp(self):
-        ori_shape = (3, 2, 5)
-        axes = (0, 3, 3)
-        new_shape = (1, 3, 2, 1, 1, 5)
+class TestUnsqueezeOpInplace3(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (0, 3, 3)
+        self.new_shape = (1, 3, 2, 1, 1, 5)
 
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": True}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-
-'''
-# Error: Output dimension is error.
-class TestUnsqueezeOp4(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, 3)
-        new_shape = (1, 3, 1, 1, 5)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-# Error: Input axis is large than output range.
-class TestUnsqueezeOp5(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, 4)
-        new_shape = (1, 3, 5, 1)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-        def test_check_grad(self):
-            self.check_grad(["X"], "Out")
-
-# Error: Input axes is large than Eigen limit.
-class TestUnsqueezeOp6(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, 2, 10)
-        new_shape = (1, 3, 1, 5, 1)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-# Error: Input axes size is large than Eigen limit.
-class TestUnsqueezeOp7(OpTest):
-    def setUp(self):
-        ori_shape = (3, 5)
-        axes = (0, 2, 2, 2, 2, 2)
-        new_shape = (1, 3, 1, 1, 5, 1)
-
-        self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"axes": axes, "inplace": False}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-'''
 
 if __name__ == "__main__":
     unittest.main()
