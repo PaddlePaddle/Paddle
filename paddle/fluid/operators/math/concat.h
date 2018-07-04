@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
@@ -55,7 +57,8 @@ template <typename DeviceContext, typename T>
 class ConcatGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const int axis, std::vector<framework::Tensor>& outputs);
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis, std::vector<framework::Tensor*>* outputs);
 };
 
 }  // namespace math

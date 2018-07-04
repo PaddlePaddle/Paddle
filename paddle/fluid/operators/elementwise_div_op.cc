@@ -14,24 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_div_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
-
-namespace paddle {
-namespace operators {
-class ElementwiseDivOpMaker : public ElementwiseOpMaker {
- public:
-  ElementwiseDivOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Div", "Out = X / Y");
-    AddComment(comment_);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_div, ops::ElementwiseOp, ops::ElementwiseDivOpMaker,
-            elementwise_div_grad, ops::ElementwiseOpGrad);
+REGISTER_ELEMWISE_OP(elementwise_div, "Div", "Out = X / Y");
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,

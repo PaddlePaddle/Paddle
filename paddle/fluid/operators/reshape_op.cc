@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/reshape_op.h"
+#include <string>
+#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -25,82 +27,152 @@ class ReshapeOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    // input check
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ReshapeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ReshapeOp should not be null.");
 
-    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
+    const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    PADDLE_ENFORCE(!shape.empty(),
+                   "The shape information must be set by Attr(shape).");
+
+    if (ctx->HasInput("Shape") && ctx->IsRuntime()) {
+      // If true, set the shape of Output(Out) according to Input(Shape) in
+      // ReshapeKernel with ExecutionContext. Also check LoD in ReshapeKernel.
+      ctx->ShareLoD("X", /*->*/ "Out");
+      return;
+    }
+
     auto x_dims = ctx->GetInputDim("X");
-
-    std::vector<size_t> neg_dims_idx;
-    // set some dimension to -1 if it is unknown
-    const int unknown_size = -1;
-    for (size_t i = 0; i < shape.size(); ++i) {
-      PADDLE_ENFORCE(shape[i] > 0 || shape[i] == unknown_size,
-                     "Each dimension of Attr(shape) must be positive or %d.",
-                     unknown_size);
-      if (shape[i] == unknown_size) {
-        neg_dims_idx.push_back(i);
-        PADDLE_ENFORCE(neg_dims_idx.size() <= 1,
-                       "Only one dimension of Attr(shape) can be unknown.");
-      }
-    }
-
-    int64_t capacity =
-        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    int64_t in_size = framework::product(x_dims);
-    if (neg_dims_idx.size() == 1) {
-      // dim infer
-      shape[neg_dims_idx[0]] = in_size / (-capacity);
-      // recalculate capacity
-      capacity = shape[neg_dims_idx[0]] * (-capacity);
-    }
-    // capacity check
-    PADDLE_ENFORCE(capacity == in_size,
-                   "The size of Input(X) mismatches with Attr(shape).");
-    // resize output
-    std::vector<int64_t> shape_int64(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    auto out_dims = framework::make_ddim(shape_int64);
+    auto out_dims = ValidateShape(shape, x_dims);
     ctx->SetOutputDim("Out", out_dims);
-    if (shape[0] == x_dims[0]) {
-      // Only pass LoD when the first dimension is equal between
-      // output and input.
+    if (x_dims[0] == out_dims[0]) {
+      // Only pass LoD when the first dimension of output and Input(X)
+      // are the same.
       ctx->ShareLoD("X", /*->*/ "Out");
     }
+  }
+
+  static framework::DDim ValidateShape(const std::vector<int> shape,
+                                       const framework::DDim &in_dims) {
+    const int64_t in_size = framework::product(in_dims);
+    // only one dimension can be set to -1, whose size will be automatically
+    // infered.
+    const int64_t unk_dim_val = -1;
+    const int64_t copy_dim_val = 0;
+
+    std::vector<int64_t> output_shape(shape.size(), 0);
+    int64_t capacity = 1;
+    int unk_dim_idx = -1;
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (shape[i] == unk_dim_val) {
+        PADDLE_ENFORCE(
+            unk_dim_idx == -1,
+            "Only one input dimension of Attr(shape) can be unknown.");
+        unk_dim_idx = i;
+      } else if (shape[i] == copy_dim_val) {
+        PADDLE_ENFORCE(
+            static_cast<int>(i) < in_dims.size(),
+            "The index of dimension to copy from input shape must be less "
+            "than the size of input shape.");
+      } else {
+        PADDLE_ENFORCE(
+            shape[i] > 0,
+            "Each input dimension of Attr(shape) must not be negtive except "
+            "one unknown dimension.");
+      }
+
+      capacity *= (shape[i] ? shape[i] : in_dims[i]);
+      output_shape[i] =
+          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+    }
+
+    if (unk_dim_idx != -1) {
+      if (in_size > 0) {
+        // in_size < 0 and is un-determinate in compile time, skip the check,
+        // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
+        // capacity = -24, in_size = -8, output_shape[0] = 0
+        // the following check will fail.
+        output_shape[unk_dim_idx] = -in_size / capacity;
+        PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
+                          "Invalid shape is given.");
+      } else {
+        output_shape[unk_dim_idx] = -1;
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
+    }
+    return framework::make_ddim(output_shape);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input tensor of reshape operator.");
-    AddOutput("Out", "The output tensor of reshape operator.");
-    AddAttr<std::vector<int>>("shape",
-                              "(vector<int>) "
-                              "Target shape of reshape operator.");
+  void Make() override {
+    AddInput("X", "(Tensor). The input tensor of reshape operator.");
+    AddInput("Shape",
+             "(Tensor<int32>, optional). If provided, reshape according to "
+             "this given shape. That is to say it has a higher priority than "
+             "the shape attribute, while the shape attribute still should be "
+             "set correctly to gurantee shape inference in compile time.")
+        .AsDispensable();
+    AddOutput("Out", "(Tensor). The output tensor of reshape operator.");
+    AddAttr<std::vector<int>>(
+        "shape", "(std::vector<int>) Target shape of reshape operator.");
     AddAttr<bool>("inplace",
-                  "Change the source tensor's shape without copy memory.")
-        .SetDefault(true);
+                  "(default: false) Change the source tensor's shape without "
+                  "memory copy. When Attr(inplace) is set true, the output "
+                  "tensor shares memory with Input(X), otherwise, a new output "
+                  "tensor is created, and its data are copied from Input(x).")
+        .SetDefault(false);
     AddComment(R"DOC(
 Reshape Operator.
 
-Reshape Input(X) into the shape specified by Attr(shape).
+Reshape Input(X) into the shape specified by Attr(shape) or Input(Shape). The
+data in Input(X) are unchanged.
 
-An example:
-Given a 2-D tensor X with 2 rows and 2 columns : [[1, 2], [3, 4]]
+Examples:
 
-and target shape = [1, 4], the reshape operator will transform
-the tensor X into a 2-D tensor: [[1, 2, 3, 4]]
+1. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+specified by Attr(shape) is [6, 8], the reshape operator will transform Input(X)
+into a 2-D tensor with shape [6, 8] and leaving Input(X)'s data unchanged.
 
-One dimension in the target shape can be set -1, representing that its
-size is unknown. In this case, the real dimension will be infered from 
-the original shape of Input(X) and other dimensions in the target shape.
+2. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+specified by Attr(shape) is [2, 3, -1, 2], the reshape operator will transform
+Input(X) into a 4-D tensor with shape [2, 3, 4, 2] and leaving Input(X)'s data
+unchanged. In this case, one and only dimension of Attr(shape) can be set to -1,
+the value of this dimension is inferred from the total element number of
+Input(X) and remaining dimensions.
+
+3. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+specified by Attr(shape) is [-1, 0, 3, 2], the reshape operator will transform
+Input(X) into a 4-D tensor with shape [2, 4, 3, 2] and leaving Input(X)'s data
+unchanged. In this case, besides -1, 0 means the actual dimension value is going
+to be copied from the corresponding dimension of Input(X).
+
+Note:
+
+1. One and only one dimension in Attr(shape) can be set -1. In this case,
+the actual dimension value will be infered from the total element number of
+Input(X) and remaining dimensions.
+
+2. More than one dimensions in Attr(shape) can be set to 0, which means the real
+dimension value will be copied from Input(X) at runtime. Note that the index of
+0 can not exceed Rank(X). For example, Input(X) is a 3-D tensor with shape
+[2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
+
+3. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
+Attr(shape) still should be set correctly to gurantee shape inference in 
+compile-time.
+
 )DOC");
   }
 };
@@ -119,20 +191,103 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) shouldn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
+  }
+};
+
+class ReshapeKernel {
+ public:
+  void operator()(const framework::ExecutionContext &ctx) const {
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *in = ctx.Input<framework::LoDTensor>("X");
+
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
+
+    framework::DDim out_dims = out->dims();
+
+    if (shape_tensor) {
+      auto *shape_data = shape_tensor->data<int>();
+      framework::Tensor cpu_shape_tensor;
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+        shape_data = cpu_shape_tensor.data<int>();
+      }
+      auto shape =
+          std::vector<int>(shape_data, shape_data + shape_tensor->numel());
+      out_dims = ReshapeOp::ValidateShape(shape, in->dims());
+    }
+    if (!in->lod().empty()) {
+      PADDLE_ENFORCE_EQ(
+          out_dims[0], in->dims()[0],
+          "Reshape operator cannot reshape an input sequence batch "
+          "into an output sequence batch that has a different "
+          "number of time steps. Please consider using "
+          "sequence_reshape op.");
+    }
+
+    bool inplace = ctx.Attr<bool>("inplace");
+    out->Resize(out_dims);
+    if (!inplace) {
+      out->mutable_data(ctx.GetPlace(), in->type());
+      framework::TensorCopySync(*in, ctx.GetPlace(), out);
+      out->Resize(out_dims);
+    } else {
+      out->ShareDataWith(*in);
+      out->Resize(out_dims);
+    }
+  }
+};
+
+class ReshapeGradKernel {
+ public:
+  void operator()(const framework::ExecutionContext &ctx) const {
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    d_x->mutable_data(ctx.GetPlace(), d_out->type());
+    bool inplace = ctx.Attr<bool>("inplace");
+
+    auto in_dims = d_x->dims();
+    if (!inplace) {
+      framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+      ctx.device_context().Wait();
+      d_x->Resize(in_dims);
+    } else {
+      d_x->ShareDataWith(*d_out);
+      d_x->Resize(in_dims);
+    }
+  }
 };
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OP(reshape, ops::ReshapeOp, ops::ReshapeOpMaker, reshape_grad,
-            ops::ReshapeGradOp);
-REGISTER_OP_CPU_KERNEL(reshape, ops::ReshapeKernel<CPU, float>,
-                       ops::ReshapeKernel<CPU, double>,
-                       ops::ReshapeKernel<CPU, int>,
-                       ops::ReshapeKernel<CPU, int64_t>);
-REGISTER_OP_CPU_KERNEL(reshape_grad, ops::ReshapeGradKernel<CPU, float>,
-                       ops::ReshapeGradKernel<CPU, double>,
-                       ops::ReshapeGradKernel<CPU, int>,
-                       ops::ReshapeGradKernel<CPU, int64_t>);
+REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
+                               ops::ReshapeKernel, int, ops::ReshapeKernel,
+                               int64_t, ops::ReshapeKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
+                               double, ops::ReshapeGradKernel, int,
+                               ops::ReshapeGradKernel, int64_t,
+                               ops::ReshapeGradKernel);
+
+#ifdef PADDLE_WITH_CUDA
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
+                                ops::ReshapeKernel, int, ops::ReshapeKernel,
+                                int64_t, ops::ReshapeKernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
+                                double, ops::ReshapeGradKernel, int,
+                                ops::ReshapeGradKernel, int64_t,
+                                ops::ReshapeGradKernel);
+#endif

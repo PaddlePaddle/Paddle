@@ -41,11 +41,11 @@ We will need these OPs: *Send*, *Recv*, *Enqueue*, *Dequeue*.
 Below is an example of converting the user defined graph to the
 subgraphs for the trainer and the parameter server:
 
-<img src="src/local-graph.png" width="300"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/local-graph.png" width="300"/>
 
 After converting:
 
-<img src="src/dist-graph.png" width="700"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/dist-graph.png" width="700"/>
 
 1. The parameter variable W and its optimizer program are placed on the parameter server.
 1. Operators are added to the program.
@@ -65,12 +65,11 @@ For embedding layers, the gradient may have many rows containing only 0 when tra
 if the gradient uses a dense tensor to do parameter optimization,
 it could spend unnecessary memory, slow down the calculations and waste
 the bandwidth while doing distributed training.
-In Fluid, we introduce [SelectedRows](../selected_rows.md) to represent a list of rows containing
+In Fluid, we introduce [SelectedRows](../modules/selected_rows.md) to represent a list of rows containing
 non-zero gradient data. So when we do parameter optimization both locally and remotely,
 we only need to send those non-zero rows to the optimizer operators:
 
-<img src="src/sparse_update.png" width="700" />
-
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/sparse_update.png" width="700" />
 ### Benefits
 
 - Model parallelism becomes easier to implement: it is an extension to

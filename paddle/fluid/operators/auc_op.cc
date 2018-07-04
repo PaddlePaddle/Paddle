@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/auc_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -49,8 +50,7 @@ class AucOp : public framework::OperatorWithKernel {
 
 class AucOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AucOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Out",
              "A floating point 2D tensor, values are in the range [0, 1]."
              "Each row is sorted in descending order. This input should be the"

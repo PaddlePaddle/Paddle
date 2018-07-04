@@ -18,14 +18,12 @@
 
 #include "gtest/gtest.h"
 
-using namespace paddle::recordio;
-
 TEST(Recordio, ChunkHead) {
-  Header hdr(0, 1, Compressor::kGzip, 3);
+  paddle::recordio::Header hdr(0, 1, paddle::recordio::Compressor::kGzip, 3);
   std::stringstream ss;
   hdr.Write(ss);
   ss.seekg(0, std::ios::beg);
-  Header hdr2;
+  paddle::recordio::Header hdr2;
   hdr2.Parse(ss);
   EXPECT_TRUE(hdr == hdr2);
 }

@@ -15,13 +15,14 @@ foreach(filename ${proto_filenames})
     get_filename_component(ABS_FIL ${filename} ABSOLUTE)
     get_filename_component(FIL_WE ${filename} NAME_WE)
     set(CUR_PROTO_GEN_PY
-            ${PADDLE_SOURCE_DIR}/paddle/python/paddle/proto/${FIL_WE}_pb2.py)
+            ${PADDLE_BINARY_DIR}/paddle/python/paddle/proto/${FIL_WE}_pb2.py)
     set(PROTO_GEN_PY
             ${CUR_PROTO_GEN_PY}
             ${PROTO_GEN_PY})
     add_custom_command(OUTPUT ${CUR_PROTO_GEN_PY}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/proto
             COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-            ARGS "--python_out=${PADDLE_SOURCE_DIR}/python/paddle/proto"
+            ARGS "--python_out=${PADDLE_BINARY_DIR}/python/paddle/proto"
             "-I" ${CMAKE_CURRENT_SOURCE_DIR} ${ABS_FIL}
             DEPENDS ${ABS_FIL} protoc)
 endforeach()

@@ -39,8 +39,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
 
 class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ModifiedHuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input tensor of modified huber loss op. "
              "X is 2-D tensor with shape [batch_size, 1].");
@@ -108,9 +107,10 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(modified_huber_loss, ops::ModifiedHuberLossOp,
-            ops::ModifiedHuberLossOpMaker, modified_huber_loss_grad,
-            ops::ModifiedHuberLossGradOp);
+REGISTER_OPERATOR(modified_huber_loss, ops::ModifiedHuberLossOp,
+                  ops::ModifiedHuberLossOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     modified_huber_loss,

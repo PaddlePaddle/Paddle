@@ -1,3 +1,5 @@
+# CPU性能调优
+
 此教程会介绍如何使用Python的cProfile包、Python库yep、Google perftools来进行性能分析 (profiling) 与调优（performance tuning）。
 
 Profling 指发现性能瓶颈。系统中的瓶颈可能和程序员开发过程中想象的瓶颈相去甚远。Tuning 指消除瓶颈。性能优化的过程通常是不断重复地 profiling 和 tuning。
@@ -42,14 +44,40 @@ cprofilev -a 0.0.0.0 -p 3214 -f profile.out main.py
 
 每一列的含义是:
 
-| 列名 | 含义 |
-| --- | --- |
-| ncalls | 函数的调用次数 |
-| tottime | 函数实际使用的总时间。该时间去除掉本函数调用其他函数的时间 |
-| percall | tottime的每次调用平均时间 |
-| cumtime | 函数总时间。包含这个函数调用其他函数的时间 |
-| percall | cumtime的每次调用平均时间 |
-| filename:lineno(function) | 文件名, 行号，函数名 |
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>含义 </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> ncalls</td>
+<td> 函数的调用次数</td>
+</tr>
+<tr>
+<td>tottime</td>
+<td> 函数实际使用的总时间。该时间去除掉本函数调用其他函数的时间</td>
+</tr>
+<tr>
+<td> percall </td>
+<td> tottime的每次调用平均时间</td>
+</tr>
+<tr>
+<td> cumtime</td>
+<td> 函数总时间。包含这个函数调用其他函数的时间</td>
+</tr>
+<tr>
+<td> percall</td>
+<td> cumtime的每次调用平均时间</td>
+</tr>
+<tr>
+<td> filename:lineno(function) </td>
+<td> 文件名, 行号，函数名 </td>
+</tr>
+</tbody>
+</table>
 
 
 ### 寻找性能瓶颈

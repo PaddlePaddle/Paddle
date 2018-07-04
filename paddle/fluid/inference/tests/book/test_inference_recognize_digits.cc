@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -35,10 +35,8 @@ TEST(inference, recognize_digits) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [-1.0, 1.0].
-  SetupTensor<float>(input,
-                     {FLAGS_batch_size, 1, 28, 28},
-                     static_cast<float>(-1),
-                     static_cast<float>(1));
+  SetupTensor<float>(&input, {FLAGS_batch_size, 1, 28, 28},
+                     static_cast<float>(-1), static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -49,8 +47,8 @@ TEST(inference, recognize_digits) {
 
     // Run inference on CPU
     LOG(INFO) << "--- CPU Runs: is_combined=" << is_combined << " ---";
-    TestInference<paddle::platform::CPUPlace>(
-        dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
+    TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1,
+                                              FLAGS_repeat, is_combined);
     LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -60,8 +58,8 @@ TEST(inference, recognize_digits) {
 
     // Run inference on CUDA GPU
     LOG(INFO) << "--- GPU Runs: is_combined=" << is_combined << " ---";
-    TestInference<paddle::platform::CUDAPlace>(
-        dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat, is_combined);
+    TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2,
+                                               FLAGS_repeat, is_combined);
     LOG(INFO) << output2.dims();
 
     CheckError<float>(output1, output2);

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -40,7 +42,7 @@ class AucKernel : public framework::OpKernel<T> {
     std::vector<float> thresholds_list;
     thresholds_list.reserve(num_thresholds);
     for (int i = 1; i < num_thresholds - 1; i++) {
-      thresholds_list[i] = (float)i / (num_thresholds - 1);
+      thresholds_list[i] = static_cast<float>(i) / (num_thresholds - 1);
     }
     const float kEpsilon = 1e-7;
     thresholds_list[0] = 0.0f - kEpsilon;
@@ -105,11 +107,12 @@ class AucKernel : public framework::OpKernel<T> {
     float* fp_rate_data = fp_rate.mutable_data<float>(ctx.GetPlace());
     float* rec_rate_data = rec_rate.mutable_data<float>(ctx.GetPlace());
     for (int i = 0; i < num_thresholds; i++) {
-      tp_rate_data[i] =
-          ((float)tp_data[i] + epsilon) / (tp_data[i] + fn_data[i] + epsilon);
-      fp_rate_data[i] = (float)fp_data[i] / (fp_data[i] + tn_data[i] + epsilon);
-      rec_rate_data[i] =
-          ((float)tp_data[i] + epsilon) / (tp_data[i] + fp_data[i] + epsilon);
+      tp_rate_data[i] = (static_cast<float>(tp_data[i]) + epsilon) /
+                        (tp_data[i] + fn_data[i] + epsilon);
+      fp_rate_data[i] =
+          static_cast<float>(fp_data[i]) / (fp_data[i] + tn_data[i] + epsilon);
+      rec_rate_data[i] = (static_cast<float>(tp_data[i]) + epsilon) /
+                         (tp_data[i] + fp_data[i] + epsilon);
     }
     *auc_data = 0.0f;
     if (curve == "ROC") {

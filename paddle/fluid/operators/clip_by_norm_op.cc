@@ -37,8 +37,7 @@ class ClipByNormOp : public framework::OperatorWithKernel {
 
 class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipByNormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input of clip_by_norm op."
              "The number of dimensions must be between [1, 9].");
@@ -55,10 +54,19 @@ be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
 shown in the following formula:
 
 $$
-Out = \frac{max\_norm * X}{norm(X)},
+Out = \\frac{max\\_norm * X}{norm(X)},
 $$
 
 where $norm(X)$ represents the L2 norm of $X$.
+
+Examples:
+        .. code-block:: python
+
+            data = fluid.layer.data(
+                name='data', shape=[2, 4, 6], dtype='float32')
+            reshaped = fluid.layers.clip_by_norm(
+                x=data, max_norm=0.5)
+
 )DOC");
   }
 };

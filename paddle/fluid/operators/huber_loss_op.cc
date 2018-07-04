@@ -45,8 +45,7 @@ class HuberLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input value of huber loss op."
              "X is a 2-D tensor with shape [batch_size, 1].");
@@ -121,8 +120,9 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
-            huber_loss_grad, ops::HuberLossGradOp);
+REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     huber_loss,
     ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>);

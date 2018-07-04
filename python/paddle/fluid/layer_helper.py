@@ -19,6 +19,7 @@ from framework import Variable, Parameter, default_main_program, default_startup
 import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr, WeightNormParamAttr
+import core
 
 
 class LayerHelper(object):
@@ -398,8 +399,16 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, basestring):
             act = {'type': act}
-        tmp = self.create_tmp_variable(dtype=input_var.dtype)
+
+        if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
+            act['use_cudnn'] = self.kwargs.get('use_cudnn')
+        if 'use_mkldnn' in self.kwargs:
+            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         act_type = act.pop('type')
+        tmp = input_var
+        # NOTE(dzhwinter): some activation support inplace compution.
+        if not core.IsInplace(act_type):
+            tmp = self.create_tmp_variable(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

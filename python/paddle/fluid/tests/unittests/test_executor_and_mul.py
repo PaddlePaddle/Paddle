@@ -16,7 +16,6 @@ import unittest
 
 import numpy
 import paddle.fluid.core as core
-
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers import mul, data
 

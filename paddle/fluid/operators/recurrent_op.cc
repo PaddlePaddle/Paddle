@@ -429,7 +429,8 @@ class RecurrentGradOp : public RecurrentBase {
 
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-              {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
+              {{"Out", {pg_names[param_id]}}},
+              framework::AttributeMap{{"use_mkldnn", {false}}});
           sum_op->Run(cur_scope, place);
 
           cur_scope.Rename(new_inside_name, inside_grad_name);
@@ -508,8 +509,7 @@ class RecurrentGradOp : public RecurrentBase {
 
 class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecurrentOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kInputs, "rnn inputs").AsDuplicable();
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();
     AddInput(kParameters,
@@ -596,7 +596,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kStepBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
   }

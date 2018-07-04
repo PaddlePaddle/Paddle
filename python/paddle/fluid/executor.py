@@ -18,17 +18,24 @@ from framework import Program, default_main_program, Variable
 from . import core
 
 __all__ = [
-    'Executor', 'global_scope', 'scope_guard', 'switch_scope', 'fetch_var'
+    'Executor', 'global_scope', 'scope_guard', '_switch_scope', 'fetch_var'
 ]
 
 g_scope = core.Scope()
 
 
 def global_scope():
+    """
+    Get the global/default scope instance. There are a lot of APIs use
+    :code:`global_scope` as its default value, e.g., :code:`Executor.run`
+
+    Returns:
+        Scope: The global/default scope instance.
+    """
     return g_scope
 
 
-def switch_scope(scope):
+def _switch_scope(scope):
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -37,19 +44,48 @@ def switch_scope(scope):
 
 @contextlib.contextmanager
 def scope_guard(scope):
-    ex = switch_scope(scope)
+    """
+    Change the global/default scope instance by Python `with` statement. All
+    variable in runtime will assigned to the new scope.
+
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> new_scope = fluid.Scope()
+        >>> with fluid.scope_guard(new_scope):
+        >>>     ...
+
+    Args:
+        scope: The new global/default scope.
+    """
+    ex = _switch_scope(scope)
     yield
-    switch_scope(ex)
+    _switch_scope(ex)
 
 
 def as_numpy(tensor):
+    """
+    Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
+    For higher dimensional sequence data, please use LoDTensor directly.
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> outs = executor.run(...)
+        >>> np_outs = map(lambda x: as_numpy(x), outs)
+        >>>     ...
+
+    Args:
+       tensor(Variable): a instance of Tensor
+
+    Returns:
+        numpy.ndarray
+    """
+    if isinstance(tensor, core.LoDTensorArray):
+        return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
     if len(lod) > 0:
-        raise RuntimeError(
-            "Some of your featched tensors hold LoD information. \
+        raise RuntimeError("Some of your fetched tensors hold LoD information. \
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
@@ -136,14 +172,18 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
 
 def fetch_var(name, scope=None, return_numpy=True):
     """
-    Fetch the value of the variable with the given name from the given scope
+    Fetch the value of the variable with the given name from the
+    given scope.
+
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
         scope(core.Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
-            If None, global_scope() will be used.
-        return_numpy(bool): whether convert the tensor to numpy.ndarray
+            If None, global_scope() will be used. Default None.
+        return_numpy(bool): whether convert the tensor to numpy.ndarray.
+            Default True.
+
     Returns:
        LodTensor|numpy.ndarray
     """
@@ -152,7 +192,7 @@ def fetch_var(name, scope=None, return_numpy=True):
         scope = global_scope()
     assert isinstance(scope, core.Scope)
 
-    var = global_scope().find_var(name)
+    var = scope.find_var(name)
     assert var is not None, (
         "Cannot find " + name + " in scope. Perhaps you need to make the"
         " variable persistable by using var.persistable = True in your"
@@ -163,7 +203,7 @@ def fetch_var(name, scope=None, return_numpy=True):
     return tensor
 
 
-def get_program_cache_key(feed, fetch_list):
+def _get_program_cache_key(feed, fetch_list):
     feed_var_names = feed.keys()
 
     def to_name_str(var):
@@ -171,6 +211,8 @@ def get_program_cache_key(feed, fetch_list):
             return var.desc.name()
         elif isinstance(var, str):
             return var
+        elif isinstance(var, basestring):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
 
@@ -180,60 +222,137 @@ def get_program_cache_key(feed, fetch_list):
 
 
 class Executor(object):
-    def __init__(self, places):
-        if not isinstance(places, list) and not isinstance(places, tuple):
-            places = [places]
+    """
+    An Executor in Python, only support the single-GPU running. For multi-cards, please refer to
+    ParallelExecutor.
+    Python executor takes a program, add feed operators and fetch operators to this program according
+    to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+    the variables(or names) that user want to get after program run. Note: the executor will run all
+    operators in the program but not only the operators dependent by the fetch_list.
+    It store the global variables into the global scope, and create a local scope for the temporary 
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished. 
+    But the global scope variables will be persistent through different runs.
+    All of ops in program will be running in sequence.
 
-        act_places = []
-        for each in places:
-            p = core.Place()
-            p.set_place(each)
-            act_places.append(p)
+    Args:
+        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
 
-        # TODO(dzhwinter) : only use the first place
-        self.executor = core.Executor(act_places[0])
-        self.places = places
+    Note: For debugging complicated network in parallel-GPUs, you can test it on the executor.
+    They has the exactly same arguments, and expected the same results.
+    """
+
+    def __init__(self, place):
+        self.place = place
+        p = core.Place()
+        p.set_place(place)
+        self.executor = core.Executor(p)
         self.program_caches = dict()
 
-    def aslodtensor(self, data):
-        def accumulate(data):
-            if not isinstance(data, list):
-                return 1
-            return sum([accumulate(sub) for sub in data])
+    def as_lodtensor(self, data):
+        """
+        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
+        For higher dimensional sequence data, please use LoDTensor directly.
 
-        def parselod(data):
-            seq_lens = [accumulate(seq) for seq in data]
-            cur_len = 0
-            lod = [cur_len]
-            for l in seq_lens:
-                cur_len += l
-                lod.append(cur_len)
-            return lod
+        Examples:
+            >>> import paddle.fluid as fluid
+            >>> exe = fluid.executor(fluid.CPUPlace())
+            >>> data = np.array(size=(100, 200, 300))
+            >>> np_outs = map(lambda x: exe.as_lodtensor(x), data)
+            >>>     ...
 
-        assert len(self.places) != 0
-        if not isinstance(data, list):
-            # pure tensor case
-            tensor = core.LoDTensor()
-            tensor.set(data, self.places[0])
-            return tensor
+        Args:
+            data(numpy.ndarray): a instance of array
+
+        Returns:
+            LoDTensor
+        """
+        if isinstance(data, list):
+            raise RuntimeError("Some of your feed data hold LoD information. \
+                They can not be completely cast from a list of Python \
+                ndarray to LoDTensor. Please convert data to LoDTensor \
+                directly before feeding the data.\
+                ")
+        # single tensor case
+        tensor = core.LoDTensor()
+        tensor.set(data, self.place)
+        return tensor
+
+    def _get_program_cache(self, program_cache_key):
+        return self.program_caches.get(program_cache_key, None)
+
+    def _add_program_cache(self, program_cache_key, program):
+        self.program_caches[program_cache_key] = program
+
+    def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
+                            fetch_var_name):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
         else:
-            raise RuntimeError("Current implementation lacks unittests")
-            # lodtensor case
-            lod = []
-            if not isinstance(data[0], list):
-                lod.append(parselod(data))
-                flattened_data = np.concatenate(data, axis=0).astype("int64")
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True)
+
+        if fetch_var_name in global_block.vars:
+            fetch_var = global_block.var(fetch_var_name)
+        else:
+            fetch_var = global_block.create_var(
+                name=fetch_var_name,
+                type=core.VarDesc.VarType.FETCH_LIST,
+                persistable=True)
+
+        # prepend feed operators
+        if not has_feed_operators(global_block, feed, feed_var_name):
+            for i, name in enumerate(feed):
+                out = global_block.var(name)
+                global_block.prepend_op(
+                    type='feed',
+                    inputs={'X': [feed_var]},
+                    outputs={'Out': [out]},
+                    attrs={'col': i})
+
+        # append fetch_operators
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
+            for i, var in enumerate(fetch_list):
+                assert isinstance(var, Variable) or isinstance(var, str), (
+                    "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
+                global_block.append_op(
+                    type='fetch',
+                    inputs={'X': [var]},
+                    outputs={'Out': [fetch_var]},
+                    attrs={'col': i})
+
+        return tmp_program
+
+    def _feed_data(self, program, feed, feed_var_name, scope):
+        # feed var to framework
+        for op in program.global_block().ops:
+            if op.desc.type() == 'feed':
+                feed_target_name = op.desc.output('Out')[0]
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = self.as_lodtensor(cur_feed)
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
-                while isinstance(data[0], list):
-                    lod.append(parselod(seq))
-                    flattened_data = [item for seq in data for item in seq]
-                    data = flattened_data
-                flattened_data = np.concatenate(data, axis=0).astype("int64")
-            flattened_data = flattened_data.reshape([len(flattened_data), 1])
-            tensor = core.LoDTensor()
-            tensor.set(flattened_data, self.places[0])
-            tensor.set_lod(lod)
-            return tensor
+                break
+
+    def _fetch_data(self, fetch_list, fetch_var_name, scope):
+        outs = [
+            core.get_fetch_variable(scope, fetch_var_name, i)
+            for i in xrange(len(fetch_list))
+        ]
+        return outs
+
+    def begin_pass(self):
+        self.executor.begin_pass()
+
+    def end_pass(self):
+        self.executor.end_pass()
 
     def run(self,
             program=None,
@@ -244,113 +363,91 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False):
-        """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-
+        """
+        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
         to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run. Note: the executor will run all
+        the variables(or names) that user want to get after program run.
+
+        Note: the executor will run all
         operators in the program but not only the operators dependent by the fetch_list
 
-        :param program: the program that need to run, if not provied, then default_main_program will be used.
-        :param feed: feed variable map, e.g. {"image": ImageData, "label": LableData}
-        :param fetch_list: a list of variable or variable names that user want to get, run will return them according
-        to this list.
-        :param feed_var_name: the name for the input variable of feed Operator.
-        :param fetch_var_name: the name for the output variable of feed Operator.
-        :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
-        :param return_numpy: if convert the fetched tensor to numpy
-        :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
-        :return: result according to fetch_list.
+        Args:
+            program(Program): the program that need to run, if not provied, then default_main_program will be used.
+            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
+            fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
+            feed_var_name(str): the name for the input variable of feed Operator.
+            fetch_var_name(str): the name for the output variable of fetch Operator.
+            scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
+            return_numpy(bool): if convert the fetched tensor to numpy
+            use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
+
+        Returns:
+
+            list(numpy.array): fetch result according to fetch_list.
+
+
+        Examples:
+
+            >>> data = layers.data(name='X', shape=[1], dtype='float32')
+            >>> hidden = layers.fc(input=data, size=10)
+            >>> layers.assign(hidden, out)
+            >>> loss = layers.mean(out)
+            >>> adam = fluid.optimizer.Adam()
+            >>> adam.minimize(loss)
+
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> exe.run(default_startup_program())
+
+            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+            >>> outs = exe.run(
+            >>>     feed={'X': x},
+            >>>     fetch_list=[loss.name])
         """
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
-            raise TypeError("feed should be a map")
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s" %
+                (type(feed)))
         if fetch_list is None:
             fetch_list = []
-
         if program is None:
             program = default_main_program()
 
         if not isinstance(program, Program):
-            raise TypeError()
+            raise TypeError(
+                "Executor requires Program as its Parameter. But you passed in %s"
+                % (type(program)))
 
         if scope is None:
             scope = global_scope()
 
-        program_cache = None
-        program_cache_key = get_program_cache_key(feed, fetch_list)
-
+        cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
-            # find program cache by cache_key
-            program_cache = self.program_caches.get(program_cache_key, None)
-            # TODO(qiao): Should check program_cache and program are exactly the same.
+            cached_program = self._get_program_cache(cache_key)
+            if cached_program is None:
+                cached_program = self._add_feed_fetch_ops(
+                    program=program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name)
+                self._add_program_cache(cache_key, cached_program)
+            program = cached_program
         else:
-            self.program_caches.pop(program_cache_key, None)
+            self.program_caches.pop(cache_key, None)
+            program = self._add_feed_fetch_ops(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name)
 
-        if program_cache is None:
-            program_cache = program.clone()
-
-            if use_program_cache:
-                self.program_caches[program_cache_key] = program_cache
-
-            global_block = program_cache.global_block()
-
-            if feed_var_name in global_block.vars:
-                feed_var = global_block.var(feed_var_name)
-            else:
-                feed_var = global_block.create_var(
-                    name=feed_var_name,
-                    type=core.VarDesc.VarType.FEED_MINIBATCH,
-                    persistable=True)
-
-            if fetch_var_name in global_block.vars:
-                fetch_var = global_block.var(fetch_var_name)
-            else:
-                fetch_var = global_block.create_var(
-                    name=fetch_var_name,
-                    type=core.VarDesc.VarType.FETCH_LIST,
-                    persistable=True)
-
-            # prepend feed operators
-            if not has_feed_operators(global_block, feed, feed_var_name):
-                for i, name in enumerate(feed):
-                    out = global_block.var(name)
-                    global_block.prepend_op(
-                        type='feed',
-                        inputs={'X': [feed_var]},
-                        outputs={'Out': [out]},
-                        attrs={'col': i})
-
-            # append fetch_operators
-            if not has_fetch_operators(global_block, fetch_list,
-                                       fetch_var_name):
-                for i, var in enumerate(fetch_list):
-                    assert isinstance(var, Variable) or isinstance(var, str), (
-                        "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
-                    global_block.append_op(
-                        type='fetch',
-                        inputs={'X': [var]},
-                        outputs={'Out': [fetch_var]},
-                        attrs={'col': i})
-
-        # feed var to framework
-        for op in program_cache.global_block().ops:
-            if op.desc.type() == 'feed':
-                feed_target_name = op.desc.output('Out')[0]
-                cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.aslodtensor(cur_feed)
-                idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
-            else:
-                break
-
-        self.executor.run(program_cache.desc, scope, 0, True, True)
-        outs = [
-            core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in xrange(len(fetch_list))
-        ]
+        self._feed_data(program, feed, feed_var_name, scope)
+        self.executor.run(program.desc, scope, 0, True, True)
+        outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
         return outs

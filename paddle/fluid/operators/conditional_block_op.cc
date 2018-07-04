@@ -14,6 +14,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace operators {
@@ -47,14 +48,25 @@ class ConditionalOp : public framework::OperatorBase {
     if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
       PADDLE_THROW("should have one initialized input as condition");
     }
-    if (!(ips[0]->type().hash_code() == typeid(bool).hash_code() &&
+    if (!(framework::IsType<bool>(ips[0]->type()) &&  // NOLINT
           ips[0]->numel() == 1)) {
       PADDLE_THROW(
           "condition input's data type should be bool, "
           "numel should be 1, actual numel is %d",
           ips[0]->numel());
     }
-    return ips[0]->data<bool>()[0];
+    bool res = false;
+    if (platform::is_gpu_place(ips[0]->place())) {
+#ifdef PADDLE_WITH_CUDA
+      framework::LoDTensor cpu_tensor;
+      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
+      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      res = cpu_tensor.data<bool>()[0];
+#endif
+    } else {
+      res = ips[0]->data<bool>()[0];
+    }
+    return res;
   }
 };
 
@@ -97,8 +109,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConditionalBlockOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The conditional variable of this operator. If X is empty, the "
              "whole sub-block will not be executed.")
@@ -216,7 +227,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
     grad_op->SetOutput(framework::GradVarName("Params"),
                        InputGrad("Params", false));
-    grad_op->SetBlockAttr("sub_block", *this->grad_block_[0]);
+    grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition", GetAttr("is_scalar_condition"));
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }

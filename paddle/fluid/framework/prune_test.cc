@@ -14,18 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/prune.h"
 
+#include <gtest/gtest.h>
+#include <string>
+
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/net_op.h"
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-#include <gtest/gtest.h>
-
 namespace f = paddle::framework;
-namespace ops = paddle::operators;
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,

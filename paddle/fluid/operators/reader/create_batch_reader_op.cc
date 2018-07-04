@@ -20,7 +20,7 @@ namespace reader {
 
 class BatchReader : public framework::DecoratedReader {
  public:
-  BatchReader(ReaderBase* reader, int batch_size)
+  BatchReader(const std::shared_ptr<ReaderBase>& reader, int batch_size)
       : DecoratedReader(reader), batch_size_(batch_size) {
     buffer_.reserve(batch_size_);
   }
@@ -39,19 +39,21 @@ class CreateBatchReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
-                                        ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
+    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
+                                        ->Get<framework::ReaderHolder>();
     out->Reset(
         new BatchReader(underlying_reader.Get(), Attr<int>("batch_size")));
   }
 };
 
 class CreateBatchReaderOpMaker : public DecoratedReaderMakerBase {
- public:
-  CreateBatchReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : DecoratedReaderMakerBase(op_proto, op_checker) {
+ protected:
+  void Apply() override {
     AddAttr<int>("batch_size",
                  "How many instances the batch reader yields each time.")
         .GreaterThan(0);

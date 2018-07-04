@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/meta_cache.h"
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/platform/assert.h"
@@ -23,29 +22,28 @@ namespace detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
-Metadata MetadataCache::load(const MemoryBlock* block) {
+MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
   if (uses_gpu_) {
-    auto existing_metadata = cache_.find(block);
-    PADDLE_ASSERT(existing_metadata->second.check_guards());
-    return existing_metadata->second;
+    auto existing_desc = cache_.find(block);
+    PADDLE_ASSERT(existing_desc->second.check_guards());
+    return existing_desc->second;
   } else {
-    auto* meta = reinterpret_cast<const Metadata*>(block);
-    VLOG(10) << "Load MetaData type=" << meta->type;
-    PADDLE_ASSERT(meta->check_guards());
-    return *reinterpret_cast<const Metadata*>(block);
+    auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
+    VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
+    PADDLE_ASSERT(desc->check_guards());
+    return *reinterpret_cast<const MemoryBlock::Desc*>(block);
   }
 }
 
-void MetadataCache::store(MemoryBlock* block,
-                          const Metadata& original_metadata) {
-  auto metadata = original_metadata;
-
-  metadata.update_guards();
+void MetadataCache::save(MemoryBlock* block,
+                         const MemoryBlock::Desc& original_desc) {
+  auto desc = original_desc;
+  desc.update_guards();
 
   if (uses_gpu_) {
-    cache_[block] = metadata;
+    cache_[block] = desc;
   } else {
-    *reinterpret_cast<Metadata*>(block) = metadata;
+    *reinterpret_cast<MemoryBlock::Desc*>(block) = desc;
   }
 }
 
