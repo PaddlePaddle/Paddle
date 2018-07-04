@@ -3,9 +3,10 @@
 安装说明
 ^^^^^^^^
 
-若您的系统为Linux或Windows，您可以使用我们提供的安装包来安装PaddlePaddle。
+安装前请确保您的操作系统为Linux（CentOS 6以上或ubuntu 14.04以上）
+可以使用我们提供的安装包来安装PaddlePaddle。
 
-对于MacOS系统，我们暂未提供安装包，您可以使用 :ref:`source` 的方式安装。
+对于Windows或MacOS系统，我们暂未提供安装包，您可以使用 :ref:`_install_docker` 的方式安装。
 
 
 .. _install_linux:
@@ -108,14 +109,14 @@ paddlepaddle-gpu==0.11.0            使用CUDA 7.5和cuDNN 5编译的0.11.0版�
 可以重命名这个whl包为 manylinux1_x86_64 再安装。
 
 
-.. _install_windows:
+.. _install_docker:
 
-在windows安装PaddlePaddle
+在windows或Mac上安装PaddlePaddle
 ------------------------------
 
-若您的系统为windows，您可以通过Docker来使用PaddlePaddle。
+若您的系统为windows或Mac，您可以通过Docker来使用PaddlePaddle。
 
-推荐您下载 `PaddlePaddle快速安装包 <http://paddle-windows.bj.bcebos.com/PaddlePaddle-windows.zip>`_，
+推荐您下载 `PaddlePaddle快速安装包 <http://paddle-windows.bj.bcebos.com/PaddlePaddle-windows.zip>`_ ，
 该安装包能够帮助您判断、安装适合的Docker，并引导您在Docker中使用PaddlePaddle。
 
 注意事项：
@@ -172,13 +173,6 @@ Docker安装完成后，请您执行下面的步骤：
 
    docker attach container
    
-.. _install_mac:
-
-在MacOS安装PaddlePaddle
---------
-
-对于MacOS系统，我们暂未提供pip安装方式，您可以使用 :ref:`source` 的方式安装。
-
 .. _others:
 
 其他安装方式
