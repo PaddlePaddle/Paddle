@@ -58,7 +58,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
 实现C++类
 ===================
 
-一个网络层的C++类需要实现初始化，前向和后向。全连接层的实现位于:code:`paddle/gserver/layers/FullyConnectedLayer.h`及:code:`paddle/gserver/layers/FullyConnectedLayer.cpp`。这里我们展示一份简化过的代码。
+一个网络层的C++类需要实现初始化，前向和后向。全连接层的实现位于:code:`paddle/legacy/gserver/layers/FullyConnectedLayer.h`及:code:`paddle/legacy/gserver/layers/FullyConnectedLayer.cpp`。这里我们展示一份简化过的代码。
 
 这个类需要继承 :code:`paddle::Layer` 这个基类，并且需要重写基类中的以下几个虚函数：
 
@@ -153,7 +153,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
 
 - 每个层在其 :code:`forward` 函数的开头必须调用 :code:`Layer::forward(passType);` 。
 - 之后使用 :code:`reserveOutput(batchSize, size);` 为输出分配内存。由于我们支持训练数据有不同的批次大小，所以这一步是必要的。 :code:`reserveOutput`  会相应地改变输出的尺寸。为了保证效率，如果需要扩大矩阵，我们会重新分配内存；如果需要缩减矩阵，我们会继续使用现有的内存块。
-- 之后使用矩阵运算函数来计算 :math:`\sum_i W_i x + b`。:code:`getInput(i).value` 返回第i个输入矩阵。每个输入都是一个 :math:`batchSize \times dim` 的矩阵，每行表示一个批次中的单个输入。对于我们支持的全部矩阵操作，请参考 :code:`paddle/math/Matrix.h`和:code:`paddle/math/BaseMatrix.h` 。
+- 之后使用矩阵运算函数来计算 :math:`\sum_i W_i x + b`。:code:`getInput(i).value` 返回第i个输入矩阵。每个输入都是一个 :math:`batchSize \times dim` 的矩阵，每行表示一个批次中的单个输入。对于我们支持的全部矩阵操作，请参考 :code:`paddle/legacy/math/Matrix.h`和:code:`paddle/legacy/math/BaseMatrix.h` 。
 - 最终，使用 :code:`forwardActivation();` 进行激活操作。这会自动进行网络配置中声明的激活操作。
 
 
@@ -262,7 +262,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
     REGISTER_LAYER(fc, FullyConnectedLayer);
     }
 
-若 :code:`cpp` 被放在 :code:`paddle/gserver/layers` 目录下，其会自动被加入编译列表。
+若 :code:`cpp` 被放在 :code:`paddle/legacy/gserver/layers` 目录下，其会自动被加入编译列表。
 
 
 写梯度检查单元测试
@@ -270,7 +270,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
 
 写梯度检查单元测试是一个验证新实现的层是否正确的相对简单的办法。梯度检查单元测试通过有限差分法来验证一个层的梯度。首先对输入做一个小的扰动 :math:`\Delta x` ，然后观察到输出的变化为 :math:`\Delta y` ，那么，梯度就可以通过这个方程计算得到 :math:`\frac{\Delta y}{\Delta x }` 。之后，再用这个梯度去和 :code:`backward` 函数得到的梯度去对比，以保证梯度计算的正确性。需要注意的是梯度检查仅仅验证了梯度的计算，并不保证 :code:`forward` 和 :code:`backward` 函数的实现是正确的。你需要一些更复杂的单元测试来保证你实现的网络层是正确的。
 
-所有网络层的梯度检查单测都位于 :code:`paddle/gserver/tests/test_LayerGrad.cpp` 。我们建议你在写新网络层时把测试代码放入新的文件中。下面列出了全连接层的梯度检查单元测试。它包含以下几步：
+所有网络层的梯度检查单测都位于 :code:`paddle/legacy/gserver/tests/test_LayerGrad.cpp` 。我们建议你在写新网络层时把测试代码放入新的文件中。下面列出了全连接层的梯度检查单元测试。它包含以下几步：
 
 + 生成网络层配置。网络层配置包含以下几项：
    - 偏置参数的大小。（例子中是4096）
@@ -322,7 +322,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
       }
     }
 
-如果你要为了测试而增加新的文件，例如 :code:`paddle/gserver/tests/testFCGrad.cpp` ，你需要把该文件加入 :code:`paddle/gserver/tests/CMakeLists.txt` 中。下面给出了一个例子。当你执行命令 :code:`make tests` 时，所有的单测都会被执行一次。注意，有些层可能需要高精度来保证梯度检查单测正确执行。你需要在配置cmake时将 :code:`WITH_DOUBLE` 设置为 `ON` 。
+如果你要为了测试而增加新的文件，例如 :code:`paddle/legacy/gserver/tests/testFCGrad.cpp` ，你需要把该文件加入 :code:`paddle/legacy/gserver/tests/CMakeLists.txt` 中。下面给出了一个例子。当你执行命令 :code:`make tests` 时，所有的单测都会被执行一次。注意，有些层可能需要高精度来保证梯度检查单测正确执行。你需要在配置cmake时将 :code:`WITH_DOUBLE` 设置为 `ON` 。
 
 .. code-block:: bash
 

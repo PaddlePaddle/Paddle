@@ -268,7 +268,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
-      .value("BLOCK", pd::proto::AttrType::BLOCK);
+      .value("BLOCK", pd::proto::AttrType::BLOCK)
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -293,6 +294,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_attr", &pd::OpDesc::SetAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
+      .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
            [](pd::OpDesc &self, const std::string &name,
               const pybind11::bytes &seriralized) {

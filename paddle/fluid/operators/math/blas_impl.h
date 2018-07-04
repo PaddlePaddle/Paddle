@@ -22,6 +22,75 @@ namespace math {
 template <typename T>
 struct CBlas;
 
+#ifdef PADDLE_WITH_MKLML
+template <>
+struct CBlas<float> {
+  template <typename... ARGS>
+  static void GEMM(ARGS... args) {
+    platform::dynload::cblas_sgemm(args...);
+  }
+
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    platform::dynload::cblas_saxpy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    platform::dynload::cblas_scopy(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(ARGS... args) {
+    platform::dynload::cblas_sgemv(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_BATCH(ARGS... args) {
+    platform::dynload::cblas_sgemm_batch(args...);
+  }
+
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vsAdd(args...);
+  }
+};
+
+template <>
+struct CBlas<double> {
+  template <typename... ARGS>
+  static void GEMM(ARGS... args) {
+    platform::dynload::cblas_dgemm(args...);
+  }
+
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    platform::dynload::cblas_daxpy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    platform::dynload::cblas_dcopy(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(ARGS... args) {
+    platform::dynload::cblas_dgemv(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_BATCH(ARGS... args) {
+    platform::dynload::cblas_dgemm_batch(args...);
+  }
+
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vdAdd(args...);
+  }
+};
+
+#else
+
 template <>
 struct CBlas<float> {
   template <typename... ARGS>
@@ -34,13 +103,6 @@ struct CBlas<float> {
     cblas_saxpy(args...);
   }
 
-#ifdef PADDLE_WITH_MKLML
-  template <typename... ARGS>
-  static void VADD(ARGS... args) {
-    vsAdd(args...);
-  }
-#endif
-
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_scopy(args...);
@@ -50,13 +112,6 @@ struct CBlas<float> {
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
   }
-
-#ifdef PADDLE_WITH_MKLML
-  template <typename... ARGS>
-  static void GEMM_BATCH(ARGS... args) {
-    cblas_sgemm_batch(args...);
-  }
-#endif
 };
 
 template <>
@@ -71,13 +126,6 @@ struct CBlas<double> {
     cblas_daxpy(args...);
   }
 
-#ifdef PADDLE_WITH_MKLML
-  template <typename... ARGS>
-  static void VADD(ARGS... args) {
-    vdAdd(args...);
-  }
-#endif
-
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_dcopy(args...);
@@ -87,15 +135,8 @@ struct CBlas<double> {
   static void GEMV(ARGS... args) {
     cblas_dgemv(args...);
   }
-
-#ifdef PADDLE_WITH_MKLML
-  template <typename... ARGS>
-  static void GEMM_BATCH(ARGS... args) {
-    cblas_dgemm_batch(args...);
-  }
-#endif
 };
-
+#endif
 template <>
 struct CBlas<platform::float16> {
   static void GEMM(...) { PADDLE_THROW("float16 GEMM not supported on CPU"); }

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
@@ -92,9 +92,7 @@ class OpHandleBase {
 
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
-  std::unordered_map<platform::Place, platform::DeviceContext *,
-                     platform::PlaceHash>
-      dev_ctxes_;
+  std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <string>
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
@@ -32,35 +33,44 @@ namespace analysis {
  */
 class DFG_GraphvizDrawPass : public DataFlowGraphPass {
  public:
-  DFG_GraphvizDrawPass(const std::string& dir, const std::string& id)
-      : dir_(dir), id_(id) {}
+  struct Config {
+    Config(const std::string &dir, const std::string &id,
+           bool display_deleted_node = false)
+        : dir(dir), id(id), display_deleted_node(display_deleted_node) {}
 
-  bool Initialize() override { return Pass::Initialize(); }
-  void Run(DataFlowGraph* graph) override {
-    auto content = Draw(graph);
-    std::ofstream file(GenDotPath());
-    file.write(content.c_str(), content.size());
-    file.close();
-    LOG(INFO) << "draw dot to " << GenDotPath();
+    // The directory to store the .dot or .png files.
+    const std::string dir;
+    // The identifier for this dot file.
+    const std::string id;
+    // Whether to display deleted nodes, default false.
+    const bool display_deleted_node;
+  };
+
+  explicit DFG_GraphvizDrawPass(const Config &config) : config_(config) {}
+
+  bool Initialize(Argument *argument) override { return true; }
+  void Run(DataFlowGraph *graph) override;
+  bool Finalize() override { return true; }
+
+  std::string repr() const override { return "DFG graphviz drawer"; }
+  std::string description() const override {
+    return "Debug a DFG by draw with graphviz";
   }
 
-  bool Finalize() override { return Pass::Finalize(); }
+ protected:
+  // A counter to add a number prefix to the debugger image output so that they
+  // will sort in the triggered order.
+  static int counter_;
 
-  Pass* CreatePrinterPass(std::ostream& os,
-                          const std::string& banner) const override {
-    return nullptr;
-  }
-
- private:
   // Path of the dot file to output.
   std::string GenDotPath() const {
-    return dir_ + "/" + "graph_" + id_ + ".dot";
+    return config_.dir + "/" + std::to_string(counter_++) + "-graph_" +
+           config_.id + ".dot";
   }
 
-  std::string Draw(DataFlowGraph* graph) { return graph->DotString(); }
+  virtual std::string Draw(DataFlowGraph *graph);
 
-  std::string dir_;
-  std::string id_;
+  Config config_;
 };
 
 }  // namespace analysis

@@ -29,6 +29,8 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
+    ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
+
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
     SET(OPENBLAS_COMMIT "v0.2.20")
 
@@ -112,7 +114,12 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
 ADD_LIBRARY(cblas STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+
+IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+  TARGET_LINK_LIBRARIES(cblas dynload_mklml)
+ELSE()
+  TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+ENDIF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)

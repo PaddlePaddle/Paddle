@@ -145,16 +145,30 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        framework::StringToDataLayout(data_format), library_);
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                     "float16 can only be used on GPU place");
+    }
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                   library_);
   }
 };
 

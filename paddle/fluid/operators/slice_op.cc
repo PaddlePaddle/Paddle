@@ -95,23 +95,26 @@ of that dimension. If the value passed to start or end is larger than
 the n (the number of elements in this dimension), it represents n. 
 For slicing to the end of a dimension with unknown size, it is recommended 
 to pass in INT_MAX. If axes are omitted, they are set to [0, ..., ndim-1].
+Following examples will explain how slice works:
 
-    Example 1:
-    Given:
-        data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-        axes = [0, 1]
-        starts = [1, 0]
-        ends = [2, 3]
-    Then:
-        result = [ [5, 6, 7], ]
+    .. code-block:: text
 
-    Example 2:
-    Given:
-        data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-        starts = [0, 1]
-        ends = [-1, 1000]
-    Then:
-        result = [ [2, 3, 4], ]
+        Cast1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+
+        Cast2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                starts = [0, 1]
+                ends = [-1, 1000]
+            Then:
+                result = [ [2, 3, 4], ]
 )DOC");
   }
 };

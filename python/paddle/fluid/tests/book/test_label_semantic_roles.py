@@ -76,8 +76,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        fluid.layers.fc(input=emb, size=hidden_dim, act='tanh')
-        for emb in emb_layers
+        fluid.layers.fc(input=emb, size=hidden_dim) for emb in emb_layers
     ]
 
     hidden_0 = fluid.layers.sums(input=hidden_0_layers)
@@ -94,8 +93,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
     for i in range(1, depth):
         mix_hidden = fluid.layers.sums(input=[
-            fluid.layers.fc(input=input_tmp[0], size=hidden_dim, act='tanh'),
-            fluid.layers.fc(input=input_tmp[1], size=hidden_dim, act='tanh')
+            fluid.layers.fc(input=input_tmp[0], size=hidden_dim),
+            fluid.layers.fc(input=input_tmp[1], size=hidden_dim)
         ])
 
         lstm = fluid.layers.dynamic_lstm(
@@ -210,16 +209,16 @@ def train(use_cuda, save_dirname=None, is_local=True):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
@@ -248,35 +247,67 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        # Setup inputs by creating LoDTensors to represent sequences of words.
-        # Here each word is the basic element of these LoDTensors and the shape of 
+        # Setup input by creating LoDTensor to represent sequence of words.
+        # Here each word is the basic element of the LoDTensor and the shape of 
         # each word (base_shape) should be [1] since it is simply an index to 
         # look up for the corresponding word vector.
-        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
-        # which has only one lod level. Then the created LoDTensors will have only 
+        # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
+        # which has only one level of detail. Then the created LoDTensor will have only 
         # one higher level structure (sequence of words, or sentence) than the basic 
         # element (word). Hence the LoDTensor will hold data for three sentences of 
         # length 3, 4 and 2, respectively. 
-        # Note that lod info should be a list of lists.
-        lod = [[3, 4, 2]]
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[3, 4, 2]]
         base_shape = [1]
         # The range of random integers is [low, high]
         word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
         pred = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=pred_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=pred_dict_len - 1)
         ctx_n2 = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
         ctx_n1 = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
         ctx_0 = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
         ctx_p1 = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
         ctx_p2 = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
         mark = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=mark_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=mark_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -302,7 +333,7 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
 
