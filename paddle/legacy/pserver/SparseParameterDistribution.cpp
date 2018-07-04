@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <unistd.h>
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
-#include "paddle/utils/Flags.h"
+#include "paddle/legacy/utils/Flags.h"
 
 #include "SparseParameterDistribution.h"
 

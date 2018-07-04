@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "Pool3DLayer.h"
 #include "PoolProjectionLayer.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 

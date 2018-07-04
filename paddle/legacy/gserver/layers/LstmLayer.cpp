@@ -15,7 +15,7 @@ limitations under the License. */
 #include "LstmLayer.h"
 #include "paddle/legacy/math/BaseMatrix.h"
 #include "paddle/legacy/math/Matrix.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 DECLARE_bool(prev_batch_state);
 

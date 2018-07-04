@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/legacy/parameter/Argument.h"
 #include "paddle/legacy/parameter/Parameter.h"
 #include "paddle/legacy/parameter/Weight.h"
-#include "paddle/utils/ClassRegistrar.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/Util.h"
 
 /// Macro for registering a layer type.
 /// Example: REGISTER_LAYER(crf_error, CRFDecodingErrorLayer);

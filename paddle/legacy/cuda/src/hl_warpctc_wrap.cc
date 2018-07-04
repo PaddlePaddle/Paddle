@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "hl_warpctc_wrap.h"
 #include <mutex>
-#include "paddle/utils/DynamicLoader.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/DynamicLoader.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace dynload {
 

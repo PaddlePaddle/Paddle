@@ -18,7 +18,7 @@
 </tr>
 <tr>
 <td>cpu_avx_openblas</td>
-<td>暂无</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
 </tr>
 <tr>
 <td>cpu_noavx_openblas</td>
@@ -35,7 +35,12 @@
 <tr>
 <td>cuda8.0_cudnn7_avx_mkl</td>
 <td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
-</tr></tbody></table>
+</tr>
+<tr>
+<td>cuda9.0_cudnn7_avx_mkl</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda90cudnn7avxMkl/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
+</tr>
+</tbody></table>
 
 ### 从源码编译
 
