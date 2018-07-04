@@ -44,7 +44,7 @@ done.
 
 class Graph(object):
     """
-    A basic graph, each op as graph nodes.
+    Dependency graph, op as node, variable as edge.
     :param ops: a list of Operator instance in a Block.
     :return:
     """
@@ -62,6 +62,10 @@ class Graph(object):
                 self._ops_use_var[input_arg].append(op)
 
     def get_ops_use_var(self, var_name):
+        """
+        Get the operators dependent var_name.
+        Used in inplace operation checking to avoid data-race.
+        """
         return self._ops_use_var[var_name]
 
     def _remove_circle(self, ops):
@@ -350,9 +354,16 @@ class MemoryPlan(object):
         if all of these two op use inplace, then the second op will get wrong.
         So, we build the dependency graph, and only let the last op apply inplace.
         """
-        print(var_name, reused_var_name)
-        return True
+        # return True
         ops_use_var = self._graph.get_ops_use_var(reused_var_name)
+        print(var_name, reused_var_name)
+        t0 = map(lambda x: x.type, ops_use_var)
+        t1 = op.type
+        print(t0, t1)
+        # print(op)
+        # print(ops_use_var)
+        # print("*" * 80)
+        # print("\n" * 3)
         if len(ops_use_var) != 0 and ops_use_var[-1] == op:
             return True
         return False
@@ -505,16 +516,17 @@ def GenProgramInplace():
     program = Program()
     with program_guard(program, startup_program=Program()):
         x = layers.data(name='x', shape=[13], dtype='float32')
-        x = layers.fc(input=x, size=1, act=None)
-        x1 = layers.relu(x)
-        x2 = layers.relu(x)
-        x = layers.sums(x1, x2)
-        y_predict = layers.relu(x)
+        x0 = layers.fc(input=x, size=1, act="relu")
+        x1 = layers.fc(input=x0, size=1, act="relu")
+        # x2 = layers.fc(input=x1, size=1, act="relu")
+        # y_predict = layers.fc(input=x2, size=1, act="relu")
         y = layers.data(name='y', shape=[1], dtype='float32')
-        cost = layers.square_error_cost(input=y_predict, label=y)
+        cost = layers.square_error_cost(input=x1, label=y)
         avg_cost = layers.mean(cost)
         opt = optimizer.SGD(learning_rate=0.001)
         opt = opt.minimize(avg_cost)
+    # print(program)
+    # exit(0)
     return program
 
 

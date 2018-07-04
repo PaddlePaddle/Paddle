@@ -13,16 +13,16 @@
 # limitations under the License.
 
 from collections import defaultdict
-# from .. import core
-# from ..framework import Program, default_main_program, Parameter, Variable
-# from ..backward import _rename_arg_
+from .. import core
+from ..framework import Program, default_main_program, Parameter, Variable
+from ..backward import _rename_arg_
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-import paddle.fluid.optimizer as optimizer
-from paddle.fluid.framework import Program, default_main_program, Parameter, Variable, program_guard
-from paddle.fluid.backward import _rename_arg_, append_backward
+# import paddle.fluid as fluid
+# import paddle.fluid.core as core
+# import paddle.fluid.layers as layers
+# import paddle.fluid.optimizer as optimizer
+# from paddle.fluid.framework import Program, default_main_program, Parameter, Variable, program_guard
+# from paddle.fluid.backward import _rename_arg_, append_backward
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -300,15 +300,21 @@ class ControlFlowGraph(object):
             # print(self._live_out[i])
             # print(self._defs[i])
             # print(in_diff)
+            # print("\n")
             can_optimize = filter(
                 lambda x: self._check_var_validity(block_desc, x, is_forward),
                 in_diff)
+            # for x in in_diff:
+            #     print(x, self._check_var_validity(block_desc, x, is_forward))
+            # can_optimize = filter(
+            #     lambda x: self._check_var_validity(block_desc, x, is_forward),
+            #     in_diff)
             # print(can_optimize)
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
-            print(self.pool)
+            # print(self.pool)
 
 
 def _process_sub_block_pair(pdesc, sub_block_pair):
@@ -442,3 +448,58 @@ def release_memory(input_program, skip_opt_set=None):
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.release_memory(skip_opt_set=skip_opt_set)
+
+
+def GenProgram1():
+    program = Program()
+    with program_guard(program, startup_program=Program()):
+        x = layers.data(name='x', shape=[13], dtype='float32')
+        y_predict = layers.fc(input=x, size=1, act=None)
+        y = layers.data(name='y', shape=[1], dtype='float32')
+        cost = layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = layers.mean(cost)
+        opt = optimizer.SGD(learning_rate=0.001)
+        opt = opt.minimize(avg_cost)
+    return program
+
+
+def GenProgram2():
+    program = Program()
+    with program_guard(program, startup_program=Program()):
+        data = layers.data(name='X', shape=[1], dtype='float32')
+        data.stop_gradient = False
+        cond = layers.ConditionalBlock(inputs=[data])
+        out = layers.create_tensor(dtype='float32')
+        with cond.block():
+            hidden = layers.fc(input=data, size=10)
+            layers.assign(hidden, out)
+        loss = layers.mean(out)
+        append_backward(loss=loss)
+    return program
+
+
+def GenProgramInplace():
+    program = Program()
+    with program_guard(program, startup_program=Program()):
+        x = layers.data(name='x', shape=[13], dtype='float32')
+        x = layers.fc(input=x, size=1, act=None)
+        x1 = layers.relu(x)
+        x2 = layers.relu(x)
+        x = layers.sums(x1, x2)
+        y_predict = layers.relu(x)
+        y = layers.data(name='y', shape=[1], dtype='float32')
+        cost = layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = layers.mean(cost)
+        opt = optimizer.SGD(learning_rate=0.001)
+        opt = opt.minimize(avg_cost)
+    return program
+
+
+if __name__ == "__main__":
+    # program = GenProgram1()
+    # program = GenProgram2()
+    program = GenProgramInplace()
+    # print program
+    memory_optimize(program, print_log=True)
+    # plan = MemoryPlan(program, logging=True)
+    # plan.apply()
