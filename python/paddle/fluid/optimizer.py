@@ -296,11 +296,12 @@ class SGDOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         param = param_and_grad[0]
-        param_replica = layers.create_parameter(name=unique_name.generate("ParamReplica"),
-                                                shape=param.shape,
-                                                dtype="float32",
-                                                lod_level=param.lod_level,
-                                                persistable=True)
+        param_replica = layers.create_parameter(
+            name=unique_name.generate("ParamReplica"),
+            shape=param.shape,
+            dtype="float32",
+            lod_level=param.lod_level,
+            persistable=True)
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
@@ -1256,3 +1257,59 @@ class ModelAverage(Optimizer):
         """Restore parameter values of current model.
         """
         executor.run(self.restore_program)
+
+
+class MixedPrecisionOptimizer(Optimizer):
+    def __init__(self, scale_factor=128.0, learning_rate, **kwargs):
+        assert learning_rate is not None
+        super(MixedPrecisionOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        self.type = "mixed_sgd"
+        self.scale_factor = scale_factor
+        self.learning_rate = learning_rate
+        self.params = []
+        for param in framework.default_main_program().global_block(
+        ).all_parameters():
+            fp32_param = param.block.create_var(
+                name=unique_name.generate(".".join([param.name, 'fp32'])),
+                dtype=param.dtype,
+                persistable=False,
+                stop_gradient=True)
+            self.params.append(fp32_param)
+
+    def _loss_scaling(self, loss):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            global_block = framework.default_main_program().global_block()
+            self.helper = LayerHelper(self.__class__.__name__)
+
+    def _expand_gradient(self, loss):
+        # Multiply the weight gradient with 1/S
+        pass
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        """Add operations to minimize `loss` by updating `parameter_list`.
+
+        This method combines interface `append_backward()` and
+        `create_optimization_pass()` into one.
+        """
+        scale_loss = self._loss_scaling(loss)
+
+        params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                       [error_clip_callback])
+
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        params_grads = append_gradient_clip_ops(params_grads)
+
+        # Add regularization if any
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
+
+        optimize_ops = self.create_optimization_pass(params_grads, loss,
+                                                     startup_program)
+        return optimize_ops, params_grads

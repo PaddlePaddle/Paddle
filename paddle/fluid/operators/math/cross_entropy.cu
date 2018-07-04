@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda_fp16.h>
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -25,16 +24,6 @@ namespace math {
 template <typename T>
 HOSTDEVICE T log(const T& val) {
   return std::log(val);
-}
-
-template <>
-HOSTDEVICE float log(const float& val) {
-  return __logf(val);
-}
-
-template <>
-HOSTDEVICE double log(const double& val) {
-  return log(val);
 }
 
 template <>
