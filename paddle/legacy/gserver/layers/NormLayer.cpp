@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "NormLayer.h"
 #include "NormProjectionLayer.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 namespace paddle {
 
 REGISTER_LAYER_CREATE_FUNC(norm, &NormLayer::create);

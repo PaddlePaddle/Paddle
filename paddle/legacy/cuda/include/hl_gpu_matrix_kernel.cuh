@@ -18,7 +18,7 @@ limitations under the License. */
 #define HL_GPU_MATRIX_KERNEL_CUH_
 
 #include <algorithm>
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 #include "hl_base.h"
 
 #ifdef __NVCC__

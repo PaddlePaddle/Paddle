@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "Evaluator.h"
 #include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/legacy/utils/StringUtil.h"
 
 namespace paddle {
 

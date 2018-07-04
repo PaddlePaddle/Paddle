@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MKLDNNLRNLayer.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 using namespace mkldnn;  // NOLINT
 typedef memory::format format;

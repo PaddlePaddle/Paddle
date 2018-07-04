@@ -26,10 +26,10 @@ limitations under the License. */
 #include "paddle/legacy/parameter/ParameterUpdateFunctions.h"
 #include "paddle/legacy/parameter/Regularizer.h"
 #include "paddle/legacy/parameter/ThreadLocalBuffer.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/GlobalConstants.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/StringUtil.h"
 
 DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
 DEFINE_double(async_lagged_ratio_min,

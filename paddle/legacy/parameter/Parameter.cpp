@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/legacy/math/CpuSparseMatrix.h"
 #include "paddle/legacy/math/MathUtils.h"
 #include "paddle/legacy/math/SparseRowMatrix.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 DEFINE_int32(enable_grad_share,
              (100 * 1024 * 1024),
