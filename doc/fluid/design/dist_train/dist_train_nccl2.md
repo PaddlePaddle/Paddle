@@ -1,7 +1,8 @@
 # Distributed Training with NCCL2
 
 We design a pattern that can enable training with `ParallelExecutor` and
-using NCCL2 as it's collective communication library.
+using [NCCL2](https://developer.nvidia.com/nccl) as it's collective
+communication library.
 
 In `ParallelExecutor` we can use `AllReduce` or `Reduce` and `Broadcast`
 to do multi GPU training. And if we initialize NCCL2 communicators as
