@@ -5,7 +5,7 @@
 
 若您的系统为Linux或Windows，您可以使用我们提供的安装包来安装PaddlePaddle。
 
-对于MacOS系统，我们暂未提供安装包，您可以使用 :ref:`source` 的方式安装。
+对于MacOS系统，我们暂未提供安装包，您可以使用从源码编译的方式安装。
 
 
 .. _install_linux:
@@ -177,7 +177,7 @@ Docker安装完成后，请您执行下面的步骤：
 在MacOS安装PaddlePaddle
 --------
 
-对于MacOS系统，我们暂未提供pip安装方式，您可以使用 :ref:`source` 的方式安装。
+对于MacOS系统，我们暂未提供pip安装方式，您可以使用从源码编译的方式安装。
 
 .. _others:
 
