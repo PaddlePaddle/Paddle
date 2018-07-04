@@ -124,9 +124,8 @@ optimization algorithm $f$ runs on the storage service.
 For another design, we can implement a distributed sparse table in Fluid,
 and don't need to maintain an external storage component while training.
 
-Prior to reading this design, it would be useful for the reader to make themselves
-familiar with Fluid [Distributed Training Architecture](./distributed_architecture.md)
-and [Parameter Server](./parameter_server.md).
+You may need to read Fluid [Distributed Training Architecture](./distributed_architecture.md)
+and [Parameter Server](./parameter_server.md) before going on.
 
 ![fluid lookup remote table](./src/fluid_lookup_remote_table.png)
 
