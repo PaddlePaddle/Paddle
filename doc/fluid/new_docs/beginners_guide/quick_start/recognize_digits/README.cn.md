@@ -107,12 +107,34 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 
 PaddlePaddle在API中提供了自动加载[MNIST](http://yann.lecun.com/exdb/mnist/)数据的模块`paddle.dataset.mnist`。加载后的数据位于`/home/username/.cache/paddle/dataset/mnist`下：
 
-| 文件名称                | 说明                       |
-|-------------------------|----------------------------|
-| train-images-idx3-ubyte | 训练数据图片，60,000条数据 |
-| train-labels-idx1-ubyte | 训练数据标签，60,000条数据 |
-| t10k-images-idx3-ubyte  | 测试数据图片，10,000条数据 |
-| t10k-labels-idx1-ubyte  | 测试数据标签，10,000条数据 |
+<p align="center">
+<table>
+    <thead>
+    <tr>
+        <th>文件名称</th>
+        <th>说明</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>train-images-idx3-ubyte</td>
+        <td>训练数据图片，60,000条数据</td>
+    </tr>
+    <tr>
+        <td>train-labels-idx1-ubyte</td>
+        <td>训练数据标签，60,000条数据</td>
+    </tr>
+    <tr>
+        <td>t10k-images-idx3-ubyte</td>
+        <td>测试数据图片，10,000条数据</td>
+    </tr>
+    <tr>
+        <td>t10k-labels-idx1-ubyte</td>
+        <td>测试数据标签，10,000条数据</td>
+    </tr>
+    </tbody>
+</table>
+</p>
 
 ## Fluid API 概述
 
