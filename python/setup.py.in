@@ -128,6 +128,8 @@ if '${WITH_MKL}'== 'ON':
 if '${WITH_MKLDNN}'== 'ON':
     package_data['paddle.libs']+=['libmkldnn.so.0']
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+# remove unused paddle/libs/__init__.py
+os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
 
 # change rpath of core.so, add $ORIGIN/../libs/ to it.
