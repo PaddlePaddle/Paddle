@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,15 +36,13 @@ class UnsqueezeOpInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(static_cast<int>(x_dims.size()) <= 6,
                    "Invalid dimensions, dynamic dimensions should within "
                    "[1, 6] dimensions (Eigen limit).");
-    // Validity Check: the range of unsqueeze aixs.
-    for (int axis : axes) {
-      PADDLE_ENFORCE(axis < 6,
-                     "Invalid dimensions, input axis should within "
-                     "[1, 6] dimensions (Eigen limit).");
-    }
-
     auto out_dims = GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
+    if (x_dims[0] == out_dims[0]) {
+      // Only pass LoD when the first dimension of output and Input(X)
+      // are the same.
+      ctx->ShareLoD("X", "Out");
+    }
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
@@ -102,6 +100,8 @@ class UnsqueezeOp : public framework::OperatorBase {
     auto &axes = Attr<std::vector<int>>("axes");
     auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
     auto out_dims = UnsqueezeOpInferShape::GetOutputShape(axes, x_dims);
+    // auto out_dims =
+    // scope.FindVar(Output("Out"))->Get<framework::LoDTensor>().dims();
 
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(out_dims);
@@ -121,7 +121,19 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor). The output tensor of unsqueeze operator.");
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of positive integers,"
-                              " indicate the dimensions to be inserted");
+                              " indicate the dimensions to be inserted")
+        .AddCustomChecker([](const std::vector<int> &axes) {
+          // Validity Check: axes dims (<6).
+          PADDLE_ENFORCE(static_cast<int>(axes.size()) < 6,
+                         "Invalid dimensions, dynamic dimensions should within "
+                         "[1, 6] dimensions (Eigen limit).");
+          // Validity Check: the range of unsqueeze aixs.
+          for (int axis : axes) {
+            PADDLE_ENFORCE(axis < 6,
+                           "Invalid dimensions, input axis should within "
+                           "[1, 6] dimensions (Eigen limit).");
+          }
+        });
     AddAttr<bool>(
         "inplace",
         "(default: false) Unsqueeze the source tensor's shape without "
