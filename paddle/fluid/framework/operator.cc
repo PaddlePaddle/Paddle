@@ -592,8 +592,7 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
@@ -652,7 +651,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  kernel_iter->second->Compute(ExecutionContext(*this, exec_scope, *dev_ctx));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -748,10 +747,6 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &var->Get<LoDTensor>();
         } else if (var->IsType<SelectedRows>()) {
           t = &(var->Get<SelectedRows>().value());
-        } else if (var->IsType<LoDTensorArray>()) {
-          const LoDTensorArray& arr = var->Get<LoDTensorArray>();
-          PADDLE_ENFORCE(arr.size() > 0);
-          t = &(arr[0]);
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
