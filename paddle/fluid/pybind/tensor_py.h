@@ -112,6 +112,19 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   }
 }
 
+// template <>
+// uint16_t TensorGetElement(const framework::Tensor &self, size_t offset) {
+//   if (platform::is_cpu_place(self.place())) {
+//     return
+//     reinterpret_cast<uint16_t>(self.data<platform::float16>()[offset]);
+//   } else {
+//     std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
+//     framework::TensorCopySync(self, platform::CPUPlace(), dst.get());
+//     return
+//     reinterpret_cast<uint16_t>(dst->data<platform::float16>()[offset]);
+//   }
+// }
+
 // TODO(dzhwinter) : fix the redundent Tensor allocate and free
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {

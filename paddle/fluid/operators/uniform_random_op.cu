@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -75,9 +76,13 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(uniform_random,
-                        paddle::operators::GPUUniformRandomKernel<float>,
-                        paddle::operators::GPUUniformRandomKernel<double>);
-REGISTER_OP_CUDA_KERNEL(uniform_random_batch_size_like,
-                        paddle::operators::GPUUniformRandomKernel<float>,
-                        paddle::operators::GPUUniformRandomKernel<double>);
+namespace plat = paddle::platform;
+REGISTER_OP_CUDA_KERNEL(
+    uniform_random, paddle::operators::GPUUniformRandomKernel<float>,
+    paddle::operators::GPUUniformRandomKernel<double>,
+    paddle::operators::GPUUniformRandomKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    uniform_random_batch_size_like,
+    paddle::operators::GPUUniformRandomKernel<float>,
+    paddle::operators::GPUUniformRandomKernel<double>,
+    paddle::operators::GPUUniformRandomKernel<plat::float16>);

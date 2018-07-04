@@ -24,9 +24,11 @@ from paddle.fluid.executor import Executor
 class TestGaussianRandomOp(unittest.TestCase):
     def setUp(self):
         self.op_type = "gaussian_random"
+        self.dtype = np.float32
         self.inputs = {}
         self.use_mkldnn = False
         self.init_kernel_type()
+
         self.attrs = {
             "shape": [1000, 784],
             "mean": .0,

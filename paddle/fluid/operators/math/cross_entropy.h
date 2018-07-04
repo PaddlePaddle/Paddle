@@ -16,13 +16,13 @@ limitations under the License. */
 #include <limits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-// TODO(dzhwinter): the cross entropy need a code clean up.
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {

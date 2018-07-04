@@ -16,13 +16,16 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise_div_op.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
+                              plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,

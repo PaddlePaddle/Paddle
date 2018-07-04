@@ -75,13 +75,24 @@ def get_numeric_gradient(place,
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 
     def __get_elem__(tensor, i):
-        if tensor_to_check_dtype == np.float32:
+        if tensor_to_check_dtype == np.float16:
+            numpy_tensor = np.array(tensor)
+            dims = reduce(lambda x, y: x * y, numpy_tensor.shape)
+            return numpy_tensor.reshape((1, dims))[i]
+        elif tensor_to_check_dtype == np.float32:
             return tensor.get_float_element(i)
         else:
             return tensor.get_double_element(i)
 
     def __set_elem__(tensor, i, e):
-        if tensor_to_check_dtype == np.float32:
+        if tensor_to_check_dtype == np.float16:
+            numpy_tensor = np.array(tensor)
+            shape = numpy_tensor.shape
+            dims = reduce(lambda x, y: x * y, numpy_tensor.shape)
+            numpy_tensor.reshape((1, dims))[i] = e
+            numpy_tensor.reshape(shape)
+            tenosr.set(numpy_tensor, place)
+        elif tensor_to_check_dtype == np.float32:
             tensor.set_float_element(i, e)
         else:
             tensor.set_double_element(i, e)

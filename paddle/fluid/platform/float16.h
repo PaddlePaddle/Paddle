@@ -905,6 +905,15 @@ struct is_floating_point<paddle::platform::float16>
           bool, std::is_same<paddle::platform::float16,
                              typename std::remove_cv<
                                  paddle::platform::float16>::type>::value> {};
+template <>
+struct is_signed<paddle::platform::float16> {
+  static const bool value = true;
+};
+
+template <>
+struct is_unsigned<paddle::platform::float16> {
+  static const bool value = false;
+};
 
 template <>
 struct numeric_limits<paddle::platform::float16> {
