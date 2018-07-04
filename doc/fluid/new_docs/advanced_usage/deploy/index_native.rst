@@ -5,4 +5,4 @@
     :maxdepth: 2
 
     build_and_install_lib_cn.rst
-    native_inference_engine.rst
+    native_infer.rst
