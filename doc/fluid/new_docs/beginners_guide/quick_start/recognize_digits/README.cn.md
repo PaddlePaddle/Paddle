@@ -111,32 +111,28 @@ PaddlePaddle在API中提供了自动加载[MNIST](http://yann.lecun.com/exdb/mni
 <table>
     <thead>
     <tr>
-        <th>File name</th>
-        <th>Description</th>
-        <th>Size</th>
+        <th>文件名称</th>
+        <th>说明</th>
     </tr>
     </thead>
     <tbody>
     <tr>
         <td>train-images-idx3-ubyte</td>
-        <td>Training images</td>
-        <td>60,000</td>
+        <td>训练数据图片，60,000条数据</td>
     </tr>
     <tr>
         <td>train-labels-idx1-ubyte</td>
-        <td>Training labels</td>
-        <td>60,000</td>
+        <td>训练数据标签，60,000条数据</td>
     </tr>
     <tr>
         <td>t10k-images-idx3-ubyte</td>
-        <td>Evaluation images</td>
-        <td>10,000</td>
+        <td>测试数据图片，10,000条数据</td>
     </tr>
     <tr>
         <td>t10k-labels-idx1-ubyte</td>
-        <td>Evaluation labels</td>
-        <td>10,000</td>
-    </tr></tbody>
+        <td>测试数据标签，10,000条数据</td>
+    </tr>
+    </tbody>
 </table>
 </p>
 

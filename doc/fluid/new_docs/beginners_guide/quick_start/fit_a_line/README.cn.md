@@ -56,82 +56,83 @@ $$MSE=\frac{1}{n}\sum_{i=1}^{n}{(\hat{Y_i}-Y_i)}^2$$
 <table>
     <thead>
     <tr>
-        <th>Attribute Name</th>
-        <th>Characteristic</th>
-        <th>Data Type</th>
+        <th>属性名</th>
+        <th>解释</th>
+        <th>类型</th>
     </tr>
     </thead>
     <tbody>
     <tr>
         <td>CRIM</td>
-        <td>per capita crime rate by town</td>
-        <td>Continuous</td>
+        <td>该镇的人均犯罪率</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>ZN</td>
-        <td>proportion of residential land zoned for lots over 25,000 sq.ft.</td>
-        <td>Continuous</td>
+        <td>占地面积超过25,000平方呎的住宅用地比例</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>INDUS</td>
-        <td>proportion of non-retail business acres per town</td>
-        <td>Continuous</td>
+        <td>非零售商业用地比例</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>CHAS</td>
-        <td>Charles River dummy variable</td>
-        <td>Discrete, 1 if tract bounds river; 0 otherwise</td>
+        <td>是否邻近 Charles River</td>
+        <td>离散值，1=邻近；0=不邻近</td>
     </tr>
     <tr>
         <td>NOX</td>
-        <td>nitric oxides concentration (parts per 10 million)</td>
-        <td>Continuous</td>
+        <td>一氧化氮浓度</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>RM</td>
-        <td>average number of rooms per dwelling</td>
-        <td>Continuous</td>
+        <td>每栋房屋的平均客房数</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>AGE</td>
-        <td>proportion of owner-occupied units built prior to 1940</td>
-        <td>Continuous</td>
+        <td>1940年之前建成的自用单位比例</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>DIS</td>
-        <td>weighted distances to five Boston employment centres</td>
-        <td>Continuous</td>
+        <td>到波士顿5个就业中心的加权距离</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>RAD</td>
-        <td>index of accessibility to radial highways</td>
-        <td>Continuous</td>
+        <td>到径向公路的可达性指数</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>TAX</td>
-        <td>full-value property-tax rate per $10,000</td>
-        <td>Continuous</td>
+        <td>全值财产税率</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>PTRATIO</td>
-        <td>pupil-teacher ratio by town</td>
-        <td>Continuous</td>
+        <td>学生与教师的比例</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>B</td>
-        <td>1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town</td>
-        <td>Continuous</td>
+        <td>1000(BK - 0.63)^2，其中BK为黑人占比</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>LSTAT</td>
-        <td>% lower status of the population</td>
-        <td>Continuous</td>
+        <td>低收入人群占比</td>
+        <td>连续值</td>
     </tr>
     <tr>
         <td>MEDV</td>
-        <td>Median value of owner-occupied homes in $1000's</td>
-        <td>Continuous</td>
-    </tr></tbody>
+        <td>同类房屋价格的中位数</td>
+        <td>连续值</td>
+    </tr>
+    </tbody>
 </table>
 </p>
 
