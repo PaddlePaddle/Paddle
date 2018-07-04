@@ -648,7 +648,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+      .def_property("share_parameter_between_cards",
+                    [](const BuildStrategy &self) {
+                      return self.share_parameter_between_cards_;
+                    },
+                    [](BuildStrategy &self, bool shared) {
+                      self.share_parameter_between_cards_ = shared;
+                    });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,

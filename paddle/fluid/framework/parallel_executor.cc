@@ -45,6 +45,7 @@ class ParallelExecutorPrivate {
 #endif
   bool own_local_scope_;
   bool use_cuda_;
+  bool share_parameter_between_cards_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -62,6 +63,20 @@ ParallelExecutor::ParallelExecutor(
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
+
+  member_->share_parameter_between_cards_ =
+      build_strategy.share_parameter_between_cards_;
+
+  if (build_strategy.share_parameter_between_cards_) {
+    PADDLE_ENFORCE(
+        !member_->use_cuda_,
+        "Currently, ParallelExecutor doesn't support share parameters "
+        "between GPU.");
+    PADDLE_ENFORCE(
+        build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce,
+        "If you set share_parameter_between_cards with true, "
+        "build_strategy.reduce must be 'Reduce'");
+  }
 
   // Step 1. Bcast the params to devs.
   // Create local scopes
@@ -117,7 +132,7 @@ ParallelExecutor::ParallelExecutor(
 #ifdef PADDLE_WITH_CUDA
     builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #else
-    PADDLE_THROW("Not compiled with CUDA");
+    PADDLE_THROW("Not compiled with CUDA.");
 #endif
   }
 
@@ -133,7 +148,7 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
-  // the the initializing bcast, all vars would be bcast from device(0),
+  // the initializing bcast, all vars would be bcast from device(0),
   // otherwise
   // bcast from the specified device.
   bool initializing = builder_.get() == nullptr ? true : false;
@@ -155,11 +170,10 @@ void ParallelExecutor::BCastParamsToGPUs(
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
-
+    auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
       std::vector<void *> buffers;
-      auto &dims = main_tensor.dims();
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
@@ -207,16 +221,17 @@ void ParallelExecutor::BCastParamsToGPUs(
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
 #ifdef PADDLE_WITH_CUDA
-        if (member_->use_cuda_) {
-          auto &dims = main_tensor.dims();
+        t->Resize(dims);
+        t->mutable_data(cpu, main_tensor.type());
+        paddle::framework::TensorCopy(main_tensor, cpu, t);
+#else
+        if (member_->share_parameter_between_cards_) {
+          t->ShareDataWith(main_tensor);
+        } else {
           t->Resize(dims);
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
-        } else {
-          t->ShareDataWith(main_tensor);
         }
-#else
-        t->ShareDataWith(main_tensor);
 #endif
       }
     }

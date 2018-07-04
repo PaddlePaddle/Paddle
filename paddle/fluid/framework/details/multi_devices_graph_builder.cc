@@ -276,7 +276,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
 
-  if (use_gpu) {
+  if (use_gpu || !(use_gpu || strategy_.share_parameter_between_cards_)) {
     // Insert BCast Ops
     for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
       auto &to_bcast_set = bcast_var_name_set[dev_id];

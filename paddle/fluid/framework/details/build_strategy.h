@@ -32,6 +32,8 @@ struct BuildStrategy {
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
 
+  bool share_parameter_between_cards_{false};
+
   std::string debug_graphviz_path_{""};
 
   bool enable_data_balance_{true};
