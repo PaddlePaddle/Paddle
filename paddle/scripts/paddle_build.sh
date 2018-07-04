@@ -177,6 +177,7 @@ function check_style() {
 #=================================================
 
 function build() {
+    apt-get install patchelf -y
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cat <<EOF
@@ -315,6 +316,8 @@ EOF
 function assert_api_not_changed() {
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
+    readelf -d ../python/paddle/fluid/core.so
+    ldd ../python/paddle/fluid/core.so
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
