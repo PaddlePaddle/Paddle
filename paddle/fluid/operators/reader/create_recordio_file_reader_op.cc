@@ -33,8 +33,6 @@ class RecordIOFileReader : public framework::FileReader {
     LOG(INFO) << "Creating file reader" << filename;
   }
 
-  void ReInit() override { scanner_.Reset(); }
-
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     if (ThreadSafe) {
@@ -46,6 +44,11 @@ class RecordIOFileReader : public framework::FileReader {
   }
 
  private:
+  void ReStart() override {
+    scanner_.Reset();
+    is_closed_ = false;
+  }
+
   std::unique_ptr<std::mutex> mutex_;
   recordio::Scanner scanner_;
   const platform::DeviceContext& dev_ctx_;

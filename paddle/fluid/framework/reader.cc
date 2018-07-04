@@ -16,11 +16,73 @@
 
 namespace paddle {
 namespace framework {
+
 ReaderBase::~ReaderBase() {}
 
-FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+static void TraceDecorations(
+    std::weak_ptr<ReaderBase> reader,
+    std::vector<std::function<void()>> *restart_methods) {
+  auto reader_ptr = reader.lock();
+  PADDLE_ENFORCE_NOT_NULL(reader_ptr);
+  for (auto &d_reader : reader_ptr->GetDecorations()) {
+    TraceDecorations(d_reader, restart_methods);
+  }
+  restart_methods->emplace_back(reader_ptr->CloseAndGetRestartMethod(false));
+}
+
+void ReaderBase::ReInitAllReaders() {
+  std::vector<std::function<void()>> restart_methods;
+  for (auto &d_reader : decorations_) {
+    TraceDecorations(d_reader, &restart_methods);
+  }
+  restart_methods.emplace_back(CloseAndGetRestartMethod(true));
+
+  for (auto it = restart_methods.rbegin(); it != restart_methods.rend(); ++it) {
+    (*it)();
+  }
+}
+
+DecoratedReader::DecoratedReader(const std::shared_ptr<ReaderBase> &reader)
+    : ReaderBase(), reader_(reader) {
+  PADDLE_ENFORCE_NOT_NULL(reader_);
+}
+
+void DecoratedReader::ReadNext(std::vector<LoDTensor> *out) {
+  PADDLE_ENFORCE(!is_closed_, "Can not read data from a closed reader.");
+  ReadNextImpl(out);
+}
+
+std::function<void()> DecoratedReader::CloseAndGetRestartMethod(
+    bool recursively) {
+  Close();
+  std::function<void()> restart_method;
+  if (recursively) {
+    auto underlying_restart_method = reader_->CloseAndGetRestartMethod(true);
+    restart_method = [=] {
+      underlying_restart_method();
+      ReStart();
+    };
+  } else {
+    restart_method = [=] { ReStart(); };
+  }
+  return restart_method;
+}
+
+void RootReader::ReadNext(std::vector<LoDTensor> *out) {
+  PADDLE_ENFORCE(!is_closed_, "Can not read data from a closed reader.");
+  ReadNextImpl(out);
+}
+
+std::function<void()> RootReader::CloseAndGetRestartMethod(bool recursively) {
+  Close();
+  return [=] { ReStart(); };
+}
+
+FileReader::FileReader(const std::vector<DDim> &dims)
+    : RootReader(), dims_(dims) {}
 
 void FileReader::ReadNext(std::vector<LoDTensor> *out) {
+  PADDLE_ENFORCE(!is_closed_, "Can not read data from a closed reader.");
   ReadNextImpl(out);
   if (out->empty()) {
     return;
@@ -37,5 +99,6 @@ void FileReader::ReadNext(std::vector<LoDTensor> *out) {
     }
   }
 }
+
 }  // namespace framework
 }  // namespace paddle

@@ -28,32 +28,62 @@ class ReaderBase {
  public:
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
 
-  virtual void ReInit() = 0;
+  std::vector<std::weak_ptr<ReaderBase>>& GetDecorations() {
+    return decorations_;
+  }
+
+  virtual std::function<void()> CloseAndGetRestartMethod(bool recursively) = 0;
+
+  void ReInitAllReaders();
 
   virtual ~ReaderBase();
+
+ protected:
+  virtual void Close() {
+    PADDLE_ENFORCE(!is_closed_);
+    is_closed_ = true;
+  }
+
+  virtual void ReStart() {
+    PADDLE_ENFORCE(is_closed_);
+    is_closed_ = false;
+  }
+
+  std::vector<std::weak_ptr<ReaderBase>> decorations_;
+  bool is_closed_ = false;
 };
 
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
-      : ReaderBase(), reader_(reader) {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
-  }
+  explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader);
 
-  void ReInit() override { reader_->ReInit(); }
+  void ReadNext(std::vector<LoDTensor>* out) final;
 
- protected:
-  std::shared_ptr<ReaderBase> reader_;
-};
-
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& dims);
-
-  void ReadNext(std::vector<LoDTensor>* out) override;
+  std::function<void()> CloseAndGetRestartMethod(bool recursively) override;
 
  protected:
   virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+
+  std::shared_ptr<ReaderBase> reader_;
+};
+
+class RootReader : public ReaderBase {
+ public:
+  RootReader() : ReaderBase() {}
+
+  void ReadNext(std::vector<LoDTensor>* out) override;
+
+  std::function<void()> CloseAndGetRestartMethod(bool recursively) override;
+
+ protected:
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+};
+
+class FileReader : public RootReader {
+ public:
+  explicit FileReader(const std::vector<DDim>& dims);
+
+  void ReadNext(std::vector<LoDTensor>* out) final;
 
  private:
   std::vector<DDim> dims_;
@@ -71,9 +101,10 @@ class ReaderHolder {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->ReadNext(out);
   }
-  void ReInit() {
+
+  void ReInitAllReaders() {
     PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->ReInit();
+    reader_->ReInitAllReaders();
   }
 
  private:

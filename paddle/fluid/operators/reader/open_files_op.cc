@@ -21,12 +21,12 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-class MultiFileReader : public framework::ReaderBase {
+class MultiFileReader : public framework::RootReader {
  public:
   MultiFileReader(const std::vector<std::string>& file_names,
                   const std::vector<framework::DDim>& dims, size_t thread_num,
                   size_t buffer_size)
-      : buffer_size_(buffer_size) {
+      : RootReader(), buffer_size_(buffer_size) {
     readers_.reserve(file_names.size());
     for (const std::string& f_name : file_names) {
       readers_.emplace_back(CreateReaderByFileName(f_name, dims));
@@ -35,8 +35,7 @@ class MultiFileReader : public framework::ReaderBase {
     StartNewScheduler();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  void ReInit() override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
   ~MultiFileReader() { EndScheduler(); }
 
@@ -45,6 +44,8 @@ class MultiFileReader : public framework::ReaderBase {
   void EndScheduler();
   void ScheduleThreadFunc();
   void PrefetchThreadFunc(size_t reader_idx, size_t thread_idx);
+  void Close() override;
+  void ReStart() override;
 
   std::vector<std::unique_ptr<framework::ReaderBase>> readers_;
   std::thread scheduler_;
@@ -55,15 +56,22 @@ class MultiFileReader : public framework::ReaderBase {
   reader::BlockingQueue<std::vector<framework::LoDTensor>>* buffer_;
 };
 
-void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void MultiFileReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   if (!buffer_->Receive(out)) {
     out->clear();
   }
 }
 
-void MultiFileReader::ReInit() {
+void MultiFileReader::Close() {
+  PADDLE_ENFORCE(!is_closed_, "MultiFileReader can not be closed twice.");
   EndScheduler();
+  is_closed_ = true;
+}
+
+void MultiFileReader::ReStart() {
+  PADDLE_ENFORCE(is_closed_, "MultiFileReader can not be restart twice.");
   StartNewScheduler();
+  is_closed_ = false;
 }
 
 void MultiFileReader::StartNewScheduler() {
@@ -120,7 +128,7 @@ void MultiFileReader::ScheduleThreadFunc() {
       }
     }
   }
-  // If users invoke ReInit() when scheduler is running, it will close the
+  // If Close() is invoked when scheduler is running, it will close the
   // 'avaiable_thread_idx_' and prefecther threads have no way to tell scheduler
   // to release their resource. So a check is needed before scheduler ends.
   for (auto& p : prefetchers_) {
@@ -138,7 +146,7 @@ void MultiFileReader::PrefetchThreadFunc(size_t reader_idx, size_t thread_idx) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
     if (ins.empty()) {
-      reader->ReInit();
+      reader->CloseAndGetRestartMethod(true)();
       break;
     }
     try {
