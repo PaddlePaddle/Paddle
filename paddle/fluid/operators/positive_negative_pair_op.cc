@@ -95,8 +95,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
 
 class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PositiveNegativePairOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Score",
              "(Tensor, float) Model Score on an item (with "
              "respect to QueryID). It's a 2-D tensor with shape [batch_size, "

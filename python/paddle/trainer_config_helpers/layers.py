@@ -148,6 +148,7 @@ __all__ = [
     'resize_layer',
     'sub_seq_layer',
     'scale_sub_region_layer',
+    'upsample_layer',
     'factorization_machine',
 ]
 
@@ -166,6 +167,7 @@ class LayerType(object):
     SEQUENCE_RESHAPE = 'seqreshape'
     POOLING_MAX = 'max'
     POOLING_AVG = 'average'
+    UPSAMPLE_LAYER = 'upsample'
     FC_LAYER = 'fc'
     COST = 'cost'
     COSINE_SIM_VEC = 'cos_vm'
@@ -2554,7 +2556,7 @@ def img_conv_layer(input,
     the output will be obtained by concatenating the two results.
 
     The details of grouped convolution, please refer to:
-    `ImageNet Classification with Deep Convolutional Neural Networks
+    `ImageNet Classification With Deep Convolutional Neural Networks
     <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
     
     The example usage is:
@@ -2747,17 +2749,17 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + ceil(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + ceil(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     - ceil_mode=False:
 
     ..  math::
 
-        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + floor(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + floor(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     The example usage is:
 
@@ -3012,6 +3014,83 @@ def img_pool3d_layer(input,
         parents=[input],
         num_filters=num_channels,
         size=l.config.size)
+
+
+@wrap_name_default("upsample")
+@layer_support()
+def upsample_layer(input,
+                   name=None,
+                   scale=None,
+                   scale_y=None,
+                   upsample_size=None,
+                   upsample_size_y=None,
+                   pad_out_x=False,
+                   pad_out_y=False,
+                   layer_attr=None):
+    """
+    The DePooling process.
+    Inputs should be a list of length 2. The first input is a layer,
+    and the second input should be the MaxWithMaskPoolingLayer
+
+    The example usage is:
+
+    ..  code-block:: python
+        pool1 = paddle.v2.layer.img_pool(input=input, pool_size=2, stride=2,
+                                        pool_type=paddle.pooling.MaxWithMask())
+        upsample = paddle.v2.layer.upsample(input=[layer1, pool1])
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: contains an input layer and a MaxWithMaskPoolingLayer
+    :type input: list | tuple | collections.Sequence
+    :param scale: outputSize =  scale * inputSize
+    :type scale: int | list | tuple | .
+    :param scale_y: scale_y will be equal to scale, if it's value is None, 
+    :type scale: int | None. 
+    :param upsample_size: specify the outputSize.
+    :type upsample_size: int | list | tuple.
+    :param upsample_size_y: specify the y dimension outputSize.
+    :type upsample_size_y: int.
+    :param pad_out_x: specify exact x dimension size. This parameter only works when scale is 2
+    :type pad_out_x: bool.
+    :param pad_out_y: specify exact y dimension size. This parameter only works when scale is 2
+    :type pad_out_y: bool.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert (scale is not None) or (upsample_size is not None), \
+            'scale or upsample_size, there must be one to be designated'
+
+    assert len(input) == 2, 'layer input size must be 2'
+
+    assert input[1].layer_type == LayerType.POOL_LAYER, \
+            'the second input should be the MaxPoolWithMaskLayer'
+
+    scale_y = scale \
+            if scale is not None else scale_y
+    upsample_size_y = upsample_size  \
+            if upsample_size is not None else upsample_size_y
+
+    layer_type = LayerType.UPSAMPLE_LAYER
+
+    layer = Layer(
+        name=name,
+        type=layer_type,
+        inputs=[
+            Input(
+                input[0].name,
+                upsample=Upsample(scale, scale_y, pad_out_x, pad_out_y,
+                                  upsample_size, upsample_size_y)),
+            Input(input[1].name)
+        ],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+
+    sz = layer.config.size
+
+    return LayerOutput(name, layer_type=layer_type, parents=input, size=sz)
 
 
 @wrap_name_default("spp")
@@ -4103,9 +4182,9 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
 
     You can see following configs for further usages:
 
-    - time steps: lstmemory_group, paddle/gserver/tests/sequence_layer_group.conf, \
+    - time steps: lstmemory_group, paddle/legacy/gserver/tests/sequence_layer_group.conf, \
                   demo/seqToseq/seqToseq_net.py
-    - sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf
+    - sequence steps: paddle/legacy/gserver/tests/sequence_nest_layer_group.conf
 
     :param step: A step function which takes the input of recurrent_group as its own
                  input and returns values as recurrent_group's output every time step.
@@ -5599,8 +5678,8 @@ def warp_ctc_layer(input,
     <https://github.com/baidu-research/warp-ctc>`_ library, which is used in
     `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
     <https://arxiv.org/pdf/1512.02595v1.pdf>`_, to compute Connectionist Temporal
-    Classification (CTC) loss. Besides, another `warp-ctc
-    <https://github.com/gangliao/warp-ctc>`_ repository, which is forked from
+    Classification (CTC) loss. Besides, another `warp-ctc repository
+    <https://github.com/gangliao/warp-ctc>`_ , which is forked from
     the official one, is maintained to enable more compiling options. During the
     building process, PaddlePaddle will clone the source codes, build and
     install it to :code:`third_party/install/warpctc` directory.

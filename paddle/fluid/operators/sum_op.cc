@@ -10,9 +10,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sum_op.h"
+
+#include <algorithm>
+#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -35,7 +43,10 @@ class SumOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputsDim("X");
     size_t N = x_dims.size();
-    PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
+    if (N == 1) {
+      VLOG(3) << "Warning: sum have only one input, may waste memory";
+    }
 
     framework::DDim in_dim({0});
     for (auto& x_dim : x_dims) {
@@ -56,6 +67,18 @@ class SumOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
+
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
       for (auto& x_var : x_vars) {
@@ -73,26 +96,27 @@ class SumOp : public framework::OperatorWithKernel {
                         "Sum operator should have at least one tensor");
 
       return framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(dtype),
-          ctx.device_context());
+          static_cast<framework::proto::VarType::Type>(dtype), ctx.GetPlace(),
+          layout, library);
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<framework::SelectedRows>().value();
         if (value.IsInitialized()) {
           return framework::OpKernelType(framework::ToDataType(value.type()),
-                                         ctx.device_context());
+                                         ctx.device_context(), layout, library);
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
       return framework::OpKernelType(framework::proto::VarType::FP32,
-                                     ctx.device_context());
+                                     ctx.device_context(), layout, library);
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0) {
             return framework::OpKernelType(framework::ToDataType(each.type()),
-                                           ctx.device_context());
+                                           ctx.device_context(), layout,
+                                           library);
           }
         }
       }
@@ -105,11 +129,13 @@ class SumOp : public framework::OperatorWithKernel {
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
+    AddOutput("Out", "(Tensor) The output tensor of sum operator.").Reuse("X");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Sum operator.
 
@@ -126,7 +152,6 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
                   framework::BlockDesc* block) const override {
     auto& inputs = op_desc.Input("X");
     auto var_type = framework::proto::VarType::SELECTED_ROWS;
-
     for (auto& name : op_desc.Input("X")) {
       VLOG(10) << name << " "
                << block->FindRecursiveOrCreateVar(name).GetType();
@@ -200,6 +225,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
                   ops::SumOpVarTypeInference);
+
 REGISTER_OP_CPU_KERNEL(
     sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SumKernel<paddle::platform::CPUDeviceContext, double>,

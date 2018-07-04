@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/context_project.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -32,7 +33,6 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     auto filter = *context.Input<Tensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
-    context.ShareLoD("X", "Out");
 
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");
@@ -58,17 +58,15 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     // Because if padding_trainable is false, padding data should be zeros.
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, &col, static_cast<T>(0));
-
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
     seq_project_functor(dev_ctx, *in, *padding_data, padding_trainable,
                         context_start, context_length, context_stride, up_pad,
                         down_pad, &col);
 
-    math::matmul<DeviceContext, T>(dev_ctx, col, false, filter, false,
-                                   static_cast<T>(1.0), out,
-                                   static_cast<T>(0.0));
+    blas.MatMul(col, filter, out);
   }
 };
 
@@ -99,6 +97,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
@@ -108,8 +107,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       col.mutable_data<T>(col_shape, context.GetPlace());
       // Because if padding_trainable is false, padding data should be zeros.
       set_zero(dev_ctx, &col, static_cast<T>(0));
-      math::matmul<DeviceContext, T>(dev_ctx, *out_g, false, *filter, true,
-                                     T(1.0), &col, T(1.0));
+      blas.MatMul(*out_g, false, *filter, true, &col);
     }
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
     math::ContextProjectGradFunctor<DeviceContext, T> seq_project_grad_functor;
@@ -150,8 +148,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
                           context_start, context_length, context_stride, up_pad,
                           down_pad, &col);
 
-      math::matmul<DeviceContext, T>(dev_ctx, col, true, out_grad, false,
-                                     T(1.0), &filter_grad, T(1.0));
+      blas.MatMul(col, true, out_grad, false, &filter_grad);
     }
   }
 };

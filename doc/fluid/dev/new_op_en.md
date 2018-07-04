@@ -26,18 +26,38 @@ Here are the base types needed. For details, please refer to the design docs.
 Operators can be categorized into two groups: operator with kernel(s) and operator without kernel(s). An operator with kernel(s) inherits from `OperatorWithKernel` while the one without kernel(s) inherits from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
 
 
- Information           | Where is it defined
---------------  | :----------------------
-OpProtoMake definition  | `.cc`files, Backward Op does not need an OpProtoMake interface.
-Op definition           | `.cc` files
-Kernel implementation       | The kernel methods shared between CPU and CUDA are defined in `.h` files. CPU-specific kernels live in `.cc` files, while CUDA-specific kernels are implemented in `.cu`files.
-Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.
+<table>
+<thead>
+<tr>
+<th>Information</th>
+<th> Where is it defined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpProtoMake definition </td>
+<td> `.cc`files, Backward Op does not need an OpProtoMake interface. </td>
+</tr>
+<tr>
+<td>Op definition  </td>
+<td> `.cc` files</td>
+</tr>
+<tr>
+<td>Kernel implementation  </td>
+<td> The kernel methods shared between CPU and CUDA are defined in `.h` files. CPU-specific kernels live in `.cc` files, while CUDA-specific kernels are implemented in `.cu`files.</td>
+</tr>
+<tr>
+<td>Registering the Op  </td>
+<td> Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.</td>
+</tr>
+</tbody>
+</table>
 
 
-New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions.**
+New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/fluid/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions.**
 
 
-Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc), as an example to introduce the writing of an Operator with Kernel.
+Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc), as an example to introduce the writing of an Operator with Kernel.
 
 
 ## Implementing C++ Types
@@ -65,17 +85,17 @@ The equation is: Out = X * Y
 };
 ```
 
-[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L43)is inherited from`framework::OpProtoAndCheckerMaker`, consisting of 2 variables in the constructor：
+[`MulOpMaker`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc#L76-L127)is inherited from`framework::OpProtoAndCheckerMaker`, consisting of 2 variables in the constructor：
 
    - `framework::OpProto` stores Operator input and variable attribute, used for generating Python API interfaces.
    - `framework::OpAttrChecker` is used to validate variable attributes.
 
 The constructor utilizes `AddInput`, `AddOutput`, and `AddComment`, so that the corresponding information will be added to `OpProto`.
 
-The code above adds two inputs `X` and `Y` to `MulOp`, an output `Out`, and their corresponding descriptions, in accordance to Paddle's [naming convention](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md).
+The code above adds two inputs `X` and `Y` to `MulOp`, an output `Out`, and their corresponding descriptions, in accordance to Paddle's [naming convention](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/name_convention.md).
 
 
-An additional example [`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37) is implemented as follows:
+An additional example [`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/scale_op.cc#L38-L55) is implemented as follows:
 
 ```cpp
 template <typename AttrType>
@@ -93,11 +113,7 @@ The equation is: Out = scale*X
 };
 ```
 
-There are two changes in this example:
-
-- `AddInput("X","...").NotInGradient()` expresses that input `X` is not involved in `ScaleOp`'s corresponding computation. If an input to an operator is not participating in back-propagation, please explicitly set `.NotInGradient()`.
-
-- `AddAttr<AttrType>("scale", "...").SetDefault(1.0);`  adds `scale`constant as an attribute, and sets the default value to 1.0.
+Note `AddAttr<AttrType>("scale", "...").SetDefault(1.0);` adds `scale`constant as an attribute, and sets the default value to 1.0.
 
 
 ### Defining Operator
@@ -127,7 +143,7 @@ class MulOp : public framework::OperatorWithKernel {
 };
 ```
 
-[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22) is inherited from `OperatorWithKernel`. Its `public` member
+[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc#L24) is inherited from `OperatorWithKernel`. Its `public` member
 
 ```cpp
 using framework::OperatorWithKernel::OperatorWithKernel;
@@ -153,7 +169,7 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
 
 `MulKernel` inherits `framework::OpKernel`, which includes the following templates:
 
-- `typename  DeviceContext` denotes device context type. When different devices, namely the CPUDeviceContext and the CUDADeviceContext, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+- `typename  DeviceContext` denotes device context type. When different devices, namely the CPUDeviceContext and the CUDADeviceContext, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.h#L43).
 
 - `typename T` denotes data type, such as `float` or `double`.
 
@@ -182,9 +198,9 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
 
 Note that **different devices (CPU, CUDA)share one Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions can support both devices.**
 
-`MulOp`'s CPU and CUDA share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+`MulOp`'s CPU and CUDA share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.cc).
 
-To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
+To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/use_eigen_en.md).
 
 
 This concludes the forward implementation of an operator. Next its operation and kernel need to be registered in a `.cc` file.
@@ -197,7 +213,9 @@ The definition of its corresponding backward operator, if applicable, is similar
 
     ```cpp
     namespace ops = paddle::operators;
-    REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+    REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>)
+    REGISTER_OPERATOR(mul_grad, ops::MulGradOp)
 
     REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
     REGISTER_OP_CPU_KERNEL(mul_grad,
@@ -206,9 +224,8 @@ The definition of its corresponding backward operator, if applicable, is similar
 
    In that code block,
 
-    - `REGISTER_OP` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
+    - `REGISTER_OPERATOR` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
     - `REGISTER_OP_WITHOUT_GRADIENT` registers an operator without gradient.
-
     - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulGradKernel`.
 
 
@@ -248,7 +265,7 @@ Unit tests for an operator include
 
 3. a scaling test for the backward operator.
 
-Here, we introduce the [unit tests for `MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py).
+Here, we introduce the [unit tests for `MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/unittests/test_mul_op.py).
 
 ### Testing Forward Operators
 
@@ -279,7 +296,7 @@ A forward operator unit test inherits `unittest.TestCase` and defines metaclass 
 
       def test_check_output(self):
           self.check_output()
-          
+
       def test_check_grad_normal(self):
           self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
 
@@ -312,7 +329,7 @@ Some key points in checking gradient above include:
 ### Compiling and Running
 
 
-Any new unit testing file of the format `test_*.py`  added to the director `python/paddle/v2/framework/tests` is automatically added to the project to compile.
+Any new unit testing file of the format `test_*.py`  added to the director `python/paddle/fluid/tests/unittests/` is automatically added to the project to compile.
 
 Note that **unlike the compile test for Ops, running unit tests requires compiling the entire project** and requires compiling with flag `WITH_TESTING` on i.e. `cmake paddle_dir -DWITH_TESTING=ON`.
 
@@ -330,7 +347,6 @@ ctest -R test_mul_op
 
 ## Remarks
 
-- Every `*_op.h` (if applicable), `*_op.cc`, and `*_op.cu` (if applicable) must be created for a unique Op. Compiling will fail if multiple operators are included per file.
-- The type with which an operator is registered needs to be identical to the Op's name. Registering `REGISTER_OP(B, ...)` in `A_op.cc` will cause unit testing failures.
+- The type with which an operator is registered needs to be identical to the Op's name. Registering `REGISTER_OPERATOR(B, ...)` in `A_op.cc` will cause unit testing failures.
 - If the operator does not implement a CUDA kernel, please refrain from creating an empty `*_op.cu` file, or else unit tests will fail.
 - If multiple operators rely on some shared methods, a file NOT named `*_op.*` can be created to store them, such as `gather.h`.

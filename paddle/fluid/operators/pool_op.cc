@@ -83,6 +83,9 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
@@ -92,11 +95,10 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
       layout_, library_);
@@ -112,6 +114,9 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
@@ -121,18 +126,20 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
+                      "float16 can only be used when CUDNN is used");
+  }
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                 library_);
 }
 
-Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Pool2dOpMaker::Make() {
   AddInput(
       "X",
       "(Tensor) The input tensor of pooling operator. "
@@ -144,7 +151,8 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
-            "and W is the width of the feature.");
+            "and W is the width of the feature.")
+      .Reuse("X");
 
   AddAttr<std::string>("pooling_type",
                        "(string), pooling type, can be \"max\" for max-pooling "
@@ -196,8 +204,6 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
-Pool2d Operator.
-
 The pooling2d operation calculates the output based on
 the input, pooling_type and ksize, strides, paddings parameters.
 Input(X) and output(Out) are in NCHW format, where N is batch size, C is the
@@ -207,26 +213,34 @@ These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
 Example:
+
   Input:
+
        X shape: $(N, C, H_{in}, W_{in})$
+
   Output:
+
        Out shape: $(N, C, H_{out}, W_{out})$
+
   For ceil_mode = false:
        $$
-       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
+       H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
   For ceil_mode = true:
        $$
-       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
+       H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
 )DOC");
 }
 
-Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void Pool3dOpMaker::Make() {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW, where N is batch size, C is "
@@ -238,7 +252,8 @@ Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
             "The format of output tensor is also NCDHW, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "
-            "width of the feature, respectively.");
+            "width of the feature, respectively.")
+      .Reuse("X");
 
   AddAttr<std::string>("pooling_type",
                        "(string) Pooling type, can be \"max\" for max-pooling "
@@ -329,18 +344,20 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
-            ops::PoolOpGrad);
+REGISTER_OPERATOR(pool2d, ops::PoolOp, ops::Pool2dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
-            ops::PoolOpGrad);
+REGISTER_OPERATOR(pool3d, ops::PoolOp, ops::Pool3dOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,

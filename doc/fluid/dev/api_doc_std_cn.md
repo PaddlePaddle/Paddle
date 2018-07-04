@@ -1,8 +1,9 @@
 # API注释撰写标准
 
-- [API注释模块](#API注释模块)
-- [格式及示例](#格式及示例)
-- [完整示例](#完整示例)
+- [API注释撰写标准](#api)
+    - [API注释模块](#api)
+    - [格式及示例](#)
+    - [完整示例](#)
 
 
 ## API注释模块
@@ -45,11 +46,11 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
 - Python API Definition
 
   - 格式：
-    
+
       [Python API Definition]
-    
+
   - 示例
-  
+
       ```
       fc(input,
          size,
@@ -63,19 +64,19 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
       ```
 
 - Function Description
-  
+
   - 格式
 
       本模块应包含以下内容（排列顺序为文档撰写顺序）：
 
       [Function Description]
-  
+
       [Formula]
-    
+
       [Symbols' Descriptions if necessary]
-    
+
       [References if necessary]
- 
+
   - 示例
 
       [Function Description]
@@ -119,18 +120,18 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
       [References if necessary]
 
       因fc没有必要列出的参考文献，故该内容省略。其他情况下需明确给出对应的参考文献和对应连接，以 layer_norm 为例：
-      
+
       ```
       Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_ for more details.
       ```
-  
+
 
 - Args Description
-  
+
   - 格式
-  
+
       \[Arg's Name\][(Data Type, Default Value)][Description]
-  
+
   - 示例
 
       fc的部分参数注释如下：
@@ -145,35 +146,35 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
       ```
 
 - Returns
-  
+
   - 格式
-  
+
       [Name][Shape]
-  
+
   - 示例
-  
+
       ```
       Returns:
           A tensor variable storing the transformation result.
       ```
-  
+
       当返回值为包含多个参数的tuple时，应按顺序逐个介绍各参数，以dynamic_lstm为例：
-  
+
       ```
       Returns:
           A tuple containing:
             The hidden state of LSTM whose shape is (T X D).
             The cell state of LSTM whose shape is (T X D).
       ```
-  
+
 - Raises
 
   - 格式
-  
+
       [Exception Type][Condition]
 
   - 示例
-  
+
       ```
       Raises:
           ValueError: If the rank of the input is less than 2.
@@ -182,7 +183,7 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
 - Note
 
   - 格式
-  
+
      [Note]
 
   - 示例
@@ -198,15 +199,15 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
           2. When num_heads == 1, scaled_dot_product_attention has no learnable
              parameters.
       ```
-  
+
 - Examples
 
   - 格式
 
       \[Python Code Snipper]
-  
+
   - 示例
-  
+
       ```
       Examples:
           .. code-block:: python
@@ -217,4 +218,4 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
 
 ## 完整示例
 
-fc 的完整注释见[示例](src/fc.py)。
+fc 的完整注释见[示例](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/src/fc.py)。

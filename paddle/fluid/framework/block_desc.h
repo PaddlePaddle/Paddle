@@ -17,6 +17,7 @@ limitations under the License. */
 #include <deque>
 #include <memory>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -39,11 +40,6 @@ class BlockDesc {
   BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc);
 
   BlockDesc(const BlockDesc &other, proto::BlockDesc *desc, ProgramDesc *prog);
-
-  ~BlockDesc() {
-    this->ClearPBVars();
-    this->ClearPBOps();
-  }
 
   int32_t ID() const { return desc_->idx(); }
 
@@ -87,25 +83,30 @@ class BlockDesc {
 
   OpDesc *PrependOp();
 
+  void PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc);
+
   OpDesc *InsertOp(size_t index);
 
+  /*
+   * Remove Op and its input/output variables.
+   * Note that for either input or output variable, if it is also an input or
+   * output variable of other ops, we should remain it.
+   */
   void RemoveOp(size_t s, size_t e);
+
+  void RemoveVar(const std::string &name) { vars_.erase(name); }
 
   std::vector<OpDesc *> AllOps() const;
 
   size_t OpSize() const { return ops_.size(); }
 
-  OpDesc *Op(int idx) { return ops_.at(idx).get(); }
+  OpDesc *Op(int idx) const { return ops_.at(idx).get(); }
 
   void Flush();
 
   proto::BlockDesc *Proto();
 
   ProgramDesc *Program() const { return this->prog_; }
-
- private:
-  void ClearPBOps();
-  void ClearPBVars();
 
  private:
   ProgramDesc *prog_;       // not_own

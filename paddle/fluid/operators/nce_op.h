@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <math.h>
 #include <random>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -108,7 +109,7 @@ class NCEKernel : public framework::OpKernel<T> {
     auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
     for (int64_t i = 0; i < sample_labels->numel(); ++i) {
       Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
-          (input_mat.chip((int)(i / sample_labels->dims()[1]), 0) *
+          (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
            weight_mat.chip(sample_labels_data[i], 0))
               .sum();
       sample_out_data[i] += result(0);
@@ -190,7 +191,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       auto x_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_w_matrix.chip(sample_labels_data[i], 0) +=
-            x_matrix.chip((int)(i / sample_labels->dims()[1]), 0) *
+            x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
             sample_grad_data[i];
       }
     }
@@ -202,7 +203,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       auto d_x_matrix = EigenMatrix<T>::From(*d_x);
       auto w_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-        d_x_matrix.chip((int)(i / sample_labels->dims()[1]), 0) +=
+        d_x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) +=
             w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
       }
     }

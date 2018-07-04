@@ -27,7 +27,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename T>
 struct ValueClip {
   HOSTDEVICE T operator()(const T& x) const {
-    const T kThreshold = -64.;
+    const T kThreshold = static_cast<T>(-64.);
     return x < kThreshold ? kThreshold : x;
   }
 };

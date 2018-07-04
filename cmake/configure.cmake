@@ -41,6 +41,10 @@ if(USE_EIGEN_FOR_BLAS)
     add_definitions(-DPADDLE_USE_EIGEN_FOR_BLAS)
 endif(USE_EIGEN_FOR_BLAS)
 
+if(EIGEN_USE_THREADS)
+    add_definitions(-DEIGEN_USE_THREADS)
+endif(EIGEN_USE_THREADS)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -57,11 +61,7 @@ if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)
 
-if(NOT WITH_GPU)
-    add_definitions(-DHPPL_STUB_FUNC)
-
-    list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
-else()
+if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
 
     FIND_PACKAGE(CUDA REQUIRED)
@@ -84,7 +84,27 @@ else()
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
-endif(NOT WITH_GPU)
+
+    if(TENSORRT_FOUND)
+        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
+        endif()
+        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+            message(FATAL_ERROR "TensorRT needs CUDNN >= 7.0 to compile")
+        endif()
+        if(${TENSORRT_MAJOR_VERSION} VERSION_LESS 4)
+            message(FATAL_ERROR "Paddle needs TensorRT >= 4.0 to compile")
+        endif()
+        include_directories(${TENSORRT_INCLUDE_DIR})
+    endif()
+elseif(WITH_AMD_GPU)
+    add_definitions(-DPADDLE_WITH_HIP)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+else()
+    add_definitions(-DHPPL_STUB_FUNC)
+    list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
+endif()
 
 if (WITH_MKLML AND MKLML_IOMP_LIB)
     message(STATUS "Enable Intel OpenMP with ${MKLML_IOMP_LIB}")
@@ -97,6 +117,10 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
+
+if(WITH_DISTRIBUTE)
+  add_definitions(-DPADDLE_WITH_DISTRIBUTE)
+endif()
 
 if(WITH_GOLANG)
   # we need to symlink Paddle directory into GOPATH. If we
@@ -146,3 +170,11 @@ if(WITH_GOLANG)
   endif()
 
 endif(WITH_GOLANG)
+
+if(WITH_GRPC)
+    add_definitions(-DPADDLE_WITH_GRPC)
+endif(WITH_GRPC)
+
+if(WITH_BRPC_RDMA)
+    add_definitions(-DPADDLE_WITH_BRPC_RDMA)
+endif(WITH_BRPC_RDMA)

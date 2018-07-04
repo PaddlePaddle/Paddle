@@ -1,9 +1,9 @@
-## How to use Eigen in Paddle
+# How to use Eigen in Paddle
 
 Essentially, a neural network is a compute graph. T data needed for the computation is stored in `Tensor`s and its computation procedure is described by `Operator`s. An `Operator` calls the `Compute` interface in its corresponding `OpKernel` and operates on the `Tensor`.
 
 
-### Eigen Tensor Module
+## Eigen Tensor Module
 
 The Eigen Tensor module supports powerful element-wise computation. In addition, a piece of code written using it can be run on both the CPU and the GPU.
 
@@ -12,7 +12,7 @@ Note that Eigen Tensor is still being actively developed, so its tests are not c
 For details on Eigen Tensor module, please see [doc 1](https://github.com/RLovelett/eigen/blob/master/unsupported/Eigen/CXX11/src/Tensor/README.md) and [doc 2](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md).
 
 
-### paddle::framework::Tensor
+## paddle::framework::Tensor
 
 Paddle Tensor's is defined in the framework directory with the following interface:
 
@@ -105,7 +105,7 @@ void Compute(const framework::ExecutionContext& context) const override {
 ```
 
 
-### paddle::framework::Tensor到EigenTensor的转换
+## paddle::framework::Tensor到EigenTensor的转换
 
 As shown above, in actual computation, we need to transform the input and output `Tensor`s into formats Eigen supports. We show some functions in [eigen.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/eigen.h) to implement the transformation from `paddle::framework::Tensor`to `EigenTensor/EigenMatrix/EigenVector/EigenScalar`.
 
@@ -129,7 +129,7 @@ For more transformations, see the [unit tests](https://github.com/PaddlePaddle/P
 
 
 
-### Implementing Computation
+## Implementing Computation
 
 While computing, the device interface is needed from the EigenTensors on the left hand side of the assignments. Note that the computation between EigenTensors only changes the data originally inthe Tensor and does not change all the shape information associated with the Tensor.
 

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_erase_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -36,8 +37,7 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
 class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceEraseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(2-D LoDTensor with the 2nd dim. equal to 1) "
              "Input LoDTensor of SequenceEraseOp.");

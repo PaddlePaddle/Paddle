@@ -8,11 +8,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
 #include <memory>
+#include <mutex>  // NOLINT
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
@@ -25,11 +27,11 @@ limitations under the License. */
 #include <mkldnn.hpp>
 #endif
 
+#include <map>
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -97,12 +99,18 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
+  template <typename Callback>
+  void RecordEvent(cudaEvent_t ev, Callback callback) {
+    std::lock_guard<std::mutex> guard(mtx_);
+    callback();
+    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
+  }
+
  private:
   CUDAPlace place_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
@@ -110,6 +118,8 @@ class CUDADeviceContext : public DeviceContext {
   int compute_capability;
   int multi_process;
   int max_threads_per_mp;
+
+  std::mutex mtx_;
 };
 
 template <>
@@ -117,6 +127,25 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = CUDADeviceContext;
 };
 
+// Currently, CUDAPinnedDeviceContext is only used to data copying.
+class CUDAPinnedDeviceContext : public DeviceContext {
+ public:
+  CUDAPinnedDeviceContext();
+  explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  CUDAPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
+  using TYPE = CUDAPinnedDeviceContext;
+};
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -159,7 +188,7 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Get(const platform::Place& place);
+  platform::DeviceContext* Get(const platform::Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -172,20 +201,7 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  constexpr static int LEFT_SHIFT = 8;
-  struct Hash {
-    std::hash<int> hash_;
-    size_t operator()(const platform::Place& place) const {
-      int pre_hash = place.which() << LEFT_SHIFT;
-      if (platform::is_gpu_place(place)) {
-        pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
-      }
-      return hash_(pre_hash);
-    }
-  };
-  std::unordered_map<const platform::Place, const platform::DeviceContext*,
-                     Hash>
-      device_contexts_;
+  std::map<Place, std::unique_ptr<DeviceContext>> device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -28,6 +29,10 @@ class FeedOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    // get device context from pool
+    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    platform::RecordEvent record_event(Type(), dev_ctx);
+
     auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
 
@@ -50,14 +55,10 @@ class FeedOp : public framework::OperatorBase {
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
 
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-
     if (platform::is_same_place(feed_item.place(), place)) {
       out_item->ShareDataWith(feed_item);
     } else {
-      framework::TensorCopy(feed_item, place, dev_ctx, out_item);
+      framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
     }
     out_item->set_lod(feed_item.lod());
   }
@@ -65,8 +66,7 @@ class FeedOp : public framework::OperatorBase {
 
 class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FeedOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");
     AddAttr<int>("col", "(int) The column of feed");

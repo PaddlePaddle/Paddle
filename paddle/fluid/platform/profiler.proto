@@ -18,12 +18,17 @@ package paddle.platform.proto;
 message MemCopy { optional uint64 bytes = 1; }
 
 message Event {
+  enum EventType {
+    CPU = 0;
+    GPUKernel = 1;
+  }
+  optional EventType type = 8;
   optional string name = 1;
   optional uint64 start_ns = 2;
   optional uint64 end_ns = 3;
   // When positive, it represents gpu id. When -1, it represents CPU.
   optional int64 device_id = 5;
-  optional uint32 stream_id = 6;
+  optional int64 sub_device_id = 6;
 
   optional MemCopy memcopy = 7;
 }

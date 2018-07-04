@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <cctype>
+#include <string>
 
 namespace paddle {
 namespace framework {
@@ -67,5 +68,5 @@ inline std::ostream& operator<<(std::ostream& out, LibraryType l) {
   return out;
 }
 
-}  // namespace
-}  // framework
+}  // namespace framework
+}  // namespace paddle

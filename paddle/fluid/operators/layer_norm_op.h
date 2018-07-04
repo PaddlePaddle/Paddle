@@ -15,12 +15,109 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
+
+// Wrap RowwiseMean and ColwiseMean.
+// Reuse the cpu codes and replace the gpu codes with cublas_gemv, which is
+// significantly faster. Unlike the RowwiseMean and ColwiseMean, the
+// implementation only considers 2D.
+template <typename DeviceContext, typename T>
+struct RowwiseMean2D {
+  RowwiseMean2D(int left, int right, const platform::DeviceContext& dev_ctx);
+
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* vec);
+};
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class RowwiseMean2D<platform::CUDADeviceContext, T> {
+ public:
+  RowwiseMean2D(int left, int right, const platform::DeviceContext& dev_ctx)
+      : left_(left), right_(right) {
+    framework::DDim ones_dim({right_});
+    divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
+    math::set_constant(dev_ctx, &divisor_, 1.0 / right);
+  }
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    math::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
+        false, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
+        out->data<T>());
+  }
+
+ private:
+  int left_;
+  int right_;
+  framework::Tensor divisor_;
+};
+#endif
+
+template <typename T>
+class RowwiseMean2D<platform::CPUDeviceContext, T> {
+ public:
+  RowwiseMean2D(int left, int right, const platform::DeviceContext& dev_ctx) {}
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    row_mean_(context, input, out);
+  }
+
+ private:
+  math::RowwiseMean<platform::CPUDeviceContext, T> row_mean_;
+};
+
+template <typename DeviceContext, typename T>
+struct ColwiseSum2D {
+  ColwiseSum2D(int left, int right, const platform::DeviceContext& dev_ctx);
+
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* vec);
+};
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class ColwiseSum2D<platform::CUDADeviceContext, T> {
+ public:
+  ColwiseSum2D(int left, int right, const platform::DeviceContext& dev_ctx)
+      : left_(left), right_(right) {
+    framework::DDim ones_dim({left_});
+    divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
+    math::set_constant(dev_ctx, &divisor_, 1.0);
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    math::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
+        true, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
+        out->data<T>());
+  }
+
+ private:
+  int left_;
+  int right_;
+  framework::Tensor divisor_;
+};
+#endif
+
+template <typename T>
+class ColwiseSum2D<platform::CPUDeviceContext, T> {
+ public:
+  ColwiseSum2D(int left, int right, const platform::DeviceContext& dev_ctx) {}
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    col_wise_(context, input, out);
+  }
+
+ private:
+  math::ColwiseSum<platform::CPUDeviceContext, T> col_wise_;
+};
 
 template <typename T>
 struct SubAndSquareFunctor {
@@ -67,15 +164,15 @@ using DataLayout = framework::DataLayout;
 template <typename DeviceContext, typename T>
 class LayerNormKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto *scale = ctx.Input<Tensor>("Scale");
-    auto *bias = ctx.Input<Tensor>("Bias");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
     auto x = *ctx.Input<Tensor>("X");
 
-    auto *y = ctx.Output<Tensor>("Y");
-    auto *mean = ctx.Output<Tensor>("Mean");
-    auto *var = ctx.Output<Tensor>("Variance");
+    auto* y = ctx.Output<Tensor>("Y");
+    auto* mean = ctx.Output<Tensor>("Mean");
+    auto* var = ctx.Output<Tensor>("Variance");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
 
     const auto x_dims = x.dims();
@@ -94,8 +191,8 @@ class LayerNormKernel : public framework::OpKernel<T> {
     out.ShareDataWith(*y);
     out.Resize(matrix_shape);
 
-    auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    math::RowwiseMean<DeviceContext, T> row_mean;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    RowwiseMean2D<DeviceContext, T> row_mean(left, right, ctx.device_context());
 
     // get mean
     row_mean(dev_ctx, x, mean);
@@ -126,31 +223,32 @@ class LayerNormKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class LayerNormGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
     auto x = *ctx.Input<Tensor>("X");
-    auto *y = ctx.Input<Tensor>("Y");
-    auto *mean = ctx.Input<Tensor>("Mean");
-    auto *var = ctx.Input<Tensor>("Variance");
-    auto *scale = ctx.Input<Tensor>("Scale");
-    auto *bias = ctx.Input<Tensor>("Bias");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* mean = ctx.Input<Tensor>("Mean");
+    auto* var = ctx.Input<Tensor>("Variance");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
     auto d_y = *ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    const auto &x_dims = x.dims();
+    const auto& x_dims = x.dims();
     auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     framework::DDim matrix_shape({left, right});
 
     d_y.Resize(matrix_shape);
-    auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    math::ColwiseSum<DeviceContext, T> colwise_sum;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    ColwiseSum2D<DeviceContext, T> colwise_sum(left, right,
+                                               ctx.device_context());
 
     Tensor temp;
     Tensor temp_norm;
@@ -190,7 +288,8 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
       Tensor temp_vec;
       temp_vec.mutable_data<T>(vec_shape, ctx.GetPlace());
 
-      math::RowwiseMean<DeviceContext, T> row_mean;
+      RowwiseMean2D<DeviceContext, T> row_mean(left, right,
+                                               ctx.device_context());
 
       if (d_scale) {
         // dy_dx

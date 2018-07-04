@@ -8,8 +8,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/device_context.h"
+
+#include <set>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
@@ -17,36 +22,48 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-const platform::DeviceContext* DeviceContextPool::Get(
-    const platform::Place& place) {
+platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(
         "'Place' is not supported, Please re-compile with WITH_GPU "
         "option");
   }
-  return it->second;
+  return it->second.get();
 }
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
-  for (size_t i = 0; i < places.size(); i++) {
-    if (platform::is_cpu_place(places[i])) {
+  using PtrType = std::unique_ptr<DeviceContext>;
+  std::set<Place> set;
+  for (auto& p : places) {
+    set.insert(p);
+  }
+
+  for (auto& p : set) {
+    if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      device_contexts_.emplace(places[i],
-                               new platform::MKLDNNDeviceContext(
-                                   boost::get<platform::CPUPlace>(places[i])));
+      device_contexts_.emplace(
+          p, PtrType(new MKLDNNDeviceContext(boost::get<CPUPlace>(p))));
 #else
-      device_contexts_.emplace(places[i],
-                               new platform::CPUDeviceContext(
-                                   boost::get<platform::CPUPlace>(places[i])));
+      device_contexts_.emplace(
+          p, PtrType(new CPUDeviceContext(boost::get<CPUPlace>(p))));
 #endif
-    } else if (platform::is_gpu_place(places[i])) {
+    } else if (platform::is_gpu_place(p)) {
 #ifdef PADDLE_WITH_CUDA
-      device_contexts_.emplace(places[i],
-                               new platform::CUDADeviceContext(
-                                   boost::get<platform::CUDAPlace>(places[i])));
+      device_contexts_.emplace(
+          p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
+#else
+      PADDLE_THROW(
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
+    } else if (platform::is_cuda_pinned_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+      device_contexts_.emplace(
+          p,
+          PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
@@ -183,6 +200,20 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

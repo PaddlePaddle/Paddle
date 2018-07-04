@@ -19,7 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
+
+DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace platform {
@@ -75,16 +78,70 @@ enum class DataLayout {  // Not use
 enum class PoolingMode {
   kMaximum,
   kAverage,
+  kMaximumDeterministic,
 };
+
+#if CUDNN_VERSION < 6000
+#pragma message "CUDNN version under 6.0 is supported at best effort."
+#pragma message "We strongly encourage you to move to 6.0 and above."
+#pragma message "This message is intended to annoy you enough to update."
+#pragma message \
+    "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX;
+    case PoolingMode::kAverage:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#else
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX_DETERMINISTIC;
+    case PoolingMode::kAverage:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#endif  // CUDNN_VERSION < 6000
 
 template <typename T>
 class CudnnDataType;
 
 template <>
+class CudnnDataType<float16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_HALF;
+  // The scaling param type is float for HALF and FLOAT tensors
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+
+template <>
 class CudnnDataType<float> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
-  typedef const float ScalingParamType;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -99,7 +156,8 @@ template <>
 class CudnnDataType<double> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
-  typedef const double ScalingParamType;
+  using ScalingParamType = const double;
+  using BatchNormParamType = double;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -237,9 +295,11 @@ class ScopedConvolutionDescriptor {
     }
 #endif
 
+    cudnnDataType_t compute_type =
+        (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
-        CUDNN_CROSS_CORRELATION, type));
+        CUDNN_CROSS_CORRELATION, compute_type));
     return desc_;
   }
 
@@ -271,9 +331,7 @@ class ScopedPoolingDescriptor {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
     PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
-        desc_, (mode == PoolingMode::kMaximum
-                    ? CUDNN_POOLING_MAX
-                    : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING),
+        desc_, (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
         kernel.size(), kernel.data(), pads.data(), strides.data()));
     return desc_;
@@ -289,7 +347,7 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -59,19 +60,25 @@ class ReadOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     framework::ReaderHolder* reader =
-        scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
+        detail::Ref(scope.FindVar(Input("Reader")),
+                    "Cannot find reader variable %s", Input("Reader"))
+            .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
     if (ins.empty()) {
-      reader->ReInit();
-      reader->ReadNext(&ins);
-      PADDLE_ENFORCE(
-          !ins.empty(),
-          "Reader can not read the next data even it has been re-initialized.");
+      if (Attr<bool>("throw_eof_exp")) {
+        PADDLE_THROW_EOF();
+      } else {
+        ins.resize(out_arg_names.size());
+        for (auto& tensor : ins) {
+          // data type is not important for subsequent DataBalanceOpHandle
+          tensor.mutable_data<float>(framework::make_ddim({0}), dev_place);
+        }
+      }
     }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
-    for (size_t i = 0; i < ins.size(); ++i) {
+    for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
       out->ShareDataWith(ins[i]);
@@ -82,10 +89,13 @@ class ReadOp : public framework::OperatorBase {
 
 class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(op_proto, op_checker) {
+  void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
     AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
+    AddAttr<bool>("throw_eof_exp",
+                  "If set true, an exception will be thrown when the Reader "
+                  "yields empty (which means there is no next data).")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

@@ -12,174 +12,376 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdint.h>
-#include <sys/stat.h>
-#include <ostream>
-#include <thread>
+#include <stdio.h>  // for removing the port file
+#include <csignal>
+#include <cstdlib>
+#include <fstream>
+#include <thread>  // NOLINT
+#include <vector>
 
-#include <unistd.h>
+#include "paddle/fluid/operators/detail/macros.h"
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/proto_desc.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/listen_and_serv_op.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
-constexpr char kOptimizeBlock[] = "OptimizeBlock";
-
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
-  service->RunSyncUpdate();
+void RunServer(std::shared_ptr<distributed::RPCServer> service) {
+  service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
-
-static void CreateTensorFromMessageType(framework::Variable *var,
-                                        sendrecv::VarType var_type) {
-  if (var_type == sendrecv::VarType::LOD_TENSOR) {
-    var->GetMutable<framework::LoDTensor>();
-  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
-    var->GetMutable<framework::SelectedRows>();
-  } else {
-    PADDLE_THROW(
-        "VariableMessage type %d is not in "
-        "[LoDTensor, SelectedRows]",
-        var_type);
+static void split(const std::string &str, char sep,
+                  std::vector<std::string> *pieces) {
+  pieces->clear();
+  if (str.empty()) {
+    return;
+  }
+  size_t pos = 0;
+  size_t next = str.find(sep, pos);
+  while (next != std::string::npos) {
+    pieces->push_back(str.substr(pos, next - pos));
+    pos = next + 1;
+    next = str.find(sep, pos);
+  }
+  if (!str.substr(pos).empty()) {
+    pieces->push_back(str.substr(pos));
   }
 }
 
-class ListenAndServOp : public framework::OperatorBase {
- public:
-  ListenAndServOp(const std::string &type,
-                  const framework::VariableNameMap &inputs,
-                  const framework::VariableNameMap &outputs,
-                  const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {
-    if (!rpc_service_) {
-      std::string endpoint = Attr<std::string>("endpoint");
-      rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
-      server_thread_.reset(new std::thread(RunServer, rpc_service_));
+static void ParallelExecuteBlocks(
+    const std::vector<size_t> &parallel_blkids, framework::Executor *executor,
+    const std::vector<std::shared_ptr<framework::ExecutorPrepareContext>>
+        &prepared,
+    framework::ProgramDesc *program, framework::Scope *scope) {
+  std::vector<std::future<void>> fs;
+  for (size_t idx : parallel_blkids) {
+    fs.push_back(
+        framework::Async([&executor, &prepared, &program, &scope, idx]() {
+          int run_block = idx;  // thread local
+          try {
+            executor->RunPreparedContext(prepared[run_block].get(), scope);
+          } catch (const std::exception &e) {
+            LOG(ERROR) << "run sub program error " << e.what();
+          }
+        }));
+  }
+  for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+}
+
+ListenAndServOp::ListenAndServOp(const std::string &type,
+                                 const framework::VariableNameMap &inputs,
+                                 const framework::VariableNameMap &outputs,
+                                 const framework::AttributeMap &attrs)
+    : OperatorBase(type, inputs, outputs, attrs) {}
+
+ListenAndServOp::~ListenAndServOp() { Stop(); }
+
+void ListenAndServOp::Stop() {
+  rpc_service_->ShutDown();
+  server_thread_->join();
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
+  remove(file_path.c_str());
+}
+
+void ListenAndServOp::SavePort() const {
+  // NOTE: default write file to /tmp/paddle.selected_port
+  rpc_service_->SavePort();
+}
+
+static int64_t GetTimestamp() {
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
+void ListenAndServOp::RunSyncLoop(
+    framework::Executor *executor, framework::ProgramDesc *program,
+    framework::Scope *recv_scope,
+    const std::vector<int> &prefetch_block_id_list,
+    const int checkpoint_point_block_id) const {
+  size_t num_blocks = program->Size();
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
+  PADDLE_ENFORCE_GE(num_blocks, 2,
+                    "server program should have at least 2 blocks");
+
+  std::vector<int> optimize_blocks_idx;
+  for (auto blk : optimize_blocks) {
+    optimize_blocks_idx.push_back(blk->ID());
+  }
+  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_idx);
+  // Insert placeholder for block0 which holds current op itself.
+  optimize_prepared.insert(
+      optimize_prepared.begin(),
+      std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
+
+  rpc_service_->ResetBarrierCounter();
+  while (true) {
+    // Get from multiple trainers, we don't care about the order in which
+    // the gradients arrives, just add suffix 0~n and merge the gradient.
+    rpc_service_->SetCond(distributed::kRequestSend);
+    rpc_service_->WaitBarrier(distributed::kRequestSend);
+
+    if (rpc_service_->IsExit()) {
+      LOG(WARNING) << "get exit!rpc_processor break!";
+      rpc_service_->SetCond(distributed::kRequestGet);
+      break;
     }
+
+    // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
+    // and this will still work.
+    // The optimize blocks which have the same parent ID would run parallel
+    // TODO(Yancey1989): need to use ParallelExecutor for future
+    int32_t last_parent_blkid = optimize_blocks[0]->Parent();
+    std::vector<size_t> parallel_blkids;
+    parallel_blkids.push_back(optimize_blocks[0]->ID());
+    double ts = GetTimestamp();
+    for (size_t i = 1; i < optimize_blocks.size(); ++i) {
+      // skip the first optimize block because it is already in the
+      // parallel_blkids.
+      int blkid = optimize_blocks[i]->ID();
+      if (program->Block(blkid).Parent() != last_parent_blkid) {
+        ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
+                              program, recv_scope);
+        parallel_blkids.clear();
+        last_parent_blkid = program->Block(blkid).Parent();
+      }
+      parallel_blkids.push_back(blkid);
+    }
+    ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared, program,
+                          recv_scope);
+    VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
+
+    rpc_service_->SetCond(distributed::kRequestGet);
+    rpc_service_->WaitBarrier(distributed::kRequestGet);
+    rpc_service_->ResetBarrierCounter();
+    // reset received sparse vars to avoid reuse it in the next mini-batch
+    dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
+        ->ResetSparseVarRecorder();
+  }  // while(true)
+}
+
+void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
+                                   framework::ProgramDesc *program,
+                                   framework::Scope *recv_scope) const {
+  // grad name to block id
+  std::unordered_map<std::string, int32_t> grad_to_block_id;
+  std::unordered_map<int32_t, std::string> id_to_grad;
+
+  auto grad_to_block_id_str =
+      Attr<std::vector<std::string>>("grad_to_block_id");
+  for (const auto &grad_and_id : grad_to_block_id_str) {
+    std::vector<std::string> pieces;
+    split(grad_and_id, ':', &pieces);
+    VLOG(3) << "after split, grad = " << pieces[0] << ", id=" << pieces[1];
+    PADDLE_ENFORCE_EQ(pieces.size(), 2);
+    PADDLE_ENFORCE_EQ(grad_to_block_id.count(pieces[0]), 0);
+
+    int block_id = std::stoi(pieces[1]);
+    grad_to_block_id[pieces[0]] = block_id;
+    id_to_grad[block_id] = pieces[0];
+  }
+  size_t num_blocks = program->Size();
+  PADDLE_ENFORCE_GE(num_blocks, 2,
+                    "server program should have at least 2 blocks");
+
+  std::vector<int> block_list;
+  for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
+    block_list.push_back(blkid);
+  }
+  auto optimize_prepared = executor->Prepare(*program, block_list);
+  // execute global block if needed
+  if (block_list[0] == 1 && id_to_grad.count(1) == 0) {
+    executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
+  }
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>
+      grad_to_prepared_ctx;
+  for (size_t i = 0; i < block_list.size(); ++i) {
+    grad_to_prepared_ctx[id_to_grad[block_list[i]]] = optimize_prepared[i];
   }
 
-  void Stop() override {
-    detail::MessageWithName term_msg;
-    term_msg.first = LISTEN_TERMINATE_MESSAGE;
-    rpc_service_->Push(term_msg);
-    rpc_service_->ShutDown();
-    server_thread_->join();
+  request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+
+  while (true) {
+    if (rpc_service_->IsExit()) {
+      VLOG(4) << "get exit!rpc_processor break!";
+      break;
+    }
+
+    sleep(1);
+  }  // while(true)
+}
+
+static void FillRequestCtx(
+    distributed::RequestHandler *h, framework::Scope *scope,
+    platform::DeviceContext *dev_ctx, framework::Executor *executor,
+    framework::ProgramDesc *program,
+    std::unordered_map<std::string,
+                       std::shared_ptr<framework::ExecutorPrepareContext>>
+        *prefetch_ctx,
+    std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_ctx,
+    distributed::RPCServer *rpc_server) {
+  h->SetScope(scope);
+  h->SetDevCtx(dev_ctx);
+  h->SetExecutor(executor);
+  h->SetProgram(program);
+  h->SetPrefetchPreparedCtx(prefetch_ctx);
+  h->SetRPCServer(rpc_server);
+  h->SetCheckpointNotifyPreparedCtx(checkpoint_ctx);
+}
+
+void ListenAndServOp::RunImpl(const framework::Scope &scope,
+                              const platform::Place &dev_place) const {
+  // Mark this as PS that it should decide profiling by listening from trainer.
+  platform::SetProfileListener();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(dev_place);
+  framework::Scope &recv_scope = scope.NewScope();
+
+  bool sync_mode = Attr<bool>("sync_mode");
+  auto fan_in = Attr<int>("Fanin");
+
+  PADDLE_ENFORCE(!rpc_service_);
+  std::string endpoint = Attr<std::string>("endpoint");
+  int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
+
+  VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
+          << ", end_point:" << endpoint
+          << ", checkpoint_block_id: " << checkpoint_block_id;
+
+  rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
+
+  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
+  request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
+  request_prefetch_handler_.reset(
+      new distributed::RequestPrefetchHandler(sync_mode));
+  request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
+      sync_mode, checkpoint_block_id));
+
+  rpc_service_->RegisterRPC(distributed::kRequestSend,
+                            request_send_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestGet,
+                            request_get_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
+                            request_prefetch_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
+                            request_checkpoint_handler_.get());
+
+  auto optimize_blocks =
+      Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
+  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
+                 "optimize blocks should be 1 at least on the pserver side.");
+  auto *program = optimize_blocks[0]->Program();
+  framework::Executor executor(dev_place);
+
+  std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
+  if (checkpoint_block_id != -1) {
+    auto ctx = executor.Prepare(*program, checkpoint_block_id);
+    // see: https://stackoverflow.com/a/14856553
+    ckpt_pre_context = std::move(ctx);
   }
 
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    framework::Scope &recv_scope = scope.NewScope();
+  // prepare for prefetch
+  std::vector<int> prefetch_block_id_list;
+  std::unordered_map<int, std::string> block_id_to_prefetch_var_name;
 
-    // FIXME(Yancey1989): initialize rpc server with lazy mode.
-    rpc_service_->SetScope(&recv_scope);
-    rpc_service_->SetDevCtx(&dev_ctx);
-    auto ins = Inputs("X");
-    auto fan_in = Attr<int>("Fanin");
+  auto prefetch_var_name_to_block_id_str =
+      Attr<std::vector<std::string>>(kPrefetchVarNameToBlockId);
+  for (const auto &prefetch_var_name_and_id :
+       prefetch_var_name_to_block_id_str) {
+    std::vector<std::string> pieces;
+    split(prefetch_var_name_and_id, ':', &pieces);
+    VLOG(3) << "after split, prefetch_var = " << pieces[0]
+            << ", id=" << pieces[1];
+    PADDLE_ENFORCE_EQ(pieces.size(), 2);
 
-    auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-    auto *program = block->Program();
-    framework::Executor executor(dev_place);
-
-    // TODO(typhoonzero): change this to a while_op for every cluster-batch.
-    bool exit_flag = false;
-    // Record received sparse variables, so that
-    // we could reset those after execute optimize program
-    std::vector<framework::Variable *> sparse_vars;
-    while (!exit_flag) {
-      // Get from multiple trainers, we don't care about the order in which
-      // the gradients arrives, just add suffix 0~n and merge the gradient.
-      rpc_service_->SetCond(0);
-      size_t recv_var_cnt = 0;
-      int batch_barrier = 0;
-      while (batch_barrier != fan_in) {
-        const detail::MessageWithName &v = rpc_service_->Get();
-        auto recv_var_name = v.first;
-        if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
-          LOG(INFO) << "received terminate message and exit";
-          exit_flag = true;
-          break;
-        } else if (recv_var_name == BATCH_BARRIER_MESSAGE) {
-          VLOG(3) << "recv batch barrier message";
-          batch_barrier++;
-          continue;
-        } else {
-          VLOG(3) << "received grad: " << recv_var_name;
-          recv_var_cnt++;
-          auto *var = recv_scope.FindVar(recv_var_name);
-          if (var == nullptr) {
-            LOG(ERROR) << "Can not find server side var: " << recv_var_name;
-            PADDLE_THROW("Can not find server side var");
-          }
-          detail::DeserializeFromMessage(v.second, dev_ctx, var);
-          if (var->IsType<framework::SelectedRows>()) {
-            sparse_vars.push_back(var);
-          }
-        }
-      }
-      if (exit_flag) {
-        rpc_service_->SetCond(1);
-        rpc_service_->ShutDown();
-        break;
-      }
-      try {
-        executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
-                     false /*create_local_scope*/, false /*create_vars*/);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-      // Reset the received sparse variables, the sum operator would not
-      // sum the input sparse variables which rows is empty at the next
-      // mini-batch.
-      // TODO(Yancey1989): move the reset action into an operator, we couldn't
-      // have any hide logic in the operator.
-      for (auto &var : sparse_vars) {
-        var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
-      }
-      rpc_service_->SetCond(1);
-      // FIXME(typhoonzero): use another condition to sync wait clients get.
-      rpc_service_->WaitClientGet(fan_in);
-      sparse_vars.clear();
-    }  // while(true)
+    int block_id = std::stoi(pieces[1]);
+    prefetch_block_id_list.push_back(block_id);
+    block_id_to_prefetch_var_name[block_id] = pieces[0];
   }
 
- protected:
-  std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
-  std::shared_ptr<std::thread> server_thread_;
-};
+  auto prefetch_prepared = executor.Prepare(*program, prefetch_block_id_list);
+
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>
+      prefetch_var_name_to_prepared_ctx;
+  for (size_t i = 0; i < prefetch_block_id_list.size(); ++i) {
+    auto block_id = prefetch_block_id_list[i];
+    auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
+    prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
+  }
+
+  auto f =
+      std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
+                &executor, program, &prefetch_var_name_to_prepared_ctx,
+                ckpt_pre_context, rpc_service_.get());
+
+  f(request_send_handler_.get());
+  f(request_get_handler_.get());
+  f(request_prefetch_handler_.get());
+  f(request_checkpoint_handler_.get());
+
+  // start the server listening after all member initialized.
+  server_thread_.reset(new std::thread(RunServer, rpc_service_));
+  VLOG(3) << "wait server thread to become ready...";
+  rpc_service_->WaitServerReady();
+
+  // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
+  signal(SIGINT, SignalHandler::StopAndExit);
+  signal(SIGTERM, SignalHandler::StopAndExit);
+
+  // Write to a file of server selected port for python use.
+  SavePort();
+  if (sync_mode) {
+    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list,
+                checkpoint_block_id);
+  } else {
+    RunAsyncLoop(&executor, program, &recv_scope);
+  }
+}
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ListenAndServOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
-    AddComment(R"DOC(
-ListenAndServ operator
-
-This operator will start a RPC server which can receive variables
-from send_op and send back variables to recv_op.
-)DOC");
+    AddComment(R"DOC(" + "ListenAndServ operator" + "\n" + "This operator" +
+" will start a RPC server which can receive variables from send_op and send" +
+"back variables to recv_op.)DOC");
     AddAttr<std::string>("endpoint",
                          "(string, default 127.0.0.1:6164)"
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
-    AddAttr<framework::BlockDesc *>(kOptimizeBlock,
-                                    "BlockID to run on server side.");
+    AddAttr<std::vector<std::string>>(
+        "grad_to_block_id",
+        "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
+        "a map from grad name to it's optimize block id")
+        .SetDefault({});
+    AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        kOptimizeBlocks, "Optimize blocks to run on server side.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
+                                      "prefetch blocks to run on server side.")
+        .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
+    AddAttr<int>(kCheckpointBlockId,
+                 "BolckID to run save checkpoint on pserer.")
+        .SetDefault(-1);
   }
 };
+
+void SignalHandler::StopAndExit(int signal_num) {
+  // Do not use VLOG here for the device for printing maybe already released.
+  // exit will release interal allocated resoureces.
+  exit(0);
+}
 
 }  // namespace operators
 }  // namespace paddle

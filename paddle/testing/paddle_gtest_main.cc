@@ -30,7 +30,9 @@ int main(int argc, char** argv) {
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));
 #else
-  new_argv.push_back(strdup("--tryfromenv=use_pinned_memory"));
+  new_argv.push_back(strdup(
+      "--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_mb"));
+  new_argv.push_back(strdup("--undefok=use_mkldnn,initial_cpu_memory_in_mb"));
 #endif
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
@@ -41,6 +43,6 @@ int main(int argc, char** argv) {
   paddle::memory::Used(paddle::platform::CUDAPlace(0));
 #endif
 
-  paddle::framework::InitDevices();
+  paddle::framework::InitDevices(true);
   return RUN_ALL_TESTS();
 }

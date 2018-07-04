@@ -14,42 +14,24 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.op import Operator
-import paddle.fluid.core as core
+from op_test import OpTest
 
 
-def create_tensor(scope, name, np_data):
-    tensor = scope.var(name).get_tensor()
-    tensor.set_dims(np_data.shape)
-    tensor.set(np_data, core.CPUPlace())
-    return tensor
-
-
-class TestIsEmptyOp(unittest.TestCase):
+class TestEmpty(OpTest):
     def setUp(self):
-        self.scope = core.Scope()
-        # create input variables
-        np_data0 = np.array([0, 1, 2])
-        create_tensor(self.scope, "X0", np_data0)
+        self.op_type = "is_empty"
+        self.inputs = {'X': np.array([1, 2, 3])}
+        self.outputs = {'Out': np.array([False])}
 
-        np_data1 = np.array([1])
-        t = create_tensor(self.scope, "X1", np_data1)
-        t.set_dims([0])
+    def test_check_output(self):
+        self.check_output()
 
-        # create output variables
-        self.scope.var("out")
 
-    def test_no_empty(self):
-        self.one_case("X0", False)
-
-    def test_empty(self):
-        self.one_case("X1", True)
-
-    def one_case(self, input, target):
-        op = Operator(type="is_empty", X=input, Out="out")
-        op.run(self.scope, core.CPUPlace())
-        out = self.scope.var("out").get_tensor()
-        self.assertEqual(np.array(out)[0], target)
+class TestNotEmpty(TestEmpty):
+    def setUp(self):
+        self.op_type = "is_empty"
+        self.inputs = {'X': np.array([])}
+        self.outputs = {'Out': np.array([True])}
 
 
 if __name__ == "__main__":

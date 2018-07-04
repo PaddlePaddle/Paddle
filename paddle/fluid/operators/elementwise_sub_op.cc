@@ -14,23 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_sub_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
-
-namespace paddle {
-namespace operators {
-class ElementwiseSubOpMaker : public ElementwiseOpMaker {
- public:
-  ElementwiseSubOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Sub", "Out = X - Y");
-    AddComment(comment_);
-  }
-};
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_sub, ops::ElementwiseOp, ops::ElementwiseSubOpMaker,
-            elementwise_sub_grad, ops::ElementwiseOpGrad);
+REGISTER_ELEMWISE_OP(elementwise_sub, "Sub", "Out = X - Y");
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,

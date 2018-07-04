@@ -14,7 +14,11 @@
 
 #include "paddle/fluid/framework/threadpool.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
+
+DEFINE_int32(io_threadpool_size, 100,
+             "number of threads used for doing IO, default 100");
 
 namespace paddle {
 namespace framework {
@@ -88,6 +92,21 @@ void ThreadPool::TaskLoop() {
         completed_.notify_all();
       }
     }
+  }
+}
+
+std::unique_ptr<ThreadPool> ThreadPoolIO::io_threadpool_(nullptr);
+std::once_flag ThreadPoolIO::io_init_flag_;
+
+ThreadPool* ThreadPoolIO::GetInstanceIO() {
+  std::call_once(io_init_flag_, &ThreadPoolIO::InitIO);
+  return io_threadpool_.get();
+}
+
+void ThreadPoolIO::InitIO() {
+  if (io_threadpool_.get() == nullptr) {
+    // TODO(typhoonzero1986): make this configurable
+    io_threadpool_.reset(new ThreadPool(FLAGS_io_threadpool_size));
   }
 }
 

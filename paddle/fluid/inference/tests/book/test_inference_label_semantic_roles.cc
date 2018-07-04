@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -36,37 +36,21 @@ TEST(inference, label_semantic_roles) {
   int64_t predicate_dict_len = 3162;
   int64_t mark_dict_len = 2;
 
-  SetupLoDTensor(word,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&word, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(predicate,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&predicate, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(predicate_dict_len - 1));
-  SetupLoDTensor(ctx_n2,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&ctx_n2, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_n1,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&ctx_n1, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_0,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&ctx_0, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_p1,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&ctx_p1, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_p2,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&ctx_p2, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(mark,
-                 lod,
-                 static_cast<int64_t>(0),
+  SetupLoDTensor(&mark, lod, static_cast<int64_t>(0),
                  static_cast<int64_t>(mark_dict_len - 1));
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;

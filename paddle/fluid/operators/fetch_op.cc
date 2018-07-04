@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -29,6 +30,9 @@ class FetchOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    platform::RecordEvent record_event(Type(), pool.Get(place));
+
     auto fetch_var_name = Input("X");
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE(fetch_var != nullptr,
@@ -53,11 +57,7 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(src_item.place());
-
-    TensorCopy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
-    dev_ctx.Wait();
+    TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
     dst_item.set_lod(src_item.lod());
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
@@ -66,8 +66,7 @@ class FetchOp : public framework::OperatorBase {
 
 class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FetchOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of fetch op");
     AddOutput("Out", "The output of fetch op");
     AddAttr<int>("col", "(int) The column of fetch");

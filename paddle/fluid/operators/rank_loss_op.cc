@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/rank_loss_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -45,8 +46,7 @@ class RankLossOp : public framework::OperatorWithKernel {
 
 class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Label",
              "(2-D Tensor with shape [batch_size x 1]) "
              "The label indicating A ranked higher than B or not.");
@@ -120,8 +120,9 @@ class RankLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP(rank_loss, ops::RankLossOp, ops::RankLossOpMaker, rank_loss_grad,
-            ops::RankLossGradOp);
+REGISTER_OPERATOR(rank_loss, ops::RankLossOp, ops::RankLossOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(rank_loss_grad, ops::RankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

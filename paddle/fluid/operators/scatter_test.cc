@@ -13,44 +13,48 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scatter.h"
+#include <gtest/gtest.h>
+#include <iostream>
+#include <string>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 
-#include <gtest/gtest.h>
-#include <iostream>
-#include <string>
-
 TEST(scatter, ScatterUpdate) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  using namespace paddle::operators;
+  // using namespace paddle::framework;
+  // using namespace paddle::platform;
+  // using namespace paddle::operators;
 
-  Tensor* src = new Tensor();
-  Tensor* index = new Tensor();
-  Tensor* output = new Tensor();
+  paddle::framework::Tensor* src = new paddle::framework::Tensor();
+  paddle::framework::Tensor* index = new paddle::framework::Tensor();
+  paddle::framework::Tensor* output = new paddle::framework::Tensor();
 
   float* p_src = nullptr;
   int* p_index = nullptr;
-  p_src = src->mutable_data<float>(make_ddim({1, 4}), CPUPlace());
-  p_index = index->mutable_data<int>(make_ddim({1}), CPUPlace());
+  p_src = src->mutable_data<float>(paddle::framework::make_ddim({1, 4}),
+                                   paddle::platform::CPUPlace());
+  p_index = index->mutable_data<int>(paddle::framework::make_ddim({1}),
+                                     paddle::platform::CPUPlace());
 
-  for (size_t i = 0; i < 4; ++i) p_src[i] = float(i);
+  for (size_t i = 0; i < 4; ++i) p_src[i] = static_cast<float>(i);
   p_index[0] = 1;
 
-  float* p_output = output->mutable_data<float>(make_ddim({4, 4}), CPUPlace());
+  float* p_output = output->mutable_data<float>(
+      paddle::framework::make_ddim({4, 4}), paddle::platform::CPUPlace());
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   paddle::platform::CPUDeviceContext ctx(*cpu_place);
-  ScatterAssign<float>(ctx, *src, *index, output);
+  paddle::operators::ScatterAssign<float>(ctx, *src, *index, output);
 
-  for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], float(0));
-  for (size_t i = 0; i < 4; ++i) EXPECT_EQ(output->data<float>()[i], float(0));
-  for (size_t i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], float(i - 4));
+  for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], 0.0f);
+  for (size_t i = 0; i < 4; ++i) EXPECT_EQ(output->data<float>()[i], 0.0f);
+  for (size_t i = 4; i < 8; ++i) {
+    EXPECT_EQ(p_output[i], static_cast<float>(i - 4));
+  }
   for (size_t i = 4; i < 8; ++i)
-    EXPECT_EQ(output->data<float>()[i], float(i - 4));
-  for (size_t i = 8; i < 16; ++i) EXPECT_EQ(p_output[i], float(0));
-  for (size_t i = 8; i < 16; ++i) EXPECT_EQ(output->data<float>()[i], float(0));
+    EXPECT_EQ(output->data<float>()[i], static_cast<float>(i - 4));
+  for (size_t i = 8; i < 16; ++i) EXPECT_EQ(p_output[i], 0.0f);
+  for (size_t i = 8; i < 16; ++i) EXPECT_EQ(output->data<float>()[i], 0.0f);
 
   delete src;
   delete index;

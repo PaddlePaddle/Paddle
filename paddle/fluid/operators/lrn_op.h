@@ -121,6 +121,10 @@ class LRNGradKernel : public framework::OpKernel<T> {
     T alpha = ctx.Attr<T>("alpha");
     T beta = ctx.Attr<T>("beta");
 
+    PADDLE_ENFORCE(
+        !ctx.Attr<bool>("is_test"),
+        "is_test attribute should be set to False in training phase.");
+
     LRNGradFunctor<DeviceContext, T> f;
     f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta);
   }

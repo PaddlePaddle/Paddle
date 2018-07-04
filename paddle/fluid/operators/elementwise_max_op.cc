@@ -14,23 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_max_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
-
-namespace paddle {
-namespace operators {
-class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
- public:
-  ElementwiseMaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Max", "Out = max(X, Y)");
-    AddComment(comment_);
-  }
-};
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_max, ops::ElementwiseOp, ops::ElementwiseMaxOpMaker,
-            elementwise_max_grad, ops::ElementwiseOpGrad);
+REGISTER_ELEMWISE_OP(elementwise_max, "Max", "Out = max(X, Y)");
 REGISTER_OP_CPU_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,

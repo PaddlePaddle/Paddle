@@ -18,24 +18,35 @@
 namespace paddle {
 namespace operators {
 namespace reader {
+template <bool ThreadSafe>
 class RecordIOFileReader : public framework::FileReader {
  public:
-  RecordIOFileReader(const std::string& filename,
-                     const std::vector<framework::DDim>& shapes)
-      : FileReader(shapes),
+  explicit RecordIOFileReader(const std::string& filename,
+                              const std::vector<framework::DDim>& dims)
+      : FileReader(dims),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
-            platform::CPUPlace())) {}
-
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+            platform::CPUPlace())) {
+    if (ThreadSafe) {
+      mutex_.reset(new std::mutex());
+    }
+    LOG(INFO) << "Creating file reader" << filename;
   }
-
-  bool HasNext() const override { return scanner_.HasNext(); }
 
   void ReInit() override { scanner_.Reset(); }
 
+ protected:
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+    if (ThreadSafe) {
+      std::lock_guard<std::mutex> guard(*mutex_);
+      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
+    } else {
+      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
+    }
+  }
+
  private:
+  std::unique_ptr<std::mutex> mutex_;
   recordio::Scanner scanner_;
   const platform::DeviceContext& dev_ctx_;
 };
@@ -51,27 +62,31 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
     PADDLE_ENFORCE_EQ(std::accumulate(ranks.begin(), ranks.end(), 0),
-                      int(shape_concat.size()),
+                      static_cast<int>(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
-    std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     std::string filename = Attr<std::string>("filename");
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RecordIOFileReader(filename, shapes));
+
+    out->Reset(new RecordIOFileReader<true>(
+        filename, RestoreShapes(shape_concat, ranks)));
   }
 };
 
 class CreateRecordIOReaderOpMaker : public FileReaderMakerBase {
- public:
-  CreateRecordIOReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : FileReaderMakerBase(op_proto, op_checker) {
-    AddAttr<std::string>("filename", "The filename of record io reader");
+ protected:
+  void Apply() override {
+    AddAttr<std::string>(
+        "filename",
+        "The filename of record file. This file will given to reader.");
     AddComment(R"DOC(
-      CreateRecordIOReader Operator
+Open a recordio file and return the reader object. The returned reader object
+is thread-safe.
 
-      Create a reader from a record io file
+NOTE: This is a very low-level API. It is used for debugging data file or
+training. Please use `open_files` instead of this API for production usage.
     )DOC");
   }
 };
@@ -85,3 +100,5 @@ namespace reader = paddle::operators::reader;
 REGISTER_FILE_READER_OPERATOR(create_recordio_file_reader,
                               reader::CreateRecordIOReaderOp,
                               reader::CreateRecordIOReaderOpMaker);
+
+REGISTER_FILE_READER(recordio, reader::RecordIOFileReader<false>);

@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 class AdadeltaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -55,12 +56,17 @@ class AdadeltaOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("AvgSquaredGradOut", param_dim);
     ctx->SetOutputDim("AvgSquaredUpdateOut", param_dim);
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdadeltaOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");

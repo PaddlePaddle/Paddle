@@ -15,6 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -142,6 +145,7 @@ class LoDTensor : public Tensor {
     return (lod_)[level].size() - 1;
   }
 
+  // Split LoDTensor and copy to each place specified in places.
   std::vector<LoDTensor> SplitLoDTensor(
       const std::vector<platform::Place> places) const;
 
@@ -215,12 +219,26 @@ void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
 
-extern void WriteToRecordIO(recordio::Writer& writer,
+extern void WriteToRecordIO(recordio::Writer* writer,
                             const std::vector<LoDTensor>& tensor,
                             const platform::DeviceContext& dev_ctx);
 
 extern std::vector<LoDTensor> ReadFromRecordIO(
-    recordio::Scanner& scanner, const platform::DeviceContext& dev_ctx);
+    recordio::Scanner* scanner, const platform::DeviceContext& dev_ctx);
+
+/*
+ * Convert between length-based LoD and offset-based LoD.
+ * The implementation of LoDTensor class use offset-based LoD.
+ * However, we want to expose the more user-friendly length-based
+ * LoD to the Python side instead.
+ *
+ * Example:
+ * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
+ * then length_lod = [[2, 1], [3, 2, 4]]
+ */
+LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+
+LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 
 }  // namespace framework
 }  // namespace paddle

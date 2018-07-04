@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/recordio/header.h"
+
+#include <string>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -29,8 +32,8 @@ Header::Header(uint32_t num, uint32_t sum, Compressor c, uint32_t cs)
 
 bool Header::Parse(std::istream& is) {
   uint32_t magic;
-  size_t read_size =
-      is.readsome(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+  is.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+  size_t read_size = is.gcount();
   if (read_size < sizeof(uint32_t)) {
     return false;
   }

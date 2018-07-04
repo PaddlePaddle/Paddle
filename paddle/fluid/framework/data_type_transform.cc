@@ -91,6 +91,12 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
     case proto::VarType::BOOL:
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
+    case proto::VarType::INT16:
+      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      break;
+    case proto::VarType::UINT8:
+      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      break;
     default:
       PADDLE_THROW("Not support type %d", src_type);
   }

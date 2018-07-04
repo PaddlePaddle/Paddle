@@ -37,7 +37,7 @@ enum class Compressor : uint32_t {
 
 // Header is the metadata of Chunk
 class Header {
-public:
+ public:
   Header();
   Header(uint32_t num, uint32_t sum, Compressor ct, uint32_t cs);
 
@@ -51,7 +51,7 @@ public:
   Compressor CompressType() const { return compressor_; }
   uint32_t CompressSize() const { return compress_size_; }
 
-private:
+ private:
   uint32_t num_records_;
   uint32_t checksum_;
   Compressor compressor_;

@@ -14,26 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
-
-namespace paddle {
-namespace operators {
-class ElementwiseAddOpMaker : public ElementwiseOpMaker {
- public:
-  ElementwiseAddOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Add", "Out = X + Y");
-    AddComment(comment_);
-  }
-};
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_add, ops::ElementwiseOp,
-                  ops::ElementwiseAddOpMaker, ops::ElementwiseOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(elementwise_add_grad, ops::ElementwiseOpGrad);
-
+REGISTER_ELEMWISE_OP(elementwise_add, "Add", "Out = X + Y");
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,

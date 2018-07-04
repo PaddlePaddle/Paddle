@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/memory/detail/meta_cache.h"
-#include "paddle/fluid/memory/detail/meta_data.h"
+#include <mutex>  // NOLINT
+#include <set>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
+
+#include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
-
-#include <mutex>
-#include <set>
-#include <unordered_map>
-#include <vector>
 
 namespace paddle {
 namespace memory {

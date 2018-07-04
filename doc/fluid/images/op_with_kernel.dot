@@ -1,0 +1,26 @@
+digraph sample { 
+  graph [rankdir=TD]; node [shape=record];
+  op [label="{Operator}"]; 
+  op_with_kern [label="{OpWithKernel | InferShape()=0\lRun()\l | map&#60;OpKernelKey,OpKernel&#62;kernels_ }"]
+  op_kernel [label="{OpKernel | Compute()=0}"]
+  op_kernel_key [label="{OpKernelKey| Place place\n...}"]
+
+  op -> op_with_kern [dir=back, arrowtail=onormal]
+  op_with_kern -> op_kernel [arrowhead=vee, label="contains many"]
+
+  {
+    rank=same;
+    op_with_kern
+    op_kernel
+  }
+
+  op_kernel -> op_kernel_key [style=invis]
+
+  {
+    rank=same;
+    op_kernel
+    op_kernel_key
+  }
+
+  op_with_kern -> op_kernel_key [arrowhead=vee, label ="\nas map key"]
+}

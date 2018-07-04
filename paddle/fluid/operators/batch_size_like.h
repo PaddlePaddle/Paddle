@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -52,22 +53,25 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 
 class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Input",
-             "(Tensor) Tensor "
-             "whose input_dim_idx'th dimension specifies the batch_size");
+  void Make() final {
+    AddInput(
+        "Input",
+        "Tensor whose input_dim_idx'th dimension specifies the batch_size");
     AddOutput("Out",
-              "(Tensor) Tensor of specified shape will be filled "
+              "Tensor of specified shape will be filled "
               "with the specified value");
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<std::vector<int>>("shape", "The shape of the output");
     AddAttr<int>("input_dim_idx",
-                 "(int, default 0) The index of input's batch size dimension")
+                 "default 0. The index of input's batch size dimension")
         .SetDefault(0);
     AddAttr<int>("output_dim_idx",
-                 "(int, default 0) The index of output's batch size dimension")
+                 "default 0. The index of output's batch size dimension")
         .SetDefault(0);
+    Apply();
   }
+
+ protected:
+  virtual void Apply() = 0;
 };
 
 }  // namespace operators
