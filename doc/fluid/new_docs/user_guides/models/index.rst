@@ -31,12 +31,13 @@ Fluid模型配置和参数文件的工具。
 
 在目标检测任务中，我们介绍了如何基于\ `PASCAL
 VOC <http://host.robots.ox.ac.uk/pascal/VOC/>`__\ 、\ `MS
-COCO <http://cocodataset.org/#home>`__\ 数据的训练目标检测算法SSD，SSD全称Single
-Shot MultiBox
-Detector，是目标检测领域较新且效果较好的检测算法之一，具有检测速度快且检测精度高的特点，并开源了训练好的\ `MobileNet-SSD模型 <https://github.com/PaddlePaddle/models/blob/develop/fluid/object_detection/README_cn.md#模型发布>`__\ 。
+COCO <http://cocodataset.org/#home>`__\ 数据训练通用物体检测模型，当前介绍了SSD算法，SSD全称Single Shot MultiBox Detector，是目标检测领域较新且效果较好的检测算法之一，具有检测速度快且检测精度高的特点。
+
+开放环境中的检测人脸，尤其是小的、模糊的和部分遮挡的人脸也是一个具有挑战的任务。我们也介绍了如何基于 `WIDER FACE <http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/>`_ 数据训练百度自研的人脸检测PyramidBox模型，该算法于2018年3月份在WIDER FACE的多项评测中均获得 `第一名 <http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/WiderFace_Results.html>`_。
 
 -  `Single Shot MultiBox
    Detector <https://github.com/PaddlePaddle/models/blob/develop/fluid/object_detection/README_cn.md>`__
+-  `Face Detector: PyramidBox <https://github.com/PaddlePaddle/models/tree/develop/fluid/face_detection/README_cn.md>`_
 
 图像语义分割
 ------------
