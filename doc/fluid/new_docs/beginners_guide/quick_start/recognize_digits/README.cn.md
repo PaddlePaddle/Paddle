@@ -115,6 +115,7 @@ PaddlePaddle在API中提供了自动加载[MNIST](http://yann.lecun.com/exdb/mni
         <th>说明</th>
     </tr>
     </thead>
+
     <tbody>
     <tr>
         <td>train-images-idx3-ubyte</td>
