@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise_sub_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_OP(elementwise_sub, "Sub", "Out = X - Y");
+REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
+REGISTER_ELEMWISE_OP(elementwise_sub, "Sub", "Out = X - Y", "Out", "X");
+
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,

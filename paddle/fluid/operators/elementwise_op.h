@@ -183,9 +183,10 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 // For Add, Sub op, the X, Out is not needed.
 class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
  public:
-  using operators::ElementwiseOpGrad::OperatorWithKernel;
+  using operators::ElementwiseOpGrad::ElementwiseOpGrad;
   using operators::ElementwiseOpGrad::GetExpectedKernelType;
   using Tensor = framework::Tensor;
+
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
@@ -211,32 +212,39 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_ELEMWISE_GRAD_MAKER(KERNEL_TYPE, OP_NAME)                  \
-  class GradMaker : public framework::SingleGradOpDescMaker {               \
-   public:                                                                  \
-    using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;          \
-                                                                            \
-   protected:                                                               \
-    std::unique_ptr<framework::OpDesc> Apply() const override {             \
-      auto* op = new framework::OpDesc();                                   \
-      op->SetType(#KENREL_TYPE "_grad");                                    \
-      op->SetInput(::paddle::framework::GradVarName("Out"),                 \
-                   OutputGrad("Out"));                                      \
-      op->SetAttrMap(Attrs());                                              \
-      op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X")); \
-      op->SetOutput(::paddle::framework::GradVarName("Y"), InputGrad("Y")); \
-      return std::unique_ptr<::paddle::framework::OpDesc>(op);              \
-    }                                                                       \
+/*
+*/
+
+#define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)                   \
+  class GradMaker : public paddle::framework::SingleGradOpDescMaker {        \
+   public:                                                                   \
+    using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker; \
+                                                                             \
+   protected:                                                                \
+    std::unique_ptr<paddle::framework::OpDesc> Apply() const override {      \
+      auto* op = new paddle::framework::OpDesc();                            \
+      op->SetType(#kernel_type "_grad");                                     \
+      op->SetInput(::paddle::framework::GradVarName("Out"),                  \
+                   OutputGrad("Out"));                                       \
+      op->SetAttrMap(Attrs());                                               \
+      op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X"));  \
+      op->SetOutput(::paddle::framework::GradVarName("Y"), InputGrad("Y"));  \
+      return std::unique_ptr<::paddle::framework::OpDesc>(op);               \
+    }                                                                        \
   }
 
-#define REGISTER_ELEMWISE_OP(op_type, op_name, equation)         \
-  class __ElemwiseOp##op_type##Maker__                           \
-      : public ::paddle::operators::ElementwiseOpMaker {         \
-   protected:                                                    \
-    virtual std::string GetName() const { return op_name; }      \
-    virtual std::string GetEquation() const { return equation; } \
-    virtual void SetReuse() {}                                   \
-  };                                                             \
+#define REGISTER_ELEMWISE_OP(op_type, op_name, equation)                \
+  class __ElemwiseOp##op_type##Maker__                                  \
+      : public ::paddle::operators::ElementwiseOpMaker {                \
+   protected:                                                           \
+    virtual std::string GetName() const { return op_name; }             \
+    virtual std::string GetEquation() const { return equation; }        \
+    virtual void SetReuse() {}                                          \
+  };                                                                    \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+                    __ElemwiseOp##op_type##Maker__,                     \
+                    ::paddle::operators::ElementwiseOpInferVarType,     \
+                    ::paddle::framework::DefaultGradOpDescMaker<true>); \
   REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)
 
 #define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation, ...) \
@@ -247,5 +255,9 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
     virtual std::string GetEquation() const { return equation; }       \
     virtual void SetReuse() { Reuse(__VA_ARGS__); }                    \
   };                                                                   \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
+                    __ElemwiseOp##op_type##Maker__,                    \
+                    ::paddle::operators::ElementwiseOpInferVarType,    \
+                    GradMaker);                                        \
   REGISTER_OPERATOR(op_type##_grad,                                    \
                     ::paddle::operators::ElementwiseOpExplicitGrad)

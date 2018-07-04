@@ -55,13 +55,16 @@ class ElementwiseSubGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    dy->mutable_data<T>(ctx.GetPlace());
+    auto *x = dx, *y = dy;
+    auto* out = dout;
+
     ElemwiseGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
   }
