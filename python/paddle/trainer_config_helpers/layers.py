@@ -4182,9 +4182,9 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
 
     You can see following configs for further usages:
 
-    - time steps: lstmemory_group, paddle/gserver/tests/sequence_layer_group.conf, \
+    - time steps: lstmemory_group, paddle/legacy/gserver/tests/sequence_layer_group.conf, \
                   demo/seqToseq/seqToseq_net.py
-    - sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf
+    - sequence steps: paddle/legacy/gserver/tests/sequence_nest_layer_group.conf
 
     :param step: A step function which takes the input of recurrent_group as its own
                  input and returns values as recurrent_group's output every time step.

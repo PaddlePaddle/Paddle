@@ -23,9 +23,9 @@ namespace analysis {
 template <>
 std::string &NodeAttr::As<std::string>() {
   if (data_.empty()) {
-    type_hash_ = typeid(std::string).hash_code();
+    type_index_ = std::type_index(typeid(std::string));
   }
-  PADDLE_ENFORCE_EQ(type_hash_, typeid(std::string).hash_code());
+  PADDLE_ENFORCE_EQ(type_index_, std::type_index(typeid(std::string)));
   return data_;
 }
 
