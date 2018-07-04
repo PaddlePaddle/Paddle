@@ -312,6 +312,20 @@ EOF
     fi
 }
 
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/reyoung/FluidAPISpec/master/API.spec} \
+        > origin.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py origin.spec new.spec
+    deactivate
+}
+
+
 function single_test() {
     TEST_NAME=$1
     if [ -z "${TEST_NAME}" ]; then
@@ -550,6 +564,7 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
