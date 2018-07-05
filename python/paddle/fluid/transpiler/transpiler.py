@@ -91,6 +91,9 @@ class Transpiler:
     def resolve_war(self):
         pass
     
+    def _copy_and_insert_op(self, block, op, dev):
+        pass
+
     def build_multi_dev(self, dev_type, num_devs):
         assert dev_type in ["CUDA", "CPU"]
         assert num_devs > 1
@@ -106,6 +109,24 @@ class Transpiler:
         for var in g_block.vars:
             var.place = "%s:%d" % (dev_type, num_devs)
 
-        for i in xrange(num_devs):
-            pass
+        # find loss op as the boundary
+        # TODO: use op tag instead
+        for idx, op in enumerate(g_block.ops):
+            for attr in op.attrs:
+                if attr.name == "op_role" and attr.i == 2:  # optimize
+                    break
+            prev_op_idx = idx
+            prev_op = op
+        loss_op_idx = prev_op_idx - 1
+        print("current loss op idx: ", loss_op_idx, prev_op)
 
+        is_forwarding = 1
+        for idx, op in enumerate(g_block.ops):
+            if is_forwarding:
+                for i in xrange(num_devs):
+                    self._copy_and_insert_op(g_block, op, i)
+                if idx == loss_op_idx:
+                    is_forwarding = False
+                    # append reduce loss
+                if not is_forwarding:
+                    pass

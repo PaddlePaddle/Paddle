@@ -40,6 +40,7 @@ class TestTranspiler(unittest.TestCase):
         t = transpiler.Transpiler(proto)
         t.build_op_id()
         t.build_ssa()
+
         print(proto)
 
 if __name__ == "__main__":
