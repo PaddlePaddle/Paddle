@@ -119,7 +119,9 @@ def __bootstrap__():
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
-        'init_allocated_mem'
+        'init_allocated_mem', 'rdma_conn_timeout_ms', 'brpc_channel_num',
+        'rdma_cq_num', 'rdma_use_polling', 'rdma_use_inplace',
+        'usercode_in_pthread', 'rdma_cq_offset', 'rdma_bind_cpu'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += [

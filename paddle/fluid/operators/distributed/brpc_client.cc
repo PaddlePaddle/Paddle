@@ -275,9 +275,10 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
 #endif
   options.protocol = "baidu_std";
   options.connection_type = "pooled";
-  options.connect_timeout_ms = 100;
+  options.connect_timeout_ms = 1000;
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
+
   VLOG(3) << "create " << FLAGS_brpc_channel_num
           << " brpc channels to pserver:" << ep;
   for (int i = 0; i < FLAGS_brpc_channel_num; ++i) {

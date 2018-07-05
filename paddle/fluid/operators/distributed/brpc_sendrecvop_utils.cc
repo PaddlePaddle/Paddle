@@ -79,6 +79,7 @@ class IOBufWriter {
         varname, static_cast<void*>(const_cast<char*>(v)), vlen);
 
     iobuf->append_zerocopy(v, vlen, nullptr);
+    // iobuf->append(v, vlen);
     return;
   }
 #endif

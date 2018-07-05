@@ -23,11 +23,17 @@ class TestDistTranspiler(TranspilerTest):
     def setUp(self):
         self.current_pserver_ep = "127.0.0.1:6174"
 
-    def test_transpiler(self):
-        trainer = self.get_trainer()
-        pserver, startup = self.get_pserver(self.current_pserver_ep)
+    def transpiler_with_blocksize(self, min_block_size):
+        trainer = self.get_trainer(min_block_size)
+        pserver, startup = self.get_pserver(self.current_pserver_ep,
+                                            min_block_size)
         self.assertEqual([op.type for op in trainer.global_block().ops],
-                         self.get_expect_trainer_ops())
+                         self.get_expect_trainer_ops(min_block_size))
+
+        #for t in pserver.blocks:
+        #    print t
+        print "block1:", pserver.blocks[1]
+        #print "block2:", pserver.blocks[2]
 
         self.assertEqual(len(pserver.blocks), 3)
         # block0: listen_and_serv
@@ -47,17 +53,29 @@ class TestDistTranspiler(TranspilerTest):
         fc_w_var = startup.global_block().var("fc_w.block1")
         self.assertEqual(fc_w_var.shape, (500, 1000))
 
-    def get_expect_trainer_ops(self):
+    def test_transpiler(self):
+        self.transpiler_with_blocksize(8192)
+        #self.transpiler_with_blocksize(1048576)
+
+    def get_expect_trainer_ops(self, min_block_size):
         trainer = fluid.Program()
 
         with fluid.program_guard(trainer):
             optimize_ops, params_grads = self.net_conf()
 
         delete_ops(trainer.global_block(), optimize_ops)
-        ops = [op.type for op in trainer.global_block().ops] + [
-            "split_byref", "send", "send_barrier", "recv", "recv",
-            "fetch_barrier", "concat"
-        ]
+
+        self.assertTrue((min_block_size == 8192) or (min_block_size == 1048576))
+        if min_block_size == 8192:
+            ops = [op.type for op in trainer.global_block().ops] + [
+                "split_byref", "send", "send_barrier", "recv", "recv",
+                "fetch_barrier", "concat"
+            ]
+        else:
+            ops = [op.type for op in trainer.global_block().ops] + [
+                "send", "send_barrier", "recv", "recv", "fetch_barrier"
+            ]
+
         ops.insert(ops.index("elementwise_add_grad") + 1, "send")
         return ops
 

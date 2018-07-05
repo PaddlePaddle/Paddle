@@ -51,23 +51,25 @@ class TranspilerTest(unittest.TestCase):
         with fluid.program_guard(main):
             self.net_conf()
 
+        print main
         return main
 
-    def get_trainer(self):
-        return self._transpiler_instance().get_trainer_program()
+    def get_trainer(self, min_block_size):
+        return self._transpiler_instance(min_block_size).get_trainer_program()
 
-    def get_pserver(self, ep):
-        t = self._transpiler_instance()
+    def get_pserver(self, ep, min_block_size):
+        t = self._transpiler_instance(min_block_size)
         pserver = t.get_pserver_program(ep)
         startup = t.get_startup_program(ep, pserver)
         return pserver, startup
 
-    def _transpiler_instance(self):
+    def _transpiler_instance(self, min_block_size):
         main = self.get_main_program()
         t = fluid.DistributeTranspiler()
         t.transpile(
             self.trainer_id,
             program=main,
             pservers=self.pserver_eps,
-            trainers=self.trainers)
+            trainers=self.trainers,
+            min_block_size=min_block_size)
         return t
