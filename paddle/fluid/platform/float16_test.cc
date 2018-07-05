@@ -13,8 +13,8 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace platform {
