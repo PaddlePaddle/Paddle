@@ -28,6 +28,9 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
 
+cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
+cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
+
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 ELSE()
@@ -43,7 +46,7 @@ ENDIF()
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS malloc
-    place eigen3 stringpiece ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
+    place eigen3 stringpiece cpu_helper ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
