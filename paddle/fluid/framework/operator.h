@@ -347,9 +347,9 @@ class OpKernel : public OpKernelBase {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  using OpKernelFunc = std::function<void(const ExecutionContext&)>;
   using OpKernelMap =
-      std::unordered_map<OpKernelType, std::unique_ptr<OpKernelBase>,
-                         OpKernelType::Hash>;
+      std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)
@@ -384,6 +384,20 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+
+  /**
+   * Transfer data from scope to a transfered scope. If there is no data need to
+   * be tranfered, it returns nullptr.
+   *
+   * * transfered_inplace_vars is a output vector.
+   */
+  Scope* TryTransferData(
+      const Scope& scope, const OpKernelType& expected_kernel_key,
+      std::vector<std::string>* transfered_inplace_vars) const;
+
+  void TransferInplaceVarsBack(const Scope& scope,
+                               const std::vector<std::string>& inplace_vars,
+                               const Scope& exec_scope) const;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

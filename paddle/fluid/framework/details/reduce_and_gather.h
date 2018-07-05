@@ -54,8 +54,7 @@ struct ReduceLoDTensor {
 inline void GatherSelectedRows(
     const std::vector<const SelectedRows *> &src_selecte_rows_,
     const std::vector<platform::Place> &in_places,
-    const std::unordered_map<platform::Place, platform::DeviceContext *,
-                             platform::PlaceHash> &dev_ctxes,
+    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     const platform::Place &out_place, SelectedRows *dst_selecte_rows) {
   PADDLE_ENFORCE(!src_selecte_rows_.empty());
 

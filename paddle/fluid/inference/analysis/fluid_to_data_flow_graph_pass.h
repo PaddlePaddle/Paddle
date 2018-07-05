@@ -46,8 +46,7 @@ class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
     return "transform a fluid ProgramDesc to a data flow graph.";
   }
 
-  Pass *CreatePrinterPass(std::ostream &os,
-                          const std::string &banner) const override;
+  Pass *CreateGraphvizDebugerPass() const override;
 
  private:
   framework::proto::ProgramDesc const *desc_;
