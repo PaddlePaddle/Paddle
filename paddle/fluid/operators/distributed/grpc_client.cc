@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_client.h"
 
 #include <sys/time.h>
-#include <unistd.h>
 
 #include <limits>
 
@@ -43,37 +42,11 @@ void GRPCClient::SendComplete() {
 }
 
 GRPCClient::~GRPCClient() {
-  LOG(ERROR) << "start sleep:";
-  usleep(10000);
-  for (auto& it : channels_) {
-    LOG(ERROR) << "channel service config:"
-               << it.second->GetServiceConfigJSON();
-    LOG(ERROR) << "channel lb config:"
-               << it.second->GetLoadBalancingPolicyName();
-  }
-
   Wait();
-
-  for (auto& it : channels_) {
-    LOG(ERROR) << "channel service config:"
-               << it.second->GetServiceConfigJSON();
-    LOG(ERROR) << "channel lb config:"
-               << it.second->GetLoadBalancingPolicyName();
-  }
-
   cq_.Shutdown();
-  for (auto& it : channels_) {
-    LOG(ERROR) << "channel service config:"
-               << it.second->GetServiceConfigJSON();
-    LOG(ERROR) << "channel lb config:"
-               << it.second->GetLoadBalancingPolicyName();
-  }
-
   {
     std::lock_guard<std::mutex> guard(chan_mutex_);
     for (auto& it : channels_) {
-      LOG(ERROR) << "channel ptr use count:" << it.second.use_count();
-      LOG(ERROR) << "channel ptr use count:" << it.second.get();
       it.second.reset();
     }
     channels_.clear();
@@ -330,9 +303,7 @@ std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
 
   auto ch =
       grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
-  LOG(ERROR) << "get channel ep: " << ep << "count: " << ch.use_count();
   channels_[ep] = ch;
-  LOG(ERROR) << "get channel ep: " << ep << "count: " << ch.use_count();
   return ch;
 }
 
