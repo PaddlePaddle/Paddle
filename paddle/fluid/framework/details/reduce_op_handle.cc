@@ -114,11 +114,15 @@ void ReduceOpHandle::RunImpl() {
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
+#ifdef PADDLE_WITH_CUDA
         if (root_id == dev_id) {
+#endif
           recvbuffer =
               out_var->GetMutable<framework::LoDTensor>()->mutable_data(
                   out_var_handle->place_);
+#ifdef PADDLE_WITH_CUDA
         }
+#endif
 
         int type = platform::ToNCCLDataType(lod_tensor.type());
         size_t numel = static_cast<size_t>(lod_tensor.numel());
