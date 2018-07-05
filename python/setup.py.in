@@ -121,16 +121,17 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
 package_data['paddle.libs']=['libwarpctc.so']
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
-if '${WITH_MKL}'== 'ON':
+if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_LIB}', libs_path)
     shutil.copy('${MKLML_IOMP_LIB}', libs_path)
     package_data['paddle.libs']+=['libmklml_intel.so','libiomp5.so']
-if '${WITH_MKLDNN}'== 'ON':
+if '${WITH_MKLDNN}' == 'ON':
     # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
     # The reason is that all thirdparty libraries in the same directory,
     # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
     command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
-    os.system(command)
+    if os.system(command) != 0:
+        raise Exception("patchelf --set-rpath for libmkldnn.so.0 fails")
     package_data['paddle.libs']+=['libmkldnn.so.0']
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
 # remove unused paddle/libs/__init__.py
@@ -142,7 +143,8 @@ package_dir['paddle.libs']=libs_path
 # core.so is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
-os.system(command)
+if os.system(command) != 0:
+    raise Exception("patchelf --set-rpath for core.so fails")
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
