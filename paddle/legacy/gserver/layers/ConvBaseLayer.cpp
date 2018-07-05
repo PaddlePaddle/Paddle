@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "ConvBaseLayer.h"
 #include "paddle/legacy/math/MathUtils.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 namespace paddle {
 
 bool ConvBaseLayer::init(const LayerMap& layerMap,

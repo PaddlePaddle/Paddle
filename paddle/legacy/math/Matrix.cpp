@@ -26,11 +26,11 @@ limitations under the License. */
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
 #include "hl_top_k.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #include "NEONFunctions.h"
 #include "paddle/legacy/function/GemmFunctor.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 #include "SIMDFunctions.h"
 

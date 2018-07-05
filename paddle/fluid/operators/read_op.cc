@@ -68,7 +68,7 @@ class ReadOp : public framework::OperatorBase {
     reader->ReadNext(&ins);
     if (ins.empty()) {
       if (Attr<bool>("throw_eof_exp")) {
-        PADDLE_THROW("There is no next data.");
+        PADDLE_THROW_EOF();
       } else {
         ins.resize(out_arg_names.size());
         for (auto& tensor : ins) {

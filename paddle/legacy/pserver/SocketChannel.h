@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include <sys/uio.h>
 
