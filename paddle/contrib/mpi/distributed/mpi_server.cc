@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/contrib/mpi/distributed/mpi_server.h"
+#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 
 using ::grpc::ServerAsyncResponseWriter;
 
@@ -30,8 +31,13 @@ class RequestBase {
  public:
   explicit RequestBase(GrpcService::AsyncService* service,
                        ::grpc::ServerCompletionQueue* cq,
+                       RequestHandler* request_handler,
                        int req_id)
-      : service_(service), cq_(cq), status_(PROCESS), req_id_(req_id) {
+      : service_(service),
+        cq_(cq),
+        status_(PROCESS),
+        request_handler_(request_handler),
+        req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
   }
   virtual ~RequestBase() {}
@@ -71,6 +77,7 @@ class RequestBase {
   GrpcService::AsyncService* service_;
   ::grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
+  RequestHandler* request_handler_;
   int req_id_;
 };
 
@@ -101,6 +108,16 @@ class RequestSend final : public RequestBase {
     std::string varname = GetReqName();
     VLOG(4) << "RequestSend var_name:" << varname;
 
+    auto scope = request_->GetMutableLocalScope();
+    framework::Variable* invar;
+    framework::Variable* outvar = nullptr;
+
+    if (varname != BATCH_BARRIER_MESSAGE and varname != BEGIN_PASS_MESSAGE) {
+      contrib::mpi::MPIIrecvProcess(
+          src, tag, *request_handler_->dev_ctx(), inope, ar);
+    }
+
+    request_handler_->Handle(varname, scope, invar, &outvar);
     Finish(reply_, &responder_);
   }
 
@@ -136,6 +153,17 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string varname = request_.varname();
     VLOG(4) << "RequestGet " << varname;
+
+    auto scope = request_handler_->scope();
+    auto invar = scope->FindVar(varname);
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar);
+
+    if (varname != FETCH_BARRIER_MESSAGE && varname != END_PASS_MESSAGE) {
+      contrib::mpi::MPIIsendProcess(
+          dest, tag, *request_handler_->dev_ctx(), scope, outvar);
+    }
 
     Finish(reply_, &responder_);
   }
@@ -179,6 +207,19 @@ class RequestPrefetch final : public RequestBase {
     std::string out_var_name = request_->OutVarname();
     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
+
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = scope->FindVar(in_var_name);
+    // out var must be created in local scope!
+    framework::Variable* outvar = scope->Var(out_var_name);
+
+    contrib::mpi::MPIIrecvProcess(
+        src, tag, *request_handler_->dev_ctx(), scope, invar);
+
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, out_var_name);
+
+    contrib::mpi::MPIIsendProcess(
+        dest, tag, *request_handler_->dev_ctx(), scope, outvar);
 
     Finish(reply_, &responder_);
   }
@@ -224,6 +265,8 @@ class RequestCheckpointNotify final : public RequestBase {
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
+    request_handler_->Handle(
+        checkpoint_notify, scope, nullptr, nullptr, checkpoint_dir);
     Finish(reply_, &responder_);
   }
 
