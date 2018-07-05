@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_client.h"
 
 #include <sys/time.h>
+#include <unistd.h>
 
 #include <limits>
 
@@ -42,8 +43,32 @@ void GRPCClient::SendComplete() {
 }
 
 GRPCClient::~GRPCClient() {
+  LOG(ERROR) << "start sleep:";
+  usleep(10000);
+  for (auto& it : channels_) {
+    LOG(ERROR) << "channel service config:"
+               << it.second->GetServiceConfigJSON();
+    LOG(ERROR) << "channel lb config:"
+               << it.second->GetLoadBalancingPolicyName();
+  }
+
   Wait();
+
+  for (auto& it : channels_) {
+    LOG(ERROR) << "channel service config:"
+               << it.second->GetServiceConfigJSON();
+    LOG(ERROR) << "channel lb config:"
+               << it.second->GetLoadBalancingPolicyName();
+  }
+
   cq_.Shutdown();
+  for (auto& it : channels_) {
+    LOG(ERROR) << "channel service config:"
+               << it.second->GetServiceConfigJSON();
+    LOG(ERROR) << "channel lb config:"
+               << it.second->GetLoadBalancingPolicyName();
+  }
+
   {
     std::lock_guard<std::mutex> guard(chan_mutex_);
     for (auto& it : channels_) {
@@ -53,6 +78,7 @@ GRPCClient::~GRPCClient() {
     }
     channels_.clear();
   }
+
   client_thread_->join();
 }
 

@@ -47,7 +47,7 @@ ExternalProject_Add(
     #URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x.tar.gz"
     URL "http://localhost:8000/grpc-v1.13.x.tar.gz"
     #URL_MD5  "1f268a2aff6759839dccd256adcc91cf"
-    URL_MD5 "27019f520a32161396b319e57c24a5ac"
+    URL_MD5 "c93a1ba08a449e5b800524131cc900a8"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
