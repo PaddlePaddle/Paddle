@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/legacy/gserver/layers/DataLayer.h"
 #include "paddle/legacy/gserver/layers/Layer.h"
 #include "paddle/legacy/parameter/Parameter.h"
-#include "paddle/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
 
 namespace paddle {
 /*

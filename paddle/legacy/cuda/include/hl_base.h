@@ -208,7 +208,7 @@ typedef struct {
 
 #include <cuda_runtime.h>
 #include "paddle/legacy/cuda/include/hl_cuda.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
 extern __thread cudaStream_t default_stream;

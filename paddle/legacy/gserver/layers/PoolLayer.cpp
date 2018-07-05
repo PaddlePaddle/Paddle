@@ -15,7 +15,7 @@ limitations under the License. */
 #include "PoolLayer.h"
 #include "MaxPoolWithMaskLayer.h"
 #include "PoolProjectionLayer.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include "CudnnPoolLayer.h"
 #endif

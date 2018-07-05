@@ -20,10 +20,10 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/legacy/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/trainer/ParamUtil.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/trainer/TrainerInternal.h"
-#include "paddle/utils/Flags.h"
+#include "paddle/legacy/trainer/ParamUtil.h"
+#include "paddle/legacy/trainer/Trainer.h"
+#include "paddle/legacy/trainer/TrainerInternal.h"
+#include "paddle/legacy/utils/Flags.h"
 
 using paddle::real;
 

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "float.h"
 #include "hl_gpu.h"
 #include "paddle/legacy/math/MathUtils.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

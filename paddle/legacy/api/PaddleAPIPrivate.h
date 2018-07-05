@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/legacy/gserver/evaluators/Evaluator.h"
 #include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/legacy/parameter/ParameterUpdaterBase.h"
-#include "paddle/trainer/TrainerConfigHelper.h"
+#include "paddle/legacy/trainer/TrainerConfigHelper.h"
 
 struct GradientMachinePrivate {
   std::shared_ptr<paddle::GradientMachine> machine;

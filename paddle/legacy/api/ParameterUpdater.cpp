@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "PaddleAPIPrivate.h"
 #ifndef PADDLE_WITHOUT_GOLANG
-#include "paddle/trainer/NewRemoteParameterUpdater.h"
+#include "paddle/legacy/trainer/NewRemoteParameterUpdater.h"
 #endif
-#include "paddle/trainer/RemoteParameterUpdater.h"
-#include "paddle/trainer/ThreadParameterUpdater.h"
+#include "paddle/legacy/trainer/RemoteParameterUpdater.h"
+#include "paddle/legacy/trainer/ThreadParameterUpdater.h"
 
 ParameterUpdater::ParameterUpdater() : m(new ParameterUpdaterPrivate()) {}
 

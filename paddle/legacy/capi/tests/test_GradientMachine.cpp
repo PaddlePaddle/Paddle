@@ -14,12 +14,12 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/legacy/gserver/gradientmachines/GradientMachine.h>
-#include <paddle/trainer/TrainerConfigHelper.h>
+#include <paddle/legacy/trainer/TrainerConfigHelper.h>
 #include <stdlib.h>
 #include <string.h>
 #include <type_traits>
 #include "capi.h"
-#include "paddle/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
 
 static std::vector<paddle_real> randomBuffer(size_t bufSize) {
   auto& eng = paddle::ThreadLocalRandomEngine::get();

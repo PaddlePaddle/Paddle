@@ -17,7 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/legacy/gserver/layers/DataLayer.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/legacy/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/legacy/cuda/include/hl_batch_norm.h"
