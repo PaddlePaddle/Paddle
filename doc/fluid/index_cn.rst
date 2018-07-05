@@ -13,4 +13,4 @@
     new_docs/beginners_guide/index.rst
     new_docs/user_guides/index.rst
     new_docs/advanced_usage/index.rst
-
+    new_docs/faq/index_cn.rst
