@@ -44,8 +44,8 @@ ExternalProject_Add(
     # 3. keep only zlib, cares, protobuf, boringssl under "third_party",
     #    checkout and clean other dirs under third_party
     # 4. remove .git, and package the directory.
-    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x.tar.gz"
-    URL_MD5  "1f268a2aff6759839dccd256adcc91cf"
+    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x-paddle.tar.gz"
+    URL_MD5  "6c472b60703aad03ce697c502a70c01f"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
