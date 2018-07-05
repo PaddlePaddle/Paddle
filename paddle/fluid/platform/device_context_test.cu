@@ -69,19 +69,3 @@ TEST(Device, DeviceContextPool) {
     ASSERT_NE(dev_ctx, nullptr);
   }
 }
-
-int main(int argc, char** argv) {
-  std::vector<paddle::platform::Place> places;
-
-  places.emplace_back(paddle::platform::CPUPlace());
-  int count = paddle::platform::GetCUDADeviceCount();
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::CUDAPlace(i));
-  }
-
-  VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Init(places);
-
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

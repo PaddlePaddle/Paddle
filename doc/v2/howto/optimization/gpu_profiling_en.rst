@@ -51,10 +51,10 @@ For general GPU profiling, a bunch of tools are provided from both NVIDIA and th
 **nvprof** is Nvidia profiler and **nvvp** is (GUI based) Nvidia visual profiler.
 In this tutorial, we will focus on nvprof and nvvp.
 
-:code:`test_GpuProfiler` from :code:`paddle/math/tests` directory will be used to evaluate
+:code:`test_GpuProfiler` from :code:`paddle/legacy/math/tests` directory will be used to evaluate
 above profilers.
 
-.. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
+.. literalinclude:: ../../../../paddle/legacy/math/tests/test_GpuProfiler.cpp
    :language: c++
    :lines: 137-151
    :linenos:
@@ -80,7 +80,7 @@ As a simple example, consider the following:
 
 1. Add :code:`REGISTER_TIMER_INFO` and :code:`printAllStatus` functions (see the emphasize-lines).
 
-    .. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../../paddle/legacy/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 137-151
         :emphasize-lines: 8-12,14
@@ -98,8 +98,8 @@ As a simple example, consider the following:
     .. code-block:: bash
         :emphasize-lines: 1,12-15
 
-        > ./paddle/math/tests/test_GpuProfiler
-        I1117 11:13:42.313065 2522362816 Util.cpp:155] commandline: ./paddle/math/tests/test_GpuProfiler
+        > ./paddle/legacy/math/tests/test_GpuProfiler
+        I1117 11:13:42.313065 2522362816 Util.cpp:155] commandline: ./paddle/legacy/math/tests/test_GpuProfiler
         I1117 11:13:42.845065 2522362816 Util.cpp:130] Calling runInitFunctions
         I1117 11:13:42.845208 2522362816 Util.cpp:143] Call runInitFunctions done.
         [==========] Running 1 test from 1 test case.
@@ -127,7 +127,7 @@ To use this command line profiler **nvprof**, you can simply issue the following
 
 1. Add :code:`REGISTER_GPU_PROFILER` function (see the emphasize-lines).
 
-    .. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../../paddle/legacy/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 137-151
         :emphasize-lines: 6-7
@@ -144,13 +144,13 @@ To use this command line profiler **nvprof**, you can simply issue the following
 
     .. code-block:: bash
 
-        nvprof  ./paddle/math/tests/test_GpuProfiler
+        nvprof  ./paddle/legacy/math/tests/test_GpuProfiler
 
 Then, you can get the following profiling result:
 
 .. code-block:: bash
 
-    ==78544== Profiling application: ./paddle/math/tests/test_GpuProfiler
+    ==78544== Profiling application: ./paddle/legacy/math/tests/test_GpuProfiler
     ==78544== Profiling result:
     Time(%)     Time     Calls       Avg       Min       Max  Name
     27.60%  9.6305ms         5  1.9261ms  3.4560us  6.4035ms  [CUDA memcpy HtoD]

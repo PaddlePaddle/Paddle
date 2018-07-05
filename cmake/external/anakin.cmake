@@ -26,13 +26,15 @@ function(fetch_include_recursively root_dir)
     endforeach()
 endfunction()
 
-# download library
-message(STATUS "Download Anakin library from ${ANAKIN_LIBRARY_URL}")
-execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
-execute_process(COMMAND bash -c "rm -rf ${ANAKIN_INSTALL_DIR}/*")
-execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; wget -q ${ANAKIN_LIBRARY_URL}")
-execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
-execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; tar xzf anakin_release_simple.tar.gz")
+if (NOT EXISTS "${ANAKIN_INSTALL_DIR}")
+    # download library
+    message(STATUS "Download Anakin library from ${ANAKIN_LIBRARY_URL}")
+    execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
+    execute_process(COMMAND bash -c "rm -rf ${ANAKIN_INSTALL_DIR}/*")
+    execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; wget -q ${ANAKIN_LIBRARY_URL}")
+    execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INSTALL_DIR}")
+    execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; tar xzf anakin_release_simple.tar.gz")
+endif()
 
 if (WITH_ANAKIN)
     message(STATUS "Anakin for inference is enabled")

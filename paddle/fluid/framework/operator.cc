@@ -592,8 +592,7 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
@@ -620,8 +619,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         "There are no kernels which are registered in the %s operator.", type_);
   }
 
-  ExecutionContext ctx(*this, scope, *dev_ctx);
-
   OpKernelMap& kernels = kernels_iter->second;
 
   // TODO(dzhwinter) : kernel fallback mechanism will be added when all the
@@ -631,7 +628,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   //   Do selection
   // }
 
-  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
+  auto expected_kernel_key =
+      this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -640,62 +638,98 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  // do data transform
-  Scope& new_scope = scope.NewScope();
+  // do data transformScope &transfer_scope;
+  std::vector<std::string> transfered_inplace_vars;
+  auto* transfer_scope =
+      TryTransferData(scope, expected_kernel_key, &transfered_inplace_vars);
 
-  std::vector<std::string> inplace_vars;
-  for (auto& var_name_item : this->Inputs()) {
-    for (auto& var_name : var_name_item.second) {
-      auto* var = scope.FindVar(var_name);
-      if (var && VarIsTensor(var)) {
-        auto* tensor_in = GetTensorFromVar(var);
-        if (tensor_in->IsInitialized()) {
-          auto kernel_type_for_var = this->GetKernelTypeForVar(
-              var_name_item.first, *tensor_in, expected_kernel_key);
-          if (TransFromNeeded(kernel_type_for_var, expected_kernel_key)) {
-            auto out_var_names = OutputVars(true);
-            if (std::find(out_var_names.begin(), out_var_names.end(),
-                          var_name) != out_var_names.end()) {
-              inplace_vars.push_back(var_name);
-            }
-            VLOG(3) << "Transform Variable " << var_name << " from "
-                    << kernel_type_for_var << " to " << expected_kernel_key;
-            auto* trans_var = new_scope.Var(var_name);
-            std::shared_ptr<Tensor> out(new Tensor);
-            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
-                          out.get());
-            CopyVariableWithTensor(*var, *(out.get()), trans_var);
-          }
-        }
-      }
-    }
+  // exec scope is the scope that kernel actually executed on.
+  const Scope& exec_scope =
+      (transfer_scope == nullptr ? scope : *transfer_scope);
+
+  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
-  kernel_iter->second->Compute(
-      ExecutionContext(*this, new_scope, *new_dev_ctx));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
-  for (auto& var_name : inplace_vars) {
-    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
-    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
-    auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
-    original_tensor->ShareDataWith(*transformed_tensor);
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transfered.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
-    new_dev_ctx->Wait();
+    dev_ctx->Wait();
   }
 
   if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
-      auto* var = new_scope.FindVar(vname);
+      auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
         CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
       }
     }
   }
+}
+void OperatorWithKernel::TransferInplaceVarsBack(
+    const Scope& scope, const std::vector<std::string>& inplace_vars,
+    const Scope& transfer_scope) const {
+  for (auto& var_name : inplace_vars) {
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
+    auto* transformed_tensor =
+        GetTensorFromVar(transfer_scope.FindVar(var_name));
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
+}
+
+Scope* OperatorWithKernel::TryTransferData(
+    const Scope& scope, const OpKernelType& expected_kernel_key,
+    std::vector<std::string>* transfered_inplace_vars) const {
+  Scope* new_scope = nullptr;
+  for (auto& var_name_item : Inputs()) {
+    for (auto& var_name : var_name_item.second) {
+      auto* var = scope.FindVar(var_name);
+      // Only tensor can be tranfer to another device.
+      if (var == nullptr || !VarIsTensor(var)) {
+        continue;
+      }
+
+      auto* tensor_in = GetTensorFromVar(var);
+      if (!tensor_in->IsInitialized()) {
+        continue;
+      }
+
+      auto kernel_type_for_var = GetKernelTypeForVar(
+          var_name_item.first, *tensor_in, expected_kernel_key);
+
+      if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+        continue;
+      }
+
+      auto out_var_names = OutputVars(true);
+      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
+          out_var_names.end()) {
+        transfered_inplace_vars->emplace_back(var_name);
+      }
+
+      VLOG(3) << "Transform Variable " << var_name << " from "
+              << kernel_type_for_var << " to " << expected_kernel_key;
+
+      if (new_scope == nullptr) {
+        new_scope = &scope.NewScope();
+      }
+
+      auto* trans_var = new_scope->Var(var_name);
+      Tensor out;
+      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
+      SetTensorToVariable(*var, out, trans_var);
+    }
+  }
+
+  return new_scope;
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(

@@ -15,6 +15,11 @@
 
 inference_api_test(simple_on_word2vec ARGS test_word2vec)
 
+option(WITH_INFERENCE_DEMO "Compile with Inference demo" OFF)
+if(NOT WITH_INFERENCE_DEMO)
+  return()
+endif()
+
 set(DEMO_INSTALL_DIR "${PADDLE_BINARY_DIR}/inference_demo")
 set(URL_ROOT http://paddlemodels.bj.bcebos.com/inference-vis-demos%2F)
 

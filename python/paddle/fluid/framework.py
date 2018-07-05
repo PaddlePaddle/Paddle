@@ -19,7 +19,16 @@ import re
 import numpy as np
 
 import proto.framework_pb2 as framework_pb2
-from . import core
+try:
+    from . import core
+except ImportError, e:
+    raise ImportError(
+        """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+    if you encounters \"libmkldnn.so not found\" errors. If you have python
+    installed in other directory, replace \"/usr/local/lib\" with your own
+    directory. The original error is: \n""" + e.message)
+except Exception, e:
+    raise e
 import unique_name
 
 __all__ = [
@@ -27,6 +36,7 @@ __all__ = [
     'Variable',
     'Program',
     'Operator',
+    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
@@ -1922,7 +1932,7 @@ def program_guard(main_program, startup_program=None):
 def get_var(name, program=None):
     """
     Get a variable by name from the global block of a program.
-    
+
     Args:
         name(str): name of the variable
         program(Program|None): program object.
