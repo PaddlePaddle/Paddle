@@ -133,7 +133,7 @@ But the output only shares the LoD information with the input $X$.
  protected:
   virtual std::string GetName() const = 0;
   virtual std::string GetEquation() const = 0;
-  virtual void SetReuse() = 0;
+  virtual void SetReuse() {}
 };
 
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
@@ -239,7 +239,6 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
    protected:                                                           \
     virtual std::string GetName() const { return op_name; }             \
     virtual std::string GetEquation() const { return equation; }        \
-    virtual void SetReuse() {}                                          \
   };                                                                    \
   REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
                     __ElemwiseOp##op_type##Maker__,                     \
