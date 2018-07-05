@@ -141,6 +141,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
