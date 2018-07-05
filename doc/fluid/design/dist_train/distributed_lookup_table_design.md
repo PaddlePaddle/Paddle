@@ -119,6 +119,32 @@ optimization algorithm $f$ runs on the storage service.
 - Con: the storage service needs to be able to run the optimization
   algorithm.
 
+## Distributed Sparse Table in Fluid
+
+For another design, we can implement a distributed sparse table in Fluid,
+and don't need to maintain an external storage component while training.
+
+You may need to read Fluid [Distributed Training Architecture](./distributed_architecture.md)
+and [Parameter Server](./parameter_server.md) before going on.
+
+![fluid lookup remote table](./src/fluid_lookup_remote_table.png)
+
+Partition a large table into multiple pserver instances
+1. `DistributeTranspiler` would split the table partitioned into some small
+table blocks with some partitioned algorithms such as
+[RoundRobin](https://en.wikipedia.org/wiki/Round-robin_scheduling),
+[Hash](https://en.wikipedia.org/wiki/Hash) and etc...
+1. For some cases, the range of input `Ids` is very wide and unpredictable, so the sparse
+table would be able to fill a new value for the id that didn't appear before with
+zero, uniform random or Gaussian distribution.
+
+For each Trainer's training process:
+1. In the forward pass, we use `pre-fetch` op to pre-fetch parameter blocks according to the
+input `Ids` from PServers instead of the local `lookup_table` op, and then merge the blocks
+into a parameter `W`.
+1. Compute `GRAD@W'` in the backward pass using the pre-fetched `W` and send it to PServer to
+execute the optimize pass.
+
 ## Conclusion
 
 Let us do the "storage service does not optimize" solution first, as a

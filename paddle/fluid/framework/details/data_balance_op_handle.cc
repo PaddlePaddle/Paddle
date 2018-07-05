@@ -62,7 +62,7 @@ std::vector<std::array<int, 3>> DataBalanceOpHandle::GetBalancePlan(
   }
   if (total_size < device_num) {
     // No enough data.
-    PADDLE_THROW("There is no next data.");
+    PADDLE_THROW_EOF();
   }
   std::sort(size_device_vec.begin(), size_device_vec.end(),
             [](const std::array<int, 2> &a, const std::array<int, 2> &b) {

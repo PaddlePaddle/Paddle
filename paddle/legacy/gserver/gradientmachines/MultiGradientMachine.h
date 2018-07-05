@@ -19,8 +19,8 @@ limitations under the License. */
 #include "GradientMachine.h"
 
 #include "hl_gpu.h"
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/Queue.h"
+#include "paddle/legacy/utils/Locks.h"
+#include "paddle/legacy/utils/Queue.h"
 
 namespace paddle {
 

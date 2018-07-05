@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "ModelConfig.pb.h"
 #include "hl_gpu.h"
-#include "paddle/utils/Common.h"
+#include "paddle/legacy/utils/Common.h"
 
 namespace paddle {
 

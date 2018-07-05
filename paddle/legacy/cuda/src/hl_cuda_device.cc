@@ -23,8 +23,8 @@ limitations under the License. */
 #include <unistd.h>
 #include "hl_cuda.ph"
 #include "hl_thread.ph"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/DynamicLoader.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/DynamicLoader.h"
 // clang-format on
 
 namespace dynload {

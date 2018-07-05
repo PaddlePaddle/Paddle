@@ -19,7 +19,6 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -27,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
