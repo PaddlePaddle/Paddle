@@ -15,11 +15,11 @@
 #include <fstream>
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
