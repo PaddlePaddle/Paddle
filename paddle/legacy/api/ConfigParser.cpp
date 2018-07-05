@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
-#include "paddle/trainer/Trainer.h"
+#include "paddle/legacy/trainer/Trainer.h"
 
 struct ParameterConfigPrivate {
   paddle::ParameterPtr parameter;

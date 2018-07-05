@@ -20,8 +20,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/legacy/gserver/gradientmachines/GradientMachine.h"
-#include "paddle/utils/Common.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/GlobalConstants.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT

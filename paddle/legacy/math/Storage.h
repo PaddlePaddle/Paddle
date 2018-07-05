@@ -17,7 +17,7 @@ limitations under the License. */
 #include <mutex>
 #include <vector>
 #include "PoolAllocator.h"
-#include "paddle/utils/Locks.h"
+#include "paddle/legacy/utils/Locks.h"
 
 namespace paddle {
 

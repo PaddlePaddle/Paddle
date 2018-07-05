@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/legacy/math/SIMDFunctions.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include <gtest/gtest.h>
 

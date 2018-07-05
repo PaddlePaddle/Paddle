@@ -27,8 +27,8 @@ limitations under the License. */
 
 #include "LightNetwork.h"
 #include "RDMANetwork.h"
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/StringUtil.h"
+#include "paddle/legacy/utils/Util.h"
 
 /// quick ack can reduce the latency of small message
 DEFINE_bool(small_messages,

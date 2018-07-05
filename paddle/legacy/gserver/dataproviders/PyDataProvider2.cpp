@@ -25,9 +25,9 @@ limitations under the License. */
 
 #include "DataProvider.h"
 
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/PythonUtil.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Locks.h"
+#include "paddle/legacy/utils/PythonUtil.h"
+#include "paddle/legacy/utils/Stat.h"
 
 namespace paddle {
 

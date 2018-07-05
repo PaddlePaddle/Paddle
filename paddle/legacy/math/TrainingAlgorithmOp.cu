@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "BaseMatrix.h"
 #include "TrainingAlgorithmOp.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #if __cplusplus > 199711L
 
