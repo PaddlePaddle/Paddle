@@ -37,18 +37,9 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-    int batch_size = in_dim[0];
     int img_channels = in_dim[1];
-    int img_height = in_dim[2];
-    int img_width = in_dim[3];
-
-    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
-                                         paddings[2], strides[0]);
-    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
-                                        paddings[3], strides[1]);
-
-    ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
-                              img_channels * kernels[0] * kernels[1]});
+    ctx->SetOutputDim("Out",
+                      {in_dim[0], img_channels * kernels[0] * kernels[1]});
   }
 };
 
