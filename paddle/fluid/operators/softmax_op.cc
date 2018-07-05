@@ -137,7 +137,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       ctx->GetInputDim(framework::GradVarName("Out")),
                       "Input(Out) and its gradients should have a same shape.");
 
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
   }
 
  protected:
@@ -160,8 +161,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    auto input_data_type = framework::ToDataType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");

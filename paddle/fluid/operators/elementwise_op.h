@@ -166,8 +166,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    auto input_data_type = framework::ToDataType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -224,6 +224,7 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
     std::unique_ptr<paddle::framework::OpDesc> Apply() const override {      \
       auto* op = new paddle::framework::OpDesc();                            \
       op->SetType(#kernel_type "_grad");                                     \
+      op->SetInput("Y", Input("Y"));                                         \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
                    OutputGrad("Out"));                                       \
       op->SetAttrMap(Attrs());                                               \
