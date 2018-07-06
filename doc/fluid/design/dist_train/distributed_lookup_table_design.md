@@ -47,17 +47,17 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 ## Distributed Lookup Table
 ### Problem 1: The lookup table may be very large.
 
- In the condition like the search engine and recommendation system, the number of feature ID may be very large, see 1000000000, then for a lookup table of size 8, the total size of the table is:
+ In the condition like the search engine and recommendation system, the number of feature ID may be very large, say 100,000,000,000, then for a float value lookup table of size 8, the total size of the table is:
 
  ```
- 100,000,000,000 * 8 * 4.0 = 2980.23 GB
+ 100,000,000,000 * 8 * 4(Bytes) = 2980.23 GB
  ```
 
 ### Solution: Distributed storage
 
-1. Paddle use SelectedRows as the storage format for the lookup table, the lookup table parameter will be split to multi-machine according to the hash of the feature ID, and data will also be split and send to the same machine to prefetch the parameter.
+1. Paddle use [SelectedRows](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/selected_rows.md) as the storage format for the lookup table, the lookup table parameter will be split to multi-machine according to the hash of the feature ID, and data will also be split and send to the same machine to prefetch the parameter.
 
-1. For common parameters, the trainer will get the whole parameter for training, but for the big lookup table, the trainer can not store the whole parameter, but the input data feature is very sparse, so every time we only need a few parameters for training, so we use `prefetch_op` to only prefetch the parameter needed to trainer.
+1. For common parameters, the trainer will get the whole parameter for training, but for the big lookup table, the trainer can not store the whole parameter. Because the input data feature is very sparse, every time we only need a few parameters for training, so we use `prefetch_op` to only prefetch the parameter needed to trainer.
 
 ### Problem 2. The Id in the lookup table is not sure before training.
 
@@ -65,8 +65,15 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 
 ### Solution: Id auto growth
 
-At the beginning of training, paddle only malloc the memory for the lookup table at parameter side, the id and the data will not be initialized. During training, when a parameter server received an Id, if it is already in the lookup table, it will return the existing parameter, if the id does not exist, paddle will add it into the lookup table and initialize the value for it.
+At the beginning of training, paddle only malloc the memory for the lookup table at parameter server side, the id and it's value will not be initialized. During training, when a parameter server received an Id, if it is already in the lookup table, it will return the existing parameter, if the id does not exist, paddle will add it into the lookup table and initialize the value for it.
 
+### Problem3: parameter load and save
+
+For common parameters, paddle use trainer to save and load them. But for distribute lookup table, trainer can not do this because it's large size.
+
+### Solution: Parameter server side save and load
+
+Paddle support parameter server side save and load for distribute lookup table. Each machine of parameter servers will only save and load part of the whole table.
 
 ## Architecture
 The whole architecture of the distribute lookup table is as below:
