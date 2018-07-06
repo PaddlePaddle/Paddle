@@ -34,7 +34,6 @@ class BufferedReader : public framework::DecoratedReader {
     *out = buff_.front().get();
     buff_.pop_front();
     EnqueueJob();
-    VLOG(3) << "Read size = " << out->size();
   }
 
   void ReInit() override {
@@ -44,6 +43,7 @@ class BufferedReader : public framework::DecoratedReader {
     }
   }
 
+ private:
   void EnqueueJob() {
     buff_.emplace_back(pool_.enqueue(
         std::bind(std::mem_fn(&BufferedReader::ReadUnderlyingReader), this)));
@@ -64,7 +64,6 @@ class BufferedReader : public framework::DecoratedReader {
     return res;
   }
 
- private:
   std::list<std::future<std::vector<framework::LoDTensor>>> buff_;
   ::ThreadPool pool_;
   platform::Place place_;
