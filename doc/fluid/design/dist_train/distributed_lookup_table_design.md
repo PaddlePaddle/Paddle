@@ -47,7 +47,7 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 ## Distributed Lookup Table
 ### Problem 1: The lookup table may be very large.
 
- In the condition like the search engine and recommendation system, the number of feature ID may be very large, say 100,000,000,000, then for a float value lookup table of size 8, the total size of the table is:
+ In the condition like the search engine and recommendation system, the number of feature Id may be very large, say 100,000,000,000, then for a float value lookup table of size 8, the total size of the table is:
 
  ```
  100,000,000,000 * 8 * 4(Bytes) = 2980.23 GB
@@ -61,15 +61,15 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 
 ### Problem 2. The Id in the lookup table is not sure before training.
 
- The feature Id is calculated by the hash function because the feature data source is so large, we can not get all the id before training. So we can not initialize the table before training.
+ The feature Id is calculated by the hash function because the feature data source is so large, we can not get all the Id before training. So we can not initialize the table before training.
 
 ### Solution: Id auto growth
 
-At the beginning of training, paddle only malloc the memory for the lookup table at parameter server side, the id and it's value will not be initialized. During training, when a parameter server received an Id, if it is already in the lookup table, it will return the existing parameter, if the id does not exist, paddle will add it into the lookup table and initialize the value for it.
+At the beginning of training, paddle only malloc the memory for the lookup table at parameter server side, the Id and it's value will not be initialized. During training, when a parameter server received an Id, if it is already in the lookup table, it will return the existing parameter, if the Id does not exist, paddle will add it into the lookup table and initialize the value for it.
 
 ### Problem 3: parameter load and save
 
-For common parameters, paddle use trainer to save and load them. But for distribute lookup table, trainer can not do this because it's large size.
+For common parameters, paddle use trainer to save and load them. But for distributed lookup table, trainer cannot do this because it's large size.
 
 ### Solution: Parameter server side save and load
 
