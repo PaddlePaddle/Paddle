@@ -138,13 +138,13 @@ Docker安装完成后，请您执行下面的步骤：
 
 .. code-block:: bash
 
-   paddlepaddle/paddle:0.14.0-ubuntu16-cpu
+   docker pull paddlepaddle/paddle:0.14.0-ubuntu16-cpu
 
 获取0.14.0版Docker image (CentOS 7)
 
 .. code-block:: bash
 
-   paddlepaddle/paddle:0.14.0-centos7-cpu
+   docker pull paddlepaddle/paddle:0.14.0-centos7-cpu
 
 然后执行以下命令：
 
