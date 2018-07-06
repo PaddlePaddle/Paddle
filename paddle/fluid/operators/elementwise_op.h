@@ -188,22 +188,18 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
 
-    auto y_dims = ctx->GetInputDim("Y");
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    PADDLE_ENFORCE_GE(out_dims.size(), y_dims.size(),
-                      "Rank of first input must >= rank of second input.");
-
     auto x_grad_name = framework::GradVarName("X");
-    auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
+      auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
       ctx->SetOutputDim(x_grad_name, out_dims);
     }
+    auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {
+      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+      auto y_dims = ctx->GetInputDim("Y");
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }

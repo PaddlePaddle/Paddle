@@ -59,13 +59,11 @@ class ElementwiseSubGradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-
-    dx->mutable_data<T>(ctx.GetPlace());
-    dy->mutable_data<T>(ctx.GetPlace());
-    auto *x = dx, *y = dy;
+    // skip out, x, y
     auto* out = dout;
+    auto *x = dout, *y = dout;
 
-    ElemwiseGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+    ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
   }
 };
