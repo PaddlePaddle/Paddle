@@ -31,7 +31,9 @@ script:
     if [[ "$JOB" != "doc" ]]; then exit 0; fi;
     # For document only
     if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
-    if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
+    # Change prefix of release/ to v so it matches with the format in deploy_docs 
+    TRAVIS_BRANCH=${TRAVIS_BRANCH/release\//v}
+    if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
     export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/master/scripts/deploy/deploy_docs.sh
     export DOCS_DIR=`pwd`
     cd ..
