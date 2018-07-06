@@ -59,6 +59,11 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     grad_names_.insert(GradVarName(p));
   }
   balance_vars_.resize(places_.size(), 0);
+  if (strategy_.enable_data_balance_ && places_.size() == 1) {
+    LOG(WARNING) << "It is no need to enable data balance when there is only "
+                    "one place. enable_data_balance is set to False.";
+    strategy_.enable_data_balance_ = false;
+  }
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
