@@ -32,13 +32,13 @@ def _get_version_detail(idx):
     return 0
 
 def get_major():
-    return _get_version_detail(0)
+    return int(_get_version_detail(0))
 
 def get_minor():
-    return _get_version_detail(1)
+    return int(_get_version_detail(1))
 
 def get_patch():
-    return _get_version_detail(2)
+    return str(_get_version_detail(2))
 
 def is_taged():
     try:
@@ -56,10 +56,10 @@ def write_version_py(filename='paddle/version.py'):
     cnt = '''
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version    = '%(major)d.%(minor)d.%(patch)d'
+full_version    = '%(major)d.%(minor)d.%(patch)s'
 major           = '%(major)d'
 minor           = '%(minor)d'
-patch           = '%(patch)d'
+patch           = '%(patch)s'
 rc              = '%(rc)d'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
