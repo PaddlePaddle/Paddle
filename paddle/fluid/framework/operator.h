@@ -121,10 +121,6 @@ class OperatorBase {
   //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
-  // Return a new operator instance, which is as same as this.
-  // Use unique_ptr to prevent caller forget to delete this pointer.
-  virtual std::unique_ptr<OperatorBase> Clone() const = 0;
-
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -143,37 +139,6 @@ class OperatorBase {
   void CheckAllInputOutputSet() const;
   virtual void RunImpl(const Scope& scope,
                        const platform::Place& place) const = 0;
-};
-
-// Macro for define a clone method.
-// If you are writing an kernel operator, `Clone` will be defined when you
-// register it. i.e. `Clone` method is not needed to define by yourself.
-#define DEFINE_OP_CLONE_METHOD(cls)                                            \
-  std::unique_ptr<::paddle::framework::OperatorBase> Clone() const final {     \
-    return std::unique_ptr<::paddle::framework::OperatorBase>(new cls(*this)); \
-  }
-
-// Macro for define a default constructor for Operator.
-// You can also use
-//   using PARENT_CLASS::PARENT_CLASS;
-// to use parent's constructor.
-#define DEFINE_OP_CONSTRUCTOR(cls, parent_cls)             \
-  cls(const std::string& type,                             \
-      const ::paddle::framework::VariableNameMap& inputs,  \
-      const ::paddle::framework::VariableNameMap& outputs, \
-      const paddle::framework::AttributeMap& attrs)        \
-      : parent_cls(type, inputs, outputs, attrs) {}
-
-class NOP : public OperatorBase {
- public:
-  using OperatorBase::OperatorBase;
-  std::unique_ptr<OperatorBase> Clone() const override {
-    return std::unique_ptr<OperatorBase>(new NOP(*this));
-  }
-
- private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
 };
 
 class ExecutionContext {

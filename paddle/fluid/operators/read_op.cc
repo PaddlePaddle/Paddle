@@ -92,9 +92,13 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
     AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
-    AddAttr<bool>("throw_eof_exp",
-                  "If set true, an exception will be thrown when the Reader "
-                  "yields empty (which means there is no next data).")
+    AddAttr<bool>(
+        "throw_eof_exp",
+        "If set true, an exception will be thrown when the Reader "
+        "yields empty (which means there is no next data).\n"
+        "NOTES: This flag must be true always. It will be set to false"
+        " only when the data-balance is enabled in ParallelExecutor"
+        " and it is set by ParallelExecutor instance, not users.")
         .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
