@@ -67,7 +67,7 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 
 At the beginning of training, paddle only malloc the memory for the lookup table at parameter server side, the id and it's value will not be initialized. During training, when a parameter server received an Id, if it is already in the lookup table, it will return the existing parameter, if the id does not exist, paddle will add it into the lookup table and initialize the value for it.
 
-### Problem3: parameter load and save
+### Problem 3: parameter load and save
 
 For common parameters, paddle use trainer to save and load them. But for distribute lookup table, trainer can not do this because it's large size.
 
