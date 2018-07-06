@@ -1,5 +1,7 @@
 from setuptools import setup, Distribution, Extension
 import subprocess
+import shutil
+import os
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
@@ -62,6 +64,7 @@ write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 
 packages=['paddle',
+          'paddle.libs',
           'paddle.utils',
           'paddle.dataset',
           'paddle.reader',
@@ -113,12 +116,33 @@ package_dir={
 }
 if '${WITH_FLUID_ONLY}'== 'OFF':
     package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
-    
 
-paddle_rt_lib_dir = 'lib'
-paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
-if '${MKL_SHARED_LIBS}'!= '':
-  paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
+# put all thirdparty libraries in paddle.libs
+package_data['paddle.libs']=['libwarpctc.so']
+libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
+shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+if '${WITH_MKL}' == 'ON':
+    shutil.copy('${MKLML_LIB}', libs_path)
+    shutil.copy('${MKLML_IOMP_LIB}', libs_path)
+    package_data['paddle.libs']+=['libmklml_intel.so','libiomp5.so']
+if '${WITH_MKLDNN}' == 'ON':
+    # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
+    # The reason is that all thirdparty libraries in the same directory,
+    # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
+    command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
+    os.system(command)
+    package_data['paddle.libs']+=['libmkldnn.so.0']
+    shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+# remove unused paddle/libs/__init__.py
+os.remove(libs_path+'/__init__.py')
+package_dir['paddle.libs']=libs_path
+
+# change rpath of core.so, add $ORIGIN/../libs/ to it.
+# The reason is that libwarpctc.so, libiomp5.so etc are in paddle.libs, and
+# core.so is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+# This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
+command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
+os.system(command)
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
@@ -128,6 +152,5 @@ setup(name='${PACKAGE_NAME}',
       ext_modules=[Extension('_foo', ['stub.cc'])],
       package_data=package_data,
       package_dir=package_dir,
-      scripts=paddle_bins,
-      data_files=[(paddle_rt_lib_dir, paddle_rt_libs)]
+      scripts=paddle_bins
 )
