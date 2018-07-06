@@ -24,14 +24,14 @@ memory, so we'd need a distributed storage service, which supports the
 lookup of rows.
 
 The following figure illustrates the multiplication of x with two
-non-zero elements, or say, two symbols, and a lookup table W:
+non-zero elements, or say two symbols, and a lookup table W:
 
 ![lookup table](./src/lookup_table.png)
 
 ### The Backward Algorithm
 
 The backward algorithm computes W'(x) using W(x).  W'(x) has the same
-scale of size as W(x) and is much smaller than W.
+the scale of size as W(x) and is much smaller than W.
 
 To optimize W given W', we can do simple SGD update:
 
@@ -47,7 +47,7 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 ## Distributed Lookup Table
 ### Problem 1: The lookup table may be very large.
 
- In condition like search engien and recommendation system, the number of feature ID may be very large, see 1000000000, then for a lookup table of size 8, the total size of the table is:
+ In the condition like the search engine and recommendation system, the number of feature ID may be very large, see 1000000000, then for a lookup table of size 8, the total size of the table is:
 
  ```
  100000000000 * 8 * 4.0 = 2980.23 GB
@@ -55,18 +55,17 @@ operator: ![lookup table training](./src/lookup_table_training.png)
 
 ### Solution: Distributed storage
 
-1. Paddle use SelectedRows as the storage format for the lookup table, the lookup table parameter will be splited to multi machine according to the hash of the feature ID, and data will also be splited and send to the same machine to prefetch the parameter.
+1. Paddle use SelectedRows as the storage format for the lookup table, the lookup table parameter will be split to multi-machine according to the hash of the feature ID, and data will also be split and send to the same machine to prefetch the parameter.
 
-1. For common parameters, trainer will get the whole parameter for training, but for the big lookup table, trainer can not store the whole parameter, but the input data feature is very sparse, so every time we only need a few parameter for training, so we use `prefetch_op` to only prefetch the parameter needed to trainer.
+1. For common parameters, the trainer will get the whole parameter for training, but for the big lookup table, the trainer can not store the whole parameter, but the input data feature is very sparse, so every time we only need a few parameters for training, so we use `prefetch_op` to only prefetch the parameter needed to trainer.
 
 ### Problem 2. The Id in the lookup table is not sure before training.
 
- The feature Id is calculated by hash function, because the feature data source is so large, we can not get all the id before training. So we can not initialize the table before training.
- 
+ The feature Id is calculated by the hash function because the feature data source is so large, we can not get all the id before training. So we can not initialize the table before training.
 
 ### Solution: Id auto growth
 
-At the beginning of training, paddle only malloc the memory for the lookup table at pserver side, the id and the data will not be initialized. During training, when a pserver recived a Id, if the is is already in the lookup table, it will return the exist parameter, if the id is not exist, paddle will add it into the lookup table and initialize the value for it.
+At the beginning of training, paddle only malloc the memory for the lookup table at parameter side, the id and the data will not be initialized. During training, when a parameter server received an Id, if it is already in the lookup table, it will return the existing parameter, if the id does not exist, paddle will add it into the lookup table and initialize the value for it.
 
 
 ## Architecture
@@ -74,10 +73,10 @@ The whole architecture of the distribute lookup table is as below:
 
 ### Training steps:
 1. Read a batch of data, the data is feature ids.
-1. The input ids will be splited by `split_ids_op` with the same hash function of the lookup table.
-1. The `prefetch_op` use the splited result to prefetch parameters back from lookup table.
-1. Run forward backward to get the the gradient of the lookup table.
-1. `split_ids_op` split the gradient and then use `send_op` to parameter server.
+1. The input ids will be split by `split_ids_op` with the same hash function of the lookup table.
+1. The `prefetch_op` use the split result to prefetch parameters back from the lookup table.
+1. Run forward-backward to get the gradient of the lookup table.
+1. `split_ids_op` split the gradient and then use `send_op` to the parameter server.
 1. parameter server update the table with the received gradient.
 
 ![distribute lookup table](./src/distributed_lookup_table.jpeg)
