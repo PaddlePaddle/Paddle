@@ -34,7 +34,7 @@ struct BuildStrategy {
 
   std::string debug_graphviz_path_{""};
 
-  bool enable_data_balance_{true};
+  bool enable_data_balance_{false};
 };
 
 }  // namespace details
