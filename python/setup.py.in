@@ -29,7 +29,7 @@ def _get_version_detail(idx):
         if len(version_details) == 3:
             return version_details[idx]
 
-    return 'UNKNOWN'
+    return 0
 
 def get_major():
     return _get_version_detail(0)
