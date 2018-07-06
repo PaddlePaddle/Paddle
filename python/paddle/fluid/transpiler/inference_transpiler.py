@@ -19,7 +19,7 @@ from ..framework import Program
 from ..executor import global_scope
 
 
-class InferenceTranspiler:
+class InferenceTranspiler(object):
     '''
     Convert the fluid program to optimized inference program.
 
