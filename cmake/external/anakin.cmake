@@ -7,7 +7,17 @@ set(ANAKIN_INSTALL_DIR "${THIRD_PARTY_PATH}/install/anakin" CACHE PATH
 set(ANAKIN_INCLUDE "${ANAKIN_INSTALL_DIR}" CACHE STRING "root of Anakin header files")
 set(ANAKIN_LIBRARY "${ANAKIN_INSTALL_DIR}" CACHE STRING "path of Anakin library")
 
-set(ANAKIN_COMPILE_EXTRA_FLAGS -Wno-error=unused-variable -Wno-error=format-extra-args -Wno-error=comment -Wno-error=format -Wno-error=switch -Wno-error=return-type -Wno-error=non-virtual-dtor -Wno-reorder -Wno-error=cpp)
+set(ANAKIN_COMPILE_EXTRA_FLAGS 
+    -Wno-error=unused-variable -Wno-unused-variable 
+    -Wno-error=format-extra-args -Wno-format-extra-args
+    -Wno-error=comment -Wno-comment 
+    -Wno-error=format -Wno-format 
+    -Wno-error=switch -Wno-switch
+    -Wno-error=return-type -Wno-return-type 
+    -Wno-error=non-virtual-dtor -Wno-non-virtual-dtor
+    -Wno-sign-compare
+    -Wno-reorder 
+    -Wno-error=cpp)
 
 set(ANAKIN_LIBRARY_URL "https://github.com/pangge/Anakin/releases/download/3.0/anakin_release_simple.tar.gz")
 
