@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/auto_clean_up_block.h"
 #include "paddle/fluid/framework/executor.h"
 
 namespace paddle {
@@ -32,44 +33,53 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
-  if (drop_scope_counter_ == 0) {
-    // Create local scopes.
-    for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
-      auto &scope = *it;
-      Scope &local_scope = scope->NewScope();
-      *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
-          &local_scope;
+  FeedFetchList result;
+  {
+    AutoCleanUpBlock auto_cleanup(
+        [&] {
+          if (drop_scope_counter_ == 0) {
+            // Create local scopes.
+            for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend();
+                 ++it) {
+              auto &scope = *it;
+              Scope &local_scope = scope->NewScope();
+              *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
+                  &local_scope;
 
-      for (auto &info : var_infos_) {
-        if (scope->FindVar(info.name_) != nullptr) {
-          continue;
-        }
+              for (auto &info : var_infos_) {
+                if (scope->FindVar(info.name_) != nullptr) {
+                  continue;
+                }
 
-        if (info.persistable_) {  // Persistable
-          InitializeVariable(scope->Var(info.name_), info.type_);
-        } else {
-          InitializeVariable(local_scope.Var(info.name_), info.type_);
-        }
-      }
-    }
+                if (info.persistable_) {  // Persistable
+                  InitializeVariable(scope->Var(info.name_), info.type_);
+                } else {
+                  InitializeVariable(local_scope.Var(info.name_), info.type_);
+                }
+              }
+            }
+          }
+        },
+        [&] {
+          drop_scope_counter_ += 1;
+          if (!fetch_tensors.empty() ||
+              drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+            drop_scope_counter_ = 0;
+            // Wait All computational streams
+            for (auto p : places_) {
+              platform::DeviceContextPool::Instance().Get(p)->Wait();
+            }
+            for (auto &scope : local_scopes_) {
+              auto &local_scope = *scope->Var(details::kLocalExecScopeName)
+                                       ->GetMutable<Scope *>();
+              scope->DeleteScope(local_scope);
+            }
+          }
+        });
+
+    result = underlying_executor_->Run(fetch_tensors);
   }
-
-  auto fetch_data = underlying_executor_->Run(fetch_tensors);
-  drop_scope_counter_ += 1;
-  if (!fetch_tensors.empty() ||
-      drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    drop_scope_counter_ = 0;
-    // Wait All computational streams
-    for (auto p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
-    }
-    for (auto &scope : local_scopes_) {
-      auto &local_scope =
-          *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-      scope->DeleteScope(local_scope);
-    }
-  }
-  return fetch_data;
+  return result;
 }
 }  // namespace details
 }  // namespace framework
