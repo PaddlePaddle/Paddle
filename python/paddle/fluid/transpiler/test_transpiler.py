@@ -29,6 +29,7 @@ class TestTranspiler(unittest.TestCase):
         avg_cost = fluid.layers.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
+        self.loss_name = avg_cost.name
 
     def test_transpiler(self):
         main = fluid.Program()
@@ -40,6 +41,7 @@ class TestTranspiler(unittest.TestCase):
         t = transpiler.Transpiler(proto)
         t.build_op_id()
         t.build_ssa()
+        t.build_multi_dev(self.loss_name, "CUDA", 2)
 
         print(proto)
 

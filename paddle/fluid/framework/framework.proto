@@ -55,7 +55,7 @@ message OpDesc {
     repeated string arguments = 2;
     optional int32 version = 3;
     // desired place for running the op.
-    repeated string place = 4;
+    optional string place = 4;
   };
 
   message OpTag {

@@ -14,10 +14,9 @@
 
 from paddle.fluid.proto.framework_pb2 import *
 import paddle.fluid as fluid
+import time
 
 opid_idx = 0
-
-
 
 def _gen_opid():
     global opid_idx
@@ -86,47 +85,62 @@ class Transpiler:
                         if len(self.var_versions[var.name]) == 0:
                             self.var_versions[var.name].append(0)
                         in_var_placeholder.version = self.var_versions[var.name][-1]
-        print(self.var_versions)
     
     def resolve_war(self):
         pass
-    
-    def _copy_and_insert_op(self, block, op, dev):
-        pass
 
-    def build_multi_dev(self, dev_type, num_devs):
+
+    def _copy_var_to_place(self, block, var, place):
+        newvar = block.vars.add()
+        newvar.CopyFrom(var)
+        newvar.place = place
+
+    def build_multi_dev(self, loss_var_name, dev_type, num_devs):
         assert dev_type in ["CUDA", "CPU"]
         assert num_devs > 1
 
         g_block = _get_global_block(self.program_desc)
-
-        # TEST: put all vars on the device, this should be done when
-        # building the original program.
-        #
-        # Or, if we are going to use this, we may need to run every
-        # opertor's infershape to determine whether the variable can
-        # actually put on that place.
-        for var in g_block.vars:
-            var.place = "%s:%d" % (dev_type, num_devs)
+        origin_var_list = [var for var in g_block.vars]
+        for var in origin_var_list:
+            var.place = "%s:%d" % (dev_type, 0)
+            for i in xrange(1, num_devs):
+                ts = time.time()
+                self._copy_var_to_place(g_block, var, "%s:%d" % (dev_type, i))
 
         # find loss op as the boundary
-        # TODO: use op tag instead
+        loss_op_idx = 0
         for idx, op in enumerate(g_block.ops):
-            for attr in op.attrs:
-                if attr.name == "op_role" and attr.i == 2:  # optimize
-                    break
-            prev_op_idx = idx
-            prev_op = op
-        loss_op_idx = prev_op_idx - 1
-        print("current loss op idx: ", loss_op_idx, prev_op)
+            is_loss_op = False
+            for o in op.outputs:
+                for oname in o.arguments:
+                    if oname == loss_var_name:
+                        is_loss_op = True
+                        break
+            if is_loss_op:
+                loss_op_idx = idx
+                break
+        print("current loss op idx: ", loss_op_idx)
 
+        # copy ops to places for multi GPU
         is_forwarding = 1
+        multi_dev_op_list = []
         for idx, op in enumerate(g_block.ops):
-            if is_forwarding:
-                for i in xrange(num_devs):
-                    self._copy_and_insert_op(g_block, op, i)
-                if idx == loss_op_idx:
-                    is_forwarding = False
-                    # append reduce loss
-                if not is_forwarding:
-                    pass
+            for devid in xrange(num_devs):
+                copied = OpDesc()
+                copied.CopyFrom(op)
+                for input in copied.inputs:
+                    input.place.append("%s:%d" % (dev_type, devid))
+                for output in copied.outputs:
+                    output.place.append("%s:%d" % (dev_type, devid))
+                multi_dev_op_list.append(copied)
+
+            if idx == loss_op_idx:
+                is_forwarding = False
+                # append reduce loss
+            if not is_forwarding:
+                pass
+
+        del g_block.ops[:]
+        for op in multi_dev_op_list:
+            toadd = g_block.ops.add()
+            toadd.CopyFrom(op)
