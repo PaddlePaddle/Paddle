@@ -28,9 +28,6 @@ class UnsqueezeOpInferShape : public framework::InferShapeBase {
                    "Output(Out) of UnsqueezeOp should not be null.");
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
-    PADDLE_ENFORCE(!axes.empty(),
-                   "The unsqueeze axes information must be set by Attr(axes).");
-
     const auto &x_dims = ctx->GetInputDim("X");
     // Validity Check: input tensor dims (<6).
     PADDLE_ENFORCE(static_cast<int>(x_dims.size()) <= 6,
@@ -123,6 +120,9 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(std::vector<int>). List of positive integers,"
                               " indicate the dimensions to be inserted")
         .AddCustomChecker([](const std::vector<int> &axes) {
+          PADDLE_ENFORCE(
+              !axes.empty(),
+              "The unsqueeze axes information must be set by Attr(axes).");
           // Validity Check: axes dims (<6).
           PADDLE_ENFORCE(static_cast<int>(axes.size()) < 6,
                          "Invalid dimensions, dynamic dimensions should within "
