@@ -44,12 +44,12 @@ ExternalProject_Add(
     # 3. keep only zlib, cares, protobuf, boringssl under "third_party",
     #    checkout and clean other dirs under third_party
     # 4. remove .git, and package the directory.
-    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x-paddle.tar.gz"
-    URL_MD5  "eb06e8a63e679c5ec14ac9debade7ba1"
+    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x.tar.gz"
+    URL_MD5  "1f268a2aff6759839dccd256adcc91cf"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
-    BUILD_IN_SOURCE 1
+    PATCH_COMMAND "git apply ${PADDLE_SOURCE_DIR}/patches/grpc/fix_too_early_destory.patch"
     # NOTE(yuyang18):
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.
