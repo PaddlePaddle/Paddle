@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <functional>
 #include <thread>  // NOLINT
-
 #include "ThreadPool.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
@@ -34,6 +34,7 @@ class BufferedReader : public framework::DecoratedReader {
     *out = buff_.front().get();
     buff_.pop_front();
     EnqueueJob();
+    VLOG(3) << "Read size = " << out->size();
   }
 
   void ReInit() override {
@@ -43,12 +44,9 @@ class BufferedReader : public framework::DecoratedReader {
     }
   }
 
-  ~BufferedReader() {}
-
   void EnqueueJob() {
-    buff_.emplace_back([this] {
-      return pool_.enqueue([this] { return ReadUnderlyingReader(); });
-    });
+    buff_.emplace_back(pool_.enqueue(
+        std::bind(std::mem_fn(&BufferedReader::ReadUnderlyingReader), this)));
   }
 
   std::vector<framework::LoDTensor> ReadUnderlyingReader() {
@@ -67,7 +65,7 @@ class BufferedReader : public framework::DecoratedReader {
   }
 
  private:
-  std::deque<std::future<std::vector<framework::LoDTensor>>> buff_;
+  std::list<std::future<std::vector<framework::LoDTensor>>> buff_;
   ::ThreadPool pool_;
   platform::Place place_;
 };
