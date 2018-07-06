@@ -50,7 +50,7 @@ operator: ![lookup table training](./src/lookup_table_training.png)
  In the condition like the search engine and recommendation system, the number of feature ID may be very large, see 1000000000, then for a lookup table of size 8, the total size of the table is:
 
  ```
- 100000000000 * 8 * 4.0 = 2980.23 GB
+ 100,000,000,000 * 8 * 4.0 = 2980.23 GB
  ```
 
 ### Solution: Distributed storage
