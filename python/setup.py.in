@@ -23,34 +23,22 @@ def _get_version_detail(idx):
     assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
 
-    version_details = '@PADDLE_VERSION@'.split('.')
-    if len(version_details) == 3:
-        detail = version_details[idx]
-        if re.match('[0-9]+', detail):
-            return int(detail)
+    if re.match('@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
+        version_details = '@PADDLE_VERSION@'.split('.')
 
-    return None
+        if len(version_details) == 3:
+            return version_details[idx]
+
+    return 'UNKNOWN'
 
 def get_major():
-    major = _get_version_detail(0)
-    if major is not None:
-        return major
-
-    return 'UNKNOWN'
+    return _get_version_detail(0)
 
 def get_minor():
-    minor = _get_version_detail(1)
-    if minor is not None:
-        return minor
-
-    return 'UNKNOWN'
+    return _get_version_detail(1)
 
 def get_patch():
-    patch = _get_version_detail(2)
-    if patch is not None:
-        return patch
-
-    return 'UNKNOWN'
+    return _get_version_detail(2)
 
 def is_taged():
     try:
