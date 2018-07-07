@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
@@ -31,6 +32,19 @@ class ReaderBase {
   virtual void ReInit() = 0;
 
   virtual ~ReaderBase();
+
+  // Return the readers which are the end of decorating chain. Basically
+  // they are readers just before read op.
+  std::unordered_set<ReaderBase*> GetEndPoints();
+
+ private:
+  friend class DecoratedReader;
+  // These methods can be only invoked inside DecoratedReader to record the
+  // decorating chain.
+  void InsertDecoratedReader(ReaderBase* decorated_reader);
+  void EraseDecoratedReader(ReaderBase* decorated_reader);
+  // A set of which readers that decorated this reader.
+  std::unordered_set<ReaderBase*> decorated_readers_;
 };
 
 class DecoratedReader : public ReaderBase {
@@ -38,7 +52,10 @@ class DecoratedReader : public ReaderBase {
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
       : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->InsertDecoratedReader(this);
   }
+
+  ~DecoratedReader();
 
   void ReInit() override { reader_->ReInit(); }
 
