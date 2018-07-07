@@ -25,7 +25,9 @@ BuddyAllocator::BuddyAllocator(
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+      system_allocator_(std::move(system_allocator)) {
+  printf("buddy\n");
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "

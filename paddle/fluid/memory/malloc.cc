@@ -75,32 +75,30 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static std::once_flag init_flag;
   static std::vector<std::unique_ptr<detail::BuddyAllocator>> a_arr;
-  static std::vector<std::unique_ptr<std::once_flag>> a_flags;
 
   std::call_once(init_flag, [gpu_id]() {
+    assert(a_arr.size() == 0);
     int gpu_num = platform::GetCUDADeviceCount();
+    assert(gpu_id < gpu_num);
     a_arr.reserve(gpu_num);
-    a_flags.reserve(gpu_num);
+
     for (int i = 0; i < gpu_num; i++) {
-      a_flags[i].reset(new std::once_flag());
+      printf("gpu_id:%d, idx:%d\n", gpu_id, i);
+      platform::SetDeviceId(i);
+      a_arr[i].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+
+      VLOG(10) << "\n\nNOTE: each GPU device use "
+               << FLAGS_fraction_of_gpu_memory_to_use * 100
+               << "% of GPU memory.\n"
+               << "You can set GFlags environment variable '"
+               << "FLAGS_fraction_of_gpu_memory_to_use"
+               << "' to change the fraction of GPU usage.\n\n";
     }
   });
 
-  std::call_once(*(a_flags[gpu_id].get()), [gpu_id]() {
-    platform::SetDeviceId(gpu_id);
-    a_arr[gpu_id].reset(new BuddyAllocator(
-        std::unique_ptr<detail::SystemAllocator>(
-            new detail::GPUAllocator(gpu_id)),
-        platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
-
-    VLOG(10) << "\n\nNOTE: each GPU device use "
-             << FLAGS_fraction_of_gpu_memory_to_use * 100
-             << "% of GPU memory.\n"
-             << "You can set GFlags environment variable '"
-             << "FLAGS_fraction_of_gpu_memory_to_use"
-             << "' to change the fraction of GPU usage.\n\n";
-  });
-
+  platform::SetDeviceId(gpu_id);
   return a_arr[gpu_id].get();
 }
 
