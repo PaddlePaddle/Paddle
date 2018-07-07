@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <string>
+#include <typeindex>
 #include <unordered_map>
 #include <vector>
 
@@ -41,7 +42,7 @@ int AccuDims(Vec &&vec, int size) {
   return res;
 }
 
-#define SET_TYPE(type__) dic_[typeid(type__).hash_code()] = #type__;
+#define SET_TYPE(type__) dic_[std::type_index(typeid(type__))] = #type__;
 /*
  * Map typeid to representation.
  */
@@ -53,14 +54,14 @@ struct DataTypeNamer {
 
   template <typename T>
   const std::string &repr() const {
-    auto x = typeid(T).hash_code();
+    auto x = std::type_index(typeid(T));
     PADDLE_ENFORCE(dic_.count(x), "unknown type for representation");
     return dic_.at(x);
   }
 
-  const std::string &repr(size_t &hash) const {  // NOLINT
-    PADDLE_ENFORCE(dic_.count(hash), "unknown type for representation");
-    return dic_.at(hash);
+  const std::string &repr(const std::type_index &type) const {  // NOLINT
+    PADDLE_ENFORCE(dic_.count(type), "unknown type for representation");
+    return dic_.at(type);
   }
 
  private:
@@ -71,9 +72,7 @@ struct DataTypeNamer {
     SET_TYPE(void *);
   }
 
-  std::unordered_map<decltype(typeid(int).hash_code()),  // NOLINT
-                     std::string>
-      dic_;
+  std::unordered_map<std::type_index, std::string> dic_;
 };
 #undef SET_TYPE
 
