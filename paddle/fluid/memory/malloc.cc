@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <vector>
+
 #include "paddle/fluid/memory/malloc.h"
 
 #include "glog/logging.h"
@@ -35,15 +37,15 @@ using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
   static std::once_flag init_flag;
-  static detail::CPUAllocator* a = nullptr;
+  static std::unique_ptr<detail::BuddyAllocator> a;
 
-  std::call_once(&init_flag, [&a] {
-    a = new detail::BuddyAllocator(new detail::CPUAllocator,
-                                   platform::CpuMinChunkSize(),
-                                   platform::CpuMaxChunkSize());
+  std::call_once(init_flag, []() {
+    a.reset(new detail::BuddyAllocator(
+        std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
+        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize()));
   });
 
-  return a;
+  return a.get();
 }
 
 template <>
@@ -71,27 +73,35 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 #ifdef PADDLE_WITH_CUDA
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
-  static BuddyAllocator** as = NULL;
-  if (as == NULL) {
+  static std::once_flag init_flag;
+  static std::vector<std::unique_ptr<detail::BuddyAllocator>> a_arr;
+  static std::vector<std::unique_ptr<std::once_flag>> a_flags;
+
+  std::call_once(init_flag, [gpu_id]() {
     int gpu_num = platform::GetCUDADeviceCount();
-    as = new BuddyAllocator*[gpu_num];
-    for (int gpu = 0; gpu < gpu_num; gpu++) {
-      as[gpu] = nullptr;
+    a_arr.reserve(gpu_num);
+    a_flags.reserve(gpu_num);
+    for (int i = 0; i < gpu_num; i++) {
+      a_flags[i].reset(new std::once_flag());
     }
-  }
-  platform::SetDeviceId(gpu_id);
-  if (!as[gpu_id]) {
-    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator(gpu_id),
-                                    platform::GpuMinChunkSize(),
-                                    platform::GpuMaxChunkSize());
+  });
+
+  std::call_once(*(a_flags[gpu_id].get()), [gpu_id]() {
+    platform::SetDeviceId(gpu_id);
+    a_arr[gpu_id].reset(new BuddyAllocator(
+        std::unique_ptr<detail::SystemAllocator>(
+            new detail::GPUAllocator(gpu_id)),
+        platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+
     VLOG(10) << "\n\nNOTE: each GPU device use "
              << FLAGS_fraction_of_gpu_memory_to_use * 100
              << "% of GPU memory.\n"
              << "You can set GFlags environment variable '"
              << "FLAGS_fraction_of_gpu_memory_to_use"
              << "' to change the fraction of GPU usage.\n\n";
-  }
-  return as[gpu_id];
+  });
+
+  return a_arr[gpu_id].get();
 }
 
 template <>
@@ -128,13 +138,17 @@ void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
 }
 
 BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
-  static BuddyAllocator* ba = NULL;
-  if (ba == NULL) {
-    ba = new BuddyAllocator(new detail::CUDAPinnedAllocator,
-                            platform::CUDAPinnedMinChunkSize(),
-                            platform::CUDAPinnedMaxChunkSize());
-  }
-  return ba;
+  static std::once_flag init_flag;
+  static std::unique_ptr<BuddyAllocator> ba;
+
+  std::call_once(init_flag, []() {
+    ba.reset(new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                    new detail::CUDAPinnedAllocator),
+                                platform::CUDAPinnedMinChunkSize(),
+                                platform::CUDAPinnedMaxChunkSize()));
+  });
+
+  return ba.get();
 }
 
 template <>
