@@ -83,7 +83,6 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 
     for (int i = 0; i < gpu_num; i++) {
       platform::SetDeviceId(i);
-      // FIXME(gongwb): why alloc Gpu memory before call Alloc?
       std::unique_ptr<detail::BuddyAllocator> tmp(new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
           platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
