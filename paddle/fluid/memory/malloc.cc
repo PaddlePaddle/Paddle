@@ -77,17 +77,17 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static std::vector<std::unique_ptr<detail::BuddyAllocator>> a_arr;
 
   std::call_once(init_flag, [gpu_id]() {
-    assert(a_arr.size() == 0);
     int gpu_num = platform::GetCUDADeviceCount();
-    assert(gpu_id < gpu_num);
-    a_arr.reserve(gpu_num);
+    PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
+                   gpu_num);
 
     for (int i = 0; i < gpu_num; i++) {
-      printf("gpu_id:%d, idx:%d\n", gpu_id, i);
       platform::SetDeviceId(i);
-      a_arr[i].reset(new BuddyAllocator(
+      // FIXME(gongwb): why alloc Gpu memory before call Alloc?
+      std::unique_ptr<detail::BuddyAllocator> tmp(new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
           platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+      a_arr.push_back(std::move(tmp));
 
       VLOG(10) << "\n\nNOTE: each GPU device use "
                << FLAGS_fraction_of_gpu_memory_to_use * 100
