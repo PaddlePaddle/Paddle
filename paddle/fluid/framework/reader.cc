@@ -16,8 +16,29 @@
 
 namespace paddle {
 namespace framework {
+
+void ReaderBase::ReadNext(std::vector<LoDTensor> *out) {
+  if (status_ != ReaderStatus::kRunning) {
+    PADDLE_THROW("The reader is not at the status of 'running'.");
+  }
+  ReadNextImpl(out);
+}
+
+void ReaderBase::Shutdown() {
+  if (status_ != ReaderStatus::kStopped) {
+    ShutdownImpl();
+    status_ = ReaderStatus::kStopped;
+  }
+}
+
+void ReaderBase::Start() {
+  if (status_ != ReaderStatus::kRunning) {
+    StartImpl();
+    status_ = ReaderStatus::kRunning;
+  }
+}
+
 ReaderBase::~ReaderBase() {}
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) { ReadNextImpl(out); }
 }  // namespace framework
 }  // namespace paddle

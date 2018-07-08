@@ -31,17 +31,16 @@ class MultiFileReader : public framework::ReaderBase {
       readers_.emplace_back(CreateReaderByFileName(f_name));
     }
     prefetchers_.resize(thread_num);
-    StartNewScheduler();
+    Start();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  void ReInit() override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
-  ~MultiFileReader() { EndScheduler(); }
+  ~MultiFileReader() { Shutdown(); }
 
  private:
-  void StartNewScheduler();
-  void EndScheduler();
+  void StartImpl() override;
+  void ShutdownImpl() override;
   void ScheduleThreadFunc();
   void PrefetchThreadFunc(size_t reader_idx, size_t thread_idx);
 
@@ -54,18 +53,13 @@ class MultiFileReader : public framework::ReaderBase {
   reader::BlockingQueue<std::vector<framework::LoDTensor>>* buffer_;
 };
 
-void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void MultiFileReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   if (!buffer_->Receive(out)) {
     out->clear();
   }
 }
 
-void MultiFileReader::ReInit() {
-  EndScheduler();
-  StartNewScheduler();
-}
-
-void MultiFileReader::StartNewScheduler() {
+void MultiFileReader::StartImpl() {
   size_t thread_num = prefetchers_.size();
   waiting_reader_idx_ = new reader::BlockingQueue<size_t>(readers_.size());
   available_thread_idx_ = new reader::BlockingQueue<size_t>(thread_num);
@@ -83,7 +77,7 @@ void MultiFileReader::StartNewScheduler() {
   scheduler_ = std::thread([this] { ScheduleThreadFunc(); });
 }
 
-void MultiFileReader::EndScheduler() {
+void MultiFileReader::ShutdownImpl() {
   available_thread_idx_->Close();
   buffer_->Close();
   waiting_reader_idx_->Close();
@@ -119,7 +113,7 @@ void MultiFileReader::ScheduleThreadFunc() {
       }
     }
   }
-  // If users invoke ReInit() when scheduler is running, it will close the
+  // If users invoke Shutdown() when scheduler is running, it will close the
   // 'avaiable_thread_idx_' and prefecther threads have no way to tell scheduler
   // to release their resource. So a check is needed before scheduler ends.
   for (auto& p : prefetchers_) {
@@ -137,7 +131,8 @@ void MultiFileReader::PrefetchThreadFunc(size_t reader_idx, size_t thread_idx) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
     if (ins.empty()) {
-      reader->ReInit();
+      reader->Shutdown();
+      reader->Start();
       break;
     }
     try {

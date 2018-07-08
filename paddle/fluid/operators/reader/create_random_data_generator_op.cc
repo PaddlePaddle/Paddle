@@ -30,6 +30,7 @@ class RandomDataGenerator : public framework::FileReader {
     unsigned int seed = std::random_device()();
     engine_.seed(seed);
     dist_ = std::uniform_real_distribution<float>(low_, high_);
+    Start();
   }
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
@@ -50,8 +51,6 @@ class RandomDataGenerator : public framework::FileReader {
       out->push_back(out_tensor);
     }
   }
-
-  void ReInit() override { return; }
 
  private:
   float low_;

@@ -33,9 +33,13 @@ class PyReader : public framework::FileReader {
     if (!success) out->clear();
   }
 
-  void ReInit() override {}
-
  private:
+  void ShutdownImpl() override { /* TODO */
+  }
+
+  void StartImpl() override { /* TODO */
+  }
+
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
 };
 
