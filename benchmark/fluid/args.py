@@ -122,5 +122,13 @@ def parse_args():
         type=str,
         default="",
         help='Directory that contains all the training recordio files.')
+    parser.add_argument(
+        '--use_inference_transpiler',
+        action='store_true',
+        help='If set, use inference transpiler to optimize the program.')
+    parser.add_argument(
+        '--no_random',
+        action='store_true',
+        help='If set, keep the random seed and do not shuffle the data.')
     args = parser.parse_args()
     return args

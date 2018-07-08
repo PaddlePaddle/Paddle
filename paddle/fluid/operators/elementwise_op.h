@@ -14,8 +14,12 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -39,6 +43,21 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                       "Rank of first input must >= rank of second input.");
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -65,6 +84,8 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
+    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 Limited Elementwise %s Operator
 
@@ -137,6 +158,21 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(y_grad_name)) {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 }  // namespace operators

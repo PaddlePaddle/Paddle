@@ -46,9 +46,14 @@ class Executor {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   /*
-   * Sending signal to pserver to mark current trainer stop.
+   * Sending signal to pserver to mark current pass started.
    */
-  void Complete();
+  void BeginPass();
+
+  /*
+   * Sending signal to pserver to mark current pass finished.
+   */
+  void EndPass();
 #endif
 
   /* @Brief
@@ -78,7 +83,7 @@ class Executor {
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
-                          bool create_vars = true);
+                          bool create_vars = true, bool keep_kids = false);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,

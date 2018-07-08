@@ -97,7 +97,7 @@ def dist_transpile(trainer_id, args):
         return train_program, fluid.default_startup_program()
     else:
         raise ValueError(
-            'TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
+            'PADDLE_TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
         )
 
 
@@ -131,6 +131,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     exe = fluid.Executor(place)
     exe.run(startup_prog)
 
+    # Use inference_transpiler to speedup
     if not args.use_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
@@ -181,6 +182,10 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
         if not args.no_test and batch_acc and not args.use_reader_op:
+            if args.use_inference_transpiler:
+                t = fluid.InferenceTranspiler()
+                t.transpile(infer_prog, place)
+
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -264,8 +269,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                     break
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
-            if args.update_method == "pserver":
-                exe.bcast_params()
             if args.use_reader_op:
                 num_samples += args.batch_size * args.gpus
             else:
@@ -301,9 +304,20 @@ def print_train_time(start_time, end_time, num_samples):
           (num_samples, train_elapsed, examples_per_sec))
 
 
+def print_paddle_envs():
+    print('----------- Configuration envs -----------')
+    for k in os.environ:
+        if "PADDLE_" in k:
+            print "ENV %s:%s" % (k, os.environ[k])
+    print('------------------------------------------------')
+
+
 def main():
     args = parse_args()
     print_arguments(args)
+    print_paddle_envs()
+    if args.no_random:
+        fluid.default_startup_program().random_seed = 1
 
     # the unique trainer id, starting from 0, needed by trainer
     # only

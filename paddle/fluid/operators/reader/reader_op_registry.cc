@@ -54,7 +54,7 @@ std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
 }
 
 void FileReaderMakerBase::Make() {
-  AddOutput("Out", "(ReaderHolder) The created random reader.").AsDuplicable();
+  AddOutput("Out", "(ReaderHolder): The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
   AddAttr<std::vector<int>>(
       "ranks",
