@@ -19,11 +19,11 @@ namespace operators {
 namespace reader {
 
 template <typename T>
-class RandomDataGenerator : public framework::ReaderBase {
+class RandomDataGenerator : public framework::FileReader {
  public:
   RandomDataGenerator(const std::vector<framework::DDim>& shapes, float low,
                       float high)
-      : framework::ReaderBase(), low_(low), high_(high), shapes_(shapes) {
+      : framework::FileReader(), low_(low), high_(high), shapes_(shapes) {
     PADDLE_ENFORCE_LE(low, high,
                       "'low' shouldn't be greater than 'high'.(%f vs %f)", low,
                       high);
@@ -32,7 +32,7 @@ class RandomDataGenerator : public framework::ReaderBase {
     dist_ = std::uniform_real_distribution<float>(low_, high_);
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     out->clear();
     out->reserve(shapes_.size());
     for (const framework::DDim& shape : shapes_) {

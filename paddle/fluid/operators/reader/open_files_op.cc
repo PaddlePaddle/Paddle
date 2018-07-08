@@ -23,13 +23,12 @@ namespace reader {
 
 class MultiFileReader : public framework::ReaderBase {
  public:
-  MultiFileReader(const std::vector<std::string>& file_names,
-                  const std::vector<framework::DDim>& dims, size_t thread_num,
+  MultiFileReader(const std::vector<std::string>& file_names, size_t thread_num,
                   size_t buffer_size)
       : buffer_size_(buffer_size) {
     readers_.reserve(file_names.size());
     for (const std::string& f_name : file_names) {
-      readers_.emplace_back(CreateReaderByFileName(f_name, dims));
+      readers_.emplace_back(CreateReaderByFileName(f_name));
     }
     prefetchers_.resize(thread_num);
     StartNewScheduler();
@@ -180,9 +179,7 @@ class OpenFilesOp : public framework::OperatorBase {
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new MultiFileReader(file_names,
-                                   RestoreShapes(shape_concat, ranks),
-                                   thread_num, buffer_size));
+    out->Reset(new MultiFileReader(file_names, thread_num, buffer_size));
   }
 };
 
