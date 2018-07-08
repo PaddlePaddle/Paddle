@@ -32,18 +32,21 @@ class StubRootReader : public paddle::framework::ReaderBase {
 
 TEST(READER, decorate_chain) {
   auto root = std::make_shared<StubRootReader>();
-  auto end_point1 = StubDecoratedReader(root);
-  auto end_point2 = StubDecoratedReader(root);
+  auto end_point1 =
+      paddle::framework::MakeDecoratedReader<StubDecoratedReader>(root);
+  auto end_point2 =
+      paddle::framework::MakeDecoratedReader<StubDecoratedReader>(root);
 
   {
     auto endpoints = root->GetEndPoints();
     ASSERT_EQ(endpoints.size(), 2U);
-    ASSERT_NE(endpoints.count(&end_point1), 0);
-    ASSERT_NE(endpoints.count(&end_point2), 0);
+    ASSERT_NE(endpoints.count(end_point1.get()), 0);
+    ASSERT_NE(endpoints.count(end_point2.get()), 0);
   }
 
   {
-    auto end_point3 = StubDecoratedReader(root);
+    auto end_point3 =
+        paddle::framework::MakeDecoratedReader<StubDecoratedReader>(root);
     ASSERT_EQ(root->GetEndPoints().size(), 3U);
   }
   { ASSERT_EQ(root->GetEndPoints().size(), 2U); }

@@ -60,7 +60,8 @@ class CreateMultiPassReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     int pass_num = Attr<int>("pass_num");
-    out->Reset(new MultiPassReader(underlying_reader.Get(), pass_num));
+    out->Reset(framework::MakeDecoratedReader<MultiPassReader>(
+        underlying_reader, pass_num));
   }
 };
 

@@ -109,7 +109,8 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
       place = platform::CUDAPlace(static_cast<int>(num));
     }
 
-    out->Reset(new DoubleBufferReader(underlying_reader.Get(), place));
+    out->Reset(framework::MakeDecoratedReader<DoubleBufferReader>(
+        underlying_reader, place));
   }
 };
 

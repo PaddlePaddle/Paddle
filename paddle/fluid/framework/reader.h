@@ -41,23 +41,25 @@ class ReaderBase {
   friend class DecoratedReader;
   // These methods can be only invoked inside DecoratedReader to record the
   // decorating chain.
-  void InsertDecoratedReader(ReaderBase* decorated_reader);
-  void EraseDecoratedReader(ReaderBase* decorated_reader);
+  void InsertDecoratedReader(
+      const std::shared_ptr<ReaderBase>& decorated_reader);
   // A set of which readers that decorated this reader.
-  std::unordered_set<ReaderBase*> decorated_readers_;
+  std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
 };
 
-class DecoratedReader : public ReaderBase {
+class DecoratedReader : public ReaderBase,
+                        public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
       : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->InsertDecoratedReader(this);
   }
 
-  ~DecoratedReader();
-
   void ReInit() override { reader_->ReInit(); }
+
+  void RegisterDecorateChain() {
+    reader_->InsertDecoratedReader(shared_from_this());
+  }
 
  protected:
   std::shared_ptr<ReaderBase> reader_;
@@ -80,9 +82,14 @@ class FileReader : public ReaderBase {
 // making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
-  void Reset(ReaderBase* reader) { reader_.reset(reader); }
+  template <typename T>
+  void Reset(const std::shared_ptr<T>& reader) {
+    auto reader_base = std::dynamic_pointer_cast<ReaderBase>(reader);
+    PADDLE_ENFORCE_NOT_NULL(reader_base);
+    reader_ = reader_base;
+  }
 
-  std::shared_ptr<ReaderBase> Get() const { return reader_; }
+  const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
   void ReadNext(std::vector<LoDTensor>* out) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
@@ -93,9 +100,18 @@ class ReaderHolder {
     reader_->ReInit();
   }
 
+  operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
+
  private:
   std::shared_ptr<ReaderBase> reader_;
 };
+
+template <typename T, typename... ARGS>
+inline std::shared_ptr<DecoratedReader> MakeDecoratedReader(ARGS&&... args) {
+  std::shared_ptr<DecoratedReader> reader(new T(std::forward<ARGS>(args)...));
+  reader->RegisterDecorateChain();
+  return reader;
+}
 
 }  // namespace framework
 }  // namespace paddle
