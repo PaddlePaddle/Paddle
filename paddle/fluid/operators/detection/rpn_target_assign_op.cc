@@ -21,42 +21,46 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 class RpnTargetAssignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("DistMat"),
+                   "Input(DistMat) of RpnTargetAssignOp should not be null");
+
+    PADDLE_ENFORCE(
+        ctx->HasOutput("LocationIndex"),
+        "Output(LocationIndex) of RpnTargetAssignOp should not be null");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("ScoreIndex"),
+        "Output(ScoreIndex) of RpnTargetAssignOp should not be null");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("TargetLabel"),
+        "Output(TargetLabel) of RpnTargetAssignOp should not be null");
+
+    auto in_dims = ctx->GetInputDim("DistMat");
+    PADDLE_ENFORCE_EQ(in_dims.size(), 2,
+                      "The rank of Input(DistMat) must be 2.");
+  }
 };
 
 template <typename T>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
-  void AnchorToGt(const T* dist_data, const int64_t row, const int64_t col,
-                  std::vector<float>* anchor_to_gt_max) const {
-    for (int64_t j = 0; j < col; ++j) {
-      T max_dist = -1;
-      for (int64_t i = 0; i < row; ++i) {
-        T val = dist_data[i * col + j];
-        if (val > max_dist) max_dist = val;
-      }
-      anchor_to_gt_max->push_back(max_dist);
-    }
-  }
-
-  void ScoreAssign(const T* dist_data,
-                   const std::vector<float> anchor_to_gt_max, const int row,
-                   const int col, const float pos_threshold,
+  void ScoreAssign(const T* dist_data, const Tensor& anchor_to_gt_max,
+                   const int row, const int col, const float pos_threshold,
                    const float neg_threshold, int* target_label_data,
                    std::vector<int>* fg_inds, std::vector<int>* bg_inds) const {
     int fg_offset = fg_inds->size();
     int bg_offset = bg_inds->size();
     for (int64_t i = 0; i < row; ++i) {
-      T max_dist = -1;
-      for (int64_t j = 0; j < col; ++j) {
-        T val = dist_data[i * col + j];
-        if (val > max_dist) max_dist = val;
-      }
+      const T* v = dist_data + i * col;
+      T max_dist = *std::max_element(v, v + col);
       for (int64_t j = 0; j < col; ++j) {
         T val = dist_data[i * col + j];
         if (val == max_dist) target_label_data[j] = 1;
@@ -65,9 +69,9 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 
     // Pick the fg/bg and count the number
     for (int64_t j = 0; j < col; ++j) {
-      if (anchor_to_gt_max[j] > pos_threshold) {
+      if (anchor_to_gt_max.data<T>()[j] > pos_threshold) {
         target_label_data[j] = 1;
-      } else if (anchor_to_gt_max[j] < neg_threshold) {
+      } else if (anchor_to_gt_max.data<T>()[j] < neg_threshold) {
         target_label_data[j] = 0;
       }
       if (target_label_data[j] == 1) {
@@ -78,7 +82,22 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     }
   }
 
-  void RpnTargetAssign(const Tensor& dist, const float pos_threshold,
+  void ReservoirSampling(const int num, const int offset,
+                         std::minstd_rand engine,
+                         std::vector<int>* inds) const {
+    std::uniform_real_distribution<float> uniform(0, 1);
+    if (inds->size() > num) {
+      for (int i = num; i < inds->size(); ++i) {
+        int rng_ind = std::floor(uniform(engine) * i);
+        if (rng_ind < num)
+          std::iter_swap(inds->begin() + rng_ind + offset,
+                         inds->begin() + i + offset);
+      }
+    }
+  }
+
+  void RpnTargetAssign(const framework::ExecutionContext& ctx,
+                       const Tensor& dist, const float pos_threshold,
                        const float neg_threshold, const int rpn_batch_size,
                        const int fg_num, std::minstd_rand engine,
                        std::vector<int>* fg_inds, std::vector<int>* bg_inds,
@@ -88,45 +107,40 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     int64_t col = dist.dims()[1];
     int fg_offset = fg_inds->size();
     int bg_offset = bg_inds->size();
-    std::vector<float> anchor_to_gt_max;
+
     // Calculate the max IoU between anchors and gt boxes
-    AnchorToGt(dist_data, row, col, &anchor_to_gt_max);
+    Tensor anchor_to_gt_max;
+    anchor_to_gt_max.mutable_data<T>(
+        framework::make_ddim({static_cast<int64_t>(col), 1}),
+        platform::CPUPlace());
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    auto x = EigenMatrix<T>::From(dist);
+    auto x_col_max = EigenMatrix<T>::From(anchor_to_gt_max);
+    x_col_max.device(place) =
+        x.maximum(Eigen::DSizes<int, 1>(0))
+            .reshape(Eigen::DSizes<int, 2>(static_cast<int64_t>(col), 1));
     // Follow the Faster RCNN's implementation
     ScoreAssign(dist_data, anchor_to_gt_max, row, col, pos_threshold,
                 neg_threshold, target_label_data, fg_inds, bg_inds);
     // Reservoir Sampling
-    std::uniform_real_distribution<float> uniform(0, 1);
-    if (fg_inds->size() > fg_num) {
-      for (int i = fg_num; i < fg_inds->size(); ++i) {
-        int rng_ind = std::floor(uniform(engine) * fg_num);
-        if (rng_ind < fg_num)
-          std::iter_swap(fg_inds->begin() + rng_ind + fg_offset,
-                         fg_inds->begin() + i + fg_offset);
-      }
-    }
+    ReservoirSampling(fg_num, fg_offset, engine, fg_inds);
     int bg_num = rpn_batch_size - fg_inds->size();
-    if (bg_inds->size() > bg_num) {
-      for (int i = bg_num; i < bg_inds->size(); ++i) {
-        int rng_ind = std::floor(uniform(engine) * bg_num);
-        if (rng_ind < bg_num)
-          std::iter_swap(bg_inds->begin() + rng_ind + bg_offset,
-                         bg_inds->begin() + i + bg_offset);
-      }
-    }
+    ReservoirSampling(bg_num, bg_offset, engine, bg_inds);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* match_dist = context.Input<LoDTensor>("Overlap");
+    auto* dist = context.Input<LoDTensor>("DistMat");
     auto* loc_index = context.Output<Tensor>("LocationIndex");
     auto* score_index = context.Output<Tensor>("ScoreIndex");
     auto* tgt_lbl = context.Output<Tensor>("TargetLabel");
 
-    auto col = match_dist->dims()[1];
-    int64_t n = match_dist->lod().size() == 0UL
+    auto col = dist->dims()[1];
+    int64_t n = dist->lod().size() == 0UL
                     ? 1
-                    : static_cast<int64_t>(match_dist->lod().back().size() - 1);
-    if (match_dist->lod().size()) {
-      PADDLE_ENFORCE_EQ(match_dist->lod().size(), 1UL,
+                    : static_cast<int64_t>(dist->lod().back().size() - 1);
+    if (dist->lod().size()) {
+      PADDLE_ENFORCE_EQ(dist->lod().size(), 1UL,
                         "Only support 1 level of LoD.");
     }
     int rpn_batch_size = context.Attr<int>("rpn_batch_size_per_im");
@@ -152,14 +166,15 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     engine.seed(seed);
 
     if (n == 1) {
-      RpnTargetAssign(*match_dist, pos_threshold, neg_threshold, rpn_batch_size,
-                      fg_num, engine, &fg_inds, &bg_inds, target_label_data);
+      RpnTargetAssign(context, *dist, pos_threshold, neg_threshold,
+                      rpn_batch_size, fg_num, engine, &fg_inds, &bg_inds,
+                      target_label_data);
     } else {
-      auto lod = match_dist->lod().back();
+      auto lod = dist->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
-        Tensor one_ins = match_dist->Slice(lod[i], lod[i + 1]);
-        RpnTargetAssign(one_ins, pos_threshold, neg_threshold, rpn_batch_size,
-                        fg_num, engine, &fg_inds, &bg_inds,
+        Tensor one_ins = dist->Slice(lod[i], lod[i + 1]);
+        RpnTargetAssign(context, one_ins, pos_threshold, neg_threshold,
+                        rpn_batch_size, fg_num, engine, &fg_inds, &bg_inds,
                         target_label_data + i * col);
       }
     }
@@ -180,16 +195,56 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Overlap", "");
-    AddAttr<float>("rpn_positive_overlap", "").SetDefault(0.7);
-    AddAttr<float>("rpn_negative_overlap", "").SetDefault(0.3);
-    AddAttr<float>("fg_fraction", "").SetDefault(0.25);
-    AddAttr<int>("rpn_batch_size_per_im", "").SetDefault(256);
-    AddAttr<bool>("fix_seed", "").SetDefault(false);
-    AddAttr<int>("seed", "").SetDefault(0);
-    AddOutput("LocationIndex", "");
-    AddOutput("ScoreIndex", "");
-    AddOutput("TargetLabel", "");
+    AddInput(
+        "DistMat",
+        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+        "[K, M]. It is pair-wise distance matrix between the entities "
+        "represented by each row and each column. For example, assumed one "
+        "entity is A with shape [K], another entity is B with shape [M]. The "
+        "DistMat[i][j] is the distance between A[i] and B[j]. The bigger "
+        "the distance is, the better macthing the pairs are. Please note, "
+        "This tensor can contain LoD information to represent a batch of "
+        "inputs. One instance of this batch can contain different numbers of "
+        "entities.");
+    AddAttr<float>(
+        "rpn_positive_overlap",
+        "Minimum overlap required between an anchor and ground-truth "
+        "box for the (anchor, gt box) pair to be a positive example")
+        .SetDefault(0.7);
+    AddAttr<float>(
+        "rpn_negative_overlap",
+        "Maximum overlap allowed between an anchor and ground-truth "
+        "box for the (anchor, gt box) pair to be a negative examples")
+        .SetDefault(0.3);
+    AddAttr<float>("fg_fraction",
+                   "Target fraction of RoI minibatch that "
+                   "is labeled foreground (i.e. class > 0).")
+        .SetDefault(0.25);
+    AddAttr<int>("rpn_batch_size_per_im",
+                 "Total number of RPN examples per image.")
+        .SetDefault(256);
+    AddAttr<bool>("fix_seed",
+                  "A flag indicating whether to use a fixed seed to generate "
+                  "random mask. NOTE: DO NOT set this flag to true in "
+                  "training. Setting this flag to true is only useful in "
+                  "unittest or for debug that always the same output units "
+                  "will be dropped.")
+        .SetDefault(false);
+    AddAttr<int>("seed", "RpnTargetAssign random seed.").SetDefault(0);
+    AddOutput(
+        "LocationIndex",
+        "(Tensor), The index of foreground anchors in all rpn anchors, the "
+        "shape of the LocationIndex is [F], F depends on the value of input "
+        "tensor and attributes.");
+    AddOutput("ScoreIndex",
+              "(Tensor), The index of foreground and background anchors in all "
+              "rpn anchors(The rest anchors are ignored). the shape of the "
+              "ScoreIndex is [F + B], F and B depend on the value of input "
+              "tensor and attributes.");
+    AddOutput(
+        "TargetLabel",
+        "(Tensor), The target labels of each anchor with shape [K * M, 1], "
+        "K and M is the same as they are in DistMat,");
     AddComment(R"DOC(
 )DOC");
   }

@@ -55,7 +55,7 @@ class TestRpnTargetAssignOp(OpTest):
     def setUp(self):
         iou = np.random.random((10, 8)).astype("float32")
         self.op_type = "rpn_target_assign"
-        self.inputs = {'Overlap': iou}
+        self.inputs = {'DistMat': iou}
         self.attrs = {
             'rpn_batch_size_per_im': 256,
             'rpn_positive_overlap': 0.95,
@@ -79,7 +79,7 @@ class TestRpnTargetAssignOp2(OpTest):
     def setUp(self):
         iou = np.random.random((10, 20)).astype("float32")
         self.op_type = "rpn_target_assign"
-        self.inputs = {'Overlap': iou}
+        self.inputs = {'DistMat': iou}
         self.attrs = {
             'rpn_batch_size_per_im': 128,
             'rpn_positive_overlap': 0.5,
