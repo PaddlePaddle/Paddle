@@ -180,9 +180,9 @@ class OpenFilesOp : public framework::OperatorBase {
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new MultiFileReader(file_names,
-                                   RestoreShapes(shape_concat, ranks),
-                                   thread_num, buffer_size));
+    out->Reset(std::make_shared<MultiFileReader>(
+        file_names, RestoreShapes(shape_concat, ranks), thread_num,
+        buffer_size));
   }
 };
 

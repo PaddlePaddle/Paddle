@@ -46,8 +46,8 @@ class CreateBatchReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    out->Reset(
-        new BatchReader(underlying_reader.Get(), Attr<int>("batch_size")));
+    out->Reset(framework::MakeDecoratedReader<BatchReader>(
+        underlying_reader, Attr<int>("batch_size")));
   }
 };
 

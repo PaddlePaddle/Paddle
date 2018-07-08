@@ -60,10 +60,10 @@ class CreateCustomReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    out->Reset(
-        new CustomReader(underlying_reader.Get(), *sub_block,
-                         Attr<std::vector<std::string>>("source_var_names"),
-                         Attr<std::vector<std::string>>("sink_var_names")));
+    out->Reset(framework::MakeDecoratedReader<CustomReader>(
+        underlying_reader, *sub_block,
+        Attr<std::vector<std::string>>("source_var_names"),
+        Attr<std::vector<std::string>>("sink_var_names")));
   }
 };
 
