@@ -31,16 +31,20 @@ class MultiFileReader : public framework::ReaderBase {
       readers_.emplace_back(CreateReaderByFileName(f_name));
     }
     prefetchers_.resize(thread_num);
-    Start();
+    StartNewScheduler();
   }
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
-  ~MultiFileReader() { Shutdown(); }
+  ~MultiFileReader() { EndScheduler(); }
 
  private:
-  void StartImpl() override;
-  void ShutdownImpl() override;
+  void ShutdownImpl() override { EndScheduler(); }
+
+  void StartImpl() override { StartNewScheduler(); }
+
+  void StartNewScheduler();
+  void EndScheduler();
   void ScheduleThreadFunc();
   void PrefetchThreadFunc(size_t reader_idx, size_t thread_idx);
 
@@ -59,7 +63,7 @@ void MultiFileReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   }
 }
 
-void MultiFileReader::StartImpl() {
+void MultiFileReader::StartNewScheduler() {
   size_t thread_num = prefetchers_.size();
   waiting_reader_idx_ = new reader::BlockingQueue<size_t>(readers_.size());
   available_thread_idx_ = new reader::BlockingQueue<size_t>(thread_num);
@@ -77,7 +81,7 @@ void MultiFileReader::StartImpl() {
   scheduler_ = std::thread([this] { ScheduleThreadFunc(); });
 }
 
-void MultiFileReader::ShutdownImpl() {
+void MultiFileReader::EndScheduler() {
   available_thread_idx_->Close();
   buffer_->Close();
   waiting_reader_idx_->Close();

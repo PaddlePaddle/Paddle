@@ -22,9 +22,7 @@ namespace reader {
 class ThreadedReader : public framework::DecoratedReader {
  public:
   explicit ThreadedReader(const std::shared_ptr<ReaderBase>& reader)
-      : DecoratedReader(reader) {
-    Start();
-  }
+      : DecoratedReader(reader) {}
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     std::lock_guard<std::mutex> lock(mutex_);

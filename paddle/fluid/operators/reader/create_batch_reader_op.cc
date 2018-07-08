@@ -26,7 +26,6 @@ class BatchReader : public framework::DecoratedReader {
         batch_size_(batch_size),
         discard_leftover_(discard_leftover) {
     buffer_.reserve(batch_size_);
-    Start();
   }
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;

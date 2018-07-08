@@ -31,9 +31,7 @@ class CustomReader : public framework::DecoratedReader {
         sub_block_id_(sub_block.ID()),
         exe_(framework::Executor(platform::CPUPlace())),
         source_var_names_(source_var_names),
-        sink_var_names_(sink_var_names) {
-    Start();
-  }
+        sink_var_names_(sink_var_names) {}
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
