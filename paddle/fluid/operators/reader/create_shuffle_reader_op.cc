@@ -31,10 +31,10 @@ class ShuffleReader : public framework::DecoratedReader {
       std::random_device device;
       seed_ = device();
     }
-    ReloadBuffer();
+    Start();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     out->clear();
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
@@ -47,6 +47,17 @@ class ShuffleReader : public framework::DecoratedReader {
   }
 
  private:
+  void ShutdownImpl() override {
+    buffer_.clear();
+    iteration_pos_ = 0;
+    reader_->Shutdown();
+  }
+
+  void StartImpl() override {
+    reader_->Start();
+    ReloadBuffer();
+  }
+
   void ReloadBuffer() {
     buffer_.clear();
     buffer_.reserve(buffer_size_);

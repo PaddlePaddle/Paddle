@@ -47,15 +47,24 @@ class DoubleBufferReader : public framework::DecoratedReader {
       }
     }
 #endif
+    Start();
+  }
+
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+
+  ~DoubleBufferReader() { Shutdown(); }
+
+ private:
+  void ShutdownImpl() override {
+    EndPrefetcher();
+    reader_->Shutdown();
+  }
+
+  void StartImpl() override {
+    reader_->Start();
     StartPrefetcher();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  void ReInit() override;
-
-  ~DoubleBufferReader() { EndPrefetcher(); }
-
- private:
   void StartPrefetcher() {
     channel_ = new reader::BlockingQueue<size_t>(kChannelSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
@@ -136,7 +145,7 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void DoubleBufferReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   size_t cached_tensor_id;
   if (channel_->Receive(&cached_tensor_id)) {
     if (platform::is_gpu_place(place_)) {
@@ -148,12 +157,6 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   } else {
     out->clear();
   }
-}
-
-void DoubleBufferReader::ReInit() {
-  EndPrefetcher();
-  reader_->ReInit();
-  StartPrefetcher();
 }
 
 void DoubleBufferReader::PrefetchThreadFunc() {

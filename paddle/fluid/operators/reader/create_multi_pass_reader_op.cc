@@ -22,25 +22,28 @@ namespace reader {
 class MultiPassReader : public framework::DecoratedReader {
  public:
   MultiPassReader(const std::shared_ptr<ReaderBase>& reader, int pass_num)
-      : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
+      : DecoratedReader(reader), pass_num_(pass_num) {
+    Start();
+  }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     reader_->ReadNext(out);
     if (out->empty()) {
       ++pass_count_;
       if (pass_count_ < pass_num_) {
-        reader_->ReInit();
+        reader_->Shutdown();
+        reader_->Start();
         reader_->ReadNext(out);
       }
     }
   }
 
-  void ReInit() override {
+ private:
+  void StartImpl() override {
     pass_count_ = 0;
-    reader_->ReInit();
+    reader_->Start();
   }
 
- private:
   int pass_num_;
   mutable int pass_count_;
 };

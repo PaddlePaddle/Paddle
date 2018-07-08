@@ -24,13 +24,26 @@
 namespace paddle {
 namespace framework {
 
+enum ReaderStatus { kRunning, kStopped };
+
 class ReaderBase {
  public:
-  virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
+  void ReadNext(std::vector<LoDTensor>* out);
 
-  virtual void ReInit() = 0;
+  void Shutdown();
+
+  void Start();
 
   virtual ~ReaderBase();
+
+ protected:
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+
+  virtual void ShutdownImpl() = 0;
+
+  virtual void StartImpl() = 0;
+
+  std::atomic<ReaderStatus> status_{kStopped};
 };
 
 class DecoratedReader : public ReaderBase {
@@ -40,9 +53,11 @@ class DecoratedReader : public ReaderBase {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
-  void ReInit() override { reader_->ReInit(); }
-
  protected:
+  void ShutdownImpl() override { reader_->Shutdown(); }
+
+  void StartImpl() override { reader_->Start(); }
+
   std::shared_ptr<ReaderBase> reader_;
 };
 
@@ -50,10 +65,10 @@ class FileReader : public ReaderBase {
  public:
   FileReader() : ReaderBase() {}
 
-  void ReadNext(std::vector<LoDTensor>* out) override;
-
  protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+  void ShutdownImpl() override {}
+
+  void StartImpl() override {}
 };
 
 // The ReaderHolder is used as reader' unified wrapper,
@@ -68,9 +83,19 @@ class ReaderHolder {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->ReadNext(out);
   }
-  void ReInit() {
+
+  void ResetAll() {
+    // TODO(fengjiayi): The interface of reseting all.
+  }
+
+  void Shutdown() {
     PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->ReInit();
+    reader_->Shutdown();
+  }
+
+  void Start() {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->Start();
   }
 
  private:

@@ -30,9 +30,8 @@ class RecordIOFileReader : public framework::FileReader {
       mutex_.reset(new std::mutex());
     }
     LOG(INFO) << "Creating file reader" << filename;
+    Start();
   }
-
-  void ReInit() override { scanner_.Reset(); }
 
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
@@ -43,6 +42,8 @@ class RecordIOFileReader : public framework::FileReader {
       *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
     }
   }
+
+  void ShutdownImpl() override { scanner_.Reset(); }
 
  private:
   std::unique_ptr<std::mutex> mutex_;
