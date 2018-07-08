@@ -30,7 +30,6 @@ class RecordIOFileReader : public framework::FileReader {
       mutex_.reset(new std::mutex());
     }
     LOG(INFO) << "Creating file reader" << filename;
-    Start();
   }
 
  protected:

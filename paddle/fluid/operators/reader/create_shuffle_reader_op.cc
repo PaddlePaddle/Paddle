@@ -31,7 +31,7 @@ class ShuffleReader : public framework::DecoratedReader {
       std::random_device device;
       seed_ = device();
     }
-    Start();
+    ReloadBuffer();
   }
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
