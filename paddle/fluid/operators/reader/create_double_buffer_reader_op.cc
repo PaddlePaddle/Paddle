@@ -151,8 +151,8 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
 }
 
 void DoubleBufferReader::ReInit() {
-  reader_->ReInit();
   EndPrefetcher();
+  reader_->ReInit();
   StartPrefetcher();
 }
 

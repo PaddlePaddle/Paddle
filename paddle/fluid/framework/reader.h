@@ -48,15 +48,12 @@ class DecoratedReader : public ReaderBase {
 
 class FileReader : public ReaderBase {
  public:
-  explicit FileReader(const std::vector<DDim>& dims);
+  FileReader() : ReaderBase() {}
 
   void ReadNext(std::vector<LoDTensor>* out) override;
 
  protected:
   virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
-
- private:
-  std::vector<DDim> dims_;
 };
 
 // The ReaderHolder is used as reader' unified wrapper,

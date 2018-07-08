@@ -19,14 +19,15 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-class PyReader : public framework::ReaderBase {
+class PyReader : public framework::FileReader {
  public:
-  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue) {
+  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue)
+      : framework::FileReader() {
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     queue_ = queue;
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     bool success;
     *out = queue_->Pop(&success);
     if (!success) out->clear();
