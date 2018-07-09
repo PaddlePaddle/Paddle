@@ -34,6 +34,14 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 using DIM1 = Eigen::array<int, 1>;
 using DIM2 = Eigen::array<int, 2>;
 
+/*
+* Get the offsets for each class of values.
+* The input is a tensor whih rank=1 and grouped by values.
+* For input:
+*   t = [0, 0, 2, 2, 3, 4, 4, 4]
+* The offsets is:
+*   offsets = [0, 2, 4, 5, 8]
+*/
 template <typename DeviceContext>
 std::vector<int> GetOffsets(const Tensor* t);
 
@@ -97,12 +105,16 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto x_mat = math::CreateMatrixDescriptor(x_dims, 0, false);
     auto x_mat_trans = math::CreateMatrixDescriptor(x_dims, 0, true);
+    // d = x * x.T
     blas.MatMul(*logits, x_mat, *logits, x_mat_trans, T(1), &distances, T(0));
+    // a = (x**2).sum_by_row
     auto a = logits_t.square()
                  .sum(DIM1({1}))
                  .reshape(DIM2({batch_size, 1}))
                  .broadcast(DIM2({1, batch_size}));
+    // b = a.T
     auto b = a.shuffle(DIM2({1, 0}));
+    // d = a + a.T - 2 * x * x.T
     distances_t.device(place) = a + b - distances_t * T(2.0);
 
     // step 2: get loss in each line of distance matrix
