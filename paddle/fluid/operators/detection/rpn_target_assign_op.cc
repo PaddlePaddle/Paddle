@@ -264,11 +264,11 @@ This operator select foreground and background anchors by performing the followi
 
 If Max(IoU(Anchor, GTBBoxes)) > rpn_positive_overlap:
 
-       FgInds[FgNum++] = AnchorId
+       FgIndexes[FgNum++] = AnchorId
 
 If Max(IoU(Anchor, GTBBoxes)) < rpn_negative_overlap:
 
-       BgInds[BgNum++] = AnchorId
+       BgIndexes[BgNum++] = AnchorId
 
 )DOC");
   }
