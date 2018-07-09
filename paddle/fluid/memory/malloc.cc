@@ -74,19 +74,20 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static std::once_flag init_flag;
-  static std::vector<std::unique_ptr<detail::BuddyAllocator>> a_arr;
+  static detail::BuddyAllocator** a_arr = nullptr;
 
   std::call_once(init_flag, [gpu_id]() {
     int gpu_num = platform::GetCUDADeviceCount();
     PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
                    gpu_num);
 
+    a_arr = new BuddyAllocator*[gpu_num];
     for (int i = 0; i < gpu_num; i++) {
+      a_arr[i] = nullptr;
       platform::SetDeviceId(i);
-      std::unique_ptr<detail::BuddyAllocator> tmp(new BuddyAllocator(
+      a_arr[i] = new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
-          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
-      a_arr.push_back(std::move(tmp));
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
       VLOG(10) << "\n\nNOTE: each GPU device use "
                << FLAGS_fraction_of_gpu_memory_to_use * 100
@@ -98,7 +99,7 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   });
 
   platform::SetDeviceId(gpu_id);
-  return a_arr[gpu_id].get();
+  return a_arr[gpu_id];
 }
 
 template <>
