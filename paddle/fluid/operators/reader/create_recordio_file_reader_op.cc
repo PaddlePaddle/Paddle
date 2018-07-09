@@ -59,7 +59,8 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
     std::string filename = Attr<std::string>("filename");
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RecordIOFileReader<true>(filename));
+
+    out->Reset(std::make_shared<RecordIOFileReader<true>>(filename));
   }
 };
 

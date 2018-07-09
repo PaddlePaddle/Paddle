@@ -77,8 +77,8 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
     std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RandomDataGenerator<T>(shapes, Attr<float>("low"),
-                                          Attr<float>("high")));
+    out->Reset(std::make_shared<RandomDataGenerator<T>>(
+        shapes, Attr<float>("low"), Attr<float>("high")));
   }
 };
 
