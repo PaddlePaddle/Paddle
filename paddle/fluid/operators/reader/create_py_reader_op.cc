@@ -63,7 +63,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    out->Reset(new PyReader(queue_holder->GetQueue()));
+    out->Reset(std::make_shared<PyReader>(queue_holder->GetQueue()));
   }
 };
 
