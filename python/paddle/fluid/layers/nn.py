@@ -5189,10 +5189,24 @@ def crop(x, shape=None, offsets=None, name=None):
 
 def dense_triplet_loss(input, label, margin=0.01):
     """
+    The input is the embeddings of input samples. And the triplet loss is 
+    defined over triplets of embeddings. A triplet contains three samples as below:
+      - an anchor sample
+      - a positive sample with the same class as the anchor
+      - a negative sample with a different class
+    We define the three samples as $a$, $p$, $n$. Then the loss of
+    the triplet (a, p, n) is:
+
+      $$L = max(d(a, p) - d(a, n) + margin, 0)$$
+
+    In which, $d(a, p)$ means the distance between $a$ and $p$. The negative should
+    be farther away than the positive from anchor by the $margin$. The dense 
+    triplet loss get all the 'triplet' in a batch. And it accumulates the loss for each
+    triplet as the final loss result.
 
     Args:
         input(Variable): (LodTensor, default: LoDTensor<float>),
-                         A 2-D tensor with shape [N x K]. N is the batch_size,
+                         A 2-D tensor with shape [N x K]. N is the total number of samples,
                          and K is the feature length in each sample.
         label(Variable): (LodTensor, default: LoDTensor<int64>), 
                          The ground truth which is a tensor with shape [N x 1].

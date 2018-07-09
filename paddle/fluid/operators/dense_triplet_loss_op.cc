@@ -55,6 +55,19 @@ class DenseTripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 
+The Input(logits) is the embeddings of input samples. And the triplet loss is 
+defined over triplets of embeddings. A triplet contains three samples as below:
+  - an anchor sample
+  - a positive sample with the same class as the anchor
+  - a negative sample with a different class
+We define the three samples as $a$, $p$, $n$. Then the loss of
+the triplet (a, p, n) is:
+  $$L = max(d(a, p) - d(a, n) + margin, 0)$$
+In which, $d(a, p)$ means the distance between $a$ and $p$. The negative should
+be farther away than the positive from anchor by the $margin$. The dense 
+triplet loss get all the 'triplet' in a batch. And accumulate the loss for each
+triplet.
+
 )DOC");
   }
 };
