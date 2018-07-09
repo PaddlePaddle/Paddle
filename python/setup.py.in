@@ -126,13 +126,15 @@ if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_IOMP_LIB}', libs_path)
     package_data['paddle.libs']+=['libmklml_intel.so','libiomp5.so']
 if '${WITH_MKLDNN}' == 'ON':
-    if "@APPLE@" != "1":
-        # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
-        # The reason is that all thirdparty libraries in the same directory,
-        # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
-        command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
+    # TODO(typhoonzero): use install_name_tool to patch mkl libs once
+    # we can support mkl on mac.
+    #
+    # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
+    # The reason is that all thirdparty libraries in the same directory,
+    # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
+    command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
     if os.system(command) != 0:
-        raise Exception("patchelf --set-rpath for libmkldnn.so.0 fails")
+        raise Exception("patch libmkldnn.so failed, command: %s" % command)
     package_data['paddle.libs']+=['libmkldnn.so.0']
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
 # remove unused paddle/libs/__init__.py
@@ -148,7 +150,7 @@ if "@APPLE@" == "1":
 else:
     command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
 if os.system(command) != 0:
-    raise Exception("patchelf --set-rpath for core.so fails")
+    raise Exception("patch core.so failed, command: %s" % command)
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
