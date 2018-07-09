@@ -54,6 +54,7 @@ bool PaddleInferenceAnakinPredictor::Run(
       LOG(ERROR) << "copy data from CPU to GPU error";
       return false;
     }
+    cudaStreamSynchronize(NULL);
   }
 
   executor_.prediction();
@@ -76,6 +77,7 @@ bool PaddleInferenceAnakinPredictor::Run(
       LOG(ERROR) << "copy data from GPU to CPU error";
       return false;
     }
+    cudaStreamSynchronize(NULL);
   }
   return true;
 }
