@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <gtest/gtest.h>
-#include "paddle/math/Matrix.h"
+#include "paddle/legacy/math/Matrix.h"
 
 namespace paddle {
 

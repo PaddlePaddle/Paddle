@@ -99,7 +99,8 @@ static int64_t GetTimestamp() {
 void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
     framework::Scope *recv_scope,
-    const std::vector<int> &prefetch_block_id_list) const {
+    const std::vector<int> &prefetch_block_id_list,
+    const int checkpoint_point_block_id) const {
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -163,8 +164,8 @@ void ListenAndServOp::RunSyncLoop(
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
-                                   framework::ProgramDesc *program) const {
-  VLOG(3) << "RunAsyncLoop in";
+                                   framework::ProgramDesc *program,
+                                   framework::Scope *recv_scope) const {
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
@@ -191,6 +192,10 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     block_list.push_back(blkid);
   }
   auto optimize_prepared = executor->Prepare(*program, block_list);
+  // execute global block if needed
+  if (block_list[0] == 1 && id_to_grad.count(1) == 0) {
+    executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
+  }
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       grad_to_prepared_ctx;
@@ -202,10 +207,9 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
-  VLOG(3) << "RunAsyncLoop into while";
   while (true) {
     if (rpc_service_->IsExit()) {
-      LOG(INFO) << "get exit!rpc_processor break!";
+      VLOG(4) << "get exit!rpc_processor break!";
       break;
     }
 
@@ -220,6 +224,7 @@ static void FillRequestCtx(
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ExecutorPrepareContext>>
         *prefetch_ctx,
+    std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_ctx,
     distributed::RPCServer *rpc_server) {
   h->SetScope(scope);
   h->SetDevCtx(dev_ctx);
@@ -227,6 +232,7 @@ static void FillRequestCtx(
   h->SetProgram(program);
   h->SetPrefetchPreparedCtx(prefetch_ctx);
   h->SetRPCServer(rpc_server);
+  h->SetCheckpointNotifyPreparedCtx(checkpoint_ctx);
 }
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
@@ -242,9 +248,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
+  int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
 
-  LOG(INFO) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
-            << ", end_point:" << endpoint;
+  VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
+          << ", end_point:" << endpoint
+          << ", checkpoint_block_id: " << checkpoint_block_id;
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
@@ -252,6 +260,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_get_handler_.reset(new distributed::RequestGetHandler(sync_mode));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(sync_mode));
+  request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
+      sync_mode, checkpoint_block_id));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get());
@@ -259,6 +269,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_get_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
+                            request_checkpoint_handler_.get());
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -266,6 +278,13 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                  "optimize blocks should be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
+
+  std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
+  if (checkpoint_block_id != -1) {
+    auto ctx = executor.Prepare(*program, checkpoint_block_id);
+    // see: https://stackoverflow.com/a/14856553
+    ckpt_pre_context = std::move(ctx);
+  }
 
   // prepare for prefetch
   std::vector<int> prefetch_block_id_list;
@@ -297,13 +316,15 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
   }
 
-  auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
-                     &dev_ctx, &executor, program,
-                     &prefetch_var_name_to_prepared_ctx, rpc_service_.get());
+  auto f =
+      std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
+                &executor, program, &prefetch_var_name_to_prepared_ctx,
+                ckpt_pre_context, rpc_service_.get());
 
   f(request_send_handler_.get());
   f(request_get_handler_.get());
   f(request_prefetch_handler_.get());
+  f(request_checkpoint_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
@@ -317,9 +338,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   // Write to a file of server selected port for python use.
   SavePort();
   if (sync_mode) {
-    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list);
+    RunSyncLoop(&executor, program, &recv_scope, prefetch_block_id_list,
+                checkpoint_block_id);
   } else {
-    RunAsyncLoop(&executor, program);
+    RunAsyncLoop(&executor, program, &recv_scope);
   }
 }
 
@@ -349,6 +371,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
+    AddAttr<int>(kCheckpointBlockId,
+                 "BolckID to run save checkpoint on pserer.")
+        .SetDefault(-1);
   }
 };
 

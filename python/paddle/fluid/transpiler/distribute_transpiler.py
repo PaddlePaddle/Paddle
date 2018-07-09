@@ -301,18 +301,18 @@ class DistributeTranspiler(object):
             Program: trainer side program.
         """
         # remove optimize ops and add a send op to main_program
+        # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
-        # FIXME(typhoonzero): serialize once will fix error occurs when clone.
         self.origin_program.__str__()
         return self.origin_program
 
     def get_pserver_program(self, endpoint):
         """
         Get parameter server side program.
-        
+
         Args:
             endpoint (str): current parameter server endpoint.
-        
+
         Returns:
             Program: the program for current parameter server to run.
         """
@@ -383,11 +383,12 @@ class DistributeTranspiler(object):
             if self._is_adam_connected_op(op):
                 global_ops.append(op)
 
-        def __append_optimize_op__(op, block, grad_to_block_id, merged_var):
+        def __append_optimize_op__(op, block, grad_to_block_id, merged_var,
+                                   lr_ops):
             if self._is_optimizer_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
                                          self.origin_program, merged_var)
-            else:
+            elif op not in lr_ops:
                 self._append_pserver_non_opt_ops(block, op)
 
         def __op_have_grad_input__(op):
@@ -452,8 +453,10 @@ class DistributeTranspiler(object):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and op not in global_ops:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
-                                           merged_var)
+                                           merged_var, lr_ops)
 
+        # dedup grad to ids list
+        grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
             opt_state_block = pserver_program.create_block(
@@ -461,7 +464,7 @@ class DistributeTranspiler(object):
             optimize_blocks.append(opt_state_block)
             for glb_op in global_ops:
                 __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id, None)
+                                       grad_to_block_id, None, lr_ops)
 
         # process distributed lookup_table
         prefetch_var_name_to_block_id = []
@@ -471,6 +474,8 @@ class DistributeTranspiler(object):
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
+            checkpoint_block_id = self._create_checkpoint_save_block(
+                pserver_program, table_opt_block.idx)
 
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
@@ -489,6 +494,7 @@ class DistributeTranspiler(object):
         if len(prefetch_var_name_to_block_id) > 0:
             attrs['prefetch_var_name_to_block_id'] \
                 = prefetch_var_name_to_block_id
+            attrs['checkpint_block_id'] = checkpoint_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -510,7 +516,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): call get_pserver_program first and
                 pass the result here.
-        
+
         Returns:
             Program: parameter server side startup program.
         """
@@ -534,7 +540,6 @@ class DistributeTranspiler(object):
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
-            new_inputs = dict()
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
@@ -547,10 +552,10 @@ class DistributeTranspiler(object):
                     op_on_pserver = True
                     new_outputs[key] = pserver_vars[op.output(key)[0]]
 
-            # most startup program ops have no inputs
-            new_inputs = self._get_input_map_from_op(pserver_vars, op)
-
             if op_on_pserver:
+                # most startup program ops have no inputs
+                new_inputs = self._get_input_map_from_op(pserver_vars, op)
+
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
@@ -910,6 +915,27 @@ class DistributeTranspiler(object):
 
         return table_opt_block
 
+    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
+        """
+        create a new block to handle save checkpoint.
+        """
+        import os
+
+        pserver_program.global_block().create_var(
+            name="kLookupTablePath",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
+        checkpoint_save_block = pserver_program.create_block(pre_block_idx)
+        # this 'file_path' do not be used in save lookup table variable
+        checkpoint_save_block.append_op(
+            type='save',
+            inputs={'X': [self.table_name]},
+            outputs={},
+            attrs={'file_path': "none"})
+
+        return checkpoint_save_block.idx
+
     def _create_vars_from_blocklist(self,
                                     program,
                                     block_list,
@@ -936,8 +962,6 @@ class DistributeTranspiler(object):
             if not block_map.has_key(varname):
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
-        # Do not remove this important debug message:
-        print("block map: %s" % block_map)
 
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
@@ -1299,16 +1323,6 @@ class DistributeTranspiler(object):
                     ufind.union(op1, op2)
         return ufind
 
-    def _is_opt_role_op(self, op):
-        # NOTE: depend on oprole to find out whether this op is for
-        # optimize
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
-
     def _is_optimizer_op(self, op):
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
@@ -1386,6 +1400,16 @@ class DistributeTranspiler(object):
                     # we only need to append op for once
                     break
         return lr_ops
+
+    def _is_opt_role_op(self, op):
+        # NOTE: depend on oprole to find out whether this op is for
+        # optimize
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attrs and \
+            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
 
     def _get_optimize_pass(self):
         """

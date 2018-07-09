@@ -68,8 +68,7 @@ class TestRecordIO(unittest.TestCase):
             while True:
                 try:
                     tmp, = exe.run(fetch_list=[avg_loss])
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
 
                 avg_loss_np.append(tmp)

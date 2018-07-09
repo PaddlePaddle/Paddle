@@ -22,10 +22,15 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+// define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
+// to directory specified.
+constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
 bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,
@@ -50,14 +55,14 @@ bool RequestSendHandler::Handle(const std::string& varname,
   if (varname == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv batch barrier message";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
-  } else if (varname == COMPLETE_MESSAGE) {
-    VLOG(3) << "sync: recv complete message";
-    rpc_server_->DecreaseClientNum();
+  } else if (varname == BEGIN_PASS_MESSAGE) {
+    VLOG(3) << "sync: recv begin pass message";
+    rpc_server_->WaitCond(kRequestSend);
+    rpc_server_->BeginPass();
   } else {
     VLOG(3) << "sync: received var_name: " << varname;
-    if (sync_mode_) {
-      rpc_server_->WaitCond(kRequestSend);
-    }
+    rpc_server_->WaitCond(kRequestSend);
+    VLOG(3) << "sync: processing received var: " << varname;
 
     if (invar == nullptr) {
       LOG(ERROR) << "sync: Can not find server side var: " << varname;
@@ -86,21 +91,21 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Variable** outvar,
                                const std::string& out_var_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
-
-  if (varname != FETCH_BARRIER_MESSAGE) {
-    if (sync_mode_) {
-      rpc_server_->WaitCond(kRequestGet);
-    }
-    *outvar = scope_->FindVar(varname);
-    return true;
-  }
-
-  // FETCH_BARRIER_MESSAGE
   if (sync_mode_) {
-    VLOG(3) << "sync: recv fetch barrier message";
-    rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    if (varname == FETCH_BARRIER_MESSAGE) {
+      VLOG(3) << "sync: recv fetch barrier message";
+      rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    } else if (varname == END_PASS_MESSAGE) {
+      rpc_server_->EndPass();
+    } else {
+      rpc_server_->WaitCond(kRequestGet);
+      *outvar = scope_->FindVar(varname);
+    }
+  } else {
+    if (varname != FETCH_BARRIER_MESSAGE && varname != END_PASS_MESSAGE) {
+      *outvar = scope_->FindVar(varname);
+    }
   }
-
   return true;
 }
 
@@ -116,6 +121,24 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   executor_->RunPreparedContext(
       (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
 
+  return true;
+}
+
+bool RequestCheckpointHandler::Handle(const std::string& varname,
+                                      framework::Scope* scope,
+                                      framework::Variable* invar,
+                                      framework::Variable** outvar,
+                                      const std::string& out_var_name) {
+  PADDLE_ENFORCE(
+      checkpoint_notify_id != -1,
+      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
+
+  auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  lt_var->clear();
+  lt_var->append(out_var_name);
+  VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
+          << out_var_name;
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
 }
 

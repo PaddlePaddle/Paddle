@@ -78,6 +78,8 @@ def as_numpy(tensor):
     Returns:
         numpy.ndarray
     """
+    if isinstance(tensor, core.LoDTensorArray):
+        return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
@@ -345,6 +347,12 @@ class Executor(object):
             for i in xrange(len(fetch_list))
         ]
         return outs
+
+    def begin_pass(self):
+        self.executor.begin_pass()
+
+    def end_pass(self):
+        self.executor.end_pass()
 
     def run(self,
             program=None,

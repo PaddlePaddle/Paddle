@@ -35,10 +35,20 @@ void GRPCClient::InitEventLoop() {
   client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
 }
 
-void GRPCClient::SendComplete() {
+void GRPCClient::SendBeginPass() {
   for (auto& it : channels_) {
-    this->AsyncSendComplete(it.first);
+    VLOG(3) << "send begin pass to: " << it.first;
+    this->AsyncSendBeginPass(it.first);
   }
+  this->Wait();
+}
+
+void GRPCClient::SendEndPass() {
+  for (auto& it : channels_) {
+    VLOG(3) << "send end pass to " << it.first;
+    this->AsyncSendEndPass(it.first);
+  }
+  this->Wait();
 }
 
 GRPCClient::~GRPCClient() {
@@ -226,15 +236,45 @@ void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   req_count_++;
 }
 
-void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+void GRPCClient::AsyncSendBeginPass(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
-  req.set_varname(COMPLETE_MESSAGE);
+  req.set_varname(BEGIN_PASS_MESSAGE);
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+}
+
+void GRPCClient::AsyncSendEndPass(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(END_PASS_MESSAGE);
+  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+}
+
+void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                       const std::string& dir,
+                                       int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
+  req.set_out_varname(dir);
+
+  auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
@@ -269,14 +309,15 @@ void GRPCClient::Proceed() {
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
-  // TODO(Yancey1989): make grpc client completely thread-safe
   std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {
     return it->second;
   }
 
+  // Channel configurations:
   grpc::ChannelArguments args;
+  args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 2000);
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
