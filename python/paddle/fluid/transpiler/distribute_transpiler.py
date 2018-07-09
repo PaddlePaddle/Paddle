@@ -321,26 +321,24 @@ class DistributeTranspiler(object):
 
         # add concat ops to origin parameters in startup program to
         # let the origin parameters initialized by the spilited parameters
+        send_vars = []
+        for orig_varname, splited_vars in self.grad_var_mapping.items():
+            for _, var in enumerate(splited_vars):
+                send_vars.append(var)
+
+        recv_vars = []
+        for _, var in enumerate(send_vars):
+            recv_vars.append(self.grad_param_mapping[var])
+        ps_dispatcher.reset()
+        eplist = ps_dispatcher.dispatch(recv_vars)
+
         for varname, splited_var in self.param_var_mapping.iteritems():
-            if len(splited_var) <= 1:
-                continue
+            # Get the eplist of recv vars
+            eps = []
+            for var in splited_var:
+                index = [v.name for v in recv_vars].index(var.name)
+                eps.append(eplist[index])
 
-            recv_vars = []
-            for _, var in enumerate(send_vars):
-                recv_vars.append(self.grad_param_mapping[var])
-            ps_dispatcher.reset()
-            eplist = ps_dispatcher.dispatch(recv_vars)
-
-            for i, ep in enumerate(eplist):
-                self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
-                self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
-
-            # step4: Concat the parameters splits together after recv.
-            for varname, splited_var in self.param_var_mapping.iteritems():
-                eps = []
-                for var in splited_var:
-                    index = [v.name for v in recv_vars].index(var.name)
-                    eps.append(eplist[index])
             splited_var_in_startup_prog = []
             # create splited_var with remote initializer
             for var in splited_var:
@@ -357,6 +355,7 @@ class DistributeTranspiler(object):
                 # var with remote initializer
                 splited_var_in_startup_prog.append(var_in_startup_prog)
 
+            # append concat_op to concat all splited params rather than prepend
             orig_param = orig_s_prog.global_block().vars[varname]
             program.global_block().append_op(
                 type="concat",

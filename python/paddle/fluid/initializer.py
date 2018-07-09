@@ -569,6 +569,53 @@ class BilinearInitializer(Initializer):
         return op
 
 
+class RemoteInitializer(Initializer):
+    """Implements the remote initializer
+
+    Args:
+        value (float): constant value to initialize the variable
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Constant(value=2.0))
+    """
+
+    def __init__(self, eps=[]):
+        assert eps is not None
+        super(RemoteInitializer, self).__init__()
+        self._endpoints = eps
+        self._op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+        )
+        self._op_role_attr_value = core.op_proto_and_checker_maker.OpRole.RPC
+
+    def __call__(self, var, block):
+        """Add constant initialization ops for a variable
+
+        Args:
+            var: Variable that needs to be initialized
+            block: The block in which initialization ops
+                   should be added
+
+        Returns:
+            the initialization op
+        """
+        assert isinstance(var, framework.Variable)
+        assert isinstance(block, framework.Block)
+        # Initialization Ops should be prepended and not appended
+        op = block.prepend_op(
+            type="recv",
+            inputs={},
+            outputs={"Out": var},
+            attrs={
+                "epmap": self._endpoints,
+                self._op_role_attr_name: self._op_role_attr_value
+            })
+        var.op = op
+        return op
+
+
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
