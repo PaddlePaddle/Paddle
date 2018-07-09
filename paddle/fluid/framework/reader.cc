@@ -36,7 +36,7 @@ void ReaderBase::Start() {
   }
 }
 
-ReaderBase::~ReaderBase() {}
+ReaderBase::~ReaderBase() { Shutdown(); }
 
 }  // namespace framework
 }  // namespace paddle
