@@ -54,7 +54,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void ScoreAssign(const T* dist_data, const Tensor& anchor_to_gt_max,
                    const int row, const int col, const float pos_threshold,
-                   const float neg_threshold, int* target_label_data,
+                   const float neg_threshold, int64_t* target_label_data,
                    std::vector<int>* fg_inds, std::vector<int>* bg_inds) const {
     int fg_offset = fg_inds->size();
     int bg_offset = bg_inds->size();
@@ -101,7 +101,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                        const float neg_threshold, const int rpn_batch_size,
                        const int fg_num, std::minstd_rand engine,
                        std::vector<int>* fg_inds, std::vector<int>* bg_inds,
-                       int* target_label_data) const {
+                       int64_t* target_label_data) const {
     auto* dist_data = dist.data<T>();
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
@@ -150,8 +150,8 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 
     int fg_num = static_cast<int>(rpn_batch_size * fg_fraction);
 
-    int* target_label_data =
-        tgt_lbl->mutable_data<int>({n * col, 1}, context.GetPlace());
+    int64_t* target_label_data =
+        tgt_lbl->mutable_data<int64_t>({n * col, 1}, context.GetPlace());
 
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, int> iset;
@@ -209,16 +209,17 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>(
         "rpn_positive_overlap",
         "Minimum overlap required between an anchor and ground-truth "
-        "box for the (anchor, gt box) pair to be a positive example")
+        "box for the (anchor, gt box) pair to be a positive example.")
         .SetDefault(0.7);
     AddAttr<float>(
         "rpn_negative_overlap",
         "Maximum overlap allowed between an anchor and ground-truth "
-        "box for the (anchor, gt box) pair to be a negative examples")
+        "box for the (anchor, gt box) pair to be a negative examples.")
         .SetDefault(0.3);
-    AddAttr<float>("fg_fraction",
-                   "Target fraction of RoI minibatch that "
-                   "is labeled foreground (i.e. class > 0).")
+    AddAttr<float>(
+        "fg_fraction",
+        "Target fraction of RoI minibatch that "
+        "is labeled foreground (i.e. class > 0), 0-th class is background.")
         .SetDefault(0.25);
     AddAttr<int>("rpn_batch_size_per_im",
                  "Total number of RPN examples per image.")
@@ -227,25 +228,48 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
-                  "unittest or for debug that always the same output units "
-                  "will be dropped.")
+                  "unittest.")
         .SetDefault(false);
     AddAttr<int>("seed", "RpnTargetAssign random seed.").SetDefault(0);
     AddOutput(
         "LocationIndex",
-        "(Tensor), The index of foreground anchors in all rpn anchors, the "
+        "(Tensor), The indexes of foreground anchors in all RPN anchors, the "
         "shape of the LocationIndex is [F], F depends on the value of input "
         "tensor and attributes.");
-    AddOutput("ScoreIndex",
-              "(Tensor), The index of foreground and background anchors in all "
-              "rpn anchors(The rest anchors are ignored). the shape of the "
-              "ScoreIndex is [F + B], F and B depend on the value of input "
-              "tensor and attributes.");
     AddOutput(
-        "TargetLabel",
-        "(Tensor), The target labels of each anchor with shape [K * M, 1], "
-        "K and M is the same as they are in DistMat,");
+        "ScoreIndex",
+        "(Tensor), The indexes of foreground and background anchors in all "
+        "RPN anchors(The rest anchors are ignored). The shape of the "
+        "ScoreIndex is [F + B], F and B depend on the value of input "
+        "tensor and attributes.");
+    AddOutput("TargetLabel",
+              "(Tensor<int64_t>), The target labels of each anchor with shape "
+              "[K * M, 1], "
+              "K and M is the same as they are in DistMat.");
     AddComment(R"DOC(
+This operator can be, for given the IoU between the ground truth bboxes and the anchors, 
+to assign classification and regression targets to each prediction. The Score index and
+LocationIndex will be generated according to the DistMat. The rest anchors would
+not contibute to the RPN training loss
+
+ScoreIndex is composed of foreground anchor indexes and background anchor indexes. LocationIndex
+is exactly same as the foreground anchor indexes since we can not assign regression target to the
+background anchors.
+
+This operator select foreground and background anchors by performing the following steps:
+
+1. We can obtain each anchor's matched ground truth bbox according to the IoU(Anchor, gtBBox)
+
+2. For each anchor:
+
+If Max(IoU(Anchor, GTBBoxes)) > rpn_positive_overlap:
+
+       FgInds[FgNum++] = AnchorId
+
+If Max(IoU(Anchor, GTBBoxes)) < rpn_negative_overlap:
+
+       BgInds[BgNum++] = AnchorId
+
 )DOC");
   }
 };

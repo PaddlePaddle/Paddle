@@ -45,7 +45,7 @@ for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
 
 
-def rpn_target_assign(location,
+def rpn_target_assign(loc,
                       scores,
                       anchor_box,
                       gt_box,
@@ -60,25 +60,40 @@ def rpn_target_assign(location,
     to assign classification and regression targets to each anchors.
 
     Args:
-        location(Variable):
-        scores(Variable):
-        anchor_box(Variable):
-        gt_box(Variable):
-        rpn_batch_size_per_im(int):
-        fg_fraction(float):
-        rpn_positive_overlap(float):
-        rpn_negative_overlap(float):
+        loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax].
+        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
+        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+            each box is represented as [xmin, ymin, xmax, ymax],
+            [xmin, ymin] is the left top coordinate of the anchor box,
+            if the input is image feature map, they are close to the origin
+            of the coordinate system. [xmax, ymax] is the right bottom
+            coordinate of the anchor box.
+        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            bboxes of mini-batch input.
+        rpn_batch_size_per_im(int): Total number of RPN examples per image.
+        fg_fraction(float): Target fraction of RoI minibatch that is labeled foreground (i.e. class > 0), 0-th class is background.
+        rpn_positive_overlap(float): Minimum overlap required between an anchor and ground-truth box for the (anchor, gt box) pair to be a positive example.
+        rpn_negative_overlap(float): Maximum overlap allowed between an anchor and ground-truth box for the (anchor, gt box) pair to be a negative examples.
 
     Returns:
-        predicted_scores(Variable):
-        predicted_location(Variable):
-        filterd_target_label(Variable):
-        filterd_target_bbox(Variable):
+        tuple: 
+               A tuple(predicted_scores, predicted_location, target_label, target_bbox) is returned. 
+               The predicted_scores and predicted_location is the predicted result of the RPN. The target_label and target_bbox is the ground truth, respectively.
+               The predicted_location is a 2D Tensor with shape [F, 4], and the shape of target_bbox is same as the shape of the predicted_location, F is the
+               number of the foreground anchors. The predicted_scores is a 2D Tensor with shape [F + B, 1], and the shape of target_label
+               is same as the shape of the predicted_scores, B is the number of the background anchors, the F and B is depends on the input of this operator. 
 
     Examples:
         .. code-block:: python
 
-        location = layers.data(name='location', shape=[2, 80],
+        loc = layers.data(name='location', shape=[2, 80],
                           append_batch_size=False, dtype='float32')
         scores = layers.data(name='scores', shape=[2, 40],
                           append_batch_size=False, dtype='float32')
@@ -87,7 +102,7 @@ def rpn_target_assign(location,
         gt_box = layers.data(name='gt_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
         loc_pred, score_pred, loc_target, score_target =
-            fluid.layers.detection_output(location=location,
+            fluid.layers.detection_output(loc=location,
                                           scores=scores,
                                           anchor_box=anchor_box,
                                           gt_box=gt_box)
@@ -130,15 +145,15 @@ def rpn_target_assign(location,
 
     # 4. Reshape and gather the target entry
     scores = nn.reshape(x=scores, shape=(-1, 1))
-    location = nn.reshape(x=location, shape=(-1, 4))
+    loc = nn.reshape(x=loc, shape=(-1, 4))
     target_label = nn.reshape(x=target_label, shape=(-1, 1))
     target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
 
     predicted_scores = nn.gather(scores, score_index)
-    predicted_location = nn.gather(location, loc_index)
-    filterd_target_label = nn.gather(target_label, score_index)
-    filterd_target_bbox = nn.gather(target_bbox, loc_index)
-    return predicted_scores, predicted_location, filterd_target_label, filterd_target_bbox
+    predicted_location = nn.gather(loc, loc_index)
+    target_label = nn.gather(target_label, score_index)
+    target_bbox = nn.gather(target_bbox, loc_index)
+    return predicted_scores, predicted_loc, target_label, target_bbox
 
 
 def detection_output(loc,
@@ -485,7 +500,6 @@ def target_assign(input,
 
     Returns:
         tuple: 
-        
                A tuple(out, out_weight) is returned. out is a 3D Tensor with 
                shape [N, P, K], N and P is the same as they are in 
                `neg_indices`, K is the same as it in input of X. If 
