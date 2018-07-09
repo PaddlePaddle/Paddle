@@ -44,6 +44,8 @@ class ReaderBase {
   virtual void StartImpl() = 0;
 
   ReaderStatus status_{kRunning};
+
+  mutable std::mutex mu_;
 };
 
 class DecoratedReader : public ReaderBase {
