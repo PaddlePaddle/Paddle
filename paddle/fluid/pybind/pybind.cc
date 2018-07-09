@@ -679,13 +679,28 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   // -- python binds for ir optimizers.
-  py::class_<OptimizePass> build_strategy(pe, "BuildStrategy");
+  py::enum_<ir_optimizer::OptimizePass>(m, "OptimizePass")
+      .value("SSA", ir_optimizer::OptimizePass::SSA)
+      .value("MULTI_DEV", ir_optimizer::OptimizePass::MULTI_DEV)
+      .value("CONTROL_FLOW", ir_optimizer::OptimizePass::CONTROL_FLOW)
+      .value("DISTRIBUTED_REPLICATED",
+             ir_optimizer::OptimizePass::DISTRIBUTED_REPLICATED)
+      .value("DISTRIBUTED_COLLECTIVE",
+             ir_optimizer::OptimizePass::DISTRIBUTED_COLLECTIVE);
 
-  py::enum_<ir_optimizer::OptimizePass>(OptimizePass, "OptimizePass")
-      .value("CoeffNumDevice",
-             BuildStrategy::GradientScaleStrategy::kCoeffNumDevice)
-      .value("One", BuildStrategy::GradientScaleStrategy::kOne)
-      .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
+  py::class_<ir_optimizer::OptimizeLevel> optlevel(m, "OptimizeLevel");
+
+  py::enum_<ir_optimizer::OptimizeLevel>(optlevel, "OptimizeLevel")
+      .value("NONE", ir_optimizer::OptimizeLevel::NONE)
+      .value("MEM_FIRST", ir_optimizer::OptimizeLevel::MEM_FIRST)
+      .value("PERF_FIRST", ir_optimizer::OptimizeLevel::PERF_FIRST)
+      .value("MULTI_DEV", ir_optimizer::OptimizeLevel::MULTI_DEV)
+      .value("MULTI_NODE", ir_optimizer::OptimizeLevel::MULTI_NODE);
+
+  py::class_<ir_optimizer::IROptimizer> ir_optimizer(m, "IROptimizer");
+
+  ir_optimizer.def(py::init())
+      .def("optimize", &ir_optimizer::IROptimizer::Optimize);
 
   BindRecordIOWriter(&m);
   return m.ptr();

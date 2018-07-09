@@ -14,7 +14,9 @@
 
 import unittest
 import paddle.fluid as fluid
-import paddle.fluid.transpiler.transpiler as transpiler
+import paddle.fluid.core as core
+import paddle.fluid.proto.framework_pb2 as framework_pb2
+
 
 class TestTranspiler(unittest.TestCase):
     def net_conf(self):
@@ -37,13 +39,16 @@ class TestTranspiler(unittest.TestCase):
             self.net_conf()
         origin_prog = main.clone()
 
-        proto = main.proto()
-        t = transpiler.Transpiler(proto)
-        t.build_op_id()
-        t.build_ssa()
-        t.build_multi_dev(self.loss_name, "CUDA", 2)
+        iro = core.IROptimizer()
+        new_desc = iro.optimize(core.OptimizeLevel.NONE, main.desc)
 
-        print(proto)
+        def _desc2str_(desc):
+            protostr = desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+            return proto.__str__()
+
+        print(_desc2str_(new_desc))
+
 
 if __name__ == "__main__":
     unittest.main()
