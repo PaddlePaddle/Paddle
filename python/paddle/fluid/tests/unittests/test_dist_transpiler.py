@@ -32,7 +32,7 @@ class TestDistTranspiler(TranspilerTest):
 
         #for t in pserver.blocks:
         #    print t
-        print "block1:", pserver.blocks[1]
+        #print "block1:", pserver.blocks[1]
         #print "block2:", pserver.blocks[2]
 
         self.assertEqual(len(pserver.blocks), 3)
@@ -55,7 +55,7 @@ class TestDistTranspiler(TranspilerTest):
 
     def test_transpiler(self):
         self.transpiler_with_blocksize(8192)
-        #self.transpiler_with_blocksize(1048576)
+        self.transpiler_with_blocksize(1048576)
 
     def get_expect_trainer_ops(self, min_block_size):
         trainer = fluid.Program()
