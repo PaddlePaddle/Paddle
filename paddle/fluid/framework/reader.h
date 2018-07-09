@@ -25,6 +25,7 @@
 namespace paddle {
 namespace framework {
 
+class DecoratedReader;
 class ReaderBase {
  public:
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
@@ -42,9 +43,9 @@ class ReaderBase {
   // These methods can be only invoked inside DecoratedReader to record the
   // decorating chain.
   void InsertDecoratedReader(
-      const std::shared_ptr<ReaderBase>& decorated_reader);
+      const std::shared_ptr<DecoratedReader>& decorated_reader);
   // A set of which readers that decorated this reader.
-  std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
+  std::vector<std::weak_ptr<DecoratedReader>> decorated_readers_;
   std::mutex decorated_readers_mtx_;
 };
 

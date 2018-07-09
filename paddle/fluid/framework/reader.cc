@@ -20,7 +20,7 @@ namespace framework {
 ReaderBase::~ReaderBase() {}
 
 void ReaderBase::InsertDecoratedReader(
-    const std::shared_ptr<ReaderBase> &decorated_reader) {
+    const std::shared_ptr<DecoratedReader> &decorated_reader) {
   std::lock_guard<std::mutex> guard(decorated_readers_mtx_);
   decorated_readers_.emplace_back(decorated_reader);
 }
