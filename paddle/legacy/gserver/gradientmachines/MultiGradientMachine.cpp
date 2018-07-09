@@ -532,6 +532,7 @@ void TrainerThread::computeThread() {
         break;
     }
   }
+  hl_fini();
 }
 
 void TrainerThread::prefetch() {
@@ -651,6 +652,7 @@ void TrainerThread::copyGradToBufferThread() {
     }
     partnerThread->notifyGradientCollect(pid);
   }
+  hl_fini();
 }
 
 void TrainerThread::gradCollectThread() {
@@ -693,6 +695,7 @@ void TrainerThread::gradCollectThread() {
       notifyCopyGradToBuffer(pid);
     }
   }
+  hl_fini();
 }
 
 void TrainerThread::doCallback(int pid) {
@@ -741,6 +744,7 @@ void TrainerThread::valueDispatchThread() {
 
     thread->notifyValueReady(pid);
   }
+  hl_fini();
 }
 
 void TrainerThread::notifyValueReady(int paramId) {

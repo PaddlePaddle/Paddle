@@ -247,26 +247,3 @@ TEST(OpKernel, multi_inputs) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
 }
-
-class OperatorClone : public paddle::framework::OperatorBase {
- public:
-  DEFINE_OP_CLONE_METHOD(OperatorClone);
-  OperatorClone(const std::string& type,
-                const paddle::framework::VariableNameMap& inputs,
-                const paddle::framework::VariableNameMap& outputs,
-                const paddle::framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const paddle::framework::Scope& scope,
-               const paddle::platform::Place& place) const override {}
-};
-
-TEST(Operator, Clone) {
-  paddle::framework::InitDevices(true);
-  OperatorClone a("ABC", paddle::framework::VariableNameMap{},
-                  paddle::framework::VariableNameMap{},
-                  paddle::framework::AttributeMap{});
-  auto b = a.Clone();
-  ASSERT_EQ(a.Type(), b->Type());
-}
