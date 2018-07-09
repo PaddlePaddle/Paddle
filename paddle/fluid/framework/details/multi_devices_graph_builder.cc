@@ -213,15 +213,6 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         for (auto &var_name : op->OutputArgumentNames()) {
           var_name_on_devices_.emplace(var_name, op_dev_id);
         }
-        // TODO(zcd): Hard code.
-        for (auto &var_name : op->InputArgumentNames()) {
-          PADDLE_ENFORCE(graph->vars_[op_dev_id].count(var_name) > 0, "");
-          auto var_gen_op =
-              graph->vars_[op_dev_id][var_name].back()->generated_op_;
-          if (var_gen_op == nullptr) {
-            var_name_on_devices_.emplace(var_name, op_dev_id);
-          }
-        }
       } else {
         // This op runs on all devices, and its output may have parameter's
         // gradients.
@@ -284,8 +275,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
 #ifdef PADDLE_WITH_CUDA
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
+  bool insert_bcast_for_cpu =
+      !use_gpu && !strategy_.share_parameter_between_cards_;
+  bool insert_bcast_for_gpu = use_gpu;
 
-  if (use_gpu || !(use_gpu || strategy_.share_parameter_between_cards_)) {
+  if (insert_bcast_for_gpu || insert_bcast_for_cpu) {
     // Insert BCast Ops
     for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
       auto &to_bcast_set = bcast_var_name_set[dev_id];

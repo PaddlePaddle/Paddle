@@ -102,8 +102,9 @@ class TestMNIST(TestParallelExecutorBase):
                 MNIST_RECORDIO_FILE, reader, feeder)
 
     def check_simple_fc_convergence(self,
-                                    balance_parameter_opt_between_cards,
-                                    use_cuda=True):
+                                    use_cuda,
+                                    use_reduce=False,
+                                    share_parameter_between_cards=False):
         self.check_network_convergence(simple_fc_net, use_cuda=use_cuda)
         self.check_network_convergence(
             simple_fc_net, use_cuda=use_cuda, allow_op_delay=True)
@@ -115,20 +116,24 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-        )
+            use_reduce=use_reduce,
+            share_parameter_between_cards=share_parameter_between_cards)
 
     def test_simple_fc(self):
-        self.check_simple_fc_convergence(False, use_cuda=True)
-        self.check_simple_fc_convergence(False, use_cuda=False)
+        # use_cuda
+        self.check_simple_fc_convergence(True)
+        self.check_simple_fc_convergence(False)
 
     def test_simple_fc_with_new_strategy(self):
-        self.check_simple_fc_convergence(True, use_cuda=True)
-        self.check_simple_fc_convergence(True, use_cuda=False)
+        # use_cuda, use_reduce, share_parameter_between_cards
+        self.check_simple_fc_convergence(True, True)
+        self.check_simple_fc_convergence(False, True)
+        self.check_simple_fc_convergence(False, True, True)
 
     def check_simple_fc_parallel_accuracy(self,
-                                          balance_parameter_opt_between_cards,
-                                          use_cuda=True):
+                                          use_cuda,
+                                          use_reduce=False,
+                                          share_parameter_between_cards=False):
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -145,8 +150,8 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             use_parallel_executor=True,
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-        )
+            use_reduce=use_reduce,
+            share_parameter_between_cards=share_parameter_between_cards)
 
         for p_f in parallel_first_loss:
             self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
@@ -154,15 +159,19 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy(False, use_cuda=True)
-        self.check_simple_fc_parallel_accuracy(False, use_cuda=False)
+        self.check_simple_fc_parallel_accuracy(True)
+        self.check_simple_fc_parallel_accuracy(False)
 
     def test_simple_fc_parallel_accuracy_with_new_strategy(self):
-        self.check_simple_fc_parallel_accuracy(True, use_cuda=True)
-        self.check_simple_fc_parallel_accuracy(True, use_cuda=False)
+        # use_cuda, use_reduce, share_parameter_between_cards
+        # self.check_simple_fc_parallel_accuracy(True, True)
+        # self.check_simple_fc_parallel_accuracy(False, True)
+        self.check_simple_fc_parallel_accuracy(False, True, True)
 
-    def check_batchnorm_fc_convergence(
-            self, balance_parameter_opt_between_cards, use_cuda):
+    def check_batchnorm_fc_convergence(self,
+                                       use_cuda,
+                                       use_reduce=False,
+                                       share_parameter_between_cards=False):
         self.check_network_convergence(fc_with_batchnorm, use_cuda=use_cuda)
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
@@ -171,16 +180,18 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards
-        )
+            use_reduce=use_reduce,
+            share_parameter_between_cards=share_parameter_between_cards)
 
     def test_batchnorm_fc(self):
-        self.check_batchnorm_fc_convergence(False, use_cuda=True)
-        self.check_batchnorm_fc_convergence(False, use_cuda=False)
+        self.check_batchnorm_fc_convergence(True)
+        self.check_batchnorm_fc_convergence(False)
 
     def test_batchnorm_fc_with_new_strategy(self):
-        self.check_batchnorm_fc_convergence(True, use_cuda=True)
-        self.check_batchnorm_fc_convergence(True, use_cuda=False)
+        # use_cuda, use_reduce, share_parameter_between_cards
+        self.check_batchnorm_fc_convergence(True, True)
+        self.check_batchnorm_fc_convergence(False, True)
+        self.check_batchnorm_fc_convergence(False, True, True)
 
 
 if __name__ == '__main__':
