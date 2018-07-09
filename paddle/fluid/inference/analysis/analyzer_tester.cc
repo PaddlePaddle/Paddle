@@ -19,7 +19,14 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, main) {
+TEST_F(DFG_Tester, analysis_without_tensorrt) {
+  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = false;
+  Analyzer analyser;
+  analyser.Run(&argument);
+}
+
+TEST_F(DFG_Tester, analysis_with_tensorrt) {
+  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = true;
   Analyzer analyser;
   analyser.Run(&argument);
 }

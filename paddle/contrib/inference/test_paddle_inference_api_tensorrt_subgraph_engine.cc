@@ -16,21 +16,36 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/contrib/inference/paddle_inference_api.h"
+#include "paddle/fluid/inference/analysis/analyzer.h"
 
 namespace paddle {
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-void Main(bool use_gpu) {
+
+void CompareTensorRTWithFluid(bool enable_tensorrt) {
+
+  // Turn TensorRT off.
+  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = enable_tensorrt;
+
   //# 1. Create PaddlePredictor with a config.
-  TensorRTConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
-  config.use_gpu = use_gpu;
-  config.fraction_of_gpu_memory = 0.15;
-  config.device = 0;
-  auto predictor =
+  NativeConfig config0;
+  config0.model_dir = FLAGS_dirname;
+  config0.use_gpu = true;
+  config0.fraction_of_gpu_memory = 0.3;
+  config0.device = 0;
+
+  TensorRTConfig config1;
+  config1.model_dir = FLAGS_dirname;
+  config1.use_gpu = true;
+  config1.fraction_of_gpu_memory = 0.3;
+  config1.device = 0;
+
+  auto predictor0 = CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
+  auto predictor1 =
       CreatePaddlePredictor<TensorRTConfig,
-                            PaddleEngineKind::kAutoMixedTensorRT>(config);
+                            PaddleEngineKind::kAutoMixedTensorRT>(config1);
+
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     //# 2. Prepare input.
@@ -45,20 +60,30 @@ void Main(bool use_gpu) {
     std::vector<PaddleTensor> slots(4, tensor);
 
     //# 3. Run
-    std::vector<PaddleTensor> outputs;
-    CHECK(predictor->Run(slots, &outputs));
+    std::vector<PaddleTensor> outputs0;
+    std::vector<PaddleTensor> outputs1;
+    CHECK(predictor0->Run(slots, &outputs0));
+    CHECK(predictor1->Run(slots, &outputs1));
 
     //# 4. Get output.
-    ASSERT_EQ(outputs.size(), 1UL);
-    LOG(INFO) << "output buffer size: " << outputs.front().data.length();
-    const size_t num_elements = outputs.front().data.length() / sizeof(float);
-    // The outputs' buffers are in CPU memory.
-    for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-      LOG(INFO) << static_cast<float*>(outputs.front().data.data())[i];
+    ASSERT_EQ(outputs0.size(), 1UL);
+    ASSERT_EQ(outputs1.size(), 1UL);
+
+    const size_t num_elements = outputs0.front().data.length() / sizeof(float);
+    const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
+    ASSERT_EQ(num_elements, num_elements1);
+
+    auto* data0 = static_cast<float*>(outputs0.front().data.data());
+    auto* data1 = static_cast<float*>(outputs1.front().data.data());
+
+    ASSERT_GT(num_elements, 0UL);
+    for (size_t i = 0; i < num_elements; i++) {
+      EXPECT_NEAR(data0[i], data1[i], 1e-3);
     }
   }
 }
 
-TEST(paddle_inference_api_tensorrt_subgraph_engine, main) { Main(true); }
+//TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) { CompareTensorRTWithFluid(false); }
+TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) { CompareTensorRTWithFluid(true); }
 
 }  // namespace paddle
