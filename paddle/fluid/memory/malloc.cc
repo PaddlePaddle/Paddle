@@ -37,15 +37,15 @@ using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
   static std::once_flag init_flag;
-  static std::unique_ptr<detail::BuddyAllocator> a;
+  static detail::BuddyAllocator* a = nullptr;
 
   std::call_once(init_flag, []() {
-    a.reset(new detail::BuddyAllocator(
+    a = new detail::BuddyAllocator(
         std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
-        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize()));
+        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize());
   });
 
-  return a.get();
+  return a;
 }
 
 template <>
@@ -137,16 +137,16 @@ void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
 
 BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
   static std::once_flag init_flag;
-  static std::unique_ptr<BuddyAllocator> ba;
+  static BuddyAllocator* ba = nullptr;
 
   std::call_once(init_flag, []() {
-    ba.reset(new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                    new detail::CUDAPinnedAllocator),
-                                platform::CUDAPinnedMinChunkSize(),
-                                platform::CUDAPinnedMaxChunkSize()));
+    ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                new detail::CUDAPinnedAllocator),
+                            platform::CUDAPinnedMinChunkSize(),
+                            platform::CUDAPinnedMaxChunkSize());
   });
 
-  return ba.get();
+  return ba;
 }
 
 template <>
