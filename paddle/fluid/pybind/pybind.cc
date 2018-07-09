@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/ir_optimizer/ir_optimizer.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -676,6 +677,15 @@ All parameter, weight, gradient are variables in Paddle.
         pybind11::gil_scoped_release release;
         self.Run(fetch_tensors, fetched_var_name);
       });
+
+  // -- python binds for ir optimizers.
+  py::class_<OptimizePass> build_strategy(pe, "BuildStrategy");
+
+  py::enum_<ir_optimizer::OptimizePass>(OptimizePass, "OptimizePass")
+      .value("CoeffNumDevice",
+             BuildStrategy::GradientScaleStrategy::kCoeffNumDevice)
+      .value("One", BuildStrategy::GradientScaleStrategy::kOne)
+      .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
 
   BindRecordIOWriter(&m);
   return m.ptr();
