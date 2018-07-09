@@ -96,10 +96,7 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
 
 class SqueezeOp : public framework::OperatorBase {
  public:
-  SqueezeOp(const std::string &type, const framework::VariableNameMap &inputs,
-            const framework::VariableNameMap &outputs,
-            const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using OperatorBase::OperatorBase;
 
  private:
   void RunImpl(const framework::Scope &scope,
@@ -171,11 +168,7 @@ class SqueezeGradInferShape : public framework::InferShapeBase {
 
 class SqueezeGradOp : public framework::OperatorBase {
  public:
-  SqueezeGradOp(const std::string &type,
-                const framework::VariableNameMap &inputs,
-                const framework::VariableNameMap &outputs,
-                const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using OperatorBase::OperatorBase;
 
  private:
   void RunImpl(const framework::Scope &scope,
