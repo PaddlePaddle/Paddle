@@ -236,5 +236,8 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_KERNEL(sum, MKLDNN, ::paddle::platform::CPUPlace,
-                   paddle::operators::SumMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL(
+    sum, MKLDNN, ::paddle::platform::CPUPlace,
+    paddle::operators::SumMKLDNNOpKernel<float>,
+    paddle::operators::SumKernel<paddle::platform::CPUDeviceContext, int>,
+    paddle::operators::SumKernel<paddle::platform::CPUDeviceContext, int64_t>);
