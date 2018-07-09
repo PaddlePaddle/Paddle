@@ -213,6 +213,15 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         for (auto &var_name : op->OutputArgumentNames()) {
           var_name_on_devices_.emplace(var_name, op_dev_id);
         }
+        // TODO(zcd): Hard code.
+        for (auto &var_name : op->InputArgumentNames()) {
+          PADDLE_ENFORCE(graph->vars_[op_dev_id].count(var_name) > 0, "");
+          auto var_gen_op =
+              graph->vars_[op_dev_id][var_name].back()->generated_op_;
+          if (var_gen_op == nullptr) {
+            var_name_on_devices_.emplace(var_name, op_dev_id);
+          }
+        }
       } else {
         // This op runs on all devices, and its output may have parameter's
         // gradients.

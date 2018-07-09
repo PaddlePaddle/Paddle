@@ -220,11 +220,6 @@ void ParallelExecutor::BCastParamsToGPUs(
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-#ifdef PADDLE_WITH_CUDA
-        t->Resize(dims);
-        t->mutable_data(cpu, main_tensor.type());
-        paddle::framework::TensorCopy(main_tensor, cpu, t);
-#else
         if (member_->share_parameter_between_cards_) {
           t->ShareDataWith(main_tensor);
         } else {
@@ -232,7 +227,6 @@ void ParallelExecutor::BCastParamsToGPUs(
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
         }
-#endif
       }
     }
   }

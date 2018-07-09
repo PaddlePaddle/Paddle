@@ -47,8 +47,6 @@ class TestParallelExecutorBase(unittest.TestCase):
                 raise ValueError('Unkown type exe')
             return res
 
-        if not use_cuda:
-            balance_parameter_opt_between_cards = True
         main = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = 1  # Fix random seed
