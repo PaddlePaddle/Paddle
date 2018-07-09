@@ -83,7 +83,7 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   }
 }
 
-//TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) { CompareTensorRTWithFluid(false); }
-TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) { CompareTensorRTWithFluid(true); }
+TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) { CompareTensorRTWithFluid(false); }
+//TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) { CompareTensorRTWithFluid(true); }
 
 }  // namespace paddle

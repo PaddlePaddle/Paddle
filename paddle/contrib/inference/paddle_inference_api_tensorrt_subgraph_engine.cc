@@ -64,16 +64,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
       return false;
     }
 
-    // Analyze inference_program
-    Argument argument;
-    argument.origin_program_desc.reset(
-        new ProgramDesc(*inference_program_->Proto()));
-    Singleton<Analyzer>::Global().Run(&argument);
-    CHECK(argument.transformed_program_desc);
-    VLOG(5) << "transformed program:\n"
-            << argument.transformed_program_desc->SerializeAsString();
-    VLOG(5) << "to prepare executor";
-    *inference_program_->Proto() = *argument.transformed_program_desc;
+    OptimizeInferenceProgram();
     ctx_ = executor_->Prepare(*inference_program_, 0);
 
     VLOG(5) << "to create variables";
@@ -84,6 +75,27 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     feed_target_names_ = inference_program_->GetFeedTargetNames();
     fetch_target_names_ = inference_program_->GetFetchTargetNames();
     return true;
+  }
+
+  void OptimizeInferenceProgram() {
+    // Analyze inference_program
+    Argument argument;
+    argument.origin_program_desc.reset(
+        new ProgramDesc(*inference_program_->Proto()));
+    Singleton<Analyzer>::Global().Run(&argument);
+    CHECK(argument.transformed_program_desc);
+    VLOG(5) << "transformed program:\n"
+            << argument.transformed_program_desc->SerializeAsString();
+    VLOG(5) << "to prepare executor";
+    //*inference_program_->Proto() = *argument.transformed_program_desc;
+    inference_program_.reset(new framework::ProgramDesc(*argument.transformed_program_desc));
+
+    // DEBUG
+    LOG(INFO) << "after analysis, infer program: ";
+    auto main_block = inference_program_->Proto()->blocks(0);
+    for (int i = 0; i < main_block.ops_size(); i++) {
+      LOG(INFO) << "op " << main_block.ops(i).type();
+    }
   }
 
  private:

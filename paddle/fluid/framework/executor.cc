@@ -304,6 +304,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
+    LOG(INFO) << "executor creating op " << op_desc->Type();
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
   return ctx;
@@ -337,6 +338,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   for (auto& op : ctx->ops_) {
     VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
+    LOG(INFO) << "Running Op " << op->Type();
     op->Run(*local_scope, place_);
     // NOTE! Please do not delete this line, it's usefull because the debug
     // string before and after op.run are different, after run the output

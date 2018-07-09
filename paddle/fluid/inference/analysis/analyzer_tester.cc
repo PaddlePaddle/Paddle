@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include <google/protobuf/text_format.h>
 
 namespace paddle {
 namespace inference {
@@ -23,6 +24,10 @@ TEST_F(DFG_Tester, analysis_without_tensorrt) {
   FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = false;
   Analyzer analyser;
   analyser.Run(&argument);
+  std::string log;
+  //*dynamic_cast<google::protobuf::Message*>(argument.transformed_program_desc.get());
+  //google::protobuf::TextFormat::PrintToString(, &log);
+  //ASSERT_TRUE(*argument.transformed_program_desc == *argument.origin_program_desc);
 }
 
 TEST_F(DFG_Tester, analysis_with_tensorrt) {

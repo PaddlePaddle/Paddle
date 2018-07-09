@@ -66,6 +66,13 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
         continue;
     }
   }
+
+  LOG(INFO) << "debug";
+  PADDLE_ENFORCE(argument_->transformed_program_desc.get());
+  auto& main_block = argument_->transformed_program_desc->blocks(0);
+  for (int i = 0; i < main_block.ops_size(); i++) {
+    LOG(INFO) << "op:" << main_block.ops(i).type();
+  }
 }
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node* node) {
@@ -100,11 +107,10 @@ void CreateTrtEngineOp(Node* node, const DataFlowGraph& graph,
     io.push_back(x->name());
   }
   desc.SetOutput("Ys", io);
-
   desc.SetType("tensorrt_engine");
   // Set attrs
   SetAttr(desc.Proto(), "subgraph", block.SerializeAsString());
-  SetAttr(desc.Proto(), "engine_unique_key",
+  SetAttr(desc.Proto(), "engine_uniq_key",
           "trt-" + std::to_string(counter++));
   SetAttr(desc.Proto(), "max_batch", 100);  // TODO(Superjomn) add config latter
   SetAttr(desc.Proto(), "max_workspace",

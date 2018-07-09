@@ -48,6 +48,9 @@ struct DataFlowGraph {
   // Output a DOT graph file for debug.
   std::string DotString() const;
 
+  std::string HumanReadableInfo(bool show_values = true,
+                                bool show_functions = true) const;
+
  private:
   // Remove duplicate edges and so on.
   void Clean();
