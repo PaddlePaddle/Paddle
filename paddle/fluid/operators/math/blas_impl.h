@@ -178,7 +178,7 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
     const int lda = M;
     const int ldb = K;
     const int ldc = M;
-    CBlas<T>::SMM_GEMM(&transa, &transb, &M, &N, &K, &alpha, A, &lda, B, &ldb,
+    CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &ldb, A, &lda,
                        &beta, C, &ldc);
   } else {
 #endif

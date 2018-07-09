@@ -82,8 +82,8 @@ void MklSmmCompare(int m, int n, int k) {
     const int lda = m;
     const int ldb = k;
     const int ldc = m;
-    paddle::operators::math::CBlas<T>::SMM_GEMM(&transa, &transb, &m, &n, &k,
-                                                &alpha, A, &lda, B, &ldb, &beta,
+    paddle::operators::math::CBlas<T>::SMM_GEMM(&transa, &transb, &n, &m, &k,
+                                                &alpha, B, &ldb, A, &lda, &beta,
                                                 CSMM, &ldc);
   };
 
