@@ -11,6 +11,20 @@ while ("${PADDLE_VERSION}" STREQUAL "")
     RESULT_VARIABLE GIT_RESULT
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
   if (NOT ${GIT_RESULT})
+    # Get current branch name
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref ${tmp_version}
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_BRANCH_NAME
+      RESULT_VARIABLE GIT_BRANCH_RESULT
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+    # If current branch is develop, then version will be latest
+    if (NOT ${GIT_BRANCH_RESULT})
+      if (${GIT_BRANCH_NAME} MATCHES "develop")
+        set(PADDLE_VERSION "latest")
+        continue()
+      endif()
+    endif()
     # Check the tag is a correct version
     if (${GIT_TAG_NAME} MATCHES "${COMMIT_VERSION_REGEX}")
       # if no tag was found, set PADDLE_VERSION to latest
