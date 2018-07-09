@@ -26,7 +26,7 @@ void ReaderBase::ReadNext(std::vector<LoDTensor> *out) {
 
 void ReaderBase::InsertDecoratedReader(
     const std::shared_ptr<ReaderBase> &decorated_reader) {
-  std::lock_guard<std::mutex> guard(mu_));
+  std::lock_guard<std::mutex> guard(mu_);
   decorated_readers_.emplace_back(decorated_reader);
 }
 

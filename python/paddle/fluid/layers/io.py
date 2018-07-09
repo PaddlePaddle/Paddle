@@ -375,9 +375,6 @@ def open_recordio_file(filename,
     if pass_num > 1:
         main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
 
-    if for_parallel:
-        main_prog_var = parallel(reader=main_prog_var)
-
     return monkey_patch_reader_methods(main_prog_var)
 
 
