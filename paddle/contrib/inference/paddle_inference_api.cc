@@ -23,7 +23,6 @@ int PaddleDtypeSize(PaddleDType dtype) {
     case PaddleDType::INT64:
       return sizeof(int64_t);
     default:
-      //
       assert(false);
       return -1;
   }
