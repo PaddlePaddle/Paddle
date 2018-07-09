@@ -14,19 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <stddef.h>
+
 namespace paddle {
 namespace platform {
-namespace dynload {
 
-void* GetCublasDsoHandle();
-void* GetCUDNNDsoHandle();
-void* GetCUPTIDsoHandle();
-void* GetCurandDsoHandle();
-void* GetWarpCTCDsoHandle();
-void* GetNCCLDsoHandle();
-void* GetTensorRtDsoHandle();
-void* GetMKLMLDsoHandle();
+//! Set the number of threads in use.
+void SetNumThreads(int num_threads);
 
-}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
