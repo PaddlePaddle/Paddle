@@ -318,7 +318,7 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/reyoung/FluidAPISpec/master/API.spec} \
+    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/PaddlePaddle/FluidAPISpec/master/API.spec} \
         > origin.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
     python ${PADDLE_ROOT}/tools/diff_api.py origin.spec new.spec

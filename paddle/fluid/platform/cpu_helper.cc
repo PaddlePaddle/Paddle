@@ -12,21 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
+#endif
 
 namespace paddle {
 namespace platform {
-namespace dynload {
 
-void* GetCublasDsoHandle();
-void* GetCUDNNDsoHandle();
-void* GetCUPTIDsoHandle();
-void* GetCurandDsoHandle();
-void* GetWarpCTCDsoHandle();
-void* GetNCCLDsoHandle();
-void* GetTensorRtDsoHandle();
-void* GetMKLMLDsoHandle();
+void SetNumThreads(int num_threads) {
+#ifdef PADDLE_USE_OPENBLAS
+  int real_num_threads = num_threads > 1 ? num_threads : 1;
+  openblas_set_num_threads(real_num_threads);
+#elif defined(PADDLE_WITH_MKLML)
+  int real_num_threads = num_threads > 1 ? num_threads : 1;
+  platform::dynload::MKL_Set_Num_Threads(real_num_threads);
+#else
+  PADDLE_ENFORCE(false, "To be implemented.");
+#endif
+}
 
-}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

@@ -36,8 +36,6 @@ DEFINE_string(cuda_dir, "",
 
 DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
-DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
-
 DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libcublas, "
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
@@ -186,14 +184,6 @@ void* GetWarpCTCDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
-#endif
-}
-
-void* GetLapackDsoHandle() {
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib");
-#else
-  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so");
 #endif
 }
 
