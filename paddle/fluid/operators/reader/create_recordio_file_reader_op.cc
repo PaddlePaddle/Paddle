@@ -22,8 +22,7 @@ template <bool ThreadSafe>
 class RecordIOFileReader : public framework::FileReader {
  public:
   explicit RecordIOFileReader(const std::string& filename)
-      : FileReader(),
-        scanner_(filename),
+      : scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
             platform::CPUPlace())) {
     if (ThreadSafe) {
@@ -42,7 +41,7 @@ class RecordIOFileReader : public framework::FileReader {
     }
   }
 
-  void ShutdownImpl() override { scanner_.Reset(); }
+  void StartImpl() override { scanner_.Reset(); }
 
  private:
   std::unique_ptr<std::mutex> mutex_;
