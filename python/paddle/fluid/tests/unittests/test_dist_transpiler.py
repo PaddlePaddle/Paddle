@@ -133,11 +133,6 @@ class TestBasicModelWith1048576(TranspilerTest):
 
         trainer = self.get_trainer(min_block_size)
 
-        print "trainer ops:", [op.type for op in trainer.global_block().ops]
-        print "block0 ops:", [op.type for op in pserver.blocks[0].ops]
-        print "block1 ops:", [op.type for op in pserver.blocks[1].ops]
-        print "startup ops:", [op.type for op in startup.global_block().ops]
-
         self.assertEqual([op.type for op in trainer.global_block().ops], [
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
             'fill_constant', 'mean_grad', 'square_grad', 'elementwise_sub_grad',

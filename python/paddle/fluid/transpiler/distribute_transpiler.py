@@ -967,7 +967,6 @@ class DistributeTranspiler(object):
 
         var_mapping = dict()
         for block_str in block_list:
-            print("block_str:", block_str)
             varname, offset, size = block_str.split(":")
             if not block_map.has_key(varname):
                 block_map[varname] = []
@@ -1015,7 +1014,6 @@ class DistributeTranspiler(object):
                 var_mapping[varname].append(var)
             program.global_block().sync_with_cpp()
 
-        print("var_mapping:", var_mapping)
         return var_mapping
 
     def create_splited_vars(self, source_var, block, tag):
