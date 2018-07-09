@@ -345,6 +345,8 @@ void OpDesc::Flush() {
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<proto::AttrType>(attr.second.which() - 1));
+      printf("%s type:%d\n", attr.first.c_str(),
+             static_cast<int>(attr.second.which() - 1));
       SetAttrDescVisitor visitor(attr_desc);
       boost::apply_visitor(visitor, attr.second);
     }

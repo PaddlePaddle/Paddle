@@ -51,7 +51,6 @@ class TranspilerTest(unittest.TestCase):
         with fluid.program_guard(main):
             self.net_conf()
 
-        print main
         return main
 
     def get_trainer(self, min_block_size):

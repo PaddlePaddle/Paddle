@@ -19,21 +19,17 @@ from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 from transpiler_test import TranspilerTest
 
 
-class TestDistTranspiler(TranspilerTest):
+class TestDistTranspiler8192(TranspilerTest):
     def setUp(self):
         self.current_pserver_ep = "127.0.0.1:6174"
+        self.min_block_size = 8192
 
-    def transpiler_with_blocksize(self, min_block_size):
-        trainer = self.get_trainer(min_block_size)
+    def test_transpiler(self):
+        trainer = self.get_trainer(self.min_block_size)
         pserver, startup = self.get_pserver(self.current_pserver_ep,
-                                            min_block_size)
+                                            self.min_block_size)
         self.assertEqual([op.type for op in trainer.global_block().ops],
-                         self.get_expect_trainer_ops(min_block_size))
-
-        #for t in pserver.blocks:
-        #    print t
-        #print "block1:", pserver.blocks[1]
-        #print "block2:", pserver.blocks[2]
+                         self.get_expect_trainer_ops())
 
         self.assertEqual(len(pserver.blocks), 3)
         # block0: listen_and_serv
@@ -45,6 +41,7 @@ class TestDistTranspiler(TranspilerTest):
 
         # confirm startup program
 
+        print "8192 start up program:", startup
         self.assertEqual([op.type for op in startup.global_block().ops], [
             "fill_constant", "fill_constant", "uniform_random", "uniform_random"
         ])
@@ -53,11 +50,58 @@ class TestDistTranspiler(TranspilerTest):
         fc_w_var = startup.global_block().var("fc_w.block1")
         self.assertEqual(fc_w_var.shape, (500, 1000))
 
-    def test_transpiler(self):
-        self.transpiler_with_blocksize(8192)
-        self.transpiler_with_blocksize(1048576)
+    def get_expect_trainer_ops(self):
+        trainer = fluid.Program()
 
-    def get_expect_trainer_ops(self, min_block_size):
+        with fluid.program_guard(trainer):
+            optimize_ops, params_grads = self.net_conf()
+
+        delete_ops(trainer.global_block(), optimize_ops)
+        ops = [op.type for op in trainer.global_block().ops] + [
+            "split_byref", "send", "send_barrier", "recv", "recv",
+            "fetch_barrier", "concat"
+        ]
+        ops.insert(ops.index("elementwise_add_grad") + 1, "send")
+        return ops
+
+
+class TestDistTranspiler1048576(TranspilerTest):
+    def setUp(self):
+        self.current_pserver_ep = "127.0.0.1:6174"
+        self.min_block_size = 1048576
+
+    def test_transpiler_with_blocksize(self):
+        trainer = self.get_trainer(self.min_block_size)
+
+        pserver, startup = self.get_pserver(self.current_pserver_ep,
+                                            self.min_block_size)
+        pserver2, startup2 = self.get_pserver("127.0.0.1:6175",
+                                              self.min_block_size)
+
+        self.assertEqual(len(pserver.blocks), 2)
+
+        print "tainer_ops:", self.get_expect_trainer_ops()
+        self.assertEqual([op.type for op in trainer.global_block().ops],
+                         self.get_expect_trainer_ops())
+
+        # block0: listen_and_serv
+        self.assertEqual([op.type for op in pserver.blocks[0].ops],
+                         ["listen_and_serv"])
+
+        # block2: optimize pass
+        self.assertEqual([op.type for op in pserver.blocks[1].ops],
+                         ["sum", "scale", "sgd"])
+
+        # print "ops:", [op.type for op in startup.global_block().ops]
+        # confirm startup program
+        self.assertEqual([op.type for op in startup.global_block().ops],
+                         ["fill_constant", "fill_constant"])
+
+        # the variable #fc_w will not split into two blocks
+        fc_w_var = startup2.global_block().var("fc_w")
+        self.assertEqual(fc_w_var.shape, (1000L, 1000L))
+
+    def get_expect_trainer_ops(self):
         trainer = fluid.Program()
 
         with fluid.program_guard(trainer):
@@ -65,16 +109,9 @@ class TestDistTranspiler(TranspilerTest):
 
         delete_ops(trainer.global_block(), optimize_ops)
 
-        self.assertTrue((min_block_size == 8192) or (min_block_size == 1048576))
-        if min_block_size == 8192:
-            ops = [op.type for op in trainer.global_block().ops] + [
-                "split_byref", "send", "send_barrier", "recv", "recv",
-                "fetch_barrier", "concat"
-            ]
-        else:
-            ops = [op.type for op in trainer.global_block().ops] + [
-                "send", "send_barrier", "recv", "recv", "fetch_barrier"
-            ]
+        ops = [op.type for op in trainer.global_block().ops] + [
+            "send", "send_barrier", "recv", "recv", "fetch_barrier"
+        ]
 
         ops.insert(ops.index("elementwise_add_grad") + 1, "send")
         return ops
