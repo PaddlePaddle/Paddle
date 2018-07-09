@@ -125,7 +125,7 @@ class TestBasicModel(TranspilerTest):
         self.assertEqual(set(pserver_params), set(trainer_params))
 
 
-class TestBasicModelWith1048576(TranspilerTest):
+class TestBasicModelWithLargeBlockSize(TranspilerTest):
     def test_transpiler(self):
         min_block_size = 1048576
         pserver, startup = self.get_pserver(self.pserver1_ep, min_block_size)
