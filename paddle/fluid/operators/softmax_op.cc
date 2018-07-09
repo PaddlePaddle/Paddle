@@ -49,6 +49,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
@@ -58,6 +61,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
 
@@ -68,9 +72,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                      "float16 can only be used on GPU place");
     }
 
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                   framework::StringToDataLayout(data_format),
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                    library_);
   }
 };
@@ -81,7 +83,8 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
-    AddOutput("Out", "The normalized values with the same shape as X.");
+    AddOutput("Out", "The normalized values with the same shape as X.")
+        .Reuse("X");
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
@@ -142,15 +145,30 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        framework::StringToDataLayout(data_format), library_);
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                     "float16 can only be used on GPU place");
+    }
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                   library_);
   }
 };
 

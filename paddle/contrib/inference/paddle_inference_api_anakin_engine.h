@@ -19,33 +19,42 @@ limitations under the License. */
 
 #pragma once
 
-// NOTE This header file do not have namespace.
-// TODO(Superjomn) Tell Anakin to provide better APIs.
-#include <test/framework/net/paddle_api.h>
 #include "paddle/contrib/inference/paddle_inference_api.h"
+
+// from anakin
+#include "framework/core/net/net.h"
+#include "saber/saber_types.h"
 
 namespace paddle {
 
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
+  PaddleInferenceAnakinPredictor() {}
+
   PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
   // NOTE Unlike the native engine, the buffers of anakin engine's output_data
   // should be allocated first.
-  // TODO(Superjomn) should unify all the behaviors of output_data accross all
-  // the engines.
   bool Run(const std::vector<PaddleTensor>& inputs,
            std::vector<PaddleTensor>* output_data) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
+  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
+  get_executer();
+
+  ~PaddleInferenceAnakinPredictor() override{};
+
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::AnakinEngine<anakin::NV,
+  anakin::graph::Graph<anakin::NV,
                        anakin::saber::AK_FLOAT,
                        anakin::Precision::FP32>
-      engine_;
+      graph_;
+  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+      executor_;
+  AnakinConfig config_;
 };
 
 }  // namespace paddle

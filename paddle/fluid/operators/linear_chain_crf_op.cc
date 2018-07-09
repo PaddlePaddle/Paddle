@@ -67,8 +67,6 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
         "The output is no longer a LoDTensor.");
     AddComment(R"DOC(
-LinearChainCRF Operator.
-
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
 variables. CRF learns the conditional probability $P(Y|X)$, where
@@ -86,6 +84,7 @@ CRF. Please refer to http://www.cs.columbia.edu/~mcollins/fb.pdf and
 http://cseweb.ucsd.edu/~elkan/250Bwinter2012/loglinearCRFs.pdf for details.
 
 Equation:
+
 1. Denote Input(Emission) to this operator as $x$ here.
 2. The first D values of Input(Transition) to this operator are for starting
 weights, denoted as $a$ here.
@@ -108,6 +107,7 @@ Finally, the linear chain CRF operator outputs the logarithm of the conditional
 likelihood of each training sample in a mini-batch.
 
 NOTE:
+
 1. The feature function for a CRF is made up of the emission features and the
 transition features. The emission feature weights are NOT computed in
 this operator. They MUST be computed first before this operator is called.

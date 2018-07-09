@@ -20,7 +20,7 @@ namespace details {
 
 struct ExecutionStrategy {
   size_t num_threads_{0};
-  bool use_event_{true};
+  bool use_cuda_{true};
   bool allow_op_delay_{false};
   size_t num_iteration_per_drop_scope_{100};
 };
