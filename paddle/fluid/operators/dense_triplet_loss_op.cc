@@ -37,19 +37,19 @@ class DenseTripletLossOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N x "
-             "K]. N is the batch_size, "
+             "K]. N is the total number of samples, "
              "and K is the feature length in each sample.");
     AddInput("Label",
              "(Tensor) The ground truth which is a 2-D tensor.  "
              "Label is a Tensor<int64> with shape [N x 1]. ");
     AddOutput("Loss",
               "(Tensor, default: Tensor<float>), A 2-D tensor. The triplet "
-              "loss with shape [batch_size x 1].");
+              "loss with shape [N x 1].");
     AddOutput("LogitsGrad",
               "(Tensor, default: Tensor<float>), A temporary "
               "output Tensor to store the gradients of triplet loss, which is "
               "computed with loss together in one call. It is a 2-D Tensor of "
-              "the shape [batch_size, feature_len].")
+              "the shape [N, feature_len].")
         .AsIntermediate();
     AddAttr<float>("margin", "(float), The min margin between two sample.");
 

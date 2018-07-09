@@ -1768,3 +1768,9 @@ reverse
 ..  autofunction:: paddle.fluid.layers.reverse
     :noindex:
 
+dense_triplet_loss
+-------
+
+..  autofunction:: paddle.fluid.layers.dense_triplet_loss
+    :noindex:
+

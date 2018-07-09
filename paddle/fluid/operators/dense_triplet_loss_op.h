@@ -81,16 +81,16 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
     d_logits->mutable_data<T>(context.GetPlace());
     logits->data<T>();
     auto x_dims = logits->dims();
-    int batch_size = x_dims[0];
+    int num_sample = x_dims[0];
     int feature_len = x_dims[1];
 
     // step 1: get distance matrix
     Tensor distances;
-    distances.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
+    distances.mutable_data<T>({num_sample, num_sample}, context.GetPlace());
     Tensor d_distances;
-    d_distances.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
+    d_distances.mutable_data<T>({num_sample, num_sample}, context.GetPlace());
     Tensor tmp;
-    tmp.mutable_data<T>({batch_size, batch_size}, context.GetPlace());
+    tmp.mutable_data<T>({num_sample, num_sample}, context.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, &d_distances, static_cast<T>(0));
@@ -110,8 +110,8 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
     // a = (x**2).sum_by_row
     auto a = logits_t.square()
                  .sum(DIM1({1}))
-                 .reshape(DIM2({batch_size, 1}))
-                 .broadcast(DIM2({1, batch_size}));
+                 .reshape(DIM2({num_sample, 1}))
+                 .broadcast(DIM2({1, num_sample}));
     // b = a.T
     auto b = a.shuffle(DIM2({1, 0}));
     // d = a + a.T - 2 * x * x.T
@@ -129,10 +129,10 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
         // get loss in current line
         auto p_dis = distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}))
                          .reshape(DIM2{1, pos_num});
-        auto n_dis = distances_t.chip(j, 0).reshape(DIM2({1, batch_size}));
+        auto n_dis = distances_t.chip(j, 0).reshape(DIM2({1, num_sample}));
         auto n_p_sub =
             n_dis.broadcast(DIM2({pos_num, 1})) -
-            p_dis.reshape(DIM2{pos_num, 1}).broadcast(DIM2({1, batch_size}));
+            p_dis.reshape(DIM2{pos_num, 1}).broadcast(DIM2({1, num_sample}));
         auto p_p_sub =
             p_dis.broadcast(DIM2({pos_num, 1})) -
             p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, pos_num}));
@@ -142,7 +142,7 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
         // get gradient of distance matric in current line
         d_distances_t.chip(j, 0).device(place) =
             n_p_sub.unaryExpr(relu_grad).sum(DIM1({0})).reshape(
-                DIM2({1, batch_size}));
+                DIM2({1, num_sample}));
 
         d_distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}))
             .device(place) =
@@ -156,11 +156,11 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
     // get gradient of logits
     tmp_t.device(place) = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
     auto dis_mat =
-        math::CreateMatrixDescriptor({batch_size, batch_size}, 0, false);
+        math::CreateMatrixDescriptor({num_sample, num_sample}, 0, false);
     blas.MatMul(tmp, dis_mat, *logits, x_mat, T(-2), d_logits, T(0));
 
     auto sub_grad = tmp_t.sum(DIM1{1})
-                        .reshape(DIM2({batch_size, 1}))
+                        .reshape(DIM2({num_sample, 1}))
                         .broadcast(DIM2({1, feature_len})) *
                     logits_t * T(2.0);
     auto result = d_logits_t + sub_grad;
@@ -181,10 +181,10 @@ class DenseTripletLossGradKernel : public framework::OpKernel<T> {
     Tensor* d_in = context.Output<Tensor>(framework::GradVarName("Logits"));
     d_in->mutable_data<T>(context.GetPlace());
     auto d_in_dims = d_in->dims();
-    int batch_size = d_in_dims[0];
+    int num_sample = d_in_dims[0];
     int feature_len = d_in_dims[1];
     auto d_logits_t = EigenMatrix<T>::From(*d_logits);
-    auto d_loss_t = EigenMatrix<T>::From(*d_loss, {batch_size, 1});
+    auto d_loss_t = EigenMatrix<T>::From(*d_loss, {num_sample, 1});
     auto d_in_t = EigenMatrix<T>::From(*d_in);
     d_in_t.device(place) =
         d_logits_t * d_loss_t.broadcast(DIM2({1, feature_len}));
