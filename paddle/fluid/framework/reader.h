@@ -39,9 +39,9 @@ class ReaderBase {
  protected:
   virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
 
-  virtual void ShutdownImpl() = 0;
+  virtual void ShutdownImpl() {}
 
-  virtual void StartImpl() = 0;
+  virtual void StartImpl() {}
 
   ReaderStatus status_{kRunning};
 
@@ -63,15 +63,8 @@ class DecoratedReader : public ReaderBase {
   std::shared_ptr<ReaderBase> reader_;
 };
 
-class FileReader : public ReaderBase {
- public:
-  FileReader() : ReaderBase() {}
-
- protected:
-  void ShutdownImpl() override {}
-
-  void StartImpl() override {}
-};
+// FileReader is just a conceptual class.
+class FileReader : public ReaderBase {};
 
 // The ReaderHolder is used as reader' unified wrapper,
 // making it easier to access different type reader in Variables.
