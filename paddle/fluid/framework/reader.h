@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
@@ -24,6 +25,7 @@
 namespace paddle {
 namespace framework {
 
+class DecoratedReader;
 class ReaderBase {
  public:
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
@@ -31,9 +33,24 @@ class ReaderBase {
   virtual void ReInit() = 0;
 
   virtual ~ReaderBase();
+
+  // Return the readers which are the end of decorating chain. Basically
+  // they are readers just before read op.
+  std::unordered_set<ReaderBase*> GetEndPoints();
+
+ private:
+  friend class DecoratedReader;
+  // These methods can be only invoked inside DecoratedReader to record the
+  // decorating chain.
+  void InsertDecoratedReader(
+      const std::shared_ptr<DecoratedReader>& decorated_reader);
+  // A set of which readers that decorated this reader.
+  std::vector<std::weak_ptr<DecoratedReader>> decorated_readers_;
+  std::mutex decorated_readers_mtx_;
 };
 
-class DecoratedReader : public ReaderBase {
+class DecoratedReader : public ReaderBase,
+                        public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
       : ReaderBase(), reader_(reader) {
@@ -41,6 +58,10 @@ class DecoratedReader : public ReaderBase {
   }
 
   void ReInit() override { reader_->ReInit(); }
+
+  void RegisterDecorateChain() {
+    reader_->InsertDecoratedReader(shared_from_this());
+  }
 
  protected:
   std::shared_ptr<ReaderBase> reader_;
@@ -63,9 +84,14 @@ class FileReader : public ReaderBase {
 // making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
-  void Reset(ReaderBase* reader) { reader_.reset(reader); }
+  template <typename T>
+  void Reset(const std::shared_ptr<T>& reader) {
+    auto reader_base = std::dynamic_pointer_cast<ReaderBase>(reader);
+    PADDLE_ENFORCE_NOT_NULL(reader_base);
+    reader_ = reader_base;
+  }
 
-  std::shared_ptr<ReaderBase> Get() const { return reader_; }
+  const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
   void ReadNext(std::vector<LoDTensor>* out) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
@@ -76,9 +102,18 @@ class ReaderHolder {
     reader_->ReInit();
   }
 
+  operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
+
  private:
   std::shared_ptr<ReaderBase> reader_;
 };
+
+template <typename T, typename... ARGS>
+inline std::shared_ptr<DecoratedReader> MakeDecoratedReader(ARGS&&... args) {
+  std::shared_ptr<DecoratedReader> reader(new T(std::forward<ARGS>(args)...));
+  reader->RegisterDecorateChain();
+  return reader;
+}
 
 }  // namespace framework
 }  // namespace paddle

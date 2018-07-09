@@ -86,9 +86,8 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    out->Reset(
-        new ShuffleReader(underlying_reader.Get(),
-                          static_cast<size_t>(Attr<int>("buffer_size"))));
+    out->Reset(framework::MakeDecoratedReader<ShuffleReader>(
+        underlying_reader, static_cast<size_t>(Attr<int>("buffer_size"))));
   }
 };
 

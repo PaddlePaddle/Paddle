@@ -70,7 +70,7 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
 
-    out->Reset(new RecordIOFileReader<true>(
+    out->Reset(std::make_shared<RecordIOFileReader<true>>(
         filename, RestoreShapes(shape_concat, ranks)));
   }
 };
