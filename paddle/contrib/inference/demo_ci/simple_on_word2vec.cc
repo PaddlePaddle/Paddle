@@ -16,21 +16,27 @@ limitations under the License. */
  * This file contains a simple demo for how to take a model for inference.
  */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <memory>
 #include <thread>
-#include "paddle/contrib/inference/paddle_inference_api.h"
+#include "contrib/inference/paddle_inference_api.h"
+#include "paddle/fluid/platform/enforce.h"
+
+DEFINE_string(dirname, "", "Directory of the inference model.");
+DEFINE_bool(use_gpu, false, "Whether use gpu.");
 
 namespace paddle {
 namespace demo {
 
-DEFINE_string(dirname, "", "Directory of the inference model.");
-
 void Main(bool use_gpu) {
   //# 1. Create PaddlePredictor with a config.
   NativeConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  if (FLAGS_dirname.empty()) {
+    LOG(INFO) << "Usage: ./simple_on_word2vec --dirname=path/to/your/model";
+    exit(1);
+  }
+  config.model_dir = FLAGS_dirname;
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
@@ -54,7 +60,7 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    ASSERT_EQ(outputs.size(), 1UL);
+    PADDLE_ENFORCE(outputs.size(), 1UL);
     LOG(INFO) << "output buffer size: " << outputs.front().data.length();
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
@@ -68,7 +74,7 @@ void MainThreads(int num_threads, bool use_gpu) {
   // Multi-threads only support on CPU
   // 0. Create PaddlePredictor with a config.
   NativeConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config.model_dir = FLAGS_dirname;
   config.use_gpu = use_gpu;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
@@ -94,7 +100,7 @@ void MainThreads(int num_threads, bool use_gpu) {
         CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
-        ASSERT_EQ(outputs.size(), 1UL);
+        PADDLE_ENFORCE(outputs.size(), 1UL);
         LOG(INFO) << "TID: " << tid << ", "
                   << "output buffer size: " << outputs.front().data.length();
         const size_t num_elements =
@@ -111,15 +117,19 @@ void MainThreads(int num_threads, bool use_gpu) {
   }
 }
 
-TEST(demo, word2vec_cpu) { Main(false /*use_gpu*/); }
-TEST(demo_multi_threads, word2vec_cpu_1) { MainThreads(1, false /*use_gpu*/); }
-TEST(demo_multi_threads, word2vec_cpu_4) { MainThreads(4, false /*use_gpu*/); }
-
-#ifdef PADDLE_WITH_CUDA
-TEST(demo, word2vec_gpu) { Main(true /*use_gpu*/); }
-TEST(demo_multi_threads, word2vec_gpu_1) { MainThreads(1, true /*use_gpu*/); }
-TEST(demo_multi_threads, word2vec_gpu_4) { MainThreads(4, true /*use_gpu*/); }
-#endif
-
 }  // namespace demo
 }  // namespace paddle
+
+int main(int argc, char** argv) {
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::demo::Main(false /* use_gpu*/);
+  paddle::demo::MainThreads(1, false /* use_gpu*/);
+  paddle::demo::MainThreads(4, false /* use_gpu*/);
+  if (FLAGS_use_gpu) {
+    LOG(INFO) << "use_gpu=true";
+    paddle::demo::Main(true /*use_gpu*/);
+    paddle::demo::MainThreads(1, true /*use_gpu*/);
+    paddle::demo::MainThreads(4, true /*use_gpu*/);
+  }
+  return 0;
+}
