@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
-namespace operators {
+namespace mpi {
 namespace distributed {
 
 class RequestBase;

@@ -28,11 +28,7 @@ limitations under the License. */
 #include <vector>
 
 #include "grpc++/channel.h"
-#include "grpc++/generic/generic_stub.h"
 #include "grpc++/grpc++.h"
-#include "grpc++/support/byte_buffer.h"
-#include "grpc++/support/slice.h"
-#include "grpc/support/log.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -43,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
-namespace operators {
+namespace mpi {
 namespace distributed {
 
 struct VarHandle {
@@ -186,45 +182,37 @@ class CheckpointNotifyProcessor : public BaseProcessor {
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
-class GRPCClient : public RPCClient {
+class MPIClient : public RPCClient {
  public:
-  GRPCClient() {}
-  virtual ~GRPCClient();
+  MPIClient() {}
+  virtual ~MPIClient();
 
   bool AsyncSendVar(const std::string& ep,
                     const platform::DeviceContext& ctx,
                     const framework::Scope& scope,
-                    const std::string& var_name,
-                    int64_t time_out = FLAGS_rpc_deadline) override;
+                    const std::string& var_name) override;
 
   bool AsyncGetVar(const std::string& ep,
                    const platform::DeviceContext& ctx,
                    const framework::Scope& scope,
-                   const std::string& var_name,
-                   int64_t time_out = FLAGS_rpc_deadline) override;
+                   const std::string& var_name) override;
 
   bool AsyncPrefetchVar(const std::string& ep,
                         const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& in_var_name,
-                        const std::string& out_var_name,
-                        int64_t time_out = FLAGS_rpc_deadline) override;
+                        const std::string& out_var_name) override;
 
-  void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
+  void AsyncSendBatchBarrier(const std::string& ep) override;
 
-  void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
+  void AsyncSendFetchBarrier(const std::string& ep) override;
 
-  void AsyncCheckpointNotify(const std::string& ep,
-                             const std::string& dir,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
+  void AsyncCheckpointNotify(
+      const std::string& ep const std::string& dir) override;
 
-  void AsyncSendBeginPass(const std::string& ep,
-                          int64_t time_out = FLAGS_rpc_deadline) override;
+  void AsyncSendBeginPass(const std::string& ep) override;
 
-  void AsyncSendEndPass(const std::string& ep,
-                        int64_t time_out = FLAGS_rpc_deadline) override;
+  void AsyncSendEndPass(const std::string& ep) override;
 
   void Wait() override;
 
@@ -232,19 +220,16 @@ class GRPCClient : public RPCClient {
 
   void SendEndPass() override;
 
- protected:
-  void InitImpl() override;
-
  private:
-  // InitEventLoop should only be called by Init()
-  void InitEventLoop();
+  void GRPCMetaProceed();
 
-  void Proceed();
+  void MPIVarProceed();
 
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
-  grpc::CompletionQueue cq_;
+  framework::BlockingQueue cq_;
+  int mpi_unique_id;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
   std::unique_ptr<std::thread> client_thread_;
 
@@ -255,7 +240,7 @@ class GRPCClient : public RPCClient {
 
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
-  DISABLE_COPY_AND_ASSIGN(GRPCClient);
+  DISABLE_COPY_AND_ASSIGN(MPIClient);
 };
 
 }  // namespace distributed

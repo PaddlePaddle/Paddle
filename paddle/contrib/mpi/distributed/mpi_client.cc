@@ -24,18 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
-namespace operators {
+namespace mpi {
 namespace distributed {
 
-void GRPCClient::InitImpl() { InitEventLoop(); }
-
-void GRPCClient::InitEventLoop() {
-  // start the client process thread
-  // TODO(wuyi): can make this in a threadpool
-  client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
-}
-
-void GRPCClient::SendBeginPass() {
+void MPIClient::SendBeginPass() {
   for (auto& it : channels_) {
     VLOG(3) << "send begin pass to: " << it.first;
     this->AsyncSendBeginPass(it.first);
@@ -43,7 +35,7 @@ void GRPCClient::SendBeginPass() {
   this->Wait();
 }
 
-void GRPCClient::SendEndPass() {
+void MPIClient::SendEndPass() {
   for (auto& it : channels_) {
     VLOG(3) << "send end pass to " << it.first;
     this->AsyncSendEndPass(it.first);
@@ -51,7 +43,7 @@ void GRPCClient::SendEndPass() {
   this->Wait();
 }
 
-GRPCClient::~GRPCClient() {
+MPIClient::~MPIClient() {
   Wait();
   cq_.Shutdown();
   {
@@ -63,11 +55,11 @@ GRPCClient::~GRPCClient() {
   client_thread_->join();
 }
 
-bool GRPCClient::AsyncSendVar(const std::string& ep,
-                              const platform::DeviceContext& ctx,
-                              const framework::Scope& scope,
-                              const std::string& var_name,
-                              int64_t time_out) {
+bool MPIClient::AsyncSendVar(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& var_name,
+                             int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -123,11 +115,11 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-bool GRPCClient::AsyncGetVar(const std::string& ep,
-                             const platform::DeviceContext& ctx,
-                             const framework::Scope& scope,
-                             const std::string& var_name,
-                             int64_t time_out) {
+bool MPIClient::AsyncGetVar(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
@@ -171,12 +163,12 @@ bool GRPCClient::AsyncGetVar(const std::string& ep,
   return true;
 }
 
-bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
-                                  const platform::DeviceContext& ctx,
-                                  const framework::Scope& scope,
-                                  const std::string& in_var_name,
-                                  const std::string& out_var_name,
-                                  int64_t time_out) {
+bool MPIClient::AsyncPrefetchVar(const std::string& ep,
+                                 const platform::DeviceContext& ctx,
+                                 const framework::Scope& scope,
+                                 const std::string& in_var_name,
+                                 const std::string& out_var_name,
+                                 int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
@@ -225,8 +217,7 @@ bool GRPCClient::AsyncPrefetchVar(const std::string& ep,
   return true;
 }
 
-void GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
-                                       int64_t time_out) {
+void MPIClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -239,8 +230,7 @@ void GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   req_count_++;
 }
 
-void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
-                                       int64_t time_out) {
+void MPIClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
   s->Prepare(time_out);
@@ -252,7 +242,7 @@ void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   req_count_++;
 }
 
-void GRPCClient::AsyncSendBeginPass(const std::string& ep, int64_t time_out) {
+void MPIClient::AsyncSendBeginPass(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -265,7 +255,7 @@ void GRPCClient::AsyncSendBeginPass(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
-void GRPCClient::AsyncSendEndPass(const std::string& ep, int64_t time_out) {
+void MPIClient::AsyncSendEndPass(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
@@ -278,9 +268,9 @@ void GRPCClient::AsyncSendEndPass(const std::string& ep, int64_t time_out) {
   req_count_++;
 }
 
-void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                       const std::string& dir,
-                                       int64_t time_out) {
+void MPIClient::AsyncCheckpointNotify(const std::string& ep,
+                                      const std::string& dir,
+                                      int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
@@ -295,12 +285,12 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req_count_++;
 }
 
-void GRPCClient::Wait() {
+void MPIClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
   sync_cond_.wait(lk, [this] { return req_count_ == 0; });
 }
 
-void GRPCClient::Proceed() {
+void MPIClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
@@ -324,7 +314,7 @@ void GRPCClient::Proceed() {
   }
 }
 
-std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
+std::shared_ptr<grpc::Channel> MPIClient::GetChannel(const std::string& ep) {
   std::lock_guard<std::mutex> guard(chan_mutex_);
   auto it = channels_.find(ep);
   if (it != channels_.end()) {

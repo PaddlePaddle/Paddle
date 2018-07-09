@@ -21,7 +21,7 @@ limitations under the License. */
 using ::grpc::ServerAsyncResponseWriter;
 
 namespace paddle {
-namespace operators {
+namespace mpi {
 namespace distributed {
 enum CallStatus { PROCESS = 0, FINISH };
 

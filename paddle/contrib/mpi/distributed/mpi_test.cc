@@ -23,16 +23,15 @@ limitations under the License. */
 #include "safe_queue.h"
 #include "var.h"
 
-using grpc::Status;
-using grpc::ServerContext;
 using grpc::ClientContext;
+using grpc::ServerContext;
+using grpc::Status;
 
-using mpis::RequestContext;
-using mpis::ReplyContext;
 using mpis::MPIService;
+using mpis::ReplyContext;
+using mpis::RequestContext;
 
-/*************************************** CLIENT
- * *******************************************/
+/********************* CLIENT * **************************/
 
 Var geneVar(std::string grpc, std::string name, std::string content, int tag) {
   content = content + std::to_string(tag);
@@ -76,8 +75,7 @@ void RunClient(const int src, const std::string grpc) {
   std::cout << "[MPIClient " << src << "]: send over" << std::endl;
 }
 
-/*************************************** SERVER
- * *******************************************/
+/************************ SERVER *******************************/
 
 struct mpi_receive_log {
   int src;
@@ -208,8 +206,7 @@ void RunServer(int dst) {
   server->Wait();
 }
 
-/*************************************** MAIN
- * *******************************************/
+/************************** MAIN * ****************************/
 int main(int argc, char **argv) {
   int flag = 0;
   int rank = -1;

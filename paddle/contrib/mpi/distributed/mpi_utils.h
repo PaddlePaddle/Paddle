@@ -17,19 +17,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
-namespace contrib {
 namespace mpi {
-void MPIIrecvProcess(const int src,
-                     const int tag,
-                     const platform::DeviceContext& dev_ctx,
-                     framework::Scope* scope,
-                     framework::Variable* var);
+namespace distributed {
+void MPIIrecvProcess(void* var_bytes, int var_length, int src, int tag);
 
-void MPIIsendProcess(const int dest,
-                     const int tag,
-                     const platform::DeviceContext& dev_ctx,
-                     framework::Scope* scope,
-                     framework::Variable* var);
+void MPIIsendProcess(void* var_bytes, int var_length, int dest, int tag);
+
+int SerializeToBytes();
+
+void DeserializeFromBytes();
+}  // namespace distributed
 }  // namespace mpi
-}  // namespace contrib
 }  // namespace paddle
