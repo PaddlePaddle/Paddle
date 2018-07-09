@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -44,7 +43,7 @@ class ReaderBase {
 
   virtual void StartImpl() = 0;
 
-  std::atomic<ReaderStatus> status_{kRunning};
+  ReaderStatus status_{kRunning};
 };
 
 class DecoratedReader : public ReaderBase {

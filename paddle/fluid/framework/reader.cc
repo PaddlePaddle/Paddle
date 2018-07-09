@@ -18,9 +18,7 @@ namespace paddle {
 namespace framework {
 
 void ReaderBase::ReadNext(std::vector<LoDTensor> *out) {
-  if (status_ != ReaderStatus::kRunning) {
-    PADDLE_THROW("The reader is not at the status of 'running'.");
-  }
+  PADDLE_ENFORCE_EQ(status_, ReaderStatus::kRunning);
   ReadNextImpl(out);
 }
 
