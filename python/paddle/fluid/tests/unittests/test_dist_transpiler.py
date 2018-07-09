@@ -52,17 +52,17 @@ class TranspilerTest(unittest.TestCase):
         self.origin_prog = main.clone()
         return main
 
-    def get_trainer(self):
-        t = self._transpiler_instance()
+    def get_trainer(self, min_block_size=8192):
+        t = self._transpiler_instance(min_block_size)
         return t.get_trainer_program()
 
-    def get_pserver(self, ep):
-        t = self._transpiler_instance()
+    def get_pserver(self, ep, min_block_size=8192):
+        t = self._transpiler_instance(min_block_size)
         pserver = t.get_pserver_program(ep)
         startup = t.get_startup_program(ep, pserver)
         return pserver, startup
 
-    def _transpiler_instance(self):
+    def _transpiler_instance(self, min_block_size=8192):
         if not self.transpiler:
             main = self.get_main_program()
             self.transpiler = fluid.DistributeTranspiler()
@@ -72,7 +72,8 @@ class TranspilerTest(unittest.TestCase):
                 pservers=self.pserver_eps,
                 trainers=self.trainers,
                 slice_var_up=self.slice_var_up,
-                sync_mode=self.sync_mode)
+                sync_mode=self.sync_mode,
+                min_block_size=min_block_size)
         return self.transpiler
 
 
@@ -103,6 +104,60 @@ class TestBasicModel(TranspilerTest):
         # the variable #fc_w will be split into two blocks
         fc_w_var = startup.global_block().var("fc_w.block1")
         self.assertEqual(fc_w_var.shape, (500, 1000))
+        # all parameters should be optimized on pserver
+
+        pserver_params = []
+        for prog in [pserver, pserver2]:
+            for blk in prog.blocks:
+                for op in blk.ops:
+                    if "Param" in op.input_names:
+                        param_name = op.input("Param")[0]
+                        is_block_idx = param_name.find(".block")
+                        if is_block_idx != -1:
+                            origin_param_name = param_name[:is_block_idx]
+                        else:
+                            origin_param_name = param_name
+                        pserver_params.append(origin_param_name)
+        trainer_params = []
+        for op in self.origin_prog.global_block().ops:
+            if "Param" in op.input_names:
+                trainer_params.append(op.input("Param")[0])
+        self.assertEqual(set(pserver_params), set(trainer_params))
+
+
+class TestBasicModelWith1048576(TranspilerTest):
+    def test_transpiler(self):
+        min_block_size = 1048576
+        pserver, startup = self.get_pserver(self.pserver1_ep, min_block_size)
+        pserver2, startup2 = self.get_pserver(self.pserver2_ep, min_block_size)
+
+        trainer = self.get_trainer(min_block_size)
+
+        print "trainer ops:", [op.type for op in trainer.global_block().ops]
+        print "block0 ops:", [op.type for op in pserver.blocks[0].ops]
+        print "block1 ops:", [op.type for op in pserver.blocks[1].ops]
+        print "startup ops:", [op.type for op in startup.global_block().ops]
+
+        self.assertEqual([op.type for op in trainer.global_block().ops], [
+            'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
+            'fill_constant', 'mean_grad', 'square_grad', 'elementwise_sub_grad',
+            'elementwise_add_grad', 'send', 'mul_grad', 'send', 'send_barrier',
+            'recv', 'recv', 'fetch_barrier'
+        ])
+
+        self.assertEqual(len(pserver.blocks), 2)
+        # block0: listen_and_serv
+        self.assertEqual([op.type for op in pserver.blocks[0].ops],
+                         ["listen_and_serv"])
+        # block1~2: optimize pass
+        self.assertEqual([op.type for op in pserver.blocks[1].ops],
+                         ["sum", "scale", "sgd"])
+        # confirm startup program
+        self.assertEqual([op.type for op in startup.global_block().ops],
+                         ["fill_constant", "fill_constant", "fill_constant"])
+        # the variable #fc_w will be split into two blocks
+        fc_w_var = startup2.global_block().var("fc_w")
+        self.assertEqual(fc_w_var.shape, (1000L, 1000L))
         # all parameters should be optimized on pserver
 
         pserver_params = []

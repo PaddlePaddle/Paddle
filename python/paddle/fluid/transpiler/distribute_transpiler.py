@@ -63,7 +63,7 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def slice_variable(var_list, slice_count, min_block_size=1048576):
+def slice_variable(var_list, slice_count, min_block_size):
     """
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
@@ -71,10 +71,7 @@ def slice_variable(var_list, slice_count, min_block_size=1048576):
 
     We need to have a minimal block size so that the calculations in
     the parameter server side can gain better performance. By default
-    minimum block size 1024K elements (maybe 16bit or 32bit or 64bit).
-
-    According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-    We can use bandwidth effiently when data size is larger than 2MB.
+    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
 
     Args:
         var_list (list): List of variables.
@@ -155,7 +152,8 @@ class DistributeTranspiler(object):
                   trainers=1,
                   slice_var_up=True,
                   split_method=RoundRobin,
-                  sync_mode=True):
+                  sync_mode=True,
+                  min_block_size=1048576):
         """
         Run the transpiler.
 
@@ -171,6 +169,10 @@ class DistributeTranspiler(object):
             split_method (PSDispatcher): RoundRobin or HashName can be used
                 try to choose the best method to balance loads for pservers.
             sync_mode (bool): Do sync training or not, default is True.
+            min_block_size (int): Minimum splitted element number in block.
+                According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+                We can use bandwidth effiently when data size is larger than 2MB.If you 
+                want to change it, please be sure you see the slice_variable function.
         """
         assert (split_method.__bases__[0] == PSDispatcher)
         if program is None:
@@ -180,6 +182,7 @@ class DistributeTranspiler(object):
         self.sync_mode = sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
+        self.min_block_size = min_block_size
         self.pserver_endpoints = pserver_endpoints
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
@@ -660,14 +663,17 @@ class DistributeTranspiler(object):
         if slice_var_up:
             # when we slice var up into blocks, we will slice the var according to
             # pserver services' count. A pserver may have two or more listening ports.
-            grad_blocks = slice_variable(grad_list, len(self.pserver_endpoints))
+            grad_blocks = slice_variable(grad_list,
+                                         len(self.pserver_endpoints),
+                                         self.min_block_size)
             param_blocks = slice_variable(param_list,
-                                          len(self.pserver_endpoints))
+                                          len(self.pserver_endpoints),
+                                          self.min_block_size)
         else:
             # when we do NOT slice var up into blocks, we will always slice params
             # grads into one block.
-            grad_blocks = slice_variable(grad_list, 1)
-            param_blocks = slice_variable(param_list, 1)
+            grad_blocks = slice_variable(grad_list, 1, self.min_block_size)
+            param_blocks = slice_variable(param_list, 1, self.min_block_size)
         assert (len(grad_blocks) == len(param_blocks))
 
         # origin_varname -> [splited_var]
@@ -961,6 +967,7 @@ class DistributeTranspiler(object):
 
         var_mapping = dict()
         for block_str in block_list:
+            print("block_str:", block_str)
             varname, offset, size = block_str.split(":")
             if not block_map.has_key(varname):
                 block_map[varname] = []
@@ -1007,6 +1014,8 @@ class DistributeTranspiler(object):
                     shape=splited_shape)  # flattend splited var
                 var_mapping[varname].append(var)
             program.global_block().sync_with_cpp()
+
+        print("var_mapping:", var_mapping)
         return var_mapping
 
     def create_splited_vars(self, source_var, block, tag):
