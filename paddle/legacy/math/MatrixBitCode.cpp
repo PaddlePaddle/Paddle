@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "Matrix.h"
 #include "hl_gpu.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

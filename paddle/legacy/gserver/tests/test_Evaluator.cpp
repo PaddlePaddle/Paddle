@@ -15,8 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/legacy/trainer/Trainer.h"
 #include "paddle/testing/TestUtil.h"
-#include "paddle/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

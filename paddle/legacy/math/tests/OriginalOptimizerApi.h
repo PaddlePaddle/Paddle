@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/legacy/math/Vector.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/legacy/utils/GlobalConstants.h"
 
 using namespace paddle;  // NOLINT
 

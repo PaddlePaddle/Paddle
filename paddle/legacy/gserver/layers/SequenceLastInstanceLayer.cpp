@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 #include "SequencePoolLayer.h"
 #include "paddle/legacy/math/Matrix.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 namespace paddle {
 

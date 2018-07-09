@@ -19,7 +19,7 @@ limitations under the License. */
 #include "MKLDNNBase.h"
 #include "mkldnn.hpp"
 #include "paddle/legacy/math/MKLDNNMatrix.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/Stat.h"
 
 DECLARE_bool(use_mkldnn);
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "hl_base.h"
 #include "hl_device_functions.cuh"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 __global__ void KeMaxSequenceForward(real* input,
                                      const int* sequence,

@@ -46,9 +46,14 @@ class Executor {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   /*
-   * Sending signal to pserver to mark current trainer stop.
+   * Sending signal to pserver to mark current pass started.
    */
-  void Complete();
+  void BeginPass();
+
+  /*
+   * Sending signal to pserver to mark current pass finished.
+   */
+  void EndPass();
 #endif
 
   /* @Brief

@@ -16,8 +16,8 @@ limitations under the License. */
 #include <sys/time.h>
 #include "hl_cuda.h"
 #include "hl_thread.ph"
-#include "paddle/utils/DynamicLoader.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/DynamicLoader.h"
+#include "paddle/legacy/utils/Logging.h"
 
 namespace dynload {
 
