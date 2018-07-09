@@ -104,7 +104,13 @@ class ReaderHolder {
   }
 
   void ResetAll() {
-    // TODO(fengjiayi): The interface of reseting all.
+    auto end_readers = reader_->GetEndPoints();
+    for (auto* reader : end_readers) {
+      reader->Shutdown();
+    }
+    for (auto* reader : end_readers) {
+      reader->Start();
+    }
   }
 
   void Shutdown() {
