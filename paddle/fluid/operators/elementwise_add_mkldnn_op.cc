@@ -156,7 +156,7 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
       in->set_format(out->format());
     };
 
-    if (x->dims() == y->dims()) {
+    if (dx->dims() == dy->dims()) {
       auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
       if (dx) {
         blas.VCOPY(dout->numel(), dout->data<T>(),
