@@ -529,9 +529,6 @@ def open_files(filenames,
         main_prog_reader = multi_pass(
             reader=main_prog_reader, pass_num=pass_num)
 
-    if for_parallel:
-        main_prog_reader = parallel(reader=main_prog_reader)
-
     return monkey_patch_reader_methods(main_prog_reader)
 
 
@@ -645,11 +642,6 @@ def double_buffer(reader, place=None, name=None):
 def multi_pass(reader, pass_num):
     return __create_shared_decorated_reader__(
         'create_multi_pass_reader', reader, {'pass_num': int(pass_num)})
-
-
-def parallel(reader):
-    return __create_shared_decorated_reader__('create_threaded_reader', reader,
-                                              {})
 
 
 def read_file(reader):

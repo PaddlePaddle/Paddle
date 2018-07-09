@@ -18,11 +18,13 @@ namespace paddle {
 namespace framework {
 
 void ReaderBase::ReadNext(std::vector<LoDTensor> *out) {
+  std::lock_guard<std::mutex> lock(mu_);
   PADDLE_ENFORCE_EQ(status_, ReaderStatus::kRunning);
   ReadNextImpl(out);
 }
 
 void ReaderBase::Shutdown() {
+  std::lock_guard<std::mutex> lock(mu_);
   if (status_ != ReaderStatus::kStopped) {
     ShutdownImpl();
     status_ = ReaderStatus::kStopped;
@@ -30,6 +32,7 @@ void ReaderBase::Shutdown() {
 }
 
 void ReaderBase::Start() {
+  std::lock_guard<std::mutex> lock(mu_);
   if (status_ != ReaderStatus::kRunning) {
     StartImpl();
     status_ = ReaderStatus::kRunning;
