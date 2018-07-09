@@ -419,6 +419,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(iou)
         print(str(program))
 
+    def test_argsort(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+            self.assertIsNotNone(out)
+            self.assertIsNotNone(ids)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
