@@ -66,6 +66,14 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
         self.new_shape = (1, 3, 2, 1, 1, 5)
 
 
+# Correct: Reversed axes.
+class TestUnsqueezeOp4(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (3, 1, 1)
+        self.new_shape = (3, 1, 1, 2, 5, 1)
+
+
 # Correct: Inplace.
 class TestUnsqueezeOpInplace1(TestUnsqueezeOp):
     def init_test_case(self):
