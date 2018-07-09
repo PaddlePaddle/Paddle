@@ -301,12 +301,6 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   return q;
 }
 
-void BRPCClient::SendComplete() {
-  for (auto& it : channels_) {
-    this->AsyncSendComplete(it.first);
-  }
-}
-
 void BRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
   AsyncSendMessage(ep, COMPLETE_MESSAGE, time_out);
 }

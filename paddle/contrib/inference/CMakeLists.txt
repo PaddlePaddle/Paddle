@@ -45,9 +45,14 @@ cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
+# Here the shared library doesn't depend on other fluid libraries, or double free will occur.
 cc_library(paddle_inference_api_shared SHARED
-    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+    SRCS paddle_inference_api.cc paddle_inference_api_impl.cc)
+set_target_properties(paddle_inference_api_shared PROPERTIES OUTPUT_NAME paddle_inference_api)
+if(NOT APPLE)
+  set(LINK_FLAGS "-fPIC -fvisibility=hidden")
+  set_target_properties(paddle_inference_api_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+endif()
 
 cc_test(test_paddle_inference_api
         SRCS test_paddle_inference_api.cc

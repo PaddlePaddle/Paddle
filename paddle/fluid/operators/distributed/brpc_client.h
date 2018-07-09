@@ -84,8 +84,6 @@ class BRPCClient : public RPCClient {
 
   void Wait() override;
 
-  void SendComplete() override;
-
  private:
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);

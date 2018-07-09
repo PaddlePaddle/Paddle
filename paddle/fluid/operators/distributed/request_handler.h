@@ -37,11 +37,14 @@ constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
+constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
+#define BEGIN_PASS_MESSAGE "BEGIN_PASS@RECV"
+#define END_PASS_MESSAGE "END_PASS@RECV"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"

@@ -15,11 +15,11 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <paddle/legacy/gserver/gradientmachines/GradientMachine.h>
 #include <paddle/legacy/parameter/ParameterUpdateFunctions.h>
-#include <paddle/trainer/Trainer.h>
-#include <paddle/trainer/TrainerInternal.h>
-#include <paddle/utils/PythonUtil.h>
-#include <paddle/utils/Util.h>
-#include <paddle/utils/Version.h>
+#include <paddle/legacy/trainer/Trainer.h>
+#include <paddle/legacy/trainer/TrainerInternal.h>
+#include <paddle/legacy/utils/PythonUtil.h>
+#include <paddle/legacy/utils/Util.h>
+#include <paddle/legacy/utils/Version.h>
 
 DECLARE_int32(seed);
 

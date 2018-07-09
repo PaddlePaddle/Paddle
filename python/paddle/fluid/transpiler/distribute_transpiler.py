@@ -315,10 +315,10 @@ class DistributeTranspiler(object):
     def get_pserver_program(self, endpoint):
         """
         Get parameter server side program.
-        
+
         Args:
             endpoint (str): current parameter server endpoint.
-        
+
         Returns:
             Program: the program for current parameter server to run.
         """
@@ -461,6 +461,8 @@ class DistributeTranspiler(object):
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
+        # dedup grad to ids list
+        grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
             opt_state_block = pserver_program.create_block(
@@ -520,7 +522,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): call get_pserver_program first and
                 pass the result here.
-        
+
         Returns:
             Program: parameter server side startup program.
         """
@@ -556,10 +558,10 @@ class DistributeTranspiler(object):
                     op_on_pserver = True
                     new_outputs[key] = pserver_vars[op.output(key)[0]]
 
-            # most startup program ops have no inputs
-            new_inputs = self._get_input_map_from_op(pserver_vars, op)
-
             if op_on_pserver:
+                # most startup program ops have no inputs
+                new_inputs = self._get_input_map_from_op(pserver_vars, op)
+
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
@@ -970,8 +972,6 @@ class DistributeTranspiler(object):
             if not block_map.has_key(varname):
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
-        # Do not remove this important debug message:
-        print("block map: %s" % block_map)
 
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
@@ -1413,6 +1413,16 @@ class DistributeTranspiler(object):
                     break
         return lr_ops
 
+    def _is_opt_role_op(self, op):
+        # NOTE: depend on oprole to find out whether this op is for
+        # optimize
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attrs and \
+            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
+
     def _get_optimize_pass(self):
         """
         Get optimizer operators, paramters and gradients from origin_program
@@ -1425,10 +1435,7 @@ class DistributeTranspiler(object):
         params_grads = []
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
-            # NOTE(Yancey1989): we can not use op role to distinguish an optimizer op
-            # or not, because all ops in optimizer sub-graph would
-            # sign the optimizer op role
-            if self._is_optimizer_op(op):
+            if self._is_opt_role_op(op):
                 opt_ops.append(op)
                 # HACK(wuyi): if we find grad vars from input of optimize
                 # ops, we may get the output of clip op. Use syntax "@GRAD"

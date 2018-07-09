@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/legacy/cuda/include/hl_base.h"
 #include "paddle/legacy/cuda/include/hl_sparse.ph"
 #include "paddle/legacy/cuda/include/hl_top_k.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 // using namespace hppl;
 

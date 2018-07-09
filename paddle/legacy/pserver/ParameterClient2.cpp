@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "ParameterClient2.h"
 #include "paddle/legacy/math/SparseRowMatrix.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/StringUtil.h"
 
 DEFINE_string(pservers, "127.0.0.1", "Comma separated addresses of pservers");
 DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");

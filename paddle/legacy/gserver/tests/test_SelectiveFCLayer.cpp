@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <math.h>
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/legacy/utils/PythonUtil.h>
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>

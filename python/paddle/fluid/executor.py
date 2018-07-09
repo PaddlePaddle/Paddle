@@ -348,6 +348,12 @@ class Executor(object):
         ]
         return outs
 
+    def begin_pass(self):
+        self.executor.begin_pass()
+
+    def end_pass(self):
+        self.executor.end_pass()
+
     def run(self,
             program=None,
             feed=None,
