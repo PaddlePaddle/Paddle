@@ -44,8 +44,8 @@ class UnsqueezeOpInferShape : public framework::InferShapeBase {
 
   static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
                                         const framework::DDim &in_dims) {
-    int output_size = in_dims.size() + unsqz_dims.size();
-    int cur_output_size = in_dims.size();
+    int output_size = static_cast<int>(in_dims.size() + unsqz_dims.size());
+    int cur_output_size = static_cast<int>(in_dims.size());
     std::vector<int64_t> output_shape(output_size, 0);
 
     // Validity Check: rank range.
