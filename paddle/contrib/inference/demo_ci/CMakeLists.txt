@@ -11,9 +11,9 @@ if(NOT DEFINED DEMO_NAME)
   message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
 endif()
 
-option(WITH_MKLDNN     "Compile PaddlePaddle with MKLDNN"                                   OFF)
-option(WITH_MKL        "Compile PaddlePaddle with MKL support, default use openblas."       ON)
-option(WITH_GPU        "Compile PaddlePaddle with GPU, default use CPU."                    OFF)
+option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
+option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
+option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 
 if(WITH_GPU)
   set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
@@ -52,17 +52,21 @@ else()
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.a)
 endif()
 
-set(ARCHIVE_START "-Wl,--whole-archive")
-set(ARCHIVE_END "-Wl,--no-whole-archive")
+if(WITH_STATIC_LIB)
+  set(DEPS
+      "-Wl,--whole-archive"
+      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a
+      "-Wl,--no-whole-archive"
+      ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.a)
+else()
+  set(DEPS
+      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so
+      ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.so)
+endif()
 set(EXTERNAL_LIB "-lrt -ldl -lpthread")
 
-set(DEPS
-    ${ARCHIVE_START}
-    ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a
-    ${ARCHIVE_END}
-    ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.a
-    ${MATH_LIB}
-    ${MKLDNN_LIB}
+set(DEPS ${DEPS}
+    ${MATH_LIB} ${MKLDNN_LIB}
     glog gflags protobuf snappystream snappy z
     ${EXTERNAL_LIB})
 if(WITH_GPU)

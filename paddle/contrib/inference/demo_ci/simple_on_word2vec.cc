@@ -61,11 +61,15 @@ void Main(bool use_gpu) {
 
     //# 4. Get output.
     PADDLE_ENFORCE(outputs.size(), 1UL);
-    LOG(INFO) << "output buffer size: " << outputs.front().data.length();
+    // Check the output buffer size and result of each tid.
+    PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+    float result[5] = {
+        0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-      LOG(INFO) << static_cast<float*>(outputs.front().data.data())[i];
+      PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
+                     result[i]);
     }
   }
 }
@@ -101,13 +105,16 @@ void MainThreads(int num_threads, bool use_gpu) {
 
         // 4. Get output.
         PADDLE_ENFORCE(outputs.size(), 1UL);
-        LOG(INFO) << "TID: " << tid << ", "
-                  << "output buffer size: " << outputs.front().data.length();
+        // Check the output buffer size and result of each tid.
+        PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+        float result[5] = {
+            0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
         const size_t num_elements =
             outputs.front().data.length() / sizeof(float);
         // The outputs' buffers are in CPU memory.
         for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-          LOG(INFO) << static_cast<float*>(outputs.front().data.data())[i];
+          PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
+                         result[i]);
         }
       }
     });
@@ -126,7 +133,6 @@ int main(int argc, char** argv) {
   paddle::demo::MainThreads(1, false /* use_gpu*/);
   paddle::demo::MainThreads(4, false /* use_gpu*/);
   if (FLAGS_use_gpu) {
-    LOG(INFO) << "use_gpu=true";
     paddle::demo::Main(true /*use_gpu*/);
     paddle::demo::MainThreads(1, true /*use_gpu*/);
     paddle::demo::MainThreads(4, true /*use_gpu*/);
