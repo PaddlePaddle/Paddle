@@ -1,16 +1,13 @@
 from setuptools import setup, Distribution, Extension
 import subprocess
-import shutil
 import os
+import re
+import shutil
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
 
-MAJOR   = 0
-MINOR   = 14
-PATCH   = 0
 RC      = 0
-ISTAGED = False
 
 
 
@@ -22,14 +19,47 @@ def git_commit():
         git_commit = 'Unknown'
     return git_commit
 
+def _get_version_detail(idx):
+    assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
+        so detail index must less than 3"
+
+    if re.match('@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
+        version_details = '@PADDLE_VERSION@'.split('.')
+
+        if len(version_details) == 3:
+            return version_details[idx]
+
+    return 0
+
+def get_major():
+    return int(_get_version_detail(0))
+
+def get_minor():
+    return int(_get_version_detail(1))
+
+def get_patch():
+    return str(_get_version_detail(2))
+
+def is_taged():
+    try:
+        cmd = ['git', 'describe', '--exact-match', '--tags']
+        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+    except:
+        return False
+
+    if git_tag.replace('v', '') == '@PADDLE_VERSION@':
+        return True
+    else:
+        return False
+
 def write_version_py(filename='paddle/version.py'):
     cnt = '''
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version    = '%(major)d.%(minor)d.%(patch)d'
+full_version    = '%(major)d.%(minor)d.%(patch)s'
 major           = '%(major)d'
 minor           = '%(minor)d'
-patch           = '%(patch)d'
+patch           = '%(patch)s'
 rc              = '%(rc)d'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
@@ -51,13 +81,13 @@ def mkl():
     commit = git_commit()
     with open(filename, 'w') as f:
         f.write(cnt % {
-            'major': MAJOR,
-            'minor': MINOR,
-            'patch': PATCH,
+            'major': get_major(),
+            'minor': get_minor(),
+            'patch': get_patch(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'commit': commit,
-            'istaged': ISTAGED,
+            'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
