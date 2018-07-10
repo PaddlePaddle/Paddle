@@ -52,3 +52,4 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SE
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
 set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 180)
+set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 180)
