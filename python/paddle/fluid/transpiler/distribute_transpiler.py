@@ -300,8 +300,6 @@ class DistributeTranspiler(object):
         Returns:
             Program: trainer side program.
         """
-        # remove optimize ops and add a send op to main_program
-        # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
         return self.origin_program
@@ -380,7 +378,7 @@ class DistributeTranspiler(object):
         # HACK: optimization global ops only used to scale beta1 and beta2
         # replace it with dependency engine.
         for op in self.optimize_ops:
-            if self._is_adam_connected_op(op):
+            if self._is_post_optimize_op(op):
                 global_ops.append(op)
 
         def __append_optimize_op__(op, block, grad_to_block_id, merged_var,
@@ -1369,6 +1367,15 @@ class DistributeTranspiler(object):
         return iomap
 
     def _get_lr_ops(self):
+        pre_optimize = core.op_proto_and_checker_maker.OpRole.PreOptimize
+        lr_ops = []
+        for op in self.optimize_ops:
+            if RPC_OP_ROLE_ATTR_NAME in op.attrs and \
+                int(op.attrs[RPC_OP_ROLE_ATTR_NAME]) == int(pre_optimize):
+                lr_ops.append(op)
+        return lr_ops
+
+    def _get_lr_ops_deprecated(self):
         lr_ops = []
         # find learning rate variables by optimize op
         lr_vars = set()
@@ -1406,9 +1413,14 @@ class DistributeTranspiler(object):
         # optimize
         op_maker = core.op_proto_and_checker_maker
         optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
+        pre_optimize_role = core.op_proto_and_checker_maker.OpRole.PreOptimize
+        post_optimize_role = core.op_proto_and_checker_maker.OpRole.PostOptimize
+        if op_maker.kOpRoleAttrName() in op.attrs:
+            role = int(op.attrs[op_maker.kOpRoleAttrName()])
+            if role == int(optimize_role) or \
+                role == int(pre_optimize_role) or \
+                role == int(post_optimize_role):
+                return True
         return False
 
     def _get_optimize_pass(self):
@@ -1436,20 +1448,19 @@ class DistributeTranspiler(object):
                             origin_var_dict[param_name],
                             origin_var_dict[input_name]
                         ])
-            elif self._is_adam_connected_op(op):
+            elif self._is_post_optimize_op(op):
                 opt_ops.append(op)
             else:
                 pass
         return opt_ops, params_grads
 
-    def _is_adam_connected_op(self, op):
+    def _is_post_optimize_op(self, op):
         """
         A hack function to determinate whether the input operator
         is connected to optimize operator.
         """
-        if op.type == "scale":
-            for in_name in op.input_arg_names:
-                if in_name.startswith("beta1_pow_acc") or \
-                        in_name.startswith("beta2_pow_acc"):
-                    return True
+        post_optimize = core.op_proto_and_checker_maker.OpRole.PostOptimize
+        if RPC_OP_ROLE_ATTR_NAME in op.attrs and \
+            int(op.attrs[RPC_OP_ROLE_ATTR_NAME]) == int(post_optimize):
+            return True
         return False

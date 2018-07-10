@@ -236,7 +236,7 @@ class TestL2Decay(TranspilerTest):
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+        sgd_optimizer = fluid.optimizer.Adam(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
         return
 
@@ -244,12 +244,12 @@ class TestL2Decay(TranspilerTest):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
-        self.assertEqual(len(pserver.blocks), 3)
+        self.assertEqual(len(pserver.blocks), 4)
         self.assertEqual([op.type for op in pserver.blocks[1].ops],
-                         ["sum", "scale", "clip", "sgd"])
+                         ["sum", "scale", "clip", "adam"])
         self.assertEqual(
             [op.type for op in pserver.blocks[2].ops],
-            ["sum", "scale", "clip", "scale", "elementwise_add", "sgd"])
+            ["sum", "scale", "clip", "scale", "elementwise_add", "adam"])
         # TODO(typhoonzero): test clipping and L2Decay ops are removed from trainer
 
 

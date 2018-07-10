@@ -106,7 +106,6 @@ class Optimizer(object):
         param_lr = param.optimize_attr['learning_rate']
         if type(param_lr) == Variable:
             # param learning rate has been updated (LARS)
-            print("returns updated param lr ", param_lr)
             return param_lr
         else:
             if param_lr == 1.0:
@@ -235,8 +234,8 @@ class Optimizer(object):
                         optimize_ops.append(optimize_op)
 
             # Get custom finish ops for subclasses
-            # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block)
+            with program.post_optimize_guard():
+                self._finish_update(loss.block)
 
             end = len(global_block.ops)
             return global_block.slice_ops(start, end)
