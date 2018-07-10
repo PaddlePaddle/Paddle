@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
 
 namespace paddle {
 namespace operators {
