@@ -39,7 +39,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
         cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
       });                                                                  \
       EnforceCUDNNLoaded(#__name);                                         \
-      void* p_##__name = dlsym(cudnn_dso_handle, #__name);                 \
+      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);          \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);            \
     }                                                                      \
   };                                                                       \

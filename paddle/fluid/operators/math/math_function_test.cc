@@ -77,6 +77,8 @@ TEST(math_function, gemm_trans_clbas) {
   paddle::platform::CPUDeviceContext context(*cpu_place);
   GetBlas<float>(context).GEMM(false, true, m, n, k, 1, input1_ptr, 3,
                                input2_ptr + 3, 3, 1, input3_ptr + 1, 4);
+  delete cpu_place;
+  cpu_place = NULL;
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);

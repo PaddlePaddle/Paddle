@@ -37,7 +37,9 @@ struct ReduceLoDTensor {
     PADDLE_ENFORCE_NE(t0.numel(), 0);
     dst_tensor_.Resize(t0.dims());
     T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
-    std::copy(t0.data<T>(), t0.data<T>() + t0.numel(), dst);
+    if (dst != t0.data<T>()) {
+      std::copy(t0.data<T>(), t0.data<T>() + t0.numel(), dst);
+    }
 
     for (size_t i = 1; i < src_tensors_.size(); ++i) {
       auto &t = *src_tensors_[i];
@@ -52,8 +54,7 @@ struct ReduceLoDTensor {
 inline void GatherSelectedRows(
     const std::vector<const SelectedRows *> &src_selecte_rows_,
     const std::vector<platform::Place> &in_places,
-    const std::unordered_map<platform::Place, platform::DeviceContext *,
-                             platform::PlaceHash> &dev_ctxes,
+    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     const platform::Place &out_place, SelectedRows *dst_selecte_rows) {
   PADDLE_ENFORCE(!src_selecte_rows_.empty());
 

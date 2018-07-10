@@ -14,8 +14,12 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -40,15 +44,32 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class ElementwiseOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc& op_desc,
                   framework::BlockDesc* block) const override {
-    auto x_var = op_desc.Input("X")[0];
-    auto out_var = op_desc.Output("Out")[0];
-    block->Var(out_var)->SetType(block->Var(x_var)->GetType());
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    auto& x = block->FindRecursiveOrCreateVar(x_name);
+    auto& out = block->FindRecursiveOrCreateVar(out_name);
+    out.SetType(x.GetType());
   }
 };
 
@@ -57,47 +78,50 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() final {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-    AddOutput("Out", "The output of elementwise op.");
+    AddOutput("Out", "The output of elementwise op.").Reuse("X");
     AddAttr<int>("axis",
                  "(int, default -1). The start dimension index "
                  "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
+    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
-Limited Elementwise %s Operator.
+Limited Elementwise %s Operator
 
 The equation is:
 
 $$%s$$
 
-$X$ is a tensor of any dimension and the dimensions of tensor $Y$ must be
-smaller than or equal to the dimensions of $X$.
+- $X$: a tensor of any dimension. 
+- $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
 There are two cases for this operator:
-1. The shape of $Y$ is same with $X$;
-2. The shape of $Y$ is a congiguous subsequencet of $X$. The trailing dimensions
-   of size 1 for $Y$ will be ignored for the consideration of subsequence.
 
+1. The shape of $Y$ is the same with $X$.
+2. The shape of $Y$ is a continuous subsequence of $X$.
 
 For case 2:
 
-$Y$ will be broadcasted to match the shape of $X$ and axis should be
-set to index of the start dimension to broadcast $Y$ onto $X$.
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index 
+   for broadcasting $Y$ onto $X$. 
+2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
+3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of 
+   subsequence, such as shape(Y) = (2, 1) => (2).
 
-If axis is -1, it is treated as axis=rank(X)-rank(Y).
+For example:
 
-For example
   .. code-block:: python
 
     shape(X) = (2, 3, 4, 5), shape(Y) = (,)
     shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
-    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
     shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
     shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
     shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
-Either of the inputs $X$ and $Y$ or none can carry the LoD (Level of Details)
-information. However, the output only shares the LoD information with input $X$.
+The inputs $X$ and $Y$ can carry the different LoD information. 
+But the output only shares the LoD information with the input $X$.
 
 )DOC",
                                GetName(), GetEquation()));
@@ -134,6 +158,21 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(y_grad_name)) {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 }  // namespace operators

@@ -38,3 +38,11 @@ inference_test(recommender_system)
 #inference_test(rnn_encoder_decoder)
 #inference_test(understand_sentiment ARGS conv)
 inference_test(word2vec)
+
+# This is an unly work around to make this test run
+# TODO(TJ): clean me up
+cc_test(test_inference_nlp
+  SRCS test_inference_nlp.cc
+  DEPS paddle_fluid
+  ARGS
+  --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)

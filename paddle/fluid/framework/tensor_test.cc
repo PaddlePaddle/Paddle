@@ -209,7 +209,7 @@ TEST(Tensor, ReshapeToMatrix) {
 
 TEST(Tensor, Layout) {
   framework::Tensor src;
-  ASSERT_EQ(src.layout(), framework::DataLayout::kNHWC);
+  ASSERT_EQ(src.layout(), framework::DataLayout::kNCHW);
   src.set_layout(framework::DataLayout::kAnyLayout);
   ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
 }

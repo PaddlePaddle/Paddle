@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
@@ -36,7 +36,7 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(bool use_event);
+  void Run(bool use_cuda);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
@@ -70,7 +70,17 @@ class OpHandleBase {
 
   const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
 
+  size_t NoDupInputSize() const {
+    std::unordered_set<VarHandleBase *> res;
+    for (auto *var : inputs_) {
+      res.emplace(var);
+    }
+    return res.size();
+  }
+
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  size_t NoDummyInputSize() const;
 
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
@@ -82,9 +92,7 @@ class OpHandleBase {
 
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
-  std::unordered_map<platform::Place, platform::DeviceContext *,
-                     platform::PlaceHash>
-      dev_ctxes_;
+  std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

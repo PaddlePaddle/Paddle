@@ -23,7 +23,8 @@ namespace reader {
 
 class ShuffleReader : public framework::DecoratedReader {
  public:
-  ShuffleReader(ReaderBase* reader, size_t buffer_size, size_t seed = 0)
+  ShuffleReader(const std::shared_ptr<ReaderBase>& reader, size_t buffer_size,
+                size_t seed = 0)
       : DecoratedReader(reader), buffer_size_(buffer_size), seed_(seed) {
     VLOG(10) << "Create shuffle reader of " << reader_;
     if (seed_ == 0) {
@@ -33,7 +34,7 @@ class ShuffleReader : public framework::DecoratedReader {
     ReloadBuffer();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     out->clear();
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
@@ -46,6 +47,17 @@ class ShuffleReader : public framework::DecoratedReader {
   }
 
  private:
+  void ShutdownImpl() override {
+    buffer_.clear();
+    iteration_pos_ = 0;
+    reader_->Shutdown();
+  }
+
+  void StartImpl() override {
+    reader_->Start();
+    ReloadBuffer();
+  }
+
   void ReloadBuffer() {
     buffer_.clear();
     buffer_.reserve(buffer_size_);
@@ -85,9 +97,8 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    out->Reset(
-        new ShuffleReader(underlying_reader.Get(),
-                          static_cast<size_t>(Attr<int>("buffer_size"))));
+    out->Reset(framework::MakeDecoratedReader<ShuffleReader>(
+        underlying_reader, static_cast<size_t>(Attr<int>("buffer_size"))));
   }
 };
 

@@ -45,7 +45,8 @@ IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
 ELSE()
     MESSAGE(FATAL_ERROR "Should enable MKLML when build MKLDNN")
 ENDIF()
-SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-unused-result")
+SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result")
+SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
 SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
 SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
 ExternalProject_Add(
@@ -53,11 +54,9 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
-    GIT_TAG             "v0.14"
+    GIT_TAG             "a29d8487a63afca3d5b8c5bbdbb473cf8ccc6e51"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
-    # Patch MKLDNN to compile with gcc 4.8, the related issue is in intel/mkl-dnn#237.
-    PATCH_COMMAND       ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/patches/mkldnn.hpp ${MKLDNN_SOURCES_DIR}/src/extern_mkldnn/include/mkldnn.hpp
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
     CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}

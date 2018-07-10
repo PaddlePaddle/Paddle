@@ -21,8 +21,11 @@ from op_test import OpTest
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
     in_n, in_c, in_d, in_h, in_w = input_.shape
-    f_c, out_c, f_d, f_h, f_w = filter_.shape
+    f_c, f_out_c, f_d, f_h, f_w = filter_.shape
+    groups = attrs['groups']
     assert in_c == f_c
+    out_c = f_out_c * groups
+    sub_in_c = in_c / groups
 
     stride, pad, dilations = attrs['strides'], attrs['paddings'], attrs[
         'dilations']
@@ -39,18 +42,23 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
         for d in range(in_d):
             for i in range(in_h):
                 for j in range(in_w):
-                    input_masked = input_[n, :, d, i, j]  # (c)
-                    input_masked = np.reshape(input_masked, (in_c, 1, 1, 1))
-                    input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
+                    for g in range(groups):
+                        input_masked = input_[n, g * sub_in_c:(g + 1
+                                                               ) * sub_in_c, d,
+                                              i, j]  # (c)
+                        input_masked = np.reshape(input_masked,
+                                                  (sub_in_c, 1, 1, 1))
+                        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
 
-                    for k in range(out_c):
-                        tmp_out = np.sum(input_masked * filter_[:, k, :, :, :],
-                                         axis=0)
-                        d1, d2 = d * stride[0], d * stride[0] + d_bolck_d
-                        i1, i2 = i * stride[1], i * stride[1] + d_bolck_h
-                        j1, j2 = j * stride[2], j * stride[2] + d_bolck_w
-                        out[n, k, d1:d2:dilations[0], i1:i2:dilations[1], j1:j2:
-                            dilations[2]] += tmp_out
+                        for k in range(f_out_c):
+                            tmp_out = np.sum(input_masked * filter_[
+                                g * sub_in_c:(g + 1) * sub_in_c, k, :, :, :],
+                                             axis=0)
+                            d1, d2 = d * stride[0], d * stride[0] + d_bolck_d
+                            i1, i2 = i * stride[1], i * stride[1] + d_bolck_h
+                            j1, j2 = j * stride[2], j * stride[2] + d_bolck_w
+                            out[n, g * f_out_c + k, d1:d2:dilations[0], i1:i2:
+                                dilations[1], j1:j2:dilations[2]] += tmp_out
 
     out = out[:, :, pad[0]:out_d - pad[0], pad[1]:out_h - pad[1], pad[2]:out_w -
               pad[2]]
@@ -72,6 +80,7 @@ class TestConv3dTransposeOp(OpTest):
             'strides': self.stride,
             'paddings': self.pad,
             'dilations': self.dilations,
+            'groups': self.groups,
             'use_cudnn': self.use_cudnn,
             'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
@@ -134,6 +143,7 @@ class TestConv3dTransposeOp(OpTest):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
+        self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
@@ -147,9 +157,21 @@ class TestWithPad(TestConv3dTransposeOp):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
+        self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
+
+
+class TestWithGroups(TestConv3dTransposeOp):
+    def init_test_case(self):
+        self.pad = [1, 1, 1]
+        self.stride = [1, 1, 1]
+        self.dilations = [1, 1, 1]
+        self.groups = 2
+        self.input_size = [2, 4, 5, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 3, 3, 3, 3]
 
 
 class TestWithStride(TestConv3dTransposeOp):
@@ -157,6 +179,7 @@ class TestWithStride(TestConv3dTransposeOp):
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
+        self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
@@ -167,6 +190,7 @@ class TestWithDilation(TestConv3dTransposeOp):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [2, 2, 2]
+        self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
@@ -184,6 +208,7 @@ class TestCUDNNWithPad(TestWithPad):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
+        self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
@@ -198,9 +223,25 @@ class TestCUDNNWithStride(TestWithStride):
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
+        self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
+
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv3d_transpose"
+
+
+class TestCUDNNWithGroups(TestWithGroups):
+    def init_test_case(self):
+        self.pad = [1, 1, 1]
+        self.stride = [1, 1, 1]
+        self.dilations = [1, 1, 1]
+        self.groups = 2
+        self.input_size = [2, 4, 5, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 3, 3, 3, 3]
 
     def init_op_type(self):
         self.use_cudnn = True

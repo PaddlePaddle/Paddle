@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -34,7 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -117,6 +118,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<int64_t>)
       .def("set", PyCPUTensorSetFromArray<bool>)
       .def("set", PyCPUTensorSetFromArray<uint16_t>)
+      .def("set", PyCPUTensorSetFromArray<uint8_t>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
@@ -124,12 +126,14 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<int64_t>)
       .def("set", PyCUDATensorSetFromArray<bool>)
       .def("set", PyCUDATensorSetFromArray<uint16_t>)
+      .def("set", PyCUDATensorSetFromArray<uint8_t>)
       .def("set", PyCUDAPinnedTensorSetFromArray<float>)
       .def("set", PyCUDAPinnedTensorSetFromArray<int>)
       .def("set", PyCUDAPinnedTensorSetFromArray<double>)
       .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>)
       .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
       .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
@@ -141,28 +145,75 @@ PYBIND11_PLUGIN(core) {
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
-      .def(
-          "__init__",
-          [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-            LoD new_lod;
-            new_lod.reserve(lod.size());
-            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-            new (&instance) LoDTensor(new_lod);
-          })
+      .def("__init__",
+           [](LoDTensor &instance, const std::vector<std::vector<size_t>>
+                                       &recursive_sequence_lengths) {
+             LoD new_lod;
+             new_lod.reserve(recursive_sequence_lengths.size());
+             std::copy(recursive_sequence_lengths.begin(),
+                       recursive_sequence_lengths.end(),
+                       std::back_inserter(new_lod));
+             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+             PADDLE_ENFORCE(
+                 CheckLoD(new_offset_lod, -1),
+                 "the provided recursive_sequence_lengths info is invalid");
+             new (&instance) LoDTensor(new_offset_lod);
+           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
+      // We implement offset based LOD in C++ while we use length based with
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // avoid misuse.
+      // The discussion is here:
+      // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+             // the input lod is offset-based level-of-detail info
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             PADDLE_ENFORCE(CheckLoD(new_lod, vectorize(self.dims()).front()),
+                            "the provided lod info is invalid");
              self.set_lod(new_lod);
            })
-      .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-        auto lod = self.lod();
-        std::vector<std::vector<size_t>> new_lod;
-        new_lod.reserve(lod.size());
-        std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-        return new_lod;
+      .def("set_recursive_sequence_lengths",
+           [](LoDTensor &self, const std::vector<std::vector<size_t>>
+                                   &recursive_sequence_lengths) {
+             // the input recursive_sequence_lengths is length-based
+             // level-of-detail info
+             LoD new_lod;
+             new_lod.reserve(recursive_sequence_lengths.size());
+             std::copy(recursive_sequence_lengths.begin(),
+                       recursive_sequence_lengths.end(),
+                       std::back_inserter(new_lod));
+             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+             PADDLE_ENFORCE(
+                 CheckLoD(new_offset_lod, vectorize(self.dims()).front()),
+                 "the provided recursive_sequence_lengths info is invalid");
+             self.set_lod(new_offset_lod);
+           })
+      .def("lod",
+           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+             // output the offset-based lod info
+             LoD lod = self.lod();
+             std::vector<std::vector<size_t>> new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return new_lod;
+           })
+      // Set above comments of set_lod.
+      .def("recursive_sequence_lengths",
+           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+             // output the length-based lod info
+             LoD lod = ConvertToLengthBasedLoD(self.lod());
+             std::vector<std::vector<size_t>> new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             return new_lod;
+           })
+      .def("has_valid_recursive_sequence_lengths", [](LoDTensor &self) -> bool {
+        // Check that the lod info is valid and match the outermost
+        // dimension of the LoDTensor data
+        return CheckLoD(self.lod(), vectorize(self.dims()).front());
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -245,7 +296,38 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("reset", &framework::ReaderHolder::ReInit);
+      .def("reset", &framework::ReaderHolder::ResetAll);
+
+  using LoDTensorBlockingQueue =
+      ::paddle::operators::reader::LoDTensorBlockingQueue;
+  using LoDTensorBlockingQueueHolder =
+      ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
+      .def("push",
+           [](LoDTensorBlockingQueue &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             pybind11::gil_scoped_release release;
+             return self.Push(lod_tensor_vec);
+           })
+      .def("size", &LoDTensorBlockingQueue::Size)
+      .def("capacity", &LoDTensorBlockingQueue::Cap)
+      .def("close", &LoDTensorBlockingQueue::Close)
+      .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
+
+  m.def("init_lod_tensor_blocking_queue",
+        [](Variable &var, size_t capacity,
+           const std::vector<std::vector<int64_t>> &shapes)
+            -> LoDTensorBlockingQueue * {
+              std::vector<DDim> dims(shapes.size());
+              std::transform(shapes.begin(), shapes.end(), dims.begin(),
+                             [](const std::vector<int64_t> &shape) {
+                               return make_ddim(shape);
+                             });
+              auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
+              holder->InitOnce(capacity, dims);
+              return holder->GetQueue().get();
+            },
+        py::return_value_policy::reference);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -410,9 +492,15 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-      .def("run",
-           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
-               Executor::Run);
+#ifdef PADDLE_WITH_DISTRIBUTE
+      .def("begin_pass", &Executor::BeginPass)
+      .def("end_pass", &Executor::EndPass)
+#endif
+      .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
+                     int block_id, bool create_local_scope, bool create_vars) {
+        pybind11::gil_scoped_release release;
+        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+      });
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -492,6 +580,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
+  m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
 
   // -- python binds for parallel executor.
@@ -505,16 +594,24 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_threads_ = num_threads;
           })
       .def_property(
-          "use_event",
-          [](const ExecutionStrategy &self) { return self.use_event_; },
-          [](ExecutionStrategy &self, bool use_event) {
-            self.use_event_ = use_event;
+          "use_cuda",
+          [](const ExecutionStrategy &self) { return self.use_cuda_; },
+          [](ExecutionStrategy &self, bool use_cuda) {
+            self.use_cuda_ = use_cuda;
           })
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
+          })
+      .def_property(
+          "num_iteration_per_drop_scope",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_drop_scope_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
+            self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
           });
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
 
@@ -541,7 +638,17 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
             self.gradient_scale_ = strategy;
-          });
+          })
+      .def_property(
+          "debug_graphviz_path",
+          [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
+          [](BuildStrategy &self, const std::string &path) {
+            self.debug_graphviz_path_ = path;
+          })
+      .def_property(
+          "enable_data_balance",
+          [](const BuildStrategy &self) { return self.enable_data_balance_; },
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -563,7 +670,12 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
-      .def("run", &ParallelExecutor::Run);
+      .def("run", [](ParallelExecutor &self,
+                     const std::vector<std::string> &fetch_tensors,
+                     const std::string &fetched_var_name) {
+        pybind11::gil_scoped_release release;
+        self.Run(fetch_tensors, fetched_var_name);
+      });
 
   BindRecordIOWriter(&m);
   return m.ptr();

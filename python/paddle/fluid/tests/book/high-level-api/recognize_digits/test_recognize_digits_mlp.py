@@ -44,35 +44,32 @@ def train_program():
     return [avg_cost, acc]
 
 
-def train(use_cuda, train_program, save_dirname):
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
+def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer=optimizer)
+        train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
-            test_metrics = trainer.test(
+            avg_cost, acc = trainer.test(
                 reader=test_reader, feed_order=['img', 'label'])
-            avg_cost_set = test_metrics[0]
-            acc_set = test_metrics[1]
-
-            # get test acc and loss
-            acc = numpy.array(acc_set).mean()
-            avg_cost = numpy.array(avg_cost_set).mean()
 
             print("avg_cost: %s" % avg_cost)
             print("acc     : %s" % acc)
 
-            if float(acc) > 0.2:  # Smaller value to increase CI speed
-                trainer.save_params(save_dirname)
+            if acc > 0.2:  # Smaller value to increase CI speed
+                trainer.save_params(params_dirname)
             else:
                 print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
-                    event.epoch + 1, float(avg_cost), float(acc)))
-                if math.isnan(float(avg_cost)):
+                    event.epoch + 1, avg_cost, acc))
+                if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
 
     train_reader = paddle.batch(
@@ -87,11 +84,11 @@ def train(use_cuda, train_program, save_dirname):
         feed_order=['img', 'label'])
 
 
-def infer(use_cuda, inference_program, save_dirname=None):
+def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=save_dirname, place=place)
+        infer_func=inference_program, param_path=params_dirname, place=place)
 
     batch_size = 1
     tensor_img = numpy.random.uniform(-1.0, 1.0,
@@ -103,17 +100,17 @@ def infer(use_cuda, inference_program, save_dirname=None):
 
 
 def main(use_cuda):
-    save_dirname = "recognize_digits_mlp.inference.model"
+    params_dirname = "recognize_digits_mlp.inference.model"
 
     # call train() with is_local argument to run distributed train
     train(
         use_cuda=use_cuda,
         train_program=train_program,
-        save_dirname=save_dirname)
+        params_dirname=params_dirname)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
-        save_dirname=save_dirname)
+        params_dirname=params_dirname)
 
 
 if __name__ == '__main__':

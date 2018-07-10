@@ -15,6 +15,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
 #include <vector>
@@ -40,6 +41,11 @@ inline ncclDataType_t ToNCCLDataType(std::type_index type) {
   }
 }
 
+// NOTE(minqiyang): according to the ncclGroupEnd documentations:
+// https://docs.nvidia.com/deeplearning/sdk/nccl-api/ncclapidoc.html,
+// ncclGroupEnd will wait for all communicators to be initialized, which will
+// cause blocking problem when a runtime_error was thrown, so try only guard
+// NCCL actions when use it.
 class NCCLGroupGuard {
  public:
   static std::mutex &NCCLMutex() {

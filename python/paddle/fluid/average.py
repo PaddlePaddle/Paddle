@@ -36,6 +36,25 @@ def _is_number_or_matrix_(var):
 
 
 class WeightedAverage(object):
+    """
+    Calculate weighted average.
+
+    The average calculating is accomplished via Python totally. 
+    They do not change Paddle's Program, nor do anything to
+    modify NN model's configuration. They are completely 
+    wrappers of Python functions.
+
+    Examples:
+        .. code-block:: python
+            avg = fluid.average.WeightedAverage()
+            avg.add(value=2.0, weight=1)
+            avg.add(value=4.0, weight=2)
+            avg.eval()
+
+            # The result is 3.333333333.
+            # For (2.0 * 1 + 4.0 * 2) / (1 + 2) = 3.333333333
+    """
+
     def __init__(self):
         warnings.warn(
             "The %s is deprecated, please use fluid.metrics.Accuracy instead." %

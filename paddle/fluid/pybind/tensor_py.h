@@ -97,7 +97,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
   auto buffer_info =
       details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
-                                  platform::float16>()(tensor);
+                                  uint8_t, platform::float16>()(tensor);
   return buffer_info;
 }
 
@@ -146,7 +146,7 @@ void PyCPUTensorSetFromArray(
 template <>
 // This following specialization maps uint16_t in the parameter type to
 // platform::float16.
-void PyCPUTensorSetFromArray(
+inline void PyCPUTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<uint16_t,
                       pybind11::array::c_style | pybind11::array::forcecast>
@@ -185,7 +185,7 @@ void PyCUDATensorSetFromArray(
 template <>
 // This following specialization maps uint16_t in the parameter type to
 // platform::float16.
-void PyCUDATensorSetFromArray(
+inline void PyCUDATensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<uint16_t,
                       pybind11::array::c_style | pybind11::array::forcecast>
@@ -224,7 +224,7 @@ void PyCUDAPinnedTensorSetFromArray(
 template <>
 // This following specialization maps uint16_t in the parameter type to
 // platform::float16.
-void PyCUDAPinnedTensorSetFromArray(
+inline void PyCUDAPinnedTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<uint16_t,
                       pybind11::array::c_style | pybind11::array::forcecast>

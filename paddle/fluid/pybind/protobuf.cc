@@ -238,6 +238,7 @@ void BindVarDsec(pybind11::module *m) {
 
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)
+      .value("UINT8", pd::proto::VarType::UINT8)
       .value("INT16", pd::proto::VarType::INT16)
       .value("INT32", pd::proto::VarType::INT32)
       .value("INT64", pd::proto::VarType::INT64)
@@ -267,7 +268,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
-      .value("BLOCK", pd::proto::AttrType::BLOCK);
+      .value("BLOCK", pd::proto::AttrType::BLOCK)
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -292,6 +294,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_attr", &pd::OpDesc::SetAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
+      .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
            [](pd::OpDesc &self, const std::string &name,
               const pybind11::bytes &seriralized) {
