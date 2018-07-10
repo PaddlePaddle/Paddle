@@ -15,25 +15,31 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/inference/analysis/analyzer.h"
+#include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-FluidToDataFlowGraphPass::FluidToDataFlowGraphPass() {}
-
-bool FluidToDataFlowGraphPass::Initialize() { return Pass::Initialize(); }
-
-bool FluidToDataFlowGraphPass::Initialize(
-    const framework::proto::ProgramDesc &desc) {
-  desc_ = &desc;
+bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
+  PADDLE_ENFORCE(argument);
+  if (!argument->main_dfg) {
+    LOG(INFO) << "Init DFG";
+    argument->main_dfg.reset(new DataFlowGraph);
+  }
+  desc_ = argument->origin_program_desc.get();
   return true;
 }
 
-bool FluidToDataFlowGraphPass::Finalize() { return Pass::Finalize(); }
+bool FluidToDataFlowGraphPass::Finalize() { return true; }
 
 void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
+  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE(desc_);
   // insert vars
   std::unordered_map<std::string, size_t> var2id;
   auto &main_block = desc_->blocks(framework::kRootBlockIndex);
@@ -41,7 +47,8 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     const auto &var = main_block.vars(i);
     auto *v = graph->nodes.Create(Node::Type::kValue);
     v->SetName(var.name());
-    v->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&var)));
+    v->SetPbDesc(const_cast<void *>(static_cast<const void *>(&var)));
+    v->SetPbMsg(var.SerializeAsString());
     var2id[var.name()] = v->id();
   }
   for (int i = 0; i < main_block.ops_size(); i++) {
@@ -51,7 +58,9 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     static_cast<Function *>(o)->SetFuncType(op.type());
     // Link to the original protobuf message's memory, make it easier to
     // generate from a data flow graph to fluid ProgramDesc.
-    o->SetExtraInfo(const_cast<void *>(static_cast<const void *>(&op)));
+    o->SetPbDesc(const_cast<void *>(static_cast<const void *>(&op)));
+    o->SetPbMsg(op.SerializeAsString());
+
     // set inputs and outputs
     // TODO(Superjomn) make sure the InputNames is the real variable name.
     for (int j = 0; j < op.inputs_size(); j++) {
@@ -75,9 +84,20 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
   graph->Build();
 }
 
-Pass *FluidToDataFlowGraphPass::CreatePrinterPass(
-    std::ostream &os, const std::string &banner) const {
-  return nullptr;
+namespace {
+class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
+ public:
+  using Config = DFG_GraphvizDrawPass::Config;
+  explicit DFG_DebuggerPass(const Config &config)
+      : DFG_GraphvizDrawPass(config) {}
+  std::string repr() const override { return "fluid-to-dfg-debuger-pass"; }
+  bool Finalize() override { return true; }
+};
+}
+
+Pass *FluidToDataFlowGraphPass::CreateGraphvizDebugerPass() const {
+  return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
+      FLAGS_inference_analysis_graphviz_log_root, "fluid-to-dfg-debuger"));
 }
 
 }  // namespace analysis

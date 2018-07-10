@@ -33,12 +33,13 @@ class CustomReader : public framework::DecoratedReader {
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
  private:
   const framework::ProgramDesc program_;
   int sub_block_id_;
   framework::Executor exe_;
+  framework::Scope scope_;
 
   std::vector<std::string> source_var_names_;
   std::vector<std::string> sink_var_names_;
@@ -59,10 +60,10 @@ class CreateCustomReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    out->Reset(
-        new CustomReader(underlying_reader.Get(), *sub_block,
-                         Attr<std::vector<std::string>>("source_var_names"),
-                         Attr<std::vector<std::string>>("sink_var_names")));
+    out->Reset(framework::MakeDecoratedReader<CustomReader>(
+        underlying_reader, *sub_block,
+        Attr<std::vector<std::string>>("source_var_names"),
+        Attr<std::vector<std::string>>("sink_var_names")));
   }
 };
 
@@ -142,7 +143,7 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
   }
 };
 
-void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   out->clear();
   std::vector<framework::LoDTensor> underlying_outs;
   reader_->ReadNext(&underlying_outs);
@@ -158,23 +159,24 @@ void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   // The scope for CustomReader's sub-block should be independent and shouldn't
   // be any other computation scope's child. Otherwise, data preprocessing and
   // compution cannot be concurrent.
-  framework::Scope scope;
+  framework::Scope* exe_scope = &scope_.NewScope();
   // 1. Copy LoDTensors from underlying reader's output to source variables.
   for (size_t i = 0; i < source_var_names_.size(); ++i) {
-    framework::Variable* var = scope.Var(source_var_names_[i]);
+    framework::Variable* var = exe_scope->Var(source_var_names_[i]);
     framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
     tensor->ShareDataWith(underlying_outs[i]);
     tensor->set_lod(underlying_outs[i].lod());
   }
   // 2. Run the sub-block.
-  exe_.Run(program_, &scope, sub_block_id_, false, true);
+  exe_.Run(program_, exe_scope, sub_block_id_, false, true);
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
-    const auto& tensor = detail::Ref(scope.FindVar(sink_var_names_[i]))
+    const auto& tensor = detail::Ref(exe_scope->FindVar(sink_var_names_[i]))
                              .Get<framework::LoDTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
+  scope_.DeleteScope(exe_scope);
 }
 
 }  // namespace reader

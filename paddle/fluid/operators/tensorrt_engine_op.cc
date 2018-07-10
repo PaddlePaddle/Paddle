@@ -14,11 +14,14 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#include "paddle/fluid/operators/tensorrt_engine_op.h"
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/operators/tensorrt_engine_op.h"
 
 namespace paddle {
 namespace operators {
@@ -66,17 +69,25 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
 }  // namespace
 
 template <typename DeviceContext, typename T>
-void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
+void TensorRTEngineKernel<DeviceContext, T>::Prepare(
     const framework::ExecutionContext &context) const {
   VLOG(4) << "Prepare engine";
   // Get the ProgramDesc and pass to convert.
   framework::proto::BlockDesc block_desc;
   block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
-  max_batch_ = context.Attr<int>("max_batch");
+  int max_batch = context.Attr<int>("max_batch");
   auto max_workspace = context.Attr<int>("max_workspace");
-  engine_ = Singleton<TRT_EngineManager>::Global().Create(
-      max_batch_, max_workspace, &stream_);
-  engine_->InitNetwork();
+  auto params = context.Attr<std::vector<std::string>>("parameters");
+  std::unordered_set<std::string> parameters;
+  for (const auto &param : params) {
+    parameters.insert(param);
+  }
+
+  // TODO(Superjomn) replace this with a different stream
+  auto *engine = Singleton<TRT_EngineManager>::Global().Create(
+      max_batch, max_workspace, nullptr /*engine hold its own stream*/,
+      context.Attr<std::string>("engine_uniq_key"));
+  engine->InitNetwork();
 
   framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
   // Add inputs
@@ -87,24 +98,23 @@ void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
     PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
                       "TensorRT engine only takes LoDTensor as input");
     auto shape = var->GetShape();
-    engine_->DeclareInput(
+    engine->DeclareInput(
         input, FluidDataType2TRT(
                    var->Proto()->type().lod_tensor().tensor().data_type()),
         Vec2TRT_Dims(var->GetShape()));
   }
 
-  // TODO(Superjomn) parameters should be passed after analysised from outside.
   inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
-      block_desc, {}, context.scope(), engine_);
+      block_desc, parameters, context.scope(), engine);
 
   // Add outputs
   VLOG(4) << "declare outputs";
   for (auto &output : context.Outputs("Ys")) {
     VLOG(4) << "declare output " << output;
-    engine_->DeclareOutput(output);
+    engine->DeclareOutput(output);
   }
 
-  engine_->FreezeNetwork();
+  engine->FreezeNetwork();
 }
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -113,6 +123,7 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph.");
+    AddAttr<std::string>("engine_uniq_key", "unique key for the TRT engine.");
     AddAttr<int>("max_batch", "the maximum batch size.");
     AddAttr<int>("max_workspace", "the maximum batch size.");
     AddComment("TensorRT engine operator.");

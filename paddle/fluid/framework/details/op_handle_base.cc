@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include <map>
 
 namespace paddle {
 namespace framework {
@@ -58,8 +58,10 @@ void OpHandleBase::Run(bool use_cuda) {
 
 void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_NOT_NULL(waited_ctx);
   if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
+      PADDLE_ENFORCE_NOT_NULL(dev_ctx.second);
       dev_ctx.second->Wait();
     }
   } else {
@@ -122,7 +124,6 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
     std::function<void()> method = callback;
-
     for (auto &p : dev_ctxes_) {
       method = [method, p, this]() {
         static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(
