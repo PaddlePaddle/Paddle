@@ -15,6 +15,7 @@
 #pragma once
 
 #include <deque>
+#include <list>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -77,6 +78,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
  private:
   ExecutionStrategy strategy_;
+  std::list<std::future<void>> run_op_futures_;
 };
 
 }  // namespace details

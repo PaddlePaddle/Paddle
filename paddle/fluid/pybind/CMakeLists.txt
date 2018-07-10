@@ -2,13 +2,13 @@ if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
       SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc
-      DEPS pybind python proto_desc memory executor prune init profiler feed_fetch_method
+      DEPS pybind python proto_desc memory executor prune profiler feed_fetch_method
            parallel_executor
       ${GLOB_OP_LIB})
   else()
     cc_library(paddle_pybind SHARED
       SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc
-      DEPS pybind python proto_desc memory executor prune init profiler feed_fetch_method
+      DEPS pybind python proto_desc memory executor prune profiler feed_fetch_method
            parallel_executor
       ${GLOB_OP_LIB})
     if(NOT APPLE AND NOT ANDROID)
