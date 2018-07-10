@@ -59,9 +59,10 @@ if(WITH_STATIC_LIB)
       "-Wl,--no-whole-archive"
       ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.a)
 else()
+  # Note: libpaddle_inference_api.so must put before libpaddle_fluid.so
   set(DEPS
-      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so
-      ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.so)
+      ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.so
+      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so)
 endif()
 set(EXTERNAL_LIB "-lrt -ldl -lpthread")
 

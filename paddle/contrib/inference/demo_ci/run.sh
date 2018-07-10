@@ -11,7 +11,7 @@ fi
 mkdir -p build
 cd build
 
-for WITH_STATIC_LIB in true false; do
+for WITH_STATIC_LIB in false; do
   rm -rf *
   cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
     -DWITH_MKL=$WITH_MKL \
