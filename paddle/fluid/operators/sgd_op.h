@@ -114,7 +114,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
         int64_t id_index = param.Index(grad.rows()[i]);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
-        for (size_t j = 0; j < grad_row_width; j++) {
+        for (int64_t j = 0; j < grad_row_width; j++) {
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];
         }

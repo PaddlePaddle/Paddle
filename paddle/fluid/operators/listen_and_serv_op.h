@@ -18,20 +18,23 @@ limitations under the License. */
 #include <atomic>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
 
-constexpr char kOptimizeBlock[] = "OptimizeBlock";
-constexpr char kPrefetchBlock[] = "PrefetchBlock";
+constexpr char kOptimizeBlocks[] = "optimize_blocks";
+constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
+constexpr char kCheckpointBlockId[] = "checkpint_block_id";
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
+void RunServer(std::shared_ptr<distributed::RPCServer> service);
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
@@ -45,48 +48,39 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
-                   framework::BlockDesc* prefetch_block) const;
+                   const std::vector<int>& prefetch_block_id_list,
+                   const int checkpoint_point_block_id) const;
 
   void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program) const;
+                    framework::ProgramDesc* program,
+                    framework::Scope* recv_scope) const;
 
   void SavePort() const;
 
-  void WaitServerReady();
-
-  int GetSelectedPort() { return selected_port_; }
+  int GetSelectedPort() { return rpc_service_->GetSelectedPort(); }
 
   void Stop() override;
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
 
-  static void ResetPort() { selected_port_ = 0; }
-
  protected:
-  mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
+  mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
+  mutable std::shared_ptr<distributed::RequestHandler> request_send_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler> request_get_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_prefetch_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_checkpoint_handler_;
+
   mutable std::shared_ptr<std::thread> server_thread_;
-  // FIXME(wuyi): it's static so that the operator can be cloned.
-  static std::atomic_int selected_port_;
 };
 
 class SignalHandler {
  public:
-  typedef std::shared_ptr<detail::ReceivedQueue> BlockingQueue;
-  typedef std::unordered_set<BlockingQueue> BlockingQueueSet;
-
- public:
   static void StopAndExit(int signal_num);
 
-  static void RegisterBlockingQueue(BlockingQueue&);
-
-  static inline bool IsProgramExit() { return program_exit_flag_; }
-
  private:
-  static bool program_exit_flag_;
-
-  static BlockingQueueSet blocking_queue_set_;
-
   DISABLE_COPY_AND_ASSIGN(SignalHandler);
 };
 

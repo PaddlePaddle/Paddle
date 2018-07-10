@@ -12,23 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import numpy as np
 from .. import core
 from ..framework import Program
 from ..executor import global_scope
 
 
-class InferenceTranspiler:
+class InferenceTranspiler(object):
+    '''
+    Convert the fluid program to optimized inference program.
+
+    There are several optimizations:
+
+      - fuse convolution and batch normalization
+      - fuse batch normalization and relu (MKLDNN only)
+
+    Examples:
+
+    .. code-block:: python
+
+        # As InferenceTranspiler will modify the original program,
+        # please clone before use it.
+        inference_transpiler_program = program.clone()
+        t = fluid.InferenceTranspiler()
+        t.transpile(inference_transpiler_program, place)
+    '''
+
     def transpile(self, program, place, scope=None):
         '''
-        Transpile the program. Support only fuse batch normalization now.
+        Run the transpiler.
 
-        :param program: program to transpile 
-        :type program: Program
-        :param place: inference place 
-        :type place: Place
-        :param scope: inference scope 
-        :type scope: Scope or None
+        Args:
+            program (Program): program to transpile
+            place (Place): inference place
+            scope (Scope|None): inference Scope
         '''
         if not isinstance(program, Program):
             raise TypeError("program should be as Program type")
@@ -40,58 +58,110 @@ class InferenceTranspiler:
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
         self.fuse_batch_norm(program, place, scope)
+        self.fuse_relu_mkldnn(program)
+
+    def fuse_relu_mkldnn(self, program):
+        '''
+        Transpile the program by fused relu activation for MKLDNN program.
+
+        Relu activation following batch norm OP can be fused by adding
+        :math:`fuse_with_relu` attribute to batch norm OP.
+
+        The result of fuse is:
+
+        - before:
+
+          - batch_norm->relu->any_other_op
+
+        - after:
+
+          - batch_norm->any_other_op
+
+        :param program: program to transpile
+        :type program: Program
+        '''
+        use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
+        if not use_mkldnn:
+            return
+
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops) - 1:
+            current_op = self.block.ops[i]
+            if current_op.type in ['batch_norm']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'relu':
+                    # modify bnorm OP to include relu
+                    current_op.set_attr("fuse_with_relu", True)
+                    # remove relu OP
+                    self.block.remove_op(i + 1)
+            i = i + 1
+
+        self._remove_unused_var()
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
 
     def fuse_batch_norm(self, program, place, scope):
         '''
         Transpile the program by fused batch normalization.
- 
-        The batch normalization followed the convolution or fully connected layer 
-        can be integrated with them. Doing so will give us a forward acceleration, 
+
+        The batch normalization followed the convolution or fully connected layer
+        can be integrated with them. Doing so will give us a forward acceleration,
         especially in environments like mobile or embedded.
-                    
-        For input X:
-        - Conv process:        X = input * W + bias 
-        - Batch norm process:  X' = (X - mean) / std 
-        - Scale Process:       Y = a * X' + b
+
+        For input :math:`X`:
+
+        - Conv process:        :math:`X = input * W + bias`
+        - Batch norm process:  :math:`X' = (X - mean) / std`
+        - Scale Process:       :math:`Y = a * X' + b`
 
         After fuse into one operation:
 
-        Y = (input * W + bias - mean) / std * a + b
-          = input * a * W / std + ((bias - mean) / std * a + b)
+        .. math::
 
-        The operator transformation is: 
+            Y &= (input * W + bias - mean) / std * a + b \\\\
+              &= input * a * W / std + ((bias - mean) / std * a + b)
+
+        The operator transformation is:
+
         - before:
+
           - conv->batch_norm->any_other_op (bias == 0)
           - conv->elementwise_add->batch_norm->any_other_op (bias != 0)
-        - after: 
+
+        - after:
+
           - conv->elementwise_add->any_other_op
-        
+
         The transpile stages are:
+
         1. insert elementwise_add op when bias == 0.
         2. fuse the batch_norm's parameters to conv and elementwise_add operators.
         3. remove batch_norm ops which are not used in any other ops.
         4. adjust the input of any_other_op to be the output of elementwise_add operator.
         5. remove unused variables.
 
-        :param program: program to transpile 
-        :type program: Program
-        :param place: inference place 
-        :type place: Place
-        :param scope: inference scope 
-        :type scope: Scope
+        Args:
+            program (Program): program to transpile
+            place (Place): inference place
+            scope (Scope): inference Scope
+
         '''
         self.scope = scope
         self.place = place
         self.block = program.block(0)
-        self.input_map = {}  # store the input names should be adjusted 
+        self.input_map = {}  # store the input names should be adjusted
 
         i = 0
-        while i < len(self.block.ops):
+        while i < len(self.block.ops) - 2:
             current_op = self.block.ops[i]
             # TODO(luotao1): consider only conv2d now. fc would be delt later.
             if current_op.type in ['conv2d']:
-                # TODO(luotao1): consider single chain network now. 
-                # For branch network, we counldn't use block.ops[i + 1] as 
+                # TODO(luotao1): consider single chain network now.
+                # For branch network, we counldn't use block.ops[i + 1] as
                 # the judgment condition.
                 next_op = self.block.ops[i + 1]
                 # conv2d without bias
@@ -116,17 +186,17 @@ class InferenceTranspiler:
 
         self._adjust_input()
         self._remove_unused_var()
-        # TODO(luotao): use clone() method to flush the program.desc in force, 
-        # since some large program.desc will not be flushed immediately. 
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
         # And a better solution will be considered later.
         program = program.clone()
 
     # ====================== private transpiler functions =====================
     def _insert_bias_op(self, index, current_op, bn_op):
         '''
-        Construct elementwise_add operator for adding bias 
+        Construct elementwise_add operator for adding bias
         and insert it into program.
-        
+
         :param index: insert location of bias_op
         :type index: Int
         :param current_op: current operator (conv or fc)
@@ -154,14 +224,14 @@ class InferenceTranspiler:
     def _fuse_param(self, current_op, bn_op, bias_op, with_bias):
         '''
         fuse the batch_norm_op' parameters to current_op (conv or fc)
-        
+
         :param current_op: current operator (conv or fc)
         :type current_op: Operator
         :param bn_op: batch norm operator
         :type bn_op: Operator
         :param bias_op: elementwise_add operator for adding bias
         :type bias_op: Operator
-        :param with_bias: If current operator has bias, with_bias = 1; otherwise 0. 
+        :param with_bias: If current operator has bias, with_bias = 1; otherwise 0.
         :type with_bias: Int
         '''
 

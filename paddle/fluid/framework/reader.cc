@@ -25,8 +25,10 @@ void FileReader::ReadNext(std::vector<LoDTensor> *out) {
   if (out->empty()) {
     return;
   }
+
+  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
   for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
+    auto &actual = (*out)[i].dims();
     auto &expect = dims_[i];
 
     PADDLE_ENFORCE_EQ(actual.size(), expect.size());

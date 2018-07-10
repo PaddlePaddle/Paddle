@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
@@ -27,9 +28,13 @@ TEST(OpConverter, ConvertBlock) {
   conv2d_op->SetType("conv2d");
 
   OpConverter converter;
-  converter.ConvertBlock(*block->Proto(), nullptr /*TensorRTEngine*/);
+  framework::Scope scope;
+  converter.ConvertBlock(*block->Proto(), {}, scope,
+                         nullptr /*TensorRTEngine*/);
 }
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+USE_TRT_CONVERTER(conv2d)

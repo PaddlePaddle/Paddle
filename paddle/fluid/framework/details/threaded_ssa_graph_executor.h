@@ -51,11 +51,13 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
 
  private:
+  std::unique_ptr<SSAGraph> graph_;
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
-  std::unique_ptr<platform::EnforceNotMet> exception_;
+  std::mutex exception_mu_;
+  std::unique_ptr<std::exception> exception_;
   std::atomic<int> running_ops_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,

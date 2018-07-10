@@ -23,11 +23,11 @@ namespace tensorrt {
  */
 class MulOpConverter : public OpConverter {
  public:
-  MulOpConverter() {}
-  void operator()(const framework::proto::OpDesc& op) override {
-    VLOG(4) << "convert a fluid mul op to tensorrt fc layer without bias";
+  void operator()(const framework::proto::OpDesc& op,
+                  const framework::Scope& scope, bool test_mode) override {
+    VLOG(4) << "convert a fluid mul op to tensorrt mul layer without bias";
 
-    framework::OpDesc op_desc(op, nullptr, nullptr);
+    framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
@@ -36,12 +36,18 @@ class MulOpConverter : public OpConverter {
         engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), false,
         *const_cast<nvinfer1::ITensor*>(input2), false);
 
-    engine_->DeclareOutput(layer, 0, op_desc.Output("Out")[0]);
+    auto output_name = op_desc.Output("Out")[0];
+    engine_->SetITensor(output_name, layer->getOutput(0));
+    if (test_mode) {  // the test framework can not determine which is the
+                      // output, so place the declaration inside.
+      engine_->DeclareOutput(output_name);
+    }
   }
 };
-
-REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+USE_OP(mul);
+REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);
