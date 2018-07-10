@@ -61,11 +61,11 @@ if(NOT APPLE)
     "if(NOT \"\${symbol_res}\" STREQUAL \"0\")\n"
     "  message(FATAL_ERROR \"Check symbol failed.\")\n"
     "endif()\n")
-  add_custom_target(check_symbol ALL)
   add_custom_command(
-      TARGET check_symbol
-      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
+      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.check_symbol
+      COMMAND ${CMAKE_COMMAND} -P ${cmake_current_binary_dir}/check_symbol.cmake
       DEPENDS paddle_inference_api_shared)
+  add_custom_target(check_symbol ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/.check_symbol)
 endif()
 
 cc_test(test_paddle_inference_api
