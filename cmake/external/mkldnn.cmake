@@ -28,9 +28,6 @@ IF(WIN32 OR APPLE)
         "Windows or Mac is not supported with MKLDNN in Paddle yet."
         "Force WITH_MKLDNN=OFF")
     SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in Windows and MacOS" FORCE)
-    IF ((NOT ${WITH_MKLDNN}) AND (NOT ${WITH_MKLML}))
-        SET(WITH_MKL OFF CACHE STRING "Disable MKL for later scripts" FORCE)
-    ENDIF()
     return()
 ENDIF()
 
