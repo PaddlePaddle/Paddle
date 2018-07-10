@@ -83,7 +83,7 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
           context.Input<framework::Tensor>("InCurrentIter")->place());
     }
 
-    T scale = T(1);
+    T scale = static_cast<T>(1);
     int window_size = context.Attr<int>("window_size");
     int bit_length = context.Attr<int>("bit_length");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
@@ -95,7 +95,7 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
       auto* saving_scale = context.Output<framework::Tensor>("OutMovingScale");
       auto scale_out = framework::EigenVector<T>::Flatten(*saving_scale);
       scale_out.device(dev) = raw_in.abs().maximum();
-      scale = saving_scale->mutable_data<T>(platform::CPUPlace())[0];
+      scale = scale_out(0);
 
       auto& device_ctx = context.template device_context<DeviceContext>();
       auto* scale_list = context.Output<framework::Tensor>("OutScales");

@@ -53,24 +53,19 @@ class FakeQuantizeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
-    AddInput("InScales", "(Tensor) scale buffer, used in static quantization")
+    AddInput("InScales", "(Tensor) scale buffer, used in static quantization.")
         .AsDispensable();
-    AddInput("InMovingScale", "last scale, used in static quantization")
+    AddInput("InMovingScale", "Last scale, used in static quantization.")
         .AsDispensable();
-    AddInput("InCurrentIter", "last Iter, used in static quantization")
+    AddInput("InCurrentIter",
+             "Last iteration number, used in static quantization.")
         .AsDispensable();
-    AddOutput("Out", "(Tensor) Output tensor of scale operator.");
-    AddOutput("OutScales", "(Tensor) scale buffer, used in static quantization")
+    AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
+    AddOutput("OutScales",
+              "(Tensor) scale buffer, used in static quantization.")
         .AsDispensable();
-    AddOutput("OutMovingScale", " current scale");
-    AddOutput("OutCurrentIter", "current Iter").AsDispensable();
-    AddComment(R"DOC(
-FakeQuantize operator
-quantize_type = abs_max, $$scale = max(abs(x))$$ 
-quantize_type = range_abs_max, $$scale = max(max(abs(x)), history_abs_max)$$ 
-quantize_type = moving_average_abs_max, $$scale = 0.1*scale+0.9*new_abs_max)$$ 
-$$Out = scale*X$$
-)DOC");
+    AddOutput("OutMovingScale", " Current scale");
+    AddOutput("OutCurrentIter", "Current iteration number.").AsDispensable();
     AddAttr<std::string>("quantize_type",
                          "(string, default abs_max)"
                          "The scaling tpe of the quantize operator.")
@@ -83,6 +78,24 @@ $$Out = scale*X$$
                          "'bit_length' should be between 1 and 16.");
         });
     AddAttr<bool>("is_test", "").SetDefault(false);
+    AddComment(R"DOC(
+FakeQuantize operator
+
+quantize_type = abs_max:
+
+    $$scale = max(abs(x))$$ 
+
+quantize_type = range_abs_max:
+
+    $$scale = max(max(abs(x)), history_abs_max)$$ 
+
+quantize_type = moving_average_abs_max:
+
+    $$scale = 0.1*scale+0.9*new_abs_max)$$ 
+
+$$Out = scale*X$$
+
+)DOC");
   }
 };
 
