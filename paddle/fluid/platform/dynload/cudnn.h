@@ -96,6 +96,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnConvolutionBackwardBias);            \
   __macro(cudnnGetConvolutionForwardWorkspaceSize); \
   __macro(cudnnTransformTensor);                    \
+  __macro(cudnnScaleTensor);                        \
   __macro(cudnnPoolingForward);                     \
   __macro(cudnnPoolingBackward);                    \
   __macro(cudnnSoftmaxBackward);                    \

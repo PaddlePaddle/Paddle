@@ -534,19 +534,12 @@ class Operator(object):
                     self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
-            given = set()
-            need = set()
-            for n in outputs:
-                given.add(n)
-            for m in proto.outputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(("Incorrect setting for output(s) of "
-                                  "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type, ", ".join(str(e) for e in need),
-                                  ", ".join(str(e) for e in given)))
-
             for out_proto in proto.outputs:
+                assert out_proto.dispensable or out_proto.name in outputs, "Output {} not found".format(
+                    out_proto.name)
+                if out_proto.name not in outputs:
+                    continue
+
                 out_args = outputs[out_proto.name]
                 if not isinstance(out_args, list):
                     out_args = [out_args]

@@ -216,6 +216,18 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
+      EigenVectorArrayMap<T> running_mean_arr(
+          mean_out->mutable_data<T>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<T> running_var_arr(
+          variance_out->mutable_data<T>(ctx.GetPlace()), C);
+
+      if ((N * sample_size) == 1) {
+        LOG(WARNING) << "Only 1 element in normalization dimension, "
+                     << "we skip the batch norm calculation, let y = x.";
+        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+        return;
+      }
+
       switch (data_layout) {
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
@@ -247,10 +259,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           PADDLE_THROW("Unknown storage order: %s", data_layout_str);
       }
 
-      EigenVectorArrayMap<T> running_mean_arr(
-          mean_out->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> running_var_arr(
-          variance_out->mutable_data<T>(ctx.GetPlace()), C);
       running_mean_arr =
           running_mean_arr * momentum + saved_mean_e * (1. - momentum);
       running_var_arr =
@@ -426,6 +434,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     d_bias_arr.setZero();
     d_scale_arr.setZero();
+
+    if ((N * sample_size) == 1) {
+      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
+      return;
+    }
 
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 
