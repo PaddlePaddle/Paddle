@@ -27,12 +27,8 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-using DIM1 = Eigen::array<int, 1>;
-using DIM2 = Eigen::array<int, 2>;
+using Array1 = Eigen::array<int, 1>;
+using Array2 = Eigen::array<int, 2>;
 
 /*
 * Get the offsets for each class of values.
@@ -103,17 +99,15 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
     auto tmp_t = EigenMatrix<T>::From(tmp);
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto x_mat = math::CreateMatrixDescriptor(x_dims, 0, false);
-    auto x_mat_trans = math::CreateMatrixDescriptor(x_dims, 0, true);
     // d = x * x.T
-    blas.MatMul(*logits, x_mat, *logits, x_mat_trans, T(1), &distances, T(0));
+    blas.MatMul(*logits, false, *logits, true, T(1), &distances, T(0));
     // a = (x**2).sum_by_row
     auto a = logits_t.square()
-                 .sum(DIM1({1}))
-                 .reshape(DIM2({num_sample, 1}))
-                 .broadcast(DIM2({1, num_sample}));
+                 .sum(Array1({1}))
+                 .reshape(Array2({num_sample, 1}))
+                 .broadcast(Array2({1, num_sample}));
     // b = a.T
-    auto b = a.shuffle(DIM2({1, 0}));
+    auto b = a.shuffle(Array2({1, 0}));
     // d = a + a.T - 2 * x * x.T
     distances_t.device(place) = a + b - distances_t * T(2.0);
 
@@ -127,41 +121,41 @@ class DenseTripletLossKernel : public framework::OpKernel<T> {
       int pos_num = end - begin;
       for (int j = begin; j < end; ++j) {
         // get loss in current line
-        auto p_dis = distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}))
-                         .reshape(DIM2{1, pos_num});
-        auto n_dis = distances_t.chip(j, 0).reshape(DIM2({1, num_sample}));
-        auto n_p_sub =
-            n_dis.broadcast(DIM2({pos_num, 1})) -
-            p_dis.reshape(DIM2{pos_num, 1}).broadcast(DIM2({1, num_sample}));
+        auto p_dis = distances_t.slice(Array2({j, begin}), Array2({1, pos_num}))
+                         .reshape(Array2{1, pos_num});
+        auto n_dis = distances_t.chip(j, 0).reshape(Array2({1, num_sample}));
+        auto n_p_sub = n_dis.broadcast(Array2({pos_num, 1})) -
+                       p_dis.reshape(Array2{pos_num, 1})
+                           .broadcast(Array2({1, num_sample}));
         auto p_p_sub =
-            p_dis.broadcast(DIM2({pos_num, 1})) -
-            p_dis.shuffle(DIM2({1, 0})).broadcast(DIM2({1, pos_num}));
+            p_dis.broadcast(Array2({pos_num, 1})) -
+            p_dis.shuffle(Array2({1, 0})).broadcast(Array2({1, pos_num}));
 
         loss_t.chip(j, 0).device(place) =
             n_p_sub.unaryExpr(relu).sum() - p_p_sub.unaryExpr(relu).sum();
         // get gradient of distance matric in current line
         d_distances_t.chip(j, 0).device(place) =
-            n_p_sub.unaryExpr(relu_grad).sum(DIM1({0})).reshape(
-                DIM2({1, num_sample}));
+            n_p_sub.unaryExpr(relu_grad)
+                .sum(Array1({0}))
+                .reshape(Array2({1, num_sample}));
 
-        d_distances_t.slice(DIM2({j, begin}), DIM2({1, pos_num}))
-            .device(place) =
-            p_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).reshape(
-                DIM2({1, pos_num})) -
-            n_p_sub.unaryExpr(relu_grad).sum(DIM1({1})).reshape(
-                DIM2({1, pos_num}));
+        d_distances_t.slice(Array2({j, begin}), Array2({1, pos_num}))
+            .device(place) = p_p_sub.unaryExpr(relu_grad)
+                                 .sum(Array1({1}))
+                                 .reshape(Array2({1, pos_num})) -
+                             n_p_sub.unaryExpr(relu_grad)
+                                 .sum(Array1({1}))
+                                 .reshape(Array2({1, pos_num}));
       }
     }
 
     // get gradient of logits
-    tmp_t.device(place) = d_distances_t + d_distances_t.shuffle(DIM2({1, 0}));
-    auto dis_mat =
-        math::CreateMatrixDescriptor({num_sample, num_sample}, 0, false);
-    blas.MatMul(tmp, dis_mat, *logits, x_mat, T(-2), d_logits, T(0));
+    tmp_t.device(place) = d_distances_t + d_distances_t.shuffle(Array2({1, 0}));
+    blas.MatMul(tmp, false, *logits, false, T(-2), d_logits, T(0));
 
-    auto sub_grad = tmp_t.sum(DIM1{1})
-                        .reshape(DIM2({num_sample, 1}))
-                        .broadcast(DIM2({1, feature_len})) *
+    auto sub_grad = tmp_t.sum(Array1{1})
+                        .reshape(Array2({num_sample, 1}))
+                        .broadcast(Array2({1, feature_len})) *
                     logits_t * T(2.0);
     auto result = d_logits_t + sub_grad;
     d_logits_t.device(place) = result;
@@ -187,7 +181,7 @@ class DenseTripletLossGradKernel : public framework::OpKernel<T> {
     auto d_loss_t = EigenMatrix<T>::From(*d_loss, {num_sample, 1});
     auto d_in_t = EigenMatrix<T>::From(*d_in);
     d_in_t.device(place) =
-        d_logits_t * d_loss_t.broadcast(DIM2({1, feature_len}));
+        d_logits_t * d_loss_t.broadcast(Array2({1, feature_len}));
   }
 };
 
