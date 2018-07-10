@@ -633,6 +633,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_MKLDNN
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  if (kernel_iter == kernels.end() &&
+      expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    expected_kernel_key.library_type_ = LibraryType::kPlain;
+    expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   if (kernel_iter == kernels.end()) {
     PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));

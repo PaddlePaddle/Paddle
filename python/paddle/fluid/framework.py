@@ -26,7 +26,7 @@ except ImportError, e:
         """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: """ % str(e))
+    directory. The original error is: \n""" + e.message)
 except Exception, e:
     raise e
 import unique_name

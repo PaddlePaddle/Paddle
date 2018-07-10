@@ -78,6 +78,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     set.clear();
   };
 
+  run_op_futures_.clear();
+  exception_.reset();
+
   // Step 3. Execution
   while (!pending_vars.empty()) {
     // 1. Run All Ready ops
@@ -98,6 +101,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     if (timeout) {
       std::lock_guard<std::mutex> l(exception_mu_);
       if (exception_) {
+        for (auto &run_op_future : run_op_futures_) {
+          run_op_future.wait();
+        }
         std::exception *exp = exception_.get();
         if (dynamic_cast<platform::EOFException *>(exp)) {
           auto e = *static_cast<platform::EOFException *>(exp);
@@ -222,7 +228,7 @@ void ThreadedSSAGraphExecutor::RunOp(
     }
   };
   if (pool_) {
-    pool_->enqueue(op_run);
+    run_op_futures_.emplace_back(pool_->enqueue(op_run));
   } else {
     op_run();
   }
