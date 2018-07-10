@@ -16,7 +16,7 @@ import framework
 import numpy as np
 import contextlib
 from framework import convert_np_dtype_to_dtype_
-from core import VarDesc
+from core import VarDesc, op_proto_and_checker_maker
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
@@ -586,9 +586,8 @@ class RemoteInitializer(Initializer):
         assert eps is not None
         super(RemoteInitializer, self).__init__()
         self._endpoints = eps
-        self._op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
-        )
-        self._op_role_attr_value = core.op_proto_and_checker_maker.OpRole.RPC
+        self._op_role_attr_name = op_proto_and_checker_maker.kOpRoleAttrName()
+        self._op_role_attr_value = op_proto_and_checker_maker.OpRole.RPC
 
     def __call__(self, var, block):
         """Add constant initialization ops for a variable
@@ -603,8 +602,7 @@ class RemoteInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
-        op = block.prepend_op(
+        op = block.append_op(
             type="recv",
             inputs={},
             outputs={"Out": var},

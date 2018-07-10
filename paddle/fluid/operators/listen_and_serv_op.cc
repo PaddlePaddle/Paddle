@@ -117,7 +117,12 @@ void ListenAndServOp::RunSyncLoop(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
+  // Trainers will get all parameters from pserver in the
+  // startup program, so we will wait RequestGet first
+  rpc_service_->SetCond(distributed::kRequestGet);
+  rpc_service_->WaitBarrier(distributed::kRequestGet);
   rpc_service_->ResetBarrierCounter();
+
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
