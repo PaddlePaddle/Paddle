@@ -122,9 +122,18 @@ ParallelExecutor::ParallelExecutor(
   }
 
   builder_ = builder_factory.Create();
+  auto graph = builder_->Build(main_program);
+
+  // NOTE(zcd): Currently, we assume that if loss_var_name is empty,
+  // it means ParallelExecutor is used for testing, only in this case,
+  // SSA Graph may have some disconnected subgraph.
+  if (!loss_var_name.empty()) {
+    size_t graph_num = graph->GraphNumber();
+    PADDLE_ENFORCE_EQ(graph_num, 1, "The number of Graph should be One.");
+  }
+
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places,
-      builder_->Build(main_program)));
+      exec_strategy, member_->local_scopes_, places, std::move(graph)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),

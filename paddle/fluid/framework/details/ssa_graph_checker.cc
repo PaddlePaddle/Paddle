@@ -13,14 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/ssa_graph.h"
+#include <deque>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/details/ssa_graph_checker.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-bool SSAGraghBuilderWithChecker::IsValidGraph(const SSAGraph *graph) const {
+bool SSAGraghBuilderWithChecker::IsDirectedAcyclicGraph(
+    const SSAGraph *graph) const {
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   std::unordered_set<VarHandleBase *> ready_vars;
@@ -82,6 +85,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const SSAGraph *graph) const {
   }
   return true;
 }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -23,6 +23,10 @@ namespace framework {
 namespace details {
 struct SSAGraph;
 
+/**
+ * NOTE: SSAGragh should be a directed acyclic graph.
+ *
+ */
 class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
  public:
   explicit SSAGraghBuilderWithChecker(
@@ -31,7 +35,8 @@ class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override {
     auto graph = builder_->Build(program);
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
+    PADDLE_ENFORCE(IsDirectedAcyclicGraph(graph.get()),
+                   "SSA Graph should be a directed acyclic graph.");
     return graph;
   }
 
@@ -39,7 +44,7 @@ class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
     return builder_->GetVarDeviceID(var_name);
   }
 
-  bool IsValidGraph(const SSAGraph* graph) const;
+  bool IsDirectedAcyclicGraph(const SSAGraph* graph) const;
 
  private:
   std::unique_ptr<SSAGraphBuilder> builder_;

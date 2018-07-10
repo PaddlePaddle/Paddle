@@ -42,6 +42,8 @@ struct SSAGraph {
   // all operators. NOTE that even we use a vector here, the operators is
   // unordered.
   std::vector<std::unique_ptr<OpHandleBase>> ops_;
+
+  size_t GraphNumber() const;
 };
 
 }  // namespace details
