@@ -32,19 +32,6 @@ class Pass {
  public:
   Pass() = default;
   virtual ~Pass() = default;
-  // Virtual method overridden by subclasses to do only necessary initialization
-  // before any pass is run.
-  // virtual bool Initialize() { return false; }
-  // There is some passes such as FlowToDataFlowGraphPass that needs a
-  // ProgramDesc. Here use the native ProgramDesc ProtoBuf message, so that it
-  // only couple with the proto file.
-  // virtual bool Initialize(const framework::proto::ProgramDesc &desc) { return
-  // false; }
-  // There are some Passes such as DataFlowGraphToFluidPass that will output a
-  // ProgramDesc.
-  // virtual bool Initialize(framework::proto::ProgramDesc *desc) { return
-  // false; }
-
   // Mutable Pass.
   virtual bool Initialize(Argument *argument) { return false; }
   // Readonly Pass.

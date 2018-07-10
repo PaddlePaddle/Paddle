@@ -592,8 +592,7 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
@@ -634,6 +633,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_MKLDNN
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  if (kernel_iter == kernels.end() &&
+      expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    expected_kernel_key.library_type_ = LibraryType::kPlain;
+    expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   if (kernel_iter == kernels.end()) {
     PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));
@@ -652,7 +661,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  kernel_iter->second->Compute(ExecutionContext(*this, exec_scope, *dev_ctx));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -748,10 +757,6 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &var->Get<LoDTensor>();
         } else if (var->IsType<SelectedRows>()) {
           t = &(var->Get<SelectedRows>().value());
-        } else if (var->IsType<LoDTensorArray>()) {
-          const LoDTensorArray& arr = var->Get<LoDTensorArray>();
-          PADDLE_ENFORCE(arr.size() > 0);
-          t = &(arr[0]);
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));

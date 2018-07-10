@@ -82,7 +82,7 @@ TEST_F(DFG_Tester, Fuse) {
 
   // At least one nodes should be deleted.
   ASSERT_EQ(dfg.nodes.size(), count0 + 1);  // added a new FunctionBlock
-  ASSERT_EQ(6UL, count1);
+  ASSERT_EQ(6, count1);
 }
 
 }  // namespace analysis
