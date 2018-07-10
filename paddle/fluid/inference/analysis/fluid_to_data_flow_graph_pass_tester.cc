@@ -27,7 +27,7 @@ TEST_F(DFG_Tester, Init) {
   DataFlowGraph graph;
   pass.Run(&graph);
   // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(graph.nodes.size(), 37);
+  ASSERT_EQ(graph.nodes.size(), 37UL);
   pass.Finalize();
   LOG(INFO) << '\n' << graph.DotString();
 }
