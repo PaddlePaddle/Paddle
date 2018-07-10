@@ -153,8 +153,10 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
     bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-    PADDLE_ENFORCE(platform::is_cpu_place(place) && use_cudnn,
-                   "cudnn is not supported in CPUPlace");
+    if (use_cudnn) {
+      PADDLE_ENFORCE(platform::is_gpu_place(place),
+                     "cudnn is not supported in CPUPlace");
+    }
     framework::LibraryType library =
         (use_cudnn ? framework::LibraryType::kCUDNN
                    : framework::LibraryType::kPlain);
