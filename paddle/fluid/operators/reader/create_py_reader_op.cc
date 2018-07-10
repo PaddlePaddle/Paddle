@@ -19,22 +19,25 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-class PyReader : public framework::ReaderBase {
+class PyReader : public framework::FileReader {
  public:
-  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue) {
+  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue)
+      : framework::FileReader() {
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
     queue_ = queue;
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     bool success;
     *out = queue_->Pop(&success);
     if (!success) out->clear();
   }
 
-  void ReInit() override { queue_->ReOpen(); }
-
  private:
+  void ShutdownImpl() override { queue_->Close(); }
+
+  void StartImpl() override { queue_->ReOpen(); }
+
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
 };
 
@@ -51,14 +54,14 @@ class CreatePyReaderOp : public framework::OperatorBase {
 
     const std::string& queue_name = Input("blocking_queue");
     auto* queue_holder_var = scope.FindVar(queue_name);
-    PADDLE_ENFORCE(
-        queue_holder_var != nullptr,
+    PADDLE_ENFORCE_NOT_NULL(
+        queue_holder_var,
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    out->Reset(new PyReader(queue_holder->GetQueue()));
+    out->Reset(std::make_shared<PyReader>(queue_holder->GetQueue()));
   }
 };
 
