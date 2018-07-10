@@ -168,6 +168,9 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                             CBLAS_TRANSPOSE transB, int M,
                                             int N, int K, T alpha, const T *A,
                                             const T *B, T beta, T *C) const {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
 #ifdef PADDLE_WITH_LIBXSMM
   if (M * N * K < 128 * 128 * 128 && transA == CblasNoTrans &&
       transB == CblasNoTrans) {
@@ -175,16 +178,10 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
     // Note: SMM use ColMajor
     const char transa = 'N';
     const char transb = 'N';
-    const int lda = M;
-    const int ldb = K;
-    const int ldc = M;
     CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &ldb, A, &lda,
                        &beta, C, &ldc);
   } else {
 #endif
-    int lda = (transA == CblasNoTrans) ? K : M;
-    int ldb = (transB == CblasNoTrans) ? N : K;
-    int ldc = N;
     CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B,
                    ldb, beta, C, ldc);
 #ifdef PADDLE_WITH_LIBXSMM
