@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
 #include <google/protobuf/text_format.h>
+#include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -25,9 +25,15 @@ TEST_F(DFG_Tester, analysis_without_tensorrt) {
   Analyzer analyser;
   analyser.Run(&argument);
   std::string log;
+
+  LOG(INFO) << "original program desc\n"
+            << argument.origin_program_desc->DebugString();
+  LOG(INFO) << "transformed program desc\n"
+            << argument.transformed_program_desc->DebugString();
   //*dynamic_cast<google::protobuf::Message*>(argument.transformed_program_desc.get());
-  //google::protobuf::TextFormat::PrintToString(, &log);
-  //ASSERT_TRUE(*argument.transformed_program_desc == *argument.origin_program_desc);
+  // google::protobuf::TextFormat::PrintToString(, &log);
+  // ASSERT_TRUE(*argument.transformed_program_desc ==
+  // *argument.origin_program_desc);
 }
 
 TEST_F(DFG_Tester, analysis_with_tensorrt) {

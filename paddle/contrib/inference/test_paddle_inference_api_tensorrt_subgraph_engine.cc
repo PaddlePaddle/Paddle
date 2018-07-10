@@ -22,9 +22,7 @@ namespace paddle {
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-
 void CompareTensorRTWithFluid(bool enable_tensorrt) {
-
   // Turn TensorRT off.
   FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = enable_tensorrt;
 
@@ -41,11 +39,11 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   config1.fraction_of_gpu_memory = 0.3;
   config1.device = 0;
 
-  auto predictor0 = CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
+  auto predictor0 =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
   auto predictor1 =
       CreatePaddlePredictor<TensorRTConfig,
                             PaddleEngineKind::kAutoMixedTensorRT>(config1);
-
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     //# 2. Prepare input.
@@ -83,7 +81,10 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   }
 }
 
-TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) { CompareTensorRTWithFluid(false); }
-//TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) { CompareTensorRTWithFluid(true); }
+TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) {
+  CompareTensorRTWithFluid(false);
+}
+// TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) {
+// CompareTensorRTWithFluid(true); }
 
 }  // namespace paddle
