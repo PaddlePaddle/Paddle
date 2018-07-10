@@ -23,24 +23,26 @@ namespace reader {
 
 class MultiFileReader : public framework::ReaderBase {
  public:
-  MultiFileReader(const std::vector<std::string>& file_names,
-                  const std::vector<framework::DDim>& dims, size_t thread_num,
+  MultiFileReader(const std::vector<std::string>& file_names, size_t thread_num,
                   size_t buffer_size)
       : buffer_size_(buffer_size) {
     readers_.reserve(file_names.size());
     for (const std::string& f_name : file_names) {
-      readers_.emplace_back(CreateReaderByFileName(f_name, dims));
+      readers_.emplace_back(CreateReaderByFileName(f_name));
     }
     prefetchers_.resize(thread_num);
     StartNewScheduler();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  void ReInit() override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
   ~MultiFileReader() { EndScheduler(); }
 
  private:
+  void ShutdownImpl() override { EndScheduler(); }
+
+  void StartImpl() override { StartNewScheduler(); }
+
   void StartNewScheduler();
   void EndScheduler();
   void ScheduleThreadFunc();
@@ -55,15 +57,10 @@ class MultiFileReader : public framework::ReaderBase {
   reader::BlockingQueue<std::vector<framework::LoDTensor>>* buffer_;
 };
 
-void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void MultiFileReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   if (!buffer_->Receive(out)) {
     out->clear();
   }
-}
-
-void MultiFileReader::ReInit() {
-  EndScheduler();
-  StartNewScheduler();
 }
 
 void MultiFileReader::StartNewScheduler() {
@@ -120,7 +117,7 @@ void MultiFileReader::ScheduleThreadFunc() {
       }
     }
   }
-  // If users invoke ReInit() when scheduler is running, it will close the
+  // If users invoke Shutdown() when scheduler is running, it will close the
   // 'avaiable_thread_idx_' and prefecther threads have no way to tell scheduler
   // to release their resource. So a check is needed before scheduler ends.
   for (auto& p : prefetchers_) {
@@ -138,7 +135,8 @@ void MultiFileReader::PrefetchThreadFunc(size_t reader_idx, size_t thread_idx) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
     if (ins.empty()) {
-      reader->ReInit();
+      reader->Shutdown();
+      reader->Start();
       break;
     }
     try {
@@ -180,9 +178,8 @@ class OpenFilesOp : public framework::OperatorBase {
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new MultiFileReader(file_names,
-                                   RestoreShapes(shape_concat, ranks),
-                                   thread_num, buffer_size));
+    out->Reset(
+        std::make_shared<MultiFileReader>(file_names, thread_num, buffer_size));
   }
 };
 
