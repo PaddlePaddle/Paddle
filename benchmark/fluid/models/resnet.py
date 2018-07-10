@@ -145,15 +145,24 @@ def get_model(args):
         if not args.data_path:
             raise Exception(
                 "Must specify --data_path when training with imagenet")
-        train_reader = imagenet_train(args.data_path)
-        test_reader = imagenet_test(args.data_path)
+        if not args.use_reader_op:
+            train_reader = imagenet_train(args.data_path)
+        test_reader = imagenet_test(args.test_data_path)
 
     if args.use_reader_op:
-        filelist = [
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        trainer_count = int(os.getenv("PADDLE_TRAINERS", "1"))
+        filelist_all = [
             os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
         ]
+        filelist_all.sort()
+        file_node_list = []
+        for idx, f in enumerate(filelist_all):
+            if idx % trainer_count == trainer_id:
+                file_node_list.append(f)
+
         data_file = fluid.layers.open_files(
-            filenames=filelist,
+            filenames=file_node_list,
             shapes=[[-1] + dshape, (-1, 1)],
             lod_levels=[0, 0],
             dtypes=["float32", "int64"],
@@ -189,20 +198,33 @@ def get_model(args):
         avg_cost = fluid.layers.mean(x=cost)
         batch_acc = fluid.layers.accuracy(input=predict, label=label)
 
-    inference_program = fluid.default_main_program().clone()
-    with fluid.program_guard(inference_program):
-        inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc])
+    # inference_program = fluid.default_main_program().clone()
+    # with fluid.program_guard(inference_program):
+    #     inference_program = fluid.io.get_inference_program(
+    #         target_vars=[batch_acc])
 
     optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
-    batched_train_reader = paddle.batch(
-        train_reader if args.no_random else paddle.reader.shuffle(
-            train_reader, buf_size=5120),
-        batch_size=args.batch_size * args.gpus,
-        drop_last=True)
+    if not args.use_reader_op:
+        batched_train_reader = paddle.batch(
+            train_reader if args.no_random else paddle.reader.shuffle(
+                train_reader, buf_size=5120),
+            batch_size=args.batch_size * args.gpus,
+            drop_last=True)
+    else:
+        batched_train_reader = None
     batched_test_reader = paddle.batch(
         test_reader, batch_size=args.batch_size, drop_last=True)
 
-    return avg_cost, inference_program, optimizer, batched_train_reader,\
+    # ============= test program ==============
+    infer_prog = fluid.Program()
+    with fluid.program_guard(infer_prog):
+        input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        predict = model(input, class_dim)
+        test_batch_acc = fluid.layers.accuracy(input=predict, label=label)
+        inference_program = fluid.io.get_inference_program(
+            target_vars=[test_batch_acc])
+
+    return avg_cost, infer_prog, optimizer, batched_train_reader,\
                    batched_test_reader, batch_acc

@@ -72,7 +72,7 @@ def parse_args():
         '--data_set',
         type=str,
         default='flowers',
-        choices=['cifar10', 'flowers'],
+        choices=['cifar10', 'flowers', 'imagenet'],
         help='Optional dataset for benchmark.')
     parser.add_argument(
         '--infer_only', action='store_true', help='If set, run forward only.')
@@ -122,6 +122,11 @@ def parse_args():
         type=str,
         default="",
         help='Directory that contains all the training recordio files.')
+    parser.add_argument(
+        '--test_data_path',
+        type=str,
+        default="",
+        help='Directory that contains all the test data (NOT recordio).')
     parser.add_argument(
         '--use_inference_transpiler',
         action='store_true',

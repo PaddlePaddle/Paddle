@@ -273,6 +273,13 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 num_samples += args.batch_size * args.gpus
             else:
                 num_samples += len(data)
+
+            if not args.no_test and batch_acc:
+                if batch_id % 1000 == 0:
+                    test_acc = test(startup_exe, infer_prog, test_reader,
+                                    feeder, batch_acc)
+                    print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
+
             iters += 1
             if batch_id % 1 == 0:
                 print("Pass %d, batch %d, loss %s" %
@@ -280,12 +287,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             batch_id += 1
 
         print_train_time(start_time, time.time(), num_samples)
-        if not args.no_test and batch_acc and not args.use_reader_op:
-            # we have not implement record io for test
-            # skip test when use args.use_reader_op
-            test_acc = test(startup_exe, infer_prog, test_reader, feeder,
-                            batch_acc)
-            print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
 
 
 def print_arguments(args):
