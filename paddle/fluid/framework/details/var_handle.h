@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
