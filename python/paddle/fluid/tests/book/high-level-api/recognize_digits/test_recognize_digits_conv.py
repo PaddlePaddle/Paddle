@@ -57,14 +57,17 @@ def train_program():
     return [avg_cost, acc]
 
 
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
     trainer = fluid.Trainer(
         train_func=train_program,
         place=place,
-        optimizer=optimizer,
+        optimizer_func=optimizer_func,
         parallel=True)
 
     def event_handler(event):

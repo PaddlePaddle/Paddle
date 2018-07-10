@@ -14,6 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_set>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -64,6 +66,11 @@ class OpProtoAndCheckerMaker {
       var_->set_dispensable(true);
       return *this;
     }
+
+    VariableBuilder &Reuse(const std::string &name) {
+      var_->set_reuse(name);
+      return *this;
+    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);
@@ -88,6 +95,8 @@ class OpProtoAndCheckerMaker {
  private:
   void CheckNoDuplicatedInOutAttrs();
   void Validate();
+
+  void CheckReuseVars();
 
   proto::OpProto *proto_;
   OpAttrChecker *op_checker_;

@@ -14,15 +14,24 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdio>
 #include <string>
+#include <typeindex>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+template <typename T>
+void SetAttr(framework::proto::OpDesc *op, const std::string &name,
+             const T &data);
 
 template <typename Vec>
 int AccuDims(Vec &&vec, int size) {
@@ -33,7 +42,7 @@ int AccuDims(Vec &&vec, int size) {
   return res;
 }
 
-#define SET_TYPE(type__) dic_[typeid(type__).hash_code()] = #type__;
+#define SET_TYPE(type__) dic_[std::type_index(typeid(type__))] = #type__;
 /*
  * Map typeid to representation.
  */
@@ -45,14 +54,14 @@ struct DataTypeNamer {
 
   template <typename T>
   const std::string &repr() const {
-    auto x = typeid(T).hash_code();
+    auto x = std::type_index(typeid(T));
     PADDLE_ENFORCE(dic_.count(x), "unknown type for representation");
     return dic_.at(x);
   }
 
-  const std::string &repr(size_t &hash) const {
-    PADDLE_ENFORCE(dic_.count(hash), "unknown type for representation");
-    return dic_.at(hash);
+  const std::string &repr(const std::type_index &type) const {  // NOLINT
+    PADDLE_ENFORCE(dic_.count(type), "unknown type for representation");
+    return dic_.at(type);
   }
 
  private:
@@ -60,9 +69,10 @@ struct DataTypeNamer {
     SET_TYPE(int);
     SET_TYPE(bool);
     SET_TYPE(float);
+    SET_TYPE(void *);
   }
 
-  std::unordered_map<decltype(typeid(int).hash_code()), std::string> dic_;
+  std::unordered_map<std::type_index, std::string> dic_;
 };
 #undef SET_TYPE
 
@@ -88,7 +98,7 @@ template <typename T>
 class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
-    PADDLE_ENFORCE(!dic_.count(name));
+    PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
     dic_[name] = data_.size();
     data_.emplace_back(std::unique_ptr<T>(x));
     return data_.back().get();
@@ -104,6 +114,27 @@ class OrderedRegistry {
   std::unordered_map<std::string, int> dic_;
   std::vector<std::unique_ptr<T>> data_;
 };
+
+template <typename T>
+T &GetFromScope(const framework::Scope &scope, const std::string &name) {
+  framework::Variable *var = scope.FindVar(name);
+  PADDLE_ENFORCE(var != nullptr);
+  return *var->GetMutable<T>();
+}
+
+static void ExecShellCommand(const std::string &cmd, std::string *message) {
+  char buffer[128];
+  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+  if (!pipe) {
+    LOG(ERROR) << "error running command: " << cmd;
+    return;
+  }
+  while (!feof(pipe.get())) {
+    if (fgets(buffer, 128, pipe.get()) != nullptr) {
+      *message += buffer;
+    }
+  }
+}
 
 }  // namespace analysis
 }  // namespace inference

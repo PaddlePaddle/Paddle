@@ -79,15 +79,18 @@ def train_program(word_dict):
     return [avg_cost, accuracy]
 
 
+def optimizer_func():
+    return fluid.optimizer.Adagrad(learning_rate=0.002)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.Adagrad(learning_rate=0.002)
 
     word_dict = paddle.dataset.imdb.word_dict()
     trainer = fluid.Trainer(
         train_func=partial(train_program, word_dict),
         place=place,
-        optimizer=optimizer)
+        optimizer_func=optimizer_func)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
@@ -140,17 +143,17 @@ def infer(use_cuda, inference_program, params_dirname=None):
     # Here each word is the basic element of the LoDTensor and the shape of 
     # each word (base_shape) should be [1] since it is simply an index to 
     # look up for the corresponding word vector.
-    # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
-    # which has only one lod level. Then the created LoDTensor will have only 
+    # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
+    # which has only one level of detail. Then the created LoDTensor will have only 
     # one higher level structure (sequence of words, or sentence) than the basic 
     # element (word). Hence the LoDTensor will hold data for three sentences of 
     # length 3, 4 and 2, respectively. 
-    # Note that lod info should be a list of lists.
-    lod = [[3, 4, 2]]
+    # Note that recursive_sequence_lengths should be a list of lists.
+    recursive_seq_lens = [[3, 4, 2]]
     base_shape = [1]
     # The range of random integers is [low, high]
     tensor_words = fluid.create_random_int_lodtensor(
-        lod, base_shape, place, low=0, high=len(word_dict) - 1)
+        recursive_seq_lens, base_shape, place, low=0, high=len(word_dict) - 1)
     results = inferencer.infer({'words': tensor_words})
     print("infer results: ", results)
 

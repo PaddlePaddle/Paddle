@@ -2556,7 +2556,7 @@ def img_conv_layer(input,
     the output will be obtained by concatenating the two results.
 
     The details of grouped convolution, please refer to:
-    `ImageNet Classification with Deep Convolutional Neural Networks
+    `ImageNet Classification With Deep Convolutional Neural Networks
     <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
     
     The example usage is:
@@ -4182,9 +4182,9 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
 
     You can see following configs for further usages:
 
-    - time steps: lstmemory_group, paddle/gserver/tests/sequence_layer_group.conf, \
+    - time steps: lstmemory_group, paddle/legacy/gserver/tests/sequence_layer_group.conf, \
                   demo/seqToseq/seqToseq_net.py
-    - sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf
+    - sequence steps: paddle/legacy/gserver/tests/sequence_nest_layer_group.conf
 
     :param step: A step function which takes the input of recurrent_group as its own
                  input and returns values as recurrent_group's output every time step.
@@ -5678,8 +5678,8 @@ def warp_ctc_layer(input,
     <https://github.com/baidu-research/warp-ctc>`_ library, which is used in
     `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
     <https://arxiv.org/pdf/1512.02595v1.pdf>`_, to compute Connectionist Temporal
-    Classification (CTC) loss. Besides, another `warp-ctc
-    <https://github.com/gangliao/warp-ctc>`_ repository, which is forked from
+    Classification (CTC) loss. Besides, another `warp-ctc repository
+    <https://github.com/gangliao/warp-ctc>`_ , which is forked from
     the official one, is maintained to enable more compiling options. During the
     building process, PaddlePaddle will clone the source codes, build and
     install it to :code:`third_party/install/warpctc` directory.

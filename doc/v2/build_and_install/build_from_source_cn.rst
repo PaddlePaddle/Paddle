@@ -23,7 +23,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 在 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__ 找到 paddle_manylinux_devel
 镜像的编译以及使用方法。或者参考下述可选步骤，从源码中构建用于编译PaddlePaddle的Docker镜像。
 
-如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 `编译依赖`_ 之后才能开始编译的步骤。
+如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 :ref:`编译依赖 <_compile_deps>` 之后才能开始编译的步骤。
 
 编译PaddlePaddle，需要执行：
 
@@ -106,7 +106,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
 - 学习 Docker 有多难？
 
-  理解 Docker 并不难，大概花十分钟看一下[这篇文章](https://zhuanlan.zhihu.com/p/19902938)。这可以帮您省掉花一小时安装和配置各种开发工具，以及切换机器时需要新安装的辛苦。别忘了 PaddlePaddle 更新可能导致需要新的开发工具。更别提简化问题复现带来的好处了。
+  理解 Docker 并不难，大概花十分钟看一下 `如何使用Docker <https://zhuanlan.zhihu.com/p/19902938>`_ 。这可以帮您省掉花一小时安装和配置各种开发工具，以及切换机器时需要新安装的辛苦。别忘了 PaddlePaddle 更新可能导致需要新的开发工具。更别提简化问题复现带来的好处了。
 
 - 我可以用 IDE 吗？
 
@@ -123,7 +123,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
 - 可以并行编译吗？
 
-  是的。我们的 Docker image 运行一个 [Bash 脚本](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh)。这个脚本调用 `make -j$(nproc)` 来启动和 CPU 核一样多的进程来并行编译。
+  是的。我们的 Docker image 运行一个 `Paddle编译Bash脚本 <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh>`_ 。这个脚本调用 `make -j$(nproc)` 来启动和 CPU 核一样多的进程来并行编译。
 
 - Docker 需要 sudo
 
@@ -131,11 +131,11 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
 - 在 Windows/MacOS 上编译很慢
 
-  Docker 在 Windows 和 MacOS 都可以运行。不过实际上是运行在一个 Linux 虚拟机上。可能需要注意给这个虚拟机多分配一些 CPU 和内存，以保证编译高效。具体做法请参考[这个issue](https://github.com/PaddlePaddle/Paddle/issues/627)。
+  Docker 在 Windows 和 MacOS 都可以运行。不过实际上是运行在一个 Linux 虚拟机上。可能需要注意给这个虚拟机多分配一些 CPU 和内存，以保证编译高效。具体做法请参考 `如何为Windows/Mac计算机上的Docker增加内存和虚拟机 <https://github.com/PaddlePaddle/Paddle/issues/627>`_ 。
 
 - 磁盘不够
 
-  本文中的例子里，`docker run` 命令里都用了 `--rm` 参数，这样保证运行结束之后的 containers 不会保留在磁盘上。可以用 `docker ps -a` 命令看到停止后但是没有删除的 containers。`docker build` 命令有时候会产生一些中间结果，是没有名字的 images，也会占用磁盘。可以参考[这篇文章](https://zaiste.net/posts/removing_docker_containers/)来清理这些内容。
+  本文中的例子里，`docker run` 命令里都用了 `--rm` 参数，这样保证运行结束之后的 containers 不会保留在磁盘上。可以用 `docker ps -a` 命令看到停止后但是没有删除的 containers。`docker build` 命令有时候会产生一些中间结果，是没有名字的 images，也会占用磁盘。可以参考 `如何删除Docker Container <https://zaiste.net/posts/removing_docker_containers/>`_ 来清理这些内容。
 
 
 .. _compile_deps:
@@ -195,7 +195,7 @@ BLAS
 
 PaddlePaddle支持 `MKL <https://software.intel.com/en-us/intel-mkl>`_ 和
 `OpenBlAS <http://www.openblas.net/>`_ 两种BLAS库。默认使用MKL。如果使用MKL并且机器含有AVX2指令集，
-还会下载MKL-DNN数学库，详细参考 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/doc/design/mkldnn#cmake>`_ 。
+还会下载MKL-DNN数学库，详细参考 `mkldnn设计文档 <https://github.com/PaddlePaddle/Paddle/tree/develop/doc/design/mkldnn#cmake>`_ 。
 
 如果关闭MKL，则会使用OpenBLAS作为BLAS库。
 
@@ -211,7 +211,7 @@ PaddlePaddle可以使用cuDNN v5.1之后的任何一个版本来编译运行，�
 编译选项的设置
 ++++++++++++++
 
-PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。cmake编译时，首先在系统路径（ :code:`/usr/lib:/usr/local/lib` ）中搜索这几个库，同时也会读取相关路径变量来进行搜索。 通过使用 ``-D`` 命令可以设置，例如 
+PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。cmake编译时，首先在系统路径（ :code:`/usr/lib:/usr/local/lib` ）中搜索这几个库，同时也会读取相关路径变量来进行搜索。 通过使用 ``-D`` 命令可以设置，例如
 
 ..  code-block:: bash
 

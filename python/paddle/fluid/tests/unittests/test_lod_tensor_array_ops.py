@@ -29,7 +29,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 3, 9, 10]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 1]])
         expect = map(lambda x: numpy.array(x).astype('int32'),
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
         self.main(
@@ -42,7 +42,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 3, 9, 9, 10]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 0, 1]])
         expect = map(lambda x: numpy.array(x).astype('int32'),
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
         self.main(
@@ -55,7 +55,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(20).reshape(20, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 2, 5], [0, 3, 9, 11, 17, 20]])
+        tensor.set_recursive_sequence_lengths([[2, 3], [3, 6, 2, 6, 3]])
 
         expect = [
             numpy.array(
@@ -65,7 +65,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
                 [17, 18, 19], dtype='int32')
         ]
 
-        lod = [[[0, 2, 5]], [[0, 6, 12]], [[0, 3]]]
+        lod = [[[2, 3]], [[6, 6]], [[3]]]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -77,8 +77,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set(
             numpy.arange(31).reshape(31, 1).astype('int32'), self.place())
 
-        tensor.set_lod([[0, 3, 5, 9, 11],
-                        [0, 3, 7, 11, 11, 12, 17, 19, 21, 23, 30, 31]])
+        tensor.set_recursive_sequence_lengths(
+            [[3, 2, 4, 2], [3, 4, 4, 0, 1, 5, 2, 2, 2, 7, 1]])
 
         expect = [
             numpy.array(
@@ -88,7 +88,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             ], [17, 18, 3, 4, 5, 6, 11, 30], [19, 20, 7, 8, 9, 10], [21, 22]]
         ]
 
-        lod = [[[0, 5, 8, 8, 15]], [[0, 2, 6, 7, 8]], [[0, 2, 6]], [[0, 2]]]
+        lod = [[[5, 3, 0, 7]], [[2, 4, 1, 1]], [[2, 4]], [[2]]]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -99,8 +99,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 2, 5, 6], [0, 2, 5, 6, 10, 12, 13],
-                        [0, 3, 7, 11, 17, 21, 22, 23, 27, 31, 39, 45, 46, 50]])
+        tensor.set_recursive_sequence_lengths(
+            [[2, 3, 1], [2, 3, 1, 4, 2, 1],
+             [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
 
         expect = [
             numpy.array(
@@ -108,8 +109,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49], range(
                 22, 39) + range(7, 21), range(39, 46)]
         ]
-        lod = [[[0, 1, 3, 4], [0, 1, 4, 8, 12]],
-               [[0, 4, 7], [0, 1, 5, 9, 17, 21, 27, 31]], [[0, 2], [0, 6, 7]]]
+        lod = [[[1, 2, 1], [1, 3, 4, 4]], [[4, 3], [1, 4, 4, 8, 4, 6, 4]],
+               [[2], [6, 1]]]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -120,8 +121,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor = core.LoDTensor()
         tensor.set(
             numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 2, 5, 6], [0, 2, 5, 6, 10, 12, 13],
-                        [0, 3, 7, 11, 17, 21, 22, 23, 27, 31, 39, 45, 46, 50]])
+        tensor.set_recursive_sequence_lengths(
+            [[2, 3, 1], [2, 3, 1, 4, 2, 1],
+             [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
         self.main(
             tensor=tensor,
             expect_array=None,
@@ -162,12 +164,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             exp_tensor, exp_lod = exp
             exp_tensor = numpy.expand_dims(exp_tensor, axis=1)
             self.assertTrue(numpy.allclose(exp_tensor, numpy.array(array[i])))
-            self.assertEqual(exp_lod, array[i].lod())
+            self.assertEqual(exp_lod, array[i].recursive_sequence_lengths())
 
     def check_tensor_same(self, actual, expect):
         self.assertTrue(
             numpy.allclose(numpy.array(actual), numpy.array(expect)))
-        self.assertEqual(actual.lod(), expect.lod())
+        self.assertEqual(actual.recursive_sequence_lengths(),
+                         expect.recursive_sequence_lengths())
 
 
 class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
@@ -188,7 +191,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 
         tensor = core.LoDTensor()
         tensor.set(numpy.arange(10).reshape(10, 1).astype('float32'), place)
-        tensor.set_lod([[0, 3, 9, 10]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         g_vars = program.global_block().var(x.name + "@GRAD")
 

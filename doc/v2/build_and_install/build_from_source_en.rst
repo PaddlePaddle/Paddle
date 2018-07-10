@@ -11,7 +11,7 @@ To build PaddlePaddle, you need
 1. A computer -- Linux, Windows, MacOS.
 2. Docker.
 
-Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image. 
+Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image.
 We run all the tools by running this image.
 
 .. _build_step:
@@ -25,6 +25,8 @@ Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_deve
 you can also find how to build and use paddle_manylinux_devel Docker image from
 `here <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1/>`__
 Or you can build your own image from source as the optional step below:
+
+If you don't wish to use docker，you need to install several compile dependencies manually as :ref:`Compile Dependencies <_compile_deps>` shows to start compilation.
 
 .. code-block:: bash
 
@@ -108,7 +110,7 @@ Frequently Asked Questions
 
 - How difficult is it to learn Docker?
 
-    It takes you ten minutes to read [an introductory article](https://docs.docker.com/get-started) and saves you more than one hour to install all required build tools, configure them, especially when new versions of PaddlePaddle require some new tools.  Not even to mention the time saved when other people trying to reproduce the issue you have.
+    It takes you ten minutes to read `an introductory article <https://docs.docker.com/get-started>`_ and saves you more than one hour to install all required build tools, configure them, especially when new versions of PaddlePaddle require some new tools.  Not even to mention the time saved when other people trying to reproduce the issue you have.
 
 - Can I use my favorite IDE?
 
@@ -125,7 +127,7 @@ Frequently Asked Questions
 
 - Does Docker do parallel building?
 
-  Our building Docker image runs a [Bash script](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh), which calls `make -j$(nproc)` to starts as many processes as the number of your CPU cores.
+  Our building Docker image runs a  `Bash script <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh>`_ , which calls `make -j$(nproc)` to starts as many processes as the number of your CPU cores.
 
 - Docker requires sudo
 
@@ -133,11 +135,11 @@ Frequently Asked Questions
 
 - Docker on Windows/MacOS builds slowly
 
-  On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to [this issue](https://github.com/PaddlePaddle/Paddle/issues/627) for details.
+  On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to `this issue  <https://github.com/PaddlePaddle/Paddle/issues/627>`_ for details.
 
 - Not enough disk space
 
-  Examples in this article use option `--rm` with the `docker run` command.  This option ensures that stopped containers do not exist on hard disks.  We can use `docker ps -a` to list all containers, including stopped.  Sometimes `docker build` generates some intermediate dangling images, which also take disk space.  To clean them, please refer to [this article](https://zaiste.net/posts/removing_docker_containers/).
+  Examples in this article use option `--rm` with the `docker run` command.  This option ensures that stopped containers do not exist on hard disks.  We can use `docker ps -a` to list all containers, including stopped.  Sometimes `docker build` generates some intermediate dangling images, which also take disk space.  To clean them, please refer to `this article <https://zaiste.net/posts/removing_docker_containers/>`_ .
 
 .. _compile_deps:
 

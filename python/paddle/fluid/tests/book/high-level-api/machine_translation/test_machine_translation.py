@@ -53,7 +53,7 @@ def encoder(is_sparse):
     return encoder_out
 
 
-def decoder_train(context, is_sparse):
+def train_decoder(context, is_sparse):
     # decoder
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
@@ -81,7 +81,7 @@ def decoder_train(context, is_sparse):
     return rnn()
 
 
-def decoder_decode(context, is_sparse):
+def decode(context, is_sparse):
     init_state = context
     array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
     counter = pd.zeros(shape=[1], dtype='int64', force_cpu=True)
@@ -127,9 +127,19 @@ def decoder_decode(context, is_sparse):
         current_score = pd.fc(input=current_state_with_lod,
                               size=target_dict_dim,
                               act='softmax')
-        topk_scores, topk_indices = pd.topk(current_score, k=topk_size)
+        topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
+        # calculate accumulated scores after topk to reduce computation cost
+        accu_scores = pd.elementwise_add(
+            x=pd.log(topk_scores), y=pd.reshape(
+                pre_score, shape=[-1]), axis=0)
         selected_ids, selected_scores = pd.beam_search(
-            pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
+            pre_ids,
+            pre_score,
+            topk_indices,
+            accu_scores,
+            beam_size,
+            end_id=10,
+            level=0)
 
         pd.increment(x=counter, value=1, in_place=True)
 
@@ -138,10 +148,14 @@ def decoder_decode(context, is_sparse):
         pd.array_write(selected_ids, array=ids_array, i=counter)
         pd.array_write(selected_scores, array=scores_array, i=counter)
 
-        pd.less_than(x=counter, y=array_len, cond=cond)
+        # update the break condition: up to the max length or all candidates of
+        # source sentences have ended.
+        length_cond = pd.less_than(x=counter, y=array_len)
+        finish_cond = pd.logical_not(pd.is_empty(x=selected_ids))
+        pd.logical_and(x=length_cond, y=finish_cond, out=cond)
 
     translation_ids, translation_scores = pd.beam_search_decode(
-        ids=ids_array, scores=scores_array)
+        ids=ids_array, scores=scores_array, beam_size=beam_size, end_id=10)
 
     # return init_ids, init_scores
 
@@ -150,12 +164,19 @@ def decoder_decode(context, is_sparse):
 
 def train_program(is_sparse):
     context = encoder(is_sparse)
-    rnn_out = decoder_train(context, is_sparse)
+    rnn_out = train_decoder(context, is_sparse)
     label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = pd.cross_entropy(input=rnn_out, label=label)
     avg_cost = pd.mean(cost)
     return avg_cost
+
+
+def optimizer_func():
+    return fluid.optimizer.Adagrad(
+        learning_rate=1e-4,
+        regularization=fluid.regularizer.L2DecayRegularizer(
+            regularization_coeff=0.1))
 
 
 def train(use_cuda, is_sparse, is_local=True):
@@ -182,11 +203,8 @@ def train(use_cuda, is_sparse, is_local=True):
 
     trainer = fluid.Trainer(
         train_func=partial(train_program, is_sparse),
-        optimizer=fluid.optimizer.Adagrad(
-            learning_rate=1e-4,
-            regularization=fluid.regularizer.L2DecayRegularizer(
-                regularization_coeff=0.1)),
-        place=place)
+        place=place,
+        optimizer_func=optimizer_func)
 
     trainer.train(
         reader=train_reader,
@@ -201,7 +219,7 @@ def decode_main(use_cuda, is_sparse):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     context = encoder(is_sparse)
-    translation_ids, translation_scores = decoder_decode(context, is_sparse)
+    translation_ids, translation_scores = decode(context, is_sparse)
 
     exe = Executor(place)
     exe.run(framework.default_startup_program())
@@ -211,11 +229,13 @@ def decode_main(use_cuda, is_sparse):
         [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
-    init_lod = [1] * batch_size
-    init_lod = [init_lod, init_lod]
+    init_recursive_seq_lens = [1] * batch_size
+    init_recursive_seq_lens = [init_recursive_seq_lens, init_recursive_seq_lens]
 
-    init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
-    init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
+    init_ids = fluid.create_lod_tensor(init_ids_data, init_recursive_seq_lens,
+                                       place)
+    init_scores = fluid.create_lod_tensor(init_scores_data,
+                                          init_recursive_seq_lens, place)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -239,7 +259,7 @@ def decode_main(use_cuda, is_sparse):
             feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print result_ids.lod()
+        print result_ids.recursive_sequence_lengths()
         break
 
 

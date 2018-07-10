@@ -21,7 +21,10 @@ limitations under the License. */
 
 #include <deque>
 #include <stack>
+#include <string>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "paddle/fluid/inference/analysis/graph_traits.h"
 #include "paddle/fluid/inference/analysis/node.h"
@@ -44,6 +47,10 @@ struct DataFlowGraph {
 
   // Output a DOT graph file for debug.
   std::string DotString() const;
+
+ private:
+  // Remove duplicate edges and so on.
+  void Clean();
 };
 
 /*
@@ -130,17 +137,24 @@ struct GraphTraits<DataFlowGraph> {
 // Extract the inputs and outputs of a graph. The inputs and outputs of a
 // sub-graph is the inputs nodes and output nodes that doesn't inside the
 // sub-graph.
-std::pair<
-    std::vector<Node *>,
-    std::vector<
-        Node *>> static ExtractInputAndOutputOfSubGraph(std::vector<Node *>
-                                                            &graph) {
+static std::pair<std::vector<Node *>, std::vector<Node *>>
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
   std::unordered_set<Node *> nodes(graph.begin(), graph.end());
   std::unordered_set<Node *> inputs;
   std::unordered_set<Node *> outputs;
+  // Input a Value, check whether its inlink is in the subgraph.
+  auto inlink_in_subgraph = [&](Node *n) {
+    for (auto *in : n->inlinks) {
+      if (nodes.count(in)) return true;
+    }
+    return false;
+  };
   for (auto &node : graph) {
     for (auto *in : node->inlinks) {
-      if (!nodes.count(in) && in->type() == Node::Type::kValue) {
+      // The Value that is written by nodes inside a sub-graph shouldn't be the
+      // input of the sub-graph.
+      if (!nodes.count(in) && in->type() == Node::Type::kValue &&
+          !inlink_in_subgraph(in)) {
         inputs.insert(in);
       }
     }

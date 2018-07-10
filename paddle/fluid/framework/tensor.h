@@ -34,6 +34,28 @@ namespace framework {
 class LoDTensor;
 
 class Tensor {
+#ifdef PADDLE_WITH_MKLDNN
+
+ public:
+  inline mkldnn::memory::format format() const { return format_; }
+
+  inline void set_format(const mkldnn::memory::format format) {
+    format_ = format;
+  }
+
+ protected:
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+
+  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+#endif
+
  public:
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -54,26 +76,24 @@ class Tensor {
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>
-  inline T* data();
+  T* data();
 
   /*! Return a pointer to constant memory block. */
   template <typename T>
-  inline const T* data() const;
+  const T* data() const;
 
-  inline bool IsInitialized() const;
-
-  inline void switch_place(platform::Place new_place);
+  bool IsInitialized() const;
 
   /**
    * @brief   Return a pointer to mutable memory block.
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(platform::Place place);
+  T* mutable_data(platform::Place place);
 
-  inline void* mutable_data(platform::Place place, std::type_index type);
+  void* mutable_data(platform::Place place, std::type_index type);
 
-  inline void* mutable_data(platform::Place place);
+  void* mutable_data(platform::Place place);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -84,19 +104,19 @@ class Tensor {
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(DDim dims, platform::Place place);
+  T* mutable_data(DDim dims, platform::Place place);
 
   /*! Return the dimensions of the memory block. */
-  inline const DDim& dims() const;
+  const DDim& dims() const;
 
   /*! Return the numel of the memory block. */
-  inline int64_t numel() const;
+  int64_t numel() const;
 
   /*! Resize the dimensions of the memory block. */
-  inline Tensor& Resize(const DDim& dims);
+  Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
-  inline Tensor& ShareDataWith(const Tensor& src);
+  Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.
@@ -106,7 +126,7 @@ class Tensor {
    * @param[in] end_idx     The index of the end row(exclusive) to slice.
    *                        The index number begins from 0.
    */
-  inline Tensor Slice(int begin_idx, int end_idx) const;
+  Tensor Slice(int begin_idx, int end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -123,11 +143,11 @@ class Tensor {
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
 
-  inline void check_memory_size() const;
+  void check_memory_size() const;
 
-  inline DataLayout layout() const { return layout_; }
+  DataLayout layout() const { return layout_; }
 
-  inline void set_layout(const DataLayout layout) { layout_ = layout; }
+  void set_layout(const DataLayout layout) { layout_ = layout; }
 
  private:
   /**
@@ -197,8 +217,10 @@ class Tensor {
    *       N,C,H,W for respectively the batch size, the number of
    *       feature maps, the height.
    */
-
-  DataLayout layout_ = DataLayout::kNHWC;
+  // Fix me: here just change the default layout to kNCHW
+  // it doesn't fix the real issue, i.e. feeder should set up tensor layout
+  // according to actual input data
+  DataLayout layout_ = DataLayout::kNCHW;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
@@ -209,15 +231,6 @@ class Tensor {
    */
   size_t offset_;
 };
-
-inline void Tensor::switch_place(platform::Place new_place) {
-  if (holder_->place() == new_place) {
-    return;
-  }
-
-  // TODO(tonyyang-svail): do memcpy here.
-  PADDLE_THROW("Not Implemented");
-}
 
 }  // namespace framework
 }  // namespace paddle

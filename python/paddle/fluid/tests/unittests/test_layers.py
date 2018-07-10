@@ -369,14 +369,63 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
-    def test_upsampling_bilinear2d(self):
+    def test_resize_bilinear(self):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
-            output = layers.upsampling_bilinear2d(x, out_shape=[12, 12])
+            output = layers.resize_bilinear(x, out_shape=[12, 12])
             self.assertIsNotNone(output)
-            output = layers.upsampling_bilinear2d(x, scale=3)
+            output = layers.resize_bilinear(x, scale=3)
             self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_polygon_box_transform(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8, 4, 4], dtype="float32")
+            output = layers.polygon_box_transform(input=x)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_l2_normalize(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8, 7, 10], dtype="float32")
+            output = layers.l2_normalize(x, axis=1)
+
+    def test_maxout(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[8, 6, 6], dtype="float32")
+            output = layers.maxout(x=data, groups=2)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_crop(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5], dtype="float32")
+            y = layers.data(name='y', shape=[2, 3], dtype="float32")
+            output = layers.crop(x, shape=y)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_mean_iou(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32')
+            y = layers.data(name='label', shape=[1], dtype='int64')
+            iou = layers.mean_iou(x, y, 2)
+            self.assertIsNotNone(iou)
+        print(str(program))
+
+    def test_argsort(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+            self.assertIsNotNone(out)
+            self.assertIsNotNone(ids)
         print(str(program))
 
 

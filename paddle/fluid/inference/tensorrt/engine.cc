@@ -43,9 +43,10 @@ void TensorRTEngine::Execute(int batch_size) {
 }
 
 TensorRTEngine::~TensorRTEngine() {
+  cudaStreamSynchronize(*stream_);
   // clean buffer
   for (auto& buf : buffers_) {
-    if (buf.buffer != nullptr) {
+    if (buf.device == DeviceType::GPU && buf.buffer != nullptr) {
       PADDLE_ENFORCE_EQ(0, cudaFree(buf.buffer));
       buf.buffer = nullptr;
       buf.max_size = 0;
@@ -80,6 +81,8 @@ void TensorRTEngine::FreezeNetwork() {
     auto& buf = buffer(item.first);
     CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
     PADDLE_ENFORCE_EQ(0, cudaMalloc(&buf.buffer, item.second));
+    VLOG(4) << "buffer malloc " << item.first << " " << item.second << " "
+            << buf.buffer;
     buf.size = buf.max_size = item.second;
     buf.device = DeviceType::GPU;
   }
@@ -96,6 +99,7 @@ nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] *
                         analysis::AccuDims(dims.d, dims.nbDims);
+  PADDLE_ENFORCE(input->isNetworkInput());
   TensorRTEngine::SetITensor(name, input);
   return input;
 }
@@ -106,9 +110,12 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
                     name);
 
   auto* output = layer->getOutput(offset);
+  SetITensor(name, output);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
+  PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
+  PADDLE_ENFORCE(output->isNetworkOutput());
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
   buffer_sizes_[name] = 0;
@@ -121,6 +128,7 @@ void TensorRTEngine::DeclareOutput(const std::string& name) {
   auto* output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
+  PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
@@ -129,6 +137,20 @@ void TensorRTEngine::DeclareOutput(const std::string& name) {
 
 void* TensorRTEngine::GetOutputInGPU(const std::string& name) {
   return buffer(name).buffer;
+}
+
+void TensorRTEngine::GetOutputInGPU(const std::string& name, void* dst,
+                                    size_t max_size) {
+  // determine data size
+  auto it = buffer_sizes_.find(name);
+  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  PADDLE_ENFORCE_GT(it->second, 0);
+  PADDLE_ENFORCE_GE(max_size, it->second);
+  auto& buf = buffer(name);
+  PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
+  PADDLE_ENFORCE_EQ(cudaMemcpyAsync(dst, buf.buffer, it->second,
+                                    cudaMemcpyDeviceToDevice, *stream_),
+                    0);
 }
 
 void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
@@ -152,7 +174,7 @@ Buffer& TensorRTEngine::buffer(const std::string& name) {
   return buffers_[slot_offset];
 }
 
-void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
+void TensorRTEngine::SetInputFromCPU(const std::string& name, const void* data,
                                      size_t size) {
   auto& buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer);
@@ -160,6 +182,16 @@ void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
   PADDLE_ENFORCE(buf.device == DeviceType::GPU);
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
                                        cudaMemcpyHostToDevice, *stream_));
+}
+
+void TensorRTEngine::SetInputFromGPU(const std::string& name, const void* data,
+                                     size_t size) {
+  auto& buf = buffer(name);
+  PADDLE_ENFORCE_NOT_NULL(buf.buffer);
+  PADDLE_ENFORCE_LE(size, buf.max_size, "buffer is too small");
+  PADDLE_ENFORCE(buf.device == DeviceType::GPU);
+  PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
+                                       cudaMemcpyDeviceToDevice, *stream_));
 }
 
 void TensorRTEngine::SetITensor(const std::string& name,

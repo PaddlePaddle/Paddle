@@ -85,6 +85,10 @@ def train_network():
     return [avg_cost, accuracy]
 
 
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     BATCH_SIZE = 128
     EPOCH_NUM = 1
@@ -92,10 +96,11 @@ def train(use_cuda, train_program, params_dirname):
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             cifar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
-        batch_size=BATCH_SIZE)
+        batch_size=BATCH_SIZE,
+        drop_last=False)
 
     test_reader = paddle.batch(
-        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE, drop_last=False)
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
@@ -111,9 +116,7 @@ def train(use_cuda, train_program, params_dirname):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
-        train_func=train_program,
-        optimizer=fluid.optimizer.Adam(learning_rate=0.001),
-        place=place)
+        train_func=train_program, optimizer_func=optimizer_func, place=place)
 
     trainer.train(
         reader=train_reader,

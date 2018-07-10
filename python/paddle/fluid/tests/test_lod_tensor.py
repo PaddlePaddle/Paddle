@@ -13,77 +13,85 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor, _validate_lod, _convert_lod
-import numpy
+from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor
+import numpy as np
 import unittest
 
 
 class TestLoDTensor(unittest.TestCase):
-    def test_validate_lod(self):
-        lod = (1, 2, 1)
-        self.assertRaises(AssertionError, _validate_lod, lod, -1)
-        lod = [[1, 2], (2, 3)]
-        self.assertRaises(AssertionError, _validate_lod, lod, -1)
-        lod = [1, 2, 3]
-        self.assertRaises(AssertionError, _validate_lod, lod, -1)
+    def test_pybind_recursive_seq_lens(self):
+        tensor = fluid.LoDTensor()
+        recursive_seq_lens = []
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        recursive_seq_lens = [[], [1], [3]]
+        self.assertRaises(Exception, tensor.set_recursive_sequence_lengths,
+                          recursive_seq_lens)
+        recursive_seq_lens = [[0], [2], [3]]
+        self.assertRaises(Exception, tensor.set_recursive_sequence_lengths,
+                          recursive_seq_lens)
 
-        lod = []
-        self.assertTrue(_validate_lod(lod, -1))
-        lod = [[], [1], [3]]
-        self.assertFalse(_validate_lod(lod, -1))
-        lod = [[0], [-1], [3]]
-        self.assertFalse(_validate_lod(lod, -1))
+        recursive_seq_lens = [[1, 2, 3]]
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        self.assertEqual(tensor.recursive_sequence_lengths(),
+                         recursive_seq_lens)
+        tensor.set(np.random.random([6, 1]), fluid.CPUPlace())
+        self.assertTrue(tensor.has_valid_recursive_sequence_lengths())
+        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
+        self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
 
         # Each level's sum should be equal to the number of items in the next level
         # Moreover, last level's sum should be equal to the tensor height
-        lod = [[2, 3], [1, 3, 1, 2, 1]]
-        self.assertTrue(_validate_lod(lod, tensor_height=8))
-        lod = [[1, 3], [2, 1, 3]]
-        self.assertFalse(_validate_lod(lod, tensor_height=6))
-        lod = [[1, 3], [2, 1, 3, 4]]
-        self.assertFalse(_validate_lod(lod, tensor_height=5))
-
-    def test_convert_lod(self):
-        lod = [[1, 2, 3]]
-        converted_lod = [[0, 1, 3, 6]]
-        self.assertEqual(_convert_lod(lod), converted_lod)
-
-        lod = [[2, 3], [1, 3, 1, 2, 1]]
-        converted_lod = [[0, 2, 5], [0, 1, 4, 5, 7, 8]]
-        self.assertEqual(_convert_lod(lod), converted_lod)
+        recursive_seq_lens = [[2, 3], [1, 3, 1, 2, 2]]
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        self.assertEqual(tensor.recursive_sequence_lengths(),
+                         recursive_seq_lens)
+        tensor.set(np.random.random([8, 1]), fluid.CPUPlace())
+        self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
+        recursive_seq_lens = [[2, 3], [1, 3, 1, 2, 1]]
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        self.assertTrue(tensor.has_valid_recursive_sequence_lengths())
+        tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
+        self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
 
     def test_create_lod_tensor(self):
         # Create LoDTensor from a list
         data = [[1, 2, 3], [3, 4]]
-        wrong_lod = [[2, 2]]
-        correct_lod = [[3, 2]]
-        self.assertRaises(AssertionError, create_lod_tensor, data, wrong_lod,
-                          fluid.CPUPlace())
-        tensor = create_lod_tensor(data, correct_lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), [[0, 3, 5]])
+        wrong_recursive_seq_lens = [[2, 2]]
+        correct_recursive_seq_lens = [[3, 2]]
+        self.assertRaises(AssertionError, create_lod_tensor, data,
+                          wrong_recursive_seq_lens, fluid.CPUPlace())
+        tensor = create_lod_tensor(data, correct_recursive_seq_lens,
+                                   fluid.CPUPlace())
+        self.assertEqual(tensor.recursive_sequence_lengths(),
+                         correct_recursive_seq_lens)
 
         # Create LoDTensor from numpy array
-        data = numpy.random.random([10, 1])
-        lod = [[2, 1], [3, 3, 4]]
-        tensor = create_lod_tensor(data, lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), [[0, 2, 3], [0, 3, 6, 10]])
+        data = np.random.random([10, 1])
+        recursive_seq_lens = [[2, 1], [3, 3, 4]]
+        tensor = create_lod_tensor(data, recursive_seq_lens, fluid.CPUPlace())
+        self.assertEqual(tensor.recursive_sequence_lengths(),
+                         recursive_seq_lens)
 
         # Create LoDTensor from another LoDTensor, they are differnt instances
-        new_lod = [[2, 2, 1], [1, 2, 2, 3, 2]]
-        new_tensor = create_lod_tensor(tensor, new_lod, fluid.CPUPlace())
-        self.assertEqual(tensor.lod(), [[0, 2, 3], [0, 3, 6, 10]])
-        self.assertEqual(new_tensor.lod(), [[0, 2, 4, 5], [0, 1, 3, 5, 8, 10]])
+        new_recursive_seq_lens = [[2, 2, 1], [1, 2, 2, 3, 2]]
+        new_tensor = create_lod_tensor(tensor, new_recursive_seq_lens,
+                                       fluid.CPUPlace())
+        self.assertEqual(tensor.recursive_sequence_lengths(),
+                         recursive_seq_lens)
+        self.assertEqual(new_tensor.recursive_sequence_lengths(),
+                         new_recursive_seq_lens)
 
     def test_create_random_int_lodtensor(self):
         # The shape of a word, commonly used in speech and NLP problem, is [1]
         shape = [1]
-        lod = [[2, 3, 5]]
+        recursive_seq_lens = [[2, 3, 5]]
         dict_size = 10000
         low = 0
         high = dict_size - 1
-        tensor = create_random_int_lodtensor(lod, shape,
+        tensor = create_random_int_lodtensor(recursive_seq_lens, shape,
                                              fluid.CPUPlace(), low, high)
-        self.assertEqual(tensor.lod(), [[0, 2, 5, 10]])
+        self.assertEqual(tensor.recursive_sequence_lengths(),
+                         recursive_seq_lens)
         self.assertEqual(tensor.shape(), [10, 1])
 
 

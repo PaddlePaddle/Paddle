@@ -23,13 +23,13 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
-    apt-get install -y --allow-downgrades \
-    git python-pip python-dev openssh-server bison \
+    apt-get install -y --allow-downgrades patchelf \
+    git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
-    automake locales clang-format swig doxygen cmake  \
+    automake locales clang-format swig cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools libtool ccache && \
