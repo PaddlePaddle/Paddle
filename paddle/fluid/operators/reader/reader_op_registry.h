@@ -25,22 +25,21 @@ namespace reader {
 
 static constexpr char kFileFormatSeparator[] = ".";
 
-using FileReaderCreator = std::function<framework::ReaderBase*(
-    const std::string&, const std::vector<framework::DDim>&)>;
+using FileReaderCreator =
+    std::function<framework::ReaderBase*(const std::string&)>;
 
 std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry();
 
 template <typename Reader>
 int RegisterFileReader(const std::string& filetype) {
-  FileReaderRegistry()[filetype] = [](
-      const std::string& fn, const std::vector<framework::DDim>& dims) {
-    return new Reader(fn, dims);
+  FileReaderRegistry()[filetype] = [](const std::string& fn) {
+    return new Reader(fn);
   };
   return 0;
 }
 
 std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
-    const std::string& file_name, const std::vector<framework::DDim>& dims);
+    const std::string& file_name);
 
 extern std::vector<framework::DDim> RestoreShapes(
     const std::vector<int>& shape_concat, const std::vector<int>& ranks);
