@@ -131,15 +131,15 @@ def _debug_string_(proto, throw_on_error=True):
 
 class Variable(object):
     """
-    In Fluid, every input and output of an operator is a variable. In most 
-    cases, variables are used for holding different kinds of data or training 
-    labels. A variable belongs to a block. All variable has its own name and 
+    In Fluid, every input and output of an operator is a variable. In most
+    cases, variables are used for holding different kinds of data or training
+    labels. A variable belongs to a block. All variable has its own name and
     two variables in different blocks could have the same name.
 
-    There are many kinds of variables. Each kind of them has its own attributes 
-    and usages. Please reference the framework.proto for details. 
+    There are many kinds of variables. Each kind of them has its own attributes
+    and usages. Please reference the framework.proto for details.
 
-    Most of a Variable's member variables can be setted to be None. It mean 
+    Most of a Variable's member variables can be setted to be None. It mean
     it is not available or will be specified later.
 
     Args:
@@ -1479,6 +1479,8 @@ class Program(object):
             p = self.inference_optimize()
         else:
             p = Program()
+            p.current_block_idx = self.current_block_idx
+            p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
             p.sync_with_cpp()
@@ -1735,9 +1737,9 @@ class Program(object):
 
 class Parameter(Variable):
     """
-    Parameter is derived from Variable. A parameter is a persistable 
+    Parameter is derived from Variable. A parameter is a persistable
     Variable, and will be updated by optimizers after each iteration.
-    The training of a neural network is essentially the updating of 
+    The training of a neural network is essentially the updating of
     its parameters.
 
     Relative to a general Variable, a Parameter has several its own

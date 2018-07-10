@@ -175,7 +175,8 @@ class DistributeTranspiler(object):
         self.split_method = split_method
         if startup_program is None:
             startup_program = default_startup_program()
-        self.origin_startup_program = startup_program
+        self.origin_startup_program = startup_program.clone()
+        self.startup_program = startup_program
         if program is None:
             program = default_main_program()
         self.origin_program = program
@@ -294,6 +295,8 @@ class DistributeTranspiler(object):
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
+        self.get_trainer_startup_program()
+
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
                                                         pserver_endpoints)
@@ -321,9 +324,9 @@ class DistributeTranspiler(object):
             Program: trainer side startup program.
         """
         if program is None:
-            program = self.origin_startup_program
+            program = self.startup_program
 
-        orig_s_prog = program.clone()
+        orig_s_prog = program
 
         # add concat ops to origin parameters in startup program to
         # let the origin parameters initialized by the spilited parameters
@@ -627,14 +630,15 @@ class DistributeTranspiler(object):
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
-            for key in op.output_names:
-                newname, _ = _get_splited_name_and_shape(op.output(key)[0])
-                if newname:
-                    op_on_pserver = True
-                    new_outputs[key] = created_var_map[newname]
-                elif op.output(key)[0] in pserver_vars:
-                    op_on_pserver = True
-                    new_outputs[key] = pserver_vars[op.output(key)[0]]
+            if op.type not in ["recv", "fetch_barrier", "concat"]:
+                for key in op.output_names:
+                    newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                    if newname:
+                        op_on_pserver = True
+                        new_outputs[key] = created_var_map[newname]
+                    elif op.output(key)[0] in pserver_vars:
+                        op_on_pserver = True
+                        new_outputs[key] = pserver_vars[op.output(key)[0]]
 
             if op_on_pserver:
                 # most startup program ops have no inputs

@@ -54,7 +54,7 @@ class TranspilerTest(unittest.TestCase):
 
     def get_trainer(self):
         t = self._transpiler_instance()
-        return t.get_trainer_program(), t.get_trainer_startup_program()
+        return t.get_trainer_program(), fluid.default_startup_program()
 
     def get_pserver(self, ep):
         t = self._transpiler_instance()
@@ -82,6 +82,14 @@ class TestBasicModel(TranspilerTest):
         pserver2, startup2 = self.get_pserver(self.pserver2_ep)
 
         trainer, trainer_startup = self.get_trainer()
+
+        # splited var blocks should be in startup program
+        self.assertTrue("fc_w.block0" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_w.block1" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_w" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_b" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_w@GRAD" not in trainer_startup.global_block().vars)
+        self.assertTrue("fc_b@GRAD" not in trainer_startup.global_block().vars)
 
         self.assertEqual(
             [op.type for op in trainer_startup.global_block().ops], [
