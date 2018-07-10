@@ -1061,35 +1061,33 @@ class DistributeTranspiler(object):
                     var_mapping[varname] = \
                         [program.global_block().var(orig_var.name)]
                 continue
-            else:
-                var_mapping[varname] = []
-                orig_shape = orig_var.shape
-                orig_dim1_flatten = 1
-                if len(orig_shape) >= 2:
-                    orig_dim1_flatten = reduce(lambda x, y: x * y,
-                                               orig_shape[1:])
+            var_mapping[varname] = []
+            orig_shape = orig_var.shape
+            orig_dim1_flatten = 1
+            if len(orig_shape) >= 2:
+                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
 
-                for i, block in enumerate(splited):
-                    size = block[1]
-                    rows = size / orig_dim1_flatten
-                    splited_shape = [rows]
-                    if len(orig_shape) >= 2:
-                        splited_shape.extend(orig_shape[1:])
-                    new_var_name = ""
-                    if self.sync_mode and add_trainer_suffix:
-                        new_var_name = "%s.block%d.trainer_%d" % \
-                            (varname, i, self.trainer_id)
-                    else:
-                        new_var_name = "%s.block%d" % \
-                            (varname, i)
-                    var = program.global_block().create_var(
-                        name=new_var_name,
-                        persistable=False,
-                        dtype=orig_var.dtype,
-                        type=orig_var.type,
-                        shape=splited_shape)  # flattend splited var
-                    var_mapping[varname].append(var)
-                program.global_block().sync_with_cpp()
+            for i, block in enumerate(splited):
+                size = block[1]
+                rows = size / orig_dim1_flatten
+                splited_shape = [rows]
+                if len(orig_shape) >= 2:
+                    splited_shape.extend(orig_shape[1:])
+                new_var_name = ""
+                if self.sync_mode and add_trainer_suffix:
+                    new_var_name = "%s.block%d.trainer_%d" % \
+                        (varname, i, self.trainer_id)
+                else:
+                    new_var_name = "%s.block%d" % \
+                        (varname, i)
+                var = program.global_block().create_var(
+                    name=new_var_name,
+                    persistable=False,
+                    dtype=orig_var.dtype,
+                    type=orig_var.type,
+                    shape=splited_shape)  # flattend splited var
+                var_mapping[varname].append(var)
+            program.global_block().sync_with_cpp()
         return var_mapping
 
     def create_splited_vars(self, source_var, block, tag):
