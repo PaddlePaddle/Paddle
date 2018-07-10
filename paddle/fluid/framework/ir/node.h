@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -29,11 +31,6 @@ class Node {
   Node() {}
   virtual ~Node() {}
 
-  template <typename Subclass>
-  Subclass &As() {
-    return *dynamic_cast<Subclass *>(this);
-  }
-
   int64_t ID() const { return id_; }
 
   std::string Name() const { return name_; }
@@ -42,12 +39,15 @@ class Node {
     return Name() + "(" + std::to_string(ID()) + ")";
   }
 
+  virtual std::string DebugString() const = 0;
+
   Type NodeType() const { return type_; }
 
   std::vector<Node *> inputs;
   std::vector<Node *> outputs;
 
  protected:
+  std::map<std::string, std::vector<boost::any>> attrs_;
   int64_t id_ = 0;
   std::string name_;
   Type type_;

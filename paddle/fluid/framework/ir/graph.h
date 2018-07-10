@@ -14,6 +14,25 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/variant.h"
+
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+
+class Graph {
+ public:
+  std::map<std::string, std::vector<boost::any>> attrs;
+
+  std::vector<Node *> inputs;
+  std::vector<Node *> outputs;
+  std::vector<std::unique_ptr<Node>> nodes;
+};
+
+}  // namespace framework
 }  // namespace paddle
