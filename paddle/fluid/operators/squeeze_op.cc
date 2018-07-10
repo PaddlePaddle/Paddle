@@ -50,14 +50,14 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
 
   static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
                                         const framework::DDim &in_dims) {
-    int num_squeeze_dims = squeeze_dims.size();
+    int num_squeeze_dims = static_cast<int>(squeeze_dims.size());
     int cnt_squeezed_dims = 0;
     bool should_squeeze[9] = {false};
 
     // Determines number of dimensions of output tensor after squeeze.
     // Mark and count the dimensions need to be squeezed
     if (num_squeeze_dims == 0) {
-      for (int idx = 0; idx < in_dims.size(); ++idx) {
+      for (int idx = 0; idx < static_cast<int>(in_dims.size()); ++idx) {
         if (in_dims[idx] == 1) {
           should_squeeze[idx] = true;
           ++cnt_squeezed_dims;
@@ -84,7 +84,8 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
 
     // Make output dimensions
     std::vector<int64_t> output_shape(in_dims.size() - cnt_squeezed_dims, 0);
-    for (int in_idx = 0, out_idx = 0; in_idx < in_dims.size(); ++in_idx) {
+    for (int in_idx = 0, out_idx = 0; in_idx < static_cast<int>(in_dims.size());
+         ++in_idx) {
       if (!should_squeeze[in_idx]) {
         output_shape[out_idx++] = in_dims[in_idx];
       }
@@ -151,6 +152,8 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         Case 2:
           Given
             X.shape = (1, 3, 1, 5)
+          and 
+            axes = []
           we get:
             Out.shape = (3, 5)
     )DOC");

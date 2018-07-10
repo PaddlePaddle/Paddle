@@ -205,9 +205,10 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
       context->SetOutputsDim(framework::GradVarName("Params"),
                              context->GetInputsDim("Params"));
     }
-    PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("X")));
-    context->SetOutputsDim(framework::GradVarName("X"),
-                           context->GetInputsDim("X"));
+    if (context->HasOutputs(framework::GradVarName("X"))) {
+      context->SetOutputsDim(framework::GradVarName("X"),
+                             context->GetInputsDim("X"));
+    }
   }
 };
 
