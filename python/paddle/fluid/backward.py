@@ -123,7 +123,8 @@ def _append_grad_suffix_(name):
 def _addup_repetitive_outputs_(op_descs):
     """
     In backward part, an variable may be the output of more than one ops.
-    In this case, the variable should be the accumulation of all the outputs.
+    And one op may yield its multiple outputs to the same variable.
+    In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
     pending_sum_ops = []
