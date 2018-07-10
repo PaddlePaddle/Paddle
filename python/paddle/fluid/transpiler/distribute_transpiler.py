@@ -149,6 +149,7 @@ class DistributeTranspiler(object):
     def transpile(self,
                   trainer_id,
                   program=None,
+                  startup_program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
                   slice_var_up=True,
@@ -172,8 +173,9 @@ class DistributeTranspiler(object):
         """
         assert (split_method.__bases__[0] == PSDispatcher)
         self.split_method = split_method
-        self.origin_startup_program = default_startup_program().clone()
-        self.startup_program = default_startup_program()
+        if startup_program is None:
+            startup_program = default_startup_program()
+        self.origin_startup_program = startup_program
         if program is None:
             program = default_main_program()
         self.origin_program = program
@@ -292,8 +294,6 @@ class DistributeTranspiler(object):
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
-        self.get_trainer_startup_program()
-
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
                                                         pserver_endpoints)
@@ -321,15 +321,13 @@ class DistributeTranspiler(object):
             Program: trainer side startup program.
         """
         if program is None:
-            program = self.startup_program
+            program = self.origin_startup_program
 
-        orig_s_prog = program
+        orig_s_prog = program.clone()
 
         # add concat ops to origin parameters in startup program to
         # let the origin parameters initialized by the spilited parameters
         send_vars = []
-        print(self.grad_var_mapping)
-        print(self.param_var_mapping)
 
         for orig_varname, splited_vars in self.grad_var_mapping.items():
             for _, var in enumerate(splited_vars):
@@ -625,6 +623,7 @@ class DistributeTranspiler(object):
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
+
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
