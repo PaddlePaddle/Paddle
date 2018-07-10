@@ -103,9 +103,9 @@ if(ANDROID OR IOS)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
-if (APPLE)
+if (APPLE OR WIN32)
     set(WITH_MKL OFF CACHE STRING
-        "Disable MKL for building on mac" FORCE)
+        "Disable MKL for building on mac and windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
