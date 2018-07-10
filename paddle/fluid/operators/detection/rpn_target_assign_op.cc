@@ -247,28 +247,25 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
               "[K * M, 1], "
               "K and M is the same as they are in DistMat.");
     AddComment(R"DOC(
-This operator can be, for given the IoU between the ground truth bboxes and the anchors, 
-to assign classification and regression targets to each prediction. The Score index and
-LocationIndex will be generated according to the DistMat. The rest anchors would
-not contibute to the RPN training loss
+This operator can be, for given the IoU between the ground truth bboxes and the
+anchors, to assign classification and regression targets to each prediction.
+The Score index and LocationIndex will be generated according to the DistMat.
+The rest anchors would not contibute to the RPN training loss
 
-ScoreIndex is composed of foreground anchor indexes and background anchor indexes. LocationIndex
-is exactly same as the foreground anchor indexes since we can not assign regression target to the
-background anchors.
+ScoreIndex is composed of foreground anchor indexes(positive labels) and
+background anchor indexes(negative labels). LocationIndex is exactly same
+as the foreground anchor indexes since we can not assign regression target to 
+the background anchors.
 
-This operator select foreground and background anchors by performing the following steps:
-
-1. We can obtain each anchor's matched ground truth bbox according to the IoU(Anchor, gtBBox)
-
-2. For each anchor:
-
-If Max(IoU(Anchor, GTBBoxes)) > rpn_positive_overlap:
-
-       FgIndexes[FgNum++] = AnchorId
-
-If Max(IoU(Anchor, GTBBoxes)) < rpn_negative_overlap:
-
-       BgIndexes[BgNum++] = AnchorId
+The classification targets(TargetLabel) is a binary class label (of being
+an object or not). Following the paper of Faster-RCNN, the positive labels
+are two kinds of anchors: (i) the anchor/anchors with the highest IoU
+overlap with a ground-truth box, or (ii) an anchor that has an IoU overlap
+higher than rpn_positive_overlap(0.7) with any ground-truth box. Note that
+a single ground-truth box may assign positive labels to multiple anchors.
+A non-positive anchor is when its IoU ratio is lower than rpn_negative_overlap
+(0.3) for all ground-truth boxes. Anchors that are neither positive nor
+negative do not contribute to the training objective.
 
 )DOC");
   }

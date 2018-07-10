@@ -54,10 +54,22 @@ def rpn_target_assign(loc,
                       rpn_positive_overlap=0.7,
                       rpn_negative_overlap=0.3):
     """
-    ** Rpn Target Assign Layer for Faster-RCNN **
+    ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
 
-    This layer can be, for given the IoU between anchors and ground truth boxes,
-    to assign classification and regression targets to each anchors.
+    This layer can be, for given the  Intersection-over-Union (IoU) overlap
+    between anchors and ground truth boxes, to assign classification and
+    regression targets to each each anchor, these target labels are used for
+    train RPN. The classification targets is a binary class label (of being
+    an object or not). Following the paper of Faster-RCNN, the positive labels
+    are two kinds of anchors: (i) the anchor/anchors with the highest IoU
+    overlap with a ground-truth box, or (ii) an anchor that has an IoU overlap
+    higher than rpn_positive_overlap(0.7) with any ground-truth box. Note
+    that a single ground-truth box may assign positive labels to multiple
+    anchors. A non-positive anchor is when its IoU ratio is lower than
+    rpn_negative_overlap (0.3) for all ground-truth boxes. Anchors that are
+    neither positive nor negative do not contribute to the training objective.
+    The regression targets are the encoded ground-truth boxes associated with
+    the positive anchors.
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
@@ -78,17 +90,28 @@ def rpn_target_assign(loc,
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
         rpn_batch_size_per_im(int): Total number of RPN examples per image.
-        fg_fraction(float): Target fraction of RoI minibatch that is labeled foreground (i.e. class > 0), 0-th class is background.
-        rpn_positive_overlap(float): Minimum overlap required between an anchor and ground-truth box for the (anchor, gt box) pair to be a positive example.
-        rpn_negative_overlap(float): Maximum overlap allowed between an anchor and ground-truth box for the (anchor, gt box) pair to be a negative examples.
+        fg_fraction(float): Target fraction of RoI minibatch that is labeled
+            foreground (i.e. class > 0), 0-th class is background.
+        rpn_positive_overlap(float): Minimum overlap required between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a positive
+            example.
+        rpn_negative_overlap(float): Maximum overlap allowed between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a negative
+            examples.
 
     Returns:
         tuple: 
-               A tuple(predicted_scores, predicted_location, target_label, target_bbox) is returned. 
-               The predicted_scores and predicted_location is the predicted result of the RPN. The target_label and target_bbox is the ground truth, respectively.
-               The predicted_location is a 2D Tensor with shape [F, 4], and the shape of target_bbox is same as the shape of the predicted_location, F is the
-               number of the foreground anchors. The predicted_scores is a 2D Tensor with shape [F + B, 1], and the shape of target_label
-               is same as the shape of the predicted_scores, B is the number of the background anchors, the F and B is depends on the input of this operator. 
+               A tuple(predicted_scores, predicted_location, target_label,
+               target_bbox) is returned. The predicted_scores and
+               predicted_location is the predicted result of the RPN.
+               The target_label and target_bbox is the ground truth,
+               respectively. The predicted_location is a 2D Tensor with shape
+               [F, 4], and the shape of target_bbox is same as the shape of
+               the predicted_location, F is the number of the foreground
+               anchors. The predicted_scores is a 2D Tensor with shape
+               [F + B, 1], and the shape of target_label is same as the shape
+               of the predicted_scores, B is the number of the background
+               anchors, the F and B is depends on the input of this operator. 
 
     Examples:
         .. code-block:: python
@@ -110,16 +133,11 @@ def rpn_target_assign(loc,
 
     helper = LayerHelper('rpn_target_assign', **locals())
     # 1. Compute the regression target bboxes
-    target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
-    helper.append_op(
-        type="box_coder",
-        inputs={
-            'PriorBox': anchor_box,
-            'TargetBox': gt_box,
-        },
-        outputs={'OutputBox': target_bbox},
-        attrs={'code_type': 'encode_center_size',
-               'box_normalized': False})
+    target_bbox = box_coder(
+        prior_box=anchor_box,
+        target_box=gt_box,
+        code_type='encode_center_size',
+        box_normalized=False)
 
     # 2. Compute overlaps between the prior boxes and the gt boxes overlaps
     iou = iou_similarity(x=gt_box, y=anchor_box)
