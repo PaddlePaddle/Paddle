@@ -28,7 +28,7 @@ class TestFakeQuantizeOp(OpTest):
         self.inputs = {
             'X': np.random.random((10, 10)).astype("float32"),
             'InScales': np.zeros(self.attrs['window_size']).astype("float32"),
-            'InCurrentScale': np.zeros(1).astype("float32"),
+            'InCurrentIter': np.zeros(1).astype("float32"),
             'InMovingScale': np.zeros(1).astype("float32")
         }
         self.scale = {
