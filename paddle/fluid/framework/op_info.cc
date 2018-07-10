@@ -21,8 +21,8 @@ namespace framework {
 // a static local variable is already being initialized.
 // https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 OpInfoMap& OpInfoMap::Instance() {
-  static OpInfoMap* g_op_info_map = new OpInfoMap();
-  return *g_op_info_map;
+  static OpInfoMap g_op_info_map;
+  return g_op_info_map;
 }
 }  // namespace framework
 }  // namespace paddle

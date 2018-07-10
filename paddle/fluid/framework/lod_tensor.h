@@ -226,5 +226,19 @@ extern void WriteToRecordIO(recordio::Writer* writer,
 extern std::vector<LoDTensor> ReadFromRecordIO(
     recordio::Scanner* scanner, const platform::DeviceContext& dev_ctx);
 
+/*
+ * Convert between length-based LoD and offset-based LoD.
+ * The implementation of LoDTensor class use offset-based LoD.
+ * However, we want to expose the more user-friendly length-based
+ * LoD to the Python side instead.
+ *
+ * Example:
+ * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
+ * then length_lod = [[2, 1], [3, 2, 4]]
+ */
+LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+
+LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
+
 }  // namespace framework
 }  // namespace paddle

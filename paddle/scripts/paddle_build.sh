@@ -22,7 +22,7 @@
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
-    
+
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
     ${BLUE}build_android${NONE}: run build for android platform
@@ -106,6 +106,8 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
+        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -133,7 +135,8 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-        -DWITH_ANAKIN=ON
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
+        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
 }
 
 function abort(){
@@ -198,7 +201,7 @@ function build_android() {
     fi
 
     ANDROID_STANDALONE_TOOLCHAIN=$ANDROID_TOOLCHAINS_DIR/$ANDROID_ARCH-android-$ANDROID_API
-    
+
     cat <<EOF
     ============================================
     Generating the standalone toolchain ...
@@ -212,13 +215,13 @@ EOF
           --arch=$ANDROID_ARCH \
           --platform=android-$ANDROID_API \
           --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-    
+
     BUILD_ROOT=${PADDLE_ROOT}/build_android
     DEST_ROOT=${PADDLE_ROOT}/install_android
-    
+
     mkdir -p $BUILD_ROOT
     cd $BUILD_ROOT
-    
+
     if [ $ANDROID_ABI == "armeabi-v7a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
             -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
@@ -286,7 +289,7 @@ function build_ios() {
           -DWITH_TESTING=OFF \
           -DWITH_SWIG_PY=OFF \
           -DCMAKE_BUILD_TYPE=Release
-    
+
     make -j 2
 }
 
@@ -308,6 +311,20 @@ EOF
         fi
     fi
 }
+
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/PaddlePaddle/FluidAPISpec/master/API.spec} \
+        > origin.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py origin.spec new.spec
+    deactivate
+}
+
 
 function single_test() {
     TEST_NAME=$1
@@ -331,14 +348,14 @@ EOF
 function bind_test() {
     # the number of process to run tests
     NUM_PROC=6
-    
+
     # calculate and set the memory usage for each process
     MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
-    
+
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-    
+
     for (( i = 0; i < $NUM_PROC; i++ )); do
         cuda_list=()
         for (( j = 0; j < $CUDA_DEVICE_COUNT; j++ )); do
@@ -547,6 +564,7 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib

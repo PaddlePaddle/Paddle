@@ -15,6 +15,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <string>
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -53,6 +54,10 @@ class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
     auto graph = builder_->Build(program);
     printer_->Print(*graph, stream_ref_);
     return graph;
+  }
+
+  int GetVarDeviceID(const std::string& var_name) const override {
+    return builder_->GetVarDeviceID(var_name);
   }
 
  private:

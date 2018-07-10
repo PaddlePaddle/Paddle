@@ -61,8 +61,11 @@ option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
+option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
+option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
+option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -131,6 +134,10 @@ if (NOT DEFINED WITH_MKLDNN)
         set(WITH_MKLDNN OFF)
     endif()
 endif()
+
+if (REPLACE_ENFORCE_GLOG)
+  add_definitions("-DREPLACE_ENFORCE_GLOG")
+endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
@@ -153,9 +160,21 @@ include(external/cares)
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
         include(external/grpc)
+        message(STATUS "Use grpc framework.")
     else()
+        message(STATUS "Use brpc framework.")
         include(external/leveldb)
         include(external/brpc)
+    endif()
+endif()
+
+if(WITH_BRPC_RDMA)
+    message(STATUS "Use brpc with rdma.")
+    if(WITH_GRPC)
+        message(FATAL_ERROR "Can't use grpc with brpc rdma.")
+    endif()
+    if(NOT WITH_DISTRIBUTE)
+        message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
 endif()
 
@@ -178,7 +197,7 @@ include(inference_lib)      # add paddle fluid inference libraries
 
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
+include_directories("${PADDLE_SOURCE_DIR}/paddle/legacy/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
@@ -222,7 +241,7 @@ add_subdirectory(proto)
 if(NOT MOBILE_INFERENCE AND NOT WITH_FLUID_ONLY)
     # "add_subdirectory(go)" should be placed after the following loine,
     # because it depends on paddle/optimizer.
-    add_subdirectory(paddle/optimizer)
+    add_subdirectory(paddle/legacy/optimizer)
 endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be

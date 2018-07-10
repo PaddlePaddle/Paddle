@@ -22,7 +22,7 @@ class TestSequenceReshape(OpTest):
     def setUp(self):
         self.op_type = 'sequence_reshape'
         dimension = 12
-        x_lod = [[0, 4, 5, 8, 11]]
+        x_lod = [[4, 1, 3, 3]]
         x = np.random.uniform(0.1, 1, [11, 24]).astype('float32')
 
         self.inputs = {'X': (x, x_lod)}
@@ -34,13 +34,13 @@ class TestSequenceReshape(OpTest):
 
     def compute_output(self, x, x_lod, dimension):
         x_width = x.shape[1]
-        out_lod = [[0]]
-        for i in xrange(len(x_lod[0]) - 1):
-            seq_len = x_lod[0][i + 1] - x_lod[0][i]
+        out_lod = [[]]
+        for i in xrange(len(x_lod[0])):
+            seq_len = x_lod[0][i]
             offset = (seq_len * x_width) / dimension
             assert int(offset) * dimension == seq_len * x_width
-            out_lod[0].append(out_lod[0][-1] + int(offset))
-        out = np.zeros(shape=(out_lod[0][-1], dimension)).astype('float32')
+            out_lod[0].append(int(offset))
+        out = np.zeros(shape=(sum(out_lod[0]), dimension)).astype('float32')
         out.ravel()[:] = x.ravel()[:]
         return out, out_lod
 
@@ -55,7 +55,7 @@ class TestSequenceReshape_reduce(TestSequenceReshape):
     def setUp(self):
         self.op_type = 'sequence_reshape'
         dimension = 24
-        x_lod = [[0, 4, 6, 8, 12]]
+        x_lod = [[4, 2, 2, 4]]
         x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
         self.inputs = {'X': (x, x_lod)}
@@ -70,7 +70,7 @@ class TestSequenceReshape_same(TestSequenceReshape):
     def setUp(self):
         self.op_type = 'sequence_reshape'
         dimension = 12
-        x_lod = [[0, 4, 6, 8, 12]]
+        x_lod = [[4, 2, 2, 4]]
         x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
         self.inputs = {'X': (x, x_lod)}

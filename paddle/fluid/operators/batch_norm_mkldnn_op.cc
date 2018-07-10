@@ -21,8 +21,6 @@ namespace operators {
 
 using batch_norm_bwd = mkldnn::batch_normalization_backward;
 using batch_norm_fwd = mkldnn::batch_normalization_forward;
-using framework::DataLayout;
-using framework::Tensor;
 using mkldnn::memory;
 using mkldnn::primitive;
 using mkldnn::reorder;
@@ -30,18 +28,6 @@ using mkldnn::stream;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
-
-template <typename T>
-using EigenArrayMap =
-    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using ConstEigenArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
-template <typename T>
-using ConstEigenVectorArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 namespace {
 template <typename T>
@@ -80,6 +66,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto *mean = ctx.Input<Tensor>("Mean");
@@ -125,11 +112,15 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     unsigned flags = mkldnn::use_scale_shift;
     if (is_test) flags |= mkldnn::use_global_stats;
+    if (fuse_with_relu) flags |= mkldnn::fuse_bn_relu;
 
     // create mkldnn memory from input x tensor
-    auto src_memory =
-        memory({{{src_tz}, memory::data_type::f32, x->format()}, mkldnn_engine},
-               to_void_cast(x_data));
+    mkldnn::memory::format input_format =
+        platform::MKLDNNFormatForSize(src_tz.size(), x->format());
+
+    auto src_memory = memory(
+        {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
+        to_void_cast(x_data));
 
     // create primitive descriptor for batch norm forward
     using bn_fwd_types = bn_type_traits<mkldnn::batch_normalization_forward>;
@@ -263,15 +254,21 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     using bn_bwd_types = bn_type_traits<mkldnn::batch_normalization_backward>;
 
     // create mkldnn memory from input diff_y tensor
-    auto user_diff_dst_memory =
-        memory({{{diff_dst_tz}, memory::data_type::f32, diff_y->format()},
-                mkldnn_engine},
-               to_void_cast(diff_y_data));
+
+    mkldnn::memory::format dst_format =
+        platform::MKLDNNFormatForSize(src_tz.size(), diff_y->format());
+
+    auto user_diff_dst_memory = memory(
+        {{{diff_dst_tz}, memory::data_type::f32, dst_format}, mkldnn_engine},
+        to_void_cast(diff_y_data));
 
     // create mkldnn memory from input x tensor
-    auto src_memory =
-        memory({{{src_tz}, memory::data_type::f32, x->format()}, mkldnn_engine},
-               to_void_cast(x_data));
+    mkldnn::memory::format input_format =
+        platform::MKLDNNFormatForSize(src_tz.size(), x->format());
+
+    auto src_memory = memory(
+        {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
+        to_void_cast(x_data));
 
     // for diff_dst, try to use same format as dst in forward pass
     auto diff_dst_pd = batch_norm_fwd_pd.get()->dst_primitive_desc();

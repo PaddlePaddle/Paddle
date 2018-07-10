@@ -62,36 +62,33 @@ class LayerNormOp : public framework::OperatorWithKernel {
 class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input tensor.");
+    AddInput("X", "The input tensor.");
     AddInput("Scale",
-             "(Tensor, optional) Scale is a 1-dimensional tensor of size "
+             "(optional) Scale is a 1-dimensional tensor of size "
              "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
              "It is applied to the output.")
         .AsDispensable();
     AddInput("Bias",
-             "(Tensor, optional) Bias is a 1-dimensional tensor of size "
+             "(optional) Bias is a 1-dimensional tensor of size "
              "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
              "It is applied to the output.")
         .AsDispensable();
-    AddOutput("Y", "(LoDTensor) Result after normalization.");
-    AddOutput("Mean", "(Tensor) Mean of the current mini batch.")
-        .AsIntermediate();
-    AddOutput("Variance", "(Tensor) Variance of the current mini batch.")
+    AddOutput("Y", "Result after normalization.");
+    AddOutput("Mean", "Mean of the current mini batch.").AsIntermediate();
+    AddOutput("Variance", "Variance of the current mini batch.")
         .AsIntermediate();
 
     AddAttr<float>("epsilon",
-                   "(float, default 1e-5) Constant for "
-                   "numerical stability")
+                   "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
     AddAttr<int>("begin_norm_axis",
-                 "(int default:1), the "
-                 "axis of `begin_norm_axis ... Rank(X) - 1` will be "
+                 "the axis of `begin_norm_axis ... Rank(X) - 1` will be "
                  "normalized. `begin_norm_axis` splits the tensor(`X`) to a "
-                 "matrix [N,H].")
+                 "matrix [N,H]. [default 1].")
         .SetDefault(1)
         .AddCustomChecker([](const int &begin_norm_axis) {
           PADDLE_ENFORCE_GT(begin_norm_axis, 0,
@@ -99,10 +96,14 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     AddComment(R"DOC(
-Layer Normalization.
-Layer Norm has been implemented as discussed in the paper:
-https://arxiv.org/abs/1607.06450
-...
+Assume feature vectors exist on dimensions
+:attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
+along these dimensions for each feature vector :math:`a` with size
+:math:`H`, then normalize each feature vector using the corresponding
+statistics. After that, apply learnable gain and bias on the normalized
+tensor to scale and shift if :attr:`scale` and :attr:`shift` are set.
+
+Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 )DOC");
   }
 };

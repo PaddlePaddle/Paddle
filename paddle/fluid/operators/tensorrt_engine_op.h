@@ -16,12 +16,18 @@
 
 #ifdef PADDLE_WITH_CUDA
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace operators {
+
+using inference::Singleton;
+using inference::tensorrt::TRT_EngineManager;
 
 class TensorRTEngineOp : public framework::OperatorWithKernel {
  public:
@@ -47,16 +53,19 @@ template <typename DeviceContext, typename T>
 class TensorRTEngineKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    if (!engine_) {
+    VLOG(4) << "TensorRTEngineKernel executing";
+    auto engine_name = context.Attr<std::string>("engine_uniq_key");
+    if (!Singleton<TRT_EngineManager>::Global().HasEngine(engine_name)) {
       Prepare(context);
     }
+    auto* engine = Singleton<TRT_EngineManager>::Global().Get(engine_name);
     auto input_names = context.op().Inputs("Xs");
     PADDLE_ENFORCE(!input_names.empty(), "should pass more than one inputs");
     // Try to determine a batch_size
     auto& tensor0 = inference::analysis::GetFromScope<framework::LoDTensor>(
         context.scope(), input_names.front());
     int batch_size = tensor0.dims()[0];
-    PADDLE_ENFORCE_LE(batch_size, max_batch_);
+    PADDLE_ENFORCE_LE(batch_size, context.Attr<int>("max_batch"));
 
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
@@ -64,20 +73,20 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(
           context.scope(), x);
       if (platform::is_cpu_place(t.place())) {
-        engine_->SetInputFromCPU(x, static_cast<const void*>(t.data<void>()),
-                                 t.memory_size());
+        engine->SetInputFromCPU(x, static_cast<const void*>(t.data<void>()),
+                                t.memory_size());
       } else {
-        engine_->SetInputFromGPU(x, static_cast<const void*>(t.data<void>()),
-                                 t.memory_size());
+        engine->SetInputFromGPU(x, static_cast<const void*>(t.data<void>()),
+                                t.memory_size());
       }
     }
     // Execute the engine.
     PADDLE_ENFORCE_GT(batch_size, 0);
-    engine_->Execute(batch_size);
+    engine->Execute(batch_size);
     // Convert output tensor from engine to fluid
     for (const auto& y : context.Outputs("Ys")) {
       // convert output and copy to fluid.
-      nvinfer1::ITensor* trt_t = engine_->GetITensor(y);
+      nvinfer1::ITensor* trt_t = engine->GetITensor(y);
       auto dims = trt_t->getDimensions();
       // Use the output ITensor's dims to reshape the Fluid Tensor.
       std::vector<int> ddim(dims.d, dims.d + dims.nbDims);
@@ -89,27 +98,22 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
       if (platform::is_cpu_place(fluid_t->place())) {
         // TODO(Superjomn) change this float to dtype size.
-        engine_->GetOutputInCPU(
+        engine->GetOutputInCPU(
             y, fluid_t->mutable_data<float>(platform::CPUPlace()),
             size * sizeof(float));
       } else {
-        engine_->GetOutputInGPU(
+        engine->GetOutputInGPU(
             y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
             size * sizeof(float));
       }
     }
 
-    cudaStreamSynchronize(stream_);
+    cudaStreamSynchronize(*engine->stream());
   }
 
  protected:
   // Build the engine.
   void Prepare(const framework::ExecutionContext& context) const;
-
- private:
-  mutable cudaStream_t stream_;
-  mutable inference::tensorrt::TensorRTEngine* engine_{nullptr};
-  mutable int max_batch_{0};
 };
 
 }  // namespace operators

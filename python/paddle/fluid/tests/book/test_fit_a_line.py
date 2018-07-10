@@ -69,16 +69,16 @@ def train(use_cuda, save_dirname, is_local):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
@@ -110,14 +110,23 @@ def infer(use_cuda, save_dirname=None):
         # The input's dimension should be 2-D and the second dim is 13
         # The input data should be >= 0
         batch_size = 10
-        tensor_x = numpy.random.uniform(0, 10,
-                                        [batch_size, 13]).astype("float32")
+
+        test_reader = paddle.batch(
+            paddle.dataset.uci_housing.test(), batch_size=batch_size)
+
+        test_data = test_reader().next()
+        test_feat = numpy.array(
+            [data[0] for data in test_data]).astype("float32")
+        test_label = numpy.array(
+            [data[1] for data in test_data]).astype("float32")
+
         assert feed_target_names[0] == 'x'
         results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_x},
+                          feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
         print("infer shape: ", results[0].shape)
         print("infer results: ", results[0])
+        print("ground truth: ", test_label)
 
 
 def main(use_cuda, is_local=True):

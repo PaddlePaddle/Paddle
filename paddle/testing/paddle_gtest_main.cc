@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/init.h"
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
@@ -30,7 +30,9 @@ int main(int argc, char** argv) {
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));
 #else
-  new_argv.push_back(strdup("--tryfromenv=use_pinned_memory,use_mkldnn"));
+  new_argv.push_back(strdup(
+      "--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_mb"));
+  new_argv.push_back(strdup("--undefok=use_mkldnn,initial_cpu_memory_in_mb"));
 #endif
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
