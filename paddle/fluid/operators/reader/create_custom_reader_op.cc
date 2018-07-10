@@ -33,7 +33,7 @@ class CustomReader : public framework::DecoratedReader {
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
  private:
   const framework::ProgramDesc program_;
@@ -64,6 +64,7 @@ class CreateCustomReaderOp : public framework::OperatorBase {
         new CustomReader(underlying_reader.Get(), *sub_block,
                          Attr<std::vector<std::string>>("source_var_names"),
                          Attr<std::vector<std::string>>("sink_var_names")));
+    underlying_reader.Get()->GetDecorations().emplace_back(out->Get());
   }
 };
 
@@ -143,7 +144,7 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
   }
 };
 
-void CustomReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   out->clear();
   std::vector<framework::LoDTensor> underlying_outs;
   reader_->ReadNext(&underlying_outs);

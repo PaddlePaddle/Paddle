@@ -34,7 +34,7 @@ class ShuffleReader : public framework::DecoratedReader {
     ReloadBuffer();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     out->clear();
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
@@ -89,6 +89,7 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
     out->Reset(
         new ShuffleReader(underlying_reader.Get(),
                           static_cast<size_t>(Attr<int>("buffer_size"))));
+    underlying_reader.Get()->GetDecorations().emplace_back(out->Get());
   }
 };
 

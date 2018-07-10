@@ -24,14 +24,22 @@ class ThreadedReader : public framework::DecoratedReader {
   explicit ThreadedReader(const std::shared_ptr<ReaderBase>& reader)
       : DecoratedReader(reader) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     std::lock_guard<std::mutex> lock(mutex_);
     reader_->ReadNext(out);
   }
 
-  void ReInit() override { reader_->ReInit(); }
-
  private:
+  void Close() override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    is_closed_ = true;
+  }
+
+  void ReStart() override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    is_closed_ = false;
+  }
+
   std::mutex mutex_;
 };
 
@@ -50,6 +58,7 @@ class CreateThreadedReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     out->Reset(new ThreadedReader(underlying_reader.Get()));
+    underlying_reader.Get()->GetDecorations().emplace_back(out->Get());
   }
 };
 
@@ -62,9 +71,6 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
       This operator creates a threaded reader. A threaded reader's
       'ReadNext()' can be invoked by several threads at the same
       time.
-      When the attribute 'safe_mode' is true, the threaded reader's
-      'ReInit()' is disabled to avoid unexpected bugs in multi-thread
-      environment.
     )DOC");
   }
 };

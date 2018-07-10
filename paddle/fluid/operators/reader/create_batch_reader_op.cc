@@ -25,7 +25,7 @@ class BatchReader : public framework::DecoratedReader {
     buffer_.reserve(batch_size_);
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
  private:
   int batch_size_;
@@ -48,6 +48,7 @@ class CreateBatchReaderOp : public framework::OperatorBase {
                                         ->Get<framework::ReaderHolder>();
     out->Reset(
         new BatchReader(underlying_reader.Get(), Attr<int>("batch_size")));
+    underlying_reader.Get()->GetDecorations().emplace_back(out->Get());
   }
 };
 
@@ -66,7 +67,7 @@ class CreateBatchReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-void BatchReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void BatchReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   buffer_.clear();
   buffer_.reserve(batch_size_);
   for (int i = 0; i < batch_size_; ++i) {
