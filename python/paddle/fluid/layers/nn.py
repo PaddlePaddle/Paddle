@@ -24,6 +24,7 @@ from tensor import concat
 import utils
 import random
 from .. import unique_name
+from ..core import VarDesc
 
 __all__ = [
     'fc',
@@ -897,7 +898,12 @@ def cos_sim(X, Y):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
+def dropout(x,
+            dropout_prob,
+            is_test=False,
+            seed=None,
+            name=None,
+            use_cudnn=False):
     """
     Computes dropout.
 
@@ -916,7 +922,8 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
                     NOTE: If an integer seed is given, always the same output
                     units will be dropped. DO NOT use a fixed seed in training.
         name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+                         will be named automatically. 
+        use_cudnn (bool): A flag indicating whether to use CuDNN kernel.
 
     Returns:
         Variable: A tensor variable is the shape with `x`.
@@ -931,18 +938,32 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
 
     helper = LayerHelper('dropout', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
-    mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+    if not use_cudnn:
+        mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+        outputs = {'Out': [out], 'Mask': [mask]}
+    else:
+        dtype = VarDesc.VarType.UINT8
+        states = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+        reserve_space = helper.create_tmp_variable(
+            dtype=dtype, stop_gradient=True)
+        outputs = {
+            'Out': [out],
+            'States': [states],
+            'ReserveSpace': [reserve_space]
+        }
+
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'Mask': [mask]},
+        outputs=outputs,
         attrs={
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0
+            'seed': seed if seed is not None else 0,
+            'use_cudnn': use_cudnn
         })
+
     return out
 
 

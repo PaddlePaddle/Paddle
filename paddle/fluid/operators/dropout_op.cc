@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +30,46 @@ class DropoutOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
-      ctx->SetOutputDim("Mask", x_dims);
+
+    bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+    bool is_test = ctx->Attrs().Get<bool>("is_test");
+
+    if (!is_test) {
+      if (use_cudnn) {
+        // Since we cannot access DeviceContext here,
+        // dims of States cannot be inferred by calling
+        // cudnnDropoutGetStatesSize
+        PADDLE_ENFORCE(ctx->HasOutput("States"),
+                       "Output(States) must not be null when use cudnnDropout");
+
+        // Since we cannot get data_type here,
+        // dims of ReserveSpace cannot be inferred by calling
+        // cudnnDropoutGetReserveSpaceSize
+        PADDLE_ENFORCE(
+            ctx->HasOutput("ReserveSpace"),
+            "Output(ReserveSpace) must not be null when use cudnnDropout");
+      } else {
+        ctx->SetOutputDim("Mask", x_dims);
+      }
     }
+
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto place = ctx.GetPlace();
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    PADDLE_ENFORCE(platform::is_cpu_place(place) && use_cudnn,
+                   "cudnn is not supported in CPUPlace");
+    framework::LibraryType library =
+        (use_cudnn ? framework::LibraryType::kCUDNN
+                   : framework::LibraryType::kPlain);
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(input_data_type, place, layout, library);
   }
 };
 
@@ -40,7 +78,16 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
-    AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddOutput("Mask",
+              "The random sampled dropout mask when use_cudnn is false.")
+        .AsDispensable()
+        .AsIntermediate();
+    AddOutput("States", "The random generator states when use_cudnn is true.")
+        .AsDispensable()
+        .AsIntermediate();
+    AddOutput("ReserveSpace", "The reserve space when use_cudnn is true.")
+        .AsDispensable()
+        .AsIntermediate();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
@@ -57,6 +104,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<bool>("use_cudnn",
+                  "Whether to use cudnn kernel."
+                  "Notice that when use_cudnn, the approximately dropout_prob "
+                  "fraction of X values will be replaces by 0, and the rest "
+                  "will be scaled by 1/(1-dropout_prob).")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Dropout Operator.
@@ -93,6 +146,29 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                       "Dimensions of Input(X) and Mask must be the same.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto place = ctx.GetPlace();
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    PADDLE_ENFORCE(platform::is_cpu_place(place) && use_cudnn,
+                   "cudnn is not supported in CPUPlace");
+    framework::LibraryType library =
+        (use_cudnn ? framework::LibraryType::kCUDNN
+                   : framework::LibraryType::kPlain);
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
+    // FIXME(zengjinle): when use_cudnn is false,
+    // dropout GPU kernel supports FP16 and FP32,
+    // but dropout_grad GPU kernel only supports FP32
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    if (platform::is_gpu_place(place) && !use_cudnn) {
+      input_data_type = framework::proto::VarType::FP32;
+    }
+    return framework::OpKernelType(input_data_type, place, layout, library);
   }
 };
 
