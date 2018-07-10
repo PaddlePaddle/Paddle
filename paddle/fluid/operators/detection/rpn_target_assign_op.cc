@@ -154,7 +154,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
         tgt_lbl->mutable_data<int64_t>({n * col, 1}, context.GetPlace());
 
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, int> iset;
+    math::SetConstant<platform::CPUDeviceContext, int64_t> iset;
     iset(dev_ctx, tgt_lbl, static_cast<int>(-1));
 
     std::vector<int> fg_inds;
