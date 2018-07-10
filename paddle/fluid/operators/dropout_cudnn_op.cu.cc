@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,44 +39,47 @@ template <typename T>
 class CUDNNDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    std::cerr << "Computing..." << std::endl;
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
+
     float dropout_prob = context.Attr<float>("dropout_prob");
+    T alpha(1.0f - dropout_prob), beta(0.0f);
+
+    auto* x_data = x->data<T>();
+    auto* y_data = y->mutable_data<T>(context.GetPlace());
+
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
+
+    cudnnTensorFormat_t format = CUDNN_TENSOR_NCHW;
+    std::array<int, 4> nchw;
+    GetNCHW(x->dims(), &nchw);
+
+    cudnnTensorDescriptor_t x_desc, y_desc;
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&x_desc));
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&y_desc));
+
+    CUDNN_ENFORCE(platform::dynload::cudnnSetTensor4dDescriptor(
+        x_desc, format, platform::CudnnDataType<T>::type, nchw[0], nchw[1],
+        nchw[2], nchw[3]));
+
+    CUDNN_ENFORCE(platform::dynload::cudnnSetTensor4dDescriptor(
+        y_desc, format, platform::CudnnDataType<T>::type, nchw[0], nchw[1],
+        nchw[2], nchw[3]));
 
     if (!context.Attr<bool>("is_test")) {
-      auto* x_data = x->data<T>();
-      auto* y_data = y->mutable_data<T>(context.GetPlace());
-
       cudnnDropoutDescriptor_t dropoutDesc;
       CUDNN_ENFORCE(
           platform::dynload::cudnnCreateDropoutDescriptor(&dropoutDesc));
-      auto& dev_ctx =
-          context.template device_context<platform::CUDADeviceContext>();
-      auto handle = dev_ctx.cudnn_handle();
 
       std::random_device rnd;
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
-      // data_layout is not important to dropout_op, so it can be any format
-      cudnnTensorFormat_t format = CUDNN_TENSOR_NCHW;
-      std::array<int, 4> nchw;
-      GetNCHW(x->dims(), &nchw);
-
       auto* states = context.Output<Tensor>("States");
       auto* reserve_space = context.Output<Tensor>("ReserveSpace");
-
-      cudnnTensorDescriptor_t x_desc, y_desc;
-      CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&x_desc));
-      CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&y_desc));
-
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensor4dDescriptor(
-          x_desc, format, platform::CudnnDataType<T>::type, nchw[0], nchw[1],
-          nchw[2], nchw[3]));
-
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensor4dDescriptor(
-          y_desc, format, platform::CudnnDataType<T>::type, nchw[0], nchw[1],
-          nchw[2], nchw[3]));
 
       size_t states_size, reserve_space_size;
       CUDNN_ENFORCE(
@@ -102,12 +105,21 @@ class CUDNNDropoutKernel : public framework::OpKernel<T> {
           reserve_space_data, reserve_space_size));
 
       CUDNN_ENFORCE(
+          platform::dynload::cudnnScaleTensor(handle, y_desc, y_data, &alpha));
+
+      CUDNN_ENFORCE(
           platform::dynload::cudnnDestroyDropoutDescriptor(dropout_desc));
-      CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(x_desc));
-      CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(y_desc));
     } else {
-      y->ShareDataWith(*x);
+      if (x_data != y_data) {
+        CUDNN_ENFORCE(platform::dynload::cudnnTransformTensor(
+            handle, &alpha, x_desc, x_data, &beta, y_desc, y_data));
+      } else {
+        CUDNN_ENFORCE(platform::dynload::cudnnScaleTensor(handle, y_desc,
+                                                          y_data, &alpha));
+      }
     }
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(x_desc));
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(y_desc));
   }
 };
 
@@ -115,11 +127,16 @@ template <typename T>
 class CUDNNDropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    std::cerr << "Computing grad..." << std::endl;
+
     PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
                    "GradOp is only callable when is_test is false");
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
+
+    auto* grad_x_data = grad_x->mutable_data<T>(context.GetPlace());
+    auto* grad_y_data = grad_y->data<T>();
 
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
@@ -162,8 +179,12 @@ class CUDNNDropoutGradKernel : public framework::OpKernel<T> {
         seed));
 
     CUDNN_ENFORCE(platform::dynload::cudnnDropoutBackward(
-        handle, dropout_desc, grad_y_desc, grad_y, grad_x_desc, grad_x,
-        reserve_space_data, reserve_space->numel()));
+        handle, dropout_desc, grad_y_desc, grad_y_data, grad_x_desc,
+        grad_x_data, reserve_space_data, reserve_space->numel()));
+
+    T alpha(1.0f - dropout_prob);
+    CUDNN_ENFORCE(platform::dynload::cudnnScaleTensor(handle, grad_x_desc,
+                                                      grad_x_data, &alpha));
 
     CUDNN_ENFORCE(
         platform::dynload::cudnnDestroyDropoutDescriptor(dropout_desc));
