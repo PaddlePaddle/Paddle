@@ -53,6 +53,17 @@ set_target_properties(paddle_inference_api_shared PROPERTIES OUTPUT_NAME paddle_
 if(NOT APPLE)
   set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference_api.map")
   set_target_properties(paddle_inference_api_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
+    "execute_process(COMMAND bash -c \"${CMAKE_CURRENT_SOURCE_DIR}/check_symbol.sh"
+    " ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_inference_api.so\" RESULT_VARIABLE symbol_res)\n"
+    "if(NOT \"\${symbol_res}\" STREQUAL \"0\")\n"
+    "  message(FATAL_ERROR \"Check symbol failed.\")\n"
+    "endif()\n")
+  add_custom_target(check_symbol ALL)
+  add_custom_command(
+      TARGET check_symbol
+      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
+      DEPENDS paddle_inference_api_shared)
 endif()
 
 cc_test(test_paddle_inference_api
