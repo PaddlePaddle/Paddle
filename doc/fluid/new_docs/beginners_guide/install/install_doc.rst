@@ -134,17 +134,17 @@ Docker安装完成后，请您执行下面的步骤：
 
 我们为您提供了Ubuntu 16和CentOS 7两种镜像，您可以选择其一
 
-获取0.13.0版Docker image（Ubuntu 16）
+获取0.14.0版Docker image（Ubuntu 16）
 
 .. code-block:: bash
 
-   docker pull paddlepaddle/paddlepaddle_cpu_ubuntu16
+   docker pull paddlepaddle/paddle:0.14.0-ubuntu16-cpu
 
-获取0.13.0版Docker image (CentOS 7)
+获取0.14.0版Docker image (CentOS 7)
 
 .. code-block:: bash
 
-   docker pull paddlepaddle/paddlepaddle_cpu_centos7
+   docker pull paddlepaddle/paddle:0.14.0-centos7-cpu
 
 然后执行以下命令：
 
