@@ -72,6 +72,7 @@ __all__ = [
     'shape',
     'maxout',
     'all_gather',
+    'gather_all',
 ] + __activations__
 
 for _OP in set(__all__):
