@@ -90,6 +90,32 @@ PyObjectPtr import(const std::string& moduleName);
 
 #if PY_MAJOR_VERSION >= 3
 /**
+ * Cast a PyLong to int type T.
+ * @tparam T return type.
+ * @param [in] obj PyLong object.
+ * @param [out] ok status for casting. False if error occured. nullptr if user
+ *                 don't care is ok or not.
+ * @return The value of python object, or 0 if not ok.
+ */
+template <typename T>
+T castInt(PyObject* obj, bool* ok = nullptr) {
+  // Refer to https://www.python.org/dev/peps/pep-0237/, the int and long object
+  // were unified to long since python3
+  if (PyLong_Check(obj)) {
+    if (ok) *ok = true;
+    return (T)PyLong_AsUnsignedLong(obj);
+  } else {
+    if (ok) *ok = false;
+    return (T)0;
+  }
+}
+
+// Convert PyAPI from 2.x to 3.x
+#define PyString_FromString PyUnicode_FromString
+#define PyString_AsString PyUnicode_AsUTF8
+
+#else
+/**
  * Cast a PyLong or PyInt to int type T.
  * @tparam T return type.
  * @param [in] obj PyLong or PyInt object.
@@ -99,18 +125,18 @@ PyObjectPtr import(const std::string& moduleName);
  */
 template <typename T>
 T castInt(PyObject* obj, bool* ok = nullptr) {
-  if (::PyLong_Check(obj)) {
+  if (PyLong_Check(obj)) {
     if (ok) *ok = true;
     return (T)PyLong_AsUnsignedLong(obj);
-  } else if (::PyInt_Check(obj)) {
+  } else if (PyInt_Check(obj)) {
     if (ok) *ok = true;
-    return (T)::PyInt_AsLong(obj);
+    return (T)PyInt_AsLong(obj);
   } else {
     if (ok) *ok = false;
     return (T)0;
   }
 }
-#endif // PY_MAJOR_VERSION
+#endif // PY_MAJOR_VERSION >= 3
 
 /**
  * Invoke repr of python object.
