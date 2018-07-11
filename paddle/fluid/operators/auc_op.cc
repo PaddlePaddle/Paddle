@@ -35,7 +35,14 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(inference_height, label_height,
                       "Out and Label should have same height.");
 
+    int num_thres = ctx->Attrs().Get<int>("num_thresholds");
+
     ctx->SetOutputDim("AUC", {1});
+    ctx->SetOutputDim("TP", {num_thres});
+    ctx->SetOutputDim("TN", {num_thres});
+    ctx->SetOutputDim("FP", {num_thres});
+    ctx->SetOutputDim("FN", {num_thres});
+
     ctx->ShareLoD("Out", /*->*/ "AUC");
   }
 

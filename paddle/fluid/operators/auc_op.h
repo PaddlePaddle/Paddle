@@ -58,11 +58,6 @@ class AucKernel : public framework::OpKernel<T> {
     const T* inference_data = inference->data<T>();
     const int64_t* label_data = label->data<int64_t>();
 
-    true_positive->Resize({num_thresholds});
-    false_negative->Resize({num_thresholds});
-    true_negative->Resize({num_thresholds});
-    false_positive->Resize({num_thresholds});
-
     int64_t* tp_data = true_positive->mutable_data<int64_t>(ctx.GetPlace());
     int64_t* fn_data = false_negative->mutable_data<int64_t>(ctx.GetPlace());
     int64_t* tn_data = true_negative->mutable_data<int64_t>(ctx.GetPlace());
