@@ -86,25 +86,25 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, required) The input Tensor, which the shape is"
-             "[N, D], which N is the size of mini-batch,"
-             "D is the embded size");
+             "(Tensor, required) The input tensor with shape [N, D], "
+             "where N is the size of mini-batch, and D is the feature size.");
     AddInput("W",
              "(Tensor, required), The parameters of hierarchical "
-             "sigmoid operator, each of them is s a 2-D tensor, the shape is"
-             "[num_classes - 1, D]");
+             "sigmoid operator, each of them is a 2-D tensor, the shape is"
+             "[num_classes - 1, D].");
     AddInput("Label",
              "(Tensor, required), The labels of training data. It's a"
-             "1-D tensor, which the shape is [N, 1]");
+             "tensor with shape [N, 1].");
     AddInput("Bias",
              "(Tensor, optional), The bias is a tensor with shape"
-             "[1, num_classes - 1]");
+             "[1, num_classes - 1].");
     AddOutput("Out",
               "(Tensor, required) The output of hierarchical sigmoid operator."
-              "the shape is [N, 1]");
+              "The shape is [N, 1].");
     AddOutput("PreOut",
-              "(Tensor, required) A intermedia 2-D Tensor, which the shape is "
-              "[batch_size, code_length]")
+              "(Tensor, required) A intermedia 2-D tensor with shape "
+              "[batch_size, code_length], where code_length represents the "
+              "maximum path length from root to leaf nodes.")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, required), The number of classes")
         .SetDefault(2);

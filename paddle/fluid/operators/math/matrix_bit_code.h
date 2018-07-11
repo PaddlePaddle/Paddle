@@ -65,12 +65,24 @@ inline constexpr size_t FindLastSet(size_t x) {
 
 struct SimpleCode {
   SimpleCode(size_t code, size_t num_classes) : c_(code + num_classes) {}
+  /**
+   * calc_index should make sure that all siblings have the same weight indice.
+   * As for which weight index it maps to, it doesn't matter. To satisfy this,
+   * the id of root should be 1, and the left child of a node i is 2*i, the
+   * right child of a node i is 2*i+1.
+   */
   inline size_t calc_index(int bit) const { return (c_ >> (bit + 1)) - 1; }
+  /**
+   * calc_bit uses the right most bits, while calc_index uses the left most
+   * bits. They are not the same, and that's why we say it doesn't matter which
+   * weight index calc_index maps to.
+   */
   inline bool calc_bit(int bit) const { return c_ & (1 << bit); }
   inline int get_length() const { return FindLastSet(c_) - 1; }
 
  private:
-  size_t c_;
+  size_t c_;  // Here the id of root is 1 rather than 0, thus the id of class c
+              // is `c + num_classes`.
 };
 
 struct SimpleCodeTable {
@@ -83,7 +95,6 @@ struct SimpleCodeTable {
 
  private:
   size_t num_classes_;
-  int max_code_length_;
 };
 
 template <typename T>
