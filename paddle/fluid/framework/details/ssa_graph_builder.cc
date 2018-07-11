@@ -17,8 +17,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
-void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
-  for (auto &var_map : graph->vars_) {
+void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
+  for (auto &var_map : *boost::any_cast<GraphVars *>(graph->attrs["vars"])) {
     for (auto &name_pair : var_map) {
       if (name_pair.second.size() <= 1) {
         continue;
@@ -40,7 +40,8 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
           auto *dep_var = new DummyVarHandle();
           read_op->AddOutput(dep_var);
           write_op->AddInput(dep_var);
-          graph->dep_vars_.emplace(dep_var);
+          boost::any_cast<GraphDepVars *>(graph->attrs["dep_vars"])
+              ->emplace(dep_var);
         }
       }
     }
@@ -48,9 +49,10 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
 }
 
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
-    SSAGraph *graph, const std::string &each_var_name,
+    Graph *graph, const std::string &each_var_name,
     const platform::Place &place, size_t place_offset) {
-  auto &var_holders = graph->vars_[place_offset];
+  auto &var_holders =
+      (*boost::any_cast<GraphVars *>(graph->attrs["vars"]))[place_offset];
   auto &var_holder = var_holders[each_var_name];
   VarHandle *var = nullptr;
   if (var_holder.empty()) {
@@ -62,24 +64,29 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   return var;
 }
 
-void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
+void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
                                      const std::string &each_var_name,
                                      const platform::Place &place,
                                      size_t place_offset) {
-  auto &vars = graph->vars_[place_offset][each_var_name];
+  auto &vars =
+      (*boost::any_cast<GraphVars *>(graph->attrs["vars"]))[place_offset]
+                                                           [each_var_name];
   size_t version = vars.size();
   auto var = new VarHandle(version, place_offset, each_var_name, place);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
 }
 
-void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
-  for (auto &op : graph->ops_) {
+void SSAGraphBuilder::AddOutputToLeafOps(Graph *graph) {
+  GraphOps &all_ops = *boost::any_cast<GraphOps *>(graph->attrs["ops"]);
+
+  for (auto &op : all_ops) {
     if (!op->Outputs().empty()) {
       continue;
     }
     auto *dummy_leaf = new DummyVarHandle();
-    graph->dep_vars_.emplace(dummy_leaf);
+    boost::any_cast<GraphDepVars *>(graph->attrs["dep_vars"])
+        ->emplace(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }
 }

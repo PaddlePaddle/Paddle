@@ -14,6 +14,27 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/program_desc.h"
+
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+
+class Pass {
+ public:
+  Pass() = default;
+  virtual ~Pass() {}
+  virtual std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) {
+    return std::move(graph);
+  }
+};
+
+std::unique_ptr<Graph> ProgramToGraph(const ProgramDesc& program) {
+  std::unique_ptr<Graph> g(new Graph);
+
+  return std::move(g);
+}
+
+}  // namespace framework
 }  // namespace paddle

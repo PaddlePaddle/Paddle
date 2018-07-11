@@ -16,14 +16,23 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/details/ssa_graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 
+#include "paddle/fluid/framework/ir/graph.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
+
+typedef std::vector<
+    std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
+    GraphVars;
+typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
+typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
 
 class SSAGraphBuilder {
  public:
@@ -42,20 +51,20 @@ class SSAGraphBuilder {
    *
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
-  static void PolishGraphToSupportDataHazards(SSAGraph *graph);
+  static void PolishGraphToSupportDataHazards(Graph *graph);
 
-  static VarHandle *CreateOrGetLatestVarHandle(SSAGraph *graph,
+  static VarHandle *CreateOrGetLatestVarHandle(Graph *graph,
                                                const std::string &each_var_name,
                                                const platform::Place &place,
                                                size_t place_offset);
 
   // Add an output variable (each_var_name, place, place_offset) to op_handle,
   // which belongs to graph
-  static void CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
+  static void CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
                              const std::string &each_var_name,
                              const platform::Place &place, size_t place_offset);
 
-  static void AddOutputToLeafOps(SSAGraph *graph);
+  static void AddOutputToLeafOps(Graph *graph);
 };
 }  // namespace details
 }  // namespace framework
