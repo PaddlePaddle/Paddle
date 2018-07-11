@@ -249,7 +249,7 @@ void MainThreadsImageClassification(bool use_gpu) {
       const size_t len = local_outputs[0].data.length();
       float* data = static_cast<float*>(local_outputs[0].data.data());
       float* ref_data = refs[tid].data<float>();
-      EXPECT_EQ(refs[tid].numel(), len / sizeof(float));
+      EXPECT_EQ((size_t)refs[tid].numel(), len / sizeof(float));
       for (int i = 0; i < refs[tid].numel(); ++i) {
         EXPECT_NEAR(ref_data[i], data[i], 1e-3);
       }
