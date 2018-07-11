@@ -1,0 +1,47 @@
+diff --git a/include/grpcpp/impl/codegen/completion_queue.h b/include/grpcpp/impl/codegen/completion_queue.h
+index 80c7c41982..3f7d8a7714 100644
+--- a/include/grpcpp/impl/codegen/completion_queue.h
++++ b/include/grpcpp/impl/codegen/completion_queue.h
+@@ -32,6 +32,8 @@
+ #ifndef GRPCPP_IMPL_CODEGEN_COMPLETION_QUEUE_H
+ #define GRPCPP_IMPL_CODEGEN_COMPLETION_QUEUE_H
+ 
++#include <typeinfo>
++
+ #include <grpc/impl/codegen/atm.h>
+ #include <grpcpp/impl/codegen/completion_queue_tag.h>
+ #include <grpcpp/impl/codegen/core_codegen_interface.h>
+@@ -106,7 +108,9 @@ class CompletionQueue : private GrpcLibraryCodegen {
+ 
+   /// Destructor. Destroys the owned wrapped completion queue / instance.
+   ~CompletionQueue() {
+-    g_core_codegen_interface->grpc_completion_queue_destroy(cq_);
++	if (typeid(*g_core_codegen_interface).hash_code() != typeid(CoreCodegenInterface).hash_code()) {
++      g_core_codegen_interface->grpc_completion_queue_destroy(cq_);
++	}
+   }
+ 
+   /// Tri-state return for AsyncNext: SHUTDOWN, GOT_EVENT, TIMEOUT.
+diff --git a/include/grpcpp/impl/codegen/grpc_library.h b/include/grpcpp/impl/codegen/grpc_library.h
+index 17c904d71a..a092b2204d 100644
+--- a/include/grpcpp/impl/codegen/grpc_library.h
++++ b/include/grpcpp/impl/codegen/grpc_library.h
+@@ -19,6 +19,8 @@
+ #ifndef GRPCPP_IMPL_CODEGEN_GRPC_LIBRARY_H
+ #define GRPCPP_IMPL_CODEGEN_GRPC_LIBRARY_H
+ 
++#include <typeinfo>
++
+ #include <grpcpp/impl/codegen/core_codegen_interface.h>
+ 
+ namespace grpc {
+@@ -47,7 +49,8 @@ class GrpcLibraryCodegen {
+     }
+   }
+   virtual ~GrpcLibraryCodegen() {
+-    if (grpc_init_called_) {
++    if (grpc_init_called_ &&
++		typeid(*g_glip).hash_code() != typeid(GrpcLibraryInterface).hash_code()) {
+       GPR_CODEGEN_ASSERT(g_glip &&
+                          "gRPC library not initialized. See "
+                          "grpc::internal::GrpcLibraryInitializer.");
