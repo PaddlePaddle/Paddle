@@ -510,8 +510,20 @@ function gen_fluid_inference_lib() {
 EOF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
-        mv fluid_install_dir fluid
+        cp -r fluid_install_dir fluid
         tar -cf fluid.tgz fluid
+      fi
+}
+
+function test_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+        cat <<EOF
+    ========================================
+    Testing fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
+        sh run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
 
@@ -568,6 +580,7 @@ function main() {
         run_test
         gen_capi_package
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       *)
         print_usage
