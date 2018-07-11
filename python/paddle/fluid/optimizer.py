@@ -14,6 +14,7 @@
 import re
 from collections import defaultdict
 from paddle.fluid.framework import Program, Variable
+from . import core
 import framework
 import layers
 from backward import append_backward
@@ -29,7 +30,8 @@ __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'Optimizer', 'RMSPropOptimizer'
+    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'Optimizer',
+    'RMSPropOptimizer', 'MixedPrecisionOptimizer'
 ]
 
 
@@ -296,12 +298,12 @@ class SGDOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         param = param_and_grad[0]
-        param_replica = layers.create_parameter(
-            name=unique_name.generate("ParamReplica"),
-            shape=param.shape,
-            dtype="float32",
-            lod_level=param.lod_level,
-            persistable=True)
+        # param_replica = layers.create_parameter(
+        #     name=unique_name.generate("ParamReplica"),
+        #     shape=param.shape,
+        #     dtype="float32",
+        #     lod_level=param.lod_level,
+        #     persistable=True)
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
@@ -1260,32 +1262,94 @@ class ModelAverage(Optimizer):
 
 
 class MixedPrecisionOptimizer(Optimizer):
-    def __init__(self, scale_factor=128.0, learning_rate, **kwargs):
+    def __init__(self, scale_factor, learning_rate, **kwargs):
         assert learning_rate is not None
         super(MixedPrecisionOptimizer, self).__init__(
             learning_rate=learning_rate, **kwargs)
         self.type = "mixed_sgd"
-        self.scale_factor = scale_factor
-        self.learning_rate = learning_rate
-        self.params = []
-        for param in framework.default_main_program().global_block(
-        ).all_parameters():
-            fp32_param = param.block.create_var(
-                name=unique_name.generate(".".join([param.name, 'fp32'])),
-                dtype=param.dtype,
-                persistable=False,
-                stop_gradient=True)
-            self.params.append(fp32_param)
+        self.master_copy = []
+        # for param in framework.default_main_program().global_block(
+        # ).all_parameters():
+
+        if isinstance(scale_factor, framework.Variable):
+            self._scale_factor = scale_factor
+        elif isinstance(scale_factor, float):
+            self._scale_factor = layers.create_global_var(
+                name=unique_name.generate("learning_rate"),
+                shape=[1],
+                value=float(scale_factor),
+                dtype='float32' if self._dtype == None else self._dtype,
+                persistable=True)
+        else:
+            raise TypeError("scale_factor variable is create outside optimizer,"
+                            "can not create new variable for new program")
 
     def _loss_scaling(self, loss):
-        program = loss.block.program
-        with program_guard(program, startup_program):
-            global_block = framework.default_main_program().global_block()
-            self.helper = LayerHelper(self.__class__.__name__)
+        # program = loss.block.program
+        # with program_guard(program, startup_program=Program()):
+        tmp = layers.cast(x=self._scale_factor, dtype=loss.dtype)
+        scaled_loss = loss * tmp
+        return scaled_loss
 
-    def _expand_gradient(self, loss):
+    def _grad_scaling(self, params_grads):
         # Multiply the weight gradient with 1/S
-        pass
+        # program = loss.block.program
+        # with program_guard(program, startup_program=Program()):
+        res = []
+        for (param, grad), (param2, grad2) in zip(params_grads,
+                                                  self.master_copy):
+            if param.trainable is True and grad is not None:
+                tmp = layers.cast(x=self._scale_factor, dtype=param2.dtype)
+                grad2 = grad * (1 / tmp)
+                res.append((param, grad))
+        return res
+
+    def _create_master_copy(self, params_grads):
+        for param, grad in params_grads:
+            if param.trainable is True and grad is not None:
+                fp32_param = param.block.create_var(
+                    name=unique_name.generate(".".join([param.name, 'fp32'])),
+                    dtype="float32",
+                    persistable=True,
+                    stop_gradient=True)
+                fp32_grad = grad.block.create_var(
+                    name=unique_name.generate(".".join([grad.name, 'fp32'])),
+                    dtype="float32",
+                    persistable=False,
+                    stop_gradient=True)
+                self.master_copy.append((fp32_param, fp32_grad))
+
+    def _copy_cast_params(self, params_grads, params_grads2):
+        block = params_grads[0].block
+        for (param, grad), (param2, grad2) in zip(params_grads, params_grads2):
+            if param.trainable is True and grad is not None:
+                block.append_op(
+                    type="cast",
+                    inputs={"X", [param]},
+                    outputs={'Out', [param2]},
+                    attrs={'in_dtype': param.dtype,
+                           "out_dtype": param2.dtype})
+                block.append_op(
+                    type="cast",
+                    inputs={"X", [grad]},
+                    outputs={'Out', [grad2]},
+                    attrs={'in_dtype': grad2.dtype,
+                           "out_dtype": grad2.dtype})
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        param = param_and_grad[0]
+        sgd_op = block.append_op(
+            type='sgd',
+            inputs={
+                "Param": param,
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={"ParamOut": param_and_grad[0]})
+
+        return sgd_op
 
     def minimize(self,
                  loss,
@@ -1297,19 +1361,24 @@ class MixedPrecisionOptimizer(Optimizer):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        scale_loss = self._loss_scaling(loss)
+        scaled_loss = self._loss_scaling(loss)
 
-        params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       [error_clip_callback])
+        params_grads = append_backward(scaled_loss, parameter_list, no_grad_set)
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads = append_gradient_clip_ops(params_grads)
+        self._create_master_copy(params_grads)
 
-        # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
+        params_grads = self._grad_scaling(params_grads)
+
+        self._copy_cast_params(params_grads, self.master_copy)
+        # params_grads = append_gradient_clip_ops(params_grads)
+
+        # # Add regularization if any
+        # params_grads = append_regularization_ops(params_grads,
+        #                                          self.regularization)
 
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
+        self._copy_cast_params(self.master_copy, params_grads)
         return optimize_ops, params_grads

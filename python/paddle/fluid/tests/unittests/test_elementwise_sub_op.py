@@ -19,11 +19,17 @@ from op_test import OpTest
 class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.dtype = np.float32
+        self.init_dtype()
+
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+    def init_dtype(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -43,9 +49,10 @@ class TestElementwiseOp(OpTest):
 class TestElementwiseSubOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(1).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(self.dtype),
+            'Y': np.random.rand(1).astype(self.dtype)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -54,8 +61,8 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.random((32, )).astype("float32"),
-            'Y': np.random.random((32, )).astype("float32")
+            'X': np.random.random((32, )).astype(self.dtype),
+            'Y': np.random.random((32, )).astype(self.dtype)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -64,8 +71,8 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(2).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(self.dtype),
+            'Y': np.random.rand(2).astype(self.dtype)
         }
 
         self.attrs = {'axis': 0}
@@ -78,8 +85,8 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(3).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(self.dtype),
+            'Y': np.random.rand(3).astype(self.dtype)
         }
 
         self.attrs = {'axis': 1}
@@ -92,8 +99,8 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(4).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(self.dtype),
+            'Y': np.random.rand(4).astype(self.dtype)
         }
 
         self.outputs = {
@@ -105,14 +112,39 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
-            'Y': np.random.rand(3, 4).astype(np.float32)
+            'X': np.random.rand(2, 3, 4, 5).astype(self.dtype),
+            'Y': np.random.rand(3, 4).astype(self.dtype)
         }
 
         self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 3, 4, 1)
         }
+
+
+class TestFP16ElementwiseSubOp_scalar(TestElementwiseSubOp_scalar):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestFP16TestElementwiseSubOp_Vector(TestElementwiseSubOp_Vector):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestFP16ElementwiseSubOp_broadcast_0(TestElementwiseSubOp_broadcast_0):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestFP16ElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_1):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestFP16ElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_3):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':

@@ -35,7 +35,7 @@ class TestSoftmaxOp(OpTest):
 
         x = np.random.uniform(0.1, 1, [10, 10]).astype(self.dtype)
         out = np.apply_along_axis(stable_softmax, 1, x)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {
             'use_cudnn': self.use_cudnn,
@@ -53,8 +53,6 @@ class TestSoftmaxOp(OpTest):
             self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -78,6 +76,9 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=1e-3)
 
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=0.02)
+
 
 class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
@@ -89,6 +90,9 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=0.02)
 
 
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):

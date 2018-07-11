@@ -43,8 +43,11 @@ class TestSumOp(OpTest):
     def init_kernel_type(self):
         pass
 
+    def init_dtype(self):
+        pass
 
-class TestFP16SumOp(OpTest):
+
+class TestFP16SumOp(TestSumOp):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -53,6 +56,12 @@ class TestFP16SumOp(OpTest):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(place, ['x0'], 'Out')
 
 
 if __name__ == "__main__":

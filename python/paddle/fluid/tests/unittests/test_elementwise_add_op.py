@@ -30,10 +30,7 @@ class TestElementwiseAddOp(OpTest):
         self.init_kernel_type()
         self.init_axis()
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
-        }
+        self.inputs = {"X": self.x, "Y": self.y}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
@@ -41,19 +38,19 @@ class TestElementwiseAddOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
+        # if self.dtype == np.float16:
+        #     return
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
+        # if self.dtype == np.float16:
+        #     return
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
+        # if self.dtype == np.float16:
+        #     return
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
@@ -74,10 +71,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+        self.check_output(atol=1e-3)
 
 
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):

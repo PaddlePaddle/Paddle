@@ -15,12 +15,15 @@
 import numpy as np
 import paddle.fluid as fluid
 import paddle
+import paddle.fluid.profiler as profiler
 
 x = fluid.layers.data(name='x', shape=[10], dtype='float32')
 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 y_predict = fluid.layers.fc(input=x, size=1, act='softmax')
 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
 avg_cost = fluid.layers.mean(cost)
+# opt = fluid.optimizer.MixedPrecisionOptimizer(
+#     scale_factor=128.0, learning_rate=0.001)
 opt = fluid.optimizer.SGD(learning_rate=0.001)
 opt = opt.minimize(avg_cost)
 
@@ -34,13 +37,14 @@ train_reader = paddle.batch(
 
 exe.run(fluid.default_startup_program())
 for pass_id in range(10):
-    for data in train_reader():
-        x_data = np.random.randn(32, 10).astype("float32")
-        y_data = np.random.randint(
-            low=0, high=2, size=(32, 1)).astype("float32")
+    with profiler.profiler("All", 'total', '/tmp/profile') as pf:
+        for data in train_reader():
+            x_data = np.random.randn(32, 10).astype("float32")
+            y_data = np.random.randint(
+                low=0, high=2, size=(32, 1)).astype("float32")
 
-        outs = exe.run(fluid.default_main_program(),
-                       feed={'x': x_data,
-                             'y': y_data},
-                       fetch_list=[avg_cost])
-        print(outs[0])
+            outs = exe.run(fluid.default_main_program(),
+                           feed={'x': x_data,
+                                 'y': y_data},
+                           fetch_list=[avg_cost])
+            print(outs[0])

@@ -20,14 +20,28 @@ from op_test import OpTest
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "mean"
-        self.inputs = {'X': np.random.random((10, 10)).astype("float32")}
+        self.dtype = np.float32
+        self.init_dtype()
+
+        self.inputs = {'X': np.random.random((2, 3)).astype(self.dtype)}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_dtype(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestMeanFP16Op(TestMeanOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output(atol=0.05)
 
 
 if __name__ == "__main__":

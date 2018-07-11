@@ -28,7 +28,7 @@ class TestExp(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -63,7 +63,7 @@ class TestSigmoid(OpTest):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -98,7 +98,7 @@ class TestLogSigmoid(OpTest):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = np.log(1 / (1 + np.exp(-x)))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -133,7 +133,7 @@ class TestTanh(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -168,7 +168,7 @@ class TestTanhShrink(OpTest):
         x = np.random.uniform(0.1, 1, [10, 17]).astype(self.dtype)
         out = x - np.tanh(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -206,7 +206,7 @@ class TestHardShrink(OpTest):
         out[(out >= -threshold) & (out <= threshold)] = 0
 
         self.attrs = {'lambda': threshold}
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -245,7 +245,7 @@ class TestSoftShrink(OpTest):
             out - lambda_val)
 
         self.attrs = {'lambda': lambda_val}
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -280,7 +280,7 @@ class TestSqrt(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.sqrt(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -320,7 +320,7 @@ class TestAbs(OpTest):
         x[np.abs(x) < 0.005] = 0.02
         out = np.abs(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -355,7 +355,7 @@ class TestCeil(OpTest):
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.ceil(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -387,7 +387,7 @@ class TestFloor(OpTest):
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.floor(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -420,7 +420,7 @@ class TestCos(OpTest):
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.cos(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -455,7 +455,7 @@ class TestSin(OpTest):
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.sin(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -490,7 +490,7 @@ class TestRound(OpTest):
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.round(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -522,7 +522,7 @@ class TestRelu(OpTest):
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -564,7 +564,7 @@ class TestBRelu(OpTest):
         t[t < t_min] = t_min
         t[t > t_max] = t_max
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {'t_min': t_min, 't_max': t_max}
         self.outputs = {'Out': t}
 
@@ -604,7 +604,7 @@ class TestRelu6(OpTest):
         x[np.abs(x - threshold) < 0.005] = threshold + 0.02
         out = np.minimum(np.maximum(x, 0), threshold)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
@@ -647,7 +647,7 @@ class TestSoftRelu(OpTest):
         t[t > threshold] = threshold
         out = np.log((np.exp(t) + 1))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
@@ -721,7 +721,7 @@ class TestReciprocal(OpTest):
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         out = np.reciprocal(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -756,7 +756,7 @@ class TestLog(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.log(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -791,15 +791,13 @@ class TestSquare(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.square(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
@@ -811,10 +809,7 @@ class TestFP16Square(TestSquare):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+        self.check_output(atol=1e-3)
 
 
 class TestPow(OpTest):
@@ -826,7 +821,7 @@ class TestPow(OpTest):
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         out = np.power(x, 3)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {'factor': 3.0}
         self.outputs = {'Out': out}
 
@@ -864,7 +859,7 @@ class TestSTanh(OpTest):
         scale_b = 1.7159
         out = scale_b * np.tanh(x * scale_a)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {'scale_a': scale_a, 'scale_b': scale_b}
         self.outputs = {'Out': out}
 
@@ -894,13 +889,13 @@ class TestFP16STanh(TestSTanh):
 class TestSoftplus(OpTest):
     def setUp(self):
         self.op_type = "softplus"
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [11, 9]).astype(self.dtype)
         out = np.log(1 + np.exp(x))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {"X": x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -913,6 +908,11 @@ class TestSoftplus(OpTest):
 
     def init_dtype(self):
         pass
+
+
+# class TestFP64Softplus(TestSoftplus):
+#     def init_dtype(self):
+#         self.dtype = np.float64
 
 
 class TestFP16Softplus(TestSoftplus):
@@ -935,7 +935,7 @@ class TestSoftsign(OpTest):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = np.divide(x, 1 + np.abs(x))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -975,7 +975,7 @@ class TestThresholdedRelu(OpTest):
         X[np.abs(X - threshold) < self.relative_error] = threshold + 0.2
         out = (X > threshold) * X
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
+        self.inputs = {'X': X}
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
@@ -1025,7 +1025,7 @@ class TestHardSigmoid(OpTest):
         temp = X * slope + offset
         out = np.maximum(0.0, np.minimum(1.0, temp))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
+        self.inputs = {'X': X}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -1061,7 +1061,7 @@ class TestSwish(OpTest):
         beta = 2.3
         out = X * expit(beta * X)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
+        self.inputs = {'X': X}
         self.attrs = {'beta': beta}
         self.outputs = {'Out': out}
 
