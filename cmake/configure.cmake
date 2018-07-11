@@ -174,3 +174,7 @@ endif(WITH_GOLANG)
 if(WITH_GRPC)
     add_definitions(-DPADDLE_WITH_GRPC)
 endif(WITH_GRPC)
+
+if(WITH_BRPC_RDMA)
+    add_definitions(-DPADDLE_WITH_BRPC_RDMA)
+endif(WITH_BRPC_RDMA)

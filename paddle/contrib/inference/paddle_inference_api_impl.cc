@@ -89,6 +89,7 @@ bool NativePaddlePredictor::Init(
     LOG(ERROR) << "fail to load inference model.";
     return false;
   }
+
   ctx_ = executor_->Prepare(*inference_program_, 0);
   executor_->CreateVariables(
       *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
@@ -119,6 +120,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
+    VLOG(4) << "setting " << i << "-th target";
     feed_targets[feed_target_names_[i]] = &feeds[i];
   }
   // get fetch variable
@@ -130,14 +132,16 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
   // Run the inference program
   // if share variables, we need not create variables
+  VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(
       ctx_.get(),
       sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
       &feed_targets,
       &fetch_targets,
       false /* don't create variable eatch time */);
+  VLOG(4) << "Finish prepared context";
   if (!GetFetch(fetchs, output_data)) {
-    LOG(ERROR) << "fail to get fetchs";
+    LOG(ERROR) << "fail to get fetches";
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
@@ -178,8 +182,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr),
-                inputs[i].data.data,
-                inputs[i].data.length);
+                inputs[i].data.data(),
+                inputs[i].data.length());
     feeds->push_back(input);
   }
   return true;
@@ -241,10 +245,11 @@ bool NativePaddlePredictor::GetFetch(
     }
 
     outputs->at(i).shape = shape;
-    outputs->at(i).data.length = sizeof(float) * data.size();
-    outputs->at(i).data.data = malloc(outputs->at(i).data.length);
-    std::memcpy(
-        outputs->at(i).data.data, data.data(), outputs->at(i).data.length);
+    auto &buffer = outputs->at(i).data;
+    if (buffer.empty() || buffer.length() < sizeof(float) * data.size()) {
+      buffer.Resize(sizeof(float) * data.size());
+    }
+    std::memcpy(buffer.data(), data.data(), buffer.length());
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }

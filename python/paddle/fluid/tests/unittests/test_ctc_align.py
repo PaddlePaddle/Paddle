@@ -22,14 +22,16 @@ from test_softmax_op import stable_softmax
 def CTCAlign(input, lod, blank, merge_repeated):
     lod0 = lod[0]
     result = []
-    for i in range(len(lod0) - 1):
+    cur_offset = 0
+    for i in range(len(lod0)):
         prev_token = -1
-        for j in range(lod0[i], lod0[i + 1]):
+        for j in range(cur_offset, cur_offset + lod0[i]):
             token = input[j][0]
             if (token != blank) and not (merge_repeated and
                                          token == prev_token):
                 result.append(token)
             prev_token = token
+        cur_offset += lod0[i]
     result = np.array(result).reshape([len(result), 1]).astype("int32")
     if len(result) == 0:
         result = np.array([-1])
@@ -39,7 +41,7 @@ def CTCAlign(input, lod, blank, merge_repeated):
 class TestCTCAlignOp(OpTest):
     def config(self):
         self.op_type = "ctc_align"
-        self.input_lod = [[0, 11, 18]]
+        self.input_lod = [[11, 7]]
         self.blank = 0
         self.merge_repeated = False
         self.input = np.array(
@@ -66,7 +68,7 @@ class TestCTCAlignOp(OpTest):
 class TestCTCAlignOpCase1(TestCTCAlignOp):
     def config(self):
         self.op_type = "ctc_align"
-        self.input_lod = [[0, 11, 19]]
+        self.input_lod = [[11, 8]]
         self.blank = 0
         self.merge_repeated = True
         self.input = np.array(
@@ -77,7 +79,7 @@ class TestCTCAlignOpCase1(TestCTCAlignOp):
 class TestCTCAlignOpCase2(TestCTCAlignOp):
     def config(self):
         self.op_type = "ctc_align"
-        self.input_lod = [[0, 4]]
+        self.input_lod = [[4]]
         self.blank = 0
         self.merge_repeated = True
         self.input = np.array([0, 0, 0, 0]).reshape([4, 1]).astype("int32")

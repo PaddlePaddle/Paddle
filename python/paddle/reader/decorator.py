@@ -336,7 +336,7 @@ def _buf2lines(buf, line_break="\n"):
 
 class PipeReader:
     """
-        PipeReader read data by stream from a command, take it's 
+        PipeReader read data by stream from a command, take it's
         stdout into a pipe buffer and redirect it to the parser to
         parse, then yield data as your desired format.
 
@@ -352,7 +352,7 @@ class PipeReader:
         An example:
 
         .. code-block:: python
-    
+
            def example_reader():
                for f in myfiles:
                    pr = PipeReader("cat %s"%f)

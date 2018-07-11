@@ -44,8 +44,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
+#ifndef __APPLE__
 #include "paddle/fluid/platform/dynload/nccl.h"
-#endif
+#endif  // __APPLE__
+#endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
 namespace platform {
@@ -100,6 +102,15 @@ struct EnforceNotMet : public std::exception {
   const char* what() const noexcept { return err_str_.c_str(); }
 };
 
+struct EOFException : public std::exception {
+  std::string err_str_;
+  EOFException(const char* err_msg, const char* f, int l) {
+    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, f, l);
+  }
+
+  const char* what() const noexcept { return err_str_.c_str(); }
+};
+
 // Because most enforce conditions would evaluate to true, we can use
 // __builtin_expect to instruct the C++ compiler to generate code that
 // always forces branch prediction of true.
@@ -111,7 +122,11 @@ template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     bool stat, const Args&... args) {
   if (UNLIKELY(!(stat))) {
+#ifndef REPLACE_ENFORCE_GLOG
     throw std::runtime_error(string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -121,8 +136,12 @@ template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     cudaError_t e, const Args&... args) {
   if (UNLIKELY(e)) {
+#ifndef REPLACE_ENFORCE_GLOG
     throw thrust::system_error(e, thrust::cuda_category(),
                                string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -130,8 +149,12 @@ template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     curandStatus_t stat, const Args&... args) {
   if (stat != CURAND_STATUS_SUCCESS) {
+#ifndef REPLACE_ENFORCE_GLOG
     throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
                                string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -141,8 +164,12 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   if (stat == CUDNN_STATUS_SUCCESS) {
     return;
   } else {
+#ifndef REPLACE_ENFORCE_GLOG
     throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) +
                              string::Sprintf(args...));
+#else
+    LOG(FATAL) << string::Sprintf(args...);
+#endif
   }
 }
 
@@ -171,20 +198,30 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
     err = "CUBLAS: license error, ";
   }
+#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(err + string::Sprintf(args...));
+#else
+  LOG(FATAL) << err << string::Sprintf(args...);
+#endif
 }
 
+#ifndef __APPLE__
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     ncclResult_t stat, const Args&... args) {
   if (stat == ncclSuccess) {
     return;
   } else {
+#ifndef REPLACE_ENFORCE_GLOG
     throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
                              string::Sprintf(args...));
+#else
+    LOG(FATAL) << platform::dynload::ncclGetErrorString(stat)
+               << string::Sprintf(args...);
+#endif
   }
 }
-
+#endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
 template <typename T>
@@ -200,6 +237,7 @@ inline void throw_on_error(T e) {
         __FILE__, __LINE__);                                           \
   } while (false)
 
+#ifndef REPLACE_ENFORCE_GLOG
 #define PADDLE_ENFORCE(...)                                             \
   do {                                                                  \
     try {                                                               \
@@ -209,7 +247,15 @@ inline void throw_on_error(T e) {
                                               __FILE__, __LINE__);      \
     }                                                                   \
   } while (false)
+#else
+#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
+#endif
 
+#define PADDLE_THROW_EOF()                                                     \
+  do {                                                                         \
+    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
+                                           __LINE__);                          \
+  } while (false)
 /*
  * Some enforce helpers here, usage:
  *    int a = 1;

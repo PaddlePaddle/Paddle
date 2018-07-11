@@ -19,8 +19,8 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #ifdef PADDLE_WITH_MKLML
-#include <mkl_service.h>
 #include <omp.h>
 #endif
 
@@ -29,6 +29,7 @@ DEFINE_string(data_file, "", "File of input index data.");
 DEFINE_int32(repeat, 100, "Running the inference program repeat times");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
 DEFINE_int32(num_threads, 1, "Number of threads should be used");
+DECLARE_bool(use_mkldnn);
 
 inline double GetCurrentMs() {
   struct timeval time;
@@ -103,9 +104,9 @@ void ThreadRunInfer(
     const int tid, paddle::framework::Scope* scope,
     const std::vector<std::vector<const paddle::framework::LoDTensor*>>& jobs) {
   // maybe framework:ProgramDesc is not thread-safe
+  paddle::platform::CPUPlace place;
+  paddle::framework::Executor executor(place);
   auto& sub_scope = scope->NewScope();
-  auto place = paddle::platform::CPUPlace();
-  auto executor = paddle::framework::Executor(place);
   auto inference_program =
       paddle::inference::Load(&executor, scope, FLAGS_model_path);
 
@@ -163,7 +164,7 @@ TEST(inference, nlp) {
   // only use 1 thread number per std::thread
   omp_set_dynamic(0);
   omp_set_num_threads(1);
-  mkl_set_num_threads(1);
+  paddle::platform::SetNumThreads(1);
 #endif
 
   double start_ms = 0, stop_ms = 0;
@@ -182,8 +183,8 @@ TEST(inference, nlp) {
     stop_ms = GetCurrentMs();
   } else {
     // 1. Define place, executor, scope
-    auto place = paddle::platform::CPUPlace();
-    auto executor = paddle::framework::Executor(place);
+    paddle::platform::CPUPlace place;
+    paddle::framework::Executor executor(place);
 
     // 2. Initialize the inference_program and load parameters
     std::unique_ptr<paddle::framework::ProgramDesc> inference_program;

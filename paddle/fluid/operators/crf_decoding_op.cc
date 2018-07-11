@@ -53,21 +53,18 @@ sequence of observed tags.
 The output of this operator changes according to whether Input(Label) is given:
 
 1. Input(Label) is given:
-
-This happens in training. This operator is used to co-work with the chunk_eval
-operator.
-
-When Input(Label) is given, the crf_decoding operator returns a row vector
-with shape [N x 1] whose values are fixed to be 0, indicating an incorrect
-prediction, or 1 indicating a tag is correctly predicted. Such an output is the
-input to chunk_eval operator.
+   This happens in training. This operator is used to co-work with the chunk_eval
+   operator.
+   When Input(Label) is given, the crf_decoding operator returns a row vector
+   with shape [N x 1] whose values are fixed to be 0, indicating an incorrect
+   prediction, or 1 indicating a tag is correctly predicted. Such an output is the
+   input to chunk_eval operator.
 
 2. Input(Label) is not given:
-
-This is the standard decoding process.
+   This is the standard decoding process.
 
 The crf_decoding operator returns a row vector with shape [N x 1] whose values
-range from 0 to maximum tag number - 1. Each element indicates an index of a
+range from 0 to maximum tag number - 1, Each element indicates an index of a
 predicted tag.
 )DOC");
   }

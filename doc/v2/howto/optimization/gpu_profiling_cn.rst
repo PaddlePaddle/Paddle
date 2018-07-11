@@ -50,12 +50,12 @@ GPU则还需要高并行性，才能发挥其全部能力。这正是它们速�
 **nvprof** 是Nvidia性能分析工具， **nvvp** 则是带GUI的Nvidia可视化性能分析工具。
 在这个教程中，我们主要会介绍nvprof和nvvp。
 
-:code:`test_GpuProfiler` from :code:`paddle/math/tests` directory will be used to evaluate
+:code:`test_GpuProfiler` from :code:`paddle/legacy/math/tests` directory will be used to evaluate
 above profilers.
 
-:code:`paddle/math/test` 目录中的 :code:`test_GpuProfiler` 就是用于展示上述分析工具的用法。
+:code:`paddle/legacy/math/test` 目录中的 :code:`test_GpuProfiler` 就是用于展示上述分析工具的用法。
 
-.. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
+.. literalinclude:: ../../../../paddle/legacy/math/tests/test_GpuProfiler.cpp
    :language: c++
    :lines: 137-151
    :linenos:
@@ -83,7 +83,7 @@ program crashes when CPU version of PaddlePaddle invokes them.
 
 1. 加入 :code:`REGISTER_TIMER_INFO` 和 :code:`printAllStatus` 函数（如高亮部分）。
 
-    .. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../../paddle/legacy/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 137-151
         :emphasize-lines: 8-12,14
@@ -101,8 +101,8 @@ program crashes when CPU version of PaddlePaddle invokes them.
     .. code-block:: bash
         :emphasize-lines: 1,12-15
 
-        > ./paddle/math/tests/test_GpuProfiler
-        I1117 11:13:42.313065 2522362816 Util.cpp:155] commandline: ./paddle/math/tests/test_GpuProfiler
+        > ./paddle/legacy/math/tests/test_GpuProfiler
+        I1117 11:13:42.313065 2522362816 Util.cpp:155] commandline: ./paddle/legacy/math/tests/test_GpuProfiler
         I1117 11:13:42.845065 2522362816 Util.cpp:130] Calling runInitFunctions
         I1117 11:13:42.845208 2522362816 Util.cpp:143] Call runInitFunctions done.
         [==========] Running 1 test from 1 test case.
@@ -130,7 +130,7 @@ nvprof 工具
 
 1. 将 :code:`REGISTER_GPU_PROFILER` 函数加到代码中（参考强调部分）。
 
-    .. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../../paddle/legacy/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 137-151
         :emphasize-lines: 6-7
@@ -147,13 +147,13 @@ nvprof 工具
 
     .. code-block:: bash
 
-        nvprof  ./paddle/math/tests/test_GpuProfiler
+        nvprof  ./paddle/legacy/math/tests/test_GpuProfiler
 
 然后，您就能获得如下的分析结果：
 
 .. code-block:: bash
 
-    ==78544== Profiling application: ./paddle/math/tests/test_GpuProfiler
+    ==78544== Profiling application: ./paddle/legacy/math/tests/test_GpuProfiler
     ==78544== Profiling result:
     Time(%)     Time     Calls       Avg       Min       Max  Name
     27.60%  9.6305ms         5  1.9261ms  3.4560us  6.4035ms  [CUDA memcpy HtoD]

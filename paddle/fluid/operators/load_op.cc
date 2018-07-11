@@ -34,6 +34,8 @@ class LoadOp : public framework::OperatorBase {
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     platform::RecordEvent record_event(Type(), dev_ctx);
 
+    // FIXME(yuyang18): We save variable to local file now, but we should change
+    // it to save an output stream.
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
@@ -44,9 +46,25 @@ class LoadOp : public framework::OperatorBase {
     PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
                    out_var_name);
 
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+    if (out_var->IsType<framework::LoDTensor>()) {
+      LoadLodTensor(fin, place, out_var);
+    } else if (out_var->IsType<framework::SelectedRows>()) {
+      LoadSelectedRows(fin, place, out_var);
+    } else {
+      PADDLE_ENFORCE(
+          false,
+          "Load only support LoDTensor and SelectedRows, %s has wrong type",
+          out_var_name);
+    }
+  }
 
-    DeserializeFromStream(fin, tensor, *dev_ctx);
+  void LoadLodTensor(std::istream &fin, const platform::Place &place,
+                     framework::Variable *var) const {
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    DeserializeFromStream(fin, tensor, dev_ctx);
 
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
     auto in_dtype = framework::ToDataType(tensor->type());
@@ -63,18 +81,27 @@ class LoadOp : public framework::OperatorBase {
                                &fp16_tensor);
 
       // reset output tensor
-      out_var->Clear();
-      tensor = out_var->GetMutable<framework::LoDTensor>();
+      var->Clear();
+      tensor = var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(fp16_tensor.lod());
       tensor->ShareDataWith(fp16_tensor);
     }
+  }
+
+  void LoadSelectedRows(std::istream &fin, const platform::Place &place,
+                        framework::Variable *var) const {
+    auto *selectedRows = var->GetMutable<framework::SelectedRows>();
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+    framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
   }
 };
 
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "The tensor need to be loaded");
+    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
         "If true, the tensor will be first loaded and then "
@@ -85,7 +112,9 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddComment("Load operator will load a tensor variable from disk file.");
+    AddComment(
+        "Load operator will load a LoDTensor / SelectedRows variable from disk "
+        "file.");
   }
 };
 }  // namespace operators

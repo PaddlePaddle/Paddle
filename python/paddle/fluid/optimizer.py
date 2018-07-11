@@ -13,7 +13,7 @@
 # limitations under the License.
 import re
 from collections import defaultdict
-from paddle.fluid.framework import Program
+from paddle.fluid.framework import Program, Variable
 import framework
 import layers
 from backward import append_backward
@@ -26,10 +26,10 @@ from clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'Adadelta', 'ModelAverage', 'Optimizer'
+    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'Optimizer', 'RMSPropOptimizer'
 ]
 
 
@@ -41,7 +41,10 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, learning_rate, regularization=None):
+    def __init__(self,
+                 learning_rate,
+                 regularization=None,
+                 LARS_weight_decay=0.0):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
@@ -61,6 +64,7 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._LARS_weight_decay = LARS_weight_decay
 
     def _create_global_learning_rate(self):
         lr = self.global_learning_rate()
@@ -100,10 +104,15 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
-        if param_lr == 1.0:
-            return self.global_learning_rate()
+        if type(param_lr) == Variable:
+            # param learning rate has been updated (LARS)
+            print("returns updated param lr ", param_lr)
+            return param_lr
         else:
-            return self.global_learning_rate() * param_lr
+            if param_lr == 1.0:
+                return self.global_learning_rate()
+            else:
+                return self.global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -183,15 +192,15 @@ class Optimizer(object):
         """Add optimization operators to update gradients to variables.
 
         Args:
-          loss: the target that this optimization is for.
-          parameters_and_grads: a list of (variable, gradient) pair to update.
+          loss(Variable): the target that this optimization is for.
+          parameters_and_grads(list(tuple(Variable, Variable))):
+          a list of (variable, gradient) pair to update.
 
         Returns:
           return_op_list: a list of operators that will complete one step of
           optimization. This will include parameter update ops, global step
           update ops and any other custom ops required by subclasses to manage
           their internal state.
-          :param startup_program:
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -210,6 +219,10 @@ class Optimizer(object):
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
             self._create_global_learning_rate()
+            if self._LARS_weight_decay > 0.0:
+                layers.append_LARS(parameters_and_grads,
+                                   self.global_learning_rate(),
+                                   self._LARS_weight_decay)
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
@@ -255,7 +268,22 @@ class Optimizer(object):
 
 
 class SGDOptimizer(Optimizer):
-    """ Simple SGD optimizer without any state.
+    """
+    Optimizer of the stochastic gradient descent algorithm.
+
+    .. math::
+
+        param\_out = param - learning\_rate * grad
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+
+    Examples:
+        .. code-block:: python
+
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.2)
+            sgd_optimizer.minimize(cost)
     """
 
     def __init__(self, learning_rate, **kwargs):
@@ -281,7 +309,37 @@ class SGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(Optimizer):
-    """Simple Momentum optimizer with velocity state
+    """
+
+    Simple Momentum optimizer with velocity state
+
+    This optimizer has a flag for Nestrov Momentum.
+
+    The update equations are as follows:
+
+    .. math::
+
+        & velocity = mu * velocity + gradient
+
+        & if (use\_nesterov):
+
+        &\quad   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
+
+        & else:
+
+        &\quad   param = param - learning\_rate * velocity
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        momentum (float): momentum factor
+        use_nesterov (bool): enables Nesterov momentum
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer.minimize(cost)
     """
     _velocity_acc_str = "velocity"
 
@@ -325,7 +383,32 @@ class MomentumOptimizer(Optimizer):
 
 
 class AdagradOptimizer(Optimizer):
-    """Simple Adagrad optimizer with moment state
+    """
+    **Adaptive Gradient Algorithm (Adagrad)**
+
+    The update is done as follows:
+
+    .. math::
+
+        moment\_out &= moment + grad * grad
+
+        param\_out &= param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
+
+    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+    does not have the epsilon attribute. It is added here in our implementation
+    as also proposed here: http://cs231n.github.io/neural-networks-3/#ada
+    for numerical stability to avoid the division by zero error.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
+            optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
 
@@ -366,7 +449,40 @@ class AdagradOptimizer(Optimizer):
 
 
 class AdamOptimizer(Optimizer):
-    """Implements the Adam Optimizer
+    """
+    This implements the Adam optimizer from Section 2 of the Adam
+    paper : https://arxiv.org/abs/1412.6980.
+    Adam is a first-order gradient-based optimization method based on
+    adaptive estimates of lower-order moments.
+
+    Adam updates:
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+
+        moment\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+
+        learning\_rate & = learning\_rate * \\
+                          \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
+
+        param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adam(learning_rate=0.2)
+            optimizer.minimize(cost)
+
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -471,7 +587,42 @@ class AdamOptimizer(Optimizer):
 
 
 class AdamaxOptimizer(Optimizer):
-    """Implements the Adamax Optimizer
+    """
+    We implement the Adamax optimizer from Section 7 of the Adam
+    paper: https://arxiv.org/abs/1412.6980. Adamax is a variant of the
+    Adam algorithm based on the infinity norm.
+
+    Adamax updates:
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_out & = {\\beta}_1 * moment + (1 - {\\beta}_1) * grad
+
+        inf\_norm\_out & = max({\\beta}_2 * inf\_norm + \epsilon, |grad|)
+
+        learning\_rate & = \\frac{learning\_rate}{1 - {\\beta}_1^t}
+
+        param\_out & = param - learning\_rate * \\frac{moment\_out}{inf\_norm\_out}
+
+
+    The original paper does not have an epsilon attribute.
+    However, it is added here for numerical stability to prevent the
+    division by 0 error.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adamax(learning_rate=0.2)
+            optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -555,7 +706,34 @@ class AdamaxOptimizer(Optimizer):
 
 
 class DecayedAdagradOptimizer(Optimizer):
-    """Simple Decayed Adagrad optimizer with moment state
+    """
+    **Decayed Adagrad Optimizer**
+
+    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+
+    The update is done as follows:
+
+    .. math::
+
+        moment\_out & = decay * moment + (1 - decay) * grad * grad
+
+        param\_out & = param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
+
+    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+    does not have an epsilon attribute. It is added here for numerical
+    stability to avoid the division by zero error.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        decay (float): decay rate.
+        epsilon (float): a small float value for numerical stability.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
+            optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
 
@@ -601,6 +779,7 @@ class DecayedAdagradOptimizer(Optimizer):
 class AdadeltaOptimizer(Optimizer):
     """
     **Adadelta Optimizer**
+
     Simple Adadelta optimizer with average squared grad state and
     average squared update state.
     The details of adadelta please refer to this
@@ -615,7 +794,7 @@ class AdadeltaOptimizer(Optimizer):
         E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\\_rate)^2
 
     Args:
-        learning_rate(float): global leraning rate
+        learning_rate(float): global learning rate
         rho(float): rho in equation
         epsilon(float): epsilon in equation
 
@@ -690,37 +869,37 @@ class RMSPropOptimizer(Optimizer):
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
 
         w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
 
     The first equation calculates moving average of the squared gradient for
-    each weight. Then dividing the gradient by :math: `sqrt{v(w,t)}`.
+    each weight. Then dividing the gradient by :math:`sqrt{v(w,t)}`.
 
     In some cases, adding a momentum term :math: `\\beta` is beneficial.
     In our implementation, Nesterov momentum is used:
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
 
         v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) +
             \\epsilon}} \\nabla Q_{i}(w)
 
         w & = w - v(w, t)
 
-    where, :math: `\\rho` is a hyperparameter and typical values are 0.9, 0.95
+    where, :math:`\\rho` is a hyperparameter and typical values are 0.9, 0.95
     and so on. :math: `beta` is the momentum term. :math: `\\epsilon` is a
     smoothing term to avoid division by zero, usually set somewhere in range
     from 1e-4 to 1e-8.
 
 
     Args:
-        learning_rate(float): global leraning rate.
+        learning_rate(float): global learning rate.
         rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, set 1e-6 by default.
-        momentum(float): :math: `\\beta` in equation is the momentum term,
+        momentum(float): :math:`\\beta` in equation is the momentum term,
             set 0.0 by default.
 
     Raises:
@@ -797,6 +976,113 @@ class RMSPropOptimizer(Optimizer):
         return rmsprop_op
 
 
+class FtrlOptimizer(Optimizer):
+    """
+    FTRL (Follow The Regularized Leader) Optimizer.
+
+    The paper that proposed Follow The Regularized Leader (FTRL):
+    (https://www.eecs.tufts.edu/~dsculley/papers/ad-click-prediction.pdf)
+
+    ..  math::
+
+        &new\_accum = squared\_accum + grad^2
+
+        &if (lr\_power == -0.5):
+
+        &\quad  linear\_accum += grad - \\frac{\\sqrt{new\_accum} - \\sqrt{squared\_accum}}{learning\_rate * param}
+
+        &else:
+
+        &\quad   linear\_accum += grad - \\frac{new\_accum^{-lr\_power} - accum^{-lr\_power}}{learning\_rate * param}
+
+
+        &x = l1 * sign(linear\_accum) - linear\_accum
+
+        &if (lr\_power == -0.5):
+
+        &\quad   y = \\frac{\\sqrt{new\_accum}}{learning\_rate} + (2 * l2)
+
+        &\quad   pre\_shrink = \\frac{x}{y}
+
+        &\quad   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0)
+
+        &else:
+
+        &\quad   y = \\frac{new\_accum^{-lr\_power}}{learning\_rate} + (2 * l2)
+
+        &\quad   pre\_shrink = \\frac{x}{y}
+
+        &\quad   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0)
+
+        &squared\_accum += grad^2
+
+    Args:
+        learning_rate (float|Variable): global learning rate.
+        l1 (float):
+        l2 (float):
+        lr_power (float):
+
+    Raises:
+        ValueError: If learning_rate, rho, epsilon, momentum are None.
+
+    Examples:
+          .. code-block:: python
+
+              optimizer = fluid.optimizer.Ftrl(0.0001)
+              _, params_grads = optimizer.minimize(cost)
+    """
+
+    _squared_acc_str = "squared"
+    _linear_acc_str = "linear"
+
+    def __init__(self, learning_rate, l1=0.0, l2=0.0, lr_power=-0.5, **kwargs):
+        super(FtrlOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        if learning_rate is None:
+            raise ValueError("learning_rate is not set.")
+
+        self.type = "ftrl"
+        self._l1 = l1
+        self._l2 = l2
+        self._lr_power = lr_power
+
+    def _create_accumulators(self, block, parameters):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        for p in parameters:
+            self._add_accumulator(self._squared_acc_str, p)
+            self._add_accumulator(self._linear_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        squared_acc = self._get_accumulator(self._squared_acc_str,
+                                            param_and_grad[0])
+        linear_acc = self._get_accumulator(self._linear_acc_str,
+                                           param_and_grad[0])
+        ftrl_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "SquaredAccumulator": squared_acc,
+                "LinearAccumulator": linear_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "SquaredAccumOut": squared_acc,
+                "LinearAccumOut": linear_acc
+            },
+            attrs={"l1": self._l1,
+                   "l2": self._l1,
+                   "lr_power": self._lr_power})
+
+        return ftrl_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -813,6 +1099,7 @@ Adamax = AdamaxOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
 Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
+Ftrl = FtrlOptimizer
 
 
 class ModelAverage(Optimizer):
@@ -826,15 +1113,16 @@ class ModelAverage(Optimizer):
 
     Args:
         average_window_rate: The rate of average window.
-        params_grads: A list of parameter-grad variable pairs.
         min_average_window: The minimum size of average window.
         max_average_window: The maximum size of average window.
 
     Examples:
-        ...
+
+      .. code-block:: python
+
         optimizer = fluid.optimizer.Momentum()
-        _, params_grads = optimizer.minimize(cost)
-        model_average = fluid.optimizer.ModelAverage(params_grads, 0.15,
+        optimizer.minimize(cost)
+        model_average = fluid.optimizer.ModelAverage(0.15,
                                                 min_average_window=10000,
                                                 max_average_window=20000)
         for pass_id in range(args.pass_num):
@@ -848,7 +1136,6 @@ class ModelAverage(Optimizer):
 
     def __init__(self,
                  average_window_rate,
-                 params_grads=None,
                  min_average_window=10000,
                  max_average_window=10000,
                  **kwargs):
@@ -857,21 +1144,16 @@ class ModelAverage(Optimizer):
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
 
-        self.params_grads = [] if params_grads is None else params_grads
-        params = {}
-        for param, grad in self.params_grads:
-            if param.do_model_average != False:
-                params[param.name] = (param, grad)
+        self.params_grads = []
         for param in framework.default_main_program().global_block(
         ).all_parameters():
-            if param.name not in params and param.do_model_average != False:
+            if param.do_model_average != False:
                 grad = param.block.create_var(
                     name=unique_name.generate(".".join([param.name, 'tmp'])),
                     dtype=param.dtype,
                     persistable=False,
                     stop_gradient=True)
-                params[param.name] = (param, grad)
-        self.params_grads = params.values()
+                self.params_grads.append((param, grad))
 
         for param, grad in self.params_grads:
             self._append_average_accumulate_op(param)

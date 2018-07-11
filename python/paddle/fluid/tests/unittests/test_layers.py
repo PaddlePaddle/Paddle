@@ -401,6 +401,33 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_crop(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5], dtype="float32")
+            y = layers.data(name='y', shape=[2, 3], dtype="float32")
+            output = layers.crop(x, shape=y)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_mean_iou(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32')
+            y = layers.data(name='label', shape=[1], dtype='int64')
+            iou = layers.mean_iou(x, y, 2)
+            self.assertIsNotNone(iou)
+        print(str(program))
+
+    def test_argsort(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+            self.assertIsNotNone(out)
+            self.assertIsNotNone(ids)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()

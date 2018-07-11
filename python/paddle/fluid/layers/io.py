@@ -109,10 +109,35 @@ class BlockGuardServ(BlockGuard):
 
 class ListenAndServ(object):
     """
-    ListenAndServ class.
+    **ListenAndServ Layer**
 
-    ListenAndServ class is used to wrap listen_and_serv op to create a server
-    which can receive variables from clients and run a block.
+    ListenAndServ is used to create a rpc server bind and listen
+    on specific TCP port, this server will run the sub-block when
+    received variables from clients.
+
+    Args:
+        endpoint(string): IP:port string which the server will listen on.
+        inputs(list): a list of variables that the server will get from clients.
+        fan_in(int): how many client are expected to report to this server, default: 1.
+        optimizer_mode(bool): whether to run the server as a parameter server, default: True.
+
+    Examples:
+        .. code-block:: python
+
+            with fluid.program_guard(main):
+                serv = layers.ListenAndServ(
+                    "127.0.0.1:6170", ["X"], optimizer_mode=False)
+                with serv.do():
+                    x = layers.data(
+                        shape=[32, 32],
+                        dtype='float32',
+                        name="X",
+                        append_batch_size=False)
+                    fluid.initializer.Constant(value=1.0)(x, main.global_block())
+                    layers.scale(x=x, scale=10.0, out=out_var)
+
+            exe = fluid.Executor(place)
+            exe.run(main)
     """
 
     def __init__(self, endpoint, inputs, fan_in=1, optimizer_mode=True):
@@ -161,7 +186,6 @@ class ListenAndServ(object):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
-        empty_block = Program().global_block()
 
         parent_block.append_op(
             type='listen_and_serv',
@@ -170,8 +194,9 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'OptimizeBlock': current_block,
-                'PrefetchBlock': empty_block,
+                'optimize_blocks': [
+                    current_block
+                ],  # did not support multiple optimize blocks in layers
                 'sync_mode': True,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
@@ -187,7 +212,7 @@ def Send(endpoints, send_vars, sync=True):
                    of send_vars to send
         send_vars (list): variables to send to server
         sync (bool): whether to wait the request finish
-    
+
     """
     assert (type(send_vars) == list)
 
@@ -350,9 +375,6 @@ def open_recordio_file(filename,
     if pass_num > 1:
         main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
 
-    if for_parallel:
-        main_prog_var = parallel(reader=main_prog_var)
-
     return monkey_patch_reader_methods(main_prog_var)
 
 
@@ -444,10 +466,13 @@ def open_files(filenames,
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
        thread_num(int): The maximal concurrent prefetch thread number.
-       buffer_size(int): The size of prefetch buffer.
+       buffer_size(int|None): The size of prefetch buffer. If it is setted None, 
+            buffer size will be thread_num * 3.
+            Default: None
        pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run 
             subsequent operators in parallel.
+            Default: True
 
     Returns:
        Variable: A Reader Variable via which we can get file data.
@@ -467,7 +492,7 @@ def open_files(filenames,
          image, label = fluid.layers.io.read_file(reader)
     """
     if buffer_size is None:
-        buffer_size = thread_num
+        buffer_size = thread_num * 3
     if isinstance(filenames, basestring):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
@@ -500,9 +525,6 @@ def open_files(filenames,
     if pass_num > 1:
         main_prog_reader = multi_pass(
             reader=main_prog_reader, pass_num=pass_num)
-
-    if for_parallel:
-        main_prog_reader = parallel(reader=main_prog_reader)
 
     return monkey_patch_reader_methods(main_prog_reader)
 
@@ -544,6 +566,41 @@ def shuffle(reader, buffer_size):
 
 
 def batch(reader, batch_size):
+    """
+    This layer is a reader decorator. It takes a reader and adds 
+    'batching' decoration on it. When reading with the result 
+    decorated reader, output data will be automatically organized 
+    to the form of batches.
+
+    Args:
+        reader(Variable): The reader to be decorated with 'batching'.
+        batch_size(int): The batch size.
+
+    Returns:
+        Variable: The reader which has been decorated with 'batching'.
+
+    Examples:
+        .. code-block:: python
+
+            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
+                                                           './data2.recordio'],
+                                                    shapes=[(3,224,224), (1)],
+                                                    lod_levels=[0, 0],
+                                                    dtypes=['float32', 'int64'],
+                                                    thread_num=2,
+                                                    buffer_size=2)
+            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
+
+            # If we read data with the raw_reader:
+            #     data = fluid.layers.read_file(raw_reader)
+            # We can only get data instance by instance.
+            # 
+            # However, if we read data with the batch_reader:
+            #     data = fluid.layers.read_file(batch_reader)
+            # Each 5 adjacent instances will be automatically combined together 
+            # to become a batch. So what we get('data') is a batch data instead 
+            # of an instance.
+    """
     return __create_unshared_decorated_reader__(
         'create_batch_reader', reader, {'batch_size': int(batch_size)})
 
@@ -584,20 +641,41 @@ def multi_pass(reader, pass_num):
         'create_multi_pass_reader', reader, {'pass_num': int(pass_num)})
 
 
-def parallel(reader):
-    return __create_shared_decorated_reader__('create_threaded_reader', reader,
-                                              {})
+def read_file(reader):
+    """
+    Execute the given reader and get data via it.
 
+    A reader is also a Variable. It can be a raw reader generated by 
+    `fluid.layers.open_files()` or a decorated one generated by 
+    `fluid.layers.double_buffer()` and so on.
 
-def read_file(file_obj):
+    Args:
+
+        reader(Variable): The reader to execute.
+
+    Returns:
+        Tuple[Variable]: Data read via the given reader.
+
+    Examples:
+        .. code-block:: python
+
+           data_file = fluid.layers.open_files(
+                filenames=['mnist.recordio'],
+                shapes=[(-1, 748), (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"])
+            data_file = fluid.layers.double_buffer(
+                fluid.layers.batch(data_file, batch_size=64))
+            input, label = fluid.layers.read_file(data_file)
+    """
     helper = LayerHelper('read_file')
     out = [
         helper.create_tmp_variable(
             stop_gradient=True, dtype='float32')
-        for _ in range(len(file_obj.desc.shapes()))
+        for _ in range(len(reader.desc.shapes()))
     ]
     helper.append_op(
-        type='read', inputs={'Reader': [file_obj]}, outputs={'Out': out})
+        type='read', inputs={'Reader': [reader]}, outputs={'Out': out})
     if len(out) == 1:
         return out[0]
     else:

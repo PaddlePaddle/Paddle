@@ -96,10 +96,20 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
+      std::lock_guard<std::mutex> l(exception_mu_);
       if (exception_) {
-        auto exp = *exception_;
-        exception_.reset();
-        throw exp;
+        std::exception *exp = exception_.get();
+        if (dynamic_cast<platform::EOFException *>(exp)) {
+          auto e = *static_cast<platform::EOFException *>(exp);
+          exception_.reset();
+          throw e;
+        } else if (dynamic_cast<platform::EnforceNotMet *>(exp)) {
+          auto e = *static_cast<platform::EnforceNotMet *>(exp);
+          exception_.reset();
+          throw e;
+        } else {
+          LOG(FATAL) << "Unknown exception.";
+        }
       } else {
         continue;
       }
@@ -198,7 +208,14 @@ void ThreadedSSAGraphExecutor::RunOp(
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
+    } catch (platform::EOFException ex) {
+      std::lock_guard<std::mutex> l(exception_mu_);
+      // EOFException will not cover up existing EnforceNotMet.
+      if (exception_.get() == nullptr) {
+        exception_.reset(new platform::EOFException(ex));
+      }
     } catch (platform::EnforceNotMet ex) {
+      std::lock_guard<std::mutex> l(exception_mu_);
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";

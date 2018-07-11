@@ -44,7 +44,7 @@ import metrics
 import transpiler
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
+from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
 from transpiler import DistributeTranspiler, InferenceTranspiler, \
     memory_optimize, release_memory
 from concurrency import (Go, make_channel, channel_send, channel_recv,
@@ -83,6 +83,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
               'profiler',
               'unique_name',
               'recordio_writer',
+              'Scope',
           ]
 
 
@@ -117,7 +118,8 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'use_mkldnn'
+        'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
+        'init_allocated_mem'
     ]
     if core.is_compiled_with_cuda():
         read_env_flags += [
