@@ -76,7 +76,8 @@ def reader_creator(data_file,
                    dataset_name,
                    mapper,
                    buffered_size=1024,
-                   use_xmap=True):
+                   use_xmap=True,
+                   cycle=False):
     '''
     1. read images from tar file and
         merge images into batch files in 102flowers.tgz_batch/
@@ -96,6 +97,8 @@ def reader_creator(data_file,
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: data reader
     :rtype: callable
     '''
@@ -108,15 +111,18 @@ def reader_creator(data_file,
     file_list = batch_images_from_tar(data_file, dataset_name, img2label)
 
     def reader():
-        for file in open(file_list):
-            file = file.strip()
-            batch = None
-            with open(file, 'r') as f:
-                batch = cPickle.load(f)
-            data = batch['data']
-            labels = batch['label']
-            for sample, label in itertools.izip(data, batch['label']):
-                yield sample, int(label) - 1
+        while True:
+            for file in open(file_list):
+                file = file.strip()
+                batch = None
+                with open(file, 'r') as f:
+                    batch = cPickle.load(f)
+                data = batch['data']
+                labels = batch['label']
+                for sample, label in itertools.izip(data, batch['label']):
+                    yield sample, int(label) - 1
+            if not cycle:
+                break
 
     if use_xmap:
         cpu_num = int(os.environ.get('CPU_NUM', cpu_count()))
@@ -125,7 +131,7 @@ def reader_creator(data_file,
         return map_readers(mapper, reader)
 
 
-def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
+def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers training set reader.
     It returns a reader, each sample in the reader is
@@ -138,17 +144,23 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: train data reader
     :rtype: callable
     '''
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), TRAIN_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        TRAIN_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+        cycle=cycle)
 
 
-def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
+def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers test set reader.
     It returns a reader, each sample in the reader is
@@ -161,14 +173,20 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: test data reader
     :rtype: callable
     '''
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), TEST_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        TEST_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+        cycle=cycle)
 
 
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
