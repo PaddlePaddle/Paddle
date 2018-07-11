@@ -18,10 +18,7 @@ import collections
 import copy
 import unique_name
 
-__all__ = [
-    'append_backward',
-    'calc_gradient',
-]
+__all__ = ['append_backward']
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
