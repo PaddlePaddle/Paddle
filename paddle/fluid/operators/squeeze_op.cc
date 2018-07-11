@@ -73,7 +73,7 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
                        "Invalid axis, the negative axis is out of range.");
         PADDLE_ENFORCE(in_dims[current] == 1,
                        "Invalid axis index, the axis that will be squeezed "
-                       "should equal 1.");
+                       "should be equal to 1.");
 
         if (!(should_squeeze[current])) {
           ++cnt_squeezed_dims;
@@ -123,7 +123,7 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor). The output tensor of squeeze operator.");
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of integers,"
-                              " indicate the dimensions to squeeze.")
+                              " indicating the dimensions to squeeze.")
         .SetDefault({});
     AddAttr<bool>("inplace",
                   "(default: false) Squeeze the source tensor's shape without "
