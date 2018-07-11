@@ -68,6 +68,7 @@ TEST(DataFlowGraph, DFS) {
  * 4 -> 5
  * 4 -> 7
  * 4 -> 3
+ * 7 -> 3
  */
 TEST(DataFlowGraph, TS) {
   DataFlowGraph graph;
@@ -106,16 +107,20 @@ TEST(DataFlowGraph, TS) {
 
   // Assert a occurs prior to b in the sorted_ids.
   auto assert_positive_sequence_pair = [&](int a, int b) {
-    auto ait = std::find(sorted_ids.begin(), sorted_ids.end(), a);
-    auto bit = std::find(sorted_ids.begin(), sorted_ids.end(), b);
-    ASSERT_LT(ait, bit);
+    auto a_offset = std::find(sorted_ids.begin(), sorted_ids.end(), a);
+    auto b_offset = std::find(sorted_ids.begin(), sorted_ids.end(), b);
+    ASSERT_LT(a_offset, b_offset);
   };
 
-  assert_positive_sequence_pair(2, 4);
-  assert_positive_sequence_pair(2, 6);
   assert_positive_sequence_pair(2, 7);
   assert_positive_sequence_pair(7, 3);
   assert_positive_sequence_pair(4, 3);
+  
+  assert_positive_sequence_pair(0, 4);
+  assert_positive_sequence_pair(0, 5);
+  assert_positive_sequence_pair(1, 6);
+  assert_positive_sequence_pair(4, 5);
+  assert_positive_sequence_pair(4, 7);
 }
 
 }  // namespace analysis
