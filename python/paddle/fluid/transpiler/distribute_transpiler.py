@@ -410,7 +410,7 @@ class DistributeTranspiler(object):
 
             # clone vars
             for var in origin_block.vars:
-                new_sub_block.clone_variable(var)
+                new_sub_block._clone_variable(var)
 
             # clone ops
             for origin_op in origin_block.ops:
@@ -535,7 +535,7 @@ class DistributeTranspiler(object):
         pserver_vars = pserver_program.global_block().vars
         created_var_map = dict()
         for _, var in pserver_vars.iteritems():
-            tmpvar = s_prog.global_block().clone_variable(var)
+            tmpvar = s_prog.global_block()._clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
@@ -853,7 +853,7 @@ class DistributeTranspiler(object):
             persistable=True)
         # parameter must be selected rows
         param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
-        grad_var = pserver_program.global_block().clone_variable(
+        grad_var = pserver_program.global_block()._clone_variable(
             self.origin_program.global_block().vars[grad_var_name(
                 self.table_name)])
 
@@ -1230,7 +1230,7 @@ class DistributeTranspiler(object):
                 varlist = [varlist]
             for var in varlist:
                 if var not in program.global_block().vars:
-                    block.clone_variable(var)
+                    block._clone_variable(var)
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, op)
@@ -1239,7 +1239,7 @@ class DistributeTranspiler(object):
                 varlist = [varlist]
             for var in varlist:
                 if var not in program.global_block().vars:
-                    block.clone_variable(var)
+                    block._clone_variable(var)
 
         return block.append_op(
             type=op.type, inputs=inputs, outputs=outputs, attrs=op.attrs)
@@ -1277,7 +1277,7 @@ class DistributeTranspiler(object):
                 if grad_block:
                     outputs[key] = grad_block
                 elif not program.global_block().vars.has_key(var.name):
-                    program.global_block().clone_variable(var)
+                    program.global_block()._clone_variable(var)
 
         return optimize_block.append_op(
             type=opt_op.type,

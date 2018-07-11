@@ -1207,7 +1207,7 @@ class Block(object):
                 name=v.name)
             self.vars[new_p.name] = new_p
 
-    def clone_variable(self, var):
+    def _clone_variable(self, var):
         """
         Clone a variable into current block.
 
