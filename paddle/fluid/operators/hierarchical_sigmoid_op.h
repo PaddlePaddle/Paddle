@@ -44,9 +44,11 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     framework::Tensor sum;
     math::SetConstant<DeviceContext, T> zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto pre_out_data = pre_out->mutable_data<T>(
+    auto* pre_out_data = pre_out->mutable_data<T>(
         framework::make_ddim({batch_size, code_length}), ctx.GetPlace());
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
+    // Not all class(leaf) nodes' path lengths equal code_length, thus init as
+    // 0s can avoid out of path's loss.
     zero(dev_ctx, pre_out, static_cast<T>(0.0));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     math::RowwiseSum<DeviceContext, T> row_sum;
@@ -61,16 +63,13 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
       bit_code.Add(pre_out, *bias);
     }
     bit_code.Mul(pre_out, *w, *in);
-    // clip the matrix with (-40, 40)
+    // clip to [-40, 40]
     Transform<DeviceContext> trans;
     trans(ctx.template device_context<DeviceContext>(), pre_out_data,
           pre_out_data + pre_out->numel(), pre_out_data,
           ClipFunctor<T>(static_cast<T>(-40.0), static_cast<T>(40.0)));
     bit_code.Sum(*pre_out, out, static_cast<T>(-1));
-    // softrelu with threshold is 40.0
-    trans(ctx.template device_context<DeviceContext>(), pre_out_data,
-          pre_out_data + pre_out->numel(), pre_out_data,
-          ClipFunctor<T>(static_cast<T>(-40.0), static_cast<T>(40.0)));
+    // use softrelu to calculate cross entropy
     pre_out_mat.device(place) = (static_cast<T>(1.0) + pre_out_mat.exp()).log();
     row_sum(dev_ctx, *pre_out, &sum);
     out_mat.device(place) = sum_mat + out_mat;
@@ -102,14 +101,16 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
     auto pre_out_grad_mat = EigenMatrix<T>::From(pre_out_grad);
     math::MatrixBitCodeFunctor<T> bit_code(num_classes, label->data<int64_t>());
-    // softrelu derivative
-    Eigen::array<int, 2> bcast({1, static_cast<int>(pre_out_grad.dims()[1])});
+    Eigen::array<int, 2> bcast({{1, static_cast<int>(pre_out_grad.dims()[1])}});
     auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
     pre_out_grad_mat = out_grad_mat.broadcast(bcast);
     pre_out_grad_mat.device(place) =
         pre_out_grad_mat *
-        (static_cast<T>(1.0) - static_cast<T>(1.0) / pre_out_mat.exp());
+        (static_cast<T>(1.0) -
+         static_cast<T>(1.0) / pre_out_mat.exp());  // softrelu derivative
     bit_code.Sub(&pre_out_grad);
+    // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
+    // be consistent with the clipping in forward.
     if (bias_grad) {
       bias_grad->mutable_data<T>(ctx.GetPlace());
       bit_code.AddGrad(pre_out_grad, bias_grad);

@@ -3858,29 +3858,32 @@ def nce(input,
     return cost / (num_neg_samples + 1)
 
 
-def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
+def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a 
-    complete binary tree, each leaf node represents a class(a word) and each internal
-    node acts likea binary classifier. For each word there's a unique path from root 
-    to it's leaf node, hsigmoid calculate the cost for each internal node on the path
-    (include root), and sum them to get a total cost. hsigmoid can achive a acceleration 
-    from N to logN, for which N represents the size of word dict. This idea is from "F. 
-    Morin, Y. Bengio(AISTATS 05): Hierarchical Probabilistic Neural Network Language Model.
+    complete binary tree, each leaf node represents a class(a word) and each
+    internal node acts as a binary classifier. For each word there's a unique
+    path from root to it's leaf node, hsigmoid calculate the cost for each
+    internal node on the path, and sum them to get a total cost. hsigmoid can
+    achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    represents the size of word dict.
 
+    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+    
     Args:
-        input (Variable): (Tensor) The input Tensor, which the shape is
-             [N * D], which N is the size of mini-batch,D is the embded size
-        label (Variable): (Tensor), The labels of training data. It's a
-             1-D tensor, which the shape is [1, N]
-        num_classes: (int, default 2), The number of classes, must be lager or
-             equal than 2.
+        input (Variable): The input tensor variable with shape 
+            :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
+            and :math:`D` is the feature size.
+        label (Variable): The tensor variable contains labels of training data.
+            It's a tensor with shape is :math:`[N \\times 1]`.
+        num_classes: (int), The number of classes, must not be less than 2.
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter
              attribute for learnable parameters/weights of this layer.
         bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter 
-             attribute for the bias of this layer. If it is set to None, no bias 
-             will be added to the output units.
+             attribute for the bias of this layer. If it is set to False, no
+             bias will be applied.
 
     Returns:
         Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
@@ -3889,11 +3892,9 @@ def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[3, 2],
-                                dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1, 3],
-                                dtype='int64')
-            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=2)
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
     """
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
@@ -3902,7 +3903,7 @@ def hsigmoid(input, label, num_classes=2, param_attr=None, bias_attr=None):
     pre_out = helper.create_tmp_variable(dtype)
     dim = input.shape[1]
     if num_classes < 2:
-        raise ValueError("num_classes must be lager or equal than 2.")
+        raise ValueError("num_classes must not be less than 2.")
     weights = helper.create_parameter(
         attr=helper.param_attr,
         shape=[num_classes - 1, dim],
