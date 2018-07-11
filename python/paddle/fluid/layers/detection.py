@@ -952,7 +952,7 @@ def multi_box_head(inputs,
         step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
         box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
-                             variance, flip, clip, step, offset,
+                             variance, flip, clip, step, offset, None,
                              min_max_aspect_ratios_order)
 
         box_results.append(box)
