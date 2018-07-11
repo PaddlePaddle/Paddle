@@ -42,12 +42,12 @@ def get_patch():
 
 def is_taged():
     try:
-        cmd = ['git', 'describe', '--exact-match', '--tags']
+        cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
         git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
     except:
         return False
 
-    if git_tag.replace('v', '') == '@PADDLE_VERSION@':
+    if str(git_tag).replace('v', '') == '@PADDLE_VERSION@':
         return True
     else:
         return False
