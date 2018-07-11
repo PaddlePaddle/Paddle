@@ -58,9 +58,9 @@ class Graph {
     return attr;
   }
 
-  std::vector<Node*> inputs;
-  std::vector<Node*> outputs;
-  std::vector<std::unique_ptr<Node>> nodes;
+  std::vector<ir::Node*> inputs;
+  std::vector<ir::Node*> outputs;
+  std::vector<std::unique_ptr<ir::Node>> nodes;
 
  private:
   std::map<std::string, boost::any> attrs_;
