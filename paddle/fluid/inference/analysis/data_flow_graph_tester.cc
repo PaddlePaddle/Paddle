@@ -107,9 +107,9 @@ TEST(DataFlowGraph, TS) {
 
   // Assert a occurs prior to b in the sorted_ids.
   auto assert_positive_sequence_pair = [&](int a, int b) {
-    auto ait = std::find(sorted_ids.begin(), sorted_ids.end(), a);
-    auto bit = std::find(sorted_ids.begin(), sorted_ids.end(), b);
-    ASSERT_LT(ait, bit);
+    auto a_offset = std::find(sorted_ids.begin(), sorted_ids.end(), a);
+    auto b_offset = std::find(sorted_ids.begin(), sorted_ids.end(), b);
+    ASSERT_LT(a_offset, b_offset);
   };
 
   assert_positive_sequence_pair(2, 4);
