@@ -693,7 +693,7 @@ def prior_box(input,
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with 
             Caffe. Please note, this order affects the weights order of
-            convolution layer followed by and does not affect the fininal
+            convolution layer followed by and does not affect the final
             detection results. Default: False.
 
     Returns:

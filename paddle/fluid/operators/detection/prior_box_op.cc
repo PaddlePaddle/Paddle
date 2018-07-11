@@ -154,7 +154,7 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool) If set True, the output prior box is in order of"
         "[min, max, aspect_ratios], which is consistent with Caffe."
         "Please note, this order affects the weights order of convolution layer"
-        "followed by and does not affect the fininal detection results.")
+        "followed by and does not affect the final detection results.")
         .SetDefault(false);
     AddComment(R"DOC(
 Prior box operator

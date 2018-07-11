@@ -54,7 +54,7 @@ class TestPriorBoxOp(OpTest):
         self.max_sizes = np.array(max_sizes).astype('float32').tolist()
 
     def set_min_max_aspect_ratios_order(self):
-        self.min_max_aspect_ratios_order = True
+        self.min_max_aspect_ratios_order = False
 
     def init_test_params(self):
         self.layer_w = 32
@@ -182,7 +182,7 @@ class TestPriorBoxOpWithoutMaxSize(TestPriorBoxOp):
 
 class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
     def set_min_max_aspect_ratios_order(self):
-        self.min_max_aspect_ratios_order = False
+        self.min_max_aspect_ratios_order = True
 
 
 if __name__ == '__main__':
