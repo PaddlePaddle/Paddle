@@ -56,6 +56,8 @@ class TestPrintOpCPU(unittest.TestCase):
                        return_numpy=False)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.place = core.CUDAPlace(0)
