@@ -292,7 +292,7 @@ class DistributeTranspiler(object):
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
-        self.get_trainer_startup_program()
+        self._get_trainer_startup_program()
 
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
@@ -313,7 +313,7 @@ class DistributeTranspiler(object):
 
         return self.origin_program
 
-    def get_trainer_startup_program(self, program=None):
+    def _get_trainer_startup_program(self, program=None):
         """
         Get transpiled trainer side startup program.
 
