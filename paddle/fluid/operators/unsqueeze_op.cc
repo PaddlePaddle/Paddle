@@ -111,19 +111,19 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor). The output tensor of unsqueeze operator.");
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of integers,"
-                              " indicate the dimensions to be inserted")
+                              " indicating the dimensions to be inserted")
         .AddCustomChecker([](const std::vector<int> &axes) {
           PADDLE_ENFORCE(!axes.empty(),
                          "Invalid axes, The unsqueeze axes is empty.");
           // Validity Check: axes dims (<6).
           PADDLE_ENFORCE(static_cast<int>(axes.size()) < 6,
-                         "Invalid dimensions, dynamic dimensions should within "
-                         "[1, 6] dimensions (Eigen limit).");
+                         "Invalid dimensions, dynamic dimensions should be "
+                         "within [1, 6] dimensions (Eigen limit).");
           // Validity Check: the range of unsqueeze aixs.
           for (int axis : axes) {
             PADDLE_ENFORCE(axis < 6,
-                           "Invalid dimensions, input axis should within "
-                           "[1, 6] dimensions (Eigen limit).");
+                           "Invalid dimensions, input axis should be"
+                           " within [1, 6] dimensions (Eigen limit).");
           }
         });
     AddAttr<bool>(
