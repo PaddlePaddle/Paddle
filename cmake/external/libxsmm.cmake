@@ -13,19 +13,20 @@
 # limitations under the License.
 #
 
-# NOTE: libxsmm is enabled with with_mkl, add new option if necessary
-IF(NOT WITH_MKL)
+OPTION(WITH_LIBXSMM "Compile with libxsmm" OFF)
+
+IF(NOT WITH_LIBXSMM)
     return()
 ENDIF()
 
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING "Windows or Mac is not supported with libxsmm in Paddle yet.")
+IF(WIN32 OR APPLE OR ANDROID OR IOS)
+    MESSAGE(WARNING "Windows, Mac or Mobile are not supported with libxsmm in Paddle yet.")
+    SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM" FORCE)
     return()
 ENDIF()
 
 INCLUDE (ExternalProject)
 
-SET(WITH_LIBXSMM ON)
 SET(LIBXSMM_SOURCES_DIR ${THIRD_PARTY_PATH}/libxsmm)
 SET(LIBXSMM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libxsmm)
 SET(LIBXSMM_INCLUDE_DIR "${LIBXSMM_INSTALL_DIR}/include" CACHE PATH "LIBXSMM include directory." FORCE)
