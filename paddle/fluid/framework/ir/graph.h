@@ -26,71 +26,45 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class Graph;
-
-template <typename AttrType>
-struct AnyAttr {
- public:
-  explicit AnyAttr(AttrType* attr) : attr_(attr) {}
-
-  AttrType& Get() { return *boost::any_cast<AttrType*>(attr_); }
-
- private:
-  friend Graph;
-
-  AttrType* Release() {
-    released_ = true;
-    return boost::any_cast<AttrType*>(attr_);
-  }
-
-  void Delete() {
-    if (!released_) {
-      delete boost::any_cast<AttrType*>(attr_);
-    }
-  }
-
-  bool released_ = false;
-  boost::any attr_;
-};
-
 class Graph {
  public:
   virtual ~Graph() {
-    for (auto& attr : attrs) {
-      attr_dels[attr.first]();
+    for (auto& attr : attrs_) {
+      attr_dels_[attr.first]();
     }
-    attrs.clear();
-    attr_dels.clear();
+    attrs_.clear();
+    attr_dels_.clear();
   }
 
   template <typename AttrType>
-  AttrType& Get(const std::string& attr_name) {
-    return boost::any_cast<AnyAttr<AttrType>>(attrs[attr_name]).Get();
+  AttrType& Get(const std::string& attr_name) const {
+    return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
   }
 
   template <typename AttrType>
   void Set(const std::string& attr_name, AttrType* attr) {
-    AnyAttr<AttrType> any_attr = AnyAttr<AttrType>(attr);
-    attrs[attr_name] = any_attr;
-    attr_dels[attr_name] = [&any_attr]() { any_attr.Delete(); };
+    attrs_[attr_name] = attr;
+    attr_dels_[attr_name] = [attr, attr_name]() {
+      VLOG(3) << "deleting " << attr_name;
+      delete attr;
+    };
   }
 
   template <typename AttrType>
   AttrType* Erase(const std::string& attr_name) {
-    AnyAttr<AttrType> attr_type =
-        boost::any_cast<AnyAttr<AttrType>>(attrs[attr_name]);
-    attrs.erase(attr_name);
-    attr_dels.erase(attr_name);
-    return attr_type.Release();
+    AttrType* attr = boost::any_cast<AttrType*>(attrs_[attr_name]);
+    attrs_.erase(attr_name);
+    attr_dels_.erase(attr_name);
+    return attr;
   }
 
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
   std::vector<std::unique_ptr<Node>> nodes;
-  std::map<std::string, boost::any> attrs;
-  std::map<std::string, std::function<void(void)>> attr_dels;
 
  private:
+  std::map<std::string, boost::any> attrs_;
+  std::map<std::string, std::function<void(void)>> attr_dels_;
 };
 
 }  // namespace framework

@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-bool SSAGraghBuilderWithChecker::IsValidGraph(const SSAGraph *graph) const {
+bool SSAGraghBuilderWithChecker::IsValidGraph(const Graph *graph) const {
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   std::unordered_set<VarHandleBase *> ready_vars;
@@ -33,7 +33,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const SSAGraph *graph) const {
     }
   };
 
-  for (auto &var_map : graph->vars_) {
+  for (auto &var_map : graph->Get<GraphVars>("vars")) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
         insert_pending_var(version_pair.get());
@@ -41,11 +41,11 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const SSAGraph *graph) const {
     }
   }
 
-  for (auto &var : graph->dep_vars_) {
+  for (auto &var : graph->Get<GraphDepVars>("dep_vars")) {
     insert_pending_var(var.get());
   }
 
-  for (auto &op : graph->ops_) {
+  for (auto &op : graph->Get<GraphOps>("ops")) {
     if (op->Inputs().empty()) {
       ready_ops.insert(op.get());
     } else {
