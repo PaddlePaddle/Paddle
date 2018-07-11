@@ -100,11 +100,13 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
-      std::lock_guard<std::mutex> l(exception_mu_);
+      std::unique_lock<std::mutex> l(exception_mu_);
       if (exception_) {
+        l.unlock();
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
+        l.lock();
         std::exception *exp = exception_.get();
         if (dynamic_cast<platform::EOFException *>(exp)) {
           auto e = *static_cast<platform::EOFException *>(exp);
