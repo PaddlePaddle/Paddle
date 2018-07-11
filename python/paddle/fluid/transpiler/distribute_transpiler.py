@@ -149,7 +149,6 @@ class DistributeTranspiler(object):
     def transpile(self,
                   trainer_id,
                   program=None,
-                  startup_program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
                   slice_var_up=True,
@@ -173,10 +172,8 @@ class DistributeTranspiler(object):
         """
         assert (split_method.__bases__[0] == PSDispatcher)
         self.split_method = split_method
-        if startup_program is None:
-            startup_program = default_startup_program()
-        self.origin_startup_program = startup_program.clone()
-        self.startup_program = startup_program
+        self.origin_startup_program = default_startup_program().clone()
+        self.startup_program = default_startup_program()
         if program is None:
             program = default_main_program()
         self.origin_program = program
