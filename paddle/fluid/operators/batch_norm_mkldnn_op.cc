@@ -37,7 +37,97 @@ struct bn_type_traits {
   using op_prim = typename op_type::primitive_desc;
 };
 
-// Generate keys for storing/retrieving primitives for this operator
+class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
+ public:
+  BatchNormMKLDNNHandler(
+      std::shared_ptr<batch_norm_fwd::primitive_desc> batch_norm_pd,
+      const platform::MKLDNNDeviceContext &dev_ctx, mkldnn::engine engine,
+      const std::string &base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {
+    batch_norm_pd_ = batch_norm_pd;
+  }
+
+  std::shared_ptr<memory> AcquireScaleshiftMemoryFromPrimitive(void *ptr) {
+    return this->AcquireMemoryFromPrimitive(
+        batch_norm_pd_->weights_primitive_desc(), ptr, "@scaleshift_mem_p");
+  }
+
+  std::shared_ptr<memory> AcquireMeanMemoryFromPrimitive(void *ptr) {
+    return this->AcquireMemoryFromPrimitive(
+        batch_norm_pd_->mean_primitive_desc(), ptr, "@mean_mem_p");
+  }
+
+  std::shared_ptr<memory> AcquireVarianceMemoryFromPrimitive(void *ptr) {
+    return this->AcquireMemoryFromPrimitive(
+        batch_norm_pd_->variance_primitive_desc(), ptr, "@variance_mem_p");
+  }
+
+  std::shared_ptr<batch_norm_fwd> AcquireTestBatchNormFwd(
+      std::shared_ptr<memory> src_memory,
+      const mkldnn::primitive::at &mean_memory,
+      const mkldnn::primitive::at &variance_memory,
+      std::shared_ptr<memory> scaleshift_memory,
+      std::shared_ptr<memory> dst_memory) {
+    auto prim_key = key_ + "@batch_norm_p";
+    auto batch_norm_p =
+        std::static_pointer_cast<batch_norm_fwd>(dev_ctx_.GetBlob(prim_key));
+    PADDLE_ENFORCE(
+        (batch_norm_p != nullptr) || (is_reusing_ == false),
+        "Fail to find batch norm primitive for test in device context");
+    if (batch_norm_p == nullptr) {
+      batch_norm_p = std::make_shared<batch_norm_fwd>(
+          *batch_norm_pd_, *src_memory, mean_memory, variance_memory,
+          *scaleshift_memory, *dst_memory);
+
+      dev_ctx_.SetBlob(prim_key, batch_norm_p);
+    } else {
+      is_reusing_ = true;
+    }
+    return batch_norm_p;
+  }
+
+  std::shared_ptr<batch_norm_fwd> AcquireTrainingBatchNormFwd(
+      std::shared_ptr<memory> src_memory,
+      std::shared_ptr<memory> scaleshift_memory,
+      std::shared_ptr<memory> dst_memory, std::shared_ptr<memory> mean_memory,
+      std::shared_ptr<memory> variance_memory) {
+    auto prim_key = key_ + "@batch_norm_p";
+    auto batch_norm_p =
+        std::static_pointer_cast<batch_norm_fwd>(dev_ctx_.GetBlob(prim_key));
+    PADDLE_ENFORCE(
+        (batch_norm_p != nullptr) || (is_reusing_ == false),
+        "Fail to find batch norm primitive for training in device context");
+    if (batch_norm_p == nullptr) {
+      batch_norm_p = std::make_shared<batch_norm_fwd>(
+          *batch_norm_pd_, *src_memory, *scaleshift_memory, *dst_memory,
+          *mean_memory, *variance_memory);
+
+      dev_ctx_.SetBlob(prim_key, batch_norm_p);
+    } else {
+      is_reusing_ = true;
+    }
+    return batch_norm_p;
+  }
+  //
+  static std::string GetHash(const memory::dims &input_dims, float epsilon,
+                             unsigned flag, bool is_test, memory::format format,
+                             const std::string &suffix) {
+    auto dims2str = [](const memory::dims &operand_dims) {
+      std::string dstr = "";
+      for (size_t i = 0; i < operand_dims.size(); ++i) {
+        dstr += std::to_string(operand_dims[i]) + "-";
+      }
+      return dstr;
+    };
+    return dims2str(input_dims) + std::to_string(epsilon) +
+           std::to_string(flag) + std::to_string(is_test) +
+           std::to_string(format) + suffix;
+  }
+
+ private:
+  std::shared_ptr<batch_norm_fwd::primitive_desc> batch_norm_pd_;
+};
+
 std::string gethash(const memory::dims &input_dims, float epsilon,
                     unsigned flag, bool is_test, memory::format format) {
   auto dims2str = [](const memory::dims &operand_dims) {
@@ -144,106 +234,64 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     // keys for backward pass
-    const std::string key = ctx.op().Output("SavedMean");
+    const std::string key = BatchNormMKLDNNHandler::GetHash(
+        src_tz, epsilon, flags, is_test, input_format,
+        ctx.op().Output("SavedMean"));
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
 
-    // keys for primitives reuse
-    const std::string key_with_hash =
-        key + gethash(src_tz, epsilon, flags, is_test, input_format);
-    const std::string key_batch_norm_p = key_with_hash + "@batch_norm_p";
-    const std::string key_batch_norm_src_mem_p =
-        key_with_hash + "@batch_norm_src_mem_p";
-    const std::string key_batch_norm_dst_mem_p =
-        key_with_hash + "@batch_norm_dst_mem_p";
-    const std::string key_batch_norm_mean_mem_p =
-        key_with_hash + "@batch_norm_mean_mem_p";
-    const std::string key_batch_norm_variance_mem_p =
-        key_with_hash + "@batch_norm_variance_mem_p";
-    const std::string key_batch_norm_scaleshift_mem_p =
-        key_with_hash + "@batch_norm_scaleshift_mem_p";
+    auto user_src_md = platform::MKLDNNMemDesc(
+        {src_tz}, platform::MKLDNNGetDataType<T>(), input_format);
 
-    auto batch_norm_p = std::static_pointer_cast<batch_norm_fwd>(
-        dev_ctx.GetBlob(key_batch_norm_p));
+    // create primitive descriptor for batch norm forward
+    using bn_fwd_types = bn_type_traits<mkldnn::batch_normalization_forward>;
+    auto batch_norm_fwd_desc =
+        bn_fwd_types::op_desc{propagation, user_src_md, epsilon, flags};
+    auto batch_norm_fwd_pd = std::make_shared<batch_norm_fwd::primitive_desc>(
+        batch_norm_fwd_desc, mkldnn_engine);
+    // Save conv_pd/src_memory/weights_memory for backward pass
+    dev_ctx.SetBlob(key_batch_norm_fwd_pd, batch_norm_fwd_pd);
 
-    if (batch_norm_p == nullptr) {
-      auto src_memory = std::shared_ptr<memory>(new memory(
-          {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
-          to_void_cast(x_data)));
+    BatchNormMKLDNNHandler handler(batch_norm_fwd_pd, dev_ctx, mkldnn_engine,
+                                   key);
 
-      // create primitive descriptor for batch norm forward
-      using bn_fwd_types = bn_type_traits<mkldnn::batch_normalization_forward>;
-      auto batch_norm_fwd_desc = bn_fwd_types::op_desc{
-          propagation, src_memory->get_primitive_desc().desc(), epsilon, flags};
-      auto batch_norm_fwd_pd = std::make_shared<batch_norm_fwd::primitive_desc>(
-          batch_norm_fwd_desc, mkldnn_engine);
+    auto src_memory =
+        handler.AcquireSrcMemory(user_src_md, to_void_cast(x_data));
 
-      // crate mkldnn memory for weights(scale/shift)
-      auto scaleshift_memory = std::make_shared<memory>(
-          batch_norm_fwd_pd->weights_primitive_desc(), scaleshift_data.data());
+    // crate mkldnn memory for weights(scale/shift)
+    auto scaleshift_memory =
+        handler.AcquireScaleshiftMemoryFromPrimitive(scaleshift_data.data());
 
-      // create mkldnn memory for output y tensor
-      auto dst_memory = std::make_shared<memory>(
-          batch_norm_fwd_pd->dst_primitive_desc(), y_data);
+    // create mkldnn memory for output y tensor
+    auto dst_memory = handler.AcquireDstMemory(
+        batch_norm_fwd_pd->dst_primitive_desc().desc(), y_data);
 
-      std::shared_ptr<memory> mean_memory, variance_memory;
-      if (is_test) {
-        // create mkldnn memory for stats (as input)
-        mean_memory = std::make_shared<memory>(
-            batch_norm_fwd_pd->mean_primitive_desc(), to_void_cast(mean_data));
-        variance_memory = std::make_shared<memory>(
-            batch_norm_fwd_pd->variance_primitive_desc(),
-            to_void_cast(variance_data));
+    std::shared_ptr<batch_norm_fwd> batch_norm_p;
+    if (is_test) {
+      // create mkldnn memory for stats (as input)
+      std::shared_ptr<memory> mean_memory =
+          handler.AcquireMeanMemoryFromPrimitive(to_void_cast(mean_data));
+      std::shared_ptr<memory> variance_memory =
+          handler.AcquireVarianceMemoryFromPrimitive(
+              to_void_cast(variance_data));
 
-        batch_norm_p = std::make_shared<batch_norm_fwd>(
-            *batch_norm_fwd_pd, *src_memory,
-            (const mkldnn::primitive::at &)*mean_memory,
-            (const mkldnn::primitive::at &)*variance_memory, *scaleshift_memory,
-            *dst_memory);
-      } else {
-        // create mkldnn memory for stats (as output)
-        mean_memory = std::make_shared<memory>(
-            batch_norm_fwd_pd->mean_primitive_desc(), batch_mean_data);
-        variance_memory = std::make_shared<memory>(
-            batch_norm_fwd_pd->variance_primitive_desc(), batch_variance_data);
-
-        batch_norm_p = std::make_shared<batch_norm_fwd>(
-            *batch_norm_fwd_pd, *src_memory, *scaleshift_memory, *dst_memory,
-            *mean_memory, *variance_memory);
-      }
-
-      dev_ctx.SetBlob(key_batch_norm_fwd_pd, batch_norm_fwd_pd);
-      dev_ctx.SetBlob(key_batch_norm_p, batch_norm_p);
-      dev_ctx.SetBlob(key_batch_norm_src_mem_p, src_memory);
-      dev_ctx.SetBlob(key_batch_norm_dst_mem_p, dst_memory);
-      dev_ctx.SetBlob(key_batch_norm_mean_mem_p, mean_memory);
-      dev_ctx.SetBlob(key_batch_norm_variance_mem_p, variance_memory);
-      dev_ctx.SetBlob(key_batch_norm_scaleshift_mem_p, scaleshift_memory);
-
-      y->set_layout(DataLayout::kMKLDNN);
-      y->set_format(
-          (memory::format)dst_memory->get_primitive_desc().desc().data.format);
+      batch_norm_p = handler.AcquireTestBatchNormFwd(
+          src_memory, (const mkldnn::primitive::at &)*mean_memory,
+          (const mkldnn::primitive::at &)*variance_memory, scaleshift_memory,
+          dst_memory);
     } else {
-      // Primitives already exist
-      UpdateMemoryData(dev_ctx, key_batch_norm_src_mem_p, to_void_cast(x_data));
-      auto dst_memory =
-          UpdateMemoryData(dev_ctx, key_batch_norm_dst_mem_p, y_data);
-      UpdateMemoryData(dev_ctx, key_batch_norm_scaleshift_mem_p,
-                       to_void_cast(scaleshift_data.data()));
-      if (is_test) {
-        UpdateMemoryData(dev_ctx, key_batch_norm_mean_mem_p,
-                         to_void_cast(mean_data));
-        UpdateMemoryData(dev_ctx, key_batch_norm_variance_mem_p,
-                         to_void_cast(variance_data));
-      } else {
-        UpdateMemoryData(dev_ctx, key_batch_norm_mean_mem_p, batch_mean_data);
-        UpdateMemoryData(dev_ctx, key_batch_norm_variance_mem_p,
-                         batch_variance_data);
-      }
+      // create mkldnn memory for stats (as output)
+      std::shared_ptr<memory> mean_memory =
+          handler.AcquireMeanMemoryFromPrimitive(batch_mean_data);
+      std::shared_ptr<memory> variance_memory =
+          handler.AcquireVarianceMemoryFromPrimitive(batch_variance_data);
 
-      y->set_layout(DataLayout::kMKLDNN);
-      y->set_format(
-          (memory::format)dst_memory->get_primitive_desc().desc().data.format);
+      batch_norm_p = handler.AcquireTrainingBatchNormFwd(
+          src_memory, scaleshift_memory, dst_memory, mean_memory,
+          variance_memory);
     }
+
+    y->set_layout(DataLayout::kMKLDNN);
+    y->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
     std::vector<mkldnn::primitive> pipeline;
     pipeline.push_back(*batch_norm_p);
@@ -322,7 +370,9 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     unsigned flags = mkldnn::use_scale_shift;
 
     // keys from forward pass
-    const std::string key = ctx.op().Input("SavedMean");
+    const std::string key = BatchNormMKLDNNHandler::GetHash(
+        src_tz, epsilon, flags, false, input_format,
+        ctx.op().Input("SavedMean"));
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
 
     // keys for primitives reuse
