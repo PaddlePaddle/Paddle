@@ -68,6 +68,7 @@ TEST(DataFlowGraph, DFS) {
  * 4 -> 5
  * 4 -> 7
  * 4 -> 3
+ * 7 -> 3
  */
 TEST(DataFlowGraph, TS) {
   DataFlowGraph graph;
