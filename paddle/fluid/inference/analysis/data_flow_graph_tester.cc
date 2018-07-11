@@ -122,8 +122,6 @@ TEST(DataFlowGraph, TS) {
   assert_positive_sequence_pair(2, 7);
   assert_positive_sequence_pair(4, 5);
   assert_positive_sequence_pair(4, 7);
-  assert_positive_sequence_pair(4, 3);
-  assert_positive_sequence_pair(7, 3);
 }
 
 }  // namespace analysis
