@@ -13,6 +13,12 @@ endif()
 
 # Create static library
 cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
+if(NOT APPLE)
+  # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
+  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
+  set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+endif()
+
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
