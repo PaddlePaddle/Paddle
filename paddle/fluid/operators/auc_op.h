@@ -34,6 +34,10 @@ class AucKernel : public framework::OpKernel<T> {
     auto* inference = ctx.Input<Tensor>("Out");
     auto* label = ctx.Input<Tensor>("Label");
     auto* auc = ctx.Output<Tensor>("AUC");
+    auto* true_positive = ctx.Output<Tensor>("TP");
+    auto* false_positive = ctx.Output<Tensor>("FP");
+    auto* true_negative = ctx.Output<Tensor>("TN");
+    auto* false_negative = ctx.Output<Tensor>("FN");
 
     float* auc_data = auc->mutable_data<float>(ctx.GetPlace());
 
@@ -54,19 +58,15 @@ class AucKernel : public framework::OpKernel<T> {
     const T* inference_data = inference->data<T>();
     const int64_t* label_data = label->data<int64_t>();
 
-    // Create local tensor for storing the curve: TP, FN, TN, FP
-    // TODO(typhoonzero): use eigen op to caculate these values.
-    Tensor true_positive, false_positive, true_negative, false_negative;
+    true_positive->Resize({num_thresholds});
+    false_negative->Resize({num_thresholds});
+    true_negative->Resize({num_thresholds});
+    false_positive->Resize({num_thresholds});
 
-    true_positive.Resize({num_thresholds});
-    false_negative.Resize({num_thresholds});
-    true_negative.Resize({num_thresholds});
-    false_positive.Resize({num_thresholds});
-
-    int64_t* tp_data = true_positive.mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* fn_data = false_negative.mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* tn_data = true_negative.mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* fp_data = false_positive.mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* tp_data = true_positive->mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* fn_data = false_negative->mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* tn_data = true_negative->mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* fp_data = false_positive->mutable_data<int64_t>(ctx.GetPlace());
 
     for (int idx_thresh = 0; idx_thresh < num_thresholds; idx_thresh++) {
       // caculate TP, FN, TN, FP for current thresh

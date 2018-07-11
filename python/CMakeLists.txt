@@ -92,8 +92,10 @@ install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels
 )
 
-find_program(PATCHELF_EXECUTABLE patchelf)
-if(NOT PATCHELF_EXECUTABLE)
-  message(FATAL_ERROR "patchelf not found, please install it.\n"
+if (NOT APPLE)
+    find_program(PATCHELF_EXECUTABLE patchelf)
+    if(NOT PATCHELF_EXECUTABLE)
+      message(FATAL_ERROR "patchelf not found, please install it.\n"
           "For Ubuntu, the command is: apt-get install -y patchelf.")
+    endif()
 endif()
