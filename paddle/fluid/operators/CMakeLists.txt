@@ -124,7 +124,16 @@ function(op_library TARGET)
     string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
-        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+#        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+
+        if(WITH_GPU AND ${TARGET} STREQUAL "all_gather")
+            file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(all_gather);\n")
+        else()
+            file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+            set(DEPS_OPS ${DEPS_OPS} all_gather_op)
+        endif()
+
+
         set(pybind_flag 1)
     endif()
 
@@ -182,12 +191,6 @@ if(WITH_GPU)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
 else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
-endif()
-
-if(WITH_GPU)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(all_gather);\n")
-else()
-    set(DEPS_OPS ${DEPS_OPS} all_gather_op)
 endif()
 
 set(DISTRIBUTE_DEPS "")
