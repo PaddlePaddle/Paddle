@@ -119,7 +119,6 @@ TEST(DataFlowGraph, TS) {
   assert_positive_sequence_pair(0, 4);
   assert_positive_sequence_pair(0, 5);
   assert_positive_sequence_pair(1, 6);
-  assert_positive_sequence_pair(2, 7);
   assert_positive_sequence_pair(4, 5);
   assert_positive_sequence_pair(4, 7);
 }
