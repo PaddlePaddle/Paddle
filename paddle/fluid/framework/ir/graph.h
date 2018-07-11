@@ -27,7 +27,7 @@ namespace framework {
 
 class Graph {
  public:
-  std::map<std::string, std::vector<boost::any>> attrs;
+  std::map<std::string, boost::any> attrs;
 
   std::vector<Node *> inputs;
   std::vector<Node *> outputs;

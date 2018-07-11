@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -66,11 +67,11 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   }
 }
 
-void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
-                                                const OpDesc &op,
+void MultiDevSSAGraphBuilder::CreateOpHandleIOs(Graph *result, const OpDesc &op,
                                                 size_t place_id) const {
   auto p = places_[place_id];
-  auto *op_handle = result->ops_.back().get();
+  auto *op_handle =
+      boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get();
   op_handle->SetDeviceContext(p,
                               platform::DeviceContextPool::Instance().Get(p));
 
@@ -169,18 +170,21 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
 
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
+  std::unique_ptr<Graph> graph(new Graph);
   for (auto *var : program.Block(0).AllVars()) {
     all_vars_.emplace(var->Name(), var);
   }
 
-  auto graph = new SSAGraph();
-  SSAGraph &result = *graph;
+  Graph &result = *graph;
   std::unordered_set<std::string> og_has_been_broadcast;
 
   // We cannot invoke resize. It is a bug of GCC 4.8
-  result.vars_ = std::vector<
+  result.attrs["vars"] = new std::vector<
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
       places_.size());
+  result.attrs["dep_vars"] =
+      new std::unordered_set<std::unique_ptr<VarHandleBase>>();
+  result.attrs["ops"] = new std::vector<std::unique_ptr<OpHandleBase>>();
 
   // find send/recv vars so that we can place the distributed training
   // realted op in the place 0
@@ -303,7 +307,15 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    */
   AddOutputToLeafOps(&result);
 
-  return std::unique_ptr<SSAGraph>(graph);
+  std::unique_ptr<SSAGraph> ssa_graph(new SSAGraph);
+  ssa_graph->vars_ =
+      std::move(*boost::any_cast<GraphVars *>(graph->attrs["vars"]));
+  ssa_graph->ops_ =
+      std::move(*boost::any_cast<GraphOps *>(graph->attrs["ops"]));
+  ssa_graph->dep_vars_ =
+      std::move(*boost::any_cast<GraphDepVars *>(graph->attrs["dep_vars"]));
+
+  return std::move(ssa_graph);
 }
 
 bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
@@ -327,7 +339,7 @@ void MultiDevSSAGraphBuilder::SetCommunicationContext(
 #endif
 }
 
-void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
+void MultiDevSSAGraphBuilder::CreateBroadcastOp(Graph *result,
                                                 const std::string &p_name,
                                                 size_t src_dev_id) const {
 #ifdef PADDLE_WITH_CUDA
@@ -336,42 +348,50 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(SSAGraph *result,
   auto *op_handle = new BroadcastOpHandle(local_scopes_, places_);
 #endif
 
-  result->ops_.emplace_back(op_handle);
-  auto *in = result->vars_.at(src_dev_id).at(p_name).back().get();
+  boost::any_cast<GraphOps *>(result->attrs["ops"])->emplace_back(op_handle);
+  auto *in = boost::any_cast<GraphVars *>(result->attrs["vars"])
+                 ->at(src_dev_id)
+                 .at(p_name)
+                 .back()
+                 .get();
   op_handle->AddInput(in);
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     SetCommunicationContext(op_handle, p);
-    auto &vars = result->vars_.at(i).at(p_name);
+    auto &vars =
+        boost::any_cast<GraphVars *>(result->attrs["vars"])->at(i).at(p_name);
     auto *out_var = new VarHandle(vars.size(), i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
   }
 }
 
-void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
+void MultiDevSSAGraphBuilder::CreateComputationalOp(Graph *result,
                                                     const OpDesc &op,
                                                     int dev_id) const {
-  result->ops_.emplace_back(
-      new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(
+          new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]));
   CreateOpHandleIOs(result, op, dev_id);
 }
 
-void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
+void MultiDevSSAGraphBuilder::InsertAllReduceOp(Graph *result,
                                                 const std::string &og) const {
 #ifdef PADDLE_WITH_CUDA
-  result->ops_.emplace_back(
-      new AllReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(new AllReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
 #else
-  result->ops_.emplace_back(new AllReduceOpHandle(local_scopes_, places_));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(new AllReduceOpHandle(local_scopes_, places_));
 #endif
-  auto *op_handle = result->ops_.back().get();
+  auto *op_handle =
+      boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get();
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     SetCommunicationContext(op_handle, p);
-    auto &vars = result->vars_[i][og];
+    auto &vars = (*boost::any_cast<GraphVars *>(result->attrs["vars"]))[i][og];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad.get());
@@ -383,19 +403,23 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(SSAGraph *result,
 }
 
 void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
-    SSAGraph *result, const std::vector<std::string> &datas) const {
+    Graph *result, const std::vector<std::string> &datas) const {
 #ifdef PADDLE_WITH_CUDA
-  result->ops_.emplace_back(
-      new DataBalanceOpHandle(local_scopes_, places_, nccl_ctxs_));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(
+          new DataBalanceOpHandle(local_scopes_, places_, nccl_ctxs_));
 #else
-  result->ops_.emplace_back(new DataBalanceOpHandle(local_scopes_, places_));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(new DataBalanceOpHandle(local_scopes_, places_));
 #endif
-  auto *op_handle = result->ops_.back().get();
+  auto *op_handle =
+      boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get();
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     SetCommunicationContext(op_handle, p);
     for (const std::string &d_name : datas) {
-      auto &vars = result->vars_[i][d_name];
+      auto &vars =
+          (*boost::any_cast<GraphVars *>(result->attrs["vars"]))[i][d_name];
       PADDLE_ENFORCE(!vars.empty());
       op_handle->AddInput(vars.back().get());
       auto var = new VarHandle(vars.size(), i, d_name, p);
@@ -441,7 +465,7 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const std::string &varname) const {
   return got == var_name_on_devices_.end() ? -1 : got->second;
 }
 
-void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
+void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(Graph *result) const {
   for (size_t i = 0; i < places_.size(); ++i) {
 // Insert ScaleCost OpHandle
 #ifdef PADDLE_WITH_CUDA
@@ -456,7 +480,7 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
     auto *op_handle =
         new ScaleLossGradOpHandle(local_scopes_.size(), local_scopes_[i],
                                   places_[i], communication_dev_ctx);
-    result->ops_.emplace_back(op_handle);
+    boost::any_cast<GraphOps *>(result->attrs["ops"])->emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
     // factor. So it does not depend on any other operators.
@@ -469,37 +493,41 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(SSAGraph *result) const {
   }
 }
 
-void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
+void MultiDevSSAGraphBuilder::CreateComputationalOps(Graph *result,
                                                      const OpDesc &op,
                                                      size_t num_places) const {
   for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
     auto p = places_[scope_idx];
     auto s = local_scopes_[scope_idx];
-    result->ops_.emplace_back(new ComputationOpHandle(op, s, p));
+    boost::any_cast<GraphOps *>(result->attrs["ops"])
+        ->emplace_back(new ComputationOpHandle(op, s, p));
     CreateOpHandleIOs(result, op, scope_idx);
   }
 }
 
-VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
+VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(Graph *result,
                                                    const std::string &og,
                                                    int dst_dev_id) const {
 #ifdef PADDLE_WITH_CUDA
-  result->ops_.emplace_back(
-      new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
 #else
-  result->ops_.emplace_back(new ReduceOpHandle(local_scopes_, places_));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(new ReduceOpHandle(local_scopes_, places_));
 #endif
-  auto *op_handle = result->ops_.back().get();
+  auto *op_handle =
+      boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get();
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     SetCommunicationContext(op_handle, p);
-    auto &vars = result->vars_[i][og];
+    auto &vars = (*boost::any_cast<GraphVars *>(result->attrs["vars"]))[i][og];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad.get());
   }
-  auto &vars = result->vars_[dst_dev_id][og];
+  auto &vars =
+      (*boost::any_cast<GraphVars *>(result->attrs["vars"]))[dst_dev_id][og];
   auto var = new VarHandle(vars.size(), dst_dev_id, og, places_[dst_dev_id]);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
@@ -508,19 +536,20 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(SSAGraph *result,
 
 // Find the first occurence of `prev_op_name` and make current `op` depend
 // on it.
-void MultiDevSSAGraphBuilder::ConnectOp(SSAGraph *result, OpHandleBase *op,
+void MultiDevSSAGraphBuilder::ConnectOp(Graph *result, OpHandleBase *op,
                                         const std::string &prev_op_name) const {
-  for (auto &prev_op : result->ops_) {
+  for (auto &prev_op : (*boost::any_cast<GraphOps *>(result->attrs["ops"]))) {
     if (prev_op->Name() == prev_op_name) {
       auto *dep_var = new DummyVarHandle();
       prev_op->AddOutput(dep_var);
-      result->dep_vars_.emplace(dep_var);
+      boost::any_cast<GraphDepVars *>(result->attrs["dep_vars"])
+          ->emplace(dep_var);
       op->AddInput(dep_var);
     }
   }
 }
 
-void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
+void MultiDevSSAGraphBuilder::CreateDistTrainOp(Graph *result,
                                                 const OpDesc &op) const {
   int op_dev_id = -1;
   if (op.Type() == "split_byref" || op.Type() == "split_selected_rows") {
@@ -550,12 +579,14 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
 
   CreateComputationalOp(result, op, op_dev_id);
   if (op.Type() == "concat") {
-    ConnectOp(result, result->ops_.back().get(), "fetch_barrier");
+    ConnectOp(result,
+              boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get(),
+              "fetch_barrier");
   }
 }
 
 // Create RPC related op handles that connects its in ops and out ops.
-void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
+void MultiDevSSAGraphBuilder::CreateRPCOp(Graph *result,
                                           const OpDesc &op) const {
   int op_dev_id = -1;
   if (op.Type() == "send") {
@@ -584,15 +615,22 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(SSAGraph *result,
   PADDLE_ENFORCE(op_dev_id != -1, "can not find the right place for rpc op: %s",
                  op.Type());
 
-  result->ops_.emplace_back(new RPCOpHandle(op, local_scopes_[op_dev_id],
-                                            op.Type(), places_[op_dev_id]));
+  boost::any_cast<GraphOps *>(result->attrs["ops"])
+      ->emplace_back(new RPCOpHandle(op, local_scopes_[op_dev_id], op.Type(),
+                                     places_[op_dev_id]));
 
   if (op.Type() == "send_barrier") {
-    ConnectOp(result, result->ops_.back().get(), "send");
+    ConnectOp(result,
+              boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get(),
+              "send");
   } else if (op.Type() == "recv") {
-    ConnectOp(result, result->ops_.back().get(), "send_barrier");
+    ConnectOp(result,
+              boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get(),
+              "send_barrier");
   } else if (op.Type() == "fetch_barrier") {
-    ConnectOp(result, result->ops_.back().get(), "recv");
+    ConnectOp(result,
+              boost::any_cast<GraphOps *>(result->attrs["ops"])->back().get(),
+              "recv");
   } else if (op.Type() == "send") {
     // do nothing
   } else {
