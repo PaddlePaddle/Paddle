@@ -402,6 +402,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get an unique name from "argument" name of "Output" variable
+    // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
     const std::string key =
         ConvMKLDNNHandler::GetHash(src_tz, weights_tz, strides, paddings,
