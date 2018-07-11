@@ -45,6 +45,10 @@ endfunction(inference_api_test)
 cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+if(NOT APPLE)
+  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference_api.sym")
+  set_target_properties(paddle_inference_api PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+endif()
 
 # Here the shared library doesn't depend on other fluid libraries, or double free will occur.
 cc_library(paddle_inference_api_shared SHARED
