@@ -48,6 +48,9 @@ struct DataFlowGraph {
   // Output a DOT graph file for debug.
   std::string DotString() const;
 
+  std::string HumanReadableInfo(bool show_values = true,
+                                bool show_functions = true) const;
+
  private:
   // Remove duplicate edges and so on.
   void Clean();
@@ -107,6 +110,32 @@ struct GraphTraits<DataFlowGraph> {
     std::unordered_set<Node *> visited_;
   };
 
+  // Topological sorting iterator on nodes.
+  struct NodesTSIterator
+      : public std::iterator<std::forward_iterator_tag, Node *> {
+    NodesTSIterator() = default;
+    explicit NodesTSIterator(const std::vector<Node *> &source);
+    NodesTSIterator(NodesTSIterator &&other)
+        : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
+      other.cursor_ = 0;
+    }
+    NodesTSIterator(const NodesTSIterator &other);
+
+    Node &operator*();
+    NodesTSIterator &operator++();
+    // TODO(Superjomn) current implementation just compare the first
+    // element, need to compare the graph and all the elements in the queue and
+    // set.
+    NodesTSIterator &operator=(const NodesTSIterator &other);
+    bool operator==(const NodesTSIterator &other);
+    bool operator!=(const NodesTSIterator &other) { return !(*this == other); }
+    Node *operator->();
+
+   private:
+    std::vector<Node *> sorted_;
+    int cursor_{0};
+  };
+
   explicit GraphTraits(DataFlowGraph *graph) : graph_(graph) {}
 
   // default use BFS to visit the nodes.
@@ -119,16 +148,23 @@ struct GraphTraits<DataFlowGraph> {
   iterator_range<NodesDFSIterator> nodes_in_DFS() {
     return iterator_range<NodesDFSIterator>(nodes_dfs_begin(), nodes_dfs_end());
   }
+  iterator_range<NodesTSIterator> nodes_in_TS() {
+    return iterator_range<NodesTSIterator>(nodes_ts_begin(), nodes_ts_end());
+  }
 
  private:
   NodesBFSIterator nodes_bfs_begin() {
     return NodesBFSIterator(graph_->inputs);
   }
   NodesBFSIterator nodes_bfs_end() { return NodesBFSIterator(); }
+
   NodesDFSIterator nodes_dfs_begin() {
     return NodesDFSIterator(graph_->inputs);
   }
   NodesDFSIterator nodes_dfs_end() { return NodesDFSIterator(); }
+
+  NodesTSIterator nodes_ts_begin() { return NodesTSIterator(graph_->inputs); }
+  NodesTSIterator nodes_ts_end() { return NodesTSIterator(); }
 
  private:
   DataFlowGraph *graph_;
