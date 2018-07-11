@@ -88,6 +88,7 @@ PyObjectPtr createPythonClass(const std::string& moduleName,
 namespace py {
 PyObjectPtr import(const std::string& moduleName);
 
+#if PY_MAJOR_VERSION >= 3
 /**
  * Cast a PyLong or PyInt to int type T.
  * @tparam T return type.
@@ -98,17 +99,18 @@ PyObjectPtr import(const std::string& moduleName);
  */
 template <typename T>
 T castInt(PyObject* obj, bool* ok = nullptr) {
-  if (PyLong_Check(obj)) {
+  if (::PyLong_Check(obj)) {
     if (ok) *ok = true;
     return (T)PyLong_AsUnsignedLong(obj);
-  } else if (PyInt_Check(obj)) {
+  } else if (::PyInt_Check(obj)) {
     if (ok) *ok = true;
-    return (T)PyInt_AsLong(obj);
+    return (T)::PyInt_AsLong(obj);
   } else {
     if (ok) *ok = false;
     return (T)0;
   }
 }
+#endif // PY_MAJOR_VERSION
 
 /**
  * Invoke repr of python object.
