@@ -186,13 +186,20 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   hipStream_t stream() const;
 
+  template <typename Callback>
+  void RecordEvent(hipEvent_t ev, Callback callback) {
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
+    callback();
+    PADDLE_ENFORCE(hipEventRecord(ev, stream_));
+  }
+
  private:
   CUDAPlace place_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenHipStreamDevice> eigen_stream_;
 
-  mutable std::mutex mutex_;
+  mutable std::recursive_mutex mutex_;
   hipStream_t stream_;
   miopenHandle_t miopen_handle_;
   hipblasHandle_t hipblas_handle_;
