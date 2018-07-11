@@ -96,7 +96,7 @@ class TestProgram(unittest.TestCase):
             layers.fc(input=hidden, size=100)
 
         new_program = main_program.clone()
-        self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
+        self.assertNotEqual(0, len(new_program.blocks[0]._all_parameters()))
 
 
 if __name__ == '__main__':
