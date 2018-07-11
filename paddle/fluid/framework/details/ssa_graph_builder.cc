@@ -18,7 +18,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
-  for (auto &var_map : *boost::any_cast<GraphVars *>(graph->attrs["vars"])) {
+  for (auto &var_map : graph->Get<GraphVars>("vars")) {
     for (auto &name_pair : var_map) {
       if (name_pair.second.size() <= 1) {
         continue;
@@ -40,8 +40,7 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
           auto *dep_var = new DummyVarHandle();
           read_op->AddOutput(dep_var);
           write_op->AddInput(dep_var);
-          boost::any_cast<GraphDepVars *>(graph->attrs["dep_vars"])
-              ->emplace(dep_var);
+          graph->Get<GraphDepVars>("dep_vars").emplace(dep_var);
         }
       }
     }
@@ -51,8 +50,7 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
     Graph *graph, const std::string &each_var_name,
     const platform::Place &place, size_t place_offset) {
-  auto &var_holders =
-      (*boost::any_cast<GraphVars *>(graph->attrs["vars"]))[place_offset];
+  auto &var_holders = graph->Get<GraphVars>("vars")[place_offset];
   auto &var_holder = var_holders[each_var_name];
   VarHandle *var = nullptr;
   if (var_holder.empty()) {
@@ -68,9 +66,7 @@ void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
                                      const std::string &each_var_name,
                                      const platform::Place &place,
                                      size_t place_offset) {
-  auto &vars =
-      (*boost::any_cast<GraphVars *>(graph->attrs["vars"]))[place_offset]
-                                                           [each_var_name];
+  auto &vars = graph->Get<GraphVars>("vars")[place_offset][each_var_name];
   size_t version = vars.size();
   auto var = new VarHandle(version, place_offset, each_var_name, place);
   vars.emplace_back(var);
@@ -78,15 +74,14 @@ void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
 }
 
 void SSAGraphBuilder::AddOutputToLeafOps(Graph *graph) {
-  GraphOps &all_ops = *boost::any_cast<GraphOps *>(graph->attrs["ops"]);
+  GraphOps &all_ops = graph->Get<GraphOps>("ops");
 
   for (auto &op : all_ops) {
     if (!op->Outputs().empty()) {
       continue;
     }
     auto *dummy_leaf = new DummyVarHandle();
-    boost::any_cast<GraphDepVars *>(graph->attrs["dep_vars"])
-        ->emplace(dummy_leaf);
+    graph->Get<GraphDepVars>("dep_vars").emplace(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }
 }
