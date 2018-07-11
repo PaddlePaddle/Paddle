@@ -47,7 +47,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const BuildStrategy &strategy);
 #endif
 
-  std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
+  std::unique_ptr<Graph> Build(const ProgramDesc &program) const override;
   int GetVarDeviceID(const std::string &varname) const override;
 
  private:

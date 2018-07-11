@@ -25,12 +25,12 @@ struct SSAGraph;
 class SSAGraphPrinter {
  public:
   virtual ~SSAGraphPrinter() {}
-  virtual void Print(const SSAGraph& graph, std::ostream& sout) const = 0;
+  virtual void Print(const Graph& graph, std::ostream& sout) const = 0;
 };
 
 class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
  public:
-  void Print(const SSAGraph& graph, std::ostream& sout) const override;
+  void Print(const Graph& graph, std::ostream& sout) const override;
 };
 
 class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
@@ -50,7 +50,7 @@ class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
         stream_ptr_(std::move(sout)),
         stream_ref_(*stream_ptr_) {}
 
-  std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override {
+  std::unique_ptr<Graph> Build(const ProgramDesc& program) const override {
     auto graph = builder_->Build(program);
     printer_->Print(*graph, stream_ref_);
     return graph;

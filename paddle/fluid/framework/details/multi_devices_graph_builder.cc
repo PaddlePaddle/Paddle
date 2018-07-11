@@ -167,7 +167,7 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
   return dev_id;
 }
 
-std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
+std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
   std::unique_ptr<Graph> graph(new Graph);
   for (auto *var : program.Block(0).AllVars()) {
@@ -301,12 +301,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
-
-  std::unique_ptr<SSAGraph> ssa_graph(new SSAGraph);
-  ssa_graph->vars_ = std::move(*graph->Erase<GraphVars>("vars"));
-  ssa_graph->ops_ = std::move(*graph->Erase<GraphOps>("ops"));
-  ssa_graph->dep_vars_ = std::move(*graph->Erase<GraphDepVars>("dep_vars"));
-  return std::move(ssa_graph);
+  return std::move(graph);
 }
 
 bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
