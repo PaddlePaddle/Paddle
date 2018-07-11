@@ -184,6 +184,13 @@ else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
 endif()
 
+if(WITH_GPU)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(all_gather);\n")
+else()
+    set(DEPS_OPS ${DEPS_OPS} all_gather_op)
+endif()
+
+
 add_subdirectory(detail)
 if(WITH_DISTRIBUTE)
 

@@ -17,6 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 class AllGatherOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -27,34 +29,64 @@ class AllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of AllGatherOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->ShareLoD("X", "Out");
   }
 };
 
 class AllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Input tensor of all gather operator.");
-    AddOutput("Out", "(Tensor) Output tensor of all gather operator.");
+    AddInput("X", "(Tensor), The input of all gather op.");
+    AddOutput("Out",
+              "(Tensor), The output of all gather op with the same"
+              " rank as Input(X).");
     AddComment(R"DOC(
-All gather operator
+The all gather op gather data from all devices ordered by device id.
+
+Given 3 devices and each device hold a tensor with shape [2]:
+
+    device 0: [2, 1]
+    device 1: [0, 4]
+    device 2: [5, 3]
+
+Apply gather op on all devices, achieves:
+    
+    device 0: [2, 1, 0, 4, 5, 3]
+    device 1: [2, 1, 0, 4, 5, 3]
+    device 2: [2, 1, 0, 4, 5, 3]
+
 )DOC");
   }
 };
 
-class AllGatherGradOp : public framework::OperatorWithKernel {
+class AllGatherOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) of AllGatherGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of AllGatherGradOp should not be null.");
+                   "Input(Out@GRAD) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) of AllGatherGradOp should not be null.");
+                   "Output(X@GRAD) of should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->ShareLoD("X", framework::GradVarName("X"));
+  }
+};
+
+class AllGatherOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* bind = new framework::OpDesc();
+    bind->SetInput("X", Input("X"));
+    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    bind->SetAttrMap(Attrs());
+    bind->SetType("all_gather_grad");
+    return std::unique_ptr<framework::OpDesc>(bind);
   }
 };
 
@@ -64,5 +96,5 @@ class AllGatherGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(all_gather, ops::AllGatherOp, ops::AllGatherOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(all_gather_grad, ops::AllGatherGradOp);
+                  ops::AllGatherOpGradMaker);
+REGISTER_OPERATOR(all_gather_grad, ops::AllGatherOpGrad);
