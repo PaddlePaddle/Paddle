@@ -14,6 +14,7 @@
 
 from parallel_executor_test_base import TestParallelExecutorBase
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import paddle
 import paddle.dataset.mnist as mnist
@@ -102,6 +103,8 @@ class TestMNIST(TestParallelExecutorBase):
                 MNIST_RECORDIO_FILE, reader, feeder)
 
     def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
         self.check_network_convergence(simple_fc_net, use_cuda=use_cuda)
         self.check_network_convergence(
             simple_fc_net, use_cuda=use_cuda, allow_op_delay=True)
@@ -126,6 +129,8 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_convergence(False, True)
 
     def check_simple_fc_parallel_accuracy(self, use_cuda, use_reduce=False):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -159,6 +164,8 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_parallel_accuracy(False, True)
 
     def check_batchnorm_fc_convergence(self, use_cuda, use_reduce=False):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
         self.check_network_convergence(fc_with_batchnorm, use_cuda=use_cuda)
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
