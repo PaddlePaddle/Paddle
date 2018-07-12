@@ -93,10 +93,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateComputationalOp(SSAGraph *result, const OpDesc &op,
                              int dev_id) const;
 
-  bool IsParameterGradientOnce(
-      const std::string &og,
-      std::unordered_set<std::string> *og_has_been_broadcast) const;
-
   int GetOpDeviceID(const OpDesc &op) const;
 
   void InsertAllReduceOp(SSAGraph *result, const std::string &og) const;

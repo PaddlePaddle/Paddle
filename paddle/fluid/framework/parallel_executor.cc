@@ -136,7 +136,7 @@ void ParallelExecutor::BCastParamsToGPUs(
   // the the initializing bcast, all vars would be bcast from device(0),
   // otherwise
   // bcast from the specified device.
-  bool initializing = builder_.get() == nullptr ? true : false;
+  bool initializing = !builder_;
 
   for (auto &var : vars) {
     int var_dev_id =

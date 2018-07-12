@@ -396,30 +396,23 @@ void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
   }
 }
 
-bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
-    const std::string &og,
-    std::unordered_set<std::string> *og_has_been_broadcast) const {
-  bool is_pg_once =
-      grad_names_.count(og) != 0 && og_has_been_broadcast->count(og) == 0;
-  if (is_pg_once) {
-    // Insert NCCL AllReduce Op
-    og_has_been_broadcast->insert(og);
-  }
-  return is_pg_once;
-}
-
 int MultiDevSSAGraphBuilder::GetOpDeviceID(const OpDesc &op) const {
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
 
-  for (auto &varname : op.InputArgumentNames()) {
-    int dev_id = GetVarDeviceID(varname);
-    if (dev_id != -1) {
-      return dev_id;
-    }
+  int op_role = boost::get<int>(
+      op.GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+  if (op_role != static_cast<int>(framework::OpRole::kOptimize)) {
+    return -1;
   }
-  return -1;
+  std::string param = boost::get<std::string>(
+      op.GetAttr(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+
+  std::string grad = framework::GradVarName(param);
+  int dev_id = GetVarDeviceID(grad);
+  PADDLE_ENFORCE_NE(dev_id, -1);
+  return dev_id;
 }
 
 int MultiDevSSAGraphBuilder::GetVarDeviceID(const std::string &varname) const {
