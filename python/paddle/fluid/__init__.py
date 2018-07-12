@@ -121,6 +121,9 @@ def __bootstrap__():
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem'
     ]
+    if core.is_compiled_with_dist():
+        read_env_flags.append('rpc_deadline')
+
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
