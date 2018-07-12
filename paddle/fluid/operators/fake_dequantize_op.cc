@@ -29,6 +29,9 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of FakeDequantizeMaxAbsOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("Scale"),
+        "Input(Scale) of FakeDequantizeMaxAbsOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FakeDequantizeMaxAbsOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -42,21 +45,21 @@ class FakeDequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(Tensor) The input with float-32/64 type is the "
              "low precision tensor.");
+    AddInput("Scale",
+             "(float) The maximum absolute value of low precision tensor."
+             "It is usually calculated by the fake_quantize_max_abs_op.");
     AddOutput("Out",
               "(Tensor) The output is the dequantized high "
               "precision tensor.");
     AddAttr<int>("num_bits",
                  "(int) `num_bits` is the quantization level bits, "
                  "such as 2, 5, 8.");
-    AddAttr<float>("scale",
-                   "(float) The maximum absolute value of low precision tensor."
-                   "It is usually calculated by the fake_quantize_max_abs_op.");
     AddComment(R"DOC(
 FakeDequantizeMaxAbsOp operator.
 
 This calculation is an opposite operation of FakeQuantizeMaxAbsOp:
 
-$$Out = \frac{scale*X}{2^{num_bits} - 1}$$
+$$Out = \frac{scale*X}{2^{num_bits - 1} - 1}$$
 
 )DOC");
   }

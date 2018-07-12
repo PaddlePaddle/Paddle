@@ -98,31 +98,41 @@ class FakeQuantizeKernel : public framework::OpKernel<T> {
       scale = scale_out(0);
 
       auto& device_ctx = context.template device_context<DeviceContext>();
+
       auto* scale_list = context.Output<framework::Tensor>("OutScales");
       math::SetConstant<DeviceContext, T> scalar;
       scale_list->mutable_data<T>(context.GetPlace());
       scalar(device_ctx, scale_list, static_cast<T>(0));
+
       auto* iter = context.Output<framework::Tensor>("OutCurrentIter");
       iter->mutable_data<T>(context.GetPlace());
       scalar(device_ctx, iter, static_cast<T>(0));
+
     } else if (quantize_type == std::string("range_abs_max")) {
       auto* moving_scale = context.Input<framework::Tensor>("InMovingScale");
       if (is_test) {
         scale = moving_scale->data<T>()[0];
       } else {
         auto* it = context.Input<framework::Tensor>("InCurrentIter");
-        auto* iter = context.Output<framework::Tensor>("OutCurrentIter");
         const int* last_iter = it->data<int>();
+
+        auto* iter = context.Output<framework::Tensor>("OutCurrentIter");
         int* current_iter = iter->mutable_data<int>(platform::CPUPlace());
+
         auto* scale_list = context.Output<framework::Tensor>("OutScales");
         auto* saving_scale =
             context.Output<framework::Tensor>("OutMovingScale");
+
         auto scale_out = framework::EigenVector<T>::Flatten(*saving_scale);
         scale_out.device(dev) = raw_in.abs().maximum();
+
         scale = saving_scale->mutable_data<T>(platform::CPUPlace())[0];
+
         scale = FindRangeAbsMax(scale_list, saving_scale, scale, window_size,
                                 current_iter[0]);
+
         saving_scale->mutable_data<T>(platform::CPUPlace())[0] = scale;
+
         (*current_iter) = (*last_iter) + 1;
       }
     } else if (quantize_type == std::string("moving_average_abs_max")) {

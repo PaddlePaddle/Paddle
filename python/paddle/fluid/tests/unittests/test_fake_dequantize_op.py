@@ -19,14 +19,14 @@ from op_test import OpTest
 
 
 def quantize_max_abs(x, num_bits):
-    range = math.pow(2, num_bits) - 1
+    range = math.pow(2, num_bits - 1) - 1
     scale = np.max(np.abs(x).flatten())
     y = np.round(x / scale * range)
     return y, scale
 
 
 def dequantize_max_abs(x, num_bits, scale):
-    range = math.pow(2, num_bits) - 1
+    range = math.pow(2, num_bits - 1) - 1
     y = (scale / range) * x
     return y
 
@@ -42,15 +42,15 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
         yq, scale = quantize_max_abs(x, self.num_bits)
         ydq = dequantize_max_abs(yq, self.num_bits, scale)
 
-        self.inputs = {'X': yq}
-        self.attrs = {'num_bits': self.num_bits, 'scale': float(scale)}
+        self.inputs = {'X': yq, 'Scale': scale}
+        self.attrs = {'num_bits': self.num_bits}
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestFakeDequantizeMaxAbsOp5Bits(OpTest):
+class TestFakeDequantizeMaxAbsOp5Bits(TestFakeDequantizeMaxAbsOp):
     def set_args(self):
         self.num_bits = 5
 

@@ -33,17 +33,17 @@ class FakeQuantizeOp : public framework::OperatorWithKernel {
                    "Output(Out) of FakeQuantizeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutMovingScale"),
                    "OutMovingScale(Out) of FakeQuantizeOp should not be null");
-    // if (ctx->HasInput("InMovingScale")) {
-    ctx->SetOutputDim("OutMovingScale", ctx->GetInputDim("InMovingScale"));
-    //}
-    // if (ctx->HasInput("InScales")) {
-    PADDLE_ENFORCE(ctx->HasOutput("OutScales"),
-                   "OutScales(Out) of FakeQuantizeOp should not be null");
-    ctx->SetOutputDim("OutScales", ctx->GetInputDim("InScales"));
-    // PADDLE_ENFORCE_EQ(ctx->Inputs("InScales")[0],
-    // ctx->Outputs("OutScales")[0],
-    //                  "Mean and MeanOut should share the same memory");
-    //}
+    if (ctx->HasInput("InMovingScale")) {
+      ctx->SetOutputDim("OutMovingScale", ctx->GetInputDim("InMovingScale"));
+    }
+    if (ctx->HasInput("InScales")) {
+      PADDLE_ENFORCE(ctx->HasOutput("OutScales"),
+                     "OutScales(Out) of FakeQuantizeOp should not be null");
+      ctx->SetOutputDim("OutScales", ctx->GetInputDim("InScales"));
+      PADDLE_ENFORCE_EQ(ctx->Inputs("InScales")[0],
+                        ctx->Outputs("OutScales")[0],
+                        "Mean and MeanOut should share the same memory");
+    }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -58,17 +58,21 @@ class FakeQuantizeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("InMovingScale", "Last scale, used in static quantization.")
         .AsDispensable();
     AddInput("InCurrentIter",
-             "Last iteration number, used in static quantization.")
+             "(Tensor) Last iteration number with shape of [1], "
+             "used in static quantization.")
         .AsDispensable();
-    AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
+    AddOutput("Out",
+              "(Tensor) The output is quantized low level tensor, "
+              "which is the same shape as X.");
     AddOutput("OutScales",
-              "(Tensor) scale buffer, used in static quantization.")
+              "(Tensor) scale buffer with shape of [window_size], "
+              "used in static quantization.")
         .AsDispensable();
-    AddOutput("OutMovingScale", " Current scale");
+    AddOutput("OutMovingScale", " Current scale with shape of [1]");
     AddOutput("OutCurrentIter", "Current iteration number.").AsDispensable();
     AddAttr<std::string>("quantize_type",
                          "(string, default abs_max)"
-                         "The scaling tpe of the quantize operator.")
+                         "The scaling type of the quantize operator.")
         .SetDefault("abs_max");
     AddAttr<int>("window_size", "(int, default 10000)").SetDefault(10000);
     AddAttr<int>("bit_length", "(int, default 8)")

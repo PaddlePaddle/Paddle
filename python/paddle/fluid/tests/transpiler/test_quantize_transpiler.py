@@ -62,8 +62,8 @@ def residual_block(num):
 class TestQuantizeTranspiler(unittest.TestCase):
     def setUp(self):
         # since quant_op and dequant_op is not ready, use cos and sin for test
-        self.quant_op_type = 'cos'
-        self.dequant_op_type = 'sin'
+        self.quant_op_type = 'fake_quantize'
+        self.dequant_op_type = 'fake_dequantize_max_abs'
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
             'depthwise_conv2d': ['Input', 'Filter'],

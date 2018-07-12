@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
 namespace operators {
@@ -24,17 +25,34 @@ class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* in = ctx.Input<framework::Tensor>("X");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(in->place());
 
     int num_bits = ctx.Attr<int>("num_bits");
-    T scale = static_cast<T>(ctx.Attr<float>("scale"));
-    int range = std::pow(2, num_bits) - 1;
+    int range = std::pow(2, num_bits - 1) - 1;
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    eigen_out.device(dev) = (scale / range) * eigen_in;
+
+    T s;
+    auto place = ctx.GetPlace();
+    if (platform::is_cpu_place(place)) {
+      s = scale->data<T>()[0];
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto& gpu_place = boost::get<platform::CUDAPlace>(place);
+      auto stream =
+          ctx.template device_context<platform::CUDADeviceContext>().stream();
+      memory::Copy(platform::CPUPlace(), &s, gpu_place, scale->data<T>(),
+                   sizeof(T), stream);
+#else
+      PADDLE_THROW("Paddle is not compiled with GPU");
+#endif
+    }
+
+    eigen_out.device(dev) = (s / range) * eigen_in;
   }
 };
 
