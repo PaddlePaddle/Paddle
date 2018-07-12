@@ -67,7 +67,7 @@ bool IsCompiledWithCUDA() {
 }
 
 bool IsCompiledWithDIST() {
-#ifdef PADDLE_WITH_DIST
+#ifdef PADDLE_WITH_DISTRIBUTE
   return true;
 #else
   return false;
