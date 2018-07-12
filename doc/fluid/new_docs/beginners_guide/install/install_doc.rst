@@ -117,7 +117,7 @@ Windows系统需要通过Docker来使用PaddleaPaddle。Docker是一个虚拟容
 我们提供了 `PaddlePaddle_Windows快速安装包 <http://paddle-windows.bj.bcebos.com/PaddlePaddle-windows.zip>`_，
 它能够帮助您安装Docker和PaddlePaddle。
 
-* 安装包支持的系统：Windows7，Windows8的所有版本，Windows10的专业版、企业版及教育版。
+* 安装包支持的系统：Windows7，Windows8的所有版本，Windows10的专业版、企业版。
 
 * 如果您希望使用GPU提升训练速度，请使用Linux系统安装，Windows系统暂不支持。
    
