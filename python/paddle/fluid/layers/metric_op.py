@@ -76,7 +76,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
     return acc_out
 
 
-def auc(input, label, curve='ROC', num_thresholds=200):
+def auc(input, label, curve='ROC', num_thresholds=200, k=1):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -115,7 +115,7 @@ def auc(input, label, curve='ROC', num_thresholds=200):
     """
 
     warnings.warn(
-        "This interface not recommended, fluid.layers.auc compute the auc at every minibatch, \
+        "This interface is not recommended, fluid.layers.auc compute the auc at every minibatch, \
         but can not aggregate them and get the pass AUC, because pass \
         auc can not be averaged with weighted from the minibatch auc value. \
         Please use fluid.metrics.Auc, it can compute the auc value via Python natively, \
@@ -125,14 +125,34 @@ def auc(input, label, curve='ROC', num_thresholds=200):
     topk_indices = helper.create_tmp_variable(dtype="int64")
     topk_out, topk_indices = nn.topk(input, k=k)
     auc_out = helper.create_tmp_variable(dtype="float32")
+    # make tp, tn, fp, fn persistable, so that can accumulate all batches.
+    tp = helper.create_global_variable(persistable=True)
+    tn = helper.create_global_variable(persistable=True)
+    fp = helper.create_global_variable(persistable=True)
+    fn = helper.create_global_variable(persistable=True)
+    for var in [tp, tn, fp, fn]:
+        helper.set_variable_initializer(
+            var, Constant(
+                value=0.0, force_cpu=True))
+
     helper.append_op(
         type="auc",
         inputs={
             "Out": [topk_out],
             "Indices": [topk_indices],
-            "Label": [label]
+            "Label": [label],
+            "TP": [tp],
+            "TN": [tn],
+            "FP": [fp],
+            "FN": [fn]
         },
         attrs={"curve": curve,
                "num_thresholds": num_thresholds},
-        outputs={"AUC": [auc_out], })
+        outputs={
+            "AUC": [auc_out],
+            "TP": [tp],
+            "TN": [tn],
+            "FP": [fp],
+            "FN": [fn]
+        })
     return auc_out

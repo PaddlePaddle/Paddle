@@ -34,6 +34,8 @@ class AucKernel : public framework::OpKernel<T> {
     auto* inference = ctx.Input<Tensor>("Out");
     auto* label = ctx.Input<Tensor>("Label");
     auto* auc = ctx.Output<Tensor>("AUC");
+    // Only use output var for now, make sure it's persistable and
+    // not cleaned up for each batch.
     auto* true_positive = ctx.Output<Tensor>("TP");
     auto* false_positive = ctx.Output<Tensor>("FP");
     auto* true_negative = ctx.Output<Tensor>("TN");
@@ -58,10 +60,10 @@ class AucKernel : public framework::OpKernel<T> {
     const T* inference_data = inference->data<T>();
     const int64_t* label_data = label->data<int64_t>();
 
-    int64_t* tp_data = true_positive->mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* fn_data = false_negative->mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* tn_data = true_negative->mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* fp_data = false_positive->mutable_data<int64_t>(ctx.GetPlace());
+    auto* tp_data = true_positive->mutable_data<int64_t>(ctx.GetPlace());
+    auto* fn_data = false_negative->mutable_data<int64_t>(ctx.GetPlace());
+    auto* tn_data = true_negative->mutable_data<int64_t>(ctx.GetPlace());
+    auto* fp_data = false_positive->mutable_data<int64_t>(ctx.GetPlace());
 
     for (int idx_thresh = 0; idx_thresh < num_thresholds; idx_thresh++) {
       // caculate TP, FN, TN, FP for current thresh
@@ -86,10 +88,10 @@ class AucKernel : public framework::OpKernel<T> {
         }
       }
       // store rates
-      tp_data[idx_thresh] = tp;
-      fn_data[idx_thresh] = fn;
-      tn_data[idx_thresh] = tn;
-      fp_data[idx_thresh] = fp;
+      tp_data[idx_thresh] += tp;
+      fn_data[idx_thresh] += fn;
+      tn_data[idx_thresh] += tn;
+      fp_data[idx_thresh] += fp;
     }
     // epsilon to avoid divide by zero.
     float epsilon = 1e-6;

@@ -70,6 +70,10 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data."
              "The height is batch size and width is always 1.");
+    AddInput("TP", "True-Positive value.");
+    AddInput("FP", "False-Positive value.");
+    AddInput("TN", "True-Negative value.");
+    AddInput("FN", "False-Negative value.");
     // TODO(typhoonzero): support weight input
     AddOutput("AUC",
               "A scalar representing the "

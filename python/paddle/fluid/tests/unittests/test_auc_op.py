@@ -24,10 +24,10 @@ class TestAucOp(OpTest):
         indices = np.random.randint(0, 2, (128, 2))
         labels = np.random.randint(0, 2, (128, 1))
         num_thresholds = 200
-        tp = np.zeros((num_thresholds, )).astype("int32")
-        tn = np.zeros((num_thresholds, )).astype("int32")
-        fp = np.zeros((num_thresholds, )).astype("int32")
-        fn = np.zeros((num_thresholds, )).astype("int32")
+        tp = np.zeros((num_thresholds, )).astype("int64")
+        tn = np.zeros((num_thresholds, )).astype("int64")
+        fp = np.zeros((num_thresholds, )).astype("int64")
+        fn = np.zeros((num_thresholds, )).astype("int64")
 
         self.inputs = {
             'Out': pred,
