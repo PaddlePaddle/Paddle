@@ -47,7 +47,7 @@ def is_taged():
     except:
         return False
 
-    if git_tag.replace('v', '') == '@PADDLE_VERSION@':
+    if str(git_tag).replace('v', '') == '@PADDLE_VERSION@':
         return True
     else:
         return False
