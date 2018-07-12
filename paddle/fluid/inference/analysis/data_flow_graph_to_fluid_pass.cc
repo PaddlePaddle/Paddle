@@ -48,8 +48,9 @@ bool DataFlowGraphToFluidPass::Initialize(Argument* argument) {
 bool DataFlowGraphToFluidPass::Finalize() { return true; }
 
 void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
-  auto traits = GraphTraits<DataFlowGraph>(graph);
-  for (auto it = traits.nodes().begin(); it != traits.nodes().end(); ++it) {
+  auto traits = GraphTraits<DataFlowGraph>(graph).nodes_in_TS();
+  LOG(INFO) << "graph.inputs " << graph->inputs.size();
+  for (auto it = traits.begin(); it != traits.end(); ++it) {
     if (it->deleted()) continue;
 
     switch (it->type()) {
@@ -67,11 +68,10 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph* graph) {
     }
   }
 
-  LOG(INFO) << "debug";
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());
   auto& main_block = argument_->transformed_program_desc->blocks(0);
   for (int i = 0; i < main_block.ops_size(); i++) {
-    LOG(INFO) << "op:" << main_block.ops(i).type();
+    LOG(INFO) << "op: " << main_block.ops(i).type();
   }
 }
 

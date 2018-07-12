@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -36,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -296,7 +296,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("reset", &framework::ReaderHolder::ReInit);
+      .def("reset", &framework::ReaderHolder::ResetAll);
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
