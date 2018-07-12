@@ -1,4 +1,18 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#   Copyright (c ) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -3900,7 +3914,13 @@ def transpose(x, perm, name=None):
     return out
 
 
-def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
+def im2sequence(input,
+                filter_size=1,
+                stride=1,
+                padding=0,
+                input_image_size=None,
+                out_stride=1,
+                name=None):
     """
     Extracts image patches from the input tensor to form a tensor of shape
     {input.batch_size * output_height * output_width, filter_size_H *
@@ -3936,6 +3956,15 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
             paddings of four direction. Otherwise, a scalar padding means
             padding_up = padding_down = padding_left = padding_right = padding
             Default: padding = 0.
+
+        input_image_size(Variable): the input contains image real size.It's dim
+            is [batchsize, 2]. It is dispensable.It is just for batch inference.
+
+        out_stride(int|tuple): The scaling of image through CNN. It is
+            dispensable. It is valid only when input_image_size is not null.
+            If out_stride is tuple,  it must contain two intergers,
+            (out_stride_H, out_stride_W). Otherwise,
+            the out_stride_H = out_stride_W = out_stride.
 
         name (int): The name of this layer. It is optional.
 
@@ -3987,7 +4016,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
                            [ 5.  7.  2.  4.  1.  3.  9.  0.]
                            [ 7.  9.  4.  8.  3.  5.  0.  8.]]
 
-            output.dims = {8, 9}
+            output.dims = {8, 8}
 
             output.lod = [[4, 4]]
 
@@ -4009,18 +4038,17 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
     if len(padding) == 2:
         padding.append(padding[0])
         padding.append(padding[1])
-
+    inputs = {"X": input}
+    attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
+    if input_image_size:
+        if isinstance(out_stride, int):
+            out_stride = [out_stride, out_stride]
+        inputs["Y"] = input_image_size
+        attrs["out_stride"] = out_stride
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
-        type='im2sequence',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'kernels': filter_size,
-            'strides': stride,
-            'paddings': padding,
-        })
+        type='im2sequence', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
